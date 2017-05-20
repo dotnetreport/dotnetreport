@@ -1,0 +1,85 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <link rel="shortcut icon" href="/favicon.ico">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asp .Net Ad Hoc Report Builder - @ViewBag.Title </title>
+    <meta name="keywords" content="ad-hoc reporting, reporting, asp .net reporting, asp .net report, report builder, ad hoc report builder, ad-hoc report builder, adhoc report, ad hoc reports, .net report viewer, reportviewer, sql reportviewer, report builder mvc, report mvc, report builder web forms, query builder, sql report builder,visual report builder,custom query,query maker" />
+    <meta name="description" content="Ad hoc Reporting software that allows programmers to easily add Reporting functionality to their ASP .NET Web Software Solution" />
+    <link href="/Content/bootstrap.css" rel="stylesheet" />
+    <link href="/Content/bootstrap-mvc-validation.css" rel="stylesheet" />    
+    <link href="~/Content/themes/base/datepicker.css" rel="stylesheet" />
+    <link href="~/Content/themes/base/theme.css" rel="stylesheet" />    
+    <link href="~/Content/toastr.min.css" rel="stylesheet" />
+    <link href="~/Content/font-awesome.min.css" rel="stylesheet" />
+    <link href="~/Content/css/select2.min.css" rel="stylesheet" />
+    <link href="~/Content/dotnetreport.css?v=3.1" rel="stylesheet" />    
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>    
+    @RenderSection("head", required: false)
+    <style type="text/css">
+        body
+        {
+            padding-top: 80px;
+            padding-bottom: 40px;
+        }
+        .navbar-inverse{
+            background-color: #286893;            
+            height: 60px;
+        }
+        .navbar-brand a {
+            text-decoration: none;
+            color: #fff;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="navbar navbar-inverse navbar-fixed-top">
+        <div class="">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <div class="navbar-brand" style="padding-top: 8px;">
+                    <a href="/">
+                        <img src="~/Content/img/report-icon.png" onerror="this.style.display='none'" width="45" />
+                        .Net Report Builder
+                    </a>
+                </div>
+            </div>
+            <div class="navbar-collapse collapse">
+                <ul class="nav navbar-nav">
+                    @*<li>@Html.ActionLink("Home", "Index", "Home")</li>*@
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="body-content">
+        @RenderBody()
+        <hr />
+        <footer>
+            <p>&copy; @DateTime.Now.Year .Net Report Builder<br /><a href="https://dotnetreport.com">www.dotnetreport.com</a></p>
+        </footer>
+    </div>
+
+    @* Required Javascript Libraries *@
+    <script src="~/Scripts/@Html.Raw(ReportUtil.GetScriptFile("jquery-{0}.min.js"))"></script>
+    <script src="~/Scripts/@Html.Raw(ReportUtil.GetScriptFile("jquery-ui-{0}.min.js"))"></script>
+    <script src="~/Scripts/jquery.validate.min.js"></script>
+    <script src="~/Scripts/bootstrap.js"></script>
+    <script src="~/Scripts/@Html.Raw(ReportUtil.GetScriptFile("knockout-{0}.js"))"></script>    
+    <script src="~/Scripts/jquery.blockUI.js"></script>    
+    <script src="~/Scripts/bootbox.min.js"></script>
+    <script src="~/Scripts/toastr.min.js"></script>
+    <script src="~/Scripts/knockout-sortable.min.js"></script>
+    <script src="~/Scripts/select2.min.js"></script>
+    <script src="~/Scripts/dotnetreport-helper.js"></script>
+    <script src="~/Scripts/dotnetreport.min.js?v=1.5.2"></script>
+    @RenderSection("scripts", required: false)
+    @Html.PageScripts()
+</body>
+</html>

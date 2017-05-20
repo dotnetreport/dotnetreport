@@ -1,0 +1,335 @@
+﻿@using System.Configuration
+@using System.Data
+@model DotNetReportModel
+@{
+    ViewBag.Title = "Report";
+    Layout = "../shared/_Layout.Report.cshtml";
+}
+
+@*
+
+    This razor view renders the Report from the Data Table as a Html Table. You have complete control over this page and you can change the code and style to meet your requirements.
+
+    Its Recommended you use it as is, and only change styling as needed to match your application. You will be responsible for managing and maintaining any changes.
+
+    Note: To allow bigger file downloads in Excel, Please increase maxRequestLength in web.config. For example, <httpRuntime maxRequestLength="1048576"/>
+
+*@
+
+@section scripts{
+    <script type="text/javascript">
+        function printReport() {
+            var printWindow = window.open("");
+            printWindow.document.open();
+            printWindow.document.write('<html><head>'+
+                                    '<link href="/Content/bootstrap.css" rel="stylesheet" />'+
+                                    '</head><body>' + $('.report-inner').html() +
+                                    '</body></html>');
+
+            setTimeout(function(){
+                printWindow.print();
+                printWindow.close();
+            }, 250);
+        }
+
+        function downloadExcel() {
+            $("#downloadExcel").submit();
+        }
+
+        $(document).ready(function () {
+            var vm = new reportViewModel({
+                runReportUrl: "@Url.Action("Report")",
+                execReportUrl: "@Url.Action("RunReport")",
+                reportWizard: $("#filter-panel"),
+                lookupListUrl: "@Url.Action("GetLookupList")",
+                apiUrl: "@ConfigurationManager.AppSettings["dotNetReport.apiUrl"]",
+                accountApiToken: "@ConfigurationManager.AppSettings["dotNetReport.accountApiToken"]", // Your Account Api Token from your http://dotnetreport.com Account
+                dataconnectApiToken: "@ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"]", // Your Data Connect Api Token from your http://dotnetreport.com Account
+                clientId: "", // You can pass your multi-tenant client id here to keep track of their reports and folders
+                reportFilter: htmlDecode('@HttpUtility.UrlDecode(Model.ReportFilter)'),
+                reportMode: "execute",
+                reportSql: "@Model.ReportSql",
+                reportConnect: "@Model.ConnectKey"
+            });
+            ko.applyBindings(vm);
+            vm.LoadReport(@Model.ReportId, true);
+
+            $(window).resize(function(){
+                vm.DrawChart();
+            });
+        });
+    </script>
+}
+
+<div data-bind="with: ReportResult">
+
+    <!-- ko ifnot: HasError -->
+    <div class="report-view" data-bind="with: $root">
+        @using (Html.BeginForm("DownloadExcel", "DotNetReport", FormMethod.Post, new { id = "downloadExcel" }))
+        {
+            <input type="hidden" id="reportSql" name="reportSql" data-bind="value: currentSql" />
+            <input type="hidden" id="connectKey" name="connectKey" data-bind="value: currentConnectKey" />
+            <input type="hidden" id="reportName" name="reportName" data-bind="value: ReportName" />
+        }
+
+        <div class="pull-right">
+            <a href="@Url.Action("Index","DotNetReport")?folderId=@Model.SelectedFolder" class="btn btn-primary">
+                Back to Reports
+            </a>
+            <a href="@Url.Action("Index", "DotNetReport")?reportId=@Model.ReportId&folderId=@Model.SelectedFolder" class="btn btn-primary">
+                Edit Report
+            </a>
+            <button type="button" class="btn btn-default" onclick="printReport();">
+                <span class="glyphicon glyphicon-print" aria-hidden="true"></span> Print Report
+            </button>
+            <button class="btn btn-default" onclick="downloadExcel();" data-bind="visible: !isChart() || ShowDataWithGraph()">
+                <span class="fa fa-file-excel-o"></span> Export to Excel
+            </button>
+
+            @*<div class="dropdown pull-right">
+                    <button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                        <span class="fa fa-download"></span> Export
+                        <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu" >
+                        <li><a href="#" onclick="downloadExcel();" data-bind="visible: !isChart() || ShowDataWithGraph()">
+                            <span class="fa fa-file-excel-o"></span> Excel</a></li>
+                        <li><a href="#">
+                            <span class="fa fa-file-pdf-o"></span> PDF</a></li>
+
+                    </ul>
+                </div>*@
+
+        </div>
+        <br />
+        <br />
+        <div style="clear: both;"></div>
+        <br />
+        <div class="panel panel-default" data-bind="visible: FlyFilters().length>0">
+            <div class="panel-heading">
+                <h3 class="panel-title">
+                    <a data-toggle="collapse" data-target="#filter-panel" href="#">
+                        <i class="fa fa-filter"></i> Choose filter options
+                    </a>
+                </h3>
+            </div>
+            <div id="filter-panel" class="panel-collapse">
+                <div class="panel-body">
+                    <!-- ko foreach: FlyFilters -->
+                    <div class="row">
+
+                        <div class="col-sm-5 col-xs-4">
+                            <div data-bind="with: Field" class="checkbox">
+                                <div class="checkbox">
+                                    <label>
+                                        <input type="checkbox" title="Apply this filter" data-bind="checked: $parent.Apply" /><span data-bind="text: selectedFieldName"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div data-bind="with: Field" class="col-sm-2 col-xs-3">
+                            <div class="form-group" data-bind="if: $parent.Apply">
+                                <select class="form-control" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
+                            </div>
+                        </div>
+                        <div data-bind="with: Field" class="col-xs-5">
+                            <div data-bind="if: $parent.Apply">
+                                @Html.Partial("_reportFilter")
+                            </div>
+                        </div>
+                    </div>
+                    <!-- /ko -->
+                    <button class="btn btn-primary" data-bind="click: RunReport">Refresh Report</button>
+                </div>
+            </div>
+        </div>
+        <div class="report-menubar">
+            <div class="col-xs-12 col-centered" data-bind="with: pager">
+                <div class="form-inline" data-bind="visible: pages()">
+                    <div class="form-group pull-left total-records">
+                        <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
+                    </div>
+                    <div class="pull-left">
+                        <button class="btn btn-default btn-sm" onclick="downloadExcel();" data-bind="visible: !$root.isChart() || $root.ShowDataWithGraph()" title="Export to Excel">
+                            <span class="fa fa-file-excel-o"></span>
+                        </button>
+                    </div>
+                    <div class="form-group pull-right">
+                        <div data-bind="template: 'pager-template', data: $data"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="report-canvas">
+            <div class="report-container">
+                <div class="report-inner">
+                    <h2 data-bind="text: ReportName"></h2>
+                    <p data-bind="html: ReportDescription">
+                    </p>
+                    <div data-bind="with: ReportResult">
+
+                        <div id="chart_div" class="report-chart" data-bind="visible: $root.isChart"></div>
+
+                        <div class="table-responsive" data-bind="with: ReportData">
+                            <div data-bind="template: 'report-template', data: $data"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <br />
+        <span>Report ran on: @DateTime.Now.ToShortDateString() @DateTime.Now.ToShortTimeString()</span>
+    </div>
+    <!-- /ko -->
+    <!-- ko if: HasError -->
+    <h2>@Model.ReportName</h2>
+    <p>
+        @Model.ReportDescription
+    </p>
+
+    <a href="@Url.Action("Index", "DotNetReport")?folderId=@Model.SelectedFolder" class="btn btn-primary">
+        Back to Reports
+    </a>
+    <a href="@Url.Action("Index", "DotNetReport")?reportId=@Model.ReportId&folderId=@Model.SelectedFolder" class="btn btn-primary">
+        Edit Report
+    </a>
+    <h3>An unexpected error occured while running the Report</h3>
+    <hr />
+    <b>Error Details</b>
+    <p>
+        <div data-bind="text: Exception"></div>
+    </p>
+
+    <!-- /ko -->
+    <!-- ko if: ReportDebug || HasError -->
+    <br />
+    <br />
+    <hr />
+    <code data-bind="text: ReportSql">
+
+    </code>
+    <!-- /ko -->
+</div>
+
+<script type="text/html" id="pager-template">
+    <div class="pager-container">
+        <a href="" title="first" data-bind="click: first, enable: !isFirstPage()"><i class="fa fa-backward report-pager-btn" style="font-size: 18px;"></i></a>&nbsp;
+        <a href="" title="previous" data-bind="click: previous, enable: !isFirstPage()"><i class="fa fa-caret-left fa-2x report-pager-btn"></i></a>
+
+        <span class="pager-pageinfo">
+            <span>Page</span>&nbsp;
+            <input type="number" min="1" pattern="[0-9]*" class="text-center" data-bind="
+                                    value: currentPage,
+                                    attr: { max: pages() }" />&nbsp;
+            <span>of</span>&nbsp;
+            <span data-bind="text: pages"></span>
+        </span>&nbsp;
+
+        <a href="" title="next" data-bind="click: next, enable: !isLastPage()"><i class="fa fa-caret-right fa-2x report-pager-btn"></i></a>&nbsp;
+        <a href="" title="last" data-bind="click: last, enable: !isLastPage()"><i class="fa fa-forward report-pager-btn" style="font-size: 18px;"></i></a>
+    </div>
+</script>
+
+<script type="text/html" id="report-template">
+    <table class="table table-hover table-condensed">
+        <thead>
+            <tr class="no-highlight">
+                <!-- ko if: $root.canDrilldown() && !IsDrillDown() -->
+                <th></th>
+                <!-- /ko -->
+                <!-- ko foreach: Columns -->
+                <th data-bind="attr: { id: 'col' + $index }">
+                    <a href="" data-bind="click: function(){ $root.changeSort(SqlField); }">
+                        <span data-bind="text: ColumnName"></span>
+                        <span data-bind="text: $root.pager.sortColumn() === SqlField ? ($root.pager.sortDescending() ? '&#9660;' : '&#9650;') : ''">
+                        </span>
+                    </a>
+                </th>
+                <!-- /ko -->
+            </tr>
+        </thead>
+        <tbody>
+            <tr style="display: none;" data-bind="visible: Rows.length < 1">
+                <td class="text-info" data-bind="attr:{colspan: Columns.length}">
+                    No records found
+                </td>
+            </tr>
+            <!-- ko foreach: Rows  -->
+            <tr>
+                <!-- ko if: $root.canDrilldown() && !$parent.IsDrillDown() -->
+                <td><a href="#" data-bind="click: function(){ toggle(); }"><span class="fa" data-bind="css: {'fa-plus': !isExpanded(), 'fa-minus': isExpanded()}"></span></a></td>
+                <!-- /ko -->
+                <!-- ko foreach: Items -->
+                <td data-bind="html: FormattedValue"></td>
+                <!-- /ko -->
+            </tr>
+            <!-- ko if: isExpanded -->
+            <tr>
+                <td></td>
+                <td data-bind="attr:{colspan: $parent.Columns.length }">
+                    <!-- ko if: DrillDownData -->
+                    <table class="table table-hover table-condensed" data-bind="with: DrillDownData">
+                        <thead>
+                            <tr class="no-highlight">
+                                <!-- ko foreach: Columns -->
+                                <th>
+                                    <a href="" data-bind="click: function(){ $parents[1].changeSort(SqlField); }">
+                                        <span data-bind="text: ColumnName"></span>
+                                        <span data-bind="text: $parents[1].pager.sortColumn() === SqlField ? ($parents[1].pager.sortDescending() ? '&#9660;' : '&#9650;') : ''">
+                                        </span>
+                                    </a>
+                                </th>
+                                <!-- /ko -->
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="display: none;" data-bind="visible: Rows.length < 1">
+                                <td class="text-info" data-bind="attr:{colspan: Columns.length}">
+                                    No records found
+                                </td>
+                            </tr>
+                            <!-- ko foreach: Rows  -->
+                            <tr>
+                                <!-- ko foreach: Items -->
+                                <td data-bind="html: FormattedValue"></td>
+                                <!-- /ko -->
+                            </tr>
+                            <!-- /ko -->
+                        </tbody>
+                    </table>
+                    <div class="col-xs-12 col-centered" data-bind="with: pager">
+                        <div class="form-inline small text-muted">
+                            <div class="pull-left total-records" data-bind="visible: pages()">
+                                <span data-bind="text: 'Total Records: ' + totalRecords()"></span>
+                            </div>
+                            <div class="pull-left">
+                                @using (Html.BeginForm("DownloadExcel", "Report", FormMethod.Post))
+                                {
+                                    <input type="hidden" id="reportSql" name="reportSql" data-bind="value: $parent.sql" />
+                                    <input type="hidden" id="connectKey" name="connectKey" data-bind="value: $parent.connectKey" />
+                                    <input type="hidden" id="reportName" name="reportName" data-bind="value: 'Sub Report for ' + $root.ReportName()" />
+                                    <button type="submit" class="btn btn-xs"><span class="fa fa-file-excel-o"></span></button>
+                                }
+                            </div>
+                            <div class="form-group pull-right" data-bind="visible: pages()">
+                                <div data-bind="template: 'pager-template', data: $data"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- /ko -->
+                </td>
+            </tr>
+            <!-- /ko -->
+            <!-- /ko -->
+        </tbody>
+    </table>
+</script>
+
+<br />
+<br />
+<br />
+<!-- ########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
+
+<p>Powered by <a href="http://www.dotNetReport.com" target="_blank">dotNetReport.com</a></p>
+
+<!--########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
