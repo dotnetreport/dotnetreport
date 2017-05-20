@@ -1,0 +1,50 @@
+﻿
+<div class="form-group">
+    <!-- ko if: !hasForeignKey-->
+    <!-- ko if: fieldType=='DateTime'-->
+    <!-- ko if: ['=','>','<','>=','<='].indexOf($parent.Operator()) != -1 -->
+    <input class="form-control" data-bind="datepicker: $parent.Value" required />
+    <!-- /ko -->
+    <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
+    From <input required class="form-control" data-bind="datepicker: $parent.Value" /> to <input data-bind="datepicker: $parent.Value2" class="form-control" required />
+    <!-- /ko -->
+    <!-- ko if: ['range'].indexOf($parent.Operator()) != -1 -->
+    <select data-bind="value: $parent.Value" class="form-control">
+        <option>Today</option>
+        <option>This Week</option>
+        <option>Last Week</option>
+        <option>This Month</option>
+        <option>Last Month</option>
+        <option>This Year</option>
+        <option>Last Year</option>
+    </select>
+    <!-- /ko -->
+    <!-- /ko -->
+    <!-- ko if: ['Int','Money','Float'].indexOf(fieldType) != -1 -->
+    <!-- ko if: ['=','>','<','>=','<='].indexOf($parent.Operator()) != -1 -->
+    <input class="form-control" type="number" data-bind="value: $parent.Value" required />
+    <!-- /ko -->
+    <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
+    From <input class="form-control" type="number" data-bind="value: $parent.Value" required /> to <input class="form-control" type="number" data-bind="value: $parent.Value2" required />
+    <!-- /ko -->
+    <!-- /ko -->
+    <!-- ko if: fieldType=='Boolean' -->
+    <select required class="form-control">
+        <option value="1">Yes</option>
+        <option value="0">No</option>
+    </select>
+    <!-- /ko -->
+    <!-- ko if: ['Int','Money','Float','Date','DateTime','Boolean'].indexOf(fieldType) == -1 -->
+    <input class="form-control" type="text" data-bind="value: $parent.Value" required />
+    <!-- /ko -->
+    <!-- /ko -->
+    <!-- ko if: hasForeignKey-->
+    @*Show lookup list*@
+    <!-- ko if: $parent.Operator()=='='-->
+    <select required class="form-control" data-bind="options: $parent.LookupList, optionsText:'text', optionsValue:'id', value: $parent.Value, optionsCaption: 'Please Choose'"></select>
+    <!-- /ko -->
+    <!-- ko if: $parent.Operator()=='in'-->
+    <select multiple class="form-control" data-bind=" select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText:'text', optionsValue:'id', selectedOptions: $parent.Value"></select>
+    <!-- /ko -->
+    <!-- /ko -->
+</div>

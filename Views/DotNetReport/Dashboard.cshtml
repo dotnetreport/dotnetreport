@@ -1,0 +1,36 @@
+﻿@model List<DotNetReportModel>
+@{
+    ViewBag.Title = "Dashboard";
+    Layout = "~/Views/shared/_Layout.Report.cshtml";
+}
+
+@section head{
+    <link href="~/Content/bootstrap-table.css" rel="stylesheet" />
+
+}
+
+<h2>Dashboard</h2>
+
+<div class="row">
+
+    @foreach (var report in @Model)
+    {
+        <div class="col-sm-4">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    @report.ReportName                    
+                </div>
+                <div class="panel-body" style="overflow-x: hidden; overflow-y: hidden; height: 430px;">
+                    @Html.Partial("_reportRender", report)
+                </div>
+            </div>
+        </div>
+    }
+
+</div>
+
+@section scripts {
+    <script src="~/Scripts/bootstrap-table.js"></script>
+
+
+}
