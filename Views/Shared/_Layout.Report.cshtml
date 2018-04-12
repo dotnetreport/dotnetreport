@@ -36,7 +36,7 @@
 </head>
 
 <body>
-    <div class="navbar navbar-inverse navbar-fixed-top">
+    <div class="navbar navbar-fixed-top" style="background-color: white;">
         <div class="">
             <div class="navbar-header">
                 <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
@@ -46,8 +46,7 @@
                 </button>
                 <div class="navbar-brand" style="padding-top: 8px;">
                     <a href="/">
-                        <img src="~/Content/img/report-icon.png" onerror="this.style.display='none'" width="45" />
-                        .Net Report Builder
+                        <img src="~/Content/img/report-logo.png" alt=".Net Report Builder" width="200" />
                     </a>
                 </div>
             </div>
@@ -78,7 +77,7 @@
     <script src="~/Scripts/knockout-sortable.min.js"></script>
     <script src="~/Scripts/select2.min.js"></script>
     <script src="~/Scripts/dotnetreport-helper.js"></script>
-    <script src="~/Scripts/dotnetreport.min.js?v=1.5.2"></script>
+    <script src="~/Scripts/dotnetreport.js?v=1.6.1"></script>
     @RenderSection("scripts", required: false)
     @Html.PageScripts()
 </body>

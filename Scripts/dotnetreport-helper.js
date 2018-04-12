@@ -14,7 +14,7 @@ function ajaxcall(options) {
         dataType: options.dataType || "json",
         contentType: options.contentType || "application/json; charset=utf-8",
         headers: options.headers || {}
-    }).success(function (data) {
+    }).done(function (data) {
         if ($.unblockUI) {
             $.unblockUI();
         }

@@ -12,13 +12,13 @@
 
     Its Recommended you use it as is, and only change styling as needed to match your application. You will be responsible for managing and maintaining any changes.
 
-    Note: To allow bigger file downloads in Excel, Please increase maxRequestLength in web.config. For example, <httpRuntime maxRequestLength="1048576"/>
+    Note: To allow bigger file downloads in Excel, Please increase maxRequestLength in web.config. For example, <httpRuntime maxRequestLength="1048576" />
 
 *@
 
 @section scripts{
-    <script type="text/javascript">
-    function printReport() {              
+<script type="text/javascript">
+    function printReport() {
         var printWindow = window.open("");
         printWindow.document.open();
         printWindow.document.write('<html><head>'+
@@ -32,8 +32,8 @@
         }, 250);
     }
 
-    function downloadExcel() {        
-        $("#downloadExcel").submit();        
+    function downloadExcel() {
+        $("#downloadExcel").submit();
     }
 
     $(document).ready(function () {
@@ -45,38 +45,37 @@
             apiUrl: "@ConfigurationManager.AppSettings["dotNetReport.apiUrl"]",
             accountApiToken: "@ConfigurationManager.AppSettings["dotNetReport.accountApiToken"]", // Your Account Api Token from your http://dotnetreport.com Account
             dataconnectApiToken: "@ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"]", // Your Data Connect Api Token from your http://dotnetreport.com Account
-            clientId: "", // You can pass your multi-tenant client id here to keep track of their reports and folders
-            reportFilter: htmlDecode('@HttpUtility.UrlDecode(Model.ReportFilter)'), 
-            reportMode: "execute", 
-            reportSql: "@Model.ReportSql", 
+            reportFilter: htmlDecode('@HttpUtility.UrlDecode(Model.ReportFilter)'),
+            reportMode: "execute",
+            reportSql: "@Model.ReportSql",
             reportConnect: "@Model.ConnectKey"
         });
         ko.applyBindings(vm);
         vm.LoadReport(@Model.ReportId, true);
 
         $(window).resize(function(){
-            vm.DrawChart();            
+            vm.DrawChart();
         });
       });
-    </script>
+</script>
 }
 
 <div data-bind="with: ReportResult">
-    
+
     <!-- ko ifnot: HasError -->
     <div class="report-view" data-bind="with: $root">
         @using (Html.BeginForm("DownloadExcel", "Report", FormMethod.Post, new { id = "downloadExcel" }))
         {
-            <input type="hidden" id="reportSql" name="reportSql" data-bind="value: currentSql" />
-            <input type="hidden" id="connectKey" name="connectKey" data-bind="value: currentConnectKey" />
-            <input type="hidden" id="reportName" name="reportName" data-bind="value: ReportName"  />
+        <input type="hidden" id="reportSql" name="reportSql" data-bind="value: currentSql" />
+        <input type="hidden" id="connectKey" name="connectKey" data-bind="value: currentConnectKey" />
+        <input type="hidden" id="reportName" name="reportName" data-bind="value: ReportName" />
         }
 
         <div class="pull-right">
             <a href="@Url.Action("Index","Report")?folderId=@Model.SelectedFolder" class="btn btn-primary">
                 Back to Reports
             </a>
-            <a href="@Url.Action("Index","Report")?reportId=@Model.ReportId&folderId=@Model.SelectedFolder" class="btn btn-primary">
+            <a href="@Url.Action("Index","Report")?reportId=@Model.ReportId&folderId =@Model.SelectedFolder" class="btn btn-primary">
                 Edit Report
             </a>
             <button type="button" class="btn btn-default" onclick="printReport();">
@@ -87,18 +86,24 @@
             </button>
 
             @*<div class="dropdown pull-right">
-                    <button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
-                        <span class="fa fa-download"></span> Export
-                        <span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu" >
-                        <li><a href="#" onclick="downloadExcel();" data-bind="visible: !isChart() || ShowDataWithGraph()">
-                            <span class="fa fa-file-excel-o"></span> Excel</a></li>
-                        <li><a href="#">
-                            <span class="fa fa-file-pdf-o"></span> PDF</a></li>
+                <button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                    <span class="fa fa-download"></span> Export
+                    <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu">
+                    <li>
+                        <a href="#" onclick="downloadExcel();" data-bind="visible: !isChart() || ShowDataWithGraph()">
+                            <span class="fa fa-file-excel-o"></span> Excel
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#">
+                            <span class="fa fa-file-pdf-o"></span> PDF
+                        </a>
+                    </li>
 
-                    </ul>
-                </div>*@
+                </ul>
+            </div>*@
 
         </div>
         <br />
@@ -143,6 +148,12 @@
                 </div>
             </div>
         </div>
+        <div data-bind="if: canDrilldown">
+            <button class="btn btn-default btn-xs" data-bind="click: ExpandAll">Expand All</button>
+            <button class="btn btn-default btn-xs" data-bind="click: CollapseAll">Collapse All</button>
+            <br />
+            <br />
+        </div>
         <div class="report-menubar">
             <div class="col-xs-12 col-centered" data-bind="with: pager">
                 <div class="form-inline" data-bind="visible: pages()">
@@ -151,7 +162,7 @@
                     </div>
                     <div class="pull-left">
                         <button class="btn btn-default btn-sm" onclick="downloadExcel();" data-bind="visible: !$root.isChart() || $root.ShowDataWithGraph()" title="Export to Excel">
-                            <span class="fa fa-file-excel-o"></span> 
+                            <span class="fa fa-file-excel-o"></span>
                         </button>
                     </div>
                     <div class="form-group pull-right">
@@ -159,8 +170,8 @@
                     </div>
                 </div>
             </div>
-        </div> 
-        <div class="report-canvas">   
+        </div>
+        <div class="report-canvas">
             <div class="report-container">
                 <div class="report-inner">
                     <h2 data-bind="text: ReportName"></h2>
@@ -175,13 +186,12 @@
                         </div>
                     </div>
                 </div>
-            </div>            
+            </div>
         </div>
         <br />
-        <span>Report ran on: @DateTime.Now.ToShortDateString() @DateTime.Now.ToShortTimeString()</span>         
+        <span>Report ran on: @DateTime.Now.ToShortDateString() @DateTime.Now.ToShortTimeString()</span>
     </div>
     <!-- /ko -->
-
     <!-- ko if: HasError -->
     <h2>@Model.ReportName</h2>
     <p>
@@ -191,7 +201,7 @@
     <a href="@Url.Action("Index","Report")?folderId=@Model.SelectedFolder" class="btn btn-primary">
         Back to Reports
     </a>
-    <a href="@Url.Action("Index","Report")?reportId=@Model.ReportId&folderId=@Model.SelectedFolder" class="btn btn-primary">
+    <a href="@Url.Action("Index","Report")?reportId=@Model.ReportId&folderId =@Model.SelectedFolder" class="btn btn-primary">
         Edit Report
     </a>
     <h3>An unexpected error occured while running the Report</h3>
@@ -202,17 +212,17 @@
     </p>
 
     <!-- /ko -->
+    <!-- ko if: ReportDebug() || HasError() -->
+    <br />
+    <br />
+    <hr />
+    <code data-bind="text: ReportSql">
 
-    <!-- ko if: ReportDebug() || HasError() -->    
-        <br />
-        <br />
-        <hr />
-        <code data-bind="text: ReportSql">
-            
-        </code>
+    </code>
     <!-- /ko -->
 </div>
 
+<!-- Templates -->
 <script type="text/html" id="pager-template">
     <div class="pager-container">
         <a href="" title="first" data-bind="click: first, enable: !isFirstPage()"><i class="fa fa-backward report-pager-btn" style="font-size: 18px;"></i></a>&nbsp;
@@ -269,10 +279,10 @@
             <tr>
                 <td></td>
                 <td data-bind="attr:{colspan: $parent.Columns.length }">
-                    <!-- ko if: DrillDownData -->                                        
+                    <!-- ko if: DrillDownData -->
                     <table class="table table-hover table-condensed" data-bind="with: DrillDownData">
                         <thead>
-                            <tr class="no-highlight">                                
+                            <tr class="no-highlight">
                                 <!-- ko foreach: Columns -->
                                 <th>
                                     <a href="" data-bind="click: function(){ $parents[1].changeSort(SqlField); }">
@@ -295,22 +305,22 @@
                                 <!-- ko foreach: Items -->
                                 <td data-bind="html: FormattedValue"></td>
                                 <!-- /ko -->
-                            </tr>                            
+                            </tr>
                             <!-- /ko -->
                         </tbody>
                     </table>
                     <div class="col-xs-12 col-centered" data-bind="with: pager">
-                        <div class="form-inline small text-muted" >
+                        <div class="form-inline small text-muted">
                             <div class="pull-left total-records" data-bind="visible: pages()">
                                 <span data-bind="text: 'Total Records: ' + totalRecords()"></span>
                             </div>
                             <div class="pull-left">
                                 @using (Html.BeginForm("DownloadExcel", "Report", FormMethod.Post))
                                 {
-                                    <input type="hidden" id="reportSql" name="reportSql" data-bind="value: $parent.sql" />
-                                    <input type="hidden" id="connectKey" name="connectKey" data-bind="value: $parent.connectKey" />
-                                    <input type="hidden" id="reportName" name="reportName" data-bind="value: 'Sub Report for ' + $root.ReportName()" />
-                                    <button type="submit" class="btn btn-xs"><span class="fa fa-file-excel-o"></span></button>
+                                <input type="hidden" id="reportSql" name="reportSql" data-bind="value: $parent.sql" />
+                                <input type="hidden" id="connectKey" name="connectKey" data-bind="value: $parent.connectKey" />
+                                <input type="hidden" id="reportName" name="reportName" data-bind="value: 'Sub Report for ' + $root.ReportName()" />
+                                <button type="submit" class="btn btn-xs"><span class="fa fa-file-excel-o"></span></button>
                                 }
                             </div>
                             <div class="form-group pull-right" data-bind="visible: pages()">

@@ -1,4 +1,4 @@
-﻿    @using System.Configuration
+﻿@using System.Configuration
 
 @{
     ViewBag.Title = "Report Builder";
@@ -26,7 +26,8 @@
             reportId: @(Request.QueryString["reportId"] != null ? Request.QueryString["reportId"] : "0"),
             accountApiToken: "@ConfigurationManager.AppSettings["dotNetReport.accountApiToken"]", // Your Account Api Token from your http://dotnetreport.com Account
             dataconnectApiToken: "@ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"]", // Your Data Connect Api Token from your http://dotnetreport.com Account
-            clientId: "" // You can pass your multi-tenant client id here to keep track of their reports and folders
+            userId: "",  // You can pass your authenticated user id here to track their reports and folders
+            clientId: "" // You can pass your multi-tenant client id here to track their reports and folders
     });
     vm.init(@(Request.QueryString["folderId"]!=null? Request.QueryString["folderId"]: "0"));
     ko.applyBindings(vm);
@@ -41,13 +42,13 @@
 <div class="alert alert-warning">
     You can integrate the Report Builder Builder in your Application using <a href="https://www.nuget.org/packages/dotNetReport/">this Nuget Package</a>. <br />
     For the Demo Data, we have used the Northwind Sample database, which is available on <a href="https://northwinddatabase.codeplex.com/" target="_blank">Codeplex</a>.<br />
-    Please note that in the online demo, you can edit, save and run reports, but you create or manage Folders. Also, your reports can be reset at any times, and they are not permenant.
+    Please note that in the online demo, you can edit, save and run reports, but you cannot create or manage Folders. Also, your reports can be reset at any times, and they are not permenant.
 </div>
 
 
 @*<div class="alert alert-info">
-    To view Dashboard, please <a href="/demo/report/Dashboard">click here</a>.
-</div>*@
+        To view Dashboard, please <a href="/demo/report/Dashboard">click here</a>.
+    </div>*@
 
 @*
     The markup code below is related to presentation. You don't have to change it, unless you
@@ -56,7 +57,7 @@
 *@
 
 <!-- Folders/Report List -->
-<div id="report-start" >
+<div id="report-start">
 
     <div class="panel panel-default folder-panel">
         @*<div class="panel-heading">
@@ -73,7 +74,7 @@
                             <a href="#" class="active" data-bind="click: createNewReport" data-toggle="modal" data-target="#modal-reportbuilder">Create a New Report</a>
                         </li>
                         <!-- ko if: CanManageFolders -->
-                        <li class="active" >
+                        <li class="active">
                             <a href="#" data-bind="click: ManageFolder.newFolder">Add a new Folder</a>
                         </li>
                         <li class="dropdown" data-bind="visible: SelectedFolder()!=null">
@@ -136,10 +137,10 @@
                                 </button>
                                 <button class="btn btn-sm btn-danger" data-bind="click: deleteReport, visible: canEdit">
                                     <span class="fa fa-trash" aria-hidden="true"></span> Delete
-                                </button>                                
+                                </button>
                                 <br />
                             </div>
-                                                    
+
                             <div class="pull-right visible-sm visible-xs">
                                 <button class="btn btn-sm btn-default" title="Edit Report" data-bind="click: openReport, visible: canEdit" data-toggle="modal" data-target="#modal-reportbuilder">
                                     <span class="fa fa-edit" aria-hidden="true"></span>
@@ -152,7 +153,7 @@
                                 </button>
                             </div>
                         </div>
-                        
+
                     </div>
                     <!-- /ko -->
                 </div>
@@ -215,7 +216,7 @@
                     <div class="col-md-12">
                         <select class="form-control" data-bind="options: Tables, optionsCaption: 'Choose Section...', optionsText: 'tableName', value: SelectedTable"></select>
                     </div>
-                    
+
                     <div class="col-md-12 padded-div" data-bind="visible: ChooseFields().length>0">
                         <div class="small pull-left">
                             Check the fields you would like to use in the Report
@@ -254,10 +255,12 @@
                         <li class="list-group-item">
                             <span class="fa fa-columns"></span>
                             <span data-bind="text: selectedFieldName"></span>
-                            <span class="label label-danger" data-bind="visible: !$root.isFieldValidForYAxis($index(), fieldType)">Will not show in <span data-bind="text: $root.ReportType"></span> Chart</span>
+                            <span data-bind="visible: !$root.isFieldValidForYAxis($index(), fieldType)">
+                                <span class="label label-danger" data-bind="visible: !groupInGraph()">Will not show in <span data-bind="text: $root.ReportType"></span> Chart</span>
+                            </span>
 
                             <div class="input-group pull-right" style="margin-top: -5px;">
-                                <select class="form-control input-sm" style="width: 120px;" data-bind="options: fieldAggregate, value: selectedAggregate, visible: $parent.AggregateReport"></select>
+                                <select class="form-control input-sm" style="width: 120px;" data-bind="options: $root.canDrilldown() && $index()>0 ? fieldAggregateWithDrilldown : fieldAggregate, value: selectedAggregate, visible: $parent.AggregateReport"></select>
                             </div>
                             <div class="sortable pull-right" style="padding-right: 15px;">
                                 <span class="fa fa-arrows " aria-hidden="true" title="Drag to reorder"></span>
@@ -268,6 +271,16 @@
                             <div class="pull-right" style="padding-right: 15px;">
                                 <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ filterOnFly(!filterOnFly()); }, css: {active: filterOnFly()==true}">
                                     <span class="fa fa-filter" aria-hidden="true" title="Filter by this field on the Report"></span>
+                                </span>
+                            </div>
+                            <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $root.ReportType()=='Summary'">
+                                <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ hideInDetail(!hideInDetail()); }, css: {active: hideInDetail()==true}">
+                                    <span class="fa fa-eye-slash" aria-hidden="true" title="Hide in Details"></span>
+                                </span>
+                            </div>
+                            <div class="pull-right" style="padding-right: 15px;" data-bind="visible: !$root.isFieldValidForSubGroup($index(), fieldType) && $root.isChart()">
+                                <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ groupInGraph(!groupInGraph()); }, css: {active: groupInGraph()==true}">
+                                    <span class="fa fa-line-chart" aria-hidden="true" title="Include in series"></span>
                                 </span>
                             </div>
                         </li>
@@ -319,10 +332,9 @@
                     </div>
                     <br />
                 </div>
-                
                 <!-- /ko -->
-                <br />
                 <hr />
+
                 <form class="form-horizontal">
                     <div class="form-group">
                         <label class="col-sm-2 control-label">Report Name</label>
@@ -339,13 +351,19 @@
                     <div class="form-group">
                         <label class="col-sm-2 control-label">Sort By</label>
                         <div class="col-sm-10">
-                            <select class="form-control" required data-bind="options: SelectedFields, optionsText: 'selectedFieldName', optionsCaption: 'Please Choose', optionsValue: 'fieldId', value: SortByField"></select>
+                            <select class="form-control" required data-bind="options: enabledFields, optionsText: 'selectedFieldName', optionsCaption: 'Please Choose', optionsValue: 'fieldId', value: SortByField"></select>
                         </div>
                     </div>
                     <div class="checkbox">
                         <label>
                             <input type="checkbox" data-bind="checked: IncludeSubTotal" />
                             Include Subtotals
+                        </label>
+                    </div>
+                    <div class="checkbox" data-bind="hidden: AggregateReport">
+                        <label>
+                            <input type="checkbox" data-bind="checked: ShowUniqueRecords" />
+                            Show only Unique Records
                         </label>
                     </div>
                     <div class="checkbox" data-bind="visible: false">

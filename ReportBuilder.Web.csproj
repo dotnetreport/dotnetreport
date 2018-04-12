@@ -102,6 +102,7 @@
     <Content Include="Content\font-awesome.css" />
     <Content Include="Content\font-awesome.min.css" />
     <Content Include="Content\img\report-icon.png" />
+    <Content Include="Content\img\report-logo.png" />
     <Content Include="Content\morris.css" />
     <Content Include="Content\themes\base\accordion.css" />
     <Content Include="Content\themes\base\all.css" />
@@ -155,7 +156,7 @@
     <Content Include="Scripts\bootstrap.min.js" />
     <Content Include="Scripts\dotnetreport-helper.js" />
     <Content Include="Scripts\dotnetreport-wizard.js" />
-    <Content Include="Scripts\dotnetreport.min.js" />
+    <Content Include="Scripts\dotnetreport.js" />
     <Content Include="Content\toastr.scss" />
     <Content Include="Content\toastr.less" />
     <Content Include="fonts\fontawesome-webfont.woff2" />
@@ -225,7 +226,6 @@
     <Content Include="Scripts\knockout-3.3.0.js" />
     <Content Include="Scripts\knockout-sortable.js" />
     <Content Include="Scripts\knockout-sortable.min.js" />
-    <Content Include="Scripts\morris.min.js" />
     <Content Include="Scripts\npm.js" />
     <Content Include="Scripts\plugins\acroform.js" />
     <Content Include="Scripts\plugins\addhtml.js" />
@@ -252,7 +252,6 @@
     <Content Include="Scripts\plugins\svg.js" />
     <Content Include="Scripts\plugins\total_pages.js" />
     <Content Include="Scripts\plugins\zlib.js" />
-    <Content Include="Scripts\raphael.min.js" />
     <Content Include="Scripts\select2.js" />
     <Content Include="Scripts\select2.min.js" />
     <Content Include="Scripts\toastr.js" />
