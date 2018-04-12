@@ -25,7 +25,7 @@ namespace ReportBuilder.Web.Controllers
             return View();
         }
 
-        public ActionResult Report(int reportId, string reportName, string reportDescription, bool includeSubTotal,
+        public ActionResult Report(int reportId, string reportName, string reportDescription, bool includeSubTotal, bool showUniqueRecords,
             bool aggregateReport, bool showDataWithGraph, string reportSql, string connectKey, string reportFilter, string reportType, int selectedFolder)
         {
             var model = new DotNetReportModel
@@ -37,6 +37,7 @@ namespace ReportBuilder.Web.Controllers
                 ReportSql = reportSql,
                 ConnectKey = connectKey,
                 IncludeSubTotals = includeSubTotal,
+                ShowUniqueRecords = showUniqueRecords,
                 ShowDataWithGraph = showDataWithGraph,
                 SelectedFolder = selectedFolder,
                 ReportFilter = reportFilter // json data to setup filter correctly again
@@ -51,7 +52,7 @@ namespace ReportBuilder.Web.Controllers
 
             // Uncomment if you want to restrict max records returned
             sql = sql.Replace("SELECT ", "SELECT TOP 500 ");
-            
+
             var json = new StringBuilder();
             var dt = new DataTable();
             using (var conn = new SqlConnection(ConfigurationManager.ConnectionStrings[connectKey].ConnectionString))
@@ -63,14 +64,14 @@ namespace ReportBuilder.Web.Controllers
                 adapter.Fill(dt);
             }
 
-            int i=0;
+            int i = 0;
             foreach (DataRow dr in dt.Rows)
             {
-                json.AppendFormat("{{\"id\": \"{0}\", \"text\": \"{1}\"}}{2}", dr[0], dr[1], i!=dt.Rows.Count-1 ? "," : "");
-                i+=1;            
+                json.AppendFormat("{{\"id\": \"{0}\", \"text\": \"{1}\"}}{2}", dr[0], dr[1], i != dt.Rows.Count - 1 ? "," : "");
+                i += 1;
             }
 
-            return Json((new JavaScriptSerializer()).DeserializeObject("["+json.ToString()+"]"), JsonRequestBehavior.AllowGet);
+            return Json((new JavaScriptSerializer()).DeserializeObject("[" + json.ToString() + "]"), JsonRequestBehavior.AllowGet);
         }
 
 
@@ -87,6 +88,10 @@ namespace ReportBuilder.Web.Controllers
                     {
                         sortBy = sortBy.Replace("DATENAME(MONTH, ", "MONTH(");
                     }
+                    if (sortBy.StartsWith("MONTH(") && sortBy.Contains(")) +") && sql.Contains("Group By"))
+                    {
+                        sortBy = sortBy.Replace("MONTH(", "CONVERT(VARCHAR(3), DATENAME(MONTH, ");
+                    }
                     sql = sql.Substring(0, sql.IndexOf("ORDER BY")) + "ORDER BY " + sortBy + (desc ? " DESC" : "");
                 }
 
@@ -102,7 +107,7 @@ namespace ReportBuilder.Web.Controllers
                     adapter.Fill(dt);
                 }
 
-                dtPaged = (dt.Rows.Count > 0) ? dtPaged = dt.AsEnumerable().Skip((pageNumber - 1) * pageSize).Take(pageSize).CopyToDataTable(): dt;                
+                dtPaged = (dt.Rows.Count > 0) ? dtPaged = dt.AsEnumerable().Skip((pageNumber - 1) * pageSize).Take(pageSize).CopyToDataTable() : dt;
 
                 var model = new DotNetReportResultModel
                 {
@@ -112,10 +117,10 @@ namespace ReportBuilder.Web.Controllers
                     ReportDebug = Request.Url.Host.Contains("localhost"),
                     Pager = new DotNetReportPagerModel
                     {
-                        CurrentPage = pageNumber, 
+                        CurrentPage = pageNumber,
                         PageSize = pageSize,
                         TotalRecords = dt.Rows.Count,
-                        TotalPages =(int) ((dt.Rows.Count/pageSize)+1)
+                        TotalPages = (int)((dt.Rows.Count / pageSize) + 1)
                     }
                 };
 
@@ -132,8 +137,9 @@ namespace ReportBuilder.Web.Controllers
             {
                 var model = new DotNetReportResultModel
                 {
+                    ReportData = new DotNetReportDataModel(),
                     ReportSql = sql,
-                    HasError=true,
+                    HasError = true,
                     Exception = ex.Message
                 };
 
@@ -141,6 +147,7 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
+       
         [HttpPost]
         public ActionResult DownloadExcel(string reportSql, string connectKey, string reportName)
         {
@@ -157,7 +164,7 @@ namespace ReportBuilder.Web.Controllers
                 adapter.Fill(dt);
             }
 
-            
+
             Response.ClearContent();
 
             using (ExcelPackage xp = new ExcelPackage())
@@ -201,9 +208,9 @@ namespace ReportBuilder.Web.Controllers
 
             }
 
-            
+
             Response.End();
-            
+
             return View();
         }
 
@@ -217,7 +224,7 @@ namespace ReportBuilder.Web.Controllers
             byte[] initVectorBytes = Encoding.ASCII.GetBytes("yk0z8f39lgpu70gi"); // PLESE DO NOT CHANGE THIS KEY
             int keysize = 256;
 
-            byte[] cipherTextBytes = Convert.FromBase64String(encryptedText.Replace("%3D","="));
+            byte[] cipherTextBytes = Convert.FromBase64String(encryptedText.Replace("%3D", "="));
             var passPhrase = ConfigurationManager.AppSettings["dotNetReport.privateApiToken"].ToLower();
             using (PasswordDeriveBytes password = new PasswordDeriveBytes(passPhrase, null))
             {
@@ -327,16 +334,16 @@ namespace ReportBuilder.Web.Controllers
                     case TypeCode.UInt64:
                     case TypeCode.Single:
                         return row[col].ToString();
-                                        
+
 
                     case TypeCode.Double:
                     case TypeCode.Decimal:
-                    return Convert.ToDouble(row[col].ToString()).ToString("C");
-                                        
+                        return Convert.ToDouble(row[col].ToString()).ToString("C");
+
 
                     case TypeCode.Boolean:
-                    return (Convert.ToBoolean(row[col]) ? "Yes" : "No");
-                                        
+                        return (Convert.ToBoolean(row[col]) ? "Yes" : "No");
+
 
                     case TypeCode.DateTime:
                         try
@@ -347,19 +354,19 @@ namespace ReportBuilder.Web.Controllers
                         {
                             return row[col] != null ? row[col].ToString() : null;
                         }
-                                        
+
                     case TypeCode.String:
                     default:
                         if (row[col].ToString() == "System.Byte[]")
                         {
-                                            
-                            return "<img src=\"data:image/png;base64," + Convert.ToBase64String((byte[])row[col],0, ((byte[])row[col]).Length)+ "\" style=\"max-width: 200px;\" />";
+
+                            return "<img src=\"data:image/png;base64," + Convert.ToBase64String((byte[])row[col], 0, ((byte[])row[col]).Length) + "\" style=\"max-width: 200px;\" />";
                         }
                         else
                         {
                             return row[col].ToString();
                         }
-                                        
+
                 }
             }
             return "";
@@ -374,7 +381,7 @@ namespace ReportBuilder.Web.Controllers
             };
 
             sql = sql.Substring(0, sql.IndexOf("FROM")).Replace("SELECT", "").Trim();
-            var sqlFields = Regex.Split(sql, ", (?![^\\(]*?\\))");
+            var sqlFields = Regex.Split(sql, ", (?![^\\(]*?\\))").Where(x => x != "CONVERT(VARCHAR(3)").ToArray();
 
             int i = 0;
             foreach (DataColumn col in dt.Columns)
@@ -387,6 +394,7 @@ namespace ReportBuilder.Web.Controllers
                     DataType = col.DataType.ToString(),
                     IsNumeric = IsNumericType(col.DataType)
                 });
+
             }
 
             foreach (DataRow row in dt.Rows)
@@ -417,7 +425,7 @@ namespace ReportBuilder.Web.Controllers
 
 
     }
-    
+
 }
 
 namespace ReportBuilder.Web
