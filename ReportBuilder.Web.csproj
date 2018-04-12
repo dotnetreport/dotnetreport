@@ -25,6 +25,8 @@
     <SccProvider>SAK</SccProvider>
     <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
     <RestorePackages>true</RestorePackages>
+    <Use64BitIISExpress />
+    <UseGlobalApplicationHostFile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -278,12 +280,7 @@
     <Content Include="packages.config" />
     <Content Include="Views\Report\Index.cshtml" />
     <Content Include="Views\Report\Report.cshtml" />
-    <Content Include="Views\DotNetReport\Index.cshtml" />
-    <Content Include="Views\DotNetReport\Report.cshtml" />
     <Content Include="Views\Report\_reportFilter.cshtml" />
-    <Content Include="Views\DotNetReport\_reportFilter.cshtml" />
-    <Content Include="Views\DotNetReport\_reportRender.cshtml" />
-    <Content Include="Views\DotNetReport\Dashboard.cshtml" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
