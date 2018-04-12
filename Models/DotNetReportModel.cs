@@ -14,14 +14,14 @@ namespace ReportBuilder.Web.Models
         public string ReportSql { get; set; }
 
         public bool IncludeSubTotals { get; set; }
-        
+        public bool ShowUniqueRecords { get; set; }
         public string ReportFilter { get; set; }
         public string ReportType { get; set; }
         public bool ShowDataWithGraph { get; set; }
 
         public string ConnectKey { get; set; }
         public bool IsDashboard { get; set; }
-        public int SelectedFolder { get; set; }        
+        public int SelectedFolder { get; set; }
     }
 
     public class DotNetReportResultModel
@@ -54,7 +54,7 @@ namespace ReportBuilder.Web.Models
     }
 
     public class DotNetReportDataRowItemModel
-    {        
+    {
         public string Value { get; set; }
         public string FormattedValue { get; set; }
         public string LabelValue { get; set; }
