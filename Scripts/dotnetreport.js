@@ -1,4 +1,4 @@
-﻿/// .Net Report Builder view model v1.6.1
+﻿/// .Net Report Builder view model v1.6.2
 /// License has to be purchased for use
 /// 2015-2017 (c) www.dotnetreport.com
 
