@@ -59,11 +59,131 @@
     </div>
     <div class="body-content">
         @RenderBody()
+        <!-- ########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
+
+        <div style="padding-top: 30px;">Powered by <a href="http://www.dotNetReport.com" target="_blank">dotNetReport.com</a></div>
+
+        <!--########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
         <hr />
         <footer>
             <p>&copy; @DateTime.Now.Year .Net Report Builder<br /><a href="https://dotnetreport.com">www.dotnetreport.com</a></p>
         </footer>
     </div>
+
+    <!-- Templates -->
+    <script type="text/html" id="pager-template">
+        <div class="pager-container">
+            <a href="" title="first" data-bind="click: first, enable: !isFirstPage()"><i class="fa fa-backward report-pager-btn" style="font-size: 18px;"></i></a>&nbsp;
+            <a href="" title="previous" data-bind="click: previous, enable: !isFirstPage()"><i class="fa fa-caret-left fa-2x report-pager-btn"></i></a>
+
+            <span class="pager-pageinfo">
+                <span>Page</span>&nbsp;
+                <input type="number" min="1" pattern="[0-9]*" class="text-center" data-bind="
+                                    value: currentPage,
+                                    attr: { max: pages() }" />&nbsp;
+                <span>of</span>&nbsp;
+                <span data-bind="text: pages"></span>
+            </span>&nbsp;
+
+            <a href="" title="next" data-bind="click: next, enable: !isLastPage()"><i class="fa fa-caret-right fa-2x report-pager-btn"></i></a>&nbsp;
+            <a href="" title="last" data-bind="click: last, enable: !isLastPage()"><i class="fa fa-forward report-pager-btn" style="font-size: 18px;"></i></a>
+        </div>
+    </script>
+
+    <script type="text/html" id="report-template">
+        <table class="table table-hover table-condensed">
+            <thead>
+                <tr class="no-highlight">
+                    <!-- ko if: $root.canDrilldown() && !IsDrillDown() -->
+                    <th></th>
+                    <!-- /ko -->
+                    <!-- ko foreach: Columns -->
+                    <th data-bind="attr: { id: 'col' + $index }">
+                        <a href="" data-bind="click: function(){ $root.changeSort(SqlField); }">
+                            <span data-bind="text: ColumnName"></span>
+                            <span data-bind="text: $root.pager.sortColumn() === SqlField ? ($root.pager.sortDescending() ? '&#9660;' : '&#9650;') : ''">
+                            </span>
+                        </a>
+                    </th>
+                    <!-- /ko -->
+                </tr>
+            </thead>
+            <tbody>
+                <tr style="display: none;" data-bind="visible: Rows.length < 1">
+                    <td class="text-info" data-bind="attr:{colspan: Columns.length}">
+                        No records found
+                    </td>
+                </tr>
+                <!-- ko foreach: Rows  -->
+                <tr>
+                    <!-- ko if: $root.canDrilldown() && !$parent.IsDrillDown() -->
+                    <td><a href="#" data-bind="click: function(){ toggle(); }"><span class="fa" data-bind="css: {'fa-plus': !isExpanded(), 'fa-minus': isExpanded()}"></span></a></td>
+                    <!-- /ko -->
+                    <!-- ko foreach: Items -->
+                    <td data-bind="html: FormattedValue"></td>
+                    <!-- /ko -->
+                </tr>
+                <!-- ko if: isExpanded -->
+                <tr>
+                    <td></td>
+                    <td data-bind="attr:{colspan: $parent.Columns.length }">
+                        <!-- ko if: DrillDownData -->
+                        <table class="table table-hover table-condensed" data-bind="with: DrillDownData">
+                            <thead>
+                                <tr class="no-highlight">
+                                    <!-- ko foreach: Columns -->
+                                    <th>
+                                        <a href="" data-bind="click: function(){ $parents[1].changeSort(SqlField); }">
+                                            <span data-bind="text: ColumnName"></span>
+                                            <span data-bind="text: $parents[1].pager.sortColumn() === SqlField ? ($parents[1].pager.sortDescending() ? '&#9660;' : '&#9650;') : ''">
+                                            </span>
+                                        </a>
+                                    </th>
+                                    <!-- /ko -->
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr style="display: none;" data-bind="visible: Rows.length < 1">
+                                    <td class="text-info" data-bind="attr:{colspan: Columns.length}">
+                                        No records found
+                                    </td>
+                                </tr>
+                                <!-- ko foreach: Rows  -->
+                                <tr>
+                                    <!-- ko foreach: Items -->
+                                    <td data-bind="html: FormattedValue"></td>
+                                    <!-- /ko -->
+                                </tr>
+                                <!-- /ko -->
+                            </tbody>
+                        </table>
+                        <div class="col-xs-12 col-centered" data-bind="with: pager">
+                            <div class="form-inline small text-muted">
+                                <div class="pull-left total-records" data-bind="visible: pages()">
+                                    <span data-bind="text: 'Total Records: ' + totalRecords()"></span>
+                                </div>
+                                <div class="pull-left">
+                                    @using (Html.BeginForm("DownloadExcel", "Report", FormMethod.Post))
+                                    {
+                                        <input type="hidden" id="reportSql" name="reportSql" data-bind="value: $parent.sql" />
+                                        <input type="hidden" id="connectKey" name="connectKey" data-bind="value: $parent.connectKey" />
+                                        <input type="hidden" id="reportName" name="reportName" data-bind="value: 'Sub Report for ' + $root.ReportName()" />
+                                        <button type="submit" class="btn btn-xs"><span class="fa fa-file-excel-o"></span></button>
+                                    }
+                                </div>
+                                <div class="form-group pull-right" data-bind="visible: pages()">
+                                    <div data-bind="template: 'pager-template', data: $data"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- /ko -->
+                    </td>
+                </tr>
+                <!-- /ko -->
+                <!-- /ko -->
+            </tbody>
+        </table>
+    </script>
 
     @* Required Javascript Libraries *@
     <script src="~/Scripts/@Html.Raw(ReportUtil.GetScriptFile("jquery-{0}.min.js"))"></script>

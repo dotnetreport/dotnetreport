@@ -8,12 +8,12 @@
 @section scripts{
     <script type="text/javascript">
 
-        @*
-            The Javascript code below is related to presentation for the Report Builder. You don't have to change it, unless you intentionally want to
-            change something in the Report Builder's behavior in your Application.
+    @*
+        The Javascript code below is related to presentation for the Report Builder. You don't have to change it, unless you intentionally want to
+        change something in the Report Builder's behavior in your Application.
 
-            Its Recommended you use it as is, and only change styling as needed to match your application. You will be responsible for managing and maintaining any changes.
-        *@
+        Its Recommended you use it as is, and only change styling as needed to match your application. You will be responsible for managing and maintaining any changes.
+    *@
 
     var toastr = toastr || { error: function (msg) { window.alert(msg); }, success: function (msg) { window.alert(msg); } };
 
@@ -28,13 +28,15 @@
             dataconnectApiToken: "@ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"]", // Your Data Connect Api Token from your http://dotnetreport.com Account
             userId: "",  // You can pass your authenticated user id here to track their reports and folders
             clientId: "" // You can pass your multi-tenant client id here to track their reports and folders
-    });
-    vm.init(@(Request.QueryString["folderId"]!=null? Request.QueryString["folderId"]: "0"));
-    ko.applyBindings(vm);
+        });
+
+        vm.init(@(Request.QueryString["folderId"]!=null? Request.QueryString["folderId"]: "0"));
+        ko.applyBindings(vm);
     });
 
     </script>
 }
+
 <h3>Report Builder</h3>
 <p>
     Manage your Reports below. You can use the intuitive and user friendly Report Building Wizard below to generate many types of Ad-hoc Reports.
@@ -203,12 +205,12 @@
                             <p>Line</p>
                         </div>
                     </div>
-                    @*<div class="col-md-3 col-sm-3 col-xs-6" data-bind="visible: SaveReport">
+                    <div class="col-md-3 col-sm-3 col-xs-6" data-bind="visible: SaveReport">
                         <div class="button-box" tabindex="0" data-bind="click: function(){ ShowOnDashboard(!ShowOnDashboard()); }, css: {active: ShowOnDashboard()}">
                             <span class="glyphicon fa fa-dashboard"></span>
                             <p>Show on Dashboard</p>
                         </div>
-                    </div>*@
+                    </div>
                 </div>
                 <hr />
                 <h5><span class="fa fa-database"></span> Choose Data for Report</h5>
@@ -227,7 +229,6 @@
                         </div>
                     </div>
                     <div class="row container-fluid">
-
                         <!-- ko foreach: ChooseFields -->
                         <div class="col-md-3 col-sm-4 col-xs-6">
                             <div class="list-group-item">
@@ -394,13 +395,6 @@
     </div>
 </div>
 
-
-
-<!-- ########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
-
-<p>Powered by <a href="http://www.dotNetReport.com" target="_blank">dotNetReport.com</a></p>
-
-<!--########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
 <!-- Folder Edit Modal -->
 <div class="modal fade" id="folderModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog">

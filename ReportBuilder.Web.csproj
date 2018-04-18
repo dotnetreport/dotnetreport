@@ -222,6 +222,7 @@
     <Content Include="Scripts\knockout-3.4.2.js" />
     <Content Include="Scripts\knockout-sortable.js" />
     <Content Include="Scripts\knockout-sortable.min.js" />
+    <Content Include="Scripts\modernizr-2.6.2.js" />
     <Content Include="Scripts\npm.js" />
     <Content Include="Scripts\plugins\acroform.js" />
     <Content Include="Scripts\plugins\addhtml.js" />
@@ -270,7 +271,9 @@
     <Content Include="Views\web.config">
       <SubType>Designer</SubType>
     </Content>
-    <Content Include="packages.config" />
+    <Content Include="packages.config">
+      <SubType>Designer</SubType>
+    </Content>
     <Content Include="Views\Report\Index.cshtml" />
     <Content Include="Views\Report\Report.cshtml" />
     <Content Include="Views\Report\_reportFilter.cshtml" />
@@ -281,6 +284,7 @@
     <Content Include="fonts\fontawesome-webfont.eot" />
     <Content Include="Scripts\jquery-3.3.1.slim.min.map" />
     <Content Include="Scripts\jquery-3.3.1.min.map" />
+    <Content Include="Views\Report\Dashboard.cshtml" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>

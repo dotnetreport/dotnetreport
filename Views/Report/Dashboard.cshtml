@@ -1,0 +1,35 @@
+﻿@using System.Configuration
+@model List<DotNetReportModel>
+@{
+    ViewBag.Title = "Dashboard";
+    Layout = "~/Views/shared/_Layout.Report.cshtml";
+}
+
+<h2>Dashboard</h2>
+
+
+@section scripts{
+    <script type="text/javascript">
+    
+    $(document).ready(function () {
+        var vm = new dashboardViewModel({
+            runReportUrl: "@Url.Action("Report")",
+            execReportUrl: "@Url.Action("RunReport")",
+            reportWizard: $("#filter-panel"),
+            lookupListUrl: "@Url.Action("GetLookupList")",
+            apiUrl: "@ConfigurationManager.AppSettings["dotNetReport.apiUrl"]",
+            accountApiToken: "@ConfigurationManager.AppSettings["dotNetReport.accountApiToken"]", // Your Account Api Token from your http://dotnetreport.com Account
+            dataconnectApiToken: "@ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"]", // Your Data Connect Api Token from your http://dotnetreport.com Account
+            reportMode: "execute",
+            reports: "@Model.Select(x=>x.ReportSql).ToList()",
+            reportConnect: "@Model.FirstOrDefault()?.ConnectKey"
+        });
+        ko.applyBindings(vm);
+        //vm.init();
+
+        $(window).resize(function(){
+            //vm.DrawChart();
+        });
+      });
+    </script>
+}

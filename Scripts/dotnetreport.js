@@ -1,4 +1,4 @@
-﻿/// .Net Report Builder view model v1.6.2
+﻿/// .Net Report Builder view model v2.0.0
 /// License has to be purchased for use
 /// 2015-2017 (c) www.dotnetreport.com
 
@@ -1072,5 +1072,11 @@ var reportViewModel = function (options) {
 		self.loadFolders(folderId);
 		self.loadTables();
 	}
+
+}
+
+var dashboardViewModel = function (options) {
+	var self = this;
+
 
 }

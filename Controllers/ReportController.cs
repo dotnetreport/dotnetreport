@@ -147,7 +147,30 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-       
+
+        public async Task<ActionResult> Dashboard()
+        {
+            var model = new List<DotNetReportModel>();
+
+            using (var client = new HttpClient())
+            {
+
+                var content = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("account", ConfigurationManager.AppSettings["dotNetReport.accountApiToken"]),
+                    new KeyValuePair<string, string>("dataConnect", ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"]),
+                    new KeyValuePair<string, string>("client","")
+                });
+
+                var response = await client.PostAsync(new Uri(ConfigurationManager.AppSettings["dotNetReport.apiUrl"] + "/ReportApi/LoadDashboard"), content);
+                var stringContent = await response.Content.ReadAsStringAsync();
+
+                model = (new JavaScriptSerializer()).Deserialize<List<DotNetReportModel>>(stringContent);
+            }
+
+            return View(model);
+        }
+
         [HttpPost]
         public ActionResult DownloadExcel(string reportSql, string connectKey, string reportName)
         {
