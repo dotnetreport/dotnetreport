@@ -94,14 +94,14 @@
         <table class="table table-hover table-condensed">
             <thead>
                 <tr class="no-highlight">
-                    <!-- ko if: $root.canDrilldown() && !IsDrillDown() -->
+                    <!-- ko if: $parentContext.$parent.canDrilldown() && !IsDrillDown() -->
                     <th></th>
                     <!-- /ko -->
                     <!-- ko foreach: Columns -->
-                    <th data-bind="attr: { id: 'col' + $index }">
-                        <a href="" data-bind="click: function(){ $root.changeSort(SqlField); }">
+                    <th data-bind="attr: { id: 'col' + $index() }">
+                        <a href="" data-bind="click: function(){ $parentContext.$parentContext.$parent.changeSort(SqlField); }">
                             <span data-bind="text: ColumnName"></span>
-                            <span data-bind="text: $root.pager.sortColumn() === SqlField ? ($root.pager.sortDescending() ? '&#9660;' : '&#9650;') : ''">
+                            <span data-bind="text: $parentContext.$parentContext.$parent.pager.sortColumn() === SqlField ? ($parentContext.$parentContext.$parent.pager.sortDescending() ? '&#9660;' : '&#9650;') : ''">
                             </span>
                         </a>
                     </th>
@@ -116,7 +116,7 @@
                 </tr>
                 <!-- ko foreach: Rows  -->
                 <tr>
-                    <!-- ko if: $root.canDrilldown() && !$parent.IsDrillDown() -->
+                    <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() -->
                     <td><a href="#" data-bind="click: function(){ toggle(); }"><span class="fa" data-bind="css: {'fa-plus': !isExpanded(), 'fa-minus': isExpanded()}"></span></a></td>
                     <!-- /ko -->
                     <!-- ko foreach: Items -->
@@ -167,7 +167,7 @@
                                     {
                                         <input type="hidden" id="reportSql" name="reportSql" data-bind="value: $parent.sql" />
                                         <input type="hidden" id="connectKey" name="connectKey" data-bind="value: $parent.connectKey" />
-                                        <input type="hidden" id="reportName" name="reportName" data-bind="value: 'Sub Report for ' + $root.ReportName()" />
+                                        <input type="hidden" id="reportName" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parent.ReportName()" />
                                         <button type="submit" class="btn btn-xs"><span class="fa fa-file-excel-o"></span></button>
                                     }
                                 </div>

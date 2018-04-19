@@ -595,7 +595,7 @@ var reportViewModel = function (options) {
 				}
 			}
 			if (!saveOnly) {
-				if (self.ReportMode() == "execute") {
+				if (self.ReportMode() == "execute" || self.ReportMode()=="dashboard") {
 					self.ExecuteReportQuery(result.sql, result.connectKey)
 				}
 				else {
@@ -945,10 +945,8 @@ var reportViewModel = function (options) {
 
 			self.SaveReport(!filterOnFly);
 
-			if (self.ReportMode() == "execute") {
-				self.ExecuteReportQuery(options.reportSql, options.reportConnect);
-
-
+			if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard") {
+				self.ExecuteReportQuery(options.reportSql, options.reportConnect);				
 			}
 		});
 	}
@@ -1003,18 +1001,20 @@ var reportViewModel = function (options) {
 		});
 	}
 
-	self.LoadAllSavedReports();
-	ajaxcall({
-		url: options.apiUrl + "/ReportApi/CanSaveReports",
-		data: { account: options.accountApiToken, dataConnect: options.dataconnectApiToken, clientId: options.clientId },
-	}).done(function (options) {
-		options = options || {
-			allowUsersToCreateReports: true,
-			allowUsersToManageFolders: true
-		}
-		self.CanSaveReports(options.allowUsersToCreateReports);
-		self.CanManageFolders(options.allowUsersToManageFolders);
-	});
+	if (self.ReportMode() != "dashboard") {
+		self.LoadAllSavedReports();
+		ajaxcall({
+			url: options.apiUrl + "/ReportApi/CanSaveReports",
+			data: { account: options.accountApiToken, dataConnect: options.dataconnectApiToken, clientId: options.clientId },
+		}).done(function (options) {
+			options = options || {
+				allowUsersToCreateReports: true,
+				allowUsersToManageFolders: true
+			}
+			self.CanSaveReports(options.allowUsersToCreateReports);
+			self.CanManageFolders(options.allowUsersToManageFolders);
+		});
+	}
 
 	self.changeSort = function (sort) {
 		self.pager.changeSort(sort);
@@ -1078,5 +1078,29 @@ var reportViewModel = function (options) {
 var dashboardViewModel = function (options) {
 	var self = this;
 
+	self.reports = ko.observableArray([]);
+	$.each(options.reports, function (i, e) {
+		var report = new reportViewModel({
+			runReportUrl: options.runReportUrl,
+			execReportUrl: options.execReportUrl,
+			reportWizard: options.reportWizard,
+			lookupListUrl: options.lookupListUrl,
+			apiUrl: options.apiUrl,
+			accountApiToken: options.accountApiToken,
+			dataconnectApiToken: options.dataconnectApiToken,
+			reportFilter: e.reportFilter,
+			reportMode: "dashboard",
+			reportSql: e.reportSql,
+			reportId: e.reportId,
+			reportConnect: e.connectKey
+		});
 
+		self.reports.push(report);
+
+		report.LoadReport(e.reportId, true)
+	});
+	
+	self.DrawChart = function () {
+
+	}
 }
