@@ -73,4 +73,91 @@ namespace ReportBuilder.Web.Models
         public List<DotNetReportDataRowModel> Rows { get; set; }
         public List<DotNetReportDataColumnModel> Columns { get; set; }
     }
+
+    public class TableViewModel
+    {
+        public int Id { get; set; }
+        public string TableName { get; set; }
+        public string DisplayName { get; set; }
+        public bool Selected { get; set; }
+        public bool IsView { get; set; }
+        public int DisplayOrder { get; set; }
+        public string AccountIdField { get; set; }
+
+        public List<ColumnViewModel> Columns { get; set; }
+    }
+
+    public class RelationModel
+    {
+        public int Id { get; set; }
+        public int TableId { get; set; }
+        public int JoinedTableId { get; set; }
+        public string JoinType { get; set; }
+        public string FieldName { get; set; }
+        public string JoinFieldName { get; set; }
+    }
+
+    public enum FieldTypes
+    {
+        Boolean,
+        DateTime,
+        Varchar,
+        Money,
+        Int,
+        Double
+    }
+
+    public enum JoinTypes
+    {
+        Inner,
+        Left,
+        Right
+    }
+
+    public class ColumnViewModel
+    {
+        public int Id { get; set; }
+        public string ColumnName { get; set; }
+        public string DisplayName { get; set; }
+        public bool Selected { get; set; }
+
+        public int DisplayOrder { get; set; }
+
+        public string FieldType { get; set; }
+        public bool PrimaryKey { get; set; }
+
+        public bool ForeignKey { get; set; }
+
+        public bool AccountIdField { get; set; }
+
+        public string ForeignTable { get; set; }
+
+        public JoinTypes ForeignJoin { get; set; }
+
+        public string ForeignKeyField { get; set; }
+
+        public string ForeignValueField { get; set; }
+    }
+
+    public class ConnectViewModel
+    {
+        public string Provider { get; set; }
+        public string ServerName { get; set; }
+        public string InitialCatalog { get; set; }
+        public string UserName { get; set; }
+        public string Password { get; set; }
+        public bool IntegratedSecurity { get; set; }
+
+
+        public string AccountApiKey { get; set; }
+        public string DatabaseApiKey { get; set; }
+    }
+
+    public class ManageViewModel
+    {
+        public string AccountApiKey { get; set; }
+        public string DatabaseApiKey { get; set; }
+
+        public List<TableViewModel> Tables { get; set; }
+    }
 }
