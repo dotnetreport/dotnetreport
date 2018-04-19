@@ -223,6 +223,11 @@
     content: "\e080";
 }
 
+.panel-heading.panel-nocollapse a:after {    
+    content: "";
+    float: right;
+}
+
 .padded-div {
     padding: 10px 10px 10px 10px;
 }

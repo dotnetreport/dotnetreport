@@ -1100,7 +1100,9 @@ var dashboardViewModel = function (options) {
 		report.LoadReport(e.reportId, true)
 	});
 	
-	self.DrawChart = function () {
-
+	self.drawChart = function () {
+		$.each(self.reports(), function (i, e) {
+			e.DrawChart();
+		});
 	}
 }
