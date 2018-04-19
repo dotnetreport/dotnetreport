@@ -91,99 +91,104 @@
     </script>
 
     <script type="text/html" id="report-template">
-        <table class="table table-hover table-condensed">
-            <thead>
-                <tr class="no-highlight">
-                    <!-- ko if: $parentContext.$parent.canDrilldown() && !IsDrillDown() -->
-                    <th></th>
-                    <!-- /ko -->
-                    <!-- ko foreach: Columns -->
-                    <th data-bind="attr: { id: 'col' + $index() }">
-                        <a href="" data-bind="click: function(){ $parentContext.$parentContext.$parent.changeSort(SqlField); }">
-                            <span data-bind="text: ColumnName"></span>
-                            <span data-bind="text: $parentContext.$parentContext.$parent.pager.sortColumn() === SqlField ? ($parentContext.$parentContext.$parent.pager.sortDescending() ? '&#9660;' : '&#9650;') : ''">
-                            </span>
-                        </a>
-                    </th>
-                    <!-- /ko -->
-                </tr>
-            </thead>
-            <tbody>
-                <tr style="display: none;" data-bind="visible: Rows.length < 1">
-                    <td class="text-info" data-bind="attr:{colspan: Columns.length}">
-                        No records found
-                    </td>
-                </tr>
-                <!-- ko foreach: Rows  -->
-                <tr>
-                    <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() -->
-                    <td><a href="#" data-bind="click: function(){ toggle(); }"><span class="fa" data-bind="css: {'fa-plus': !isExpanded(), 'fa-minus': isExpanded()}"></span></a></td>
-                    <!-- /ko -->
-                    <!-- ko foreach: Items -->
-                    <td data-bind="html: FormattedValue"></td>
-                    <!-- /ko -->
-                </tr>
-                <!-- ko if: isExpanded -->
-                <tr>
-                    <td></td>
-                    <td data-bind="attr:{colspan: $parent.Columns.length }">
-                        <!-- ko if: DrillDownData -->
-                        <table class="table table-hover table-condensed" data-bind="with: DrillDownData">
-                            <thead>
-                                <tr class="no-highlight">
-                                    <!-- ko foreach: Columns -->
-                                    <th>
-                                        <a href="" data-bind="click: function(){ $parents[1].changeSort(SqlField); }">
-                                            <span data-bind="text: ColumnName"></span>
-                                            <span data-bind="text: $parents[1].pager.sortColumn() === SqlField ? ($parents[1].pager.sortDescending() ? '&#9660;' : '&#9650;') : ''">
-                                            </span>
-                                        </a>
-                                    </th>
+        <div class="report-chart" data-bind="attr: {id: 'chart_div_' + $parent.ReportID()}, visible: $parent.isChart"></div>
+
+        <div class="table-responsive" data-bind="with: ReportData">
+            <table class="table table-hover table-condensed">
+                <thead>
+                    <tr class="no-highlight">
+                        <!-- ko if: $parentContext.$parent.canDrilldown() && !IsDrillDown() -->
+                        <th></th>
+                        <!-- /ko -->
+                        <!-- ko foreach: Columns -->
+                        <th data-bind="attr: { id: 'col' + $index() }">
+                            <a href="" data-bind="click: function(){ $parentContext.$parentContext.$parent.changeSort(SqlField); }">
+                                <span data-bind="text: ColumnName"></span>
+                                <span data-bind="text: $parentContext.$parentContext.$parent.pager.sortColumn() === SqlField ? ($parentContext.$parentContext.$parent.pager.sortDescending() ? '&#9660;' : '&#9650;') : ''">
+                                </span>
+                            </a>
+                        </th>
+                        <!-- /ko -->
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="display: none;" data-bind="visible: Rows.length < 1">
+                        <td class="text-info" data-bind="attr:{colspan: Columns.length}">
+                            No records found
+                        </td>
+                    </tr>
+                    <!-- ko foreach: Rows  -->
+                    <tr>
+                        <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() -->
+                        <td><a href="#" data-bind="click: function(){ toggle(); }"><span class="fa" data-bind="css: {'fa-plus': !isExpanded(), 'fa-minus': isExpanded()}"></span></a></td>
+                        <!-- /ko -->
+                        <!-- ko foreach: Items -->
+                        <td data-bind="html: FormattedValue"></td>
+                        <!-- /ko -->
+                    </tr>
+                    <!-- ko if: isExpanded -->
+                    <tr>
+                        <td></td>
+                        <td data-bind="attr:{colspan: $parent.Columns.length }">
+                            <!-- ko if: DrillDownData -->
+                            <table class="table table-hover table-condensed" data-bind="with: DrillDownData">
+                                <thead>
+                                    <tr class="no-highlight">
+                                        <!-- ko foreach: Columns -->
+                                        <th>
+                                            <a href="" data-bind="click: function(){ $parents[1].changeSort(SqlField); }">
+                                                <span data-bind="text: ColumnName"></span>
+                                                <span data-bind="text: $parents[1].pager.sortColumn() === SqlField ? ($parents[1].pager.sortDescending() ? '&#9660;' : '&#9650;') : ''">
+                                                </span>
+                                            </a>
+                                        </th>
+                                        <!-- /ko -->
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="display: none;" data-bind="visible: Rows.length < 1">
+                                        <td class="text-info" data-bind="attr:{colspan: Columns.length}">
+                                            No records found
+                                        </td>
+                                    </tr>
+                                    <!-- ko foreach: Rows  -->
+                                    <tr>
+                                        <!-- ko foreach: Items -->
+                                        <td data-bind="html: FormattedValue"></td>
+                                        <!-- /ko -->
+                                    </tr>
                                     <!-- /ko -->
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr style="display: none;" data-bind="visible: Rows.length < 1">
-                                    <td class="text-info" data-bind="attr:{colspan: Columns.length}">
-                                        No records found
-                                    </td>
-                                </tr>
-                                <!-- ko foreach: Rows  -->
-                                <tr>
-                                    <!-- ko foreach: Items -->
-                                    <td data-bind="html: FormattedValue"></td>
-                                    <!-- /ko -->
-                                </tr>
-                                <!-- /ko -->
-                            </tbody>
-                        </table>
-                        <div class="col-xs-12 col-centered" data-bind="with: pager">
-                            <div class="form-inline small text-muted">
-                                <div class="pull-left total-records" data-bind="visible: pages()">
-                                    <span data-bind="text: 'Total Records: ' + totalRecords()"></span>
-                                </div>
-                                <div class="pull-left">
-                                    @using (Html.BeginForm("DownloadExcel", "Report", FormMethod.Post))
+                                </tbody>
+                            </table>
+                            <div class="col-xs-12 col-centered" data-bind="with: pager">
+                                <div class="form-inline small text-muted">
+                                    <div class="pull-left total-records" data-bind="visible: pages()">
+                                        <span data-bind="text: 'Total Records: ' + totalRecords()"></span>
+                                    </div>
+                                    <div class="pull-left">
+                                        @using (Html.BeginForm("DownloadExcel", "Report", FormMethod.Post))
                                     {
-                                        <input type="hidden" id="reportSql" name="reportSql" data-bind="value: $parent.sql" />
-                                        <input type="hidden" id="connectKey" name="connectKey" data-bind="value: $parent.connectKey" />
-                                        <input type="hidden" id="reportName" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parent.ReportName()" />
-                                        <button type="submit" class="btn btn-xs"><span class="fa fa-file-excel-o"></span></button>
+                                    <input type="hidden" id="reportSql" name="reportSql" data-bind="value: $parent.sql" />
+                                    <input type="hidden" id="connectKey" name="connectKey" data-bind="value: $parent.connectKey" />
+                                    <input type="hidden" id="reportName" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parentContext.$parentContext.$parent.ReportName()" />
+                                    <button type="submit" class="btn btn-xs"><span class="fa fa-file-excel-o"></span></button>
                                     }
-                                </div>
-                                <div class="form-group pull-right" data-bind="visible: pages()">
-                                    <div data-bind="template: 'pager-template', data: $data"></div>
+                                    </div>
+                                    <div class="form-group pull-right" data-bind="visible: pages()">
+                                        <div data-bind="template: 'pager-template', data: $data"></div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <!-- /ko -->
-                    </td>
-                </tr>
-                <!-- /ko -->
-                <!-- /ko -->
-            </tbody>
-        </table>
-    </script>
+                            <!-- /ko -->
+                        </td>
+                    </tr>
+                    <!-- /ko -->
+                    <!-- /ko -->
+                </tbody>
+            </table>
+        </div>
+        
+</script>
 
     @* Required Javascript Libraries *@
     <script src="~/Scripts/@Html.Raw(ReportUtil.GetScriptFile("jquery-{0}.min.js"))"></script>

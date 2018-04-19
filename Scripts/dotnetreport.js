@@ -823,7 +823,7 @@ var reportViewModel = function (options) {
 			'title': self.ReportName(),
 		};
 
-		var chartDiv = document.getElementById('chart_div');
+		var chartDiv = document.getElementById('chart_div_'+self.ReportID());
 		var chart = null;
 
 		if (self.ReportType() == "Pie") {
