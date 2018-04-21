@@ -63,7 +63,7 @@
 	self.LoadJoins = function () {
 		// Load and setup Relations
 
-		app.services.call({
+		ajaxcall({
 			url: options.getRelationsUrl,
 			type: 'POST',
 			data: JSON.stringify({
@@ -114,7 +114,7 @@
 			}
 		});
 
-		app.services.call({
+		ajaxcall({
 			url: options.saveRelationsUrl,
 			type: 'POST',
 			data: JSON.stringify({
@@ -183,7 +183,7 @@ var tablesViewModel = function (options) {
 				return;
 			}
 
-			app.services.call({
+			ajaxcall({
 				url: options.saveTableUrl,
 				type: 'POST',
 				data: JSON.stringify({
