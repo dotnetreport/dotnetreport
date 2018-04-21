@@ -4,7 +4,7 @@
 	self.keys = {
 		AccountApiKey: options.model.AccountApiKey,
 		DatabaseApiKey: options.model.DatabaseApiKey
-	});
+	};
 
 	self.Tables = new tablesViewModel(options)
 	self.Joins = ko.observableArray([]);

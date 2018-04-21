@@ -17,7 +17,7 @@ namespace ReportBuilder.Web.Controllers
     {
         public async Task<ActionResult> Index()
         {
-            var connect = ParseConnection();
+            var connect = GetConnection();
             var tables = new List<TableViewModel>();
 
             tables.AddRange(await GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
@@ -35,7 +35,7 @@ namespace ReportBuilder.Web.Controllers
 
         #region "Private Methods"
 
-        private ConnectViewModel ParseConnection()
+        private ConnectViewModel GetConnection()
         {
             return new ConnectViewModel
             {
@@ -44,25 +44,25 @@ namespace ReportBuilder.Web.Controllers
             };
         }
        
-        private string GetConnectionString(ConnectViewModel model)
+        private async Task<string> GetConnectionString(ConnectViewModel connect)
         {
-            if (model.IntegratedSecurity == true)
+            using (var client = new HttpClient())
             {
-                return
-                    "Provider=" + "sqloledb" +
-                    ";Data Source=" + model.ServerName +
-                    ";Initial Catalog=" + model.InitialCatalog +
-                    ";Integrated Security=SSPI;";
+                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetDataConnectKey?account={1}&dataConnect={2}", ConfigurationManager.AppSettings["dotNetReport.apiUrl"], connect.AccountApiKey, connect.DatabaseApiKey));
+
+                response.EnsureSuccessStatusCode();
+
+                var content = await response.Content.ReadAsStringAsync();
+                var connString = ConfigurationManager.ConnectionStrings[content.Replace("\"", "")].ConnectionString;
+
+                if (!connString.ToLower().StartsWith("provider"))
+                {
+                    connString = "Provider=sqloledb;" + connString;
+                }
+
+                return connString;
             }
-            else
-            {
-                return
-                    "Provider=" + "sqloledb" +
-                    ";Password=" + model.Password +
-                    ";User ID=" + model.UserName +
-                    ";Data Source=" + model.ServerName +
-                    ";Initial Catalog=" + model.InitialCatalog;
-            }
+            
         }
 
         private FieldTypes ConvertToJetDataType(int oleDbDataType)
@@ -206,7 +206,8 @@ namespace ReportBuilder.Web.Controllers
                 currentTables = await GetApiTables(accountKey, dataConnectKey);
             }
 
-            using (OleDbConnection conn = new OleDbConnection(GetConnectionString(ParseConnection())))
+            var connString = await GetConnectionString(GetConnection());
+            using (OleDbConnection conn = new OleDbConnection(connString))
             {
                 // open the connection to the database 
                 conn.Open();
