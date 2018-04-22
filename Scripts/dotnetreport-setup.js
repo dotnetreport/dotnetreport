@@ -173,7 +173,10 @@ var tablesViewModel = function (options) {
 		});
 
 		t.saveTable = function (apiKey, dbKey) {
-			var e = ko.mapping.toJS(t);
+			var e = ko.mapping.toJS(t, {
+				'ignore': ["saveTable", "JoinTable"]
+			});
+
 			if (!t.Selected) {
 				return;
 			}
