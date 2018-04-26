@@ -93,6 +93,7 @@
     <script type="text/html" id="report-template">
         <div class="report-chart" data-bind="attr: {id: 'chart_div_' + $parent.ReportID()}, visible: $parent.isChart"></div>
 
+        <!-- ko if: !$parent.isChart() || $parent.ShowDataWithGraph() -->
         <div class="table-responsive" data-bind="with: ReportData">
             <table class="table table-hover table-condensed">
                 <thead>
@@ -168,11 +169,11 @@
                                     <div class="pull-left">
                                         @using (Html.BeginForm("DownloadExcel", "Report", FormMethod.Post))
                                     {
-                                    <input type="hidden" id="reportSql" name="reportSql" data-bind="value: $parent.sql" />
-                                    <input type="hidden" id="connectKey" name="connectKey" data-bind="value: $parent.connectKey" />
-                                    <input type="hidden" id="reportName" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parentContext.$parentContext.$parent.ReportName()" />
-                                    <button type="submit" class="btn btn-xs"><span class="fa fa-file-excel-o"></span></button>
-                                    }
+                                        <input type="hidden" id="reportSql" name="reportSql" data-bind="value: $parent.sql" />
+                                        <input type="hidden" id="connectKey" name="connectKey" data-bind="value: $parent.connectKey" />
+                                        <input type="hidden" id="reportName" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parentContext.$parentContext.$parent.ReportName()" />
+                                        <button type="submit" class="btn btn-xs"><span class="fa fa-file-excel-o"></span></button>
+                                }
                                     </div>
                                     <div class="form-group pull-right" data-bind="visible: pages()">
                                         <div data-bind="template: 'pager-template', data: $data"></div>
@@ -187,8 +188,8 @@
                 </tbody>
             </table>
         </div>
-        
-</script>
+        <!-- /ko -->
+    </script>
 
     @* Required Javascript Libraries *@
     <script src="~/Scripts/@Html.Raw(ReportUtil.GetScriptFile("jquery-{0}.min.js"))"></script>
