@@ -224,11 +224,11 @@
                             Check the fields you would like to use in the Report
                         </div>
                         <div class="pull-right">
-                            <a href="#" class="btn btn-primary btn-xs" title="Save Custom Formula Field" data-bind="click: MoveAllFields, visible: FormulaField">Save</a>
-                            <a href="#" class="btn btn-xs" title="Custom Field using Formula" data-bind="click: function(){FormulaField(!FormulaField())}, text: FormulaField()? 'Cancel': 'Formula', css: {'btn-primary': !FormulaField(), 'btn-danger': FormulaField}"></a>
+                            <a href="#" class="btn btn-primary btn-xs" title="Save Custom Formula Field" data-bind="click: saveFormulaField, visible: isFormulaField">Save</a>
+                            <a href="#" class="btn btn-xs" title="Custom Field using Formula" data-bind="click: function(){isFormulaField(!isFormulaField())}, text: isFormulaField()? 'Cancel': 'Formula', css: {'btn-primary': !isFormulaField(), 'btn-danger': isFormulaField}"></a>
 
-                            <a href="#" class="btn btn-default btn-xs" data-bind="click: MoveAllFields, visible: !FormulaField()">Select all</a>
-                            <a href="#" class="btn btn-default btn-xs" data-bind="click: RemoveSelectedFields, visible: !FormulaField()">Remove all</a>
+                            <a href="#" class="btn btn-default btn-xs" data-bind="click: MoveAllFields, visible: !isFormulaField()">Select all</a>
+                            <a href="#" class="btn btn-default btn-xs" data-bind="click: RemoveSelectedFields, visible: !isFormulaField()">Remove all</a>
                         </div>
                     </div>
                     <div class="row container-fluid">
@@ -237,22 +237,22 @@
                             <div class="list-group-item">
                                 <div class="checkbox">
                                     <label>
-                                        <input type="checkbox" data-bind="checkedInArray: {array: $parent.FormulaField() ? $parent.FormulaFields : $parent.SelectedFields, value: $data}"> <span data-bind="text: fieldName"></span>
+                                        <input type="checkbox" data-bind="checkedInArray: {array: $parent.isFormulaField() ? $parent.formulaFields : $parent.SelectedFields, value: $data}"> <span data-bind="text: fieldName"></span>
                                     </label>
                                 </div>
                             </div>
                         </div>
                         <!-- /ko -->
                     </div>
-                    <div data-bind="if: FormulaField">
+                    <div data-bind="if: isFormulaField">
                         <br />
                         <div class="col-xs-12 padded-div">
                             <div class="small pull-left">
                                 Setup your Formula for calculating this Field
                             </div>
                             <div class="pull-right">
-                                <a href="#" class="btn btn-default btn-xs" data-bind="">Add ( )</a>
-                                <a href="#" class="btn btn-default btn-xs" data-bind="">Clear</a>
+                                <a href="#" class="btn btn-default btn-xs" data-bind="click: addFormulaParentheses">Add ( )</a>
+                                <a href="#" class="btn btn-default btn-xs" data-bind="click: clearFormulaField">Clear</a>
 
                             </div>
                         </div>
@@ -266,13 +266,16 @@
                             <div class="form-group">
                                 <label class="col-sm-2 control-label">Field Formula</label>
                                 <div class="col-sm-10">
-                                    <!-- ko foreach: FormulaFields -->
+                                    <!-- ko foreach: formulaFields -->
+                                    <h3 class="pull-left" data-bind="visible: setupFormula.isParenthesesStart" style="margin-top: 0;">(</h3>
+                                    <!-- ko if: !setupFormula.isParenthesesStart() && !setupFormula.isParenthesesEnd() -->
                                     <div class="list-group-item pull-left" style="margin-left: 15px; padding: 5px 15px">
                                         <span data-bind="text: fieldName"></span>
                                     </div>
-
-                                    <div class="pull-left" style="margin-left: 15px;" data-bind="visible: $index()!=$parent.FormulaFields().length-1">
-                                        <select class="form-control input-sm" style="max-width: 50px;">
+                                    <!-- /ko -->                                    
+                                    <h3 class="pull-left" data-bind="visible: setupFormula.isParenthesesEnd" style="margin-top: 0;">)</h3>
+                                    <div class="pull-left" style="margin-left: 15px;" data-bind="visible: $parent.showFormulaOperation($index())">
+                                        <select class="form-control input-sm" style="max-width: 50px;" data-bind="value: setupFormula.formulaOperation">
                                             <option>+</option>
                                             <option>-</option>
                                             <option>x</option>
