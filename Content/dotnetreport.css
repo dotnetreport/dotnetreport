@@ -232,6 +232,12 @@
     padding: 10px 10px 10px 10px;
 }
 
+.formula-field {
+    padding: 10px 15px;
+    border: solid 1px #ddd;
+    background-color: #fff;
+}
+
 .body-content {
     margin: 10px 10px;
 }

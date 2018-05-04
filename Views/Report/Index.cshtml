@@ -224,9 +224,9 @@
                             Check the fields you would like to use in the Report
                         </div>
                         <div class="pull-right">
-                            <a href="#" class="btn btn-primary btn-xs" data-bind="click: MoveAllFields, visible: FormulaField">Save</a>
-                            <a href="#" class="btn btn-xs" data-bind="click: function(){FormulaField(!FormulaField())}, text: FormulaField()? 'Cancel': 'Formula', css: {'btn-primary': !FormulaField(), 'btn-danger': FormulaField}"></a>
-                            
+                            <a href="#" class="btn btn-primary btn-xs" title="Save Custom Formula Field" data-bind="click: MoveAllFields, visible: FormulaField">Save</a>
+                            <a href="#" class="btn btn-xs" title="Custom Field using Formula" data-bind="click: function(){FormulaField(!FormulaField())}, text: FormulaField()? 'Cancel': 'Formula', css: {'btn-primary': !FormulaField(), 'btn-danger': FormulaField}"></a>
+
                             <a href="#" class="btn btn-default btn-xs" data-bind="click: MoveAllFields, visible: !FormulaField()">Select all</a>
                             <a href="#" class="btn btn-default btn-xs" data-bind="click: RemoveSelectedFields, visible: !FormulaField()">Remove all</a>
                         </div>
@@ -245,27 +245,47 @@
                         <!-- /ko -->
                     </div>
                     <div data-bind="if: FormulaField">
+                        <br />
                         <div class="col-xs-12 padded-div">
                             <div class="small pull-left">
                                 Setup your Formula for calculating this Field
                             </div>
                             <div class="pull-right">
                                 <a href="#" class="btn btn-default btn-xs" data-bind="">Add ( )</a>
-                                
+                                <a href="#" class="btn btn-default btn-xs" data-bind="">Clear</a>
+
                             </div>
                         </div>
-                        <div class="row container-fluid">
-                            <!-- ko foreach: FormulaFields -->
-                            <div class="col-xs-2">
-                                <div class="list-group-item">                                    
-                                    <label>
-                                        <span data-bind="text: fieldName"></span>
-                                    </label>                          
+                        <div class="form-horizontal">
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label">Field Label</label>
+                                <div class="col-sm-10">
+                                    <input type="text" class="form-control input-sm" required placeholder="Custom Field Label" />
                                 </div>
                             </div>
-                            <div class="col-xs-1"></div>
-                            <!-- /ko -->
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label">Field Formula</label>
+                                <div class="col-sm-10">
+                                    <!-- ko foreach: FormulaFields -->
+                                    <div class="list-group-item pull-left" style="margin-left: 15px; padding: 5px 15px">
+                                        <span data-bind="text: fieldName"></span>
+                                    </div>
+
+                                    <div class="pull-left" style="margin-left: 15px;" data-bind="visible: $index()!=$parent.FormulaFields().length-1">
+                                        <select class="form-control input-sm" style="max-width: 50px;">
+                                            <option>+</option>
+                                            <option>-</option>
+                                            <option>x</option>
+                                            <option>/</option>
+                                        </select>
+                                    </div>
+                                    <!-- /ko -->
+                                </div>
+                            </div>
                         </div>
+                        
+                        <div class="clearfix"></div>
+                        
                     </div>
                 </div>
                 <!-- ko if: SelectedFields().length>0 -->
