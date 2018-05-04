@@ -224,8 +224,11 @@
                             Check the fields you would like to use in the Report
                         </div>
                         <div class="pull-right">
-                            <a href="#" class="btn btn-default btn-xs" data-bind="click: MoveAllFields">Select all</a>
-                            <a href="#" class="btn btn-default btn-xs" data-bind="click: RemoveSelectedFields">Remove all</a>
+                            <a href="#" class="btn btn-primary btn-xs" data-bind="click: MoveAllFields, visible: FormulaField">Save</a>
+                            <a href="#" class="btn btn-xs" data-bind="click: function(){FormulaField(!FormulaField())}, text: FormulaField()? 'Cancel': 'Formula', css: {'btn-primary': !FormulaField(), 'btn-danger': FormulaField}"></a>
+                            
+                            <a href="#" class="btn btn-default btn-xs" data-bind="click: MoveAllFields, visible: !FormulaField()">Select all</a>
+                            <a href="#" class="btn btn-default btn-xs" data-bind="click: RemoveSelectedFields, visible: !FormulaField()">Remove all</a>
                         </div>
                     </div>
                     <div class="row container-fluid">
@@ -234,12 +237,35 @@
                             <div class="list-group-item">
                                 <div class="checkbox">
                                     <label>
-                                        <input type="checkbox" data-bind="checkedInArray: {array: $parent.SelectedFields, value: $data}"> <span data-bind="text: fieldName"></span>
+                                        <input type="checkbox" data-bind="checkedInArray: {array: $parent.FormulaField() ? $parent.FormulaFields : $parent.SelectedFields, value: $data}"> <span data-bind="text: fieldName"></span>
                                     </label>
                                 </div>
                             </div>
                         </div>
                         <!-- /ko -->
+                    </div>
+                    <div data-bind="if: FormulaField">
+                        <div class="col-xs-12 padded-div">
+                            <div class="small pull-left">
+                                Setup your Formula for calculating this Field
+                            </div>
+                            <div class="pull-right">
+                                <a href="#" class="btn btn-default btn-xs" data-bind="">Add ( )</a>
+                                
+                            </div>
+                        </div>
+                        <div class="row container-fluid">
+                            <!-- ko foreach: FormulaFields -->
+                            <div class="col-xs-2">
+                                <div class="list-group-item">                                    
+                                    <label>
+                                        <span data-bind="text: fieldName"></span>
+                                    </label>                          
+                                </div>
+                            </div>
+                            <div class="col-xs-1"></div>
+                            <!-- /ko -->
+                        </div>
                     </div>
                 </div>
                 <!-- ko if: SelectedFields().length>0 -->

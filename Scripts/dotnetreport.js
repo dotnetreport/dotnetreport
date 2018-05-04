@@ -1,6 +1,6 @@
-﻿/// .Net Report Builder view model v2.0.0
+﻿/// .Net Report Builder view model v2.0.1
 /// License has to be purchased for use
-/// 2015-2017 (c) www.dotnetreport.com
+/// 2015-2018 (c) www.dotnetreport.com
 
 function pagerViewModel(args) {
 	args = args || {};
@@ -323,6 +323,9 @@ var reportViewModel = function (options) {
 			self.SelectedFields.remove(e);
 		});
 	};
+
+	self.FormulaField = ko.observable(false);
+	self.FormulaFields = ko.observableArray([]);
 
 	self.isFieldValidForYAxis = function (i, fieldType) {
 		if (i > 0) {
@@ -867,6 +870,8 @@ var reportViewModel = function (options) {
 		e.groupInGraph = ko.observable(e.groupInGraph);
 		e.hideInDetail = ko.observable(e.hideInDetail);
 		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail');
+
+		e.isFormulaField = ko.observable(e.isFormulaField);
 		return e;
 	}
 
