@@ -109,6 +109,7 @@ var reportViewModel = function (options) {
 	self.SelectedFolder = ko.observable(null); // Folder selected in start
 	self.CanSaveReports = ko.observable(true);
 	self.CanManageFolders = ko.observable(true);
+	self.CanEdit = ko.observable(true);
 
 	self.ReportResult = ko.observable({
 		HasError: ko.observable(false),
@@ -986,7 +987,8 @@ var reportViewModel = function (options) {
 			self.ShowDataWithGraph(report.ShowDataWithGraph);
 			self.ShowOnDashboard(report.ShowOnDashboard);
 			self.SortByField(report.SortBy);
-
+			self.CanEdit((!options.clientId || report.ClientId == options.clientId)
+				&& (!options.userId || report.UserId == options.userId));
 			self.Filters([]);
 			self.AdditionalSeries([]);
 
@@ -1032,7 +1034,7 @@ var reportViewModel = function (options) {
 				self.AddSeries(e);
 			});
 
-			self.SaveReport(!filterOnFly);
+			self.SaveReport(!filterOnFly && self.CanEdit());
 
 			if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard") {
 				self.ExecuteReportQuery(options.reportSql, options.reportConnect);				
