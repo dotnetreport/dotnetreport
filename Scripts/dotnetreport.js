@@ -345,16 +345,7 @@ var reportViewModel = function (options) {
 	}
 
 	self.saveFormulaField = function() {
-		var formulaItems = [];
-		$.each(self.formulaFields(), function (i, e) {
-			formulaItems.push(new formulaFieldViewModel({
-				fieldId: e.fieldId,
-				isParenthesesStart: e.setupFormula.isParenthesesStart(),
-				isParenthesesEnd: e.setupFormula.isParenthesesEnd(),
-				formulaOperation: e.setupFormula.formulaOperation()
-			}));
-		});
-
+		
 		var field = {
 			tableName: 'Custom',
 			fieldName: self.formulaFieldLabel() || 'Custom',
@@ -368,7 +359,7 @@ var reportViewModel = function (options) {
 			isFormulaField: true,
 			hasForeignKey: false,
 			fieldFilter: ["=", "<>", ">=", ">", "<", "<="],
-			formulaItems: formulaItems
+			formulaItems: self.formulaFields()
 		}
 
 		self.SelectedFields.push(self.setupField(field));
@@ -967,8 +958,18 @@ var reportViewModel = function (options) {
 		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail');
 
 		e.isFormulaField = ko.observable(e.isFormulaField);
-		e.formulaItems = ko.observableArray(e.formulaItems || []);
 
+		var formulaItems = [];
+		$.each(e.formulaItems || [], function (i, e) {
+			formulaItems.push(new formulaFieldViewModel({
+				fieldId: e.fieldId,
+				isParenthesesStart: e.setupFormula ? e.setupFormula.isParenthesesStart() : e.isParenthesesStart,
+				isParenthesesEnd: e.setupFormula ? e.setupFormula.isParenthesesEnd() : e.isParenthesesEnd,
+				formulaOperation: e.setupFormula ? e.setupFormula.formulaOperation() : e.formulaOperation
+			}));
+		});
+
+		e.formulaItems = ko.observableArray(formulaItems);
 		e.setupFormula = new formulaFieldViewModel();
 		return e;
 	}
