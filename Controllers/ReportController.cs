@@ -404,7 +404,7 @@ namespace ReportBuilder.Web.Controllers
             };
 
             sql = sql.Substring(0, sql.IndexOf("FROM")).Replace("SELECT", "").Trim();
-            var sqlFields = Regex.Split(sql, ", (?![^\\(]*?\\))").Where(x => x != "CONVERT(VARCHAR(3)").ToArray();
+            var sqlFields = Regex.Split(sql, "], (?![^\\(]*?\\))").Where(x => x != "CONVERT(VARCHAR(3)").ToArray();
 
             int i = 0;
             foreach (DataColumn col in dt.Columns)

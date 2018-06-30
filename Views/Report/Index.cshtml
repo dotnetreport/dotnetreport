@@ -216,7 +216,7 @@
                 <h5><span class="fa fa-database"></span> Choose Data for Report</h5>
                 <div>
                     <div class="col-md-12">
-                        <select class="form-control" data-bind="options: Tables, optionsCaption: 'Choose Section...', optionsText: 'tableName', value: SelectedTable"></select>
+                        <select class="form-control" data-bind="options: Tables, optionsCaption: 'Choose Section...', optionsText: 'tableName', value: SelectedTable, disable: isFormulaField"></select>
                     </div>
 
                     <div class="col-md-12 padded-div" data-bind="visible: ChooseFields().length>0">
@@ -229,6 +229,12 @@
 
                             <a href="#" class="btn btn-default btn-xs" data-bind="click: MoveAllFields, visible: !isFormulaField()">Select all</a>
                             <a href="#" class="btn btn-default btn-xs" data-bind="click: RemoveSelectedFields, visible: !isFormulaField()">Remove all</a>
+                        </div>
+                    </div>
+                    <div class="col-md-12 padded-div" data-bind="visible: ChooseFields().length>0 && isFormulaField()">
+                        <div class="alert alert-info">
+                            You are now creating a Customized Field. Check Fields you want to use in the calculation below, then choose the operations you want to perform, and click "Save" on the right above to add your Custom field. 
+                            Please note that Custom Field must be chosen in within the same Section and their data types must match.
                         </div>
                     </div>
                     <div class="row container-fluid">
@@ -252,8 +258,8 @@
                             </div>
                             <div class="pull-right">
                                 <a href="#" class="btn btn-default btn-xs" data-bind="click: addFormulaParentheses">Add ( )</a>
+                                <a href="#" class="btn btn-default btn-xs" title="Add a Constant Value" data-bind="click: addFormulaConstantValue">Add Value</a>
                                 <a href="#" class="btn btn-default btn-xs" data-bind="click: clearFormulaField">Clear</a>
-
                             </div>
                         </div>
                         <div class="form-horizontal">
@@ -270,25 +276,30 @@
                                     <h3 class="pull-left" data-bind="visible: setupFormula.isParenthesesStart" style="margin-top: 0;">(</h3>
                                     <!-- ko if: !setupFormula.isParenthesesStart() && !setupFormula.isParenthesesEnd() -->
                                     <div class="list-group-item pull-left" style="margin-left: 15px; padding: 5px 15px">
-                                        <span data-bind="text: fieldName"></span>
+                                        <span data-bind="text: fieldName, visible: !setupFormula.isConstantValue()"></span>
+                                        <!-- ko if: setupFormula.isConstantValue -->
+                                        <input data-bind="value: setupFormula.constantValue" class="form-control input-sm" required />
+                                        <!-- /ko -->
                                     </div>
-                                    <!-- /ko -->                                    
+                                    <!-- /ko -->
                                     <h3 class="pull-left" data-bind="visible: setupFormula.isParenthesesEnd" style="margin-top: 0;">)</h3>
                                     <div class="pull-left" style="margin-left: 15px;" data-bind="visible: $parent.showFormulaOperation($index())">
                                         <select class="form-control input-sm" style="max-width: 50px;" data-bind="value: setupFormula.formulaOperation">
                                             <option>+</option>
+                                            <!-- ko if: ['Int','Money','Float'].indexOf(fieldType) != -1 -->
                                             <option>-</option>
-                                            <option>x</option>
+                                            <option>*</option>
                                             <option>/</option>
+                                            <!-- /ko -->
                                         </select>
                                     </div>
                                     <!-- /ko -->
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="clearfix"></div>
-                        
+
                     </div>
                 </div>
                 <!-- ko if: SelectedFields().length>0 -->

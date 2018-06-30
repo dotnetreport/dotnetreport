@@ -67,6 +67,8 @@ function formulaFieldViewModel(args) {
 	self.isParenthesesStart = ko.observable(args.isParenthesesStart);
 	self.isParenthesesEnd = ko.observable(args.isParenthesesEnd);
 	self.formulaOperation = ko.observable(args.formulaOperation);
+	self.isConstantValue = ko.observable(!!args.constantValue);
+	self.constantValue = ko.observable(args.constantValue);
 }
 
 var reportViewModel = function (options) {
@@ -338,15 +340,8 @@ var reportViewModel = function (options) {
 	self.isFormulaField = ko.observable(false);
 	self.formulaFields = ko.observableArray([]);
 	self.formulaFieldLabel = ko.observable('');
-
-	self.clearFormulaField = function () {
-		self.formulaFields([]);
-		self.formulaFieldLabel('');		
-	}
-
-	self.saveFormulaField = function() {
-		
-		var field = {
+	self.getEmptyFormulaField = function () {
+		return {
 			tableName: 'Custom',
 			fieldName: self.formulaFieldLabel() || 'Custom',
 			fieldType: 'Custom',
@@ -361,6 +356,26 @@ var reportViewModel = function (options) {
 			fieldFilter: ["=", "<>", ">=", ">", "<", "<="],
 			formulaItems: self.formulaFields()
 		}
+	}
+
+	self.clearFormulaField = function () {
+		self.formulaFields([]);
+		self.formulaFieldLabel('');		
+	}
+
+	self.saveFormulaField = function () {
+
+		if (self.formulaFields().length == 0) {
+			toastr.error('Please select some items for the Custom Field');
+			return;
+		}
+
+		if (!self.validateReport()) {
+			toastr.error("Please correct validation issues");
+			return;
+		}
+		
+		var field = self.getEmptyFormulaField();
 
 		self.SelectedFields.push(self.setupField(field));
 		self.clearFormulaField();
@@ -379,18 +394,7 @@ var reportViewModel = function (options) {
 		if (self.formulaFields().length <= 0) return;
 		if (self.formulaFields()[0].setupFormula.isParenthesesStart() && self.formulaFields()[self.formulaFields().length - 1].setupFormula.isParenthesesEnd()) return;
 
-		var field = {
-			tableName: 'Custom',
-			fieldName: self.formulaFieldLabel() || 'Custom',
-			fieldType: 'Custom',
-			aggregateFunction: '',
-			filterOnFly: false,
-			disabled: false,
-			groupInGraph: false,
-			hideInDetail: false,
-			fieldAggregate: '',
-			isFormulaField: true,
-		}
+		var field = self.getEmptyFormulaField();
 
 		var startparan = self.setupField(Object.assign({}, field));
 		var endparan = self.setupField(Object.assign({}, field));
@@ -400,6 +404,14 @@ var reportViewModel = function (options) {
 
 		self.formulaFields.splice(0, 0, startparan);
 		self.formulaFields.push(endparan);
+	}
+
+	self.addFormulaConstantValue = function () {		
+		var field = self.getEmptyFormulaField();
+				
+		var constval = self.setupField(Object.assign({}, field));		
+		constval.setupFormula.isConstantValue(true);		
+		self.formulaFields.push(constval);
 	}
 
 	self.isFieldValidForYAxis = function (i, fieldType) {
@@ -648,7 +660,8 @@ var reportViewModel = function (options) {
 							FieldId: f.fieldId(),
 							IsParenthesesStart: f.isParenthesesStart() || false,
 							IsParenthesesEnd: f.isParenthesesEnd() || false,
-							Operation: f.formulaOperation()
+							Operation: f.formulaOperation(),
+							ConstantValue: f.constantValue()
 						}
 					})
 				};
@@ -962,10 +975,11 @@ var reportViewModel = function (options) {
 		var formulaItems = [];
 		$.each(e.formulaItems || [], function (i, e) {
 			formulaItems.push(new formulaFieldViewModel({
-				fieldId: e.fieldId,
+				fieldId: e.fieldId || 0,
 				isParenthesesStart: e.setupFormula ? e.setupFormula.isParenthesesStart() : e.isParenthesesStart,
 				isParenthesesEnd: e.setupFormula ? e.setupFormula.isParenthesesEnd() : e.isParenthesesEnd,
-				formulaOperation: e.setupFormula ? e.setupFormula.formulaOperation() : e.formulaOperation
+				formulaOperation: e.setupFormula ? e.setupFormula.formulaOperation() : e.formulaOperation,
+				constantValue: e.setupFormula ? e.setupFormula.constantValue() : e.constantValue
 			}));
 		});
 
