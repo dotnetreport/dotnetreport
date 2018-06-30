@@ -366,6 +366,8 @@ var reportViewModel = function (options) {
 			hideInDetail: false,
 			fieldAggregate: '',
 			isFormulaField: true,
+			hasForeignKey: false,
+			fieldFilter: ["=", "<>", ">=", ">", "<", "<="],
 			formulaItems: formulaItems
 		}
 
@@ -647,6 +649,17 @@ var reportViewModel = function (options) {
 					Disabled: x.disabled(),
 					GroupInGraph: x.groupInGraph(),
 					HideInDetail: x.hideInDetail(),
+
+					IsCustom: x.isFormulaField(),
+					CustomLabel: x.fieldName,
+					CustomFieldDetails: $.map(x.formulaItems(), function (f) {
+						return {
+							FieldId: f.fieldId(),
+							IsParenthesesStart: f.isParenthesesStart() || false,
+							IsParenthesesEnd: f.isParenthesesEnd() || false,
+							Operation: f.formulaOperation()
+						}
+					})
 				};
 			}),
 			DrillDownRow: drilldown
