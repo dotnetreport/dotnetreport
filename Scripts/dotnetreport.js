@@ -1,4 +1,4 @@
-﻿/// .Net Report Builder view model v2.0.0
+﻿/// .Net Report Builder view model v2.0.2
 /// License has to be purchased for use
 /// 2015-2017 (c) www.dotnetreport.com
 
@@ -905,7 +905,7 @@ var reportViewModel = function (options) {
 			function addSavedFilters() {
 				$.each(report.Filters, function (i, e) {
 					if (filterFieldsOnFly.indexOf(e.FieldId) < 0) {
-						var onFly = $.grep(self.SelectedFields(), function (x) { return x.filterOnFly() == true && x.fieldId == e.FieldId; });
+						var onFly = $.grep(self.SelectedFields(), function (x) { return x.filterOnFly() == true && x.fieldId == e.FieldId; }).length > 0;
 						if (onFly) filterFieldsOnFly.push(e.FieldId);
 						self.AddFilter(e, onFly)
 					}
