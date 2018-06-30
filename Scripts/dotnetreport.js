@@ -1020,6 +1020,10 @@ var reportViewModel = function (options) {
 			self.Filters([]);
 			self.AdditionalSeries([]);
 
+			self.selectedFieldsCanFilter = ko.computed(function () {
+				return $.grep(self.SelectedFields(), function (x) { return !x.isFormulaField() });
+			});
+
 			var filterFieldsOnFly = [];
 			function addSavedFilters() {
 				$.each(report.Filters, function (i, e) {

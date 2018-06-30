@@ -371,7 +371,7 @@
                                 </td>
                                 <td>
                                     <div class="form-group">
-                                        <select class="form-control" data-bind="options: $root.SelectedFields, optionsText: 'selectedFieldName', optionsCaption: 'Please Choose', value: Field, attr: {required: Field()==null?'required':false}"></select>
+                                        <select class="form-control" data-bind="options: $root.selectedFieldsCanFilter, optionsText: 'selectedFieldName', optionsCaption: 'Please Choose', value: Field, attr: {required: Field()==null?'required':false}"></select>
                                     </div>
                                 </td>
                                 <td data-bind="with: Field">
@@ -412,7 +412,7 @@
                     <div class="form-group">
                         <label class="col-sm-2 control-label">Sort By</label>
                         <div class="col-sm-10">
-                            <select class="form-control" required data-bind="options: enabledFields, optionsText: 'selectedFieldName', optionsCaption: 'Please Choose', optionsValue: 'fieldId', value: SortByField"></select>
+                            <select class="form-control" required data-bind="options: enabledFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: SortByField"></select>
                         </div>
                     </div>
                     <div class="checkbox">
