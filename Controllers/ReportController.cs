@@ -159,7 +159,8 @@ namespace ReportBuilder.Web.Controllers
                 {
                     new KeyValuePair<string, string>("account", ConfigurationManager.AppSettings["dotNetReport.accountApiToken"]),
                     new KeyValuePair<string, string>("dataConnect", ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"]),
-                    new KeyValuePair<string, string>("client","")
+                    new KeyValuePair<string, string>("clientId",""), // Pass your client Id 
+                    new KeyValuePair<string, string>("userId","") // Pass your user Id
                 });
 
                 var response = await client.PostAsync(new Uri(ConfigurationManager.AppSettings["dotNetReport.apiUrl"] + "/ReportApi/LoadDashboard"), content);
