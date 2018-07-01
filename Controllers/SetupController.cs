@@ -54,6 +54,7 @@ namespace ReportBuilder.Web.Controllers
 
                 var content = await response.Content.ReadAsStringAsync();
                 var connString = ConfigurationManager.ConnectionStrings[content.Replace("\"", "")].ConnectionString;
+                connString = connString.Replace("Trusted_Connection=True", "");
 
                 if (!connString.ToLower().StartsWith("provider"))
                 {
