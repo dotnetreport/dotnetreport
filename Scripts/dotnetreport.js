@@ -1,6 +1,6 @@
-﻿/// .Net Report Builder view model v2.0.2
+﻿/// .Net Report Builder view model v2.0.3
 /// License has to be purchased for use
-/// 2015-2017 (c) www.dotnetreport.com
+/// 2015-2018 (c) www.dotnetreport.com
 
 function pagerViewModel(args) {
 	args = args || {};
@@ -59,6 +59,18 @@ function pagerViewModel(args) {
 	}
 }
 
+function formulaFieldViewModel(args) {
+	args = args || {};
+	var self = this;
+
+	self.fieldId = ko.observable(args.fieldId)
+	self.isParenthesesStart = ko.observable(args.isParenthesesStart);
+	self.isParenthesesEnd = ko.observable(args.isParenthesesEnd);
+	self.formulaOperation = ko.observable(args.formulaOperation);
+	self.isConstantValue = ko.observable(!!args.constantValue);
+	self.constantValue = ko.observable(args.constantValue);
+}
+
 var reportViewModel = function (options) {
 	var self = this;
 
@@ -99,6 +111,7 @@ var reportViewModel = function (options) {
 	self.SelectedFolder = ko.observable(null); // Folder selected in start
 	self.CanSaveReports = ko.observable(true);
 	self.CanManageFolders = ko.observable(true);
+	self.CanEdit = ko.observable(true);
 
 	self.ReportResult = ko.observable({
 		HasError: ko.observable(false),
@@ -324,6 +337,83 @@ var reportViewModel = function (options) {
 		});
 	};
 
+	self.isFormulaField = ko.observable(false);
+	self.formulaFields = ko.observableArray([]);
+	self.formulaFieldLabel = ko.observable('');
+	self.getEmptyFormulaField = function () {
+		return {
+			tableName: 'Custom',
+			fieldName: self.formulaFieldLabel() || 'Custom',
+			fieldType: 'Custom',
+			aggregateFunction: '',
+			filterOnFly: false,
+			disabled: false,
+			groupInGraph: false,
+			hideInDetail: false,
+			fieldAggregate: '',
+			isFormulaField: true,
+			hasForeignKey: false,
+			fieldFilter: ["=", "<>", ">=", ">", "<", "<="],
+			formulaItems: self.formulaFields()
+		}
+	}
+
+	self.clearFormulaField = function () {
+		self.formulaFields([]);
+		self.formulaFieldLabel('');		
+	}
+
+	self.saveFormulaField = function () {
+
+		if (self.formulaFields().length == 0) {
+			toastr.error('Please select some items for the Custom Field');
+			return;
+		}
+
+		if (!self.validateReport()) {
+			toastr.error("Please correct validation issues");
+			return;
+		}
+		
+		var field = self.getEmptyFormulaField();
+
+		self.SelectedFields.push(self.setupField(field));
+		self.clearFormulaField();
+		self.isFormulaField(false);
+	}
+
+	self.showFormulaOperation = function (c) {
+		var l = self.formulaFields().length;
+		if (l <= 1 || c == l - 1) return false;
+		if (self.formulaFields()[c + 1].setupFormula.isParenthesesEnd() || self.formulaFields()[c].setupFormula.isParenthesesStart()) return false;
+		
+		return true;
+	};
+
+	self.addFormulaParentheses = function () {
+		if (self.formulaFields().length <= 0) return;
+		if (self.formulaFields()[0].setupFormula.isParenthesesStart() && self.formulaFields()[self.formulaFields().length - 1].setupFormula.isParenthesesEnd()) return;
+
+		var field = self.getEmptyFormulaField();
+
+		var startparan = self.setupField(Object.assign({}, field));
+		var endparan = self.setupField(Object.assign({}, field));
+
+		startparan.setupFormula.isParenthesesStart(true);
+		endparan.setupFormula.isParenthesesEnd(true);
+
+		self.formulaFields.splice(0, 0, startparan);
+		self.formulaFields.push(endparan);
+	}
+
+	self.addFormulaConstantValue = function () {		
+		var field = self.getEmptyFormulaField();
+				
+		var constval = self.setupField(Object.assign({}, field));		
+		constval.setupFormula.isConstantValue(true);		
+		self.formulaFields.push(constval);
+	}
+
 	self.isFieldValidForYAxis = function (i, fieldType) {
 		if (i > 0) {
 			if (self.ReportType() == "Bar" && ["Int", "Double", "Money"].indexOf(fieldType) < 0) {
@@ -530,7 +620,7 @@ var reportViewModel = function (options) {
 					FieldId: e.Field().fieldId,
 					AndOr: e.AndOr(),
 					Operator: e.Operator(),
-					Value1: Array.isArray(e.Value()) && e.Operator() == "in" ? e.Value().join(",") : e.Value(),
+					Value1: Array.isArray(e.Value()) && e.Operator() == "in" ? e.Value().join(",") : (e.Operator()=="is blank" ? "blank" : e.Value()),
 					Value2: e.Value2()
 				} : null;
 
@@ -562,6 +652,18 @@ var reportViewModel = function (options) {
 					Disabled: x.disabled(),
 					GroupInGraph: x.groupInGraph(),
 					HideInDetail: x.hideInDetail(),
+
+					IsCustom: x.isFormulaField(),
+					CustomLabel: x.fieldName,
+					CustomFieldDetails: $.map(x.formulaItems(), function (f) {
+						return {
+							FieldId: f.fieldId(),
+							IsParenthesesStart: f.isParenthesesStart() || false,
+							IsParenthesesEnd: f.isParenthesesEnd() || false,
+							Operation: f.formulaOperation(),
+							ConstantValue: f.constantValue()
+						}
+					})
 				};
 			}),
 			DrillDownRow: drilldown
@@ -867,6 +969,22 @@ var reportViewModel = function (options) {
 		e.groupInGraph = ko.observable(e.groupInGraph);
 		e.hideInDetail = ko.observable(e.hideInDetail);
 		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail');
+
+		e.isFormulaField = ko.observable(e.isFormulaField);
+
+		var formulaItems = [];
+		$.each(e.formulaItems || [], function (i, e) {
+			formulaItems.push(new formulaFieldViewModel({
+				fieldId: e.fieldId || 0,
+				isParenthesesStart: e.setupFormula ? e.setupFormula.isParenthesesStart() : e.isParenthesesStart,
+				isParenthesesEnd: e.setupFormula ? e.setupFormula.isParenthesesEnd() : e.isParenthesesEnd,
+				formulaOperation: e.setupFormula ? e.setupFormula.formulaOperation() : e.formulaOperation,
+				constantValue: e.setupFormula ? e.setupFormula.constantValue() : e.constantValue
+			}));
+		});
+
+		e.formulaItems = ko.observableArray(formulaItems);
+		e.setupFormula = new formulaFieldViewModel();
 		return e;
 	}
 
@@ -897,9 +1015,14 @@ var reportViewModel = function (options) {
 			self.ShowDataWithGraph(report.ShowDataWithGraph);
 			self.ShowOnDashboard(report.ShowOnDashboard);
 			self.SortByField(report.SortBy);
-
+			self.CanEdit((!options.clientId || report.ClientId == options.clientId)
+				&& (!options.userId || report.UserId == options.userId));
 			self.Filters([]);
 			self.AdditionalSeries([]);
+
+			self.selectedFieldsCanFilter = ko.computed(function () {
+				return $.grep(self.SelectedFields(), function (x) { return !x.isFormulaField() });
+			});
 
 			var filterFieldsOnFly = [];
 			function addSavedFilters() {
@@ -943,7 +1066,7 @@ var reportViewModel = function (options) {
 				self.AddSeries(e);
 			});
 
-			self.SaveReport(!filterOnFly);
+			self.SaveReport(!filterOnFly && self.CanEdit());
 
 			if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard") {
 				self.ExecuteReportQuery(options.reportSql, options.reportConnect);				
