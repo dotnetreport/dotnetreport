@@ -1,4 +1,4 @@
-﻿/// .Net Report Builder view model v2.0.3
+﻿/// .Net Report Builder view model v2.0.4
 /// License has to be purchased for use
 /// 2015-2018 (c) www.dotnetreport.com
 
@@ -359,10 +359,18 @@ var reportViewModel = function (options) {
 		}
 	}
 
+	self.selectedFieldsCanFilter = ko.computed(function () {
+		return $.grep(self.SelectedFields(), function (x) { return !x.isFormulaField() });
+	});
+	
 	self.clearFormulaField = function () {
 		self.formulaFields([]);
 		self.formulaFieldLabel('');		
 	}
+
+	e.isFormulaField.subscribe(function () {
+		self.clearFormulaField();
+	});
 
 	self.saveFormulaField = function () {
 
@@ -972,7 +980,7 @@ var reportViewModel = function (options) {
 		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail');
 
 		e.isFormulaField = ko.observable(e.isFormulaField);
-
+		
 		var formulaItems = [];
 		$.each(e.formulaItems || [], function (i, e) {
 			formulaItems.push(new formulaFieldViewModel({
@@ -1020,11 +1028,7 @@ var reportViewModel = function (options) {
 				&& (!options.userId || report.UserId == options.userId));
 			self.Filters([]);
 			self.AdditionalSeries([]);
-
-			self.selectedFieldsCanFilter = ko.computed(function () {
-				return $.grep(self.SelectedFields(), function (x) { return !x.isFormulaField() });
-			});
-
+			
 			var filterFieldsOnFly = [];
 			function addSavedFilters() {
 				$.each(report.Filters, function (i, e) {
