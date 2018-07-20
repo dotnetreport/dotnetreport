@@ -1,4 +1,4 @@
-﻿/// .Net Report Builder view model v2.0.4
+﻿/// .Net Report Builder view model v2.0.5
 /// License has to be purchased for use
 /// 2015-2018 (c) www.dotnetreport.com
 
@@ -629,7 +629,7 @@ var reportViewModel = function (options) {
 					FieldId: e.Field().fieldId,
 					AndOr: e.AndOr(),
 					Operator: e.Operator(),
-					Value1: Array.isArray(e.Value()) && e.Operator() == "in" ? e.Value().join(",") : (e.Operator() == "is blank" ? "blank" : e.Value()),
+					Value1: Array.isArray(e.Value()) && e.Operator() == "in" ? e.Value().join(",") : (e.Operator().indexOf("blank")>=0 ? "blank" : e.Value()),
 					Value2: e.Value2()
 				} : null;
 

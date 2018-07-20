@@ -35,7 +35,7 @@
     </select>
     <!-- /ko -->
     <!-- ko if: ['Int','Money','Float','Date','DateTime','Boolean'].indexOf(fieldType) == -1 -->
-    <!-- ko if: ['is blank'].indexOf($parent.Operator()) < 0 -->
+    <!-- ko if: ['is blank', 'is not blank'].indexOf($parent.Operator()) < 0 -->
     <input class="form-control" type="text" data-bind="value: $parent.Value" required />
     <!-- /ko -->
     <!-- /ko -->
