@@ -933,6 +933,11 @@ var reportViewModel = function (options) {
 		// Set chart options
 		var options = {
 			'title': self.ReportName(),
+			animation: {
+				startup: true,
+				duration: 1000,
+				easing: 'out',
+			},
 		};
 
 		var chartDiv = document.getElementById('chart_div_' + self.ReportID());
@@ -948,6 +953,10 @@ var reportViewModel = function (options) {
 
 		if (self.ReportType() == "Line") {
 			chart = new google.visualization.LineChart(chartDiv);
+		}
+
+		if (self.ReportType() == "Map") {
+			chart = new google.visualization.GeoChart(chartDiv);
 		}
 
 		chart.draw(data, options);

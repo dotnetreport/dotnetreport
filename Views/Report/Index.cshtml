@@ -121,7 +121,7 @@
                     <!-- ko foreach: reportsInFolder -->
                     <div class="list-group-item row">
                         <div class="col-sm-8">
-                            <div class="fa pull-left" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line'}" style="font-size: 14pt; color: #808080"></div>
+                            <div class="fa pull-left" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map'}" style="font-size: 14pt; color: #808080"></div>
                             <div class="pull-left">
                                 <h4 class="list-group-item-heading"><a data-bind="text: reportName, click: runReport" style="cursor: pointer"></a></h4>
                             </div>
@@ -203,6 +203,12 @@
                         <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Line'); }, css: {active: ReportType()=='Line'}">
                             <span class="glyphicon fa fa-line-chart"></span>
                             <p>Line</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-3 col-xs-6">
+                        <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Map'); }, css: {active: ReportType()=='Map'}">
+                            <span class="glyphicon fa fa-globe"></span>
+                            <p>Map</p>
                         </div>
                     </div>
                     <div class="col-md-3 col-sm-3 col-xs-6" data-bind="visible: SaveReport">
@@ -311,6 +317,9 @@
                     </div>
                     <div class="alert alert-info" data-bind="visible: ReportType()=='Line'">
                         <span class="fa fa-lightbulb-o fa-2x"></span> &nbsp;For Line Graph, the first field below will show on the x-axis and it needs to be numeric.
+                    </div>
+                    <div class="alert alert-info" data-bind="visible: ReportType()=='Map'">
+                        <span class="fa fa-lightbulb-o fa-2x"></span> &nbsp;For Map Graph, the first field below has to be a Region, like a Country.
                     </div>
                     <ul class="list-group " data-bind="sortable: { data: SelectedFields, options: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight' } }">
                         <li class="list-group-item">
