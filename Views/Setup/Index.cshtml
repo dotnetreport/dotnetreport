@@ -188,17 +188,50 @@
                 </p>
 
                 <table class="table">
-                    <thead>
+                    <thead data-bind="with: JoinFilters">
                         <tr>
-                            <th>Primary Table</th>
-                            <th>Field</th>
-                            <th>Join Type</th>
-                            <th>Join Table</th>
-                            <th>Field</th>
+                            <th>
+                                Primary Table
+                                <div class="input-group input-group-sm">
+                                    <input type="text" class="form-control input-sm" data-bind="value: primaryTable, valueUpdate: 'afterkeydown'" placeholder="Search...">
+                                    <span class="input-group-addon"><i class="glyphicon glyphicon-filter"></i></span>
+                                </div>
+                            </th>
+                            <th>
+                                Field
+                                <div class="input-group input-group-sm">
+
+                                    <input type="text" class="form-control input-sm" data-bind="value: primaryField, valueUpdate: 'afterkeydown'" placeholder="Search...">
+                                    <span class="input-group-addon"><i class="glyphicon glyphicon-filter"></i></span>
+                                </div>
+                            </th>
+                            <th>
+                                Join Type
+                                <div class="input-group input-group-sm">
+
+                                    <input type="text" class="form-control input-sm" data-bind="value: joinType, valueUpdate: 'afterkeydown'" placeholder="Search...">
+                                    <span class="input-group-addon"><i class="glyphicon glyphicon-filter"></i></span>
+                                </div>
+                            </th>
+                            <th>
+                                Join Table
+                                <div class="input-group input-group-sm">
+
+                                    <input type="text" class="form-control input-sm" data-bind="value: joinTable, valueUpdate: 'afterkeydown'" placeholder="Search...">
+                                    <span class="input-group-addon"><i class="glyphicon glyphicon-filter"></i></span>
+                                </div>
+                            </th>
+                            <th>
+                                Field<div class="input-group input-group-sm">
+
+                                    <input type="text" class="form-control input-sm" data-bind="value: joinField, valueUpdate: 'afterkeydown'" placeholder="Search...">
+                                    <span class="input-group-addon"><i class="glyphicon glyphicon-filter"></i></span>
+                                </div>
+                            </th>
                             <th></th>
                         </tr>
                     </thead>
-                    <tbody data-bind="foreach: Joins">
+                    <tbody data-bind="foreach: filteredJoins">
                         <tr>
                             <td>
                                 <select class="form-control input-medium" data-bind="options: $root.Tables.availableTables, optionsText: 'DisplayName', value: JoinTable"></select>
@@ -212,10 +245,13 @@
                             <td>
                                 <select class="form-control input-medium" data-bind="options: OtherTables, optionsText: 'DisplayName', value: OtherTable"></select>
                             </td>
-                            @*<td>
-                                    <input class="form-control" type="text" data-bind="value: FieldName" placeholder="Enter Field Name"/></td>
-                                <td>
-                                    <input class="form-control" type="text" data-bind="value: JoinFieldName" placeholder="Enter Field Name"/></td>*@
+                            @*
+                            <td>
+                                <input class="form-control" type="text" data-bind="value: FieldName" placeholder="Enter Field Name" />
+                            </td>
+                            <td>
+                                <input class="form-control" type="text" data-bind="value: JoinFieldName" placeholder="Enter Field Name" />
+                            </td>*@
 
                             <td data-bind="with: OtherTable">
                                 <select class="form-control" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsValue: 'ColumnName', value: $parent.JoinFieldName"></select>

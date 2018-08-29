@@ -8,6 +8,33 @@
 
 	self.Tables = new tablesViewModel(options)
 	self.Joins = ko.observableArray([]);
+
+	self.JoinFilters = {
+		primaryTable: ko.observable(),
+		primaryField: ko.observable(),
+		joinType: ko.observable(),
+		joinTable: ko.observable(),
+		joinField: ko.observable()
+	}
+
+	self.filteredJoins = ko.computed(function () {
+		var primaryTableFilter = self.JoinFilters.primaryTable();
+		var primaryFieldFilter = self.JoinFilters.primaryField();
+		var joinTypeFilter = self.JoinFilters.joinType();
+		var joinTableFilter = self.JoinFilters.joinTable();
+		var joinFieldFilter = self.JoinFilters.joinField();
+
+		var joins = self.Joins();
+
+		return $.grep(joins, function (x) {
+			return (!primaryTableFilter || !x.JoinTable() || x.JoinTable().DisplayName().toLowerCase().indexOf(primaryTableFilter.toLowerCase()) >= 0)
+				&& (!primaryFieldFilter || !x.FieldName() || x.FieldName().toLowerCase().indexOf(primaryFieldFilter.toLowerCase()) >= 0)
+				&& (!joinTypeFilter || !x.JoinType() || x.JoinType().toLowerCase().indexOf(joinTypeFilter.toLowerCase()) >= 0)
+				&& (!joinTableFilter || !x.OtherTable() || x.OtherTable().DisplayName().toLowerCase().indexOf(joinTableFilter.toLowerCase()) >= 0)
+				&& (!joinFieldFilter || !x.JoinFieldName() || x.JoinFieldName().toLowerCase().indexOf(joinFieldFilter.toLowerCase()) >= 0);
+		});
+	});
+
 	self.JoinTypes = ["INNER", "LEFT", "LEFT OUTER", "RIGHT", "RIGHT OUTER"];
 
 	self.editColumn = ko.observable();
