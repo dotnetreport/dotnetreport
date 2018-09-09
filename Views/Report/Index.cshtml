@@ -132,10 +132,13 @@
                             <div class="pull-right hidden-sm hidden-xs">
                                 <br />
                                 <button class="btn btn-sm btn-default" data-bind="click: openReport, visible: canEdit" data-toggle="modal" data-target="#modal-reportbuilder">
-                                    <span class="fa fa-edit" aria-hidden="true"></span> Edit Report
+                                    <span class="fa fa-edit" aria-hidden="true"></span> Edit
+                                </button>
+                                <button class="btn btn-sm btn-default" data-bind="click: copyReport" data-toggle="modal" data-target="#modal-reportbuilder">
+                                    <span class="fa fa-copy" aria-hidden="true"></span> Copy
                                 </button>
                                 <button class="btn btn-sm btn-primary" data-bind="click: runReport">
-                                    <span class="fa fa-gears" aria-hidden="true"></span> Run Report
+                                    <span class="fa fa-gears" aria-hidden="true"></span> Run
                                 </button>
                                 <button class="btn btn-sm btn-danger" data-bind="click: deleteReport, visible: canEdit">
                                     <span class="fa fa-trash" aria-hidden="true"></span> Delete
@@ -146,6 +149,9 @@
                             <div class="pull-right visible-sm visible-xs">
                                 <button class="btn btn-sm btn-default" title="Edit Report" data-bind="click: openReport, visible: canEdit" data-toggle="modal" data-target="#modal-reportbuilder">
                                     <span class="fa fa-edit" aria-hidden="true"></span>
+                                </button>
+                                <button class="btn btn-sm btn-default" data-bind="click: copyReport" title="Copy Report" data-toggle="modal" data-target="#modal-reportbuilder">
+                                    <span class="fa fa-copy" aria-hidden="true"></span>
                                 </button>
                                 <button class="btn btn-sm btn-primary" data-bind="click: runReport" title="Run Report">
                                     <span class="fa fa-gears" aria-hidden="true"></span>

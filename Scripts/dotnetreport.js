@@ -1098,7 +1098,7 @@ var reportViewModel = function (options) {
 				e.runMode = false;
 				e.openReport = function () {
 					// Load report
-					self.LoadReport(e.reportId).done(function () {
+					return self.LoadReport(e.reportId).done(function () {
 						if (!e.runMode) {
 							self.ReportMode("generate");
 						}
@@ -1109,6 +1109,13 @@ var reportViewModel = function (options) {
 						}
 					});
 				};
+
+				e.copyReport = function () {
+					e.openReport().done(function () {
+						self.ReportID(0);
+						self.ReportName('Copy of ' + self.ReportName())
+					});
+				}
 
 				e.runReport = function () {
 					e.runMode = true;
