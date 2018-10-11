@@ -71,6 +71,79 @@ function formulaFieldViewModel(args) {
 	self.constantValue = ko.observable(args.constantValue);
 }
 
+function filterGroupViewModel(args) {
+	args = args || {};
+	var self = this;
+
+	self.isRoot = args.isRoot === true ? true : false;
+	self.AndOr = ko.observable(' AND ');
+	self.Filters = ko.observableArray([]);
+	self.FilterGroups = ko.observableArray([]);
+
+	self.AddFilterGroup = function (e) {
+		self.FilterGroups.push(new filterGroupViewModel());
+	};
+
+	self.RemoveFilterGroup = function (group) {
+		self.FilterGroups.remove(group);
+	};
+
+	self.AddFilter = function (e, isFilterOnFly) {
+		e = e || {};
+		var lookupList = ko.observableArray([]);
+
+		if (e.Value1) {
+			lookupList.push({ id: e.Value1, text: e.Value1 });
+		}
+
+		if (e.Value2) {
+			lookupList.push({ id: e.Value2, text: e.Value2 });
+		}
+
+		var field = ko.observable();
+
+		field.subscribe(function (newField) {
+			if (newField && newField.hasForeignKey) {
+				ajaxcall({
+					url: options.apiUrl + "/ReportApi/GetLookupList",
+					data: { account: options.accountApiToken, dataConnect: options.dataconnectApiToken, clientId: options.clientId, fieldId: newField.fieldId }
+
+				}).done(function (result) {
+					ajaxcall({
+						type: 'POST',
+						url: options.lookupListUrl,
+						data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey })
+					})
+						.done(function (list) {
+							if (list.d) { list = list.d; }
+							lookupList(list);
+						});
+				});
+			}
+		});
+
+		if (e.FieldId) {
+			field(self.FindField(e.FieldId));
+		}
+
+		self.Filters.push({
+			AndOr: ko.observable(isFilterOnFly ? ' AND ' : e.AndOr),
+			Field: field,
+			Operator: ko.observable(e.Operator),
+			Value: ko.observable(e.Value1),
+			Value2: ko.observable(e.Value2),
+			LookupList: lookupList,
+			Apply: ko.observable(e.Apply != null ? e.Apply : true),
+			IsFilterOnFly: isFilterOnFly === true ? true : false
+		});
+
+	};
+	
+	self.RemoveFilter = function (filter) {
+		self.Filters.remove(filter);
+	};
+}
+
 var reportViewModel = function (options) {
 	var self = this;
 
@@ -101,6 +174,9 @@ var reportViewModel = function (options) {
 	self.SortByField = ko.observable();
 
 	self.Filters = ko.observableArray([]);
+	self.FilterGroups = ko.observableArray([]);
+	self.FilterGroups.push(new filterGroupViewModel({ isRoot: true }));
+
 	self.SaveReport = ko.observable(true);
 	self.ShowDataWithGraph = ko.observable(true);
 	self.ShowOnDashboard = ko.observable(false);
@@ -543,6 +619,10 @@ var reportViewModel = function (options) {
 			self.SelectedFields.splice(i, 2, array[i + 1], array[i]);
 		}
 	};
+
+	self.AddFilterGroup = function (e, isFilterOnFly) {
+
+	}
 
 	self.AddFilter = function (e, isFilterOnFly) {
 		e = e || {};
