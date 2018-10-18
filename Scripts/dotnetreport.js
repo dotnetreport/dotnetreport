@@ -644,17 +644,15 @@ var reportViewModel = function (options) {
 		self.RunReport(true);
 	};
 
-	self.BuildReportData = function (drilldown) {
-		drilldown = drilldown || [];
-		var filters = [];
-		$.each(self.FilterGroups(), function (i, g) {
-			var group = 0;
+	self.BuildFilterData = function (filtergroup) {	
+		var groups = [];
+		$.each(filtergroup, function (i, g) {
+			var filters = [];
 			$.each(g.Filters(), function (i, e) {
 				var f = (e.Apply() && e.IsFilterOnFly) || !e.IsFilterOnFly ? {
-					FilterGroup: group,
 					SavedReportId: self.ReportID(),
 					FieldId: e.Field().fieldId,
-					AndOr: i==0? g.AndOr() : e.AndOr(),
+					AndOr: i == 0 ? g.AndOr() : e.AndOr(),
 					Operator: e.Operator(),
 					Value1: Array.isArray(e.Value()) && e.Operator() == "in" ? e.Value().join(",") : (e.Operator().indexOf("blank") >= 0 ? "blank" : e.Value()),
 					Value2: e.Value2()
@@ -665,8 +663,22 @@ var reportViewModel = function (options) {
 				}
 				if (f) filters.push(f);
 			});
-			group++;
+
+			groups.push({
+				isRoot: g.isRoot,
+				AndOr: g.AndOr(),
+				Filters: filters,
+				FilterGroups: self.BuildFilterData(g.FilterGroups())
+			});
 		});
+		
+		return groups;
+	}
+
+	self.BuildReportData = function (drilldown) {
+		drilldown = drilldown || [];
+		
+		var filters = self.BuildFilterData(self.FilterGroups());
 
 		return {
 			ReportID: self.ReportID(),
