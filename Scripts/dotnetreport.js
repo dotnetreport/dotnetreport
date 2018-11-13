@@ -107,13 +107,13 @@ function filterGroupViewModel(args) {
 		field.subscribe(function (newField) {
 			if (newField && newField.hasForeignKey) {
 				ajaxcall({
-					url: options.apiUrl + "/ReportApi/GetLookupList",
-					data: { account: options.accountApiToken, dataConnect: options.dataconnectApiToken, clientId: options.clientId, fieldId: newField.fieldId }
+					url: args.options.apiUrl + "/ReportApi/GetLookupList",
+					data: { account: args.options.accountApiToken, dataConnect: args.options.dataconnectApiToken, clientId: args.options.clientId, fieldId: newField.fieldId }
 
 				}).done(function (result) {
 					ajaxcall({
 						type: 'POST',
-						url: options.lookupListUrl,
+						url: args.options.lookupListUrl,
 						data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey })
 					})
 						.done(function (list) {
@@ -175,8 +175,14 @@ var reportViewModel = function (options) {
 	self.AggregateReport = ko.observable(false);
 	self.SortByField = ko.observable();
 	
-	self.FilterGroups = ko.observableArray([]);
-	self.FilterGroups.push(new filterGroupViewModel({ isRoot: true, parent: self }));
+	self.FilterGroups = ko.observableArray();
+	self.FilterGroups.subscribe(function (newArray) {
+		if (newArray && newArray.length == 0) {
+			self.FilterGroups.push(new filterGroupViewModel({ isRoot: true, parent: self, options: options }));
+		}
+	});
+
+	self.FilterGroups([]);
 
 	self.SaveReport = ko.observable(true);
 	self.ShowDataWithGraph = ko.observable(true);
@@ -361,8 +367,6 @@ var reportViewModel = function (options) {
 		self.SortByField(null);
 		
 		self.FilterGroups([]);
-		self.FilterGroups.push(new filterGroupViewModel({ isRoot: true, parent: self }));
-
 		self.ReportID(0);
 		self.SaveReport(self.CanSaveReports());
 	};
@@ -1088,7 +1092,7 @@ var reportViewModel = function (options) {
 			self.ShowOnDashboard(report.ShowOnDashboard);
 			self.SortByField(report.SortBy);
 			self.CanEdit((!options.clientId || report.ClientId == options.clientId) && (!options.userId || report.UserId == options.userId));
-			self.FilterGroups([]);			
+			self.FilterGroups([]);		
 			self.AdditionalSeries([]);
 
 			var filterFieldsOnFly = [];
@@ -1098,16 +1102,12 @@ var reportViewModel = function (options) {
 
 				$.each(filters, function (i, e) {
 					if (!e.FieldId) {
-						if (self.FilterGroups().length == 0) {
-							self.FilterGroups.push(new filterGroupViewModel({ isRoot: true, parent: self }));
-							group = self.FilterGroups()[0];
-						} else {
-							group = group.AddFilterGroup({ AndOr: e.AndOr });
-						}
+						group = (group == null) ? self.FilterGroups()[0] : group.AddFilterGroup({ AndOr: e.AndOr });						
 					} else if (filterFieldsOnFly.indexOf(e.FieldId) < 0) {						
 						var onFly = $.grep(self.SelectedFields(), function (x) { return x.filterOnFly() == true && x.fieldId == e.FieldId; }).length > 0;
 						if (onFly) filterFieldsOnFly.push({ fieldId: e.FieldId });
 
+						if (group == null) group = self.FilterGroups()[0];
 						group.AddFilter(e);						
 					}
 
@@ -1140,7 +1140,7 @@ var reportViewModel = function (options) {
 
 			}
 			else {
-				addSavedFilters(report.Filters, self.FilterGroups()[0]);
+				addSavedFilters(report.Filters, self.FilterGroups()[0]);				
 			}
 
 			$.each(report.Series, function (i, e) {
