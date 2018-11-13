@@ -77,7 +77,8 @@
 
         var options = {
             model: @(Html.Raw(JsonConvert.SerializeObject(Model))),
-            saveTableUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/SaveTable',           
+            saveTableUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/SaveTable',
+            deleteTableUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/DeleteTable',
             getRelationsUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/GetRelations',
             saveRelationsUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/SaveRelations',
         };
