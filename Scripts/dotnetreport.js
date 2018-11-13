@@ -655,7 +655,8 @@ var reportViewModel = function (options) {
 					AndOr: i == 0 ? g.AndOr() : e.AndOr(),
 					Operator: e.Operator(),
 					Value1: Array.isArray(e.Value()) && e.Operator() == "in" ? e.Value().join(",") : (e.Operator().indexOf("blank") >= 0 ? "blank" : e.Value()),
-					Value2: e.Value2()
+					Value2: e.Value2(),
+					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
 				} : null;
 
 				if (f != null && !f.Value1 && !f.Value2) {
@@ -663,13 +664,14 @@ var reportViewModel = function (options) {
 				}
 				if (f) filters.push(f);
 			});
-
+			
 			groups.push({
+				SavedReportId: self.ReportID(),
 				isRoot: g.isRoot,
 				AndOr: g.AndOr(),
-				Filters: filters,
-				FilterGroups: self.BuildFilterData(g.FilterGroups())
+				Filters: filters,				
 			});
+
 		});
 		
 		return groups;
