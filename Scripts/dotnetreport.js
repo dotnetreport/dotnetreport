@@ -81,7 +81,7 @@ function filterGroupViewModel(args) {
 	self.FilterGroups = ko.observableArray([]);
 
 	self.AddFilterGroup = function (e) {
-		var newGroup = new filterGroupViewModel({ parent: args.parent, AndOr: e.AndOr });
+		var newGroup = new filterGroupViewModel({ parent: args.parent, AndOr: e.AndOr, options: args.options });
 		self.FilterGroups.push(newGroup);
 		return newGroup;
 	};
@@ -1140,7 +1140,7 @@ var reportViewModel = function (options) {
 
 			}
 			else {
-				addSavedFilters(report.Filters, self.FilterGroups()[0]);				
+				addSavedFilters(report.Filters);				
 			}
 
 			$.each(report.Series, function (i, e) {
