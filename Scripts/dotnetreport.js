@@ -76,12 +76,14 @@ function filterGroupViewModel(args) {
 	var self = this;
 
 	self.isRoot = args.isRoot === true ? true : false;
-	self.AndOr = ko.observable(' AND ');
+	self.AndOr = ko.observable(args.AndOr || ' AND ');
 	self.Filters = ko.observableArray([]);
 	self.FilterGroups = ko.observableArray([]);
 
 	self.AddFilterGroup = function (e) {
-		self.FilterGroups.push(new filterGroupViewModel({ parent: args.parent }));
+		var newGroup = new filterGroupViewModel({ parent: args.parent, AndOr: e.AndOr });
+		self.FilterGroups.push(newGroup);
+		return newGroup;
 	};
 
 	self.RemoveFilterGroup = function (group) {
@@ -1086,24 +1088,30 @@ var reportViewModel = function (options) {
 			self.ShowOnDashboard(report.ShowOnDashboard);
 			self.SortByField(report.SortBy);
 			self.CanEdit((!options.clientId || report.ClientId == options.clientId) && (!options.userId || report.UserId == options.userId));
-			self.FilterGroups([]);
-			self.FilterGroups.push(new filterGroupViewModel({ isRoot: true, parent: self }));
+			self.FilterGroups([]);			
 			self.AdditionalSeries([]);
 
 			var filterFieldsOnFly = [];
-			function addSavedFilters() {
-				$.each(report.Filters, function (i, e) {
-					if (filterFieldsOnFly.indexOf(e.FieldId) < 0) {
-						var group = e.FilterGroup || 0;
-						var onFly = $.grep(self.SelectedFields(), function (x) { return x.filterOnFly() == true && x.fieldId == e.FieldId; }).length > 0;
-						if (onFly) filterFieldsOnFly.push({ fieldId: e.FieldId, group: group });
 
-						while (group > self.FilterGroups().length - 1) {
-							self.FilterGroups.push(new filterGroupViewModel({ parent: self }));
+			function addSavedFilters(filters, group) {
+				if (!filters || filters.length == 0) return;				
+
+				$.each(filters, function (i, e) {
+					if (!e.FieldId) {
+						if (self.FilterGroups().length == 0) {
+							self.FilterGroups.push(new filterGroupViewModel({ isRoot: true, parent: self }));
+							group = self.FilterGroups()[0];
+						} else {
+							group = group.AddFilterGroup({ AndOr: e.AndOr });
 						}
+					} else if (filterFieldsOnFly.indexOf(e.FieldId) < 0) {						
+						var onFly = $.grep(self.SelectedFields(), function (x) { return x.filterOnFly() == true && x.fieldId == e.FieldId; }).length > 0;
+						if (onFly) filterFieldsOnFly.push({ fieldId: e.FieldId });
 
-						self.FilterGroups()[group].AddFilter(e, onFly);
+						group.AddFilter(e);						
 					}
+
+					addSavedFilters(e.Filters, group);
 				});
 			}
 
@@ -1117,12 +1125,12 @@ var reportViewModel = function (options) {
 							e.FieldId = e.Field.fieldId;
 							e.Value1 = e.Value;
 							filterFieldsOnFly.push(match[0]);
-							self.FilterGroups()[match[0].group].AddFilter(e, true);
+							self.FilterGroups()[0].AddFilter(e, true);
 						}
 					});
 				}
 
-				addSavedFilters();
+				addSavedFilters(report.Filters);
 
 				// get fields with filter on fly applied and set it up as filters
 				//$.each($.grep(self.SelectedFields(), function (x) { return x.filterOnFly() == true && $.grep(filterFieldsOnFly, function (y) { return y.fieldId == x.fieldId }).length > 0; }), function (i, e) {
@@ -1132,7 +1140,7 @@ var reportViewModel = function (options) {
 
 			}
 			else {
-				addSavedFilters();
+				addSavedFilters(report.Filters, self.FilterGroups()[0]);
 			}
 
 			$.each(report.Series, function (i, e) {
