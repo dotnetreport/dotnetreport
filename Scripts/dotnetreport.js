@@ -208,6 +208,7 @@ var reportViewModel = function (options) {
 	self.pager = new pagerViewModel();
 	self.currentSql = ko.observable();
 	self.currentConnectKey = ko.observable();
+	self.adminMode = ko.observable(false);
 
 	self.pager.currentPage.subscribe(function () {
 		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey());
@@ -1159,7 +1160,7 @@ var reportViewModel = function (options) {
 	self.LoadAllSavedReports = function () {
 		ajaxcall({
 			url: options.apiUrl + "/ReportApi/GetSavedReports",
-			data: { account: options.accountApiToken, dataConnect: options.dataconnectApiToken, clientId: options.clientId, userId: options.userId },
+			data: { account: options.accountApiToken, dataConnect: options.dataconnectApiToken, clientId: options.clientId, userId: options.userId, adminMode: self.adminMode() },
 		}).done(function (reports) {
 			$.each(reports, function (i, e) {
 				e.runMode = false;

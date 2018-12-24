@@ -17,22 +17,31 @@
 
     var toastr = toastr || { error: function (msg) { window.alert(msg); }, success: function (msg) { window.alert(msg); } };
 
-    $(document).ready(function () {
-        var vm = new reportViewModel({
-            runReportUrl: "@Url.Action("Report")",
-            reportWizard: $("#modal-reportbuilder"),
-            lookupListUrl: "@Url.Action("GetLookupList")",
-            apiUrl: "@ConfigurationManager.AppSettings["dotNetReport.apiUrl"]",
-            reportId: @(Request.QueryString["reportId"] != null ? Request.QueryString["reportId"] : "0"),
-            accountApiToken: "@ConfigurationManager.AppSettings["dotNetReport.accountApiToken"]", // Your Account Api Token from your http://dotnetreport.com Account
-            dataconnectApiToken: "@ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"]", // Your Data Connect Api Token from your http://dotnetreport.com Account
-            userId: "",  // You can pass your authenticated user id here to track their reports and folders
-            clientId: "" // You can pass your multi-tenant client id here to track their reports and folders
-        });
+        $(document).ready(function () {
+            var vm = new reportViewModel({
+                runReportUrl: '@Url.Action("Report")',
+                reportWizard: $("#modal-reportbuilder"),
+                lookupListUrl: '@Url.Action("GetLookupList")',
+                apiUrl: '@ConfigurationManager.AppSettings["dotNetReport.apiUrl"]',
+                reportId: @(Request.QueryString["reportId"] != null ? Request.QueryString["reportId"] : "0"),
+                accountApiToken: '@ConfigurationManager.AppSettings["dotNetReport.accountApiToken"]', // Your Account Api Token from your http://dotnetreport.com Account
+                dataconnectApiToken: '@ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"]', // Your Data Connect Api Token from your http://dotnetreport.com Account
+                clientId: '', // You can pass your multi-tenant client id here to track their reports and folders
+            @if (Roles.Enabled && User.Identity.IsAuthenticated) { // try to populate roles using MVC web security if available
+                @Html.Raw("userId: '" + User.Identity.Name + "',\n")  
+                @Html.Raw("userRoles: [" + string.Join(",", Roles.GetAllRoles().Select(x => string.Format("'{0}'", x))) + "],\n")
+                @Html.Raw("currentUserRole: [" + string.Join(", ", Roles.GetRolesForUser(User.Identity.Name).Select(x => string.Format("'{0}'", x))) + "]\n")
+            } else
+            {
+                @Html.Raw("userId: '',\n") // You can pass your current authenticated user id here to track their reports and folders
+                @Html.Raw("userRoles: ['Admin', 'Normal'],\n") // Populate all your application's user roles
+                @Html.Raw("currentUserRole: ['Admin', 'Normal']\n") // Populate your current authenticated user's roles
+            }
+            });
 
-        vm.init(@(Request.QueryString["folderId"]!=null? Request.QueryString["folderId"]: "0"));
-        ko.applyBindings(vm);
-    });
+            vm.init(@(Request.QueryString["folderId"]!=null? Request.QueryString["folderId"]: "0"));
+            ko.applyBindings(vm);
+        });
 
     </script>
 }
@@ -47,7 +56,21 @@
     Please note that in the online demo, you can edit, save and run reports, but you cannot create or manage Folders. Also, your reports can be reset at any times, and they are not permenant.
 </div>
 
+@if(User.IsInRole("Admin") || User.IsInRole("Administrator") || !User.Identity.IsAuthenticated)
+{
+<div class="row" style="padding: 10px 10px">    
+    <div class="material-switch pull-right">
+        <input id="admin-mode" type="checkbox" data-bind="checked: adminMode" />
+        <label for="admin-mode" class="label-primary"></label>
+    </div>
+    <div class="pull-right">Admin Mode</div>
+</div>
 
+<div class="alert alert-info" data-bind="visible: adminMode">
+    Admin Mode is turned on now, it allows you to setup and view reports for all roles and users. You should hide the Admin mode toggle for non-admin users. 
+</div>
+
+}
 @*<div class="alert alert-info">
         To view Dashboard, please <a href="/demo/report/Dashboard">click here</a>.
     </div>*@
@@ -245,7 +268,7 @@
                     </div>
                     <div class="col-md-12 padded-div" data-bind="visible: ChooseFields().length>0 && isFormulaField()">
                         <div class="alert alert-info">
-                            You are now creating a Customized Field. Check Fields you want to use in the calculation below, then choose the operations you want to perform, and click "Save" on the right above to add your Custom field. 
+                            You are now creating a Customized Field. Check Fields you want to use in the calculation below, then choose the operations you want to perform, and click "Save" on the right above to add your Custom field.
                             Please note that Custom Field must be chosen in within the same Section and their data types must match.
                         </div>
                     </div>
@@ -458,7 +481,7 @@
 
 <script type="text/html" id="filter-group">
     <div data-bind="foreach: FilterGroups">
-        <div class="panel panel-default panel-body" style="margin-left: 20px;">            
+        <div class="panel panel-default panel-body" style="margin-left: 20px;">
             <div data-bind="visible: !isRoot">
                 <select data-bind="value: AndOr" class="form-control pull-left" style="width: 150px;">
                     <option>And</option>
@@ -469,11 +492,11 @@
             </div>
             <div data-bind="template: {name: 'filter-inner'}"></div>
         </div>
-    </div>    
+    </div>
 </script>
 
 <script type="text/html" id="filter-inner">
-   
+
     <table class="table table-responsive table-noborder" data-bind="visible: Filters().length>0">
         <thead>
             <tr>
@@ -512,7 +535,7 @@
         </tbody>
     </table>
     <div data-bind="template: {name: 'filter-group'}"></div>
-    <div>               
+    <div>
         <button class="btn btn-sm" data-bind="click: AddFilterGroup">Add Group</button>&nbsp;
         <button class="btn btn-sm" data-bind="click: AddFilter">Add Filter</button>
     </div>

@@ -15,6 +15,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using OfficeOpenXml;
 using System.Text.RegularExpressions;
+using System.Web.Security;
 
 namespace ReportBuilder.Web.Controllers
 {
@@ -73,9 +74,7 @@ namespace ReportBuilder.Web.Controllers
 
             return Json((new JavaScriptSerializer()).DeserializeObject("[" + json.ToString() + "]"), JsonRequestBehavior.AllowGet);
         }
-
-
-
+        
         public JsonResult RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, bool desc = false)
         {
             var sql = Decrypt(reportSql);
@@ -147,7 +146,6 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-
         public async Task<ActionResult> Dashboard()
         {
             var model = new List<DotNetReportModel>();
@@ -171,7 +169,7 @@ namespace ReportBuilder.Web.Controllers
 
             return View(model);
         }
-
+       
         [HttpPost]
         public ActionResult DownloadExcel(string reportSql, string connectKey, string reportName)
         {
@@ -271,8 +269,7 @@ namespace ReportBuilder.Web.Controllers
                 }
             }
         }
-
-
+        
         private string GetWarnings(string sql)
         {
             var warning = "";
@@ -282,7 +279,7 @@ namespace ReportBuilder.Web.Controllers
             }
 
             return warning;
-        }
+        }        
 
         public static bool IsNumericType(Type type)
         {
@@ -394,7 +391,7 @@ namespace ReportBuilder.Web.Controllers
                 }
             }
             return "";
-        }
+        }        
 
         private DotNetReportDataModel DataTableToDotNetReportDataModel(DataTable dt, string sql)
         {
