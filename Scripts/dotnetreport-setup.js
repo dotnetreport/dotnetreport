@@ -204,7 +204,24 @@ var tablesViewModel = function (options) {
 				'ignore': ["saveTable", "JoinTable"]
 			});
 
-			if (!t.Selected) {
+			if (!t.Selected()) {
+				bootbox.confirm("Are you sure you would like to delete Table '" + e.DisplayName + "'?", function (r) {
+					if (r) {
+						ajaxcall({
+							url: options.deleteTableUrl,
+							type: 'POST',
+							data: JSON.stringify({
+								account: apiKey,
+								dataConnect: dbKey,
+								tableId: e.Id
+							})
+						}).done(function () {
+							toastr.success("Deleted table " + e.DisplayName);
+						});
+					}
+				});
+
+				
 				return;
 			}
 

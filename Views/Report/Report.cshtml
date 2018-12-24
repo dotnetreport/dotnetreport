@@ -22,6 +22,7 @@
         printWindow.document.open();
         printWindow.document.write('<html><head>'+
                                 '<link href="/Content/bootstrap.css" rel="stylesheet" />'+
+                                '<style type="text/css">a[href]:after {content: none !important;}</style>'+
                                 '</head><body>' + $('.report-inner').html() +
                                 '</body></html>');
 
