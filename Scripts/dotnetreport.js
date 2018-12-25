@@ -210,6 +210,19 @@ var reportViewModel = function (options) {
 	self.currentConnectKey = ko.observable();
 	self.adminMode = ko.observable(false);
 
+	self.manageAccess = {		
+		clientId: ko.observable(),
+		users: $.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; }),
+		userRoles: $.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; }),
+		viewOnlyUsers: $.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; }),
+		viewOnlyUserRoles: $.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; }),
+		getAsList: function (x) {
+			var list = '';
+			$.each(x, function (i, e) { if (e.selected()) list = (list ? ',' : '') + e.value(); });
+			return list;
+		}
+	}
+
 	self.pager.currentPage.subscribe(function () {
 		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey());
 	});
@@ -733,7 +746,11 @@ var reportViewModel = function (options) {
 					})
 				};
 			}),
-			DrillDownRow: drilldown
+			DrillDownRow: drilldown,
+			UserId: self.manageAccess.getAsList(self.manageAccess.users),
+			ViewOnlyUserId: self.manageAccess.getAsList(self.manageAccess.viewOnlyUsers),
+			UserRoles: self.manageAccess.getAsList(self.manageAccess.userRoles),
+			ViewOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.viewOnlyUserRoles)
 		};
 	};
 
@@ -1181,7 +1198,8 @@ var reportViewModel = function (options) {
 				e.copyReport = function () {
 					e.openReport().done(function () {
 						self.ReportID(0);
-						self.ReportName('Copy of ' + self.ReportName())
+						self.ReportName('Copy of ' + self.ReportName());
+						self.CanEdit(true);
 					});
 				}
 
