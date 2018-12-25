@@ -34,10 +34,11 @@
                 @Html.Raw("currentUserRole: [" + string.Join(", ", Roles.GetRolesForUser(User.Identity.Name).Select(x => string.Format("'{0}'", x))) + "]\n")
             } else
             {
-                @Html.Raw("userId: '',\n") // You can pass your current authenticated user id here to track their reports and folders
+                @Html.Raw("userId: 'John',\n") // You can pass your current authenticated user id here to track their reports and folders,
+                                               // Blank userId implies all reports can be viewed/managed
                 @Html.Raw("users: ['John', 'Jane'],\n") // Populate all your application's user
                 @Html.Raw("userRoles: ['Admin', 'Normal'],\n") // Populate all your application's user roles
-                @Html.Raw("currentUserRole: ['Admin', 'Normal']\n") // Populate your current authenticated user's roles
+                @Html.Raw("currentUserRole: ['Normal']\n") // Populate your current authenticated user's roles
             }
             });
 
@@ -132,8 +133,6 @@
                             <a href="#" data-bind="click: function(){ SelectedFolder(null); }">
                                 ..back to Folders List
                             </a>
-
-
                         </div>
                     </div>
                     <div class="list-group list-overflow">
@@ -155,11 +154,11 @@
                                 <!-- ko if: $parent.adminMode -->
                                 <div class="small">
                                     <b>Report Access</b><br />
-                                    Manage by User <span class="label label-info" data-bind="text: userId ? userId : 'Any'"></span><br />
-                                    <!-- ko if: viewOnlyUserId -->
-                                    View only by User <span class="label label-info" data-bind="text: viewOnlyUserId ? viewOnlyUserId : 'Any'"></span><br />
+                                    Manage by User <span class="label label-info" data-bind="text: userId ? userId : 'Admin Only'"></span><br />                                    
+                                    View only by User <span class="label label-info" data-bind="text: (viewOnlyUserId ? viewOnlyUserId : (userId ? userId : 'Any'))"></span><br />
+                                    <!-- ko if: userRole -->
+                                    Manage by Role <span class="label label-info" data-bind="text: userRole ? userRole : 'Admin Only'"></span><br />
                                     <!-- /ko -->
-                                    Manage by Role <span class="label label-info" data-bind="text: userRole ? userRole : 'Any'"></span><br />
                                     <!-- ko if: viewOnlyUserRole -->
                                     View only by Role <span class="label label-info" data-bind="text: viewOnlyUserRole ? viewOnlyUserRole : 'Any'"></span><br />
                                     <!-- /ko -->
@@ -467,7 +466,7 @@
                         <h5><span class="fa fa-key"></span> Manage Report Access</h5>                      
                         <div class="panel panel-default panel-body" style="margin-left: 20px;">
                             <div class="alert alert-info">
-                                <span class="fa fa-lightbulb-o fa-2x"></span> &nbsp;No selection for an access right means there are no access restrictions
+                                <span class="fa fa-lightbulb-o fa-2x"></span> &nbsp;User level rights over rule Role level rights. No selection for a rule implies report is available to all. 
                             </div>
                             <b>Manage by User</b> (allow edit/delete)
                             <div class="row container-fluid">

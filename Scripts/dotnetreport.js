@@ -210,6 +210,10 @@ var reportViewModel = function (options) {
 	self.currentConnectKey = ko.observable();
 	self.adminMode = ko.observable(false);
 
+	self.adminMode.subscribe(function () {
+		self.LoadAllSavedReports();
+	});
+
 	self.manageAccess = {		
 		clientId: ko.observable(),		
 		users: $.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; }),
@@ -218,7 +222,7 @@ var reportViewModel = function (options) {
 		viewOnlyUserRoles: $.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; }),
 		getAsList: function (x) {
 			var list = '';
-			$.each(x, function (i, e) { if (e.selected()) list = (list ? ',' : '') + e.value(); });
+			$.each(x, function (i, e) { if (e.selected()) list += (list ? ',' : '') + e.value(); });
 			return list;
 		},
 		setupList: function (x, value) {
