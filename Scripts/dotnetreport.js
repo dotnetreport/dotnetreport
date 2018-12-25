@@ -211,7 +211,7 @@ var reportViewModel = function (options) {
 	self.adminMode = ko.observable(false);
 
 	self.manageAccess = {		
-		clientId: ko.observable(),
+		clientId: ko.observable(),		
 		users: $.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; }),
 		userRoles: $.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; }),
 		viewOnlyUsers: $.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; }),
@@ -220,6 +220,9 @@ var reportViewModel = function (options) {
 			var list = '';
 			$.each(x, function (i, e) { if (e.selected()) list = (list ? ',' : '') + e.value(); });
 			return list;
+		},
+		setupList: function (x, value) {
+			$.each(x, function (i, e) { if (value.indexOf(e.value()) >= 0) e.selected(true); else e.selected(false); });
 		}
 	}
 
@@ -1102,6 +1105,14 @@ var reportViewModel = function (options) {
 			self.ChosenFields([]);
 			self.SelectFields([]);
 			self.SelectedField(null);
+			
+			self.manageAccess.setupList(self.manageAccess.users, report.UserId || '');
+			self.manageAccess.setupList(self.manageAccess.userRoles, report.UserRoles || '');
+			self.manageAccess.setupList(self.manageAccess.viewOnlyUserRoles, report.ViewOnlyUserRoles || '');
+			self.manageAccess.setupList(self.manageAccess.viewOnlyUsers, report.ViewOnlyUserId || '');
+
+			var canEdit = false;
+			
 
 			self.IncludeSubTotal(report.IncludeSubTotals);
 			self.ShowUniqueRecords(report.ShowUniqueRecords);

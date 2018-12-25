@@ -464,9 +464,11 @@
 
                         <!-- ko if: adminMode -->
                         <hr />
-                        <h5><span class="fa fa-key"></span> Manage Report Access</h5>
+                        <h5><span class="fa fa-key"></span> Manage Report Access</h5>                      
                         <div class="panel panel-default panel-body" style="margin-left: 20px;">
-
+                            <div class="alert alert-info">
+                                <span class="fa fa-lightbulb-o fa-2x"></span> &nbsp;No selection for an access right means there are no access restrictions
+                            </div>
                             <b>Manage by User</b> (allow edit/delete)
                             <div class="row container-fluid">
                                 <!-- ko foreach: manageAccess.users -->
