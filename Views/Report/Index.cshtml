@@ -154,13 +154,13 @@
                                 <!-- ko if: $parent.adminMode -->
                                 <div class="small">
                                     <b>Report Access</b><br />
-                                    Manage by User <span class="label label-info" data-bind="text: userId ? userId : 'Admin Only'"></span><br />                                    
-                                    View only by User <span class="label label-info" data-bind="text: (viewOnlyUserId ? viewOnlyUserId : (userId ? userId : 'Any'))"></span><br />
+                                    Manage by User <span class="label label-info" data-bind="text: userId ? userId : 'No User'"></span><br />                                    
+                                    View only by User <span class="label label-info" data-bind="text: (viewOnlyUserId ? viewOnlyUserId : (userId ? userId : 'Any User'))"></span><br />
                                     <!-- ko if: userRole -->
-                                    Manage by Role <span class="label label-info" data-bind="text: userRole ? userRole : 'Admin Only'"></span><br />
+                                    Manage by Role <span class="label label-info" data-bind="text: userRole ? userRole : 'No Role'"></span><br />
                                     <!-- /ko -->
                                     <!-- ko if: viewOnlyUserRole -->
-                                    View only by Role <span class="label label-info" data-bind="text: viewOnlyUserRole ? viewOnlyUserRole : 'Any'"></span><br />
+                                    View only by Role <span class="label label-info" data-bind="text: viewOnlyUserRole ? viewOnlyUserRole : 'Any Role'"></span><br />
                                     <!-- /ko -->
                                     <!-- ko if: clientId -->
                                     For Client <span class="label label-info" data-bind="text: clientId ? clientId : 'Any'"></span><br />

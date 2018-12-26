@@ -776,7 +776,9 @@ var reportViewModel = function (options) {
 				Account: options.accountApiToken, dataConnect: options.dataconnectApiToken, clientId: options.clientId,
 				SaveReport: self.CanSaveReports() ? self.SaveReport() : false,
 				ReportJson: JSON.stringify(self.BuildReportData()),
-				userId: options.userId
+				userId: options.userId,
+				userRole: (options.currentUserRole || []).join(),
+				adminMode: self.adminMode()
 			}),
 
 		}).done(function (result) {
@@ -1115,16 +1117,13 @@ var reportViewModel = function (options) {
 			self.manageAccess.setupList(self.manageAccess.viewOnlyUserRoles, report.ViewOnlyUserRoles || '');
 			self.manageAccess.setupList(self.manageAccess.viewOnlyUsers, report.ViewOnlyUserId || '');
 
-			var canEdit = false;
-			
-
 			self.IncludeSubTotal(report.IncludeSubTotals);
 			self.ShowUniqueRecords(report.ShowUniqueRecords);
 			self.AggregateReport(report.IsAggregateReport);
 			self.ShowDataWithGraph(report.ShowDataWithGraph);
 			self.ShowOnDashboard(report.ShowOnDashboard);
 			self.SortByField(report.SortBy);
-			self.CanEdit((!options.clientId || report.ClientId == options.clientId) && (!options.userId || report.UserId == options.userId));
+			self.CanEdit(((!options.clientId || report.ClientId == options.clientId) && (!options.userId || report.UserId == options.userId)) || self.adminMode());
 			self.FilterGroups([]);		
 			self.AdditionalSeries([]);
 
@@ -1192,7 +1191,7 @@ var reportViewModel = function (options) {
 	self.LoadAllSavedReports = function () {
 		ajaxcall({
 			url: options.apiUrl + "/ReportApi/GetSavedReports",
-			data: { account: options.accountApiToken, dataConnect: options.dataconnectApiToken, clientId: options.clientId, userId: options.userId, adminMode: self.adminMode() },
+			data: { account: options.accountApiToken, dataConnect: options.dataconnectApiToken, clientId: options.clientId, userId: options.userId, userRole: (options.currentUserRole || []).join(), adminMode: self.adminMode() },
 		}).done(function (reports) {
 			$.each(reports, function (i, e) {
 				e.runMode = false;
@@ -1215,6 +1214,7 @@ var reportViewModel = function (options) {
 						self.ReportID(0);
 						self.ReportName('Copy of ' + self.ReportName());
 						self.CanEdit(true);
+						self.SaveReport(true);
 					});
 				}
 
@@ -1228,7 +1228,7 @@ var reportViewModel = function (options) {
 						if (r) {
 							ajaxcall({
 								url: options.apiUrl + "/ReportApi/DeleteReport",
-								data: { account: options.accountApiToken, dataConnect: options.dataconnectApiToken, clientId: options.clientId, reportId: e.reportId, userId: options.userId },
+								data: { account: options.accountApiToken, dataConnect: options.dataconnectApiToken, clientId: options.clientId, reportId: e.reportId, userId: options.userId, userRole: (options.currentUserRole || []).join() },
 							}).done(function () {
 								self.SavedReports.remove(e);
 							});
