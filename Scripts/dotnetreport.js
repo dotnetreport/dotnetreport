@@ -71,6 +71,60 @@ function formulaFieldViewModel(args) {
 	self.constantValue = ko.observable(args.constantValue);
 }
 
+function scheduleBuilder() {
+	var self = this;
+
+	self.options = ['day', 'week', 'month', 'year'];
+	self.showAtTime = ko.observable(true);
+	self.showDays = ko.observable(false);
+	self.showMonths = ko.observable(false);
+	self.showDates = ko.observable(false);
+
+	self.selectedOption = ko.observable('day');
+	self.selectedDays = ko.observableArray([]);
+	self.selectedMonths = ko.observableArray([]);
+	self.selectedDates = ko.observableArray([]);
+	self.selectedHour = ko.observable('0');
+	self.selectedMinute = ko.observable('00');
+
+	self.days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+	self.months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+	self.dates = [];
+	self.hours = [];
+	self.minutes = ['00','15','30','45'];
+	for (var i = 1; i <= 31; i++) { self.dates.push(i); }
+	for (var i = 0; i <= 23; i++) { self.hours.push(i); }
+
+	self.selectedOption.subscribe(function (newValue) {
+		self.selectedDays([]);
+		self.selectedMonths([]);
+		self.selectedDates([]);
+		switch (newValue) {
+			case 'day':
+				self.showDays(false);
+				self.showMonths(false);
+				break;
+			case 'week':
+				self.showDays(true);
+				self.showMonths(false);
+				break;
+			case 'week':
+				self.showDays(true);
+				self.showMonths(false);
+				break;
+			case 'month':
+				self.showDays(true);
+				self.showMonths(false);
+				break;
+			case 'year':
+				self.showDays(true);
+				self.showMonths(true);
+				break;
+		}
+	});
+
+}
+
 function filterGroupViewModel(args) {
 	args = args || {};
 	var self = this;
@@ -273,6 +327,8 @@ var reportViewModel = function (options) {
 	self.enabledFields = ko.computed(function () {
 		return $.grep(self.SelectedFields(), function (x) { return !x.disabled(); });
 	});
+
+	self.scheduleBuilder = new scheduleBuilder();
 
 	self.ManageFolder = {
 		FolderName: ko.observable(),

@@ -154,7 +154,7 @@
                                 <!-- ko if: $parent.adminMode -->
                                 <div class="small">
                                     <b>Report Access</b><br />
-                                    Manage by User <span class="label label-info" data-bind="text: userId ? userId : 'No User'"></span><br />                                    
+                                    Manage by User <span class="label label-info" data-bind="text: userId ? userId : 'No User'"></span><br />
                                     View only by User <span class="label label-info" data-bind="text: (viewOnlyUserId ? viewOnlyUserId : (userId ? userId : 'Any User'))"></span><br />
                                     <!-- ko if: userRole -->
                                     Manage by Role <span class="label label-info" data-bind="text: userRole ? userRole : 'No Role'"></span><br />
@@ -411,6 +411,14 @@
                     </div>
                     <!-- /ko -->
                     <hr />
+                    <h5><span class="fa fa-hourglass"></span> Choose Schedule</h5>
+
+                    <div class="row" style="padding: 10px 10px ">
+                        <div data-bind="template: {name: 'report-schedule'}"></div>
+                        <br />
+                    </div>
+                    <!-- /ko -->
+                    <hr />
 
                     <form class="form-horizontal">
                         <div class="form-group">
@@ -463,10 +471,10 @@
 
                         <!-- ko if: adminMode -->
                         <hr />
-                        <h5><span class="fa fa-key"></span> Manage Report Access</h5>                      
+                        <h5><span class="fa fa-key"></span> Manage Report Access</h5>
                         <div class="panel panel-default panel-body" style="margin-left: 20px;">
                             <div class="alert alert-info">
-                                <span class="fa fa-lightbulb-o fa-2x"></span> &nbsp;User level rights over rule Role level rights. No selection for a rule implies report is available to all. 
+                                <span class="fa fa-lightbulb-o fa-2x"></span> &nbsp;User level rights over rule Role level rights. No selection for a rule implies report is available to all.
                             </div>
                             <b>Manage by User</b> (allow edit/delete)
                             <div class="row container-fluid">
@@ -617,5 +625,11 @@
         <div>
             <button class="btn btn-sm" data-bind="click: AddFilterGroup">Add Group</button>&nbsp;
             <button class="btn btn-sm" data-bind="click: AddFilter">Add Filter</button>
+        </div>
+    </script>
+
+    <script type="text/html" id="report-schedule">
+        <div data-bind="with: scheduleBuilder">
+            Every <select class="form-control" data-bind="options: options, value: selectedOption"></select>
         </div>
     </script>
