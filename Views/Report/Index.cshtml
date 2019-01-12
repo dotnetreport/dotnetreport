@@ -631,7 +631,7 @@
             <div class="checkbox">
                 <label>
                     <input type="checkbox" data-bind="checked: hasSchedule" />
-                    Has Schedule
+                    Schedule Report
                 </label>
             </div>
             <div data-bind="if: hasSchedule">
@@ -662,7 +662,8 @@
                     on <span class="error" data-bind="visible: selectedDays().length == 0">Please pick Day(s)</span> <span data-bind="text: selectedDays"></span>
                     <!-- /ko -->
                     <!-- ko if: showDates -->
-                    on <span class="error" data-bind="visible: selectedDates().length == 0">Please pick Date(s)</span> <span data-bind="text: selectedDates"></span>
+                    on <span class="error" data-bind="visible: selectedDates().length == 0">Please pick Date(s)</span>
+                    <span data-bind="foreach: selectedDates"><span data-bind="visible: $index()>0">, </span><span data-bind="text: $data == 1 ? '1st': ($data == 2 ? '2nd' : ($data == 3 ? '3rd' : $data+'th'))"></span></span>
                     <!-- /ko -->
                     <!-- ko if: showMonths -->
                     of <span class="error" data-bind="visible: selectedMonths().length == 0">Please pick Month(s)</span> <span data-bind="text: selectedMonths"></span>

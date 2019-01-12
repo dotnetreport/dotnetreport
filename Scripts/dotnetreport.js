@@ -73,7 +73,7 @@ function formulaFieldViewModel(args) {
 
 function scheduleBuilder() {
 	var self = this;
-
+	
 	self.options = ['day', 'week', 'month', 'year'];
 	self.showAtTime = ko.observable(true);
 	self.showDays = ko.observable(false);
@@ -126,7 +126,35 @@ function scheduleBuilder() {
 				break;
 		}
 	});
+	
+	self.toJs = function () {
+		return self.hasSchedule() ? {
+			SelectedOption: self.selectedOption(),
+			SelectedDays: self.selectedDays().join(","),
+			SelectedMonths: self.selectedMonths().join(","),
+			SelectedDates: self.selectedDates().join(","),
+			SelectedHour: self.selectedHour(),
+			SelectedMinute: self.selectedMinute(),
+			SelectedAmPm: self.selectedAmPm(),
+			EmailTo: self.emailTo()
+		} : null;
+	}
 
+	self.fromJs = function (data) {
+		self.hasSchedule(data ? true : false);
+		data = data || {
+			SelectedDays: '',
+			SelectedMonths: '',
+			SelectedDates: ''
+		};		
+		self.selectedDays(data.SelectedDays.split(','));
+		self.selectedMonths(data.SelectedMonths.split(','));
+		self.selectedDates(data.SelectedDates.split(','));
+		self.selectedHour(data.SelectedHour || '12');
+		self.selectedMinute(data.SelectedMinute || '00');
+		self.selectedAmPm(data.SelectedAmPm || 'PM');
+		self.emailTo(data.EmailTo || '');
+	}
 }
 
 function filterGroupViewModel(args) {
@@ -813,6 +841,7 @@ var reportViewModel = function (options) {
 					})
 				};
 			}),
+			Schedule: self.scheduleBuilder.toJs(),
 			DrillDownRow: drilldown,
 			UserId: self.manageAccess.getAsList(self.manageAccess.users),
 			ViewOnlyUserId: self.manageAccess.getAsList(self.manageAccess.viewOnlyUsers),
@@ -1186,6 +1215,7 @@ var reportViewModel = function (options) {
 			self.CanEdit(((!options.clientId || report.ClientId == options.clientId) && (!options.userId || report.UserId == options.userId)) || self.adminMode());
 			self.FilterGroups([]);		
 			self.AdditionalSeries([]);
+			self.scheduleBuilder.fromJs(report.Schedule)
 
 			var filterFieldsOnFly = [];
 
