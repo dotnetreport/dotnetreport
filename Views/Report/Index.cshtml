@@ -415,9 +415,7 @@
 
                     <div class="row" style="padding: 10px 10px ">
                         <div data-bind="template: {name: 'report-schedule'}"></div>
-                        <br />
                     </div>
-                    <!-- /ko -->
                     <hr />
 
                     <form class="form-horizontal">
@@ -630,6 +628,57 @@
 
     <script type="text/html" id="report-schedule">
         <div data-bind="with: scheduleBuilder">
-            Every <select class="form-control" data-bind="options: options, value: selectedOption"></select>
+            <div class="checkbox">
+                <label>
+                    <input type="checkbox" data-bind="checked: hasSchedule" />
+                    Has Schedule
+                </label>
+            </div>
+            <div data-bind="if: hasSchedule">
+                <div class="form-inline form-group">
+
+                    Every <select class="form-control" required data-bind="options: options, value: selectedOption"></select>
+                    <!-- ko if: showDays -->
+                    on <select multiple class="form-control" required style="width: 30%;" data-bind=" select2: { placeholder: 'Choose Days', allowClear: true }, options: days, selectedOptions: selectedDays"></select>
+                    <!-- /ko -->
+                    <!-- ko if: showDates -->
+                    on <select multiple class="form-control" required style="width: 30%;" data-bind=" select2: { placeholder: 'Choose Dates', allowClear: true }, options: dates, selectedOptions: selectedDates"></select>
+                    <!-- /ko -->
+                    <!-- ko if: showMonths -->
+                    of <select multiple class="form-control" required style="width: 30%;" data-bind=" select2: { placeholder: 'Choose Months', allowClear: true }, options: months, selectedOptions: selectedMonths"></select>
+                    <!-- /ko -->
+                    <!-- ko if: showAtTime -->
+                    at <select class="form-control" data-bind="options: hours, value: selectedHour"></select>
+                    <select class="form-control" data-bind="options: minutes, value: selectedMinute"></select>
+                    <select class="form-control" data-bind="value: selectedAmPm">
+                        <option>AM</option>
+                        <option>PM</option>
+                    </select>
+                    <!-- /ko-->                    
+                </div>         
+                <div class="alert alert-info">
+                    Report will be run and emailed every <span data-bind="text: selectedOption"></span>
+                    <!-- ko if: showDays -->
+                    on <span class="error" data-bind="visible: selectedDays().length == 0">Please pick Day(s)</span> <span data-bind="text: selectedDays"></span>
+                    <!-- /ko -->
+                    <!-- ko if: showDates -->
+                    on <span class="error" data-bind="visible: selectedDates().length == 0">Please pick Date(s)</span> <span data-bind="text: selectedDates"></span>
+                    <!-- /ko -->
+                    <!-- ko if: showMonths -->
+                    of <span class="error" data-bind="visible: selectedMonths().length == 0">Please pick Month(s)</span> <span data-bind="text: selectedMonths"></span>
+                    <!-- /ko -->
+                    <!-- ko if: showAtTime -->
+                    at <span data-bind="text: selectedHour"></span>:<span data-bind="text: selectedMinute"></span> <span data-bind="text: selectedAmPm"></span>
+                    <!-- /ko-->
+                </div>
+                <div class="form-horizontal form-group">
+                    <div class="form-group">
+                        <label class="col-sm-2 control-label">Email to</label>
+                        <div class="col-sm-10">                            
+                            <input type="text" class="form-control" data-bind="value: emailTo" placeholder="Enter Email Addresses separated by comma to send the Report to" required />
+                        </div>
+                    </div>                    
+                </div>               
+            </div>
         </div>
     </script>
