@@ -1140,7 +1140,7 @@ var reportViewModel = function (options) {
 						if (onFly) filterFieldsOnFly.push({ fieldId: e.FieldId });
 
 						if (group == null) group = self.FilterGroups()[0];
-						group.AddFilter(e);						
+						group.AddFilter(e, onFly);						
 					}
 
 					addSavedFilters(e.Filters, group);
@@ -1165,11 +1165,13 @@ var reportViewModel = function (options) {
 				addSavedFilters(report.Filters);
 
 				// get fields with filter on fly applied and set it up as filters
-				//$.each($.grep(self.SelectedFields(), function (x) { return x.filterOnFly() == true && $.grep(filterFieldsOnFly, function (y) { return y.fieldId == x.fieldId }).length > 0; }), function (i, e) {
-				//	self.AddFilter(null, true);
-				//	self.Filters()[self.Filters().length - 1].Field(e);
-				//});
-
+				//var flyFilters = $.grep(self.SelectedFields(), function (x) { return x.filterOnFly() == true && $.grep(filterFieldsOnFly, function (y) { return y.fieldId == x.fieldId }).length > 0; });
+				//if (flyFilters.length > 0) {
+				//	var flyGroup = self.FilterGroups()[0].AddFilterGroup({ AndOr: 'Or' });
+				//	$.each(flyFilters, function (i, e) {
+				//		flyGroup.AddFilter(e, true);									
+				//	});
+				//}				
 			}
 			else {
 				addSavedFilters(report.Filters);				
