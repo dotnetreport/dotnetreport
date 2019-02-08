@@ -118,13 +118,19 @@ ko.bindingHandlers.select2 = {
     },
     update: function (el, valueAccessor, allBindingsAccessor, viewModel) {
         var allBindings = allBindingsAccessor();
-        var select2 = $(el).data("select2");
-        if ("value" in allBindings) {
-            var newValue = "" + ko.unwrap(allBindings.value);
-            if ((allBindings.select2.multiple || el.multiple) && newValue.constructor !== Array) {
-                select2.val([newValue.split(",")]);
-            }
-            else {
+		var select2 = $(el).data("select2");
+		if ("value" in allBindings) {
+			var newValue = "" + ko.unwrap(allBindings.value);
+			if ((allBindings.select2.multiple || el.multiple) && newValue.constructor !== Array) {
+				select2.val([newValue.split(",")]);
+			}
+			else {
+				select2.val([newValue]);
+			}
+		}
+		if ("selectedOptions" in allBindings && select2.val().length == 0) {
+			var newValue = ko.unwrap(allBindings.selectedOptions);
+            if ((allBindings.select2.multiple || el.multiple) && newValue.constructor == Array) {
                 select2.val([newValue]);
             }
         }

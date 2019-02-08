@@ -639,13 +639,13 @@
 
                     Every <select class="form-control" required data-bind="options: options, value: selectedOption"></select>
                     <!-- ko if: showDays -->
-                    on <select multiple class="form-control" required style="width: 30%;" data-bind=" select2: { placeholder: 'Choose Days', allowClear: true }, options: days, selectedOptions: selectedDays"></select>
+                    on <select multiple class="form-control" required style="width: 30%;" data-bind="select2: { placeholder: 'Choose Days', allowClear: true }, options: days, selectedOptions: selectedDays"></select>
                     <!-- /ko -->
                     <!-- ko if: showDates -->
-                    on <select multiple class="form-control" required style="width: 30%;" data-bind=" select2: { placeholder: 'Choose Dates', allowClear: true }, options: dates, selectedOptions: selectedDates"></select>
+                    on <select multiple class="form-control" required style="width: 30%;" data-bind="select2: { placeholder: 'Choose Dates', allowClear: true }, options: dates, selectedOptions: selectedDates"></select>
                     <!-- /ko -->
                     <!-- ko if: showMonths -->
-                    of <select multiple class="form-control" required style="width: 30%;" data-bind=" select2: { placeholder: 'Choose Months', allowClear: true }, options: months, selectedOptions: selectedMonths"></select>
+                    of <select multiple class="form-control" required style="width: 30%;" data-bind="select2: { placeholder: 'Choose Months', allowClear: true }, options: months, selectedOptions: selectedMonths"></select>
                     <!-- /ko -->
                     <!-- ko if: showAtTime -->
                     at <select class="form-control" data-bind="options: hours, value: selectedHour"></select>

@@ -1,4 +1,4 @@
-﻿/// .Net Report Builder view model v2.1.0
+﻿/// .Net Report Builder view model v2.1.3
 /// License has to be purchased for use
 /// 2015-2018 (c) www.dotnetreport.com
 
@@ -143,17 +143,24 @@ function scheduleBuilder() {
 	self.fromJs = function (data) {
 		self.hasSchedule(data ? true : false);
 		data = data || {
+			SelectedOption: 'day',
 			SelectedDays: '',
 			SelectedMonths: '',
 			SelectedDates: ''
 		};		
-		self.selectedDays(data.SelectedDays.split(','));
-		self.selectedMonths(data.SelectedMonths.split(','));
-		self.selectedDates(data.SelectedDates.split(','));
+
+		self.selectedOption(data.SelectedOption);
+		self.selectedDays($.map(data.SelectedDays.split(','), function (x) { return parseInt(x); }));
+		self.selectedMonths($.map(data.SelectedMonths.split(','), function (x) { return parseInt(x); }));
+		self.selectedDates($.map(data.SelectedDates.split(','), function (x) { return parseInt(x); }));
 		self.selectedHour(data.SelectedHour || '12');
 		self.selectedMinute(data.SelectedMinute || '00');
 		self.selectedAmPm(data.SelectedAmPm || 'PM');
 		self.emailTo(data.EmailTo || '');
+	}
+
+	self.clear = function () {
+		self.fromJs(null);
 	}
 }
 
@@ -478,6 +485,7 @@ var reportViewModel = function (options) {
 		self.FilterGroups([]);
 		self.ReportID(0);
 		self.SaveReport(self.CanSaveReports());
+		self.scheduleBuilder.clear();
 	};
 
 	self.SelectedTable.subscribe(function (table) {
