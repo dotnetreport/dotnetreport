@@ -270,7 +270,7 @@ namespace ReportBuilder.Web.Controllers
 
                         table.Columns.Add(column);
                     }
-
+                    table.Columns = table.Columns.OrderBy(x => x.DisplayOrder).ToList();
                     tables.Add(table);
                 }
 
