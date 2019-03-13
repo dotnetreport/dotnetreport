@@ -137,6 +137,7 @@ namespace ReportBuilder.Web.Models
         public string ForeignKeyField { get; set; }
 
         public string ForeignValueField { get; set; }
+        public bool DoNotDisplay { get; set; }
     }
 
     public class ConnectViewModel
