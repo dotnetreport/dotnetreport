@@ -160,7 +160,7 @@ namespace ReportBuilder.Web.Controllers
         {
             using (var client = new HttpClient())
             {
-                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetFields?account={1}&dataConnect={2}&clientId={3}&tableId={4}", ConfigurationManager.AppSettings["dotNetReport.apiUrl"], accountKey, dataConnectKey, "", tableId));
+                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetFields?account={1}&dataConnect={2}&clientId={3}&tableId={4}&includeDoNotDisplay=true", ConfigurationManager.AppSettings["dotNetReport.apiUrl"], accountKey, dataConnectKey, "", tableId));
 
                 response.EnsureSuccessStatusCode();
 
@@ -182,7 +182,8 @@ namespace ReportBuilder.Web.Controllers
                         DisplayOrder = item.fieldOrder,
                         ForeignKeyField = item.foreignKey,
                         ForeignValueField = item.foreignValue,
-                        ForeignTable = item.foreignTable
+                        ForeignTable = item.foreignTable,
+                        DoNotDisplay = item.doNotDisplay
                     };
 
                     JoinTypes join;
@@ -261,12 +262,15 @@ namespace ReportBuilder.Web.Controllers
                             column.ForeignKeyField = matchColumn.ForeignKeyField;
                             column.ForeignValueField = matchColumn.ForeignValueField;
                             column.Id = matchColumn.Id;
+                            column.DoNotDisplay = matchColumn.DoNotDisplay;
+                            column.DisplayOrder = matchColumn.DisplayOrder;
+
                             column.Selected = true;
                         }
 
                         table.Columns.Add(column);
                     }
-
+                    table.Columns = table.Columns.OrderBy(x => x.DisplayOrder).ToList();
                     tables.Add(table);
                 }
 

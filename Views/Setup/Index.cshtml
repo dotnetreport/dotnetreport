@@ -335,7 +335,23 @@
                                 <span class="field-validation-valid help-inline indent" data-valmsg-for="PrimaryKey" data-valmsg-replace="true"></span>
                             </div>
                         </div>
-                    </div><div class="control-group">
+                    </div>
+                    <div class="control-group">
+                        <div class="form-group">
+                            <label class="col-md-3 col-sm-3 control-label" data-bind="">Do Not Display</label>
+                            <div class="col-md-6 col-sm-6">
+                                <div class="checkbox">
+                                    <label>
+                                        <input class="check-box" data-val="true" type="checkbox" value="true" data-bind="checked:DoNotDisplay">
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-sm-3">
+                                <span data-toggle="tooltip" data-placement="right" class="glyphicon glyphicon-question-sign helptip" title="If this is checked, the column will not be displayed on Report Designer, but can still be used on Global Data Filters"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="control-group">
                         <div class="form-group">
                             <label class="col-md-3 col-sm-3 control-label" for="Foreign_Key" data-bind="">Foreign Key</label>
                             <div class="col-md-6 col-sm-6">
@@ -349,7 +365,8 @@
                                 <span data-toggle="tooltip" data-placement="right" class="glyphicon glyphicon-question-sign helptip" title="Foreign keys allows friendly selection in Filters using a Dropdown List"></span>
                             </div>
                         </div>
-                    </div><div class="control-group">
+                    </div>
+                    <div class="control-group">
                         <div class="form-group">
                             <label class="col-md-3 col-sm-3 control-label" for="Foreign_Table" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null, placeholder: 'Ex tblEmployees'}" placeholder="Ex tblEmployees" style="display: none;">Foreign Table</label>
                             <div class="col-md-6 col-sm-6">
@@ -360,7 +377,8 @@
                                 <span class="field-validation-valid help-inline indent" data-valmsg-for="ForeignTable" data-valmsg-replace="true"></span>
                             </div>
                         </div>
-                    </div><div class="control-group">
+                    </div>
+                    <div class="control-group">
                         <div class="form-group">
                             <label class="col-md-3 col-sm-3 control-label" for="Foreign_Join" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" style="display: none;">Foreign Join</label>
                             <div class="col-md-6 col-sm-6">
@@ -374,7 +392,8 @@
                                 <span class="field-validation-valid help-inline indent" data-valmsg-for="ForeignJoin" data-valmsg-replace="true"></span>
                             </div>
                         </div>
-                    </div><div class="control-group">
+                    </div>
+                    <div class="control-group">
                         <div class="form-group">
                             <label class="col-md-3 col-sm-3 control-label" for="Foreign_Key_Field" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null, placeholder: 'Ex EmployeeId'}" placeholder="Ex EmployeeId" style="display: none;">Foreign Key Field</label>
                             <div class="col-md-6 col-sm-6">
@@ -384,7 +403,8 @@
                                 <span data-bind="visible:ForeignKey()" data-toggle="tooltip" data-placement="right" class="glyphicon glyphicon-question-sign helptip" style="display: none;" title="Foreign Key field is a Column from the Foreign table which is used as the Key field"></span>
                             </div>
                         </div>
-                    </div><div class="control-group">
+                    </div>
+                    <div class="control-group">
                         <div class="form-group">
                             <label class="col-md-3 col-sm-3 control-label" for="Foreign_Value_Field" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null, placeholder: 'Ex EmployeeName'}" placeholder="Ex EmployeeName" style="display: none;">Foreign Value Field</label>
                             <div class="col-md-6 col-sm-6">

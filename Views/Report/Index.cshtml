@@ -27,6 +27,7 @@
                 accountApiToken: '@ConfigurationManager.AppSettings["dotNetReport.accountApiToken"]', // Your Account Api Token from your http://dotnetreport.com Account
                 dataconnectApiToken: '@ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"]', // Your Data Connect Api Token from your http://dotnetreport.com Account
                 clientId: '', // You can pass your multi-tenant client id here to track their reports and folders
+                //dataFilters: { EmployeeId: '1,2' }, // You can also pass a list of Global Data filters using format { Column1: 'val1, val2, ...', Column2: '1,2,3,...', ...}
             @if (Roles.Enabled && User.Identity.IsAuthenticated) { // try to populate roles using MVC web security if available
                 @Html.Raw("userId: '" + User.Identity.Name + "',\n")
                 @Html.Raw("users: [" + string.Join(",", Roles.GetAllRoles().Select(x => string.Join(",", Roles.GetUsersInRole(x)))) + "],\n")

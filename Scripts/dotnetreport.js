@@ -854,7 +854,8 @@ var reportViewModel = function (options) {
 			UserId: self.manageAccess.getAsList(self.manageAccess.users),
 			ViewOnlyUserId: self.manageAccess.getAsList(self.manageAccess.viewOnlyUsers),
 			UserRoles: self.manageAccess.getAsList(self.manageAccess.userRoles),
-			ViewOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.viewOnlyUserRoles)
+			ViewOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.viewOnlyUserRoles),
+			DataFilters: options.dataFilters
 		};
 	};
 
