@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ReportBuilder.Web.Jobs;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
@@ -12,6 +13,7 @@ namespace ReportBuilder.Web
         protected void Application_Start()
         {            
             RouteConfig.RegisterRoutes(RouteTable.Routes);
+            JobScheduler.Start();
         }
     }
 }
