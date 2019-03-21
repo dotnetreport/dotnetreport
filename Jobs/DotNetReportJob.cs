@@ -1,21 +1,21 @@
 ﻿using Newtonsoft.Json;
 using Quartz;
 using Quartz.Impl;
+using ReportBuilder.Web.Models;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
-using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
-using System.Web;
 
 namespace ReportBuilder.Web.Jobs
 {
     public class ReportSchedule
     {
+        public int Id { get; set; }
         public string Schedule { get; set; }
         public string EmailTo { get; set; }
-        public DateTime? LastRun { get; set; }
+        public string LastRun { get; set; }
         public DateTime? NextRun { get; set; }
         public string UserId { get; set; }
     }
@@ -78,11 +78,26 @@ namespace ReportBuilder.Web.Jobs
                         try
                         {
                             var chron = new CronExpression(schedule.Schedule);
-                            var nextRun = chron.GetTimeAfter(DateTimeOffset.UtcNow);
+                            var lastRun = !String.IsNullOrEmpty(schedule.LastRun) ? Convert.ToDateTime(schedule.LastRun) : DateTimeOffset.UtcNow.AddMinutes(-10);
+                            var nextRun = chron.GetTimeAfter(lastRun);
+                            
+                            schedule.NextRun = (nextRun.HasValue ? nextRun.Value.ToLocalTime().DateTime : (DateTime?)null);
+                            
+                            if (schedule.NextRun.HasValue && DateTime.Now >= schedule.NextRun && (!String.IsNullOrEmpty(schedule.LastRun) || lastRun <= schedule.NextRun))
+                            {
+                                // need to run this report
+                                response = await client.GetAsync($"{apiUrl}/ReportApi/RunScheduledReport?account={accountApiKey}&dataConnect={databaseApiKey}&scheduleId={schedule.Id}&reportId={report.Id}&localRunTime={schedule.NextRun.Value.ToShortDateString()} {schedule.NextRun.Value.ToShortTimeString()}&clientId={clientId}");
+                                response.EnsureSuccessStatusCode();
 
-                            schedule.NextRun = null;
+                                content = await response.Content.ReadAsStringAsync();
+                                var reportToRun = JsonConvert.DeserializeObject<DotNetReportModel>(content);
+
+                                var attachment = DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName);
+
+                                // send email
+                            }
                         }
-                        catch(Exception ex)
+                       catch(Exception ex)
                         {
                             schedule.NextRun = null;
                         }

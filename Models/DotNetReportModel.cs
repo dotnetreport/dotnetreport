@@ -1,7 +1,13 @@
-﻿using System;
+﻿using OfficeOpenXml;
+using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Data;
+using System.Data.SqlClient;
+using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Web;
 
 namespace ReportBuilder.Web.Models
@@ -160,5 +166,92 @@ namespace ReportBuilder.Web.Models
         public string DatabaseApiKey { get; set; }
 
         public List<TableViewModel> Tables { get; set; }
+    }
+
+    public class DotNetReportHelper
+    {
+        public static byte[] GetExcelFile(string reportSql, string connectKey, string reportName)
+        {
+            var sql = Decrypt(reportSql);
+
+            // Execute sql
+            var dt = new DataTable();
+            using (var conn = new SqlConnection(ConfigurationManager.ConnectionStrings[connectKey].ConnectionString))
+            {
+                conn.Open();
+                var command = new SqlCommand(sql, conn);
+                var adapter = new SqlDataAdapter(command);
+
+                adapter.Fill(dt);
+            }
+
+            using (ExcelPackage xp = new ExcelPackage())
+            {
+
+                ExcelWorksheet ws = xp.Workbook.Worksheets.Add(reportName);
+
+                int rowstart = 1;
+                int colstart = 1;
+                int rowend = rowstart;
+                int colend = dt.Columns.Count;
+
+                ws.Cells[rowstart, colstart, rowend, colend].Merge = true;
+                ws.Cells[rowstart, colstart, rowend, colend].Value = reportName;
+                ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Bold = true;
+                ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Size = 14;
+
+                rowstart += 2;
+                rowend = rowstart + dt.Rows.Count;
+                ws.Cells[rowstart, colstart].LoadFromDataTable(dt, true);
+                ws.Cells[rowstart, colstart, rowstart, colend].Style.Font.Bold = true;
+
+                int i = 1;
+                foreach (DataColumn dc in dt.Columns)
+                {
+                    if (dc.DataType == typeof(decimal))
+                        ws.Column(i).Style.Numberformat.Format = "#0.00";
+
+                    if (dc.DataType == typeof(DateTime))
+                        ws.Column(i).Style.Numberformat.Format = "dd/mm/yyyy";
+
+                    i++;
+                }
+                ws.Cells[ws.Dimension.Address].AutoFitColumns();
+                return xp.GetAsByteArray();
+            }
+        }
+
+        /// <summary>
+        /// Method to Deycrypt encrypted sql statement. PLESE DO NOT CHANGE THIS METHOD
+        /// </summary>
+        public static string Decrypt(string encryptedText)
+        {
+
+            byte[] initVectorBytes = Encoding.ASCII.GetBytes("yk0z8f39lgpu70gi"); // PLESE DO NOT CHANGE THIS KEY
+            int keysize = 256;
+
+            byte[] cipherTextBytes = Convert.FromBase64String(encryptedText.Replace("%3D", "="));
+            var passPhrase = ConfigurationManager.AppSettings["dotNetReport.privateApiToken"].ToLower();
+            using (PasswordDeriveBytes password = new PasswordDeriveBytes(passPhrase, null))
+            {
+                byte[] keyBytes = password.GetBytes(keysize / 8);
+                using (RijndaelManaged symmetricKey = new RijndaelManaged())
+                {
+                    symmetricKey.Mode = CipherMode.CBC;
+                    using (ICryptoTransform decryptor = symmetricKey.CreateDecryptor(keyBytes, initVectorBytes))
+                    {
+                        using (MemoryStream memoryStream = new MemoryStream(cipherTextBytes))
+                        {
+                            using (CryptoStream cryptoStream = new CryptoStream(memoryStream, decryptor, CryptoStreamMode.Read))
+                            {
+                                byte[] plainTextBytes = new byte[cipherTextBytes.Length];
+                                int decryptedByteCount = cryptoStream.Read(plainTextBytes, 0, plainTextBytes.Length);
+                                return Encoding.UTF8.GetString(plainTextBytes, 0, decryptedByteCount);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

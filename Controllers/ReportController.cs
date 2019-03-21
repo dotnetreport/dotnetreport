@@ -6,16 +6,13 @@ using System.Data;
 using System.Data.SqlClient;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Text;
 using System.Web;
 using System.Web.Mvc;
 using System.Web.Script.Serialization;
 using System.Net.Http;
 using System.Threading.Tasks;
-using OfficeOpenXml;
 using System.Text.RegularExpressions;
-using System.Web.Security;
 
 namespace ReportBuilder.Web.Controllers
 {
@@ -49,7 +46,7 @@ namespace ReportBuilder.Web.Controllers
 
         public JsonResult GetLookupList(string lookupSql, string connectKey)
         {
-            var sql = Decrypt(lookupSql);
+            var sql = DotNetReportHelper.Decrypt(lookupSql);
 
             // Uncomment if you want to restrict max records returned
             sql = sql.Replace("SELECT ", "SELECT TOP 500 ");
@@ -77,7 +74,7 @@ namespace ReportBuilder.Web.Controllers
         
         public JsonResult RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, bool desc = false)
         {
-            var sql = Decrypt(reportSql);
+            var sql = DotNetReportHelper.Decrypt(reportSql);
 
             try
             {
@@ -169,107 +166,23 @@ namespace ReportBuilder.Web.Controllers
 
             return View(model);
         }
-       
+
+        
         [HttpPost]
         public ActionResult DownloadExcel(string reportSql, string connectKey, string reportName)
         {
-            var sql = Decrypt(reportSql);
 
-            // Execute sql
-            var dt = new DataTable();
-            using (var conn = new SqlConnection(ConfigurationManager.ConnectionStrings[connectKey].ConnectionString))
-            {
-                conn.Open();
-                var command = new SqlCommand(sql, conn);
-                var adapter = new SqlDataAdapter(command);
-
-                adapter.Fill(dt);
-            }
-
-
+            var excel = DotNetReportHelper.GetExcelFile(reportSql, connectKey, reportName);
             Response.ClearContent();
 
-            using (ExcelPackage xp = new ExcelPackage())
-            {
-
-                ExcelWorksheet ws = xp.Workbook.Worksheets.Add(reportName);
-
-                int rowstart = 1;
-                int colstart = 1;
-                int rowend = rowstart;
-                int colend = dt.Columns.Count;
-
-                ws.Cells[rowstart, colstart, rowend, colend].Merge = true;
-                ws.Cells[rowstart, colstart, rowend, colend].Value = reportName;
-                ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Bold = true;
-                ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Size = 14;
-
-                rowstart += 2;
-                rowend = rowstart + dt.Rows.Count;
-                ws.Cells[rowstart, colstart].LoadFromDataTable(dt, true);
-                ws.Cells[rowstart, colstart, rowstart, colend].Style.Font.Bold = true;
-
-                int i = 1;
-                foreach (DataColumn dc in dt.Columns)
-                {
-                    if (dc.DataType == typeof(decimal))
-                        ws.Column(i).Style.Numberformat.Format = "#0.00";
-
-                    if (dc.DataType == typeof(DateTime))
-                        ws.Column(i).Style.Numberformat.Format = "dd/mm/yyyy";
-
-                    i++;
-                }
-                ws.Cells[ws.Dimension.Address].AutoFitColumns();
-
-
-                Response.AddHeader("content-disposition", "attachment; filename=" + reportName + ".xlsx");
-                Response.ContentType = "application/vnd.ms-excel";
-                Response.BinaryWrite(xp.GetAsByteArray());
-                Response.End();
-
-            }
-
-
+            Response.AddHeader("content-disposition", "attachment; filename=" + reportName + ".xlsx");
+            Response.ContentType = "application/vnd.ms-excel";
+            Response.BinaryWrite(excel);
             Response.End();
-
+            
             return View();
         }
 
-
-        /// <summary>
-        /// Method to Deycrypt encrypted sql statement. PLESE DO NOT CHANGE THIS METHOD
-        /// </summary>
-        private string Decrypt(string encryptedText)
-        {
-
-            byte[] initVectorBytes = Encoding.ASCII.GetBytes("yk0z8f39lgpu70gi"); // PLESE DO NOT CHANGE THIS KEY
-            int keysize = 256;
-
-            byte[] cipherTextBytes = Convert.FromBase64String(encryptedText.Replace("%3D", "="));
-            var passPhrase = ConfigurationManager.AppSettings["dotNetReport.privateApiToken"].ToLower();
-            using (PasswordDeriveBytes password = new PasswordDeriveBytes(passPhrase, null))
-            {
-                byte[] keyBytes = password.GetBytes(keysize / 8);
-                using (RijndaelManaged symmetricKey = new RijndaelManaged())
-                {
-                    symmetricKey.Mode = CipherMode.CBC;
-                    using (ICryptoTransform decryptor = symmetricKey.CreateDecryptor(keyBytes, initVectorBytes))
-                    {
-                        using (MemoryStream memoryStream = new MemoryStream(cipherTextBytes))
-                        {
-                            using (CryptoStream cryptoStream = new CryptoStream(memoryStream, decryptor, CryptoStreamMode.Read))
-                            {
-                                byte[] plainTextBytes = new byte[cipherTextBytes.Length];
-                                int decryptedByteCount = cryptoStream.Read(plainTextBytes, 0, plainTextBytes.Length);
-                                return Encoding.UTF8.GetString(plainTextBytes, 0, decryptedByteCount);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
         private string GetWarnings(string sql)
         {
             var warning = "";
