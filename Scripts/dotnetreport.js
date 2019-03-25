@@ -544,10 +544,12 @@ var reportViewModel = function (options) {
 	self.isFormulaField = ko.observable(false);
 	self.formulaFields = ko.observableArray([]);
 	self.formulaFieldLabel = ko.observable('');
+	self.formulaDataFormat = ko.observable('')
 	self.getEmptyFormulaField = function () {
 		return {
 			tableName: 'Custom',
 			fieldName: self.formulaFieldLabel() || 'Custom',
+			fieldFormat: self.formulaDataFormat() || 'String',
 			fieldType: 'Custom',
 			aggregateFunction: '',
 			filterOnFly: false,
@@ -570,6 +572,7 @@ var reportViewModel = function (options) {
 	self.clearFormulaField = function () {
 		self.formulaFields([]);
 		self.formulaFieldLabel('');
+		self.formulaDataFormat('String');
 	};
 
 	self.isFormulaField.subscribe(function () {
@@ -838,6 +841,7 @@ var reportViewModel = function (options) {
 
 					IsCustom: x.isFormulaField(),
 					CustomLabel: x.fieldName,
+					DataFormat: x.fieldFormat,
 					CustomFieldDetails: $.map(x.formulaItems(), function (f) {
 						return {
 							FieldId: f.fieldId(),

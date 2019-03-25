@@ -323,6 +323,18 @@
                                     </div>
                                 </div>
                                 <div class="form-group">
+                                    <label class="col-sm-2 control-label">Data Format</label>
+                                    <div class="col-sm-10">
+                                        <select class="form-control input-sm" data-bind="value: formulaDataFormat" required>
+                                            <option>String</option>
+                                            <option>Integer</option>
+                                            <option>Double</option>
+                                            <option>Date</option>
+                                            <option>Date Time</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group">
                                     <label class="col-sm-2 control-label">Field Formula</label>
                                     <div class="col-sm-10">
                                         <!-- ko foreach: formulaFields -->
