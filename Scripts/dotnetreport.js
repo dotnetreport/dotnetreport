@@ -545,6 +545,20 @@ var reportViewModel = function (options) {
 	self.formulaFields = ko.observableArray([]);
 	self.formulaFieldLabel = ko.observable('');
 	self.formulaDataFormat = ko.observable('')
+	self.formulaOnlyHasDateFields = ko.computed(function () {
+		var allFields = self.formulaFields();
+		if (allFields.length <= 0) return false;
+
+		var result = true;
+		$.each(allFields, function (i, x) {
+			if (!x.setupFormula.isParenthesesStart() && !x.setupFormula.isParenthesesEnd() && !x.setupFormula.isConstantValue() && x.fieldType && x.fieldType.indexOf("Date") < 0) {
+				result = false;
+				return false;
+			}
+		});
+
+		return result;
+	});
 	self.getEmptyFormulaField = function () {
 		return {
 			tableName: 'Custom',
