@@ -6,8 +6,22 @@
 		DatabaseApiKey: options.model.DatabaseApiKey
 	};
 
+	self.DataConnections = ko.observableArray([]);
 	self.Tables = new tablesViewModel(options)
 	self.Joins = ko.observableArray([]);
+	self.currentConnectionKey = ko.observable(self.keys.DatabaseApiKey);
+	self.canSwitchConnection = ko.computed(function () {
+		return self.currentConnectionKey() != self.keys.DatabaseApiKey;
+	});
+	self.switchConnection = function () {
+		if (self.canSwitchConnection()) {
+			bootbox.confirm("Are you sure you would like to switch your Database Connection?", function (r) {
+				if (r) {
+					window.location.href = window.location.pathname + "?" + $.param({ 'databaseApiKey': self.currentConnectionKey() })
+				}
+			});
+		}
+	}
 
 	self.JoinFilters = {
 		primaryTable: ko.observable(),
@@ -87,6 +101,21 @@
 		return item;
 	};
 
+	self.LoadDataConnections = function () {
+
+		ajaxcall({
+			url: options.getDataConnectionsUrl,
+			type: 'POST',
+			data: JSON.stringify({
+				account: self.keys.AccountApiKey,
+				dataConnect: self.keys.DatabaseApiKey
+			})
+		}).done(function (result) {
+			self.DataConnections(result);
+			self.currentConnectionKey(self.keys.DatabaseApiKey);
+		});
+	}
+
 	self.LoadJoins = function () {
 		// Load and setup Relations
 
@@ -101,9 +130,7 @@
 			self.Joins($.map(result, function (item) {
 				return self.setupJoin(item);
 			}));
-
 		});
-
 	};
 
 	self.AddJoin = function () {
@@ -175,6 +202,11 @@
 				});
 			}
 		})
+	}
+
+
+	self.exportAll = function () {
+
 	}
 }
 
@@ -306,5 +338,4 @@ var tablesViewModel = function (options) {
 		});
 
 	}
-
 }

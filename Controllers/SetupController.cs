@@ -15,9 +15,9 @@ namespace ReportBuilder.Web.Controllers
 {
     public class SetupController : Controller
     {
-        public async Task<ActionResult> Index()
+        public async Task<ActionResult> Index(string databaseApiKey = "")
         {
-            var connect = GetConnection();
+            var connect = GetConnection(databaseApiKey);
             var tables = new List<TableViewModel>();
 
             tables.AddRange(await GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
@@ -35,12 +35,12 @@ namespace ReportBuilder.Web.Controllers
 
         #region "Private Methods"
 
-        private ConnectViewModel GetConnection()
+        private ConnectViewModel GetConnection(string databaseApiKey)
         {
             return new ConnectViewModel
             {
                 AccountApiKey = ConfigurationManager.AppSettings["dotNetReport.accountApiToken"],
-                DatabaseApiKey = ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"]
+                DatabaseApiKey = string.IsNullOrEmpty(databaseApiKey) ? ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"] : databaseApiKey
             };
         }
        
@@ -208,7 +208,7 @@ namespace ReportBuilder.Web.Controllers
                 currentTables = await GetApiTables(accountKey, dataConnectKey);
             }
 
-            var connString = await GetConnectionString(GetConnection());
+            var connString = await GetConnectionString(GetConnection(dataConnectKey));
             using (OleDbConnection conn = new OleDbConnection(connString))
             {
                 // open the connection to the database 

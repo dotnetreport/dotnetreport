@@ -47,7 +47,7 @@
     }
 
     .fix-content {
-        padding-top: 120px;
+        padding-top: 170px;
         width: 100% !important;
         left: 0;
     }
@@ -80,13 +80,14 @@
             saveTableUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/SaveTable',
             deleteTableUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/DeleteTable',
             getRelationsUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/GetRelations',
+            getDataConnectionsUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/GetDataConnections',
             saveRelationsUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/SaveRelations',
         };
 
         var vm = new manageViewModel(options);
-        vm.LoadJoins();
+        vm.LoadJoins();        
         ko.applyBindings(vm);
-
+        vm.LoadDataConnections();
     });
 
     </script>
@@ -100,6 +101,17 @@
     <div class="alert alert-danger">
         Do not expose this Setup Tool to end users who should not have access to it. Ideally, only Developers should be given access to this utility. 
     </div>
+    <div class="form-inline">
+        <div class="form-group">
+            <div class="control-group">
+                <label class="control-label">Data Connection</label>
+                <select class="form-control" style="max-width: 300px;" data-bind="options: DataConnections, optionsText: 'DataConnectName', optionsValue: 'DataConnectGuid', value: currentConnectionKey"></select>
+                <button class="btn btn-primary btn-sm" data-bind="click: switchConnection, visible: canSwitchConnection">Switch Connection</button>                
+            </div>
+        </div>
+    </div>
+
+    <br />
     <div>
         <!-- Nav tabs -->
         <ul class="nav nav-tabs" role="tablist">
@@ -146,6 +158,7 @@
                     <div data-bind="attr: {id: 'table'+$index()}" class="panel-collapse collapse in">
                         <div class="panel-body">
                             <p><label class="label-xs">Display Name</label><br /><span data-bind="editable: DisplayName"></span></p>
+                            <p><label class="label-xs">Account Id Field</label><br /><span data-bind="editable: AccountIdField"></span></p>
                         </div>
 
                         <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Columns().length"></span> Columns</label>
