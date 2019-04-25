@@ -272,7 +272,9 @@ namespace ReportBuilder.Web.Controllers
 
                     case TypeCode.Double:
                     case TypeCode.Decimal:
-                        return Convert.ToDouble(row[col].ToString()).ToString("C");
+                        return col.ColumnName.Contains("%")
+                            ? (Convert.ToDouble(row[col].ToString()) / 100).ToString("P2")
+                            : Convert.ToDouble(row[col].ToString()).ToString("C");
 
 
                     case TypeCode.Boolean:
