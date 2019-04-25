@@ -107,6 +107,8 @@
                 <label class="control-label">Data Connection</label>
                 <select class="form-control" style="max-width: 300px;" data-bind="options: DataConnections, optionsText: 'DataConnectName', optionsValue: 'DataConnectGuid', value: currentConnectionKey"></select>
                 <button class="btn btn-primary btn-sm" data-bind="click: switchConnection, visible: canSwitchConnection">Switch Connection</button>                
+                <button class="btn btn-primary btn-sm" data-bind="click: exportAll">Export Connection</button>
+                <button class="btn btn-primary btn-sm" data-bind="click: exportAll">Import Connection</button>
             </div>
         </div>
     </div>

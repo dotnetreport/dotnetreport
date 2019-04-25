@@ -143,14 +143,7 @@
 		}));
 	};
 
-	self.SaveJoins = function () {
-
-		$("#form-joins").validate().showErrors();
-
-		if (!$("#form-joins").valid()) {
-			return false;
-		}
-
+	self.getJoinsToSave = function () {
 		$.each(self.Joins(), function (i, x) {
 			x.TableId(x.JoinTable().Id());
 			x.JoinedTableId(x.OtherTable().Id());
@@ -167,6 +160,19 @@
 				JoinFieldName: x.JoinFieldName
 			}
 		});
+
+		return joinsToSave;
+	}
+
+	self.SaveJoins = function () {
+
+		$("#form-joins").validate().showErrors();
+
+		if (!$("#form-joins").valid()) {
+			return false;
+		}
+		
+		var joinsToSave = self.getJoinsToSave();
 
 		ajaxcall({
 			url: options.saveRelationsUrl,
@@ -204,9 +210,32 @@
 		})
 	}
 
+	self.download = function(content, fileName, contentType) {
+		var a = document.createElement("a");
+		var file = new Blob([content], { type: contentType });
+		a.href = URL.createObjectURL(file);
+		a.download = fileName;
+		a.click();
+	}
 
 	self.exportAll = function () {
+		var tablesToSave = $.map(self.Tables.model(), function (x) {
+			if (x.Selected()) {
+				return ko.mapping.toJS(x, {
+					'ignore': ["saveTable", "JoinTable"]
+				})
+			}
+		});
 
+		var joinsTosave = self.getJoinsToSave();
+
+		var exportJson = JSON.stringify({
+			tables: tablesToSave,
+			joins: joinsTosave
+		});
+
+		var connection = $.grep(self.DataConnections(), function (i, e) { return e.DataConnectGuid == self.currentConnectionKey(); });
+		self.download(exportJson, (connection.length > 0 ? connection[0].DataConnectName : 'dotnet-dataconnection-export') + '.txt', 'text/plain');
 	}
 }
 
