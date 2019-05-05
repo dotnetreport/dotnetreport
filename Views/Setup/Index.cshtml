@@ -108,7 +108,14 @@
                 <select class="form-control" style="max-width: 300px;" data-bind="options: DataConnections, optionsText: 'DataConnectName', optionsValue: 'DataConnectGuid', value: currentConnectionKey"></select>
                 <button class="btn btn-primary btn-sm" data-bind="click: switchConnection, visible: canSwitchConnection">Switch Connection</button>                
                 <button class="btn btn-primary btn-sm" data-bind="click: exportAll">Export Connection</button>
-                <button class="btn btn-primary btn-sm" data-bind="click: exportAll">Import Connection</button>
+                <button class="btn btn-primary btn-sm" data-bind="click: importStart">Import Connection</button>
+            </div>
+            <div data-bind="visible: importingFile">
+                <br />
+                <div class="alert alert-info">
+                    Please select a file you have previously exported from this utility. The system will load the screen with the Data Connection setting in the file, however, it will <b>NOT</b> be saved until you press the Save All button or Save individual tables
+                </div>
+                <input type="file" id="import-file" data-bind="event: { change: function() { importFile($element.files[0]) } }" />&nbsp;&nbsp;<button class="btn btn-link" data-bind="click: importCancel">Cancel</button>
             </div>
         </div>
     </div>
@@ -120,7 +127,6 @@
             <li role="presentation" class="active"><a href="#tablesfields" aria-controls="home" role="tab" data-toggle="tab">Tables and Fields</a></li>
             <li role="presentation"><a href="#relations" aria-controls="profile" role="tab" data-toggle="tab">Relations</a></li>
         </ul>
-
     </div>
     <br />
 </div>

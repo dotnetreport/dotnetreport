@@ -237,6 +237,26 @@
 		var connection = $.grep(self.DataConnections(), function (i, e) { return e.DataConnectGuid == self.currentConnectionKey(); });
 		self.download(exportJson, (connection.length > 0 ? connection[0].DataConnectName : 'dotnet-dataconnection-export') + '.txt', 'text/plain');
 	}
+
+	self.importingFile = ko.observable(false);
+	self.importCancel = function () {
+		self.importingFile(false);
+	}
+	self.importFile = function (file) {
+		var reader = new FileReader();
+		reader.onload = function (event) {
+			var importedData = JSON.parse(event.target.result);
+			
+		};
+
+		reader.readAsText(file);
+
+		self.importingFile(false);
+	}
+
+	self.importStart = function () {
+		self.importingFile(true);
+	}
 }
 
 var tablesViewModel = function (options) {
