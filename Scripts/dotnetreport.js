@@ -245,6 +245,9 @@ var reportViewModel = function (options) {
 	options = options || {};
 	options.userId = options.userId || "";
 
+	self.currentUserId = options.userId;
+	self.currentUserRole = (options.currentUserRole || []).join();
+
 	self.ReportName = ko.observable();
 	self.ReportType = ko.observable("List");
 	self.ReportDescription = ko.observable();

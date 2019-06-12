@@ -60,7 +60,7 @@
     Please note that in the online demo, you can edit, save and run reports, but you cannot create or manage Folders. Also, your reports can be reset at any times, and they are not permenant.
 </div>
 
-@if (User.IsInRole("Admin") || User.IsInRole("Administrator") || !User.Identity.IsAuthenticated)
+@if ((Roles.Enabled && User.IsInRole("Admin") || User.IsInRole("Administrator")) || !User.Identity.IsAuthenticated)
 {
     <div class="row" style="padding: 10px 10px">
         <div class="material-switch pull-right">
@@ -71,9 +71,10 @@
     </div>
 
     <div class="alert alert-info" data-bind="visible: adminMode">
-        Admin Mode is turned on now, it allows you to setup and view reports for all roles and users. You should remove the Admin mode toggle for non-admin users.
+        Admin Mode is turned on now, it allows you to setup and view reports for all roles and users. You should remove the Admin mode toggle for non-admin users.<br />
+        <div data-bind="if: currentUserId">Current User: <span data-bind="text: currentUserId"></span></div>
+        <div data-bind="if: currentUserRole">Current Roles: <span data-bind="text: currentUserRole"></span></div>
     </div>
-
 }
     @*<div class="alert alert-info">
             To view Dashboard, please <a href="/demo/report/Dashboard">click here</a>.
@@ -99,10 +100,12 @@
                             <a class="navbar-brand" href="#" data-bind="click: function() {SelectedFolder(null);}">Manage Reports</a>
                         </div>
                         <ul class="nav navbar-nav">
+                            <!-- ko if: CanSaveReports() || adminMode() -->
                             <li class="active">
                                 <a href="#" class="active" data-bind="click: createNewReport" data-toggle="modal" data-target="#modal-reportbuilder">Create a New Report</a>
-                            </li>
-                            <!-- ko if: CanManageFolders -->
+                            </li>   
+                            <!-- /ko -->
+                            <!-- ko if: CanManageFolders() || adminMode() -->
                             <li class="active">
                                 <a href="#" data-bind="click: ManageFolder.newFolder">Add a new Folder</a>
                             </li>
@@ -172,12 +175,14 @@
                             <div class="col-sm-4">
                                 <div class="pull-right hidden-sm hidden-xs">
                                     <br />
+                                    <!-- ko if: $root.CanSaveReports() || $root.adminMode()-->
                                     <button class="btn btn-sm btn-default" data-bind="click: openReport, visible: canEdit" data-toggle="modal" data-target="#modal-reportbuilder">
                                         <span class="fa fa-edit" aria-hidden="true"></span> Edit
                                     </button>
                                     <button class="btn btn-sm btn-default" data-bind="click: copyReport" data-toggle="modal" data-target="#modal-reportbuilder">
                                         <span class="fa fa-copy" aria-hidden="true"></span> Copy
                                     </button>
+                                    <!-- /ko -->
                                     <button class="btn btn-sm btn-primary" data-bind="click: runReport">
                                         <span class="fa fa-gears" aria-hidden="true"></span> Run
                                     </button>
@@ -188,12 +193,14 @@
                                 </div>
 
                                 <div class="pull-right visible-sm visible-xs">
+                                    <!-- ko if: $root.CanSaveReports() || $root.adminMode()-->
                                     <button class="btn btn-sm btn-default" title="Edit Report" data-bind="click: openReport, visible: canEdit" data-toggle="modal" data-target="#modal-reportbuilder">
                                         <span class="fa fa-edit" aria-hidden="true"></span>
                                     </button>
                                     <button class="btn btn-sm btn-default" data-bind="click: copyReport" title="Copy Report" data-toggle="modal" data-target="#modal-reportbuilder">
                                         <span class="fa fa-copy" aria-hidden="true"></span>
                                     </button>
+                                    <!-- /ko -->
                                     <button class="btn btn-sm btn-primary" data-bind="click: runReport" title="Run Report">
                                         <span class="fa fa-gears" aria-hidden="true"></span>
                                     </button>
