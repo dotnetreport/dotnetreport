@@ -235,7 +235,7 @@
 		});
 
 		var connection = $.grep(self.DataConnections(), function (i, e) { return e.DataConnectGuid == self.currentConnectionKey(); });
-		self.download(exportJson, (connection.length > 0 ? connection[0].DataConnectName : 'dotnet-dataconnection-export') + '.txt', 'text/plain');
+		self.download(exportJson, (connection.length > 0 ? connection[0].DataConnectName : 'dotnet-dataconnection-export') + '.json', 'text/plain');
 	}
 
 	self.importingFile = ko.observable(false);
@@ -246,12 +246,24 @@
 		var reader = new FileReader();
 		reader.onload = function (event) {
 			var importedData = JSON.parse(event.target.result);
-			
+			$.each(importedData.tables, function (i, e) {
+				var tableMatch = $.grep(self.Tables.model(), function (x) {
+					return x.TableName().toLowerCase() == e.TableName.toLowerCase();
+				});
+				if (tableMatch.length > 0) {
+					var match = tableMatch[0];
+				} else {
+
+				}
+			});
+
+			$('#import-file').val("");
 		};
 
 		reader.readAsText(file);
 
 		self.importingFile(false);
+
 	}
 
 	self.importStart = function () {

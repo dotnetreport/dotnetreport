@@ -114,8 +114,15 @@
                 <br />
                 <div class="alert alert-info">
                     Please select a file you have previously exported from this utility. The system will load the screen with the Data Connection setting in the file, however, it will <b>NOT</b> be saved until you press the Save All button or Save individual tables
-                </div>
-                <input type="file" id="import-file" data-bind="event: { change: function() { importFile($element.files[0]) } }" />&nbsp;&nbsp;<button class="btn btn-link" data-bind="click: importCancel">Cancel</button>
+                    <br />
+                    <div class="input-group">
+                        <input type="file" accept=".json" id="import-file" data-bind="event: { change: function() { importFile($element.files[0]) } }" />
+                        <span class="input-group-btn">
+                            <button class="btn btn-link" data-bind="click: importCancel">Cancel</button>
+                        </span>
+                    </div>
+                    
+                </div>                
             </div>
         </div>
     </div>
