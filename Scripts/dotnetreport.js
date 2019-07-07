@@ -1,4 +1,4 @@
-﻿/// .Net Report Builder view model v2.1.3
+﻿/// .Net Report Builder view model v2.1.5
 /// License has to be purchased for use
 /// 2015-2018 (c) www.dotnetreport.com
 
@@ -306,8 +306,15 @@ var reportViewModel = function (options) {
 	self.currentConnectKey = ko.observable();
 	self.adminMode = ko.observable(false);
 
-	self.adminMode.subscribe(function () {
+	self.adminMode.subscribe(function (newValue) {
 		self.LoadAllSavedReports();
+		if (newValue) {
+			self._cansavereports = self.CanSaveReports();
+			self.SaveReport(true);
+			self.CanSaveReports(true);
+		} else {
+			self.CanSaveReports(self._cansavereports);
+		}
 	});
 
 	self.manageAccess = {		
@@ -1373,13 +1380,13 @@ var reportViewModel = function (options) {
 		ajaxcall({
 			url: options.apiUrl + "/ReportApi/CanSaveReports",
 			data: { account: options.accountApiToken, dataConnect: options.dataconnectApiToken, clientId: options.clientId },
-		}).done(function (options) {
-			options = options || {
+		}).done(function (x) {
+			x = x || {
 				allowUsersToCreateReports: true,
 				allowUsersToManageFolders: true
 			};
-			self.CanSaveReports(options.allowUsersToCreateReports);
-			self.CanManageFolders(options.allowUsersToManageFolders);
+			self.CanSaveReports(x.allowUsersToCreateReports);
+			self.CanManageFolders(x.allowUsersToManageFolders);
 		});
 	}
 
