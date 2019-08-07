@@ -35,11 +35,11 @@
                 @Html.Raw("currentUserRole: [" + string.Join(", ", Roles.GetRolesForUser(User.Identity.Name).Select(x => string.Format("'{0}'", x))) + "]\n")
             } else
             {
-                @Html.Raw("userId: 'John',\n") // You can pass your current authenticated user id here to track their reports and folders,
+                @Html.Raw("userId: '',\n") // You can pass your current authenticated user id here to track their reports and folders,
                                                // Blank userId implies all reports can be viewed/managed
                 @Html.Raw("users: ['John', 'Jane'],\n") // Populate all your application's user
                 @Html.Raw("userRoles: ['Admin', 'Normal'],\n") // Populate all your application's user roles
-                @Html.Raw("currentUserRole: ['Normal']\n") // Populate your current authenticated user's roles
+                @Html.Raw("currentUserRole: []\n") // Populate your current authenticated user's roles
             }
             });
 

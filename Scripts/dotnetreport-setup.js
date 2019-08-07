@@ -57,6 +57,25 @@
 		self.editColumn(e);
 	}
 
+	self.editTableRoles = ko.observable();
+	self.newTableRole = ko.observable();
+	self.selectTableRoles = function (e) {
+		self.editTableRoles(e);
+	}
+
+	self.removeTableRole = function (e) {
+		self.editTableRoles().TableRoles.remove(e);
+	}
+
+	self.addTableRole = function () {
+		if (!self.newTableRole() || $.grep(self.editTableRoles().TableRoles(), function (x) { return x == self.newTableRole(); }).length > 0) {
+			toastr.error("Please add a new unique Table Role");
+			return;
+		}
+		self.editTableRoles().TableRoles.push(self.newTableRole());
+		self.newTableRole(null);
+	}
+
 	self.setupJoin = function (item) {
 		item.JoinTable = ko.observable();
 		item.OtherTable = ko.observable();

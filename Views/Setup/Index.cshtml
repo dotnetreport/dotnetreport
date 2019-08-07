@@ -165,6 +165,9 @@
                                 <span data-bind="visible: IsView" class="label-xs">(view)</span>
                             </label>
                             <button class="btn btn-xs" title="Save this Table" data-bind="click: function(){$data.saveTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}"><i class="glyphicon glyphicon-floppy-disk"></i></button>
+                            <button class="btn btn-xs" title="Manage Role Access" data-toggle="modal" data-target="#role-access-modal" data-bind="click: $root.selectTableRoles">
+                                <i class="glyphicon glyphicon-user"></i>
+                            </button>
                         </div>
                         <a href="#" class="pull-right" data-toggle="collapse" data-bind="attr: {'data-target': '#table'+$index()}">
                             
@@ -300,7 +303,42 @@
 </div>
 
 <!-- Modal -->
-<div class="modal fade" id="column-modal" tabindex="-1" role="dialog">
+<div class="modal fade" id="role-access-modal" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content" data-bind="with: editTableRoles">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">Manage Table Access by Roles</h4>
+            </div>
+            <div class="modal-body">
+                <p>Choose User Roles that will have Access to this Table</p>
+                <div class="list-group" data-bind="foreach: TableRoles">
+                    <div class="list-group-item" style="padding-top: 2px; padding-bottom: 2px;">
+                        <span data-bind="text: $data"></span>
+                        <button class="btn btn-xs btn-danger pull-right"><i class="glyphicon glyphicon-trash" data-bind="click: $root.removeTableRole"></i></button>
+                    </div>
+                </div>
+                <div class="form-horizontal">
+                    <div class="control-group">
+                        <div class="form-group">
+                            <div class="col-xs-10">
+                                <input class="form-control text-box single-line" type="text" data-bind="value: $root.newTableRole" placeholder="Ex Sales">
+                            </div>
+                            <div class="col-xs-2">
+                                <button class="btn btn-primary" data-bind="click: $root.addTableRole">Add</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Done</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="column-modal" role="dialog">
     <div class="modal-dialog" role="document">
         <div class="modal-content" data-bind="with: editColumn()">
             <div class="modal-header">

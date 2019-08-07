@@ -91,6 +91,7 @@ namespace ReportBuilder.Web.Models
         public string AccountIdField { get; set; }
 
         public List<ColumnViewModel> Columns { get; set; }
+        public List<string> TableRoles { get; set; }
     }
 
     public class RelationModel
@@ -144,6 +145,7 @@ namespace ReportBuilder.Web.Models
 
         public string ForeignValueField { get; set; }
         public bool DoNotDisplay { get; set; }
+        public List<string> ColumnRoles { get; set; }
     }
 
     public class ConnectViewModel
