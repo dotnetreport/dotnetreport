@@ -48,7 +48,9 @@
             reportFilter: htmlDecode('@HttpUtility.UrlDecode(Model.ReportFilter)'),
             reportMode: "execute",
             reportSql: "@Model.ReportSql",
-            reportConnect: "@Model.ConnectKey"
+            reportConnect: "@Model.ConnectKey",
+            clientId: '', // You can pass your multi-tenant client id here to track their reports and folders
+            //dataFilters: { EmployeeId: '1,2' }, // You can also pass a list of Global Data filters using format { Column1: 'val1, val2, ...', Column2: '1,2,3,...', ...}
         });
 
         ko.applyBindings(vm);

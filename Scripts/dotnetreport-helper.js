@@ -130,7 +130,7 @@ ko.bindingHandlers.select2 = {
 		}
 		if ("selectedOptions" in allBindings && select2.val().length == 0) {
 			var newValue = ko.unwrap(allBindings.selectedOptions);
-            if ((allBindings.select2.multiple || el.multiple) && newValue.constructor == Array) {
+            if ((allBindings.select2.multiple || el.multiple) && newValue && newValue.constructor == Array) {
                 select2.val([newValue]);
             }
         }
