@@ -507,8 +507,13 @@ var reportViewModel = function (options) {
 		ajaxcall({
 			url: options.apiUrl + "/ReportApi/GetFields",
 			data: {
-				account: options.accountApiToken, dataConnect: options.dataconnectApiToken, clientId: options.clientId,
-				tableId: table.tableId
+				account: options.accountApiToken,
+				dataConnect: options.dataconnectApiToken,
+				clientId: options.clientId,
+				tableId: table.tableId,
+				includeDoNotDisplay: false,
+				userRole: (options.currentUserRole || []).join(),
+				adminMode: self.adminMode()
 			},
 		}).done(function (fields) {
 			var flds = $.map(fields, function (e, i) {
@@ -1436,7 +1441,14 @@ var reportViewModel = function (options) {
 		// Load tables
 		ajaxcall({
 			url: options.apiUrl + "/ReportApi/GetTables",
-			data: { account: options.accountApiToken, dataConnect: options.dataconnectApiToken, clientId: options.clientId },
+			data: {
+				account: options.accountApiToken,
+				dataConnect: options.dataconnectApiToken,
+				clientId: options.clientId,
+				userId: options.userId,
+				userRole: (options.currentUserRole || []).join(),
+				adminMode: self.adminMode()
+			},
 		}).done(function (tables) {
 			self.Tables(tables);
 		});

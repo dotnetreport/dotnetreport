@@ -148,7 +148,7 @@ namespace ReportBuilder.Web.Controllers
                         Id = item.tableId,
                         TableName = item.tableDbName,
                         DisplayName = item.tableName,
-                        TableRoles = item.tableRoles.ToObject<List<string>>()
+                        AllowedRoles = item.tableRoles.ToObject<List<string>>()
                     });
 
                 }
@@ -185,7 +185,7 @@ namespace ReportBuilder.Web.Controllers
                         ForeignValueField = item.foreignValue,
                         ForeignTable = item.foreignTable,
                         DoNotDisplay = item.doNotDisplay,
-                        ColumnRoles = item.columnRoles.ToObject<List<string>>()
+                        AllowedRoles = item.columnRoles.ToObject<List<string>>()
                     };
 
                     JoinTypes join;
@@ -239,7 +239,7 @@ namespace ReportBuilder.Web.Controllers
                         IsView = type == "VIEW",
                         Selected = matchTable != null,
                         Columns = new List<ColumnViewModel>(),
-                        TableRoles = matchTable != null ? matchTable.TableRoles : new List<string>()
+                        AllowedRoles = matchTable != null ? matchTable.AllowedRoles : new List<string>()
                     };
 
                     var dtField = conn.GetOleDbSchemaTable(OleDbSchemaGuid.Columns, new object[] { null, null, tableName });
@@ -255,7 +255,7 @@ namespace ReportBuilder.Web.Controllers
                             PrimaryKey = matchColumn != null ? matchColumn.PrimaryKey : dr["COLUMN_NAME"].ToString().ToLower().EndsWith("id") && idx == 0,
                             DisplayOrder = matchColumn != null ? matchColumn.DisplayOrder : idx++,
                             FieldType = matchColumn != null ? matchColumn.FieldType : ConvertToJetDataType((int)dr["DATA_TYPE"]).ToString(),
-                            ColumnRoles = matchColumn != null ? matchColumn.ColumnRoles : new List<string>()
+                            AllowedRoles = matchColumn != null ? matchColumn.AllowedRoles : new List<string>()
                         };
 
                         if (matchColumn != null)

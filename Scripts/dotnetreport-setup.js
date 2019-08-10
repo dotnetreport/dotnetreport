@@ -57,23 +57,23 @@
 		self.editColumn(e);
 	}
 
-	self.editTableRoles = ko.observable();
-	self.newTableRole = ko.observable();
-	self.selectTableRoles = function (e) {
-		self.editTableRoles(e);
+	self.editAllowedRoles = ko.observable();
+	self.newAllowedRole = ko.observable();
+	self.selectAllowedRoles = function (e) {
+		self.editAllowedRoles(e);
 	}
 
-	self.removeTableRole = function (e) {
-		self.editTableRoles().TableRoles.remove(e);
+	self.removeAllowedRole = function (e) {
+		self.editAllowedRoles().AllowedRoles.remove(e);
 	}
 
-	self.addTableRole = function () {
-		if (!self.newTableRole() || $.grep(self.editTableRoles().TableRoles(), function (x) { return x == self.newTableRole(); }).length > 0) {
-			toastr.error("Please add a new unique Table Role");
+	self.addAllowedRole = function () {
+		if (!self.newAllowedRole() || $.grep(self.editAllowedRoles().AllowedRoles(), function (x) { return x == self.newAllowedRole(); }).length > 0) {
+			toastr.error("Please add a new unique Role");
 			return;
 		}
-		self.editTableRoles().TableRoles.push(self.newTableRole());
-		self.newTableRole(null);
+		self.editAllowedRoles().AllowedRoles.push(self.newAllowedRole());
+		self.newAllowedRole(null);
 	}
 
 	self.setupJoin = function (item) {
