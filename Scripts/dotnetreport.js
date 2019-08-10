@@ -1182,7 +1182,14 @@ var reportViewModel = function (options) {
 		// Load folders
 		ajaxcall({
 			url: options.apiUrl + "/ReportApi/GetFolders",
-			data: { account: options.accountApiToken, dataConnect: options.dataconnectApiToken, clientId: options.clientId, userId: options.userId },
+			data: {
+				account: options.accountApiToken,
+				dataConnect: options.dataconnectApiToken,
+				clientId: options.clientId,
+				userId: options.userId,
+				userRole: (options.currentUserRole || []).join(),
+				adminMode: self.adminMode()
+			},
 		}).done(function (folders) {
 			self.Folders(folders);
 			self.SelectedFolder(null);
