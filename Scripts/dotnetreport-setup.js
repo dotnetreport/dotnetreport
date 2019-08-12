@@ -76,6 +76,51 @@
 		self.newAllowedRole(null);
 	}
 
+	self.newDataConnection = {
+		Name: ko.observable(),
+		ConnectionKey: ko.observable(),
+		copySchema: ko.observable(false),
+		copyFrom: ko.observable()
+	}
+
+	self.addDataConnection = function () {
+		$(".form-group").removeClass("has-error");
+		if (!self.newDataConnection.Name()) {
+			$("#add-conn-name").closest(".form-group").addClass("has-error");
+			return false;
+		}
+		if (!self.newDataConnection.ConnectionKey()) {
+			$("#add-conn-key").closest(".form-group").addClass("has-error");
+			return false;
+		}
+
+		ajaxcall({
+			url: options.addDataConnectionUrl,
+			type: 'POST',
+			data: JSON.stringify({
+				account: self.keys.AccountApiKey,
+				dataConnect: self.newDataConnection.copySchema() ? self.newDataConnection.copyFrom() : self.keys.DatabaseApiKey,
+				newDataConnect: self.newDataConnection.Name(),
+				connectionKey: self.newDataConnection.ConnectionKey(),
+				copySchema: self.newDataConnection.copySchema()
+			})
+		}).done(function (result) {
+			self.DataConnections.push({
+				Id: result.Id,
+				DataConnectName: self.newDataConnection.Name(),
+				ConnectionKey: self.newDataConnection.ConnectionKey(),
+				DataConnectGuid: result.DataConnectGuid
+			});
+
+			self.newDataConnection.Name('');
+			self.newDataConnection.ConnectionKey('');
+			notify.success("Data Connection added successfully");
+			$('#add-connection-modal').modal('hide');
+		});
+
+		return true;
+	}
+
 	self.setupJoin = function (item) {
 		item.JoinTable = ko.observable();
 		item.OtherTable = ko.observable();

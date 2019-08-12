@@ -82,10 +82,11 @@
             getRelationsUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/GetRelations',
             getDataConnectionsUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/GetDataConnections',
             saveRelationsUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/SaveRelations',
+            addDataConnectionUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/AddDataConnection',
         };
 
         var vm = new manageViewModel(options);
-        vm.LoadJoins();        
+        vm.LoadJoins();
         ko.applyBindings(vm);
         vm.LoadDataConnections();
     });
@@ -106,7 +107,8 @@
             <div class="control-group">
                 <label class="control-label">Data Connection</label>
                 <select class="form-control" style="max-width: 300px;" data-bind="options: DataConnections, optionsText: 'DataConnectName', optionsValue: 'DataConnectGuid', value: currentConnectionKey"></select>
-                <button class="btn btn-primary btn-sm" data-bind="click: switchConnection, visible: canSwitchConnection">Switch Connection</button>                
+                <button class="btn btn-primary btn-sm" data-bind="click: switchConnection, visible: canSwitchConnection">Switch Connection</button>     
+                <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-connection-modal" >Add New Connection</button>
                 <button class="btn btn-primary btn-sm" data-bind="click: exportAll">Export Connection</button>
                 <button class="btn btn-primary btn-sm" data-bind="click: importStart">Import Connection</button>
             </div>
@@ -490,6 +492,58 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Done</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="clearfix"></div>
+
+<div class="modal fade" id="add-connection-modal" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content" data-bind="with: newDataConnection">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">Add a new Data Connection</h4>
+            </div>
+            <div class="modal-body">
+                <p>Choose User Roles that will have Access</p>
+                <p class="small">Note: All Users will have access if no restricted roles are setup</p>
+                <div class="form-horizontal">
+                    <div class="control-group">
+                        <div class="form-group">
+                            <label class="col-md-3 col-sm-3 control-label">Connection Name</label>
+                            <div class="col-md-6 col-sm-6">
+                                <input class="form-control text-box" data-val="true" data-val-required="Connection Name is required." type="text" data-bind="value: Name" placeholder="" id="add-conn-name">
+                            </div>                           
+                        </div>
+                        <div class="form-group">
+                            <label class="col-md-3 col-sm-3 control-label">Connection Key</label>
+                            <div class="col-md-6 col-sm-6">
+                                <input class="form-control text-box" data-val="true" data-val-required="Connection Key is required." type="text" data-bind="value: ConnectionKey" placeholder="" id="add-conn-key">
+                            </div>
+                            <div class="col-md-3 col-sm-3">
+                                <span data-toggle="tooltip" data-placement="right" class="glyphicon glyphicon-question-sign helptip" title="This is the Connection Key in your web.config for your SQL Connection String"></span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="check-box col-md-12">
+                                <label>
+                                    <input type="checkbox" data-bind="checked: copySchema">
+                                    Copy Schema from existing Connection
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group" data-bind="visible: copySchema">
+                            <label class="col-md-3 col-sm-3 control-label">Choose Connection</label>
+                            <div class="col-md-6 col-sm-6">
+                                <select class="form-control" style="max-width: 300px;" data-bind="options: $root.DataConnections, optionsText: 'DataConnectName', optionsValue: 'DataConnectGuid', value: copyFrom"></select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-bind="click: $root.addDataConnection">Create</button>
             </div>
         </div>
     </div>
