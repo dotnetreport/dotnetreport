@@ -5,10 +5,8 @@ using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
 using System.IO;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Web;
 
 namespace ReportBuilder.Web.Models
 {
@@ -66,7 +64,6 @@ namespace ReportBuilder.Web.Models
         public string LabelValue { get; set; }
         public double? NumericValue { get; set; }
         public DotNetReportDataColumnModel Column { get; set; }
-
     }
 
     public class DotNetReportDataRowModel
@@ -127,22 +124,14 @@ namespace ReportBuilder.Web.Models
         public string ColumnName { get; set; }
         public string DisplayName { get; set; }
         public bool Selected { get; set; }
-
         public int DisplayOrder { get; set; }
-
         public string FieldType { get; set; }
         public bool PrimaryKey { get; set; }
-
         public bool ForeignKey { get; set; }
-
         public bool AccountIdField { get; set; }
-
         public string ForeignTable { get; set; }
-
         public JoinTypes ForeignJoin { get; set; }
-
         public string ForeignKeyField { get; set; }
-
         public string ForeignValueField { get; set; }
         public bool DoNotDisplay { get; set; }
         public List<string> AllowedRoles { get; set; }
