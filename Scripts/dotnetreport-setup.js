@@ -40,7 +40,7 @@
 
 		var joins = self.Joins();
 
-		return $.grep(joins, function (x) {
+		return _.filter(joins, function (x) {
 			return (!primaryTableFilter || !x.JoinTable() || x.JoinTable().DisplayName().toLowerCase().indexOf(primaryTableFilter.toLowerCase()) >= 0)
 				&& (!primaryFieldFilter || !x.FieldName() || x.FieldName().toLowerCase().indexOf(primaryFieldFilter.toLowerCase()) >= 0)
 				&& (!joinTypeFilter || !x.JoinType() || x.JoinType().toLowerCase().indexOf(joinTypeFilter.toLowerCase()) >= 0)
@@ -68,7 +68,7 @@
 	}
 
 	self.addAllowedRole = function () {
-		if (!self.newAllowedRole() || $.grep(self.editAllowedRoles().AllowedRoles(), function (x) { return x == self.newAllowedRole(); }).length > 0) {
+		if (!self.newAllowedRole() || _.filter(self.editAllowedRoles().AllowedRoles(), function (x) { return x == self.newAllowedRole(); }).length > 0) {
 			toastr.error("Please add a new unique Role");
 			return;
 		}
@@ -159,8 +159,8 @@
 			});
 		};
 
-		item.JoinTable($.grep(self.Tables.model(), function (x) { return x.Id() == item.TableId(); })[0]);
-		item.OtherTable($.grep(item.OtherTables(), function (x) { return x.Id() == item.JoinedTableId(); })[0]);
+		item.JoinTable(_.filter(self.Tables.model(), function (x) { return x.Id() == item.TableId(); })[0]);
+		item.OtherTable(_.filter(item.OtherTables(), function (x) { return x.Id() == item.JoinedTableId(); })[0]);
 
 		return item;
 	};
@@ -298,7 +298,7 @@
 			joins: joinsTosave
 		});
 
-		var connection = $.grep(self.DataConnections(), function (i, e) { return e.DataConnectGuid == self.currentConnectionKey(); });
+		var connection = _.filter(self.DataConnections(), function (i, e) { return e.DataConnectGuid == self.currentConnectionKey(); });
 		self.download(exportJson, (connection.length > 0 ? connection[0].DataConnectName : 'dotnet-dataconnection-export') + '.json', 'text/plain');
 	}
 
@@ -311,7 +311,7 @@
 		reader.onload = function (event) {
 			var importedData = JSON.parse(event.target.result);
 			$.each(importedData.tables, function (i, e) {
-				var tableMatch = $.grep(self.Tables.model(), function (x) {
+				var tableMatch = _.filter(self.Tables.model(), function (x) {
 					return x.TableName().toLowerCase() == e.TableName.toLowerCase();
 				});
 				if (tableMatch.length > 0) {
@@ -342,13 +342,13 @@ var tablesViewModel = function (options) {
 	$.each(self.model(), function (i, t) {
 
 		t.availableColumns = ko.computed(function () {
-			return $.grep(t.Columns(), function (e) {
+			return _.filter(t.Columns(), function (e) {
 				return e.Id() > 0 && e.Selected();
 			});
 		});
 
 		$.each(t.Columns(), function (i, e) {
-			var tableMatch = $.grep(self.model(), function (x) { return x.TableName() == e.ForeignTable(); });
+			var tableMatch = _.filter(self.model(), function (x) { return x.TableName() == e.ForeignTable(); });
 			e.JoinTable = ko.observable(tableMatch != null && tableMatch.length > 0 ? tableMatch[0] : null);
 			e.JoinTable.subscribe(function (newValue) {
 				e.ForeignTable(newValue.TableName());
@@ -382,7 +382,7 @@ var tablesViewModel = function (options) {
 				return;
 			}
 
-			if ($.grep(e.Columns, function (x) { return x.Selected; }).length == 0) {
+			if (_.filter(e.Columns, function (x) { return x.Selected; }).length == 0) {
 				toastr.error("Cannot save table " + e.DisplayName + ", no columns selected");
 				return;
 			}
@@ -403,7 +403,7 @@ var tablesViewModel = function (options) {
 	});
 
 	self.availableTables = ko.computed(function () {
-		return $.grep(self.model(), function (e) {
+		return _.filter(self.model(), function (e) {
 			return e.Id() > 0 && e.Selected();
 		});
 	})
@@ -416,7 +416,7 @@ var tablesViewModel = function (options) {
 			return self.model();
 		}
 
-		return $.grep(self.model(), function (e) {
+		return _.filter(self.model(), function (e) {
 			return e.TableName().toLowerCase().indexOf(filterText.toLowerCase()) >= 0;
 		})
 	})

@@ -113,6 +113,10 @@
     <Content Include="Content\dotnetreport.css" />
     <Content Include="Content\font-awesome.css" />
     <Content Include="Content\font-awesome.min.css" />
+    <Content Include="Content\gridstack-extra.css" />
+    <Content Include="Content\gridstack-extra.min.css" />
+    <Content Include="Content\gridstack.css" />
+    <Content Include="Content\gridstack.min.css" />
     <Content Include="Content\img\report-icon.png" />
     <Content Include="Content\img\report-logo.png" />
     <Content Include="Content\morris.css" />
@@ -173,7 +177,10 @@
     <Content Include="Scripts\dotnetreport.js" />
     <Content Include="Content\toastr.scss" />
     <Content Include="Content\toastr.less" />
+    <Content Include="Content\gridstack.min.map" />
     <None Include="Scripts\jquery-3.3.1.intellisense.js" />
+    <Content Include="Scripts\gridstack.js" />
+    <Content Include="Scripts\gridstack.min.js" />
     <Content Include="Scripts\i18n\ar.js" />
     <Content Include="Scripts\i18n\az.js" />
     <Content Include="Scripts\i18n\bg.js" />
@@ -237,6 +244,8 @@
     <Content Include="Scripts\knockout.mapping-latest.debug.js" />
     <Content Include="Scripts\knockout.mapping-latest.js" />
     <Content Include="Scripts\knockout.x-editable.min.js" />
+    <Content Include="Scripts\lodash.js" />
+    <Content Include="Scripts\lodash.min.js" />
     <Content Include="Scripts\modernizr-2.6.2.js" />
     <Content Include="Scripts\npm.js" />
     <Content Include="Scripts\plugins\acroform.js" />
