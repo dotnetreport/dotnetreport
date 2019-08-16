@@ -306,6 +306,11 @@ var reportViewModel = function (options) {
 	self.currentConnectKey = ko.observable();
 	self.adminMode = ko.observable(false);
 
+	self.x = ko.observable(0);
+	self.y = ko.observable(0);
+	self.width = ko.observable(3);
+	self.height = ko.observable(2);		
+
 	self.adminMode.subscribe(function (newValue) {
 		self.LoadAllSavedReports();
 		if (newValue) {

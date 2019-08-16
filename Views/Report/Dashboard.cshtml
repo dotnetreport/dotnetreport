@@ -8,12 +8,13 @@
 <h2>Dashboard</h2>
 
 @section head {
-<link href="~/Content/gridstack.min.css" rel="stylesheet" />
-<link href="~/Content/gridstack-extra.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.min.css" />
+
 }
 
 @section scripts{
-    <script src="~/Scripts/gridstack.min.js"></script>
+    <script type="text/javascript" src='//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.min.js'></script>
+    <script type="text/javascript" src='//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.jQueryUI.min.js'></script>
     <script type="text/javascript">
 
     $(document).ready(function () {
@@ -37,6 +38,12 @@
         });
 
         ko.applyBindings(vm);
+        $(function () {
+            var options = {
+                cellHeight: 200
+            };
+            $('.grid-stack').gridstack(options);
+        });
 
         $(window).resize(function(){
             vm.drawChart();
@@ -45,44 +52,48 @@
     </script>
 }
 
-<div data-bind="foreach: reports">
-    <div class="col-sm-6 col-md-4">
-        <div class="panel panel-primary">
-            <div class="panel-heading panel-nocollapse">
-                <span data-bind="text: ReportName"></span>
-                <div class="pull-right">
-                    @using (Html.BeginForm("DownloadExcel", "Report", FormMethod.Post))
-                    {
-                        <input type="hidden" id="reportSql" name="reportSql" data-bind="value: currentSql" />
-                        <input type="hidden" id="connectKey" name="connectKey" data-bind="value: currentConnectKey" />
-                        <input type="hidden" id="reportName" name="reportName" data-bind="value: ReportName" />
-                        <button type="submit" class="btn btn-default btn-xs"><span class="fa fa-file-excel-o"></span></button>
-                    }
-                </div>
-                <a data-bind="attr: {href: '@Url.Action("Index","Report")?reportId=' + ReportID()}" class="btn btn-default btn-xs pull-right">
-                    <i class="fa fa-pencil-square-o" title="Edit Report"></i>
-                </a>
-            </div>
-            <div class="panel-body list-overflow">
-                <p data-bind="html: ReportDescription">
-                </p>
-                <div data-bind="with: ReportResult">
-                    <div data-bind="template: 'report-template', data: $data"></div>
-                </div>
-            </div>
-            <div class="panel-footer">
-                <div class="small" data-bind="with: pager">
-                    <div class="form-group pull-left total-records">
-                        <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
+
+<div class="grid-stack">
+    <!-- ko foreach: reports -->
+    <div class="grid-stack-item" data-bind="attr: {'data-gs-x': x, 'data-gs-y': y, 'data-gs-width': width, 'data-gs-height': height, 'data-gs-auto-position': true}">
+        <div class="grid-stack-item-content">
+            <div class="panel panel-primary">
+                <div class="panel-heading panel-nocollapse">
+                    <span data-bind="text: ReportName"></span>
+                    <div class="pull-right">
+                        @using (Html.BeginForm("DownloadExcel", "Report", FormMethod.Post))
+                        {
+                            <input type="hidden" id="reportSql" name="reportSql" data-bind="value: currentSql" />
+                            <input type="hidden" id="connectKey" name="connectKey" data-bind="value: currentConnectKey" />
+                            <input type="hidden" id="reportName" name="reportName" data-bind="value: ReportName" />
+                            <button type="submit" class="btn btn-default btn-xs"><span class="fa fa-file-excel-o"></span></button>
+                        }
                     </div>
-                    <div class="form-group pull-right" data-bind="if: pages()>1">
-                        <div data-bind="template: 'pager-template', data: $data"></div>
+                    <a data-bind="attr: {href: '@Url.Action("Index","Report")?reportId=' + ReportID()}" class="btn btn-default btn-xs pull-right">
+                        <i class="fa fa-pencil-square-o" title="Edit Report"></i>
+                    </a>
+                </div>
+                <div class="panel-body">
+                    <p data-bind="html: ReportDescription">
+                    </p>
+                    <div data-bind="with: ReportResult">
+                        <div data-bind="template: 'report-template', data: $data"></div>
                     </div>
-                    <div class="clearfix"></div>
+                </div>
+                <div class="panel-footer">
+                    <div class="small" data-bind="with: pager">
+                        <div class="form-group pull-left total-records">
+                            <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
+                        </div>
+                        <div class="form-group pull-right" data-bind="if: pages()>1">
+                            <div data-bind="template: 'pager-template', data: $data"></div>
+                        </div>
+                        <div class="clearfix"></div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+    <!-- /ko -->
 </div>
-
 <div class="clearfix"></div>
