@@ -1,5 +1,5 @@
 ﻿@using System.Configuration
-@model List<DotNetReportModel>
+@model List<DotNetReportDashboardModel>
 @{
 ViewBag.Title = "Dashboard";
 Layout = "~/Views/shared/_Layout.Report.cshtml";
@@ -24,17 +24,19 @@ Layout = "~/Views/shared/_Layout.Report.cshtml";
         }
 
         var vm = new dashboardViewModel({
-            runReportUrl: "@Url.Action("Report")",
-            execReportUrl: "@Url.Action("RunReport")",
-            reportWizard: $("#filter-panel"),
-            lookupListUrl: "@Url.Action("GetLookupList")",
-            apiUrl: "@Url.Action("CallReportApi")",
-            runReportApiUrl: "@Url.Action("RunReportApi")",
-            reportMode: "execute",
-            reports: reports
-        });
+                runReportUrl: "@Url.Action("Report")",
+                execReportUrl: "@Url.Action("RunReport")",
+                reportWizard: $("#filter-panel"),
+                lookupListUrl: "@Url.Action("GetLookupList")",
+                apiUrl: "@Url.Action("CallReportApi")",
+                runReportApiUrl: "@Url.Action("RunReportApi")",
+                getUsersAndRolesUrl: '@Url.Action("GetUsersAndRoles")',
+                reportMode: "execute",
+                reports: reports,
+            });
 
         ko.applyBindings(vm);
+
         $(function () {
             var options = {
                 cellHeight: 200
@@ -49,6 +51,22 @@ Layout = "~/Views/shared/_Layout.Report.cshtml";
 </script>
 }
 
+<!-- ko if: dashboards().length > 0 -->
+<div class="form-inline">
+    <div class="form-group">
+        <div class="control-group">
+            <label class="control-label">Available Dashboards</label>
+            <select class="form-control" style="max-width: 300px;" data-bind="options: dashboards, optionsText: 'Name', optionsValue: 'Id', value: currentDashboard"></select>            
+            <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal">Add New Connection</button>
+        </div>
+    </div>
+</div>
+<!-- /ko -->
+<!-- ko if: dashboards().length == 0 -->
+<div class="centered">
+    Start here by <button class="btn btn-lg btn-primary">Create a New Dashboard</button>
+</div>
+<!-- /ko -->
 
 <div class="grid-stack">
     <!-- ko foreach: reports -->
@@ -94,3 +112,22 @@ Layout = "~/Views/shared/_Layout.Report.cshtml";
     <!-- /ko -->
 </div>
 <div class="clearfix"></div>
+
+<div class="modal fade" id="add-dashboard-modal" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content" data-bind="with: dashboard">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title"><span></span> a new Data Connection</h4>
+            </div>
+            <div class="modal-body">
+              
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-bind="click: $root.addDashboard">Create</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+

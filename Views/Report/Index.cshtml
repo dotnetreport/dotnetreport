@@ -25,7 +25,8 @@
                 apiUrl: '@Url.Action("CallReportApi")',
                 runReportApiUrl: '@Url.Action("RunReportApi")',
                 getUsersAndRolesUrl: '@Url.Action("GetUsersAndRoles")',
-                reportId: @(Request.QueryString["reportId"] != null ? Request.QueryString["reportId"] : "0")
+                reportId: @(Request.QueryString["reportId"] != null ? Request.QueryString["reportId"] : "0"),
+                //dataFilters: { EmployeeId: '1,2' }, // You can also pass a list of Global Data filters using format { Column1: 'val1, val2, ...', Column2: '1,2,3,...', ...}
             });
 
             vm.init(@(Request.QueryString["folderId"]!=null? Request.QueryString["folderId"]: "0"));
