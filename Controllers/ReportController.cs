@@ -13,11 +13,44 @@ using System.Web.Script.Serialization;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
+using System.Web.Security;
 
 namespace ReportBuilder.Web.Controllers
 {
     public class ReportController : Controller
     {
+        private DotNetReportSettings GetSettings()
+        {
+            var settings = new DotNetReportSettings
+            {
+                ApiUrl = ConfigurationManager.AppSettings["dotNetReport.apiUrl"],
+                AccountApiToken = ConfigurationManager.AppSettings["dotNetReport.accountApiToken"], // Your Account Api Token from your http://dotnetreport.com Account
+                DataConnectApiToken = ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"] // Your Data Connect Api Token from your http://dotnetreport.com Account
+            };
+            
+            // Populate the values below using your Application Roles/Claims if applicable
+
+            settings.ClientId = "";  // You can pass your multi-tenant client id here to track their reports and folders
+            settings.UserId = ""; // You can pass your current authenticated user id here to track their reports and folders            
+            settings.UserName = ""; 
+            settings.CurrentUserRole = new List<string>(); // Populate your current authenticated user's roles
+
+            settings.Users = new List<string>(); // Populate all your application's user
+            settings.UserRoles = new List<string>(); // Populate all your application's user roles       
+            settings.CanUseAdminMode = true; // Set to true only if current user can use Admin mode to setup reports and dashboard
+
+            // An example of populating Roles using MVC web security if available
+            if (Roles.Enabled && User.Identity.IsAuthenticated) {
+                settings.UserId = User.Identity.Name;
+                settings.CurrentUserRole = Roles.GetRolesForUser(User.Identity.Name).ToList();
+
+                settings.Users = Roles.GetAllRoles().SelectMany(x => Roles.GetUsersInRole(x)).ToList();
+                settings.UserRoles = Roles.GetAllRoles().ToList();                
+            } 
+
+            return settings;
+        }
+
         public ActionResult Index()
         {
             return View();
@@ -42,7 +75,7 @@ namespace ReportBuilder.Web.Controllers
             };
 
             return View(model);
-        }
+        }        
 
         public JsonResult GetLookupList(string lookupSql, string connectKey)
         {
@@ -143,7 +176,7 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        public async Task<ActionResult> Dashboard()
+        public async Task<ActionResult> Dashboard(int? id)
         {
             var model = new List<DotNetReportModel>();
 

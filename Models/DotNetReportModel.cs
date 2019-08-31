@@ -159,6 +159,64 @@ namespace ReportBuilder.Web.Models
         public List<TableViewModel> Tables { get; set; }
     }
 
+    public class DotNetReportSettings
+    {
+        /// <summary>
+        /// dotnet Report Service Api Url
+        /// </summary>
+        public string ApiUrl { get; set; }
+
+        /// <summary>
+        /// Your dotnet Report Account Key
+        /// </summary>
+        public string AccountApiToken { get; set; }
+
+        /// <summary>
+        /// Your dotnet Report Data Connection Key
+        /// </summary>
+        public string DataConnectApiToken { get; set; }
+
+        /// <summary>
+        /// Current Client Id if using Multi-tenant
+        /// </summary>
+        public string ClientId { get; set; }
+
+        /// <summary>
+        /// Current User Id if using Authentication
+        /// </summary>
+        public string UserId { get; set; }
+
+        /// <summary>
+        /// Current User name to display
+        /// </summary>
+        public string UserName { get; set; }
+
+        /// <summary>
+        /// List of Current User's Roles if using Authentication
+        /// </summary>
+        public List<string> CurrentUserRole { get; set; } = new List<string>();
+
+        /// <summary>
+        /// List of all User Ids in your Application
+        /// </summary>
+        public List<string> Users { get; set; } = new List<string>();
+
+        /// <summary>
+        /// List of all User Roles in your Application
+        /// </summary>
+        public List<string> UserRoles { get; set; } = new List<string>();
+
+        /// <summary>
+        /// A list of Global Data filters using format { Column1: 'val1, val2, ...', Column2: '1,2,3,...', ...}
+        /// </summary>
+        public dynamic DataFilters { get; set; }
+
+        /// <summary>
+        /// Set true if the current user can enter Admin Mode
+        /// </summary>
+        public bool CanUseAdminMode { get; set; }
+    }
+
     public class DotNetReportHelper
     {
         public static byte[] GetExcelFile(string reportSql, string connectKey, string reportName)
