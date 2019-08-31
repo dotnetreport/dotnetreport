@@ -164,7 +164,7 @@ namespace ReportBuilder.Web.Models
         public string Method { get; set; }
         public bool SaveReport { get; set; }
         public string ReportJson { get; set; }
-        public bool AdminMode { get; set; }
+        public bool adminMode { get; set; }
     }
 
     public class DotNetReportSettings

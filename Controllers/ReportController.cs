@@ -126,12 +126,12 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole))
                 };
 
-                var d = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(model);
-                foreach (var key in d.Keys)
+                var data = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(model);
+                foreach (var key in data.Keys)
                 {
                     if (key != "adminMode" || (key == "adminMode" && settings.CanUseAdminMode))
                     {
-                        keyvalues.Add(new KeyValuePair<string, string>(key, d[key].ToString()));
+                        keyvalues.Add(new KeyValuePair<string, string>(key, data[key].ToString()));
                     }
                 }
 

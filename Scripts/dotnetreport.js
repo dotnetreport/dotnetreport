@@ -210,11 +210,10 @@ function filterGroupViewModel(args) {
 						type: 'POST',
 						url: args.options.lookupListUrl,
 						data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey })
-					})
-						.done(function (list) {
-							if (list.d) { list = list.d; }
-							lookupList(list);
-						});
+					}).done(function (list) {
+						if (list.d) { list = list.d; }
+						lookupList(list);
+					});
 				});
 			}
 		});
@@ -914,12 +913,12 @@ var reportViewModel = function (options) {
 		ajaxcall({
 			url: options.runReportApiUrl,
 			type: "POST",
-			data: {
+			data: JSON.stringify({
 				method: "/ReportApi/RunReport",
 				SaveReport: self.CanSaveReports() ? self.SaveReport() : false,
 				ReportJson: JSON.stringify(self.BuildReportData()),
 				adminMode: self.adminMode()
-			}
+			})
 		}).done(function (result) {
 			self.ReportID(result.reportId);
 			if (self.SaveReport()) {
@@ -1017,11 +1016,11 @@ var reportViewModel = function (options) {
 					ajaxcall({
 						url: options.runReportApiUrl,
 						type: "POST",
-						data: {
+						data: JSON.stringify({
 							method: "/ReportApi/RunDrillDownReport",
 							SaveReport: false,
 							ReportJson: JSON.stringify(self.BuildReportData(e.Items))													
-						}
+						})
 					}).done(function (ddResult) {
 						e.sql = ddResult.sql;
 						e.connectKey = ddResult.connectKey;

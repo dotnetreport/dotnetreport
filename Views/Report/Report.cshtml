@@ -42,15 +42,12 @@
             execReportUrl: "@Url.Action("RunReport")",
             reportWizard: $("#filter-panel"),
             lookupListUrl: "@Url.Action("GetLookupList")",
-            apiUrl: "@ConfigurationManager.AppSettings["dotNetReport.apiUrl"]",
-            accountApiToken: "@ConfigurationManager.AppSettings["dotNetReport.accountApiToken"]", // Your Account Api Token from your http://dotnetreport.com Account
-            dataconnectApiToken: "@ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"]", // Your Data Connect Api Token from your http://dotnetreport.com Account
+            apiUrl: '@Url.Action("CallReportApi")',
+            runReportApiUrl: '@Url.Action("RunReportApi")',
             reportFilter: htmlDecode('@HttpUtility.UrlDecode(Model.ReportFilter)'),
             reportMode: "execute",
             reportSql: "@Model.ReportSql",
-            reportConnect: "@Model.ConnectKey",
-            clientId: '', // You can pass your multi-tenant client id here to track their reports and folders
-            //dataFilters: { EmployeeId: '1,2' }, // You can also pass a list of Global Data filters using format { Column1: 'val1, val2, ...', Column2: '1,2,3,...', ...}
+            reportConnect: "@Model.ConnectKey"
         });
 
         ko.applyBindings(vm);
