@@ -14,6 +14,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
 using System.Web.Security;
+using Newtonsoft.Json;
 
 namespace ReportBuilder.Web.Controllers
 {
@@ -104,7 +105,39 @@ namespace ReportBuilder.Web.Controllers
 
             return Json((new JavaScriptSerializer()).DeserializeObject("[" + json.ToString() + "]"), JsonRequestBehavior.AllowGet);
         }
-        
+
+        public async Task<JsonResult> CallReportApi(string method, string model)
+        {
+            using (var client = new HttpClient())
+            {
+                var settings = GetSettings();
+                var keyvalues = new List<KeyValuePair<string, string>>
+                {
+                    new KeyValuePair<string, string>("account", settings.AccountApiToken),
+                    new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
+                    new KeyValuePair<string, string>("clientId", settings.ClientId),
+                    new KeyValuePair<string, string>("userId", settings.UserId),
+                    new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole))
+                };
+
+                var d = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(model);
+                foreach (var key in d.Keys)
+                {
+                    if (key != "adminMode" || (key == "adminMode" && settings.CanUseAdminMode))
+                    {
+                        keyvalues.Add(new KeyValuePair<string, string>(key, d[key].ToString()));
+                    }
+                }
+
+                var content = new FormUrlEncodedContent(keyvalues);
+                var response = await client.PostAsync(new Uri(settings.ApiUrl + method), content);
+                var stringContent = await response.Content.ReadAsStringAsync();
+
+                return Json((new JavaScriptSerializer()).Deserialize<dynamic>(stringContent), JsonRequestBehavior.AllowGet);
+            }
+
+        }
+
         public JsonResult RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, bool desc = false)
         {
             var sql = DotNetReportHelper.Decrypt(reportSql);

@@ -1341,8 +1341,11 @@ var reportViewModel = function (options) {
 	// Load saved reports
 	self.LoadAllSavedReports = function () {
 		ajaxcall({
-			url: options.apiUrl + "/ReportApi/GetSavedReports",
-			data: { account: options.accountApiToken, dataConnect: options.dataconnectApiToken, clientId: options.clientId, userId: options.userId, userRole: (options.currentUserRole || []).join(), adminMode: self.adminMode() },
+			url: options.apiCallUrl,
+			data: {
+				method: "/ReportApi/GetSavedReports",
+				model: JSON.stringify({ adminMode: self.adminMode() })
+			},
 		}).done(function (reports) {
 			$.each(reports, function (i, e) {
 				e.runMode = false;
