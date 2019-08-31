@@ -1,28 +1,26 @@
 ﻿@using System.Configuration
 @model List<DotNetReportModel>
 @{
-    ViewBag.Title = "Dashboard";
-    Layout = "~/Views/shared/_Layout.Report.cshtml";
+ViewBag.Title = "Dashboard";
+Layout = "~/Views/shared/_Layout.Report.cshtml";
 }
 
 <h2>Dashboard</h2>
 
 @section head {
 <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.min.css" />
-
 }
 
 @section scripts{
-    <script type="text/javascript" src='//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.min.js'></script>
-    <script type="text/javascript" src='//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.jQueryUI.min.js'></script>
-    <script type="text/javascript">
-
+<script type="text/javascript" src='//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.min.js'></script>
+<script type="text/javascript" src='//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.jQueryUI.min.js'></script>
+<script type="text/javascript">
     $(document).ready(function () {
-         var reports = [];
+        var reports = [];
 
         @foreach (var r in Model)
         {
-            @:reports.push({reportSql: "@r.ReportSql", reportId: @r.ReportId, reportFilter: htmlDecode('@HttpUtility.UrlDecode(r.ReportFilter)'), connectKey: "@r.ConnectKey"});
+        @:reports.push({ reportSql: "@r.ReportSql", reportId: @r.ReportId, reportFilter: htmlDecode('@HttpUtility.UrlDecode(r.ReportFilter)'), connectKey: "@r.ConnectKey" });
         }
 
         var vm = new dashboardViewModel({
@@ -30,9 +28,8 @@
             execReportUrl: "@Url.Action("RunReport")",
             reportWizard: $("#filter-panel"),
             lookupListUrl: "@Url.Action("GetLookupList")",
-            apiUrl: "@ConfigurationManager.AppSettings["dotNetReport.apiUrl"]",
-            accountApiToken: "@ConfigurationManager.AppSettings["dotNetReport.accountApiToken"]", // Your Account Api Token from your http://dotnetreport.com Account
-            dataconnectApiToken: "@ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"]", // Your Data Connect Api Token from your http://dotnetreport.com Account
+            apiUrl: "@Url.Action("CallReportApi")",
+            runReportApiUrl: "@Url.Action("RunReportApi")",
             reportMode: "execute",
             reports: reports
         });
@@ -45,11 +42,11 @@
             $('.grid-stack').gridstack(options);
         });
 
-        $(window).resize(function(){
+        $(window).resize(function () {
             vm.drawChart();
         });
-      });
-    </script>
+    });
+</script>
 }
 
 
@@ -63,17 +60,17 @@
                     <div class="pull-right">
                         @using (Html.BeginForm("DownloadExcel", "Report", FormMethod.Post))
                         {
-                            <input type="hidden" id="reportSql" name="reportSql" data-bind="value: currentSql" />
-                            <input type="hidden" id="connectKey" name="connectKey" data-bind="value: currentConnectKey" />
-                            <input type="hidden" id="reportName" name="reportName" data-bind="value: ReportName" />
-                            <button type="submit" class="btn btn-default btn-xs"><span class="fa fa-file-excel-o"></span></button>
+                        <input type="hidden" id="reportSql" name="reportSql" data-bind="value: currentSql" />
+                        <input type="hidden" id="connectKey" name="connectKey" data-bind="value: currentConnectKey" />
+                        <input type="hidden" id="reportName" name="reportName" data-bind="value: ReportName" />
+                        <button type="submit" class="btn btn-default btn-xs"><span class="fa fa-file-excel-o"></span></button>
                         }
                     </div>
-                    <a data-bind="attr: {href: '@Url.Action("Index","Report")?reportId=' + ReportID()}" class="btn btn-default btn-xs pull-right">
+                    <a data-bind="attr: {href: '@Url.Action(" Index","Report")?reportId=' + ReportID()}" class="btn btn-default btn-xs pull-right">
                         <i class="fa fa-pencil-square-o" title="Edit Report"></i>
                     </a>
                 </div>
-                <div class="panel-body">
+                <div class="panel-body list-overflow-auto">
                     <p data-bind="html: ReportDescription">
                     </p>
                     <div data-bind="with: ReportResult">

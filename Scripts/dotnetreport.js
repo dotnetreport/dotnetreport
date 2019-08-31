@@ -342,7 +342,10 @@ var reportViewModel = function (options) {
 		}
 	});
 
-	self.manageAccess = manageAccess(options);
+	ajaxcall({ url: options.getUsersAndRolesUrl }).done(function (data) {
+		self.manageAccess = manageAccess(data);
+	});
+	
 
 	self.pager.currentPage.subscribe(function () {
 		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey());
@@ -1498,7 +1501,6 @@ var dashboardViewModel = function (options) {
 
 	self.addDashboard = function () {
 		
-
 		ajaxcall({
 			url: options.addDashboardUrl,
 			type: 'POST',

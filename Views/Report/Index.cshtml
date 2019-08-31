@@ -24,6 +24,7 @@
                 lookupListUrl: '@Url.Action("GetLookupList")',
                 apiUrl: '@Url.Action("CallReportApi")',
                 runReportApiUrl: '@Url.Action("RunReportApi")',
+                getUsersAndRolesUrl: '@Url.Action("GetUsersAndRoles")',
                 reportId: @(Request.QueryString["reportId"] != null ? Request.QueryString["reportId"] : "0")
             });
 

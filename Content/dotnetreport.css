@@ -10,6 +10,12 @@
     overflow-x: hidden;
 }
 
+.list-overflow-auto {
+    height: 90%;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
 .list-report li {
     list-style: none;
     border-bottom: solid 1px #ddd;
