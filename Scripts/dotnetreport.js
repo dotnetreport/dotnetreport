@@ -200,9 +200,11 @@ function filterGroupViewModel(args) {
 		field.subscribe(function (newField) {
 			if (newField && newField.hasForeignKey) {
 				ajaxcall({
-					url: args.options.apiUrl + "/ReportApi/GetLookupList",
-					data: { account: args.options.accountApiToken, dataConnect: args.options.dataconnectApiToken, clientId: args.options.clientId, fieldId: newField.fieldId }
-
+					url: args.options.apiUrl,
+					data: {
+						method: "/ReportApi/GetLookupList",
+						model: JSON.stringify({ fieldId: newField.fieldId })
+					}
 				}).done(function (result) {
 					ajaxcall({
 						type: 'POST',
@@ -423,15 +425,14 @@ var reportViewModel = function (options) {
 			}
 
 			ajaxcall({
-				url: options.apiUrl + "/ReportApi/SaveFolder",
+				url: options.apiUrl,
 				data: {
-					account: options.accountApiToken,
-					dataConnect: options.dataconnectApiToken,
-					clientId: options.clientId,
-					folderId: id,
-					folderName: self.ManageFolder.FolderName(),
-					userId: options.userId
-				},
+					method: "/ReportApi/SaveFolder",
+					model: JSON.stringify({
+						folderId: id,
+						folderName: self.ManageFolder.FolderName()
+					})
+				}
 			}).done(function (returnId) {
 				if (self.ManageFolder.IsNew()) {
 					self.Folders.push({
@@ -461,10 +462,12 @@ var reportViewModel = function (options) {
 			bootbox.confirm("Are you sure you want to delete this Folder?\n\nWARNING: Deleting a folder will delete all reports and this action cannot be undone.", function (r) {
 				if (r) {
 					ajaxcall({
-						url: options.apiUrl + "/ReportApi/DeleteFolder",
+						url: options.apiUrl,
 						data: {
-							account: options.accountApiToken, dataConnect: options.dataconnectApiToken, clientId: options.clientId,
-							folderId: self.SelectedFolder().Id, userId: options.userId
+							method: "/ReportApi/DeleteFolder",
+							model: JSON.stringify({								
+								folderId: self.SelectedFolder().Id
+							})
 						},
 					}).done(function () {
 						self.Folders.remove(self.SelectedFolder());
@@ -515,16 +518,14 @@ var reportViewModel = function (options) {
 		}
 		// Get fields for Selected Table
 		ajaxcall({
-			url: options.apiUrl + "/ReportApi/GetFields",
+			url: options.apiUrl,
 			data: {
-				account: options.accountApiToken,
-				dataConnect: options.dataconnectApiToken,
-				clientId: options.clientId,
-				tableId: table.tableId,
-				includeDoNotDisplay: false,
-				userRole: (options.currentUserRole || []).join(),
-				adminMode: self.adminMode()
-			},
+				method: "/ReportApi/GetFields",
+				model: JSON.stringify({
+					tableId: table.tableId,
+					includeDoNotDisplay: false,
+				})
+			}			
 		}).done(function (fields) {
 			var flds = _.map(fields, function (e, i) {
 				var match = _.filter(self.SelectedFields(), function (x) { return x.fieldId == e.fieldId; });
@@ -911,17 +912,14 @@ var reportViewModel = function (options) {
 		}
 
 		ajaxcall({
-			url: options.apiUrl + "/ReportApi/RunReport",
+			url: options.runReportApiUrl,
 			type: "POST",
-			data: JSON.stringify({
-				Account: options.accountApiToken, dataConnect: options.dataconnectApiToken, clientId: options.clientId,
+			data: {
+				method: "/ReportApi/RunReport",
 				SaveReport: self.CanSaveReports() ? self.SaveReport() : false,
 				ReportJson: JSON.stringify(self.BuildReportData()),
-				userId: options.userId,
-				userRole: (options.currentUserRole || []).join(),
 				adminMode: self.adminMode()
-			}),
-
+			}
 		}).done(function (result) {
 			self.ReportID(result.reportId);
 			if (self.SaveReport()) {
@@ -1017,14 +1015,13 @@ var reportViewModel = function (options) {
 				e.expand = function () {
 					// load drill down data
 					ajaxcall({
-						url: options.apiUrl + "/ReportApi/RunDrillDownReport",
+						url: options.runReportApiUrl,
 						type: "POST",
-						data: JSON.stringify({
-							Account: options.accountApiToken, dataConnect: options.dataconnectApiToken, clientId: options.clientId,
+						data: {
+							method: "/ReportApi/RunDrillDownReport",
 							SaveReport: false,
-							ReportJson: JSON.stringify(self.BuildReportData(e.Items)),
-							userId: options.userId
-						})
+							ReportJson: JSON.stringify(self.BuildReportData(e.Items))													
+						}
 					}).done(function (ddResult) {
 						e.sql = ddResult.sql;
 						e.connectKey = ddResult.connectKey;
@@ -1191,15 +1188,13 @@ var reportViewModel = function (options) {
 	self.loadFolders = function (folderId) {
 		// Load folders
 		ajaxcall({
-			url: options.apiUrl + "/ReportApi/GetFolders",
+			url: options.apiUrl,
 			data: {
-				account: options.accountApiToken,
-				dataConnect: options.dataconnectApiToken,
-				clientId: options.clientId,
-				userId: options.userId,
-				userRole: (options.currentUserRole || []).join(),
-				adminMode: self.adminMode()
-			},
+				method: "/ReportApi/GetFolders",
+				model: JSON.stringify({
+					adminMode: self.adminMode()
+				})
+			}
 		}).done(function (folders) {
 			self.Folders(folders);
 			self.SelectedFolder(null);
@@ -1241,8 +1236,13 @@ var reportViewModel = function (options) {
 
 	self.LoadReport = function (reportId, filterOnFly) {
 		return ajaxcall({
-			url: options.apiUrl + "/ReportApi/LoadReport",
-			data: { account: options.accountApiToken, dataConnect: options.dataconnectApiToken, clientId: options.clientId, reportId: reportId, userId: options.userId },
+			url: options.apiUrl,
+			data: {
+				method: "/ReportApi/LoadReport",
+				model: JSON.stringify({
+					reportId: reportId
+				})
+			}
 		}).done(function (report) {
 			self.ReportID(report.ReportID);
 			self.ReportType(report.ReportType);
@@ -1341,7 +1341,7 @@ var reportViewModel = function (options) {
 	// Load saved reports
 	self.LoadAllSavedReports = function () {
 		ajaxcall({
-			url: options.apiCallUrl,
+			url: options.apiUrl,
 			data: {
 				method: "/ReportApi/GetSavedReports",
 				model: JSON.stringify({ adminMode: self.adminMode() })
@@ -1381,8 +1381,13 @@ var reportViewModel = function (options) {
 					bootbox.confirm("Are you sure you would like to Delete this Report?", function (r) {
 						if (r) {
 							ajaxcall({
-								url: options.apiUrl + "/ReportApi/DeleteReport",
-								data: { account: options.accountApiToken, dataConnect: options.dataconnectApiToken, clientId: options.clientId, reportId: e.reportId, userId: options.userId, userRole: (options.currentUserRole || []).join() },
+								url: options.apiUrl,
+								data: {
+									method: "/ReportApi/DeleteReport",
+									model: JSON.stringify({
+										reportId: e.reportId
+									})
+								}
 							}).done(function () {
 								self.SavedReports.remove(e);
 							});
@@ -1403,8 +1408,11 @@ var reportViewModel = function (options) {
 	if (self.ReportMode() != "dashboard") {
 		self.LoadAllSavedReports();
 		ajaxcall({
-			url: options.apiUrl + "/ReportApi/CanSaveReports",
-			data: { account: options.accountApiToken, dataConnect: options.dataconnectApiToken, clientId: options.clientId },
+			url: options.apiUrl,
+			data: {
+				method: "/ReportApi/CanSaveReports",
+				model: "{}"
+			}
 		}).done(function (x) {
 			x = x || {
 				allowUsersToCreateReports: true,
@@ -1460,14 +1468,12 @@ var reportViewModel = function (options) {
 	self.loadTables = function () {
 		// Load tables
 		ajaxcall({
-			url: options.apiUrl + "/ReportApi/GetTables",
+			url: options.apiUrl,
 			data: {
-				account: options.accountApiToken,
-				dataConnect: options.dataconnectApiToken,
-				clientId: options.clientId,
-				userId: options.userId,
-				userRole: (options.currentUserRole || []).join(),
-				adminMode: self.adminMode()
+				method: "/ReportApi/GetTables",
+				model: JSON.stringify({
+					adminMode: self.adminMode()
+				})
 			},
 		}).done(function (tables) {
 			self.Tables(tables);

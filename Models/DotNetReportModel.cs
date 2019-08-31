@@ -159,6 +159,14 @@ namespace ReportBuilder.Web.Models
         public List<TableViewModel> Tables { get; set; }
     }
 
+    public class DotNetReportApiCall
+    {
+        public string Method { get; set; }
+        public bool SaveReport { get; set; }
+        public string ReportJson { get; set; }
+        public bool AdminMode { get; set; }
+    }
+
     public class DotNetReportSettings
     {
         /// <summary>

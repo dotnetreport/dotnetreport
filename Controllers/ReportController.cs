@@ -106,6 +106,12 @@ namespace ReportBuilder.Web.Controllers
             return Json((new JavaScriptSerializer()).DeserializeObject("[" + json.ToString() + "]"), JsonRequestBehavior.AllowGet);
         }
 
+        [HttpPost]
+        public async Task<JsonResult> RunReportApi(DotNetReportApiCall data)
+        {
+            return await CallReportApi(data.Method, (new JavaScriptSerializer()).Serialize(data));
+        }
+
         public async Task<JsonResult> CallReportApi(string method, string model)
         {
             using (var client = new HttpClient())
