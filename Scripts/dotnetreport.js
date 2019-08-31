@@ -241,23 +241,21 @@ function filterGroupViewModel(args) {
 }
 
 var manageAccess = function (options) {
-	var self = this;
-
-	self.clientId = ko.observable();
-	ajaxcall({ url: options.getUsersAndRolesUrl }).done(function (data) {
-		self.users = _.map(data.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; });
-		self.userRoles = _.map(data.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; });
-		self.viewOnlyUsers = _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; });
-		self.viewOnlyUserRoles = _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; });
-		self.getAsList = function (x) {
+	return {
+		clientId: ko.observable(),
+		users: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; }),
+		userRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; }),
+		viewOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; }),
+		viewOnlyUserRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; }),
+		getAsList: function (x) {
 			var list = '';
 			$.each(x, function (i, e) { if (e.selected()) list += (list ? ',' : '') + e.value(); });
 			return list;
-		};
-		self.setupList = function (x, value) {
+		},
+		setupList: function (x, value) {
 			$.each(x, function (i, e) { if (value.indexOf(e.value()) >= 0) e.selected(true); else e.selected(false); });
 		}
-	});
+	}
 }
 
 var reportViewModel = function (options) {
@@ -343,7 +341,7 @@ var reportViewModel = function (options) {
 		}
 	});
 
-	self.manageAccess = new manageAccess(options);
+	self.manageAccess = manageAccess(options);
 
 	self.pager.currentPage.subscribe(function () {
 		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey());
@@ -1495,7 +1493,7 @@ var dashboardViewModel = function (options) {
 		Id: ko.observable(),
 		Name: ko.observable(),
 		Description: ko.observable(),
-		manageAccess: new manageAccess(options)
+		manageAccess: manageAccess(options)
 	}
 
 	self.currentDashboard = ko.observable();
@@ -1540,13 +1538,14 @@ var dashboardViewModel = function (options) {
 			execReportUrl: options.execReportUrl,
 			reportWizard: options.reportWizard,
 			lookupListUrl: options.lookupListUrl,
-			getUsersAndRolesUrl: options.getUsersAndRolesUrl,
 			apiUrl: options.apiUrl,
 			reportFilter: e.reportFilter,
 			reportMode: "dashboard",
 			reportSql: e.reportSql,
 			reportId: e.reportId,
 			reportConnect: e.connectKey,
+			users: options.users,
+			userRoles: options.userRoles,
 		});
 
 		self.reports.push(report);

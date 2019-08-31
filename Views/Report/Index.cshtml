@@ -6,18 +6,19 @@
 }
 
 @section scripts{
-    <script type="text/javascript">
+<script type="text/javascript">
 
-    @*
-        The Javascript code below is related to presentation for the Report Builder. You don't have to change it, unless you intentionally want to
-        change something in the Report Builder's behavior in your Application.
+@*
+    The Javascript code below is related to presentation for the Report Builder. You don't have to change it, unless you intentionally want to
+    change something in the Report Builder's behavior in your Application.
 
-        Its Recommended you use it as is, and only change styling as needed to match your application. You will be responsible for managing and maintaining any changes.
-    *@
+    Its Recommended you use it as is, and only change styling as needed to match your application. You will be responsible for managing and maintaining any changes.
+*@
 
     var toastr = toastr || { error: function (msg) { window.alert(msg); }, success: function (msg) { window.alert(msg); } };
 
-        $(document).ready(function () {
+    $(document).ready(function () {
+        ajaxcall({ url: '@Url.Action("GetUsersAndRoles")' }).done(function (data) {
             var vm = new reportViewModel({
                 runReportUrl: '@Url.Action("Report")',
                 reportWizard: $("#modal-reportbuilder"),
@@ -26,14 +27,17 @@
                 runReportApiUrl: '@Url.Action("RunReportApi")',
                 getUsersAndRolesUrl: '@Url.Action("GetUsersAndRoles")',
                 reportId: @(Request.QueryString["reportId"] != null ? Request.QueryString["reportId"] : "0"),
+                users: data.users,
+                userRoles: data.userRoles,
                 //dataFilters: { EmployeeId: '1,2' }, // You can also pass a list of Global Data filters using format { Column1: 'val1, val2, ...', Column2: '1,2,3,...', ...}
             });
 
             vm.init(@(Request.QueryString["folderId"]!=null? Request.QueryString["folderId"]: "0"));
             ko.applyBindings(vm);
         });
+    });
 
-    </script>
+</script>
 }
 
 <h3>Report Builder</h3>

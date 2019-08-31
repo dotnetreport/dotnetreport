@@ -23,30 +23,33 @@ Layout = "~/Views/shared/_Layout.Report.cshtml";
         @:reports.push({ reportSql: "@r.ReportSql", reportId: @r.ReportId, reportFilter: htmlDecode('@HttpUtility.UrlDecode(r.ReportFilter)'), connectKey: "@r.ConnectKey" });
         }
 
-        var vm = new dashboardViewModel({
+        ajaxcall({ url: '@Url.Action("GetUsersAndRoles")' }).done(function (data) {
+            var vm = new dashboardViewModel({
                 runReportUrl: "@Url.Action("Report")",
                 execReportUrl: "@Url.Action("RunReport")",
                 reportWizard: $("#filter-panel"),
                 lookupListUrl: "@Url.Action("GetLookupList")",
                 apiUrl: "@Url.Action("CallReportApi")",
                 runReportApiUrl: "@Url.Action("RunReportApi")",
-                getUsersAndRolesUrl: '@Url.Action("GetUsersAndRoles")',
                 reportMode: "execute",
                 reports: reports,
+                users: data.users,
+                userRoles: data.userRoles
             });
 
-        ko.applyBindings(vm);
+            ko.applyBindings(vm);
 
-        $(function () {
-            var options = {
-                cellHeight: 200
-            };
-            $('.grid-stack').gridstack(options);
-        });
+            $(function () {
+                var options = {
+                    cellHeight: 200
+                };
+                $('.grid-stack').gridstack(options);
+            });
 
-        $(window).resize(function () {
-            vm.drawChart();
-        });
+            $(window).resize(function () {
+                vm.drawChart();
+            });
+        });        
     });
 </script>
 }
