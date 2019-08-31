@@ -239,6 +239,25 @@ function filterGroupViewModel(args) {
 	};
 }
 
+var manageAccess = function (options) {
+	return {
+		clientId: ko.observable(),
+		users: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; }),
+		userRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; }),
+		viewOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; }),
+		viewOnlyUserRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; }),
+		getAsList: function (x) {
+			var list = '';
+			$.each(x, function (i, e) { if (e.selected()) list += (list ? ',' : '') + e.value(); });
+			return list;
+		},
+		setupList: function (x, value) {
+			$.each(x, function (i, e) { if (value.indexOf(e.value()) >= 0) e.selected(true); else e.selected(false); });
+		}
+	}
+}
+
+
 var reportViewModel = function (options) {
 	var self = this;
 
@@ -322,21 +341,7 @@ var reportViewModel = function (options) {
 		}
 	});
 
-	self.manageAccess = {		
-		clientId: ko.observable(),		
-		users: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; }),
-		userRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; }),
-		viewOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; }),
-		viewOnlyUserRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; }),
-		getAsList: function (x) {
-			var list = '';
-			$.each(x, function (i, e) { if (e.selected()) list += (list ? ',' : '') + e.value(); });
-			return list;
-		},
-		setupList: function (x, value) {
-			$.each(x, function (i, e) { if (value.indexOf(e.value()) >= 0) e.selected(true); else e.selected(false); });
-		}
-	}
+	self.manageAccess = manageAccess(options);
 
 	self.pager.currentPage.subscribe(function () {
 		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey());
@@ -1475,6 +1480,44 @@ var reportViewModel = function (options) {
 
 var dashboardViewModel = function (options) {
 	var self = this;
+
+	self.dashboards = ko.observableArray([]);
+	self.dashboard = {
+		Name: ko.observable(),
+		Description: ko.observable(),
+		manageAccess: manageAccess(options)
+	}
+
+	self.addDashboard = function () {
+		
+
+		ajaxcall({
+			url: options.addDashboardUrl,
+			type: 'POST',
+			data: JSON.stringify({
+				account: self.keys.AccountApiKey,
+				dataConnect: self.newDashboard.copySchema() ? self.newDashboard.copyFrom() : self.keys.DatabaseApiKey,
+				newDataConnect: self.newDashboard.Name(),
+				connectionKey: self.newDashboard.ConnectionKey(),
+				copySchema: self.newDashboard.copySchema()
+			})
+		}).done(function (result) {
+			self.Dashboards.push({
+				Id: result.Id,
+				DataConnectName: self.newDashboard.Name(),
+				ConnectionKey: self.newDashboard.ConnectionKey(),
+				DataConnectGuid: result.DataConnectGuid
+			});
+
+			self.newDashboard.Name('');
+			self.newDashboard.ConnectionKey('');
+			notify.success("Data Connection added successfully");
+			$('#add-connection-modal').modal('hide');
+		});
+
+		return true;
+	}
+
 
 	self.reports = ko.observableArray([]);
 	$.each(options.reports, function (i, e) {
