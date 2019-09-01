@@ -5,9 +5,6 @@ ViewBag.Title = "Dashboard";
 Layout = "~/Views/shared/_Layout.Report.cshtml";
 }
 
-<h2 data-bind="text: dashboard.Name() ? dashboard.Name() : 'Dashboard'">Dashboard</h2>
-<p data-bind="text: dashboard.Description"></p>
-
 @section head {
 <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.min.css" />
 }
@@ -48,15 +45,14 @@ Layout = "~/Views/shared/_Layout.Report.cshtml";
 
             vm.init().done(function () {
                 ko.applyBindings(vm);
+                $(function () {
+                    var options = {
+                        cellHeight: 200
+                    };
+                    $('.grid-stack').gridstack(options);
+                });
             });
-
-            $(function () {
-                var options = {
-                    cellHeight: 200
-                };
-                $('.grid-stack').gridstack(options);
-            });
-
+            
             $(window).resize(function () {
                 vm.drawChart();
             });
@@ -65,21 +61,27 @@ Layout = "~/Views/shared/_Layout.Report.cshtml";
 </script>
 }
 
-@if ((Roles.Enabled && User.IsInRole("Admin") || User.IsInRole("Administrator")) || !User.Identity.IsAuthenticated)
-{
-    <div data-bind="template: {name: 'admin-mode-template'}"></div>
-}
+<div class="pull-left" data-bind="with: currentDashboard">
+    <h2 data-bind="text: name ? name : 'Dashboard'">Dashboard</h2>
+    <p data-bind="text: description"></p>
+</div>
 
 <div class="form-inline" style="display: none;" data-bind="visible: dashboards().length > 0 ">
     <div class="form-group pull-right">
         <div class="control-group">
             <label class="control-label">Switch Dashboard</label>
-            <select class="form-control" data-bind="options: dashboards, optionsText: 'name', optionsValue: 'id', value: currentDashboard"></select>            
-            <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Edit Dashboard Settings">Edit</button>
-            <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Add a New Dashboard">Add</button>
+            <select class="form-control" data-bind="options: dashboards, optionsText: 'name', optionsValue: 'id', value: selectDashboard"></select>
+            <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Edit Dashboard Settings" data-bind="click: editDashboard">Edit</button>
+            <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Add a New Dashboard" data-bind="click: newDashboard">Add</button>
         </div>
     </div>
 </div>
+<div class="clearfix"></div>
+
+@if ((Roles.Enabled && User.IsInRole("Admin") || User.IsInRole("Administrator")) || !User.Identity.IsAuthenticated)
+{
+    <div data-bind="template: {name: 'admin-mode-template'}"></div>
+}
 
 <div class="centered" style="display: none;" data-bind="visible: dashboards().length == 0 ">
     No Dashboards yet. Click below to Start<br />

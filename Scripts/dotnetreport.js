@@ -249,11 +249,11 @@ var manageAccess = function (options) {
 		viewOnlyUserRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; }),
 		getAsList: function (x) {
 			var list = '';
-			$.each(x, function (i, e) { if (e.selected()) list += (list ? ',' : '') + e.value(); });
+			_.forEach(x, function (e) { if (e.selected()) list += (list ? ',' : '') + e.value(); });
 			return list;
 		},
 		setupList: function (x, value) {
-			$.each(x, function (i, e) { if (value.indexOf(e.value()) >= 0) e.selected(true); else e.selected(false); });
+			_.forEach(x, function (e) { if (value.indexOf(e.value()) >= 0) e.selected(true); else e.selected(false); });
 		}
 	}
 }
@@ -1494,9 +1494,9 @@ var dashboardViewModel = function (options) {
 	self.currentUserRole = (options.currentUserRole || []).join();
 	self.reportsAndFolders = ko.observableArray([]);
 
-	var currentDash = options.dashboardId
-		? (_.find(self.dashboards(), { id: options.dashboardId }) || {})
-		: (self.dashboards().length > 0 ? self.dashboards()[0] : {});
+	var currentDash = options.dashboardId > 0
+		? (_.find(self.dashboards(), { id: options.dashboardId }) || {name: '', description: ''})
+		: (self.dashboards().length > 0 ? self.dashboards()[0] : { name: '', description: ''});
 
 	self.dashboard = {
 		Id: ko.observable(currentDash.id),
@@ -1505,7 +1505,41 @@ var dashboardViewModel = function (options) {
 		manageAccess: manageAccess(options)
 	}
 
-	self.currentDashboard = ko.observable();
+	self.currentDashboard = ko.observable(currentDash);
+	self.selectDashboard = ko.observable();
+
+	self.newDashboard = function () {
+		self.dashboard.Id(0);
+		self.dashboard.Name('');
+		self.dashboard.Description('');
+		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.users, '');
+		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.userRoles, '');
+		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.viewOnlyUserRoles, '');
+		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.viewOnlyUsers, '');
+
+		_.forEach(self.reportsAndFolders(), function (f) {
+			_.forEach(f.reports, function (r) {
+				r.selected(false);
+			});
+		});
+	}
+
+	self.editDashboard = function () {
+		self.dashboard.Id(self.currentDashboard().id);
+		self.dashboard.Name(self.currentDashboard().name);
+		self.dashboard.Description(self.currentDashboard().description);
+		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.users, self.currentDashboard().userId || '');
+		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.userRoles, self.currentDashboard().userRoles || '');
+		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.viewOnlyUserRoles, self.currentDashboard().viewOnlyUserRoles || '');
+		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.viewOnlyUsers, self.currentDashboard().viewOnlyUserId || '');
+
+		var selectedReports = (self.currentDashboard().selectedReports || '').split(',');
+		_.forEach(self.reportsAndFolders(), function (f) {
+			_.forEach(f.reports, function (r) {
+				r.selected(selectedReports.indexOf(r.reportId.toString()) >= 0);
+			});
+		});
+	}
 
 	self.saveDashboard = function () {
 		$(".form-group").removeClass("has-error");
