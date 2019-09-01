@@ -12,7 +12,7 @@ For more details, see
 
 ## Getting started
 
-The easiest way to add .Net Report Builder to your application is to install the [Nuget Package](https://www.nuget.org/packages/dotNetReport/). For complete details, please see the [documentation](https://dotnetreport.com/Forum/chat/how-to-setup-net-report-builder-in-your-project). 
+The easiest way to add .Net Report Builder to your application is to install the [Nuget Package](https://www.nuget.org/packages/dotNetReport/). For complete details, please see the [documentation](https://dotnetreport.com/blog/2016/03/getting-started-with-dotnet-report/). 
 
 ## License
 .Net Report Builder is licensed under [LGPL](https://github.com/dotnetreport/ReportBuilder.Web/blob/master/LICENSE) and EULA. 
