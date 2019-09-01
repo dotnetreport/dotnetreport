@@ -47,7 +47,8 @@ Layout = "~/Views/shared/_Layout.Report.cshtml";
                 ko.applyBindings(vm);
                 $(function () {
                     var options = {
-                        cellHeight: 200
+                        cellHeight: 80,
+                        verticalMargin: 10
                     };
                     $('.grid-stack').gridstack(options);
                 });

@@ -1506,7 +1506,13 @@ var dashboardViewModel = function (options) {
 	}
 
 	self.currentDashboard = ko.observable(currentDash);
-	self.selectDashboard = ko.observable();
+	self.selectDashboard = ko.observable(currentDash.id);
+
+	self.selectDashboard.subscribe(function (newValue) {
+		if (newValue && newValue != self.currentDashboard().id) {
+			window.location = window.location.href.split("?")[0] + "?id=" + newValue;
+		}
+	});
 
 	self.newDashboard = function () {
 		self.dashboard.Id(0);
