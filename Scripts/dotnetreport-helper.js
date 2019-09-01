@@ -27,7 +27,7 @@ function ajaxcall(options) {
         delete options;
         var msg = jqxhr.responseJSON && jqxhr.responseJSON.Message ? "\n" + jqxhr.responseJSON.Message : "";
 
-        if (error == "Conflict") {
+		if (error == "Conflict") {
             toastr.error("Conflict detected. Please ensure the record is not a duplicate and that it has no related records." + msg);
         } else if (error == "Bad Request") {
             toastr.error("Validation failed for your request. Please make sure the data provided is correct." + msg);
@@ -38,7 +38,7 @@ function ajaxcall(options) {
         } else if (error == "Not Found") {
             toastr.error("Record not found." + msg);
         } else if (error == "Internal Server Error") {
-            toastr.error("The system was unable to complete your request." + msg);
+            toastr.error("The system was unable to complete your request. <br>Service Reponse: " + msg);
         } else {
             toastr.error(status + ": " + msg);
         }

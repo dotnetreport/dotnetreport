@@ -1509,7 +1509,7 @@ var dashboardViewModel = function (options) {
 	self.selectDashboard = ko.observable(currentDash.id);
 
 	self.selectDashboard.subscribe(function (newValue) {
-		if (newValue && newValue != self.currentDashboard().id) {
+		if (newValue != self.currentDashboard().id) {
 			window.location = window.location.href.split("?")[0] + "?id=" + newValue;
 		}
 	});
@@ -1581,11 +1581,28 @@ var dashboardViewModel = function (options) {
 			}
 		}).done(function (result) {
 			self.selectDashboard(result.id);
-			toastr.success("Dashboard added successfully");
-			$('#add-dashboard-modal').modal('hide');
+			toastr.success("Dashboard deleted successfully");
 		});
 
 		return true;
+	}
+
+	self.deleteDashboard = function () {
+		bootbox.confirm("Are you sure you would like to Delete this Dashboard?", function (r) {
+			if (r) {
+				ajaxcall({
+					url: options.apiUrl,
+					data: {
+						method: "/ReportApi/DeleteDashboard",
+						model: JSON.stringify({ id: self.currentDashboard().id, adminMode: self.adminMode() })
+					}
+				}).done(function (result) {
+					self.selectDashboard(0);
+					toastr.success("Dashboard added successfully");
+					$('#add-dashboard-modal').modal('hide');
+				});
+			}
+		});
 	}
 
 	self.reports = ko.observableArray([]);

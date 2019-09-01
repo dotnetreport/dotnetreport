@@ -139,7 +139,8 @@ namespace ReportBuilder.Web.Controllers
                 var content = new FormUrlEncodedContent(keyvalues);
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + method), content);
                 var stringContent = await response.Content.ReadAsStringAsync();
-
+                
+                Response.StatusCode = (int)response.StatusCode;
                 return Json((new JavaScriptSerializer()).Deserialize<dynamic>(stringContent), JsonRequestBehavior.AllowGet);
             }
 
