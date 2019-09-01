@@ -1580,15 +1580,7 @@ var dashboardViewModel = function (options) {
 				model: JSON.stringify(model)
 			}
 		}).done(function (result) {
-			if (model.id) {
-				self.dashboards.remove(_.find(self.dashboards, { id: model.id }));
-			}
-
-			model.id = result.Id;
-			self.dashboards.push(model);
-
-			self.dashboard.Name('');
-			self.dashboard.Description('');
+			self.selectDashboard(result.id);
 			toastr.success("Dashboard added successfully");
 			$('#add-dashboard-modal').modal('hide');
 		});
@@ -1629,6 +1621,24 @@ var dashboardViewModel = function (options) {
 			x.DrawChart();
 		});
 	};
+
+	self.updatePosition = function (item) {
+		ajaxcall({
+			url: options.apiUrl,
+			noBlocking: true,
+			data: {
+				method: '/ReportApi/UpdateDashboardReportPosition',
+				model: JSON.stringify({
+					x: item.x,
+					y: item.y,
+					width: item.width,
+					height: item.height,
+					dashboardId: self.currentDashboard().id,
+					reportId: item.id
+				})
+			}
+		});
+	}
 
 	self.init = function () {
 		

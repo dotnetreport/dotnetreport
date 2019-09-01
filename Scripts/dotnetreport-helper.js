@@ -2,7 +2,8 @@
 
 // Ajax call wrapper function
 function ajaxcall(options) {
-    if ($.blockUI) {
+	var noBlocking = options.noBlocking === true ? true : false
+	if ($.blockUI && !noBlocking) {
         $.blockUI({ baseZ: 500 });
     }
 
@@ -13,7 +14,7 @@ function ajaxcall(options) {
         cache: options.cache || false,
         dataType: options.dataType || "json",
         contentType: options.contentType || "application/json; charset=utf-8",
-        headers: options.headers || {}
+		headers: options.headers || {},
     }).done(function (data) {
         if ($.unblockUI) {
             $.unblockUI();

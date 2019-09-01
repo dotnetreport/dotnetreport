@@ -51,8 +51,17 @@
                         verticalMargin: 10
                     };
                     $('.grid-stack').gridstack(options);
-                    $(".list-overflow-auto").each(function () {
-                        $(this).css('height', $(this).height() - 10);
+                    //$(".list-overflow-auto").each(function () {
+                    //    $(this).css('height', $(this).height() - 10);
+                    //});
+                    $('.grid-stack').on('gsresizestop', function (event, elem) {
+                        var newHeight = $(elem).attr('data-gs-height');
+                        $(elem).closest(".list-overflow-auto").css('height', newHeight - 50);
+                    });
+                    $('.grid-stack').on('change', function (event, items) {
+                        _.forEach(items, function (x) {
+                            vm.updatePosition(x);
+                        });
                     });
                 });
             });
@@ -156,7 +165,7 @@
 
 <div class="grid-stack">
     <!-- ko foreach: reports -->
-    <div class="grid-stack-item" data-bind="attr: {'data-gs-x': x, 'data-gs-y': y, 'data-gs-width': width, 'data-gs-height': height, 'data-gs-auto-position': true}">
+    <div class="grid-stack-item" data-bind="attr: {'data-gs-x': x, 'data-gs-y': y, 'data-gs-width': width, 'data-gs-height': height, 'data-gs-auto-position': true, 'data-gs-id': ReportID}">
 
         <div class="panel" data-bind="attr: {class: 'panel ' + panelStyle + ' grid-stack-item-content'}" style="overflow-y: hidden;">
             <div class="panel-heading panel-nocollapse">
