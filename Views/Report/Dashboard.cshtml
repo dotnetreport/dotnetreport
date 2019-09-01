@@ -95,7 +95,9 @@
 {
     <div data-bind="template: {name: 'admin-mode-template'}"></div>
 }
-
+<div class="alert alert-info">
+    To manage Reports, please <a href="@Url.Action("Index","Report")">click here</a>.
+</div>
 <div class="centered" style="display: none;" data-bind="visible: dashboards().length == 0 ">
     No Dashboards yet. Click below to Start<br />
     <button class="btn btn-lg btn-primary" data-toggle="modal" data-target="#add-dashboard-modal"><i class="fa fa-dashboard"></i> Create a New Dashboard</button>
