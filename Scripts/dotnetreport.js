@@ -1536,6 +1536,10 @@ var dashboardViewModel = function (options) {
 				model: JSON.stringify(model)
 			}
 		}).done(function (result) {
+			if (model.id) {
+				self.dashboards.remove(_.find(self.dashboards, { id: model.id }));
+			}
+
 			model.id = result.Id;
 			self.dashboards.push(model);
 

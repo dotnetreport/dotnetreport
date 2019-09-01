@@ -15,6 +15,7 @@ using System.Threading.Tasks;
 using System.Text.RegularExpressions;
 using System.Web.Security;
 using Newtonsoft.Json;
+using System.Web.Helpers;
 
 namespace ReportBuilder.Web.Controllers
 {
@@ -215,10 +216,40 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        public async Task<ActionResult> Dashboard(int? id)
+        public async Task<JsonResult> GetDashboards(bool adminMode = false)
+        {
+           var settings = GetSettings();
+
+            using (var client = new HttpClient())
+            {
+                var content = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("account", settings.AccountApiToken),
+                    new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
+                    new KeyValuePair<string, string>("clientId", settings.ClientId),
+                    new KeyValuePair<string, string>("userId", settings.UserId),
+                    new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
+                    new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
+                });
+
+                var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/GetDashboards"), content);
+                var stringContent = await response.Content.ReadAsStringAsync();
+
+                var model = System.Web.Helpers.Json.Decode(stringContent);
+                return Json(model);
+            }            
+        }
+
+        public async Task<ActionResult> Dashboard(int? id = null, bool adminMode = false)
         {
             var model = new List<DotNetReportDashboardModel>();
             var settings = GetSettings();
+
+            var dashboards = (DynamicJsonArray)(await GetDashboards(adminMode)).Data;
+            if (!id.HasValue && dashboards.Length > 0)
+            {
+                id = ((dynamic) dashboards.First()).id;
+            }
 
             using (var client = new HttpClient())
             {
@@ -230,6 +261,7 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("userId", settings.UserId),
                     new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
                     new KeyValuePair<string, string>("id", id.HasValue ? id.Value.ToString() : "0"),
+                    new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
                 });
 
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/LoadSavedDashboard"), content);
