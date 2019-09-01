@@ -1503,34 +1503,46 @@ var dashboardViewModel = function (options) {
 
 	self.currentDashboard = ko.observable();
 
-	self.addDashboard = function () {
+	self.saveDashboard = function () {
 		$(".form-group").removeClass("has-error");
 		if (!self.dashboard.Name()) {
 			$("#add-dash-name").closest(".form-group").addClass("has-error");
 			return false;
 		}
-		ajaxcall({
-			url: options.addDashboardUrl,
-			type: 'POST',
-			data: JSON.stringify({
-				account: self.keys.AccountApiKey,
-				dataConnect: self.newDashboard.copySchema() ? self.newDashboard.copyFrom() : self.keys.DatabaseApiKey,
-				newDataConnect: self.newDashboard.Name(),
-				connectionKey: self.newDashboard.ConnectionKey(),
-				copySchema: self.newDashboard.copySchema()
-			})
-		}).done(function (result) {
-			self.Dashboards.push({
-				Id: result.Id,
-				DataConnectName: self.newDashboard.Name(),
-				ConnectionKey: self.newDashboard.ConnectionKey(),
-				DataConnectGuid: result.DataConnectGuid
-			});
 
-			self.newDashboard.Name('');
-			self.newDashboard.ConnectionKey('');
-			notify.success("Data Connection added successfully");
-			$('#add-connection-modal').modal('hide');
+		var list = '';
+		_.forEach(self.reportsAndFolders(), function (f) {
+			_.forEach(f.reports, function(r) {
+				if (r.selected()) list += (list ? ',' : '') + r.reportId;
+			});			
+		});
+
+		var model = {
+			id: self.dashboard.Id() || 0,
+			name: self.dashboard.Name(),
+			description: self.dashboard.Description(),
+			selectedReports: list,
+			userIdAccess: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.users),
+			viewOnlyUserId: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.viewOnlyUsers),
+			userRolesAccess: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.userRoles),
+			viewOnlyUserRoles: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.viewOnlyUserRoles),
+			adminMode: self.adminMode()
+		}
+
+		ajaxcall({
+			url: options.apiUrl,
+			data: {
+				method: "/ReportApi/SaveDashboard",
+				model: JSON.stringify(model)
+			}
+		}).done(function (result) {
+			model.id = result.Id;
+			self.dashboards.push(model);
+
+			self.dashboard.Name('');
+			self.dashboard.Description('');
+			toastr.success("Dashboard added successfully");
+			$('#add-dashboard-modal').modal('hide');
 		});
 
 		return true;

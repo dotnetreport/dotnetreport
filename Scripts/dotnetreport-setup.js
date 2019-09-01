@@ -114,7 +114,7 @@
 
 			self.newDataConnection.Name('');
 			self.newDataConnection.ConnectionKey('');
-			notify.success("Data Connection added successfully");
+			toastr.success("Data Connection added successfully");
 			$('#add-connection-modal').modal('hide');
 		});
 
