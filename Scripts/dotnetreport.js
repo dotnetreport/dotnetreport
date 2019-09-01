@@ -1489,6 +1489,11 @@ var dashboardViewModel = function (options) {
 	var self = this;
 
 	self.dashboards = ko.observableArray([]);
+	self.adminMode = ko.observable(false);
+	self.currentUserId = options.userId;
+	self.currentUserRole = (options.currentUserRole || []).join();
+
+	self.reportsAndFolders = ko.observableArray([]);
 	self.dashboard = {
 		Id: ko.observable(),
 		Name: ko.observable(),
@@ -1560,8 +1565,49 @@ var dashboardViewModel = function (options) {
 	};
 
 	self.init = function () {
+		
 		// get dashboards list
+		var getReports = function () {
+			return ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/GetSavedReports",
+					model: JSON.stringify({ adminMode: self.adminMode() })
+				},
+			});
+		}
 
+		var getFolders = function () {
+			return ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/GetFolders",
+					model: JSON.stringify({
+						adminMode: self.adminMode()
+					})
+				}
+			});
+		}
 
+		return $.when(getReports(), getFolders()).done(function(allReports, allFolders) {
+			var setup = [];			
+			_.forEach(allFolders[0], function (x) {
+				var folderReports = _.filter(allReports[0], { folderId: x.Id });
+				setup.push({
+					folderId: x.Id,
+					folder: x.FolderName,
+					reports: _.map(folderReports, function (r) {
+						return {
+							reportId: r.reportId,
+							reportName: r.reportName,
+							reportDescription: r.reportDescription,
+							reportType: r.reportType,
+							selected: ko.observable(false)
+						}
+					})
+				});
+			});
+			self.reportsAndFolders(setup);
+		});
 	}
 }; 

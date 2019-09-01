@@ -9,25 +9,26 @@
     <meta name="keywords" content="ad-hoc reporting, reporting, asp .net reporting, asp .net report, report builder, ad hoc report builder, ad-hoc report builder, adhoc report, ad hoc reports, .net report viewer, reportviewer, sql reportviewer, report builder mvc, report mvc, report builder web forms, query builder, sql report builder,visual report builder,custom query,query maker" />
     <meta name="description" content="Ad hoc Reporting software that allows programmers to easily add Reporting functionality to their ASP .NET Web Software Solution" />
     <link href="/Content/bootstrap.css" rel="stylesheet" />
-    <link href="/Content/bootstrap-mvc-validation.css" rel="stylesheet" />    
+    <link href="/Content/bootstrap-mvc-validation.css" rel="stylesheet" />
     <link href="~/Content/themes/base/datepicker.css" rel="stylesheet" />
-    <link href="~/Content/themes/base/theme.css" rel="stylesheet" />    
+    <link href="~/Content/themes/base/theme.css" rel="stylesheet" />
     <link href="~/Content/toastr.min.css" rel="stylesheet" />
     <link href="~/Content/font-awesome.min.css" rel="stylesheet" />
     <link href="~/Content/css/select2.min.css" rel="stylesheet" />
-    <link href="~/Content/dotnetreport.css?v=2.0.0" rel="stylesheet" />    
-    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>    
+    <link href="~/Content/dotnetreport.css?v=2.0.0" rel="stylesheet" />
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     @RenderSection("head", required: false)
     <style type="text/css">
-        body
-        {
+        body {
             padding-top: 80px;
             padding-bottom: 40px;
         }
-        .navbar-inverse{
-            background-color: #286893;            
+
+        .navbar-inverse {
+            background-color: #286893;
             height: 60px;
         }
+
         .navbar-brand a {
             text-decoration: none;
             color: #fff;
@@ -167,12 +168,12 @@
                                     </div>
                                     <div class="pull-left">
                                         @using (Html.BeginForm("DownloadExcel", "Report", FormMethod.Post))
-                                    {
-                                    <input type="hidden" id="reportSql" name="reportSql" data-bind="value: $parent.sql" />
-                                    <input type="hidden" id="connectKey" name="connectKey" data-bind="value: $parent.connectKey" />
-                                    <input type="hidden" id="reportName" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parentContext.$parentContext.$parent.ReportName()" />
-                                    <button type="submit" class="btn btn-xs"><span class="fa fa-file-excel-o"></span></button>
-                                    }
+                                        {
+                                            <input type="hidden" id="reportSql" name="reportSql" data-bind="value: $parent.sql" />
+                                            <input type="hidden" id="connectKey" name="connectKey" data-bind="value: $parent.connectKey" />
+                                            <input type="hidden" id="reportName" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parentContext.$parentContext.$parent.ReportName()" />
+                                            <button type="submit" class="btn btn-xs"><span class="fa fa-file-excel-o"></span></button>
+                                        }
                                     </div>
                                     <div class="form-group pull-right" data-bind="visible: pages()">
                                         <div data-bind="template: 'pager-template', data: $data"></div>
@@ -187,16 +188,92 @@
                 </tbody>
             </table>
         </div>
-        
-</script>
+
+    </script>
+    <script type="text/html" id="admin-mode-template">
+        <div class="row" style="padding: 10px 10px">
+            <div class="material-switch pull-right">
+                <input id="admin-mode" type="checkbox" data-bind="checked: adminMode" />
+                <label for="admin-mode" class="label-primary"></label>
+            </div>
+            <div class="pull-right">Admin Mode</div>
+        </div>
+
+        <div class="alert alert-info" data-bind="visible: adminMode">
+            Admin Mode is turned on now, it allows you to setup and view Reports or Dashboards for all roles and users. You should remove the Admin mode toggle for non-admin users.<br />
+            <div data-bind="if: currentUserId">Current User: <span data-bind="text: currentUserId"></span></div>
+            <div data-bind="if: currentUserRole">Current Roles: <span data-bind="text: currentUserRole"></span></div>
+        </div>
+    </script>
+    <script type="text/html" id="manage-access-template">
+        <h5><span class="fa fa-key"></span> Manage Access</h5>
+        <div class="panel panel-default panel-body" style="margin-left: 20px;">
+            <div class="alert alert-info">
+                <span class="fa fa-lightbulb-o fa-2x"></span> &nbsp;User level rights over rule Role level rights. No selection for a rule implies report is available to all.
+            </div>
+            <b>Manage by User</b> (allow edit/delete)
+            <div class="row container-fluid">
+                <!-- ko foreach: manageAccess.users -->
+                <div class="pull-left">
+                    <div class="checkbox">
+                        <label class="label label-info">
+                            <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: value"></span>&nbsp;
+                        </label>
+                    </div>
+                </div>
+                <!-- /ko -->
+            </div>
+            <br />
+            <b>View only by User</b> (no edit/delete)
+            <div class="row container-fluid">
+                <!-- ko foreach: manageAccess.viewOnlyUsers -->
+                <div class="pull-left">
+                    <div class="checkbox">
+                        <label class="label label-info">
+                            <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: value"></span>&nbsp;
+                        </label>
+                    </div>
+                </div>
+                <!-- /ko -->
+            </div>
+            <br />
+            <b>Manage by User Role</b> (allow edit/delete)
+            <div class="row container-fluid">
+                <!-- ko foreach: manageAccess.userRoles -->
+                <div class="pull-left">
+                    <div class="checkbox">
+                        <label class="label label-info">
+                            <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: value"></span>&nbsp;
+                        </label>
+                    </div>
+                </div>
+                <!-- /ko -->
+            </div>
+            <br />
+            <b>View only by User Role</b> (no edit/delete)
+            <div class="row container-fluid">                
+                <!-- ko foreach: manageAccess.viewOnlyUserRoles -->
+                <div class="pull-left">
+                    <div class="checkbox">
+                        <label class="label label-info">
+                            <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: value"></span>&nbsp;
+                        </label>
+                    </div>
+                </div>
+                <!-- /ko -->
+                
+            </div>
+
+        </div>
+    </script>
 
     @* Required Javascript Libraries *@
     <script src="~/Scripts/@Html.Raw(ReportUtil.GetScriptFile("jquery-{0}.min.js"))"></script>
     <script src="~/Scripts/@Html.Raw(ReportUtil.GetScriptFile("jquery-ui-{0}.min.js"))"></script>
     <script src="~/Scripts/jquery.validate.min.js"></script>
     <script src="~/Scripts/bootstrap.js"></script>
-    <script src="~/Scripts/@Html.Raw(ReportUtil.GetScriptFile("knockout-{0}.js"))"></script>    
-    <script src="~/Scripts/jquery.blockUI.js"></script>    
+    <script src="~/Scripts/@Html.Raw(ReportUtil.GetScriptFile("knockout-{0}.js"))"></script>
+    <script src="~/Scripts/jquery.blockUI.js"></script>
     <script src="~/Scripts/bootbox.min.js"></script>
     <script src="~/Scripts/toastr.min.js"></script>
     <script src="~/Scripts/knockout-sortable.min.js"></script>

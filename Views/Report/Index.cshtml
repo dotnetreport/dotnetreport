@@ -52,19 +52,7 @@
 
 @if ((Roles.Enabled && User.IsInRole("Admin") || User.IsInRole("Administrator")) || !User.Identity.IsAuthenticated)
 {
-    <div class="row" style="padding: 10px 10px">
-        <div class="material-switch pull-right">
-            <input id="admin-mode" type="checkbox" data-bind="checked: adminMode" />
-            <label for="admin-mode" class="label-primary"></label>
-        </div>
-        <div class="pull-right">Admin Mode</div>
-    </div>
-
-    <div class="alert alert-info" data-bind="visible: adminMode">
-        Admin Mode is turned on now, it allows you to setup and view reports for all roles and users. You should remove the Admin mode toggle for non-admin users.<br />
-        <div data-bind="if: currentUserId">Current User: <span data-bind="text: currentUserId"></span></div>
-        <div data-bind="if: currentUserRole">Current Roles: <span data-bind="text: currentUserRole"></span></div>
-    </div>
+    <div data-bind="template: {name: 'admin-mode-template'}"></div>
 }
     @*<div class="alert alert-info">
             To view Dashboard, please <a href="/demo/report/Dashboard">click here</a>.
@@ -485,64 +473,7 @@
 
                         <!-- ko if: adminMode -->
                         <hr />
-                        <h5><span class="fa fa-key"></span> Manage Report Access</h5>
-                        <div class="panel panel-default panel-body" style="margin-left: 20px;">
-                            <div class="alert alert-info">
-                                <span class="fa fa-lightbulb-o fa-2x"></span> &nbsp;User level rights over rule Role level rights. No selection for a rule implies report is available to all.
-                            </div>
-                            <b>Manage by User</b> (allow edit/delete)
-                            <div class="row container-fluid">
-                                <!-- ko foreach: manageAccess.users -->
-                                <div class="col-xs-1">
-                                    <div class="checkbox">
-                                        <label class="label label-info">
-                                            <input type="checkbox" data-bind="checked: selected"> <span data-bind="text: value"></span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <!-- /ko -->
-                            </div>
-                            <br />
-                            <b>View only by User</b> (no edit/delete)
-                            <div class="row container-fluid">
-                                <!-- ko foreach: manageAccess.viewOnlyUsers -->
-                                <div class="col-xs-1">
-                                    <div class="checkbox">
-                                        <label class="label label-info">
-                                            <input type="checkbox" data-bind="checked: selected"> <span data-bind="text: value"></span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <!-- /ko -->
-                            </div>
-                            <br />
-                            <b>Manage by User Role</b> (allow edit/delete)
-                            <div class="row container-fluid">
-                                <!-- ko foreach: manageAccess.userRoles -->
-                                <div class="col-xs-1">
-                                    <div class="checkbox">
-                                        <label class="label label-info">
-                                            <input type="checkbox" data-bind="checked: selected"> <span data-bind="text: value"></span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <!-- /ko -->
-                            </div>
-                            <br />
-                            <b>View only by User Role</b> (no edit/delete)
-                            <div class="row container-fluid">
-                                <!-- ko foreach: manageAccess.viewOnlyUserRoles -->
-                                <div class="col-xs-1">
-                                    <div class="checkbox">
-                                        <label class="label label-info">
-                                            <input type="checkbox" data-bind="checked: selected"> <span data-bind="text: value"></span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <!-- /ko -->
-                            </div>
-
-                        </div>
+                        <div data-bind="template: {name: 'manage-access-template'}"></div>
                         <!-- /ko -->
                     </form>
                 </div>

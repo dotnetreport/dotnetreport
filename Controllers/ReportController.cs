@@ -36,8 +36,8 @@ namespace ReportBuilder.Web.Controllers
             settings.UserName = ""; 
             settings.CurrentUserRole = new List<string>(); // Populate your current authenticated user's roles
 
-            settings.Users = new List<string>(); // Populate all your application's user, ex  { "Jane", "John" }
-            settings.UserRoles = new List<string>(); // Populate all your application's user roles, ex  { "Admin", "Normal" }       
+            settings.Users = new List<string>() { "Jane", "John" }; // Populate all your application's user, ex  { "Jane", "John" }
+            settings.UserRoles = new List<string>() { "Admin", "Normal" }; // Populate all your application's user roles, ex  { "Admin", "Normal" }       
             settings.CanUseAdminMode = true; // Set to true only if current user can use Admin mode to setup reports and dashboard
 
             // An example of populating Roles using MVC web security if available
@@ -217,23 +217,25 @@ namespace ReportBuilder.Web.Controllers
 
         public async Task<ActionResult> Dashboard(int? id)
         {
-            var model = new List<DotNetReportModel>();
+            var model = new List<DotNetReportDashboardModel>();
+            var settings = GetSettings();
 
             using (var client = new HttpClient())
             {
-
                 var content = new FormUrlEncodedContent(new[]
                 {
-                    new KeyValuePair<string, string>("account", ConfigurationManager.AppSettings["dotNetReport.accountApiToken"]),
-                    new KeyValuePair<string, string>("dataConnect", ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"]),
-                    new KeyValuePair<string, string>("clientId",""), // Pass your client Id 
-                    new KeyValuePair<string, string>("userId","") // Pass your user Id
+                    new KeyValuePair<string, string>("account", settings.AccountApiToken),
+                    new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
+                    new KeyValuePair<string, string>("clientId", settings.ClientId), 
+                    new KeyValuePair<string, string>("userId", settings.UserId),
+                    new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
+                    new KeyValuePair<string, string>("id", id.HasValue ? id.Value.ToString() : "0"),
                 });
 
-                var response = await client.PostAsync(new Uri(ConfigurationManager.AppSettings["dotNetReport.apiUrl"] + "/ReportApi/LoadDashboard"), content);
+                var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/LoadSavedDashboard"), content);
                 var stringContent = await response.Content.ReadAsStringAsync();
 
-                model = (new JavaScriptSerializer()).Deserialize<List<DotNetReportModel>>(stringContent);
+                model = (new JavaScriptSerializer()).Deserialize<List<DotNetReportDashboardModel>>(stringContent);
             }
 
             return View(model);

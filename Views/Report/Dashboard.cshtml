@@ -37,7 +37,9 @@ Layout = "~/Views/shared/_Layout.Report.cshtml";
                 userRoles: data.userRoles
             });
 
-            ko.applyBindings(vm);
+            vm.init().done(function () {
+                ko.applyBindings(vm);
+            });
 
             $(function () {
                 var options = {
@@ -54,8 +56,12 @@ Layout = "~/Views/shared/_Layout.Report.cshtml";
 </script>
 }
 
-<!-- ko if: dashboards().length > 0 -->
-<div class="form-inline">
+@if ((Roles.Enabled && User.IsInRole("Admin") || User.IsInRole("Administrator")) || !User.Identity.IsAuthenticated)
+{
+    <div data-bind="template: {name: 'admin-mode-template'}"></div>
+}
+
+<div class="form-inline" style="display: none;" data-bind="visible: dashboards().length > 0 ">
     <div class="form-group">
         <div class="control-group">
             <label class="control-label">Available Dashboards</label>
@@ -64,12 +70,13 @@ Layout = "~/Views/shared/_Layout.Report.cshtml";
         </div>
     </div>
 </div>
-<!-- /ko -->
-<!-- ko if: dashboards().length == 0 -->
-<div class="centered">
-    Start here by <button class="btn btn-lg btn-primary">Create a New Dashboard</button>
+
+<div class="centered" style="display: none;" data-bind="visible: dashboards().length == 0 ">
+    No Dashboards yet. Click below to Start<br />
+    <button class="btn btn-lg btn-primary" data-toggle="modal" data-target="#add-dashboard-modal"><i class="fa fa-dashboard"></i> Create a New Dashboard</button>
 </div>
-<!-- /ko -->
+
+<div class="clearfix"></div>
 
 <div class="grid-stack">
     <!-- ko foreach: reports -->
@@ -116,18 +123,59 @@ Layout = "~/Views/shared/_Layout.Report.cshtml";
 </div>
 <div class="clearfix"></div>
 
-<div class="modal fade" id="add-dashboard-modal" role="dialog">
+<div class="modal modal-fullscreen fade" id="add-dashboard-modal" role="dialog">
     <div class="modal-dialog" role="document">
         <div class="modal-content" data-bind="with: dashboard">
             <div class="modal-header">
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                <h4 class="modal-title"><span></span> a new Data Connection</h4>
+                <h4 class="modal-title"><span data-bind="text: Id() ? 'Edit' : 'Add'"></span> Dashboard</h4>
             </div>
             <div class="modal-body">
-              
+                <div class="form-horizontal">
+                    <div class="control-group">
+                        <div class="form-group">
+                            <label class="col-md-3 col-sm-3 control-label">Name</label>
+                            <div class="col-md-6 col-sm-6">
+                                <input class="form-control text-box" data-val="true" data-val-required="Dashboard Name is required." type="text" data-bind="value: Name" placeholder="Dashboard Name, ex Sales, Accounting" id="add-dash-name" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="col-md-3 col-sm-3 control-label">Description</label>
+                            <div class="col-md-6 col-sm-6">
+                                <textarea class="form-control text-box" data-bind="value: Description" placeholder="Optional Description for the Dashboard">
+                                </textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <hr />
+                <h5><span class="fa fa-paperclip"></span> Choose Reports for the Dashboard</h5>
+                <div data-bind="foreach: $parent.reportsAndFolders" class="panel panel-default panel-body" style="margin-left: 20px;">
+                    <div>
+                        <a class="btn btn-link" role="button" data-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }">
+                            <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: folder"></span>
+                        </a>
+                        <div class="collapse" data-bind="attr: {id: 'folder-' + folderId }">
+                            <ul class="list-group" data-bind="foreach: reports">
+                                <li class="list-group-item small">
+                                    <div class="checkbox">
+                                        <label>
+                                            <input type="checkbox" data-bind="checked: selected"> <span data-bind="text: reportName"></span>
+                                        </label>
+                                    </div>
+                                    <p class="list-group-item-text small" data-bind="text: reportDescription"></p>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <!-- ko if: $parent.adminMode -->
+                <hr />
+                <div data-bind="template: {name: 'manage-access-template'}"></div>
+                <!-- /ko -->
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-bind="click: $root.addDashboard">Create</button>
+                <button type="button" class="btn btn-primary" data-bind="click: $root.addDashboard">Save Dashboard</button>
             </div>
         </div>
     </div>
