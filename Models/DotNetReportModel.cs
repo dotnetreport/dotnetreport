@@ -167,13 +167,19 @@ namespace ReportBuilder.Web.Models
         public bool adminMode { get; set; }
     }
 
-    public class DotNetReportDashboardModel : DotNetReportModel
+    public class DotNetDasboardReportModel : DotNetReportModel
     {
         public int X { get; set; }
         public int Y { get; set; }
         public int Width { get; set; }
         public int Height { get; set; }
         public bool IsWidget { get; set; }
+    }
+
+    public class DotNetDashboardModel
+    {
+        public List<dynamic> Dashboards { get; set; }
+        public List<DotNetDasboardReportModel> Reports { get; set; }
     }
 
     public class DotNetReportSettings

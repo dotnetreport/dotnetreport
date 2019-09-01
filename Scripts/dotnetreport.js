@@ -1488,16 +1488,20 @@ var reportViewModel = function (options) {
 var dashboardViewModel = function (options) {
 	var self = this;
 
-	self.dashboards = ko.observableArray([]);
+	self.dashboards = ko.observableArray(options.dashboards || []);
 	self.adminMode = ko.observable(false);
 	self.currentUserId = options.userId;
 	self.currentUserRole = (options.currentUserRole || []).join();
-
 	self.reportsAndFolders = ko.observableArray([]);
+
+	var currentDash = options.dashboardId
+		? (_.find(self.dashboards(), { id: options.dashboardId }) || {})
+		: (self.dashboards().length > 0 ? self.dashboards()[0] : {});
+
 	self.dashboard = {
-		Id: ko.observable(),
-		Name: ko.observable(),
-		Description: ko.observable(),
+		Id: ko.observable(currentDash.id),
+		Name: ko.observable(currentDash.name),
+		Description: ko.observable(currentDash.description),
 		manageAccess: manageAccess(options)
 	}
 
@@ -1553,30 +1557,35 @@ var dashboardViewModel = function (options) {
 	}
 
 	self.reports = ko.observableArray([]);
-	$.each(options.reports, function (i, e) {
+	_.forEach(options.reports, function (x) {
 		var report = new reportViewModel({
 			runReportUrl: options.runReportUrl,
 			execReportUrl: options.execReportUrl,
 			reportWizard: options.reportWizard,
 			lookupListUrl: options.lookupListUrl,
 			apiUrl: options.apiUrl,
-			reportFilter: e.reportFilter,
+			reportFilter: x.reportFilter,
 			reportMode: "dashboard",
-			reportSql: e.reportSql,
-			reportId: e.reportId,
-			reportConnect: e.connectKey,
+			reportSql: x.reportSql,
+			reportId: x.reportId,
+			reportConnect: x.connectKey,
 			users: options.users,
 			userRoles: options.userRoles,
 		});
 
+		report.x = ko.observable(x.x);
+		report.y = ko.observable(x.y);
+		report.width = ko.observable(x.width);
+		report.height = ko.observable(x.height);
+
 		self.reports.push(report);
 
-		report.LoadReport(e.reportId, true);
+		report.LoadReport(x.reportId, true);
 	});
 
 	self.drawChart = function () {
-		$.each(self.reports(), function (i, e) {
-			e.DrawChart();
+		_.forEach(self.reports(), function (x) {
+			x.DrawChart();
 		});
 	};
 

@@ -242,7 +242,7 @@ namespace ReportBuilder.Web.Controllers
 
         public async Task<ActionResult> Dashboard(int? id = null, bool adminMode = false)
         {
-            var model = new List<DotNetReportDashboardModel>();
+            var model = new List<DotNetDasboardReportModel>();
             var settings = GetSettings();
 
             var dashboards = (DynamicJsonArray)(await GetDashboards(adminMode)).Data;
@@ -267,10 +267,14 @@ namespace ReportBuilder.Web.Controllers
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/LoadSavedDashboard"), content);
                 var stringContent = await response.Content.ReadAsStringAsync();
 
-                model = (new JavaScriptSerializer()).Deserialize<List<DotNetReportDashboardModel>>(stringContent);
+                model = (new JavaScriptSerializer()).Deserialize<List<DotNetDasboardReportModel>>(stringContent);
             }
 
-            return View(model);
+            return View(new DotNetDashboardModel
+            {
+                Dashboards = dashboards.Select(x=>(dynamic)x).ToList(),
+                Reports = model
+            });
         }
 
         

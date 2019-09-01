@@ -1,11 +1,12 @@
 ﻿@using System.Configuration
-@model List<DotNetReportDashboardModel>
+@model DotNetDashboardModel
 @{
 ViewBag.Title = "Dashboard";
 Layout = "~/Views/shared/_Layout.Report.cshtml";
 }
 
-<h2>Dashboard</h2>
+<h2 data-bind="text: dashboard.Name() ? dashboard.Name() : 'Dashboard'">Dashboard</h2>
+<p data-bind="text: dashboard.Description"></p>
 
 @section head {
 <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.min.css" />
@@ -17,10 +18,16 @@ Layout = "~/Views/shared/_Layout.Report.cshtml";
 <script type="text/javascript">
     $(document).ready(function () {
         var reports = [];
+        var dashboards = [];
 
-        @foreach (var r in Model)
+        @foreach (var d in Model.Dashboards)
         {
-        @:reports.push({ reportSql: "@r.ReportSql", reportId: @r.ReportId, reportFilter: htmlDecode('@HttpUtility.UrlDecode(r.ReportFilter)'), connectKey: "@r.ConnectKey" });
+        @:dashboards.push({ id: @d.Id, name: "@d.Name", description: "@d.Description", selectedReports: "@d.SelectedReports", userId: "@d.UserId", userRoles: "@d.UserRoles", viewOnlyUserId: "@d.ViewOnlyUserId", viewOnlyUserRoles: "@d.ViewOnlyUserRoles"  });
+        }
+
+        @foreach (var r in Model.Reports)
+        {
+        @:reports.push({ reportSql: "@r.ReportSql", reportId: @r.ReportId, reportFilter: htmlDecode('@HttpUtility.UrlDecode(r.ReportFilter)'), connectKey: "@r.ConnectKey", x: @r.X, y: @r.Y, width: @r.Width, height: @r.Height });
         }
 
         ajaxcall({ url: '@Url.Action("GetUsersAndRoles")' }).done(function (data) {
@@ -33,8 +40,10 @@ Layout = "~/Views/shared/_Layout.Report.cshtml";
                 runReportApiUrl: "@Url.Action("RunReportApi")",
                 reportMode: "execute",
                 reports: reports,
+                dashboards: dashboards,
                 users: data.users,
-                userRoles: data.userRoles
+                userRoles: data.userRoles,
+                dashboardId: @(Request.QueryString["id"] != null ? Request.QueryString["id"] : "0")
             });
 
             vm.init().done(function () {
@@ -51,7 +60,7 @@ Layout = "~/Views/shared/_Layout.Report.cshtml";
             $(window).resize(function () {
                 vm.drawChart();
             });
-        });        
+        });
     });
 </script>
 }
@@ -62,11 +71,12 @@ Layout = "~/Views/shared/_Layout.Report.cshtml";
 }
 
 <div class="form-inline" style="display: none;" data-bind="visible: dashboards().length > 0 ">
-    <div class="form-group">
+    <div class="form-group pull-right">
         <div class="control-group">
-            <label class="control-label">Available Dashboards</label>
-            <select class="form-control" style="max-width: 300px;" data-bind="options: dashboards, optionsText: 'Name', optionsValue: 'Id', value: currentDashboard"></select>            
-            <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal">Add New Connection</button>
+            <label class="control-label">Switch Dashboard</label>
+            <select class="form-control" data-bind="options: dashboards, optionsText: 'name', optionsValue: 'id', value: currentDashboard"></select>            
+            <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Edit Dashboard Settings">Edit</button>
+            <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Add a New Dashboard">Add</button>
         </div>
     </div>
 </div>
@@ -74,6 +84,66 @@ Layout = "~/Views/shared/_Layout.Report.cshtml";
 <div class="centered" style="display: none;" data-bind="visible: dashboards().length == 0 ">
     No Dashboards yet. Click below to Start<br />
     <button class="btn btn-lg btn-primary" data-toggle="modal" data-target="#add-dashboard-modal"><i class="fa fa-dashboard"></i> Create a New Dashboard</button>
+</div>
+
+<div class="modal modal-fullscreen fade" id="add-dashboard-modal" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content" data-bind="with: dashboard">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title"><span data-bind="text: Id() ? 'Edit' : 'Add'"></span> Dashboard</h4>
+            </div>
+            <div class="modal-body">
+                <div class="form-horizontal">
+                    <div class="control-group">
+                        <div class="form-group">
+                            <label class="col-md-3 col-sm-3 control-label">Name</label>
+                            <div class="col-md-6 col-sm-6">
+                                <input class="form-control text-box" data-val="true" data-val-required="Dashboard Name is required." type="text" data-bind="value: Name" placeholder="Dashboard Name, ex Sales, Accounting" id="add-dash-name" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="col-md-3 col-sm-3 control-label">Description</label>
+                            <div class="col-md-6 col-sm-6">
+                                <textarea class="form-control text-box" data-bind="value: Description" placeholder="Optional Description for the Dashboard">
+                                </textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <hr />
+                <h5><span class="fa fa-paperclip"></span> Choose Reports for the Dashboard</h5>
+                <div data-bind="foreach: $parent.reportsAndFolders" class="panel panel-default panel-body" style="margin-left: 20px;">
+                    <div>
+                        <a class="btn btn-link btn-default" role="button" data-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }">
+                            <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: folder"></span>
+                        </a>
+                        <div class="collapse" data-bind="attr: {id: 'folder-' + folderId }">
+                            <ul class="list-group" data-bind="foreach: reports">
+                                <li class="list-group-item">
+                                    <div class="checkbox">
+                                        <label class="list-group-item-heading">
+                                            <input type="checkbox" data-bind="checked: selected">
+                                            <span class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map'}" style="font-size: 14pt; color: #808080"></span>
+                                            <span data-bind="text: reportName"></span>
+                                        </label>
+                                    </div>
+                                    <p class="list-group-item-text small" data-bind="text: reportDescription"></p>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <!-- ko if: $parent.adminMode -->
+                <hr />
+                <div data-bind="template: {name: 'manage-access-template'}"></div>
+                <!-- /ko -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bind="click: $root.saveDashboard">Save Dashboard</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="clearfix"></div>
@@ -121,66 +191,4 @@ Layout = "~/Views/shared/_Layout.Report.cshtml";
     </div>
     <!-- /ko -->
 </div>
-<div class="clearfix"></div>
-
-<div class="modal modal-fullscreen fade" id="add-dashboard-modal" role="dialog">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content" data-bind="with: dashboard">
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                <h4 class="modal-title"><span data-bind="text: Id() ? 'Edit' : 'Add'"></span> Dashboard</h4>
-            </div>
-            <div class="modal-body">
-                <div class="form-horizontal">
-                    <div class="control-group">
-                        <div class="form-group">
-                            <label class="col-md-3 col-sm-3 control-label">Name</label>
-                            <div class="col-md-6 col-sm-6">
-                                <input class="form-control text-box" data-val="true" data-val-required="Dashboard Name is required." type="text" data-bind="value: Name" placeholder="Dashboard Name, ex Sales, Accounting" id="add-dash-name" />
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="col-md-3 col-sm-3 control-label">Description</label>
-                            <div class="col-md-6 col-sm-6">
-                                <textarea class="form-control text-box" data-bind="value: Description" placeholder="Optional Description for the Dashboard">
-                                </textarea>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <hr />
-                <h5><span class="fa fa-paperclip"></span> Choose Reports for the Dashboard</h5>
-                <div data-bind="foreach: $parent.reportsAndFolders" class="panel panel-default panel-body" style="margin-left: 20px;">
-                    <div>
-                        <a class="btn btn-link btn-default" role="button" data-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }">
-                            <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: folder"></span>
-                        </a>
-                        <div class="collapse" data-bind="attr: {id: 'folder-' + folderId }">
-                            <ul class="list-group" data-bind="foreach: reports">
-                                <li class="list-group-item">
-                                    <div class="checkbox">
-                                        <label class="list-group-item-heading">
-                                            <input type="checkbox" data-bind="checked: selected"> 
-                                            <span class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map'}" style="font-size: 14pt; color: #808080"></span>
-                                            <span data-bind="text: reportName"></span>
-                                        </label>
-                                    </div>
-                                    <p class="list-group-item-text small" data-bind="text: reportDescription"></p>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-                <!-- ko if: $parent.adminMode -->
-                <hr />
-                <div data-bind="template: {name: 'manage-access-template'}"></div>
-                <!-- /ko -->
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-primary" data-bind="click: $root.saveDashboard">Save Dashboard</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 
