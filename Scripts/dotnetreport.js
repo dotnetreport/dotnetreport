@@ -1579,9 +1579,11 @@ var dashboardViewModel = function (options) {
 				method: "/ReportApi/SaveDashboard",
 				model: JSON.stringify(model)
 			}
-		}).done(function (result) {
-			self.selectDashboard(result.id);
-			toastr.success("Dashboard deleted successfully");
+		}).done(function (result) {			
+			toastr.success("Dashboard saved successfully");
+			setTimeout(function () {
+				window.location = window.location.href.split("?")[0] + "?id=" + result.id;
+			}, 500)
 		});
 
 		return true;
@@ -1596,10 +1598,11 @@ var dashboardViewModel = function (options) {
 						method: "/ReportApi/DeleteDashboard",
 						model: JSON.stringify({ id: self.currentDashboard().id, adminMode: self.adminMode() })
 					}
-				}).done(function (result) {
-					self.selectDashboard(0);
-					toastr.success("Dashboard added successfully");
-					$('#add-dashboard-modal').modal('hide');
+				}).done(function (result) {					
+					toastr.success("Dashboard deleted successfully");
+					setTimeout(function () {
+						window.location = window.location.href.split("?")[0];
+					}, 500)
 				});
 			}
 		});
