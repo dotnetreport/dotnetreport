@@ -1597,6 +1597,7 @@ var dashboardViewModel = function (options) {
 	}
 
 	self.reports = ko.observableArray([]);
+	var i = 0;
 	_.forEach(options.reports, function (x) {
 		var report = new reportViewModel({
 			runReportUrl: options.runReportUrl,
@@ -1617,9 +1618,9 @@ var dashboardViewModel = function (options) {
 		report.y = ko.observable(x.y);
 		report.width = ko.observable(x.width);
 		report.height = ko.observable(x.height);
-
+		report.panelStyle = 'panel-' + (i == 0 ? 'default' : (i == 1 ? 'info' : (i == 2 ? 'warning' : 'danger')));
+		i = i == 3 ? 0 : i + 1;
 		self.reports.push(report);
-
 		report.LoadReport(x.reportId, true);
 	});
 
