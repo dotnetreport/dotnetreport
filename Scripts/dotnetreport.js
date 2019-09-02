@@ -1622,6 +1622,7 @@ var dashboardViewModel = function (options) {
 			execReportUrl: options.execReportUrl,
 			reportWizard: options.reportWizard,
 			lookupListUrl: options.lookupListUrl,
+			runReportApiUrl: options.runReportApiUrl,
 			apiUrl: options.apiUrl,
 			reportFilter: x.reportFilter,
 			reportMode: "dashboard",
@@ -1710,4 +1711,8 @@ var dashboardViewModel = function (options) {
 			self.reportsAndFolders(setup);
 		});
 	}
+
+	self.adminMode.subscribe(function (newValue) {
+		self.init();
+	});
 }; 
