@@ -262,10 +262,15 @@ var reportViewModel = function (options) {
 	var self = this;
 
 	options = options || {};
-	options.userId = options.userId || "";
+	options.userSettings = options.userSettings || {};
+	options.userId = options.userSettings.currentUserId || "";
+	options.users = options.userSettings.users;
+	options.userRoles = options.userSettings.userRoles;
 
-	self.currentUserId = options.userId;
-	self.currentUserRole = (options.currentUserRole || []).join();
+	self.currentUserId = options.userSettings.userId;
+	self.currentUserRole = (options.userSettings.currentUserRoles || []).join();
+	self.currentUserName = options.userSettings.currentUserName;
+	self.allowAdmin = ko.observable(options.userSettings.allowAdminMode);
 
 	self.ReportName = ko.observable();
 	self.ReportType = ko.observable("List");
@@ -1493,6 +1498,7 @@ var dashboardViewModel = function (options) {
 	self.currentUserId = options.userId;
 	self.currentUserRole = (options.currentUserRole || []).join();
 	self.reportsAndFolders = ko.observableArray([]);
+	self.allowAdmin = ko.observable(options.allowAdmin);
 
 	var currentDash = options.dashboardId > 0
 		? (_.find(self.dashboards(), { id: options.dashboardId }) || {name: '', description: ''})
@@ -1661,8 +1667,6 @@ var dashboardViewModel = function (options) {
 	}
 
 	self.init = function () {
-		
-		// get dashboards list
 		var getReports = function () {
 			return ajaxcall({
 				url: options.apiUrl,

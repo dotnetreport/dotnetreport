@@ -6,7 +6,7 @@
 }
 
 @section scripts{
-<script type="text/javascript">
+    <script type="text/javascript">
 
 @*
     The Javascript code below is related to presentation for the Report Builder. You don't have to change it, unless you intentionally want to
@@ -27,8 +27,7 @@
                 runReportApiUrl: '@Url.Action("RunReportApi")',
                 getUsersAndRolesUrl: '@Url.Action("GetUsersAndRoles")',
                 reportId: @(Request.QueryString["reportId"] != null ? Request.QueryString["reportId"] : "0"),
-                users: data.users,
-                userRoles: data.userRoles,
+                userSettings: data
                 //dataFilters: { EmployeeId: '1,2' }, // You can also pass a list of Global Data filters using format { Column1: 'val1, val2, ...', Column2: '1,2,3,...', ...}
             });
 
@@ -37,593 +36,587 @@
         });
     });
 
-</script>
+    </script>
 }
 
 <h3>Report Builder</h3>
 <p>
-    Manage your Reports below. You can use the intuitive and user friendly Report Building Wizard below to generate many types of Ad-hoc Reports.
+    Manage your Reports below. You can use the intuitive and user friendly Report Builder to create many types of Ad-hoc Reports.
 </p>
 <div class="alert alert-info">
-    To view the Dashboard, please <a href="@Url.Action("Dashboard","Report")">click here</a>.
+    To view the Dashboard, please <a href="@Url.Action("Dashboard","Report")">click here</a>.<br />
+    <div data-bind="if: currentUserName">Current User: <span data-bind="text: currentUserName"></span></div>
+    <div data-bind="if: currentUserRole">Current Roles: <span data-bind="text: currentUserRole"></span></div>
 </div>
 <div class="alert alert-warning">
     You can integrate the Report Builder Builder in your Application using <a href="https://www.nuget.org/packages/dotNetReport/">this Nuget Package</a>. <br />
-    For the Demo Data, we have used the Northwind Sample database, which is available on <a href="https://northwinddatabase.codeplex.com/" target="_blank">Codeplex</a>.<br />
-    Please note that in the online demo, you can edit, save and run reports, but you cannot create or manage Folders. Also, your reports can be reset at any times, and they are not permenant.
 </div>
 
-@if ((Roles.Enabled && User.IsInRole("Admin") || User.IsInRole("Administrator")) || !User.Identity.IsAuthenticated)
-{
-    <div data-bind="template: {name: 'admin-mode-template'}"></div>
-}
-    @*<div class="alert alert-info">
-            To view Dashboard, please <a href="/demo/report/Dashboard">click here</a>.
-        </div>*@
+<div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
 
-    @*
-        The markup code below is related to presentation. You don't have to change it, unless you
-        intentionally want to change something in the Report Builder's behavior in your Application.
-        It's Recommended you use it as is. You will be responsible for managing and maintaining any changes.
-    *@
+@*
+    The markup code below is related to presentation. You don't have to change it, unless you
+    intentionally want to change something in the Report Builder's behavior in your Application.
+    It's Recommended you use it as is. You will be responsible for managing and maintaining any changes.
+*@
 
-    <!-- Folders/Report List -->
-    <div id="report-start">
+<!-- Folders/Report List -->
+<div id="report-start">
 
-        <div class="panel panel-default folder-panel">
-            @*<div class="panel-heading">
-                    <h3 class="panel-title">Choose Report</h3>
-                </div>*@
-            <div class="panel-body">
-                <nav class="navbar navbar-default">
-                    <div class="">
-                        <div class="navbar-header">
-                            <a class="navbar-brand" href="#" data-bind="click: function() {SelectedFolder(null);}">Manage Reports</a>
-                        </div>
-                        <ul class="nav navbar-nav">
-                            <!-- ko if: CanSaveReports() || adminMode() -->
-                            <li class="active">
-                                <a href="#" class="active" data-bind="click: createNewReport" data-toggle="modal" data-target="#modal-reportbuilder">Create a New Report</a>
-                            </li>   
-                            <!-- /ko -->
-                            <!-- ko if: CanManageFolders() || adminMode() -->
-                            <li class="active">
-                                <a href="#" data-bind="click: ManageFolder.newFolder">Add a new Folder</a>
-                            </li>
-                            <li class="dropdown" data-bind="visible: SelectedFolder()!=null">
-                                <a href="#" class="dropdown-toggle" data-toggle="dropdown">Folder Options<span class="caret"></span></a>
-                                <ul class="dropdown-menu" role="menu">
-
-                                    <li><a href="#" data-bind="click: ManageFolder.editFolder">Edit Selected Folder</a></li>
-                                    <li><a href="#" data-bind="click: ManageFolder.deleteFolder">Delete Selected Folder</a></li>
-                                </ul>
-                            </li>
-                            <!-- /ko -->
-                        </ul>
+    <div class="panel panel-default folder-panel">
+        @*<div class="panel-heading">
+                <h3 class="panel-title">Choose Report</h3>
+            </div>*@
+        <div class="panel-body">
+            <nav class="navbar navbar-default">
+                <div class="">
+                    <div class="navbar-header">
+                        <a class="navbar-brand" href="#" data-bind="click: function() {SelectedFolder(null);}">Manage Reports</a>
                     </div>
-                </nav>
-                <div data-bind="visible: SelectedFolder()==null">
-                    <p>Please choose Folders below to view Reports</p>
-                    <ul class="folder-list" data-bind="foreach: Folders">
-                        <li data-bind="click: function(){ $parent.SelectedFolder($data); }">
-                            <span class="glyphicon glyphicon-folder-open"></span>
-                            <span class="desc" data-bind="text: FolderName"></span>
+                    <ul class="nav navbar-nav">
+                        <!-- ko if: CanSaveReports() || adminMode() -->
+                        <li class="active">
+                            <a href="#" class="active" data-bind="click: createNewReport" data-toggle="modal" data-target="#modal-reportbuilder">Create a New Report</a>
                         </li>
+                        <!-- /ko -->
+                        <!-- ko if: CanManageFolders() || adminMode() -->
+                        <li class="active">
+                            <a href="#" data-bind="click: ManageFolder.newFolder">Add a new Folder</a>
+                        </li>
+                        <li class="dropdown" data-bind="visible: SelectedFolder()!=null">
+                            <a href="#" class="dropdown-toggle" data-toggle="dropdown">Folder Options<span class="caret"></span></a>
+                            <ul class="dropdown-menu" role="menu">
+
+                                <li><a href="#" data-bind="click: ManageFolder.editFolder">Edit Selected Folder</a></li>
+                                <li><a href="#" data-bind="click: ManageFolder.deleteFolder">Delete Selected Folder</a></li>
+                            </ul>
+                        </li>
+                        <!-- /ko -->
                     </ul>
                 </div>
-                <div data-bind="visible: SelectedFolder()!=null">
-                    <div class="clearfix">
-                        <p class="pull-left">Please choose a Report from this Folder</p>
-                        <div class="pull-right">
-                            <a href="#" data-bind="click: function(){ SelectedFolder(null); }">
-                                ..back to Folders List
-                            </a>
-                        </div>
+            </nav>
+            <div data-bind="visible: SelectedFolder()==null">
+                <p>Please choose Folders below to view Reports</p>
+                <ul class="folder-list" data-bind="foreach: Folders">
+                    <li data-bind="click: function(){ $parent.SelectedFolder($data); }">
+                        <span class="glyphicon glyphicon-folder-open"></span>
+                        <span class="desc" data-bind="text: FolderName"></span>
+                    </li>
+                </ul>
+            </div>
+            <div data-bind="visible: SelectedFolder()!=null">
+                <div class="clearfix">
+                    <p class="pull-left">Please choose a Report from this Folder</p>
+                    <div class="pull-right">
+                        <a href="#" data-bind="click: function(){ SelectedFolder(null); }">
+                            ..back to Folders List
+                        </a>
                     </div>
-                    <div class="list-group list-overflow">
-                        <div data-bind="if: SelectedFolder()==null">
-                            Please choose a folder to view Reports
-                        </div>
-                        <div data-bind="if: SelectedFolder()!=null && reportsInFolder().length==0">
-                            No Reports Saved in this Folder
-                        </div>
-                        <!-- ko foreach: reportsInFolder -->
-                        <div class="list-group-item row">
-                            <div class="col-sm-8">
-                                <div class="fa pull-left" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map'}" style="font-size: 14pt; color: #808080"></div>
-                                <div class="pull-left">
-                                    <h4 class="list-group-item-heading"><a data-bind="text: reportName, click: runReport" style="cursor: pointer"></a></h4>
-                                </div>
-                                <div class="clearfix"></div>
-                                <p class="list-group-item-text" data-bind="text: reportDescription"></p>
-                                <!-- ko if: $parent.adminMode -->
-                                <div class="small">
-                                    <b>Report Access</b><br />
-                                    Manage by User <span class="label label-info" data-bind="text: userId ? userId : 'No User'"></span><br />
-                                    View only by User <span class="label label-info" data-bind="text: (viewOnlyUserId ? viewOnlyUserId : (userId ? userId : 'Any User'))"></span><br />
-                                    <!-- ko if: userRole -->
-                                    Manage by Role <span class="label label-info" data-bind="text: userRole ? userRole : 'No Role'"></span><br />
-                                    <!-- /ko -->
-                                    <!-- ko if: viewOnlyUserRole -->
-                                    View only by Role <span class="label label-info" data-bind="text: viewOnlyUserRole ? viewOnlyUserRole : 'Any Role'"></span><br />
-                                    <!-- /ko -->
-                                    <!-- ko if: clientId -->
-                                    For Client <span class="label label-info" data-bind="text: clientId ? clientId : 'Any'"></span><br />
-                                    <!-- /ko -->
-                                </div>
+                </div>
+                <div class="list-group list-overflow">
+                    <div data-bind="if: SelectedFolder()==null">
+                        Please choose a folder to view Reports
+                    </div>
+                    <div data-bind="if: SelectedFolder()!=null && reportsInFolder().length==0">
+                        No Reports Saved in this Folder
+                    </div>
+                    <!-- ko foreach: reportsInFolder -->
+                    <div class="list-group-item row">
+                        <div class="col-sm-8">
+                            <div class="fa pull-left" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map'}" style="font-size: 14pt; color: #808080"></div>
+                            <div class="pull-left">
+                                <h4 class="list-group-item-heading"><a data-bind="text: reportName, click: runReport" style="cursor: pointer"></a></h4>
+                            </div>
+                            <div class="clearfix"></div>
+                            <p class="list-group-item-text" data-bind="text: reportDescription"></p>
+                            <!-- ko if: $parent.adminMode -->
+                            <div class="small">
+                                <b>Report Access</b><br />
+                                Manage by User <span class="label label-info" data-bind="text: userId ? userId : 'No User'"></span><br />
+                                View only by User <span class="label label-info" data-bind="text: (viewOnlyUserId ? viewOnlyUserId : (userId ? userId : 'Any User'))"></span><br />
+                                <!-- ko if: userRole -->
+                                Manage by Role <span class="label label-info" data-bind="text: userRole ? userRole : 'No Role'"></span><br />
+                                <!-- /ko -->
+                                <!-- ko if: viewOnlyUserRole -->
+                                View only by Role <span class="label label-info" data-bind="text: viewOnlyUserRole ? viewOnlyUserRole : 'Any Role'"></span><br />
+                                <!-- /ko -->
+                                <!-- ko if: clientId -->
+                                For Client <span class="label label-info" data-bind="text: clientId ? clientId : 'Any'"></span><br />
                                 <!-- /ko -->
                             </div>
-                            <div class="col-sm-4">
-                                <div class="pull-right hidden-sm hidden-xs">
-                                    <br />
-                                    <!-- ko if: $root.CanSaveReports() || $root.adminMode()-->
-                                    <button class="btn btn-sm btn-default" data-bind="click: openReport, visible: canEdit" data-toggle="modal" data-target="#modal-reportbuilder">
-                                        <span class="fa fa-edit" aria-hidden="true"></span> Edit
-                                    </button>
-                                    <button class="btn btn-sm btn-default" data-bind="click: copyReport" data-toggle="modal" data-target="#modal-reportbuilder">
-                                        <span class="fa fa-copy" aria-hidden="true"></span> Copy
-                                    </button>
-                                    <!-- /ko -->
-                                    <button class="btn btn-sm btn-primary" data-bind="click: runReport">
-                                        <span class="fa fa-gears" aria-hidden="true"></span> Run
-                                    </button>
-                                    <button class="btn btn-sm btn-danger" data-bind="click: deleteReport, visible: canEdit">
-                                        <span class="fa fa-trash" aria-hidden="true"></span> Delete
-                                    </button>
-                                    <br />
-                                </div>
-
-                                <div class="pull-right visible-sm visible-xs">
-                                    <!-- ko if: $root.CanSaveReports() || $root.adminMode()-->
-                                    <button class="btn btn-sm btn-default" title="Edit Report" data-bind="click: openReport, visible: canEdit" data-toggle="modal" data-target="#modal-reportbuilder">
-                                        <span class="fa fa-edit" aria-hidden="true"></span>
-                                    </button>
-                                    <button class="btn btn-sm btn-default" data-bind="click: copyReport" title="Copy Report" data-toggle="modal" data-target="#modal-reportbuilder">
-                                        <span class="fa fa-copy" aria-hidden="true"></span>
-                                    </button>
-                                    <!-- /ko -->
-                                    <button class="btn btn-sm btn-primary" data-bind="click: runReport" title="Run Report">
-                                        <span class="fa fa-gears" aria-hidden="true"></span>
-                                    </button>
-                                    <button class="btn btn-sm btn-danger" title="Delete Report" data-bind="click: deleteReport, visible: canEdit">
-                                        <span class="fa fa-trash" aria-hidden="true"></span>
-                                    </button>
-                                </div>
+                            <!-- /ko -->
+                        </div>
+                        <div class="col-sm-4">
+                            <div class="pull-right hidden-sm hidden-xs">
+                                <br />
+                                <!-- ko if: $root.CanSaveReports() || $root.adminMode()-->
+                                <button class="btn btn-sm btn-default" data-bind="click: openReport, visible: canEdit" data-toggle="modal" data-target="#modal-reportbuilder">
+                                    <span class="fa fa-edit" aria-hidden="true"></span> Edit
+                                </button>
+                                <button class="btn btn-sm btn-default" data-bind="click: copyReport" data-toggle="modal" data-target="#modal-reportbuilder">
+                                    <span class="fa fa-copy" aria-hidden="true"></span> Copy
+                                </button>
+                                <!-- /ko -->
+                                <button class="btn btn-sm btn-primary" data-bind="click: runReport">
+                                    <span class="fa fa-gears" aria-hidden="true"></span> Run
+                                </button>
+                                <button class="btn btn-sm btn-danger" data-bind="click: deleteReport, visible: canEdit">
+                                    <span class="fa fa-trash" aria-hidden="true"></span> Delete
+                                </button>
+                                <br />
                             </div>
 
+                            <div class="pull-right visible-sm visible-xs">
+                                <!-- ko if: $root.CanSaveReports() || $root.adminMode()-->
+                                <button class="btn btn-sm btn-default" title="Edit Report" data-bind="click: openReport, visible: canEdit" data-toggle="modal" data-target="#modal-reportbuilder">
+                                    <span class="fa fa-edit" aria-hidden="true"></span>
+                                </button>
+                                <button class="btn btn-sm btn-default" data-bind="click: copyReport" title="Copy Report" data-toggle="modal" data-target="#modal-reportbuilder">
+                                    <span class="fa fa-copy" aria-hidden="true"></span>
+                                </button>
+                                <!-- /ko -->
+                                <button class="btn btn-sm btn-primary" data-bind="click: runReport" title="Run Report">
+                                    <span class="fa fa-gears" aria-hidden="true"></span>
+                                </button>
+                                <button class="btn btn-sm btn-danger" title="Delete Report" data-bind="click: deleteReport, visible: canEdit">
+                                    <span class="fa fa-trash" aria-hidden="true"></span>
+                                </button>
+                            </div>
                         </div>
-                        <!-- /ko -->
+
                     </div>
+                    <!-- /ko -->
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Report Builder -->
-    <div class="modal modal-fullscreen fade" id="modal-reportbuilder" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="padding-right: 0px !important;">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
-                    <h4 class="modal-title" id="myModalLabel">Design your Report</h4>
-                </div>
-                <div class="modal-body">
-                    <h5><span class="fa fa-file"></span> Choose Report Type</h5>
-                    <div class="row">
-                        <div class="col-md-3 col-sm-3 col-xs-6">
-                            <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('List'); }, css: {active: ReportType()=='List'}">
-                                <span class="glyphicon glyphicon-list-alt"></span>
-                                <p>List</p>
-                            </div>
-                        </div>
-                        <div class="col-md-3 col-sm-3 col-xs-6">
-                            <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Summary'); }, css: {active: ReportType()=='Summary'}">
-                                <span class="glyphicon glyphicon-th-list"></span>
-                                <p>Summary</p>
-                            </div>
-                        </div>
-                        <div class="col-md-3 col-sm-3 col-xs-6">
-                            <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Bar'); }, css: {active: ReportType()=='Bar'}">
-                                <span class="glyphicon fa fa-bar-chart"></span>
-                                <p>Bar</p>
-                            </div>
-                        </div>
-                        <div class="col-md-3 col-sm-3 col-xs-6">
-                            <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Pie'); }, css: {active: ReportType()=='Pie'}">
-                                <span class="glyphicon fa fa-pie-chart"></span>
-                                <p>Pie</p>
-                            </div>
-                        </div>
-                        <div class="col-md-3 col-sm-3 col-xs-6">
-                            <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Line'); }, css: {active: ReportType()=='Line'}">
-                                <span class="glyphicon fa fa-line-chart"></span>
-                                <p>Line</p>
-                            </div>
-                        </div>
-                        <div class="col-md-3 col-sm-3 col-xs-6">
-                            <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Map'); }, css: {active: ReportType()=='Map'}">
-                                <span class="glyphicon fa fa-globe"></span>
-                                <p>Map</p>
-                            </div>
+<!-- Report Builder -->
+<div class="modal modal-fullscreen fade" id="modal-reportbuilder" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="padding-right: 0px !important;">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="myModalLabel">Design your Report</h4>
+            </div>
+            <div class="modal-body">
+                <h5><span class="fa fa-file"></span> Choose Report Type</h5>
+                <div class="row">
+                    <div class="col-md-3 col-sm-3 col-xs-6">
+                        <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('List'); }, css: {active: ReportType()=='List'}">
+                            <span class="glyphicon glyphicon-list-alt"></span>
+                            <p>List</p>
                         </div>
                     </div>
-                    <hr />
-                    <h5><span class="fa fa-database"></span> Choose Data for Report</h5>
-                    <div>
-                        <div class="col-md-12">
-                            <select class="form-control" data-bind="options: Tables, optionsCaption: 'Choose Section...', optionsText: 'tableName', value: SelectedTable, disable: isFormulaField"></select>
+                    <div class="col-md-3 col-sm-3 col-xs-6">
+                        <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Summary'); }, css: {active: ReportType()=='Summary'}">
+                            <span class="glyphicon glyphicon-th-list"></span>
+                            <p>Summary</p>
                         </div>
+                    </div>
+                    <div class="col-md-3 col-sm-3 col-xs-6">
+                        <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Bar'); }, css: {active: ReportType()=='Bar'}">
+                            <span class="glyphicon fa fa-bar-chart"></span>
+                            <p>Bar</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-3 col-xs-6">
+                        <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Pie'); }, css: {active: ReportType()=='Pie'}">
+                            <span class="glyphicon fa fa-pie-chart"></span>
+                            <p>Pie</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-3 col-xs-6">
+                        <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Line'); }, css: {active: ReportType()=='Line'}">
+                            <span class="glyphicon fa fa-line-chart"></span>
+                            <p>Line</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-3 col-xs-6">
+                        <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Map'); }, css: {active: ReportType()=='Map'}">
+                            <span class="glyphicon fa fa-globe"></span>
+                            <p>Map</p>
+                        </div>
+                    </div>
+                </div>
+                <hr />
+                <h5><span class="fa fa-database"></span> Choose Data for Report</h5>
+                <div>
+                    <div class="col-md-12">
+                        <select class="form-control" data-bind="options: Tables, optionsCaption: 'Choose Section...', optionsText: 'tableName', value: SelectedTable, disable: isFormulaField"></select>
+                    </div>
 
-                        <div class="col-md-12 padded-div" data-bind="visible: ChooseFields().length>0">
+                    <div class="col-md-12 padded-div" data-bind="visible: ChooseFields().length>0">
+                        <div class="small pull-left">
+                            Check the fields you would like to use in the Report
+                        </div>
+                        <div class="pull-right">
+                            <a href="#" class="btn btn-primary btn-xs" title="Save Custom Formula Field" data-bind="click: saveFormulaField, visible: isFormulaField">Save</a>
+                            <a href="#" class="btn btn-xs" title="Custom Field using Formula" data-bind="click: function(){isFormulaField(!isFormulaField())}, text: isFormulaField()? 'Cancel': 'Customize', css: {'btn-primary': !isFormulaField(), 'btn-danger': isFormulaField}"></a>
+
+                            <a href="#" class="btn btn-default btn-xs" data-bind="click: MoveAllFields, visible: !isFormulaField()">Select all</a>
+                            <a href="#" class="btn btn-default btn-xs" data-bind="click: RemoveSelectedFields, visible: !isFormulaField()">Remove all</a>
+                        </div>
+                    </div>
+                    <div class="col-md-12 padded-div" data-bind="visible: ChooseFields().length>0 && isFormulaField()">
+                        <div class="alert alert-info">
+                            You are now creating a Customized Field. Check Fields you want to use in the calculation below, then choose the operations you want to perform, and click "Save" on the right above to add your Custom field.
+                            Please note that Custom Field must be chosen in within the same Section and their data types must match.
+                        </div>
+                    </div>
+                    <div class="row container-fluid">
+                        <!-- ko foreach: ChooseFields -->
+                        <div class="col-md-3 col-sm-4 col-xs-6">
+                            <div class="list-group-item">
+                                <div class="checkbox">
+                                    <label>
+                                        <input type="checkbox" data-bind="checkedInArray: {array: $parent.isFormulaField() ? $parent.formulaFields : $parent.SelectedFields, value: $data}"> <span data-bind="text: fieldName"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- /ko -->
+                    </div>
+                    <div data-bind="if: isFormulaField">
+                        <br />
+                        <div class="col-xs-12 padded-div">
                             <div class="small pull-left">
-                                Check the fields you would like to use in the Report
+                                Setup your Formula for calculating this Field
                             </div>
                             <div class="pull-right">
-                                <a href="#" class="btn btn-primary btn-xs" title="Save Custom Formula Field" data-bind="click: saveFormulaField, visible: isFormulaField">Save</a>
-                                <a href="#" class="btn btn-xs" title="Custom Field using Formula" data-bind="click: function(){isFormulaField(!isFormulaField())}, text: isFormulaField()? 'Cancel': 'Customize', css: {'btn-primary': !isFormulaField(), 'btn-danger': isFormulaField}"></a>
-
-                                <a href="#" class="btn btn-default btn-xs" data-bind="click: MoveAllFields, visible: !isFormulaField()">Select all</a>
-                                <a href="#" class="btn btn-default btn-xs" data-bind="click: RemoveSelectedFields, visible: !isFormulaField()">Remove all</a>
+                                <a href="#" class="btn btn-default btn-xs" data-bind="click: addFormulaParentheses">Add ( )</a>
+                                <a href="#" class="btn btn-default btn-xs" title="Add a Constant Value" data-bind="click: addFormulaConstantValue">Add Value</a>
+                                <a href="#" class="btn btn-default btn-xs" data-bind="click: clearFormulaField">Clear</a>
                             </div>
                         </div>
-                        <div class="col-md-12 padded-div" data-bind="visible: ChooseFields().length>0 && isFormulaField()">
-                            <div class="alert alert-info">
-                                You are now creating a Customized Field. Check Fields you want to use in the calculation below, then choose the operations you want to perform, and click "Save" on the right above to add your Custom field.
-                                Please note that Custom Field must be chosen in within the same Section and their data types must match.
+                        <div class="form-horizontal">
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label">Field Label</label>
+                                <div class="col-sm-10">
+                                    <input type="text" class="form-control input-sm" data-bind="value: formulaFieldLabel" required placeholder="Custom Field Label" />
+                                </div>
                             </div>
-                        </div>
-                        <div class="row container-fluid">
-                            <!-- ko foreach: ChooseFields -->
-                            <div class="col-md-3 col-sm-4 col-xs-6">
-                                <div class="list-group-item">
-                                    <div class="checkbox">
-                                        <label>
-                                            <input type="checkbox" data-bind="checkedInArray: {array: $parent.isFormulaField() ? $parent.formulaFields : $parent.SelectedFields, value: $data}"> <span data-bind="text: fieldName"></span>
-                                        </label>
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label">Data Format</label>
+                                <div class="col-sm-10">
+                                    <select class="form-control input-sm" data-bind="value: formulaDataFormat" required>
+                                        <!-- ko ifnot: formulaOnlyHasDateFields -->
+                                        <option>String</option>
+                                        <option>Integer</option>
+                                        <option>Double</option>
+                                        <!-- /ko -->
+                                        <!-- ko if: formulaOnlyHasDateFields -->
+                                        <option>Days</option>
+                                        <option>Hours</option>
+                                        <option>Minutes</option>
+                                        <option>Seconds</option>
+                                        <!-- /ko -->
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label">Field Formula</label>
+                                <div class="col-sm-10">
+                                    <!-- ko foreach: formulaFields -->
+                                    <h3 class="pull-left" data-bind="visible: setupFormula.isParenthesesStart" style="margin-top: 0;">(</h3>
+                                    <!-- ko if: !setupFormula.isParenthesesStart() && !setupFormula.isParenthesesEnd() -->
+                                    <div class="list-group-item pull-left" style="margin-left: 15px; padding: 5px 15px">
+                                        <span data-bind="text: fieldName, visible: !setupFormula.isConstantValue()"></span>
+                                        <!-- ko if: setupFormula.isConstantValue -->
+                                        <input data-bind="value: setupFormula.constantValue" class="form-control input-sm" required />
+                                        <!-- /ko -->
                                     </div>
-                                </div>
-                            </div>
-                            <!-- /ko -->
-                        </div>
-                        <div data-bind="if: isFormulaField">
-                            <br />
-                            <div class="col-xs-12 padded-div">
-                                <div class="small pull-left">
-                                    Setup your Formula for calculating this Field
-                                </div>
-                                <div class="pull-right">
-                                    <a href="#" class="btn btn-default btn-xs" data-bind="click: addFormulaParentheses">Add ( )</a>
-                                    <a href="#" class="btn btn-default btn-xs" title="Add a Constant Value" data-bind="click: addFormulaConstantValue">Add Value</a>
-                                    <a href="#" class="btn btn-default btn-xs" data-bind="click: clearFormulaField">Clear</a>
-                                </div>
-                            </div>
-                            <div class="form-horizontal">
-                                <div class="form-group">
-                                    <label class="col-sm-2 control-label">Field Label</label>
-                                    <div class="col-sm-10">
-                                        <input type="text" class="form-control input-sm" data-bind="value: formulaFieldLabel" required placeholder="Custom Field Label" />
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label class="col-sm-2 control-label">Data Format</label>
-                                    <div class="col-sm-10">
-                                        <select class="form-control input-sm" data-bind="value: formulaDataFormat" required>
-                                            <!-- ko ifnot: formulaOnlyHasDateFields -->
-                                            <option>String</option>
-                                            <option>Integer</option>
-                                            <option>Double</option>
-                                            <!-- /ko -->
-                                            <!-- ko if: formulaOnlyHasDateFields -->                                            
-                                            <option>Days</option>
-                                            <option>Hours</option>
-                                            <option>Minutes</option>
-                                            <option>Seconds</option>
+                                    <!-- /ko -->
+                                    <h3 class="pull-left" data-bind="visible: setupFormula.isParenthesesEnd" style="margin-top: 0;">)</h3>
+                                    <div class="pull-left" style="margin-left: 15px;" data-bind="visible: $parent.showFormulaOperation($index())">
+                                        <select class="form-control input-sm" style="max-width: 50px;" data-bind="value: setupFormula.formulaOperation">
+                                            <option>-</option>
+                                            <!-- ko if: ['Int','Money','Float'].indexOf(fieldType) != -1 -->
+                                            <option>+</option>
+                                            <option>*</option>
+                                            <option>/</option>
                                             <!-- /ko -->
                                         </select>
                                     </div>
-                                </div>
-                                <div class="form-group">
-                                    <label class="col-sm-2 control-label">Field Formula</label>
-                                    <div class="col-sm-10">
-                                        <!-- ko foreach: formulaFields -->
-                                        <h3 class="pull-left" data-bind="visible: setupFormula.isParenthesesStart" style="margin-top: 0;">(</h3>
-                                        <!-- ko if: !setupFormula.isParenthesesStart() && !setupFormula.isParenthesesEnd() -->
-                                        <div class="list-group-item pull-left" style="margin-left: 15px; padding: 5px 15px">
-                                            <span data-bind="text: fieldName, visible: !setupFormula.isConstantValue()"></span>
-                                            <!-- ko if: setupFormula.isConstantValue -->
-                                            <input data-bind="value: setupFormula.constantValue" class="form-control input-sm" required />
-                                            <!-- /ko -->
-                                        </div>
-                                        <!-- /ko -->
-                                        <h3 class="pull-left" data-bind="visible: setupFormula.isParenthesesEnd" style="margin-top: 0;">)</h3>
-                                        <div class="pull-left" style="margin-left: 15px;" data-bind="visible: $parent.showFormulaOperation($index())">
-                                            <select class="form-control input-sm" style="max-width: 50px;" data-bind="value: setupFormula.formulaOperation">
-                                                <option>-</option>                                                
-                                                <!-- ko if: ['Int','Money','Float'].indexOf(fieldType) != -1 -->
-                                                <option>+</option>
-                                                <option>*</option>
-                                                <option>/</option>
-                                                <!-- /ko -->
-                                            </select>
-                                        </div>
-                                        <!-- /ko -->
-                                    </div>
+                                    <!-- /ko -->
                                 </div>
                             </div>
-
-                            <div class="clearfix"></div>
-
                         </div>
+
+                        <div class="clearfix"></div>
+
                     </div>
-                    <!-- ko if: SelectedFields().length>0 -->
-                    <hr />
-                    <h5><span class="fa fa-table"></span> Selected data for the Report</h5>
-                    <div class="row container-fluid">
-                        <div class="alert alert-info" data-bind="visible: ReportType()=='Bar'">
-                            <span class="fa fa-lightbulb-o fa-2x"></span> &nbsp;For Bar Graph, the first field below will show on the x-axis. All other fields will show on y-axis, but they must be numeric.
-                        </div>
-                        <div class="alert alert-info" data-bind="visible: ReportType()=='Line'">
-                            <span class="fa fa-lightbulb-o fa-2x"></span> &nbsp;For Line Graph, the first field below will show on the x-axis and it needs to be numeric.
-                        </div>
-                        <div class="alert alert-info" data-bind="visible: ReportType()=='Map'">
-                            <span class="fa fa-lightbulb-o fa-2x"></span> &nbsp;For Map Graph, the first field below has to be a Region, like a Country.
-                        </div>
-                        <ul class="list-group " data-bind="sortable: { data: SelectedFields, options: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight' } }">
-                            <li class="list-group-item">
-                                <span class="fa fa-columns"></span>
-                                <span data-bind="text: selectedFieldName"></span>
-                                <span data-bind="visible: !$root.isFieldValidForYAxis($index(), fieldType)">
-                                    <span class="label label-danger" data-bind="visible: !groupInGraph()">Will not show in <span data-bind="text: $root.ReportType"></span> Chart</span>
+                </div>
+                <!-- ko if: SelectedFields().length>0 -->
+                <hr />
+                <h5><span class="fa fa-table"></span> Selected data for the Report</h5>
+                <div class="row container-fluid">
+                    <div class="alert alert-info" data-bind="visible: ReportType()=='Bar'">
+                        <span class="fa fa-lightbulb-o fa-2x"></span> &nbsp;For Bar Graph, the first field below will show on the x-axis. All other fields will show on y-axis, but they must be numeric.
+                    </div>
+                    <div class="alert alert-info" data-bind="visible: ReportType()=='Line'">
+                        <span class="fa fa-lightbulb-o fa-2x"></span> &nbsp;For Line Graph, the first field below will show on the x-axis and it needs to be numeric.
+                    </div>
+                    <div class="alert alert-info" data-bind="visible: ReportType()=='Map'">
+                        <span class="fa fa-lightbulb-o fa-2x"></span> &nbsp;For Map Graph, the first field below has to be a Region, like a Country.
+                    </div>
+                    <ul class="list-group " data-bind="sortable: { data: SelectedFields, options: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight' } }">
+                        <li class="list-group-item">
+                            <span class="fa fa-columns"></span>
+                            <span data-bind="text: selectedFieldName"></span>
+                            <span data-bind="visible: !$root.isFieldValidForYAxis($index(), fieldType)">
+                                <span class="label label-danger" data-bind="visible: !groupInGraph()">Will not show in <span data-bind="text: $root.ReportType"></span> Chart</span>
+                            </span>
+
+                            <div class="input-group pull-right" style="margin-top: -5px;">
+                                <select class="form-control input-sm" style="width: 120px;" data-bind="options: $root.canDrilldown() && $index()>0 ? fieldAggregateWithDrilldown : fieldAggregate, value: selectedAggregate, visible: $parent.AggregateReport"></select>
+                            </div>
+                            <div class="sortable pull-right" style="padding-right: 15px;">
+                                <span class="fa fa-arrows " aria-hidden="true" title="Drag to reorder"></span>
+                            </div>
+                            <div class="pull-right" style="padding-right: 15px;">
+                                <span class="fa fa-trash" style="cursor: pointer;" aria-hidden="true" title="Delete this Field" data-bind="click: $parent.RemoveField"></span>
+                            </div>
+                            <div class="pull-right" style="padding-right: 15px;">
+                                <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ filterOnFly(!filterOnFly()); }, css: {active: filterOnFly()==true}">
+                                    <span class="fa fa-filter" aria-hidden="true" title="Filter by this field on the Report"></span>
                                 </span>
-
-                                <div class="input-group pull-right" style="margin-top: -5px;">
-                                    <select class="form-control input-sm" style="width: 120px;" data-bind="options: $root.canDrilldown() && $index()>0 ? fieldAggregateWithDrilldown : fieldAggregate, value: selectedAggregate, visible: $parent.AggregateReport"></select>
-                                </div>
-                                <div class="sortable pull-right" style="padding-right: 15px;">
-                                    <span class="fa fa-arrows " aria-hidden="true" title="Drag to reorder"></span>
-                                </div>
-                                <div class="pull-right" style="padding-right: 15px;">
-                                    <span class="fa fa-trash" style="cursor: pointer;" aria-hidden="true" title="Delete this Field" data-bind="click: $parent.RemoveField"></span>
-                                </div>
-                                <div class="pull-right" style="padding-right: 15px;">
-                                    <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ filterOnFly(!filterOnFly()); }, css: {active: filterOnFly()==true}">
-                                        <span class="fa fa-filter" aria-hidden="true" title="Filter by this field on the Report"></span>
-                                    </span>
-                                </div>
-                                <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $root.ReportType()=='Summary'">
-                                    <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ hideInDetail(!hideInDetail()); }, css: {active: hideInDetail()==true}">
-                                        <span class="fa fa-eye-slash" aria-hidden="true" title="Hide in Details"></span>
-                                    </span>
-                                </div>
-                                <div class="pull-right" style="padding-right: 15px;" data-bind="visible: !$root.isFieldValidForSubGroup($index(), fieldType) && $root.isChart()">
-                                    <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ groupInGraph(!groupInGraph()); }, css: {active: groupInGraph()==true}">
-                                        <span class="fa fa-line-chart" aria-hidden="true" title="Include in series"></span>
-                                    </span>
-                                </div>
-                            </li>
-                        </ul>
-                    </div>
-                    <hr />
-                    <h5><span class="fa fa-filter"></span> Choose filters</h5>
-
-                    <div class="row" style="padding: 10px 10px ">
-                        <div data-bind="template: {name: 'filter-group'}"></div>
-                        <br />
-                    </div>
-                    <!-- /ko -->
-                    <hr />
-                    <h5><span class="fa fa-hourglass"></span> Choose Schedule</h5>
-
-                    <div class="row" style="padding: 10px 10px ">
-                        <div data-bind="template: {name: 'report-schedule'}"></div>
-                    </div>
-                    <hr />
-
-                    <form class="form-horizontal">
-                        <div class="form-group">
-                            <label class="col-sm-2 control-label">Report Name</label>
-                            <div class="col-sm-10">
-                                <input type="text" class="form-control" required placeholder="Report Name" data-bind="value: ReportName">
                             </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="col-sm-2 control-label">Report Description</label>
-                            <div class="col-sm-10">
-                                <textarea class="form-control" rows="3" placeholder="Optional Report Description" data-bind="value: ReportDescription"></textarea>
+                            <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $root.ReportType()=='Summary'">
+                                <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ hideInDetail(!hideInDetail()); }, css: {active: hideInDetail()==true}">
+                                    <span class="fa fa-eye-slash" aria-hidden="true" title="Hide in Details"></span>
+                                </span>
                             </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="col-sm-2 control-label">Sort By</label>
-                            <div class="col-sm-10">
-                                <select class="form-control" required data-bind="options: enabledFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: SortByField"></select>
+                            <div class="pull-right" style="padding-right: 15px;" data-bind="visible: !$root.isFieldValidForSubGroup($index(), fieldType) && $root.isChart()">
+                                <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ groupInGraph(!groupInGraph()); }, css: {active: groupInGraph()==true}">
+                                    <span class="fa fa-line-chart" aria-hidden="true" title="Include in series"></span>
+                                </span>
                             </div>
-                        </div>
-                        <div class="checkbox">
-                            <label>
-                                <input type="checkbox" data-bind="checked: IncludeSubTotal" />
-                                Include Subtotals
-                            </label>
-                        </div>
-                        <div class="checkbox" data-bind="hidden: AggregateReport">
-                            <label>
-                                <input type="checkbox" data-bind="checked: ShowUniqueRecords" />
-                                Show only Unique Records
-                            </label>
-                        </div>
-                        <div class="checkbox" data-bind="visible: isChart">
-                            <label>
-                                <input type="checkbox" data-bind="checked: ShowDataWithGraph" />
-                                Show Data along with Graph
-                            </label>
-                        </div>
-                        <div class="checkbox" data-bind="visible: CanSaveReports() && ReportID()>0">
-                            <label>
-                                <input type="checkbox" data-bind="checked: SaveReport"> Save Report
-                            </label>
-                        </div>
-                        <div class="form-group" data-bind="visible: SaveReport">
-                            <label class="col-sm-2 control-label">Choose Folder</label>
-                            <div class="col-sm-10">
-                                <select class="form-control" data-bind="options: Folders, optionsText: 'FolderName', optionsValue: 'Id', value: FolderID"></select>
-                            </div>
-                        </div>
-
-                        <!-- ko if: adminMode -->
-                        <hr />
-                        <div data-bind="template: {name: 'manage-access-template'}"></div>
-                        <!-- /ko -->
-                    </form>
+                        </li>
+                    </ul>
                 </div>
-                <div class="modal-footer">
-                    <a href="#" class="btn btn-danger" data-bind="click: cancelCreateReport">Cancel editing Report</a>
-                    <button class="btn btn-primary" type="button" data-bind="visible: SaveReport() && CanSaveReports(), click: SaveWithoutRun" style="padding-right: 10px;">Save Report</button>
-                    <button class="btn btn-primary" type="button" data-bind="text: SaveReport() && CanSaveReports()? 'Save & Run Report': 'Run Report', click: RunReport">Run Report</button>
-                </div>
-            </div>
-        </div>
-    </div>
+                <hr />
+                <h5><span class="fa fa-filter"></span> Choose filters</h5>
 
-    <!-- Folder Edit Modal -->
-    <div class="modal fade" id="folderModal" tabindex="-1" role="dialog" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content" data-bind="with: ManageFolder">
-                <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                    <h4 class="modal-title">Manage Folder</h4>
-                </div>
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label class="col-sm-4 col-md-4 control-label">Folder Name</label>
-                        <div class="col-sm-8 col-md-8">
-                            <input type="text" class="form-control" id="folderName" required placeholder="Folder Name" data-bind="value: FolderName">
-                        </div>
-                    </div>
+                <div class="row" style="padding: 10px 10px ">
+                    <div data-bind="template: {name: 'filter-group'}"></div>
                     <br />
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" data-bind="click: saveFolder">Save</button>
+                <!-- /ko -->
+                <hr />
+                <h5><span class="fa fa-hourglass"></span> Choose Schedule</h5>
+
+                <div class="row" style="padding: 10px 10px ">
+                    <div data-bind="template: {name: 'report-schedule'}"></div>
                 </div>
+                <hr />
+
+                <form class="form-horizontal">
+                    <div class="form-group">
+                        <label class="col-sm-2 control-label">Report Name</label>
+                        <div class="col-sm-10">
+                            <input type="text" class="form-control" required placeholder="Report Name" data-bind="value: ReportName">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-2 control-label">Report Description</label>
+                        <div class="col-sm-10">
+                            <textarea class="form-control" rows="3" placeholder="Optional Report Description" data-bind="value: ReportDescription"></textarea>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-2 control-label">Sort By</label>
+                        <div class="col-sm-10">
+                            <select class="form-control" required data-bind="options: enabledFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: SortByField"></select>
+                        </div>
+                    </div>
+                    <div class="checkbox">
+                        <label>
+                            <input type="checkbox" data-bind="checked: IncludeSubTotal" />
+                            Include Subtotals
+                        </label>
+                    </div>
+                    <div class="checkbox" data-bind="hidden: AggregateReport">
+                        <label>
+                            <input type="checkbox" data-bind="checked: ShowUniqueRecords" />
+                            Show only Unique Records
+                        </label>
+                    </div>
+                    <div class="checkbox" data-bind="visible: isChart">
+                        <label>
+                            <input type="checkbox" data-bind="checked: ShowDataWithGraph" />
+                            Show Data along with Graph
+                        </label>
+                    </div>
+                    <div class="checkbox" data-bind="visible: CanSaveReports() && ReportID()>0">
+                        <label>
+                            <input type="checkbox" data-bind="checked: SaveReport"> Save Report
+                        </label>
+                    </div>
+                    <div class="form-group" data-bind="visible: SaveReport">
+                        <label class="col-sm-2 control-label">Choose Folder</label>
+                        <div class="col-sm-10">
+                            <select class="form-control" data-bind="options: Folders, optionsText: 'FolderName', optionsValue: 'Id', value: FolderID"></select>
+                        </div>
+                    </div>
+
+                    <!-- ko if: adminMode -->
+                    <hr />
+                    <div data-bind="template: {name: 'manage-access-template'}"></div>
+                    <!-- /ko -->
+                </form>
+            </div>
+            <div class="modal-footer">
+                <a href="#" class="btn btn-danger" data-bind="click: cancelCreateReport">Cancel editing Report</a>
+                <button class="btn btn-primary" type="button" data-bind="visible: SaveReport() && CanSaveReports(), click: SaveWithoutRun" style="padding-right: 10px;">Save Report</button>
+                <button class="btn btn-primary" type="button" data-bind="text: SaveReport() && CanSaveReports()? 'Save & Run Report': 'Run Report', click: RunReport">Run Report</button>
             </div>
         </div>
     </div>
+</div>
 
-    <script type="text/html" id="filter-group">
-        <div data-bind="foreach: FilterGroups">
-            <div class="panel panel-default panel-body" style="margin-left: 20px;">
-                <div data-bind="visible: !isRoot">
-                    <select data-bind="value: AndOr" class="form-control pull-left" style="width: 150px;">
+<!-- Folder Edit Modal -->
+<div class="modal fade" id="folderModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" data-bind="with: ManageFolder">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">Manage Folder</h4>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="col-sm-4 col-md-4 control-label">Folder Name</label>
+                    <div class="col-sm-8 col-md-8">
+                        <input type="text" class="form-control" id="folderName" required placeholder="Folder Name" data-bind="value: FolderName">
+                    </div>
+                </div>
+                <br />
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" data-bind="click: saveFolder">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/html" id="filter-group">
+    <div data-bind="foreach: FilterGroups">
+        <div class="panel panel-default panel-body" style="margin-left: 20px;">
+            <div data-bind="visible: !isRoot">
+                <select data-bind="value: AndOr" class="form-control pull-left" style="width: 150px;">
+                    <option>And</option>
+                    <option>Or</option>
+                </select>
+                <button class="btn btn-sm pull-left" data-bind="click: $parent.RemoveFilterGroup, visible: !isRoot">Remove Group</button>&nbsp;
+                <hr />
+            </div>
+            <div data-bind="template: {name: 'filter-inner'}"></div>
+        </div>
+    </div>
+</script>
+
+<script type="text/html" id="filter-inner">
+
+    <table class="table table-responsive table-noborder" data-bind="visible: Filters().length>0">
+        <thead>
+            <tr>
+                <th style="width: 100px;"></th>
+                <th style="width: 300px;">Field</th>
+                <th style="width: 100px;"></th>
+                <th style="width: 200px;">Filter</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody data-bind="foreach: Filters">
+            <tr>
+                <td>
+                    <select data-bind="value: AndOr, visible: $index()>0" class="form-control">
                         <option>And</option>
                         <option>Or</option>
                     </select>
-                    <button class="btn btn-sm pull-left" data-bind="click: $parent.RemoveFilterGroup, visible: !isRoot">Remove Group</button>&nbsp;
-                    <hr />
-                </div>
-                <div data-bind="template: {name: 'filter-inner'}"></div>
-            </div>
-        </div>
-    </script>
-
-    <script type="text/html" id="filter-inner">
-
-        <table class="table table-responsive table-noborder" data-bind="visible: Filters().length>0">
-            <thead>
-                <tr>
-                    <th style="width: 100px;"></th>
-                    <th style="width: 300px;">Field</th>
-                    <th style="width: 100px;"></th>
-                    <th style="width: 200px;">Filter</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody data-bind="foreach: Filters">
-                <tr>
-                    <td>
-                        <select data-bind="value: AndOr, visible: $index()>0" class="form-control">
-                            <option>And</option>
-                            <option>Or</option>
-                        </select>
-                    </td>
-                    <td>
-                        <div class="form-group">
-                            <select class="form-control" data-bind="options: $root.selectedFieldsCanFilter, optionsText: 'selectedFieldName', optionsCaption: 'Please Choose', value: Field, attr: {required: Field()==null?'required':false}"></select>
-                        </div>
-                    </td>
-                    <td data-bind="with: Field">
-                        <div class="form-group">
-                            <select class="form-control" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
-                        </div>
-                    </td>
-                    <td data-bind="with: Field">
-                        @Html.Partial("_reportFilter")
-                    </td>
-                    <td>
-                        <button class="btn btn-sm" data-bind="click: $parent.RemoveFilter">Remove</button>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-        <div data-bind="template: {name: 'filter-group'}"></div>
-        <div>
-            <button class="btn btn-sm" data-bind="click: AddFilterGroup">Add Group</button>&nbsp;
-            <button class="btn btn-sm" data-bind="click: AddFilter">Add Filter</button>
-        </div>
-    </script>
-
-    <script type="text/html" id="report-schedule">
-        <div data-bind="with: scheduleBuilder">
-            <div class="checkbox">
-                <label>
-                    <input type="checkbox" data-bind="checked: hasSchedule" />
-                    Schedule Report
-                </label>
-            </div>
-            <div data-bind="if: hasSchedule">
-                <div class="form-inline form-group">
-
-                    Every <select class="form-control" required data-bind="options: options, value: selectedOption"></select>
-                    <!-- ko if: showDays -->
-                    on <select multiple class="form-control" required style="width: 30%;" data-bind="select2: { placeholder: 'Choose Days', allowClear: true }, options: days, selectedOptions: selectedDays"></select>
-                    <!-- /ko -->
-                    <!-- ko if: showDates -->
-                    on <select multiple class="form-control" required style="width: 30%;" data-bind="select2: { placeholder: 'Choose Dates', allowClear: true }, options: dates, selectedOptions: selectedDates"></select>
-                    <!-- /ko -->
-                    <!-- ko if: showMonths -->
-                    of <select multiple class="form-control" required style="width: 30%;" data-bind="select2: { placeholder: 'Choose Months', allowClear: true }, options: months, selectedOptions: selectedMonths"></select>
-                    <!-- /ko -->
-                    <!-- ko if: showAtTime -->
-                    at <select class="form-control" data-bind="options: hours, value: selectedHour"></select>
-                    <select class="form-control" data-bind="options: minutes, value: selectedMinute"></select>
-                    <select class="form-control" data-bind="value: selectedAmPm">
-                        <option>AM</option>
-                        <option>PM</option>
-                    </select>
-                    <!-- /ko-->                    
-                </div>         
-                <div class="alert alert-info">
-                    Report will be run and emailed every <span data-bind="text: selectedOption"></span>
-                    <!-- ko if: showDays -->
-                    on <span class="error" data-bind="visible: selectedDays().length == 0">Please pick Day(s)</span> <span data-bind="text: selectedDays"></span>
-                    <!-- /ko -->
-                    <!-- ko if: showDates -->
-                    on <span class="error" data-bind="visible: selectedDates().length == 0">Please pick Date(s)</span>
-                    <span data-bind="foreach: selectedDates"><span data-bind="visible: $index()>0">, </span><span data-bind="text: $data == 1 ? '1st': ($data == 2 ? '2nd' : ($data == 3 ? '3rd' : $data+'th'))"></span></span>
-                    <!-- /ko -->
-                    <!-- ko if: showMonths -->
-                    of <span class="error" data-bind="visible: selectedMonths().length == 0">Please pick Month(s)</span> <span data-bind="text: selectedMonths"></span>
-                    <!-- /ko -->
-                    <!-- ko if: showAtTime -->
-                    at <span data-bind="text: selectedHour"></span>:<span data-bind="text: selectedMinute"></span> <span data-bind="text: selectedAmPm"></span>
-                    <!-- /ko-->
-                </div>
-                <div class="form-horizontal form-group">
+                </td>
+                <td>
                     <div class="form-group">
-                        <label class="col-sm-2 control-label">Email to</label>
-                        <div class="col-sm-10">                            
-                            <input type="text" class="form-control" data-bind="value: emailTo" placeholder="Enter Email Addresses separated by comma to send the Report to" required />
-                        </div>
-                    </div>                    
-                </div>               
+                        <select class="form-control" data-bind="options: $root.selectedFieldsCanFilter, optionsText: 'selectedFieldName', optionsCaption: 'Please Choose', value: Field, attr: {required: Field()==null?'required':false}"></select>
+                    </div>
+                </td>
+                <td data-bind="with: Field">
+                    <div class="form-group">
+                        <select class="form-control" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
+                    </div>
+                </td>
+                <td data-bind="with: Field">
+                    @Html.Partial("_reportFilter")
+                </td>
+                <td>
+                    <button class="btn btn-sm" data-bind="click: $parent.RemoveFilter">Remove</button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <div data-bind="template: {name: 'filter-group'}"></div>
+    <div>
+        <button class="btn btn-sm" data-bind="click: AddFilterGroup">Add Group</button>&nbsp;
+        <button class="btn btn-sm" data-bind="click: AddFilter">Add Filter</button>
+    </div>
+</script>
+
+<script type="text/html" id="report-schedule">
+    <div data-bind="with: scheduleBuilder">
+        <div class="checkbox">
+            <label>
+                <input type="checkbox" data-bind="checked: hasSchedule" />
+                Schedule Report
+            </label>
+        </div>
+        <div data-bind="if: hasSchedule">
+            <div class="form-inline form-group">
+
+                Every <select class="form-control" required data-bind="options: options, value: selectedOption"></select>
+                <!-- ko if: showDays -->
+                on <select multiple class="form-control" required style="width: 30%;" data-bind="select2: { placeholder: 'Choose Days', allowClear: true }, options: days, selectedOptions: selectedDays"></select>
+                <!-- /ko -->
+                <!-- ko if: showDates -->
+                on <select multiple class="form-control" required style="width: 30%;" data-bind="select2: { placeholder: 'Choose Dates', allowClear: true }, options: dates, selectedOptions: selectedDates"></select>
+                <!-- /ko -->
+                <!-- ko if: showMonths -->
+                of <select multiple class="form-control" required style="width: 30%;" data-bind="select2: { placeholder: 'Choose Months', allowClear: true }, options: months, selectedOptions: selectedMonths"></select>
+                <!-- /ko -->
+                <!-- ko if: showAtTime -->
+                at <select class="form-control" data-bind="options: hours, value: selectedHour"></select>
+                <select class="form-control" data-bind="options: minutes, value: selectedMinute"></select>
+                <select class="form-control" data-bind="value: selectedAmPm">
+                    <option>AM</option>
+                    <option>PM</option>
+                </select>
+                <!-- /ko-->
+            </div>
+            <div class="alert alert-info">
+                Report will be run and emailed every <span data-bind="text: selectedOption"></span>
+                <!-- ko if: showDays -->
+                on <span class="error" data-bind="visible: selectedDays().length == 0">Please pick Day(s)</span> <span data-bind="text: selectedDays"></span>
+                <!-- /ko -->
+                <!-- ko if: showDates -->
+                on <span class="error" data-bind="visible: selectedDates().length == 0">Please pick Date(s)</span>
+                <span data-bind="foreach: selectedDates"><span data-bind="visible: $index()>0">, </span><span data-bind="text: $data == 1 ? '1st': ($data == 2 ? '2nd' : ($data == 3 ? '3rd' : $data+'th'))"></span></span>
+                <!-- /ko -->
+                <!-- ko if: showMonths -->
+                of <span class="error" data-bind="visible: selectedMonths().length == 0">Please pick Month(s)</span> <span data-bind="text: selectedMonths"></span>
+                <!-- /ko -->
+                <!-- ko if: showAtTime -->
+                at <span data-bind="text: selectedHour"></span>:<span data-bind="text: selectedMinute"></span> <span data-bind="text: selectedAmPm"></span>
+                <!-- /ko-->
+            </div>
+            <div class="form-horizontal form-group">
+                <div class="form-group">
+                    <label class="col-sm-2 control-label">Email to</label>
+                    <div class="col-sm-10">
+                        <input type="text" class="form-control" data-bind="value: emailTo" placeholder="Enter Email Addresses separated by comma to send the Report to" required />
+                    </div>
+                </div>
             </div>
         </div>
-    </script>
+    </div>
+</script>

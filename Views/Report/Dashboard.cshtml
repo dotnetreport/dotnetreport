@@ -40,6 +40,7 @@
                 dashboards: dashboards,
                 users: data.users,
                 userRoles: data.userRoles,
+                allowAdmin: data.allowAdminMode,
                 dashboardId: @(Request.QueryString["id"] != null ? Request.QueryString["id"] : "0")
             });
 
@@ -91,10 +92,8 @@
 </div>
 <div class="clearfix"></div>
 
-@if ((Roles.Enabled && User.IsInRole("Admin") || User.IsInRole("Administrator")) || !User.Identity.IsAuthenticated)
-{
-    <div data-bind="template: {name: 'admin-mode-template'}"></div>
-}
+<div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
+
 <div class="alert alert-info">
     To manage Reports, please <a href="@Url.Action("Index","Report")">click here</a>.
 </div>

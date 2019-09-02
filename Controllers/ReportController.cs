@@ -37,8 +37,8 @@ namespace ReportBuilder.Web.Controllers
             settings.UserName = ""; 
             settings.CurrentUserRole = new List<string>(); // Populate your current authenticated user's roles
 
-            settings.Users = new List<string>() { "Jane", "John" }; // Populate all your application's user, ex  { "Jane", "John" }
-            settings.UserRoles = new List<string>() { "Admin", "Normal" }; // Populate all your application's user roles, ex  { "Admin", "Normal" }       
+            settings.Users = new List<string>(); // Populate all your application's user, ex  { "Jane", "John" }
+            settings.UserRoles = new List<string>(); // Populate all your application's user roles, ex  { "Admin", "Normal" }       
             settings.CanUseAdminMode = true; // Set to true only if current user can use Admin mode to setup reports and dashboard
 
             // An example of populating Roles using MVC web security if available
@@ -297,11 +297,15 @@ namespace ReportBuilder.Web.Controllers
         public JsonResult GetUsersAndRoles()
         {
             var settings = GetSettings();
-            if (settings.CanUseAdminMode)
+            return Json(new
             {
-                return Json(new { users = settings.Users, userRoles = settings.UserRoles }, JsonRequestBehavior.AllowGet);
-            }
-            return Json(new { users = new List<string>(), userRoles = new List<string>() }, JsonRequestBehavior.AllowGet);
+                users = settings.CanUseAdminMode ? settings.Users : new List<string>(),
+                userRoles = settings.CanUseAdminMode ? settings.UserRoles : new List<string>(),
+                currentUserId = settings.UserId,
+                currentUserRoles = settings.UserRoles,
+                currentUserName = settings.UserName,
+                allowAdminMode = settings.CanUseAdminMode
+            }, JsonRequestBehavior.AllowGet);
         }
 
         private string GetWarnings(string sql)
