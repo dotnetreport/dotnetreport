@@ -68,7 +68,7 @@
             });
 
             $(window).resize(function () {
-                vm.drawChart();                
+                vm.drawChart();
             });
         });
     });
@@ -174,13 +174,17 @@
                 <span data-bind="text: ReportName"></span>
                 <div class="pull-right">
                     @using (Html.BeginForm("DownloadExcel", "Report", FormMethod.Post))
-                        {
+                    {
                         <input type="hidden" id="reportSql" name="reportSql" data-bind="value: currentSql" />
-                        <input type="hidden" id="connectKey" name="connectKey" data-bind="value: currentConnectKey" />
-                        <input type="hidden" id="reportName" name="reportName" data-bind="value: ReportName" />
-                        <button type="submit" class="btn btn-default btn-xs"><span class="fa fa-file-excel-o"></span></button>
-                        }
+                            <input type="hidden" id="connectKey" name="connectKey" data-bind="value: currentConnectKey" />
+                            <input type="hidden" id="reportName" name="reportName" data-bind="value: ReportName" />
+                            <button type="submit" class="btn btn-default btn-xs"><span class="fa fa-file-excel-o"></span></button>
+                    }
                 </div>
+                <!-- ko if: FlyFilters().length> 0-->
+                <button class="btn btn-default btn-xs pull-right" data-bind="click: toggleFlyFilters"><i class="fa fa-filter" title="Filter Report"></i></button>
+                <!-- /ko -->
+
                 <a data-bind="attr: {href: '@Url.Action("Index","Report")?reportId=' + ReportID()}" class="btn btn-default btn-xs pull-right">
                     <i class="fa fa-pencil-square-o" title="Edit Report"></i>
                 </a>
@@ -188,6 +192,7 @@
             <div class="panel-body list-overflow-auto">
                 <p data-bind="html: ReportDescription">
                 </p>
+                <div data-bind="template: {name: 'fly-filter-template'}, visible: showFlyFilters"></div>
                 <div data-bind="with: ReportResult">
                     <div data-bind="template: 'report-template', data: $data"></div>
                 </div>
@@ -208,4 +213,6 @@
     </div>
     <!-- /ko -->
 </div>
+
+
 

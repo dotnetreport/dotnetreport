@@ -1641,6 +1641,11 @@ var dashboardViewModel = function (options) {
 		i = i == 3 ? 0 : i + 1;
 		self.reports.push(report);
 		report.LoadReport(x.reportId, true);
+
+		report.showFlyFilters = ko.observable(false);
+		report.toggleFlyFilters = function () {
+			report.showFlyFilters(!report.showFlyFilters());
+		}
 	});
 
 	self.drawChart = function () {

@@ -111,44 +111,7 @@
         <br />
         <div style="clear: both;"></div>
         <br />
-        <div class="panel panel-default" data-bind="visible: FlyFilters().length>0">
-            <div class="panel-heading">
-                <h3 class="panel-title">
-                    <a data-toggle="collapse" data-target="#filter-panel" href="#">
-                        <i class="fa fa-filter"></i> Choose filter options
-                    </a>
-                </h3>
-            </div>
-            <div id="filter-panel" class="panel-collapse">
-                <div class="panel-body">
-                    <!-- ko foreach: FlyFilters -->
-                    <div class="row">
-
-                        <div class="col-sm-5 col-xs-4">
-                            <div data-bind="with: Field" class="checkbox">
-                                <div class="checkbox">
-                                    <label>
-                                        <input type="checkbox" title="Apply this filter" data-bind="checked: $parent.Apply" /><span data-bind="text: selectedFieldName"></span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                        <div data-bind="with: Field" class="col-sm-2 col-xs-3">
-                            <div class="form-group" data-bind="if: $parent.Apply">
-                                <select class="form-control" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
-                            </div>
-                        </div>
-                        <div data-bind="with: Field" class="col-xs-5">
-                            <div data-bind="if: $parent.Apply">
-                                @Html.Partial("_reportFilter")
-                            </div>
-                        </div>
-                    </div>
-                    <!-- /ko -->
-                    <button class="btn btn-primary" data-bind="click: RunReport">Refresh Report</button>
-                </div>
-            </div>
-        </div>
+        <div data-bind="template: {name: 'fly-filter-template'}"></div>
         <div data-bind="if: canDrilldown">
             <button class="btn btn-default btn-xs" data-bind="click: ExpandAll">Expand All</button>
             <button class="btn btn-default btn-xs" data-bind="click: CollapseAll">Collapse All</button>

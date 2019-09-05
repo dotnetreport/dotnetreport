@@ -302,7 +302,7 @@
     </Content>
     <Content Include="Views\Report\Index.cshtml" />
     <Content Include="Views\Report\Report.cshtml" />
-    <Content Include="Views\Report\_reportFilter.cshtml" />
+    <Content Include="Views\shared\_reportFilter.cshtml" />
     <Content Include="fonts\FontAwesome.otf" />
     <Content Include="fonts\fontawesome-webfont.woff2" />
     <Content Include="fonts\fontawesome-webfont.woff" />
