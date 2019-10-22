@@ -293,6 +293,33 @@ namespace ReportBuilder.Web.Models
             }
         }
 
+        public static string GetXmlFile(string reportSql, string connectKey, string reportName)
+        {
+            var sql = Decrypt(reportSql);
+
+            // Execute sql
+            var dt = new DataTable();
+            var ds = new DataSet();
+            using (var conn = new SqlConnection(ConfigurationManager.ConnectionStrings[connectKey].ConnectionString))
+            {
+                conn.Open();
+                var command = new SqlCommand(sql, conn);
+                var adapter = new SqlDataAdapter(command);
+
+                adapter.Fill(dt);
+            }
+
+            ds.Tables.Add(dt);
+            ds.DataSetName = "data";
+            foreach(DataColumn c in dt.Columns)
+            {
+                c.ColumnName = c.ColumnName.Replace(" ", "_").Replace("(", "").Replace(")", "");
+            }
+            dt.TableName = "item";            
+            var xml = ds.GetXml();
+            return xml;
+        }
+
         /// <summary>
         /// Method to Deycrypt encrypted sql statement. PLESE DO NOT CHANGE THIS METHOD
         /// </summary>

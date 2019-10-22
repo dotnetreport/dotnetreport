@@ -36,6 +36,10 @@
         $("#downloadExcel").submit();
     }
 
+    function downloadXml() {
+        $("#downloadXml").submit();
+    }
+
     $(document).ready(function () {
         var vm = new reportViewModel({
             runReportUrl: "@Url.Action("Report")",
@@ -72,6 +76,13 @@
         <input type="hidden" id="reportName" name="reportName" data-bind="value: ReportName" />
         }
 
+        @using (Html.BeginForm("DownloadXml", "Report", FormMethod.Post, new { id = "downloadXml" }))
+        {
+            <input type="hidden" id="reportSql" name="reportSql" data-bind="value: currentSql" />
+            <input type="hidden" id="connectKey" name="connectKey" data-bind="value: currentConnectKey" />
+            <input type="hidden" id="reportName" name="reportName" data-bind="value: ReportName" />
+        }
+
         <div class="pull-right">
             <a href="@Url.Action("Index","Report")?folderId=@Model.SelectedFolder" class="btn btn-primary">
                 Back to Reports
@@ -81,31 +92,25 @@
             </a>
             <button type="button" class="btn btn-default" onclick="printReport();">
                 <span class="glyphicon glyphicon-print" aria-hidden="true"></span> Print Report
-            </button>
-            <button class="btn btn-default" onclick="downloadExcel();" data-bind="visible: !isChart() || ShowDataWithGraph()">
-                <span class="fa fa-file-excel-o"></span> Export to Excel
-            </button>
+            </button>          
 
-            @*<div class="dropdown pull-right">
-                <button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
-                    <span class="fa fa-download"></span> Export
-                    <span class="caret"></span>
+            <div class="btn-group">
+                <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <span class="fa fa-download"></span> Export <span class="caret"></span>
                 </button>
                 <ul class="dropdown-menu">
                     <li>
-                        <a href="#" onclick="downloadExcel();" data-bind="visible: !isChart() || ShowDataWithGraph()">
+                        <a href="#" onclick="downloadExcel();">
                             <span class="fa fa-file-excel-o"></span> Excel
                         </a>
                     </li>
                     <li>
-                        <a href="#">
-                            <span class="fa fa-file-pdf-o"></span> PDF
+                        <a href="#" onclick="downloadXml();">
+                            <span class="fa fa-file-code-o"></span> Xml
                         </a>
                     </li>
-
                 </ul>
-            </div>*@
-
+            </div>
         </div>
         <br />
         <br />

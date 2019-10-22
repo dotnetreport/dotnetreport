@@ -294,6 +294,22 @@ namespace ReportBuilder.Web.Controllers
             return View();
         }
 
+        [HttpPost]
+        public ActionResult DownloadXml(string reportSql, string connectKey, string reportName)
+        {
+
+            var xml = DotNetReportHelper.GetXmlFile(reportSql, connectKey, reportName);
+            Response.ClearContent();
+
+            Response.AddHeader("content-disposition", "attachment; filename=" + reportName + ".xml");
+            Response.ContentType = "application/xml";
+            Response.Write(xml);
+            Response.End();
+
+            return View();
+        }
+
+
         public JsonResult GetUsersAndRoles()
         {
             var settings = GetSettings();
