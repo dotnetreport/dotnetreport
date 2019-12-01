@@ -1,4 +1,4 @@
-﻿/// .Net Report Builder view model v2.5.0
+﻿/// .Net Report Builder view model v3.0.1
 /// License has to be purchased for use
 /// 2015-2018 (c) www.dotnetreport.com
 
@@ -206,6 +206,7 @@ function filterGroupViewModel(args) {
 						model: JSON.stringify({ fieldId: newField.fieldId })
 					}
 				}).done(function (result) {
+					if (result.d) { result = result.d; }
 					ajaxcall({
 						type: 'POST',
 						url: args.options.lookupListUrl,
@@ -436,10 +437,11 @@ var reportViewModel = function (options) {
 						folderName: self.ManageFolder.FolderName()
 					})
 				}
-			}).done(function (returnId) {
+			}).done(function (result) {
+				if (result.d) { result = result.d; }
 				if (self.ManageFolder.IsNew()) {
 					self.Folders.push({
-						Id: returnId,
+						Id: result,
 						FolderName: self.ManageFolder.FolderName()
 					});
 				}
@@ -530,6 +532,7 @@ var reportViewModel = function (options) {
 				})
 			}			
 		}).done(function (fields) {
+			if (fields.d) { fields = fields.d; }
 			var flds = _.map(fields, function (e, i) {
 				var match = _.filter(self.SelectedFields(), function (x) { return x.fieldId == e.fieldId; });
 				if (match.length > 0) {
@@ -924,6 +927,7 @@ var reportViewModel = function (options) {
 				adminMode: self.adminMode()
 			})
 		}).done(function (result) {
+			if (result.d) { result = result.d; }
 			self.ReportID(result.reportId);
 			if (self.SaveReport()) {
 				toastr.success("Report Saved");
@@ -1023,9 +1027,11 @@ var reportViewModel = function (options) {
 						data: JSON.stringify({
 							method: "/ReportApi/RunDrillDownReport",
 							SaveReport: false,
-							ReportJson: JSON.stringify(self.BuildReportData(e.Items))													
+							ReportJson: JSON.stringify(self.BuildReportData(e.Items)),
+							adminMode: self.adminMode()
 						})
 					}).done(function (ddResult) {
+						if (ddResult.d) { ddResult = ddResult.d; }
 						e.sql = ddResult.sql;
 						e.connectKey = ddResult.connectKey;
 						e.execute();
@@ -1199,6 +1205,7 @@ var reportViewModel = function (options) {
 				})
 			}
 		}).done(function (folders) {
+			if (folders.d) { folders = folders.d; }
 			self.Folders(folders);
 			self.SelectedFolder(null);
 			if (folderId) {
@@ -1247,6 +1254,7 @@ var reportViewModel = function (options) {
 				})
 			}
 		}).done(function (report) {
+			if (report.d) { report = report.d; }
 			self.ReportID(report.ReportID);
 			self.ReportType(report.ReportType);
 			self.ReportName(report.ReportName);
@@ -1350,6 +1358,7 @@ var reportViewModel = function (options) {
 				model: JSON.stringify({ adminMode: self.adminMode() })
 			},
 		}).done(function (reports) {
+			if (reports.d) { reports = reports.d; }
 			$.each(reports, function (i, e) {
 				e.runMode = false;
 				e.openReport = function () {
@@ -1417,6 +1426,7 @@ var reportViewModel = function (options) {
 				model: "{}"
 			}
 		}).done(function (x) {
+			if (x.d) { x = x.d; }
 			x = x || {
 				allowUsersToCreateReports: true,
 				allowUsersToManageFolders: true
@@ -1479,6 +1489,7 @@ var reportViewModel = function (options) {
 				})
 			},
 		}).done(function (tables) {
+			if (tables.d) { tables = tables.d; }
 			self.Tables(tables);
 		});
 	};
@@ -1585,7 +1596,8 @@ var dashboardViewModel = function (options) {
 				method: "/ReportApi/SaveDashboard",
 				model: JSON.stringify(model)
 			}
-		}).done(function (result) {			
+		}).done(function (result) {		
+			if (result.d) { result = result.d; }
 			toastr.success("Dashboard saved successfully");
 			setTimeout(function () {
 				window.location = window.location.href.split("?")[0] + "?id=" + result.id;
@@ -1696,8 +1708,11 @@ var dashboardViewModel = function (options) {
 		}
 
 		return $.when(getReports(), getFolders()).done(function(allReports, allFolders) {
-			var setup = [];			
-			_.forEach(allFolders[0], function (x) {
+			var setup = [];	
+			if (allFolders[0].d) { allFolders[0] = allFolders[0].d; }
+			if (allReports[0].d) { allReports[0] = allReports[0].d; }
+
+			_.forEach(allFolders[0], function (x) {				
 				var folderReports = _.filter(allReports[0], { folderId: x.Id });
 				setup.push({
 					folderId: x.Id,
