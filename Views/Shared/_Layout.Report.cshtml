@@ -304,6 +304,25 @@
         </div>
     </script>
 
+    <div class="modal" id="noaccountModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Account not Setup</h4>
+                </div>
+                <div class="modal-body">
+                    <p class="alert alert-danger">dotnet Report Account Configuration missing!</p>
+                    <p>You do not have the neccessary initial configuration to use dotnet Report.</p>
+                    <p>Please view the <a href="https://dotnetreport.com/blog/2016/03/getting-started-with-dotnet-report/" target="_blank">Getting Started Guide</a> to correctly configure dotnet Report.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     @* Required Javascript Libraries *@
     <script src="~/Scripts/@Html.Raw(ReportUtil.GetScriptFile("jquery-{0}.min.js"))"></script>
     <script src="~/Scripts/@Html.Raw(ReportUtil.GetScriptFile("jquery-ui-{0}.min.js"))"></script>

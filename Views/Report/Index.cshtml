@@ -31,7 +31,7 @@
                 //dataFilters: { EmployeeId: '1,2' }, // You can also pass a list of Global Data filters using format { Column1: 'val1, val2, ...', Column2: '1,2,3,...', ...}
             });
 
-            vm.init(@(Request.QueryString["folderId"]!=null? Request.QueryString["folderId"]: "0"));
+            vm.init(@(Request.QueryString["folderId"]!=null? Request.QueryString["folderId"]: "0"), data.noAccount);
             ko.applyBindings(vm);
         });
     });

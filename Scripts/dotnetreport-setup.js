@@ -229,12 +229,6 @@
 	}
 
 	self.SaveJoins = function () {
-
-		$("#form-joins").validate().showErrors();
-
-		if (!$("#form-joins").valid()) {
-			return false;
-		}
 		
 		var joinsToSave = self.getJoinsToSave();
 

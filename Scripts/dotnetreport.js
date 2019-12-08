@@ -1494,7 +1494,12 @@ var reportViewModel = function (options) {
 		});
 	};
 
-	self.init = function (folderId) {
+	self.init = function (folderId, noAccount) {
+		if (noAccount) {
+			$("#noaccountModal").modal('show');
+			return;
+		}
+
 		self.loadFolders(folderId);
 		self.loadTables();
 	};
