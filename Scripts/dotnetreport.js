@@ -1,4 +1,4 @@
-﻿/// .Net Report Builder view model v3.0.1
+﻿/// .Net Report Builder view model v3.0.3
 /// License has to be purchased for use
 /// 2015-2018 (c) www.dotnetreport.com
 
@@ -138,7 +138,7 @@ function scheduleBuilder() {
 			SelectedAmPm: self.selectedAmPm(),
 			EmailTo: self.emailTo()
 		} : null;
-	}
+	};
 
 	self.fromJs = function (data) {
 		self.hasSchedule(data ? true : false);
@@ -256,8 +256,8 @@ var manageAccess = function (options) {
 		setupList: function (x, value) {
 			_.forEach(x, function (e) { if (value.indexOf(e.value()) >= 0) e.selected(true); else e.selected(false); });
 		}
-	}
-}
+	};
+};
 
 var reportViewModel = function (options) {
 	var self = this;
@@ -330,6 +330,7 @@ var reportViewModel = function (options) {
 	self.currentSql = ko.observable();
 	self.currentConnectKey = ko.observable();
 	self.adminMode = ko.observable(false);
+	self.subTotals = ko.observableArray([]);
 
 	self.x = ko.observable(0);
 	self.y = ko.observable(0);
@@ -816,7 +817,7 @@ var reportViewModel = function (options) {
 		self.RunReport(true);
 	};
 
-	self.BuildFilterData = function (filtergroup) {	
+	self.BuildFilterData = function (filtergroup) {
 		var groups = [];
 		$.each(filtergroup, function (i, g) {
 			var filters = [];
@@ -836,18 +837,18 @@ var reportViewModel = function (options) {
 				}
 				if (f) filters.push(f);
 			});
-			
+
 			groups.push({
 				SavedReportId: self.ReportID(),
 				isRoot: g.isRoot,
 				AndOr: g.AndOr(),
-				Filters: filters,				
+				Filters: filters,
 			});
 
 		});
-		
+
 		return groups;
-	}
+	};
 
 	self.BuildReportData = function (drilldown) {
 		drilldown = drilldown || [];
@@ -935,6 +936,7 @@ var reportViewModel = function (options) {
 					self.LoadAllSavedReports();
 				}
 			}
+
 			if (!saveOnly) {
 				if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard") {
 					self.ExecuteReportQuery(result.sql, result.connectKey);
@@ -962,7 +964,7 @@ var reportViewModel = function (options) {
 	self.ExecuteReportQuery = function (reportSql, connectKey) {
 		if (!reportSql || !connectKey) return;
 
-		ajaxcall({
+		return ajaxcall({
 			url: options.execReportUrl,
 			type: "POST",
 			data: JSON.stringify({
@@ -1008,7 +1010,7 @@ var reportViewModel = function (options) {
 							pageSize: e.pager.pageSize(),
 							sortBy: e.pager.sortColumn() || '',
 							desc: e.pager.sortDescending() || false
-						}),
+						})
 					}).done(function (ddData) {
 						if (ddData.d) { ddData = ddData.d; }
 						ddData.ReportData.IsDrillDown = ko.observable(true);
@@ -1069,6 +1071,38 @@ var reportViewModel = function (options) {
 				google.charts.setOnLoadCallback(self.DrawChart);
 			}
 
+			if (self.IncludeSubTotal()) {
+				ajaxcall({
+					url: options.runReportApiUrl,
+					type: "POST",
+					data: JSON.stringify({
+						method: "/ReportApi/RunReport",
+						SaveReport: self.CanSaveReports() ? self.SaveReport() : false,
+						ReportJson: JSON.stringify(self.BuildReportData()),
+						adminMode: self.adminMode(),
+						SubTotalMode: true
+					})
+				}).done(function (subtotalsqlResult) {
+					if (subtotalsqlResult.d) { subtotalsqlResult = subtotalsqlResult.d; }
+					ajaxcall({
+						url: options.execReportUrl,
+						type: "POST",
+						data: JSON.stringify({
+							reportSql: subtotalsqlResult.sql,
+							connectKey: subtotalsqlResult.connectKey,
+							reportType: self.ReportType(),
+							pageNumber: 1,
+							pageSize: 1,
+							sortBy: '',
+							desc: false
+						})
+					}).done(function (subtotalResult) {
+						if (subtotalResult.d) { subtotalResult = subtotalResult.d; }
+						self.subTotals(subtotalResult.ReportData.Rows);
+					});
+				});
+			}
+			
 		});
 	};
 
@@ -1113,10 +1147,10 @@ var reportViewModel = function (options) {
 
 		var rowArray = [];
 		var dataColumns = [];
-		$.each(reportData.Rows, function (i, e) {
+		_.forEach(reportData.Rows, function (e) {
 			var itemArray = [];
 
-			$.each(e.Items, function (n, r) {
+			_.forEach(e.Items, function (r, n) {
 				if (n == 0) {
 					if (subGroups.length > 0) {
 						itemArray = _.filter(rowArray, function (x) { return x[0] == r.Value; });
@@ -1124,16 +1158,16 @@ var reportViewModel = function (options) {
 							rowArray = rowArray.filter(function (x) { return x[0] != r.Value; });
 							itemArray = itemArray[0];
 						} else {
-							itemArray.push(r.Column.IsNumeric ? parseInt(r.Value) : r.Value);
+							itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.Value) || 0);
 						}
 					} else {
-						itemArray.push(r.Column.IsNumeric ? parseInt(r.Value) : r.Value);
+						itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.Value) || 0);
 					}
 				} else if (subGroups.length > 0) {
 					var subgroup = _.filter(subGroups, function (x) { return x.index == n; });
 					if (subgroup.length == 1) {
 						if (_.filter(dataColumns, function (x) { return x == r.Value; }).length == 0) {
-							dataColumns.push(r.Value);
+							dataColumns.push(r.Value || 0);
 
 							$.each(valColumns, function (j, c) {
 								data.addColumn('number', r.Value + (j == 0 ? '' : '-' + j));
@@ -1141,10 +1175,10 @@ var reportViewModel = function (options) {
 
 						}
 					} else if (r.Column.IsNumeric) {
-						itemArray.push(r.Column.IsNumeric ? parseInt(r.Value) : r.Value);
+						itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.Value) || 0);
 					}
 				} else if (r.Column.IsNumeric) {
-					itemArray.push(r.Column.IsNumeric ? parseInt(r.Value) : r.Value);
+					itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.Value) || 0);
 				}
 			});
 
@@ -1167,8 +1201,8 @@ var reportViewModel = function (options) {
 			animation: {
 				startup: true,
 				duration: 1000,
-				easing: 'out',
-			},
+				easing: 'out'
+			}
 		};
 
 		var chartDiv = document.getElementById('chart_div_' + self.ReportID());
@@ -1356,7 +1390,7 @@ var reportViewModel = function (options) {
 			data: {
 				method: "/ReportApi/GetSavedReports",
 				model: JSON.stringify({ adminMode: self.adminMode() })
-			},
+			}
 		}).done(function (reports) {
 			if (reports.d) { reports = reports.d; }
 			$.each(reports, function (i, e) {
@@ -1382,7 +1416,7 @@ var reportViewModel = function (options) {
 						self.CanEdit(true);
 						self.SaveReport(true);
 					});
-				}
+				};
 
 				e.runReport = function () {
 					e.runMode = true;
@@ -1487,7 +1521,7 @@ var reportViewModel = function (options) {
 				model: JSON.stringify({
 					adminMode: self.adminMode()
 				})
-			},
+			}
 		}).done(function (tables) {
 			if (tables.d) { tables = tables.d; }
 			self.Tables(tables);
@@ -1550,7 +1584,7 @@ var dashboardViewModel = function (options) {
 				r.selected(false);
 			});
 		});
-	}
+	};
 
 	self.editDashboard = function () {
 		self.dashboard.Id(self.currentDashboard().id);
@@ -1578,9 +1612,9 @@ var dashboardViewModel = function (options) {
 
 		var list = '';
 		_.forEach(self.reportsAndFolders(), function (f) {
-			_.forEach(f.reports, function(r) {
+			_.forEach(f.reports, function (r) {
 				if (r.selected()) list += (list ? ',' : '') + r.reportId;
-			});			
+			});
 		});
 
 		var model = {
@@ -1593,7 +1627,7 @@ var dashboardViewModel = function (options) {
 			userRolesAccess: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.userRoles),
 			viewOnlyUserRoles: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.viewOnlyUserRoles),
 			adminMode: self.adminMode()
-		}
+		};
 
 		ajaxcall({
 			url: options.apiUrl,
@@ -1601,16 +1635,16 @@ var dashboardViewModel = function (options) {
 				method: "/ReportApi/SaveDashboard",
 				model: JSON.stringify(model)
 			}
-		}).done(function (result) {		
+		}).done(function (result) {
 			if (result.d) { result = result.d; }
 			toastr.success("Dashboard saved successfully");
 			setTimeout(function () {
 				window.location = window.location.href.split("?")[0] + "?id=" + result.id;
-			}, 500)
+			}, 500);
 		});
 
 		return true;
-	}
+	};
 
 	self.deleteDashboard = function () {
 		bootbox.confirm("Are you sure you would like to Delete this Dashboard?", function (r) {
@@ -1621,15 +1655,15 @@ var dashboardViewModel = function (options) {
 						method: "/ReportApi/DeleteDashboard",
 						model: JSON.stringify({ id: self.currentDashboard().id, adminMode: self.adminMode() })
 					}
-				}).done(function (result) {					
+				}).done(function (result) {
 					toastr.success("Dashboard deleted successfully");
 					setTimeout(function () {
 						window.location = window.location.href.split("?")[0];
-					}, 500)
+					}, 500);
 				});
 			}
 		});
-	}
+	};
 
 	self.reports = ko.observableArray([]);
 	var i = 0;
@@ -1662,7 +1696,7 @@ var dashboardViewModel = function (options) {
 		report.showFlyFilters = ko.observable(false);
 		report.toggleFlyFilters = function () {
 			report.showFlyFilters(!report.showFlyFilters());
-		}
+		};
 	});
 
 	self.drawChart = function () {
@@ -1687,7 +1721,7 @@ var dashboardViewModel = function (options) {
 				})
 			}
 		});
-	}
+	};
 
 	self.init = function () {
 		var getReports = function () {
@@ -1696,9 +1730,9 @@ var dashboardViewModel = function (options) {
 				data: {
 					method: "/ReportApi/GetSavedReports",
 					model: JSON.stringify({ adminMode: self.adminMode() })
-				},
+				}
 			});
-		}
+		};
 
 		var getFolders = function () {
 			return ajaxcall({
@@ -1710,14 +1744,14 @@ var dashboardViewModel = function (options) {
 					})
 				}
 			});
-		}
+		};
 
-		return $.when(getReports(), getFolders()).done(function(allReports, allFolders) {
-			var setup = [];	
+		return $.when(getReports(), getFolders()).done(function (allReports, allFolders) {
+			var setup = [];
 			if (allFolders[0].d) { allFolders[0] = allFolders[0].d; }
 			if (allReports[0].d) { allReports[0] = allReports[0].d; }
 
-			_.forEach(allFolders[0], function (x) {				
+			_.forEach(allFolders[0], function (x) {
 				var folderReports = _.filter(allReports[0], { folderId: x.Id });
 				setup.push({
 					folderId: x.Id,
@@ -1729,13 +1763,13 @@ var dashboardViewModel = function (options) {
 							reportDescription: r.reportDescription,
 							reportType: r.reportType,
 							selected: ko.observable(false)
-						}
+						};
 					})
 				});
 			});
 			self.reportsAndFolders(setup);
 		});
-	}
+	};
 
 	self.adminMode.subscribe(function (newValue) {
 		self.init();
