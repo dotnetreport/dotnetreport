@@ -346,8 +346,10 @@ var reportViewModel = function (options) {
 		} else {
 			self.CanSaveReports(self._cansavereports);
 		}
-	});
 
+		if (localStorage) localStorage.setItem('reportAdminMode', newValue);
+	});
+	
 	self.manageAccess = manageAccess(options);
 
 	self.pager.currentPage.subscribe(function () {
@@ -1167,7 +1169,7 @@ var reportViewModel = function (options) {
 					var subgroup = _.filter(subGroups, function (x) { return x.index == n; });
 					if (subgroup.length == 1) {
 						if (_.filter(dataColumns, function (x) { return x == r.Value; }).length == 0) {
-							dataColumns.push(r.Value || 0);
+							dataColumns.push(r.Value || '');
 
 							_.forEach(valColumns, function (j) {
 								data.addColumn('number', r.Value + (j == 0 ? '' : '-' + j));
@@ -1536,6 +1538,13 @@ var reportViewModel = function (options) {
 
 		self.loadFolders(folderId);
 		self.loadTables();
+
+		var adminMode = false;
+		if (localStorage) adminMode = localStorage.getItem('reportAdminMode');
+
+		if (adminMode === 'true') {
+			self.adminMode(true);
+		}
 	};
 
 };
