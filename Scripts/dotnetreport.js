@@ -323,14 +323,14 @@ var reportViewModel = function (options) {
 		Exception: ko.observable(),
 		Warnings: ko.observable(),
 		ReportSql: ko.observable(),
-		ReportData: ko.observable(null)
+		ReportData: ko.observable(null),
+		SubTotals: ko.observableArray([])
 	});
 
 	self.pager = new pagerViewModel();
 	self.currentSql = ko.observable();
 	self.currentConnectKey = ko.observable();
 	self.adminMode = ko.observable(false);
-	self.subTotals = ko.observableArray([]);
 
 	self.x = ko.observable(0);
 	self.y = ko.observable(0);
@@ -1098,7 +1098,7 @@ var reportViewModel = function (options) {
 						})
 					}).done(function (subtotalResult) {
 						if (subtotalResult.d) { subtotalResult = subtotalResult.d; }
-						self.subTotals(subtotalResult.ReportData.Rows);
+						self.ReportResult().SubTotals(subtotalResult.ReportData.Rows);
 					});
 				});
 			}

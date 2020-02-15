@@ -92,7 +92,7 @@
                         <th></th>
                         <!-- /ko -->
                         <!-- ko foreach: Columns -->
-                        <th data-bind="attr: { id: 'col' + $index() }">
+                        <th data-bind="attr: { id: 'col' + $index() }, css: {'right-align': IsNumeric}">
                             <a href="" data-bind="click: function(){ $parentContext.$parentContext.$parent.changeSort(SqlField); }">
                                 <span data-bind="text: ColumnName"></span>
                                 <span data-bind="text: $parentContext.$parentContext.$parent.pager.sortColumn() === SqlField ? ($parentContext.$parentContext.$parent.pager.sortDescending() ? '&#9660;' : '&#9650;') : ''">
@@ -114,7 +114,7 @@
                         <td><a href="#" data-bind="click: function(){ toggle(); }"><span class="fa" data-bind="css: {'fa-plus': !isExpanded(), 'fa-minus': isExpanded()}"></span></a></td>
                         <!-- /ko -->
                         <!-- ko foreach: Items -->
-                        <td data-bind="html: FormattedValue"></td>
+                        <td data-bind="html: FormattedValue, css: {'right-align': Column.IsNumeric}"></td>
                         <!-- /ko -->
                     </tr>
                     <!-- ko if: isExpanded -->
@@ -145,7 +145,7 @@
                                     <!-- ko foreach: Rows  -->
                                     <tr>
                                         <!-- ko foreach: Items -->
-                                        <td data-bind="html: FormattedValue"></td>
+                                        <td data-bind="html: FormattedValue, css: {'right-align': Column.IsNumeric}"></td>
                                         <!-- /ko -->
                                     </tr>
                                     <!-- /ko -->
@@ -185,6 +185,18 @@
                     <!-- /ko -->
                     <!-- /ko -->
                 </tbody>
+                <!-- ko if: $parent.SubTotals().length == 1 -->
+                <tfoot data-bind="foreach: $parent.SubTotals">
+                    <tr>
+                        <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() -->
+                        <td></td>
+                        <!-- /ko -->
+                        <!-- ko foreach: Items -->
+                        <td data-bind="html: FormattedValue, css: {'right-align': Column.IsNumeric}"></td>
+                        <!-- /ko -->
+                    </tr>
+                </tfoot>
+                <!-- /ko -->
             </table>
         </div>
 
