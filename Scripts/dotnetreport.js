@@ -196,6 +196,18 @@ function filterGroupViewModel(args) {
 		}
 
 		var field = ko.observable();
+		var valueIn = e.Operator == 'in' || e.Operator == 'not in' ? (e.Value1 || '').split(',') : [];
+		var filter = {
+			AndOr: ko.observable(isFilterOnFly ? ' AND ' : e.AndOr),
+			Field: field,
+			Operator: ko.observable(e.Operator),
+			Value: ko.observable(e.Value1),
+			Value2: ko.observable(e.Value2),
+			ValueIn: ko.observableArray([]),
+			LookupList: lookupList,
+			Apply: ko.observable(e.Apply != null ? e.Apply : true),
+			IsFilterOnFly: isFilterOnFly === true ? true : false
+		};
 
 		field.subscribe(function (newField) {
 			if (newField && newField.hasForeignKey) {
@@ -214,6 +226,10 @@ function filterGroupViewModel(args) {
 					}).done(function (list) {
 						if (list.d) { list = list.d; }
 						lookupList(list);
+						if (valueIn.length > 0) {
+							filter.ValueIn(valueIn);
+							valueIn = [];
+						}
 					});
 				});
 			}
@@ -223,16 +239,7 @@ function filterGroupViewModel(args) {
 			field(args.parent.FindField(e.FieldId));
 		}
 
-		self.Filters.push({
-			AndOr: ko.observable(isFilterOnFly ? ' AND ' : e.AndOr),
-			Field: field,
-			Operator: ko.observable(e.Operator),
-			Value: ko.observable(e.Value1),
-			Value2: ko.observable(e.Value2),
-			LookupList: lookupList,
-			Apply: ko.observable(e.Apply != null ? e.Apply : true),
-			IsFilterOnFly: isFilterOnFly === true ? true : false
-		});
+		self.Filters.push(filter);
 
 	};
 	
@@ -829,7 +836,7 @@ var reportViewModel = function (options) {
 					FieldId: e.Field().fieldId,
 					AndOr: i == 0 ? g.AndOr() : e.AndOr(),
 					Operator: e.Operator(),
-					Value1: Array.isArray(e.Value()) && e.Operator() == "in" ? e.Value().join(",") : (e.Operator().indexOf("blank") >= 0 ? "blank" : e.Value()),
+					Value1: e.Operator() == "in" || e.Operator()=="not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 ? "blank" : e.Value()),
 					Value2: e.Value2(),
 					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
 				} : null;

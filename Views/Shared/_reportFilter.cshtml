@@ -44,10 +44,10 @@
     <!-- ko if: hasForeignKey-->
     @*Show lookup list*@
     <!-- ko if: $parent.Operator()=='='-->
-    <select required class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true, multiple: true, maximumSelectionSize: 1 }, options: $parent.LookupList, optionsText:'text', optionsValue:'id', value: $parent.Value"></select>
+    <select required class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true, multiple: false }, options: $parent.LookupList, optionsText:'text', optionsValue:'id', value: $parent.Value"></select>
     <!-- /ko -->
     <!-- ko if: $parent.Operator()=='in' || $parent.Operator()=='not in'-->
-    <select multiple class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText:'text', optionsValue:'id', selectedOptions: $parent.Value"></select>
+    <select multiple class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText:'text', optionsValue:'id', selectedOptions: $parent.ValueIn"></select>
     <!-- /ko -->
     <!-- /ko -->
 </div>
