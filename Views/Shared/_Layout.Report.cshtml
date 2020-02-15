@@ -27,7 +27,7 @@
 </head>
 
 <body>
-    <div class="navbar navbar-fixed-top" style="background-color: white;">
+    <div class="navbar navbar-default navbar-fixed-top">
         <div class="">
             <div class="navbar-header">
                 <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
@@ -35,9 +35,9 @@
                     <span class="icon-bar"></span>
                     <span class="icon-bar"></span>
                 </button>
-                <div class="navbar-brand" style="padding-top: 8px;">
+                <div class="navbar-brand">
                     <a href="/">
-                        <img src="~/Content/img/report-logo.png" alt=".Net Report Builder" width="200" />
+                        <img src="~/Content/img/report-logo.png" alt=".Net Report Builder" width="150" />
                     </a>
                 </div>
             </div>
@@ -52,12 +52,12 @@
         @RenderBody()
         <!-- ########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
 
-        <div style="padding-top: 30px;">Powered by <a href="http://www.dotNetReport.com" target="_blank">dotNetReport.com</a></div>
+        <div style="padding-top: 30px;">Powered by <a href="http://www.dotNetReport.com" target="_blank">dotnetReport.com</a></div>
 
         <!--########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
         <hr />
         <footer>
-            <p>&copy; @DateTime.Now.Year .Net Report Builder<br /><a href="https://dotnetreport.com">www.dotnetreport.com</a></p>
+            <p>&copy; @DateTime.Now.Year dotnetReport Builder <a href="https://dotnetreport.com">www.dotnetreport.com</a></p>
         </footer>
     </div>
 
@@ -211,7 +211,7 @@
         </div>
 
         <div class="alert alert-info" data-bind="visible: adminMode">
-            <i class="fa fa-user-circle"></i> Admin Mode is turned on now, it allows you to setup and view Reports or Dashboards for all roles and users. You should remove the Admin mode toggle for non-admin users.<br />            
+            <i class="fa fa-user-circle"></i> Admin Mode is turned on now, it allows you to setup and view Reports or Dashboards for all roles and users. You should remove the Admin mode toggle for non-admin users.<br />
         </div>
     </script>
     <script type="text/html" id="manage-access-template">
@@ -260,7 +260,7 @@
             </div>
             <br />
             <b>View only by User Role</b> (no edit/delete)
-            <div class="row container-fluid">                
+            <div class="row container-fluid">
                 <!-- ko foreach: manageAccess.viewOnlyUserRoles -->
                 <div class="pull-left">
                     <div class="checkbox">
@@ -270,7 +270,7 @@
                     </div>
                 </div>
                 <!-- /ko -->
-                
+
             </div>
 
         </div>
