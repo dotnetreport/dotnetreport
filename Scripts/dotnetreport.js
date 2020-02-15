@@ -384,8 +384,8 @@ var reportViewModel = function (options) {
 
 	self.FlyFilters = ko.computed(function () {
 		var flyfilters = [];
-		$.each(self.FilterGroups(), function (i, e) {
-			$.each(e.Filters(), function (j, x) { if (x.IsFilterOnFly) flyfilters.push(x); });
+		_.forEach(self.FilterGroups(), function (e) {
+			_.forEach(e.Filters(), function (x) { if (x.IsFilterOnFly) flyfilters.push(x); });
 		});
 		return flyfilters;
 	});
@@ -550,7 +550,7 @@ var reportViewModel = function (options) {
 	});
 
 	self.MoveChosenFields = function () { // Move chosen fields to selected fields
-		$.each(self.ChosenFields(), function (i, e) {
+		_.forEach(self.ChosenFields(), function (e) {
 			if (_.filter(self.SelectedFields(), function (x) { return x.fieldId == e.fieldId; }).length > 0) {
 				toastr.error(e.fieldName + " is already Selected");
 			}
@@ -561,7 +561,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.MoveAllFields = function () { // Move chosen fields to selected fields
-		$.each(self.ChooseFields(), function (i, e) {
+		_.forEach(self.ChooseFields(), function (e) {
 			if (_.filter(self.SelectedFields(), function (x) { return x.fieldId == e.fieldId; }).length === 0) {
 				self.SelectedFields.push(e);
 			}
@@ -569,7 +569,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.RemoveSelectedFields = function () {
-		$.each(self.ChooseFields(), function (i, e) {
+		_.forEach(self.ChooseFields(), function (e) {
 			self.SelectedFields.remove(e);
 		});
 	};
@@ -583,7 +583,7 @@ var reportViewModel = function (options) {
 		if (allFields.length <= 0) return false;
 
 		var result = true;
-		$.each(allFields, function (i, x) {
+		_.forEach(allFields, function (x) {
 			if (!x.setupFormula.isParenthesesStart() && !x.setupFormula.isParenthesesEnd() && !x.setupFormula.isConstantValue() && x.fieldType && x.fieldType.indexOf("Date") < 0) {
 				result = false;
 				return false;
@@ -742,8 +742,8 @@ var reportViewModel = function (options) {
 			}
 		}
 
-		$.each(self.FilterGroups, function (j, g) {
-			$.each(g.Filters(), function (i, x) {
+		_.forEach(self.FilterGroups, function (g) {
+			_.forEach(g.Filters(), function (x) {
 				if (x.Field().FieldId == field().FieldId) {
 					setRange(x.Value());
 					x.Value.subscribe(function (newValue) {
@@ -819,9 +819,9 @@ var reportViewModel = function (options) {
 
 	self.BuildFilterData = function (filtergroup) {
 		var groups = [];
-		$.each(filtergroup, function (i, g) {
+		_.forEach(filtergroup, function (g) {
 			var filters = [];
-			$.each(g.Filters(), function (i, e) {
+			_.forEach(g.Filters(), function (e, i) {
 				var f = (e.Apply() && e.IsFilterOnFly) || !e.IsFilterOnFly ? {
 					SavedReportId: self.ReportID(),
 					FieldId: e.Field().fieldId,
@@ -986,7 +986,7 @@ var reportViewModel = function (options) {
 			reportResult.ReportSql(result.ReportSql);
 
 			result.ReportData.IsDrillDown = ko.observable(false);
-			$.each(result.ReportData.Rows, function (i, e) {
+			_.forEach(result.ReportData.Rows, function (e) {
 				e.DrillDownData = ko.observable(null);
 				e.pager = new pagerViewModel({ pageSize: 10 });
 				e.sql = "";
@@ -1107,13 +1107,13 @@ var reportViewModel = function (options) {
 	};
 
 	self.ExpandAll = function () {
-		$.each(self.ReportResult().ReportData().Rows, function (i, e) {
+		_.forEach(self.ReportResult().ReportData().Rows, function (e) {
 			e.expand();
 		});
 	};
 
 	self.CollapseAll = function () {
-		$.each(self.ReportResult().ReportData().Rows, function (i, e) {
+		_.forEach(self.ReportResult().ReportData().Rows, function (e) {
 			e.collapse();
 		});
 	};
@@ -1126,7 +1126,7 @@ var reportViewModel = function (options) {
 
 		var subGroups = [];
 		var valColumns = [];
-		$.each(reportData.Columns, function (i, e) {
+		_.forEach(reportData.Columns, function (e, i) {
 			var field = self.SelectedFields()[i];
 			if (i == 0) {
 				data.addColumn(e.IsNumeric ? 'number' : 'string', e.ColumnName);
@@ -1138,7 +1138,7 @@ var reportViewModel = function (options) {
 		});
 
 		if (subGroups.length == 0) {
-			$.each(reportData.Columns, function (i, e) {
+			_.forEach(reportData.Columns, function (e, i) {
 				if (i > 0 && e.IsNumeric) {
 					data.addColumn(e.IsNumeric ? 'number' : 'string', e.ColumnName);
 				}
@@ -1169,7 +1169,7 @@ var reportViewModel = function (options) {
 						if (_.filter(dataColumns, function (x) { return x == r.Value; }).length == 0) {
 							dataColumns.push(r.Value || 0);
 
-							$.each(valColumns, function (j, c) {
+							_.forEach(valColumns, function (j) {
 								data.addColumn('number', r.Value + (j == 0 ? '' : '-' + j));
 							});
 
@@ -1185,7 +1185,7 @@ var reportViewModel = function (options) {
 			rowArray.push(itemArray);
 		});
 
-		$.each(rowArray, function (n, x) {
+		_.forEach(rowArray, function (x) {
 			if (x.length != data.getNumberOfColumns()) {
 				for (var i = 0; i <= data.getNumberOfColumns() - x.length; i++) {
 					x.push(0);
@@ -1263,7 +1263,7 @@ var reportViewModel = function (options) {
 		e.isFormulaField = ko.observable(e.isFormulaField);
 
 		var formulaItems = [];
-		$.each(e.formulaItems || [], function (i, e) {
+		_.forEach(e.formulaItems || [], function (e) {
 			formulaItems.push(new formulaFieldViewModel({
 				fieldId: e.fieldId || 0,
 				isParenthesesStart: e.setupFormula ? e.setupFormula.isParenthesesStart() : e.isParenthesesStart,
@@ -1295,7 +1295,7 @@ var reportViewModel = function (options) {
 			self.ReportDescription(report.ReportDescription);
 			self.FolderID(report.FolderID);
 
-			$.each(report.SelectedFields, function (i, e) {
+			_.forEach(report.SelectedFields, function (e) {
 				e = self.setupField(e);
 			});
 
@@ -1326,7 +1326,7 @@ var reportViewModel = function (options) {
 			function addSavedFilters(filters, group) {
 				if (!filters || filters.length == 0) return;				
 
-				$.each(filters, function (i, e) {
+				_.forEach(filters, function (e) {
 					if (!e.FieldId) {
 						group = (group == null) ? self.FilterGroups()[0] : group.AddFilterGroup({ AndOr: e.AndOr });						
 					} else if (filterFieldsOnFly.indexOf(e.FieldId) < 0) {						
@@ -1345,7 +1345,7 @@ var reportViewModel = function (options) {
 				if (options.reportFilter && options.reportFilter != '[]') {
 					// get fields on the fly submitted by user before
 					var filters = JSON.parse(options.reportFilter);
-					$.each(filters, function (i, e) {
+					_.forEach(filters, function (e) {
 						var match = _.filter(filterFieldsOnFly, function (x) { return x.fieldId == e.Field.fieldId });
 						if (match.length > 0) {
 							e.FieldId = e.Field.fieldId;
@@ -1362,7 +1362,7 @@ var reportViewModel = function (options) {
 				//var flyFilters = _.filter(self.SelectedFields(), function (x) { return x.filterOnFly() == true && _.filter(filterFieldsOnFly, function (y) { return y.fieldId == x.fieldId }).length > 0; });
 				//if (flyFilters.length > 0) {
 				//	var flyGroup = self.FilterGroups()[0].AddFilterGroup({ AndOr: 'Or' });
-				//	$.each(flyFilters, function (i, e) {
+				//	_.forEach(flyFilters, function (e) {
 				//		flyGroup.AddFilter(e, true);									
 				//	});
 				//}				
@@ -1371,7 +1371,7 @@ var reportViewModel = function (options) {
 				addSavedFilters(report.Filters);				
 			}
 
-			$.each(report.Series, function (i, e) {
+			_.forEach(report.Series, function (e) {
 				self.AddSeries(e);
 			});
 
@@ -1393,7 +1393,7 @@ var reportViewModel = function (options) {
 			}
 		}).done(function (reports) {
 			if (reports.d) { reports = reports.d; }
-			$.each(reports, function (i, e) {
+			_.forEach(reports, function (e) {
 				e.runMode = false;
 				e.openReport = function () {
 					// Load report
