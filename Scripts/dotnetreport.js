@@ -363,6 +363,10 @@ var reportViewModel = function (options) {
 		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey());
 	});
 
+	self.pager.pageSize.subscribe(function () {
+		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey());
+	});
+
 	self.createNewReport = function () {
 		self.clearReport();
 		self.ReportMode("generate");
