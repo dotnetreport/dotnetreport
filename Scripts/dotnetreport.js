@@ -1160,6 +1160,7 @@ var reportViewModel = function (options) {
 
 		var rowArray = [];
 		var dataColumns = [];
+
 		_.forEach(reportData.Rows, function (e) {
 			var itemArray = [];
 
@@ -1171,10 +1172,10 @@ var reportViewModel = function (options) {
 							rowArray = rowArray.filter(function (x) { return x[0] != r.Value; });
 							itemArray = itemArray[0];
 						} else {
-							itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.Value) || 0);
+							itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.Value) || (r.Column.IsNumeric ? 0 : ''));
 						}
 					} else {
-						itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.Value) || 0);
+						itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.Value) || (r.Column.IsNumeric ? 0 : ''));
 					}
 				} else if (subGroups.length > 0) {
 					var subgroup = _.filter(subGroups, function (x) { return x.index == n; });
@@ -1188,10 +1189,10 @@ var reportViewModel = function (options) {
 
 						}
 					} else if (r.Column.IsNumeric) {
-						itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.Value) || 0);
+						itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.Value) || (r.Column.IsNumeric ? 0 : ''));
 					}
 				} else if (r.Column.IsNumeric) {
-					itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.Value) || 0);
+					itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.Value) || (r.Column.IsNumeric ? 0 : ''));
 				}
 			});
 
