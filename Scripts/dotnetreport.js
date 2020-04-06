@@ -1293,7 +1293,8 @@ var reportViewModel = function (options) {
 			data: {
 				method: "/ReportApi/LoadReport",
 				model: JSON.stringify({
-					reportId: reportId
+					reportId: reportId,
+					adminMode: self.adminMode()
 				})
 			}
 		}).done(function (report) {
