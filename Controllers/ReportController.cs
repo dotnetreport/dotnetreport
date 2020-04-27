@@ -13,11 +13,46 @@ using System.Web.Script.Serialization;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
+using System.Web.Security;
+using Newtonsoft.Json;
+using System.Web.Helpers;
 
 namespace ReportBuilder.Web.Controllers
 {
     public class ReportController : Controller
     {
+        private DotNetReportSettings GetSettings()
+        {
+            var settings = new DotNetReportSettings
+            {
+                ApiUrl = ConfigurationManager.AppSettings["dotNetReport.apiUrl"],
+                AccountApiToken = ConfigurationManager.AppSettings["dotNetReport.accountApiToken"], // Your Account Api Token from your http://dotnetreport.com Account
+                DataConnectApiToken = ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"] // Your Data Connect Api Token from your http://dotnetreport.com Account
+            };
+            
+            // Populate the values below using your Application Roles/Claims if applicable
+
+            settings.ClientId = "";  // You can pass your multi-tenant client id here to track their reports and folders
+            settings.UserId = ""; // You can pass your current authenticated user id here to track their reports and folders            
+            settings.UserName = ""; 
+            settings.CurrentUserRole = new List<string>(); // Populate your current authenticated user's roles
+
+            settings.Users = new List<string>(); // Populate all your application's user, ex  { "Jane", "John" }
+            settings.UserRoles = new List<string>(); // Populate all your application's user roles, ex  { "Admin", "Normal" }       
+            settings.CanUseAdminMode = true; // Set to true only if current user can use Admin mode to setup reports and dashboard
+
+            // An example of populating Roles using MVC web security if available
+            if (Roles.Enabled && User.Identity.IsAuthenticated) {
+                settings.UserId = User.Identity.Name;
+                settings.CurrentUserRole = Roles.GetRolesForUser(User.Identity.Name).ToList();
+
+                settings.Users = Roles.GetAllRoles().SelectMany(x => Roles.GetUsersInRole(x)).ToList();
+                settings.UserRoles = Roles.GetAllRoles().ToList();                
+            } 
+
+            return settings;
+        }
+
         public ActionResult Index()
         {
             return View();
@@ -42,7 +77,7 @@ namespace ReportBuilder.Web.Controllers
             };
 
             return View(model);
-        }
+        }        
 
         public JsonResult GetLookupList(string lookupSql, string connectKey)
         {
@@ -71,7 +106,46 @@ namespace ReportBuilder.Web.Controllers
 
             return Json((new JavaScriptSerializer()).DeserializeObject("[" + json.ToString() + "]"), JsonRequestBehavior.AllowGet);
         }
-        
+
+        [HttpPost]
+        public async Task<JsonResult> RunReportApi(DotNetReportApiCall data)
+        {
+            return await CallReportApi(data.Method, (new JavaScriptSerializer()).Serialize(data));
+        }
+
+        public async Task<JsonResult> CallReportApi(string method, string model)
+        {
+            using (var client = new HttpClient())
+            {
+                var settings = GetSettings();
+                var keyvalues = new List<KeyValuePair<string, string>>
+                {
+                    new KeyValuePair<string, string>("account", settings.AccountApiToken),
+                    new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
+                    new KeyValuePair<string, string>("clientId", settings.ClientId),
+                    new KeyValuePair<string, string>("userId", settings.UserId),
+                    new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole))
+                };
+
+                var data = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(model);
+                foreach (var key in data.Keys)
+                {
+                    if (key != "adminMode" || (key == "adminMode" && settings.CanUseAdminMode))
+                    {
+                        keyvalues.Add(new KeyValuePair<string, string>(key, data[key].ToString()));
+                    }
+                }
+
+                var content = new FormUrlEncodedContent(keyvalues);
+                var response = await client.PostAsync(new Uri(settings.ApiUrl + method), content);
+                var stringContent = await response.Content.ReadAsStringAsync();
+                
+                Response.StatusCode = (int)response.StatusCode;
+                return Json((new JavaScriptSerializer()).Deserialize<dynamic>(stringContent), JsonRequestBehavior.AllowGet);
+            }
+
+        }
+
         public JsonResult RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, bool desc = false)
         {
             var sql = DotNetReportHelper.Decrypt(reportSql);
@@ -143,28 +217,65 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        public async Task<ActionResult> Dashboard()
+        public async Task<JsonResult> GetDashboards(bool adminMode = false)
         {
-            var model = new List<DotNetReportModel>();
+           var settings = GetSettings();
 
             using (var client = new HttpClient())
             {
-
                 var content = new FormUrlEncodedContent(new[]
                 {
-                    new KeyValuePair<string, string>("account", ConfigurationManager.AppSettings["dotNetReport.accountApiToken"]),
-                    new KeyValuePair<string, string>("dataConnect", ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"]),
-                    new KeyValuePair<string, string>("clientId",""), // Pass your client Id 
-                    new KeyValuePair<string, string>("userId","") // Pass your user Id
+                    new KeyValuePair<string, string>("account", settings.AccountApiToken),
+                    new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
+                    new KeyValuePair<string, string>("clientId", settings.ClientId),
+                    new KeyValuePair<string, string>("userId", settings.UserId),
+                    new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
+                    new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
                 });
 
-                var response = await client.PostAsync(new Uri(ConfigurationManager.AppSettings["dotNetReport.apiUrl"] + "/ReportApi/LoadDashboard"), content);
+                var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/GetDashboards"), content);
                 var stringContent = await response.Content.ReadAsStringAsync();
 
-                model = (new JavaScriptSerializer()).Deserialize<List<DotNetReportModel>>(stringContent);
+                var model = System.Web.Helpers.Json.Decode(stringContent);
+                return Json(model);
+            }            
+        }
+
+        public async Task<ActionResult> Dashboard(int? id = null, bool adminMode = false)
+        {
+            var model = new List<DotNetDasboardReportModel>();
+            var settings = GetSettings();
+
+            var dashboards = (DynamicJsonArray)(await GetDashboards(adminMode)).Data;
+            if (!id.HasValue && dashboards.Length > 0)
+            {
+                id = ((dynamic) dashboards.First()).id;
             }
 
-            return View(model);
+            using (var client = new HttpClient())
+            {
+                var content = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("account", settings.AccountApiToken),
+                    new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
+                    new KeyValuePair<string, string>("clientId", settings.ClientId), 
+                    new KeyValuePair<string, string>("userId", settings.UserId),
+                    new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
+                    new KeyValuePair<string, string>("id", id.HasValue ? id.Value.ToString() : "0"),
+                    new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
+                });
+
+                var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/LoadSavedDashboard"), content);
+                var stringContent = await response.Content.ReadAsStringAsync();
+
+                model = (new JavaScriptSerializer()).Deserialize<List<DotNetDasboardReportModel>>(stringContent);
+            }
+
+            return View(new DotNetDashboardModel
+            {
+                Dashboards = dashboards.Select(x=>(dynamic)x).ToList(),
+                Reports = model
+            });
         }
 
         
@@ -181,6 +292,44 @@ namespace ReportBuilder.Web.Controllers
             Response.End();
             
             return View();
+        }
+
+        [HttpPost]
+        public ActionResult DownloadXml(string reportSql, string connectKey, string reportName)
+        {
+
+            var xml = DotNetReportHelper.GetXmlFile(reportSql, connectKey, reportName);
+            Response.ClearContent();
+
+            Response.AddHeader("content-disposition", "attachment; filename=" + reportName + ".xml");
+            Response.ContentType = "application/xml";
+            Response.Write(xml);
+            Response.End();
+
+            return View();
+        }
+
+        [HttpPost]
+        public ActionResult DownloadPdf(string reportSql, string connectKey, string reportName, string ChartData = null)
+        {
+
+            var pdf = DotNetReportHelper.GetPdfFile(reportSql, connectKey, reportName, ChartData);
+            return File(pdf, "application/pdf", reportName + ".pdf");
+        }
+
+        public JsonResult GetUsersAndRoles()
+        {
+            var settings = GetSettings();
+            return Json(new
+            {
+                noAccount = string.IsNullOrEmpty(settings.AccountApiToken) || settings.AccountApiToken == "Your Public Account Api Token",
+                users = settings.CanUseAdminMode ? settings.Users : new List<string>(),
+                userRoles = settings.CanUseAdminMode ? settings.UserRoles : new List<string>(),
+                currentUserId = settings.UserId,
+                currentUserRoles = settings.UserRoles,
+                currentUserName = settings.UserName,
+                allowAdminMode = settings.CanUseAdminMode
+            }, JsonRequestBehavior.AllowGet);
         }
 
         private string GetWarnings(string sql)

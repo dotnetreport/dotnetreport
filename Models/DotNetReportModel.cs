@@ -1,14 +1,16 @@
-﻿using OfficeOpenXml;
+﻿using iTextSharp.text;
+using iTextSharp.text.pdf;
+using iTextSharp.xmp.impl;
+using OfficeOpenXml;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
 using System.IO;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Web;
+using System.Windows.Media;
 
 namespace ReportBuilder.Web.Models
 {
@@ -26,6 +28,8 @@ namespace ReportBuilder.Web.Models
         public bool ShowDataWithGraph { get; set; }
 
         public string ConnectKey { get; set; }
+
+        public string ChartData { get; set; }
         public bool IsDashboard { get; set; }
         public int SelectedFolder { get; set; }
     }
@@ -66,7 +70,6 @@ namespace ReportBuilder.Web.Models
         public string LabelValue { get; set; }
         public double? NumericValue { get; set; }
         public DotNetReportDataColumnModel Column { get; set; }
-
     }
 
     public class DotNetReportDataRowModel
@@ -91,6 +94,7 @@ namespace ReportBuilder.Web.Models
         public string AccountIdField { get; set; }
 
         public List<ColumnViewModel> Columns { get; set; }
+        public List<string> AllowedRoles { get; set; }
     }
 
     public class RelationModel
@@ -126,24 +130,17 @@ namespace ReportBuilder.Web.Models
         public string ColumnName { get; set; }
         public string DisplayName { get; set; }
         public bool Selected { get; set; }
-
         public int DisplayOrder { get; set; }
-
         public string FieldType { get; set; }
         public bool PrimaryKey { get; set; }
-
         public bool ForeignKey { get; set; }
-
         public bool AccountIdField { get; set; }
-
         public string ForeignTable { get; set; }
-
         public JoinTypes ForeignJoin { get; set; }
-
         public string ForeignKeyField { get; set; }
-
         public string ForeignValueField { get; set; }
         public bool DoNotDisplay { get; set; }
+        public List<string> AllowedRoles { get; set; }
     }
 
     public class ConnectViewModel
@@ -166,6 +163,88 @@ namespace ReportBuilder.Web.Models
         public string DatabaseApiKey { get; set; }
 
         public List<TableViewModel> Tables { get; set; }
+    }
+
+    public class DotNetReportApiCall
+    {
+        public string Method { get; set; }
+        public bool SaveReport { get; set; }
+        public string ReportJson { get; set; }
+        public bool adminMode { get; set; }
+        public bool SubTotalMode { get; set; }
+    }
+
+    public class DotNetDasboardReportModel : DotNetReportModel
+    {
+        public int X { get; set; }
+        public int Y { get; set; }
+        public int Width { get; set; }
+        public int Height { get; set; }
+        public bool IsWidget { get; set; }
+    }
+
+    public class DotNetDashboardModel
+    {
+        public List<dynamic> Dashboards { get; set; }
+        public List<DotNetDasboardReportModel> Reports { get; set; }
+    }
+
+    public class DotNetReportSettings
+    {
+        /// <summary>
+        /// dotnet Report Service Api Url
+        /// </summary>
+        public string ApiUrl { get; set; }
+
+        /// <summary>
+        /// Your dotnet Report Account Key
+        /// </summary>
+        public string AccountApiToken { get; set; }
+
+        /// <summary>
+        /// Your dotnet Report Data Connection Key
+        /// </summary>
+        public string DataConnectApiToken { get; set; }
+
+        /// <summary>
+        /// Current Client Id if using Multi-tenant
+        /// </summary>
+        public string ClientId { get; set; }
+
+        /// <summary>
+        /// Current User Id if using Authentication
+        /// </summary>
+        public string UserId { get; set; }
+
+        /// <summary>
+        /// Current User name to display
+        /// </summary>
+        public string UserName { get; set; }
+
+        /// <summary>
+        /// List of Current User's Roles if using Authentication
+        /// </summary>
+        public List<string> CurrentUserRole { get; set; } = new List<string>();
+
+        /// <summary>
+        /// List of all User Ids in your Application
+        /// </summary>
+        public List<string> Users { get; set; } = new List<string>();
+
+        /// <summary>
+        /// List of all User Roles in your Application
+        /// </summary>
+        public List<string> UserRoles { get; set; } = new List<string>();
+
+        /// <summary>
+        /// A list of Global Data filters using format { Column1: 'val1, val2, ...', Column2: '1,2,3,...', ...}
+        /// </summary>
+        public dynamic DataFilters { get; set; }
+
+        /// <summary>
+        /// Set true if the current user can enter Admin Mode
+        /// </summary>
+        public bool CanUseAdminMode { get; set; }
     }
 
     public class DotNetReportHelper
@@ -219,6 +298,114 @@ namespace ReportBuilder.Web.Models
                 ws.Cells[ws.Dimension.Address].AutoFitColumns();
                 return xp.GetAsByteArray();
             }
+        }
+        public static byte[] GetPdfFile(string reportSql, string connectKey, string reportName, string ChartData = null)
+        {
+            var sql = Decrypt(reportSql);
+            var dt = new DataTable();
+            using (var conn = new SqlConnection(ConfigurationManager.ConnectionStrings[connectKey].ConnectionString))
+            {
+                conn.Open();
+                var command = new SqlCommand(sql, conn);
+                var adapter = new SqlDataAdapter(command);
+
+                adapter.Fill(dt);
+            }
+            Document document = new Document();
+            using (var ms = new MemoryStream())
+            {
+                PdfWriter writer = PdfWriter.GetInstance(document, ms);
+                document.Open();
+                PdfPTable table = new PdfPTable(dt.Columns.Count);
+                table.WidthPercentage = 100;
+               // table.DefaultCell.Border = 1;
+                //Set columns names in the pdf file
+                for (int k = 0; k < dt.Columns.Count; k++)
+                {
+                    PdfPCell cell = new PdfPCell(new Phrase(dt.Columns[k].ColumnName));
+                    cell.HorizontalAlignment = PdfPCell.ALIGN_CENTER;
+                    cell.VerticalAlignment = PdfPCell.ALIGN_CENTER;
+                    cell.BorderColor = BaseColor.LIGHT_GRAY;
+                    cell.BorderWidth = 1f;
+                   // cell.BackgroundColor = new iTextSharp.text.BaseColor(51, 102, 102);
+                    table.AddCell(cell);
+                }
+                //Add values of DataTable in pdf file
+                for (int i = 0; i < dt.Rows.Count; i++)
+                {
+                    for (int j = 0; j < dt.Columns.Count; j++)
+                    {
+                        PdfPCell cell = new PdfPCell(new Phrase(dt.Rows[i][j].ToString()));
+                        //Align the cell in the center
+                        cell.HorizontalAlignment = PdfPCell.ALIGN_LEFT;
+                        cell.VerticalAlignment = PdfPCell.ALIGN_LEFT;
+                        cell.BorderColor = BaseColor.LIGHT_GRAY;
+                        cell.BorderWidth = 1f;
+                        table.AddCell(cell);
+                    }
+                }
+                //Create a PdfReader bound to that byte array
+                if (!string.IsNullOrEmpty(ChartData))
+                {
+                    byte[] sPDFDecoded = Convert.FromBase64String(ChartData.Substring(ChartData.LastIndexOf(',') + 1));
+                    var image = Image.GetInstance(sPDFDecoded);
+                    if (image.Height > image.Width)
+                    {
+                        //Maximum height is 800 pixels.
+                        float percentage = 0.0f;
+                        percentage = 700 / image.Height;
+                        image.ScalePercent(percentage * 100);
+                    }
+                    else
+                    {
+                        //Maximum width is 600 pixels.
+                        float percentage = 0.0f;
+                        percentage = 540 / image.Width;
+                        image.ScalePercent(percentage * 100);
+                    }
+                    // If need to add boarder
+                    //   image.Border = iTextSharp.text.Rectangle.BOX;
+                    //  image.BorderColor = iTextSharp.text.BaseColor.BLACK;
+                    //  image.BorderWidth = 3f;
+                    document.Add(image);
+                }
+                document.Add(table);
+                document.Close();
+                return ms.ToArray();
+            }
+        }
+        private static byte[] Combine(byte[] a, byte[] b)
+        {
+            byte[] c = new byte[a.Length + b.Length];
+            System.Buffer.BlockCopy(a, 0, c, 0, a.Length);
+            System.Buffer.BlockCopy(b, 0, c, a.Length, b.Length);
+            return c;
+        }
+        public static string GetXmlFile(string reportSql, string connectKey, string reportName)
+        {
+            var sql = Decrypt(reportSql);
+
+            // Execute sql
+            var dt = new DataTable();
+            var ds = new DataSet();
+            using (var conn = new SqlConnection(ConfigurationManager.ConnectionStrings[connectKey].ConnectionString))
+            {
+                conn.Open();
+                var command = new SqlCommand(sql, conn);
+                var adapter = new SqlDataAdapter(command);
+
+                adapter.Fill(dt);
+            }
+
+            ds.Tables.Add(dt);
+            ds.DataSetName = "data";
+            foreach(DataColumn c in dt.Columns)
+            {
+                c.ColumnName = c.ColumnName.Replace(" ", "_").Replace("(", "").Replace(")", "");
+            }
+            dt.TableName = "item";            
+            var xml = ds.GetXml();
+            return xml;
         }
 
         /// <summary>
