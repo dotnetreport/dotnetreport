@@ -203,7 +203,7 @@ function filterGroupViewModel(args) {
 			Operator: ko.observable(e.Operator),
 			Value: ko.observable(e.Value1),
 			Value2: ko.observable(e.Value2),
-			ValueIn: ko.observableArray([]),
+			ValueIn: ko.observableArray(valueIn),
 			LookupList: lookupList,
 			Apply: ko.observable(e.Apply != null ? e.Apply : true),
 			IsFilterOnFly: isFilterOnFly === true ? true : false
