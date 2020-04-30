@@ -238,6 +238,10 @@ function filterGroupViewModel(args) {
 			field(args.parent.FindField(e.FieldId));
 		}
 
+		filter.compareTo = ko.computed(function () {
+			return field() ? _.filter(args.parent.AdditionalSeries(), function (x) { return x.Field().fieldId == field().fieldId; }) : [];
+		});
+
 		self.Filters.push(filter);
 
 	};
@@ -735,8 +739,8 @@ var reportViewModel = function (options) {
 		e = e || {};
 		var field = ko.observable();
 
-		if (e.FieldId) {
-			field(self.FindField(e.FieldId));
+		if (e.Field) {
+			field(self.FindField(e.Field().fieldId));
 		} else {
 			field(self.dateFields()[0]);
 		}
@@ -754,7 +758,7 @@ var reportViewModel = function (options) {
 			}
 		}
 
-		_.forEach(self.FilterGroups, function (g) {
+		_.forEach(self.FilterGroups(), function (g) {
 			_.forEach(g.Filters(), function (x) {
 				if (x.Field().FieldId == field().FieldId) {
 					setRange(x.Value());
@@ -765,7 +769,6 @@ var reportViewModel = function (options) {
 				}
 			});
 		});
-		
 
 		self.AdditionalSeries.push({
 			Field: field,
@@ -1333,7 +1336,7 @@ var reportViewModel = function (options) {
 			self.CanEdit(((!options.clientId || report.ClientId == options.clientId) && (!options.userId || report.UserId == options.userId)) || self.adminMode());
 			self.FilterGroups([]);		
 			self.AdditionalSeries([]);
-			self.scheduleBuilder.fromJs(report.Schedule)
+			self.scheduleBuilder.fromJs(report.Schedule);
 
 			var filterFieldsOnFly = [];
 
