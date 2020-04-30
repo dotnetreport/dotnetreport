@@ -1,7 +1,6 @@
 ﻿/// .Net Report Builder view model v3.0.3
 /// License has to be purchased for use
 /// 2015-2018 (c) www.dotnetreport.com
-
 function pagerViewModel(args) {
 	args = args || {};
 	var self = this;
@@ -279,7 +278,7 @@ var reportViewModel = function (options) {
 	self.currentUserRole = (options.userSettings.currentUserRoles || []).join();
 	self.currentUserName = options.userSettings.currentUserName;
 	self.allowAdmin = ko.observable(options.userSettings.allowAdminMode);
-
+	self.ChartData = ko.observable();
 	self.ReportName = ko.observable();
 	self.ReportType = ko.observable("List");
 	self.ReportDescription = ko.observable();
@@ -1239,7 +1238,7 @@ var reportViewModel = function (options) {
 		}
 
 		chart.draw(data, options);
-
+		self.ChartData(chart.getImageURI());
 	};
 
 	self.loadFolders = function (folderId) {

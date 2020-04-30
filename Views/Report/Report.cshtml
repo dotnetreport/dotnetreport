@@ -32,6 +32,9 @@
         }, 250);
     }
 
+    function downloadPdf() {
+        $("#downloadPdf").submit();
+    }
     function downloadExcel() {
         $("#downloadExcel").submit();
     }
@@ -71,13 +74,20 @@
     <div class="report-view" data-bind="with: $root">
         @using (Html.BeginForm("DownloadExcel", "Report", FormMethod.Post, new { id = "downloadExcel" }))
         {
-        <input type="hidden" id="reportSql" name="reportSql" data-bind="value: currentSql" />
-        <input type="hidden" id="connectKey" name="connectKey" data-bind="value: currentConnectKey" />
-        <input type="hidden" id="reportName" name="reportName" data-bind="value: ReportName" />
+            <input type="hidden" id="reportSql" name="reportSql" data-bind="value: currentSql" />
+            <input type="hidden" id="connectKey" name="connectKey" data-bind="value: currentConnectKey" />
+            <input type="hidden" id="reportName" name="reportName" data-bind="value: ReportName" />
         }
 
         @using (Html.BeginForm("DownloadXml", "Report", FormMethod.Post, new { id = "downloadXml" }))
         {
+            <input type="hidden" id="reportSql" name="reportSql" data-bind="value: currentSql" />
+            <input type="hidden" id="connectKey" name="connectKey" data-bind="value: currentConnectKey" />
+            <input type="hidden" id="reportName" name="reportName" data-bind="value: ReportName" />
+        }
+        @using (Html.BeginForm("DownloadPdf", "Report", FormMethod.Post, new { id = "downloadPdf" }))
+        {
+            <input type="hidden" id="chartdata" name="chartData" data-bind="value: ChartData" />
             <input type="hidden" id="reportSql" name="reportSql" data-bind="value: currentSql" />
             <input type="hidden" id="connectKey" name="connectKey" data-bind="value: currentConnectKey" />
             <input type="hidden" id="reportName" name="reportName" data-bind="value: ReportName" />
@@ -92,13 +102,18 @@
             </a>
             <button type="button" class="btn btn-default" onclick="printReport();">
                 <span class="glyphicon glyphicon-print" aria-hidden="true"></span> Print Report
-            </button>          
+            </button>
 
             <div class="btn-group">
                 <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     <span class="fa fa-download"></span> Export <span class="caret"></span>
                 </button>
                 <ul class="dropdown-menu">
+                    <li>
+                        <a href="#" onclick="downloadPdf();">
+                            <span class="fa fa-file-pdf-o"></span> Pdf
+                        </a>
+                    </li>
                     <li>
                         <a href="#" onclick="downloadExcel();">
                             <span class="fa fa-file-excel-o"></span> Excel
@@ -146,8 +161,8 @@
                     <h2 data-bind="text: ReportName"></h2>
                     <p data-bind="html: ReportDescription">
                     </p>
-                    <div data-bind="with: ReportResult">                        
-                        <div data-bind="template: 'report-template', data: $data"></div>                        
+                    <div data-bind="with: ReportResult">
+                        <div data-bind="template: 'report-template', data: $data"></div>
                     </div>
                 </div>
             </div>
