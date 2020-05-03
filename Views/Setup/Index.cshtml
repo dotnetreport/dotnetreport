@@ -7,55 +7,55 @@
 <h2>Index</h2>
 
 @section head{
-<style type="text/css">
-    *, *:before, *:after {
-        box-sizing: border-box !important;
-    }
+    <style type="text/css">
+        *, *:before, *:after {
+            box-sizing: border-box !important;
+        }
 
-    .row {
-        -moz-column-width: 17em;
-        -webkit-column-width: 17em;
-        -moz-column-gap: -1em;
-        -webkit-column-gap: -1em;
-    }
+        .row {
+            -moz-column-width: 17em;
+            -webkit-column-width: 17em;
+            -moz-column-gap: -1em;
+            -webkit-column-gap: -1em;
+        }
 
-    .menu-category {
-        display: inline-block;
-        width: 100%;
-    }
+        .menu-category {
+            display: inline-block;
+            width: 100%;
+        }
 
-    .list-group-item {
-        padding-top: 2px;
-        padding-bottom: 2px;
-    }
+        .list-group-item {
+            padding-top: 2px;
+            padding-bottom: 2px;
+        }
 
-    .panel-heading {
-        padding-top: 2px;
-        padding-bottom: 2px;
-    }
+        .panel-heading {
+            padding-top: 2px;
+            padding-bottom: 2px;
+        }
 
-    .fix-top {
-        position: fixed;
-        top: 50px;
-        z-index: 999;
-        background-color: white;
-        left: 0;
-        width: 100%;
-        margin-left: auto;
-        margin-right: auto;
-        padding-left: 15px;
-    }
+        .fix-top {
+            position: fixed;
+            top: 50px;
+            z-index: 999;
+            background-color: white;
+            left: 0;
+            width: 100%;
+            margin-left: auto;
+            margin-right: auto;
+            padding-left: 15px;
+        }
 
-    .fix-content {
-        padding-top: 170px;
-        width: 100% !important;
-        left: 0;
-    }
-</style>
-    }
+        .fix-content {
+            padding-top: 170px;
+            width: 100% !important;
+            left: 0;
+        }
+    </style>
+}
 @section scripts{
     <script src="~/Scripts/dotnetreport-setup.js"></script>
-    <script src="~/Scripts/knockout.mapping-latest.js"></script>   
+    <script src="~/Scripts/knockout.mapping-latest.js"></script>
     <script src="~/Scripts/bootstrap-editable.min.js"></script>
     <script src="~/Scripts/knockout.x-editable.min.js"></script>
     <script type="text/javascript">
@@ -100,15 +100,15 @@
         You can select and manage display names for the Tables and Columns you would like to allow in .Net Report Builder.
     </p>
     <div class="alert alert-danger">
-        Do not expose this Setup Tool to end users who should not have access to it. Ideally, only Developers should be given access to this utility. 
+        Do not expose this Setup Tool to end users who should not have access to it. Ideally, only Developers should be given access to this utility.
     </div>
     <div class="form-inline">
         <div class="form-group">
             <div class="control-group">
                 <label class="control-label">Data Connection</label>
                 <select class="form-control" style="max-width: 300px;" data-bind="options: DataConnections, optionsText: 'DataConnectName', optionsValue: 'DataConnectGuid', value: currentConnectionKey"></select>
-                <button class="btn btn-primary btn-sm" data-bind="click: switchConnection, visible: canSwitchConnection">Switch Connection</button>     
-                <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-connection-modal" >Add New Connection</button>
+                <button class="btn btn-primary btn-sm" data-bind="click: switchConnection, visible: canSwitchConnection">Switch Connection</button>
+                <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-connection-modal">Add New Connection</button>
                 <button class="btn btn-primary btn-sm" data-bind="click: exportAll">Export Connection</button>
                 <button class="btn btn-primary btn-sm" data-bind="click: importStart">Import Connection</button>
             </div>
@@ -123,8 +123,8 @@
                             <button class="btn btn-link" data-bind="click: importCancel">Cancel</button>
                         </span>
                     </div>
-                    
-                </div>                
+
+                </div>
             </div>
         </div>
     </div>
@@ -143,63 +143,66 @@
 <div class="fix-content">
     <div class="tab-content">
         <div role="tabpanel" class="tab-pane active" id="tablesfields">
-            <br />
             <div data-bind="with: Tables">
                 <input type="text" class="form-control input-sm" placeholder="Filter Tables for..." data-bind="value: tableFilter, valueUpdate: 'afterkeydown'" style="float: left; width: 140px;">
-                <button class="btn btn-sm" data-bind="click: clearTableFilter,  visible: tableFilter()!='' && tableFilter()!=null"><span class="glyphicon glyphicon-remove"></span></button>
+                <button class="btn btn-sm" data-bind="click: clearTableFilter,  visible: tableFilter()!='' && tableFilter()!=null"><span class="fa fa-remove"></span></button>
                 <button class="btn btn-sm" onclick="openall()" style="margin-left: 15px;">Open all</button>
                 <button class="btn btn-sm" onclick="closeall()">Close all</button>
                 <button class="btn btn-sm" data-bind="click: selectAll">Select all</button>
                 <button class="btn btn-sm" data-bind="click: unselectAll">Unselect all</button>
-                <button class="btn btn-sm btn-primary" data-bind="click: $root.saveChanges">Save All Changes</button>                
+                <button class="btn btn-sm btn-primary" data-bind="click: $root.saveChanges">Save All Changes</button>
             </div>
             <br />
             <div class="menu row" data-bind="with: Tables" style="margin-left: 20px;">
                 <!-- ko foreach: filteredTables -->
 
-                <div class="menu-category panel panel-default">
+                <div class="menu-category card">
 
-                    <div class="panel-heading clearfix" style="">
+                    <div class="card-header clearfix" style="">
                         <div class="checkbox pull-left">
                             <label>
                                 <input type="checkbox" data-bind="checked: Selected">
                                 <span data-bind="text: TableName"></span>
                                 <span data-bind="visible: IsView" class="label-xs">(view)</span>
                             </label>
-                            <button class="btn btn-xs" title="Save this Table" data-bind="click: function(){$data.saveTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}"><i class="glyphicon glyphicon-floppy-disk"></i></button>
-                            <button class="btn btn-xs" title="Manage Role Access" data-toggle="modal" data-target="#role-access-modal" data-bind="click: $root.selectAllowedRoles">
-                                <i class="glyphicon glyphicon-user"></i>
+                            <button class="btn btn-sm" title="Save this Table" data-bind="click: function(){$data.saveTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}"><i class="fa fa-floppy-o"></i></button>
+                            <button class="btn btn-sm" title="Manage Role Access" data-toggle="modal" data-target="#role-access-modal" data-bind="click: $root.selectAllowedRoles">
+                                <i class="fa fa-user"></i>
                             </button>
                         </div>
-                        <a href="#" class="pull-right" data-toggle="collapse" data-bind="attr: {'data-target': '#table'+$index()}">
-                            
+                        <a class="pull-right" data-toggle="collapse" data-bind="attr: {'data-target': '#table'+$index()}">
+                            <span class="fa fa-chevron-down"></span>
                         </a>
                     </div>
                     <div data-bind="attr: {id: 'table'+$index()}" class="panel-collapse collapse in">
-                        <div class="panel-body">
-                            <p><label class="label-xs">Display Name</label><br /><span data-bind="editable: DisplayName"></span></p>
-                            <p><label class="label-xs">Account Id Field</label><br /><span data-bind="editable: AccountIdField"></span></p>
+                        <div class="card-body">
+                            <p>
+                                <label class="label-xs">Display Name</label><br />
+                                <span data-bind="editable: DisplayName"></span>
+                            </p>
+                            <p>
+                                <label class="label-xs">Account Id Field</label><br />
+                                <span data-bind="editable: AccountIdField"></span>
+                            </p>
                         </div>
 
-                        <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Columns().length"></span> Columns</label>
-                        <button class="btn btn-xs btn-link pull-right label-sm" data-bind="click: $parent.unselectAllColumns, visible: Selected">Unselect All</button>
-                        <button class="btn btn-xs btn-link pull-right label-sm" data-bind="click: $parent.selectAllColumns, visible: Selected">Select All</button>
+                        <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Columns().length"></span>Columns</label>
+                        <button class="btn btn-sm btn-link label-sm" data-bind="click: $parent.unselectAllColumns, visible: Selected">Unselect All</button>
+                        <button class="btn btn-sm btn-link label-sm" data-bind="click: $parent.selectAllColumns, visible: Selected">Select All</button>
                         <div class="list-group" data-bind="sortable: { data: Columns, options: { handle: '.sortable', cursor: 'move' }, afterMove: $parent.columnSorted }">
-                            @*<!-- ko foreach: Columns -->*@
+                            <!-- ko foreach: Columns -->
                             <div class="list-group-item">
                                 <div class="checkbox">
                                     <label>
                                         <input type="checkbox" data-bind="checked: Selected, enable: $parent.Selected()">
-                                        @*<span data-bind="text: ColumnName"></span> <br />*@
                                         <span data-bind="editable: DisplayName"></span>
-                                        @*<span data-bind="text: DisplayOrder"></span>*@
-                                        <label data-bind="visible: PrimaryKey" class="label label-primary">Primary</label>
-                                        <label data-bind="visible: ForeignKey" class="label label-info">Foreign</label>
+                                        <label data-bind="visible: PrimaryKey" class="badge badge-primary">Primary</label>
+                                        <label data-bind="visible: ForeignKey" class="badge badge-info">Foreign</label>
                                     </label>
-                                    <button class="btn btn-xs btn-default pull-right" data-toggle="modal" data-target="#column-modal" title="All column options" data-bind="click: $root.selectColumn">...</button>
+                                    <button class="btn btn-sm pull-right" data-toggle="modal" data-target="#column-modal" title="All column options" data-bind="click: $root.selectColumn">...</button>
 
-                                    <div class="btn btn-xs btn-default pull-right sortable">
-                                        <span class="glyphicon glyphicon-move" aria-hidden="true" title="Drag to reorder"></span>
+                                    <div class="btn btn-sm pull-right sortable">
+                                        <span class="fa fa-arrows" aria-hidden="true" title="Drag to reorder"></span>
                                     </div>
                                 </div>
 
@@ -218,7 +221,7 @@
 
                 <p>
                     Setup your Database Relations
-                    <span data-toggle="tooltip" data-placement="right" title="Report Builder also needs to know the Data Table Relations in order to Generate Reports. You have to specify it here." class="glyphicon glyphicon-question-sign helptip"></span>
+                    <span data-toggle="tooltip" data-placement="right" title="Report Builder also needs to know the Data Table Relations in order to Generate Reports. You have to specify it here." class="fa fa-question-circle helptip"></span>
                 </p>
 
                 <table class="table">
@@ -228,7 +231,7 @@
                                 Primary Table
                                 <div class="input-group input-group-sm">
                                     <input type="text" class="form-control input-sm" data-bind="value: primaryTable, valueUpdate: 'afterkeydown'" placeholder="Search...">
-                                    <span class="input-group-addon"><i class="glyphicon glyphicon-filter"></i></span>
+                                    <span class="input-group-addon"><i class="fa fa-filter"></i></span>
                                 </div>
                             </th>
                             <th>
@@ -236,7 +239,7 @@
                                 <div class="input-group input-group-sm">
 
                                     <input type="text" class="form-control input-sm" data-bind="value: primaryField, valueUpdate: 'afterkeydown'" placeholder="Search...">
-                                    <span class="input-group-addon"><i class="glyphicon glyphicon-filter"></i></span>
+                                    <span class="input-group-addon"><i class="fa fa-filter"></i></span>
                                 </div>
                             </th>
                             <th>
@@ -244,7 +247,7 @@
                                 <div class="input-group input-group-sm">
 
                                     <input type="text" class="form-control input-sm" data-bind="value: joinType, valueUpdate: 'afterkeydown'" placeholder="Search...">
-                                    <span class="input-group-addon"><i class="glyphicon glyphicon-filter"></i></span>
+                                    <span class="input-group-addon"><i class="fa fa-filter"></i></span>
                                 </div>
                             </th>
                             <th>
@@ -252,14 +255,14 @@
                                 <div class="input-group input-group-sm">
 
                                     <input type="text" class="form-control input-sm" data-bind="value: joinTable, valueUpdate: 'afterkeydown'" placeholder="Search...">
-                                    <span class="input-group-addon"><i class="glyphicon glyphicon-filter"></i></span>
+                                    <span class="input-group-addon"><i class="fa fa-filter"></i></span>
                                 </div>
                             </th>
                             <th>
                                 Field<div class="input-group input-group-sm">
 
                                     <input type="text" class="form-control input-sm" data-bind="value: joinField, valueUpdate: 'afterkeydown'" placeholder="Search...">
-                                    <span class="input-group-addon"><i class="glyphicon glyphicon-filter"></i></span>
+                                    <span class="input-group-addon"><i class="fa fa-filter"></i></span>
                                 </div>
                             </th>
                             <th></th>
@@ -279,25 +282,18 @@
                             <td>
                                 <select class="form-control input-medium" data-bind="options: OtherTables, optionsText: 'DisplayName', value: OtherTable"></select>
                             </td>
-                            @*
-                            <td>
-                                <input class="form-control" type="text" data-bind="value: FieldName" placeholder="Enter Field Name" />
-                            </td>
-                            <td>
-                                <input class="form-control" type="text" data-bind="value: JoinFieldName" placeholder="Enter Field Name" />
-                            </td>*@
 
                             <td data-bind="with: OtherTable">
                                 <select class="form-control" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsValue: 'ColumnName', value: $parent.JoinFieldName"></select>
                             </td>
                             <td>
-                                <button class="btn btn-default" data-bind="click: DeleteJoin">Delete</button>
+                                <button class="btn btn-secondary" data-bind="click: DeleteJoin">Delete</button>
                             </td>
                         </tr>
                     </tbody>
                 </table>
-                <button class="btn" data-bind="click: AddJoin">Add new Join</button>&nbsp;
-                <button class="btn" data-bind="click: SaveJoins">Save Joins</button>
+                <button class="btn btn-primary" data-bind="click: AddJoin">Add new Join</button>&nbsp;
+                <button class="btn btn-primary" data-bind="click: SaveJoins">Save Joins</button>
             </form>
 
         </div>
@@ -305,40 +301,32 @@
 </div>
 
 <!-- Modal -->
-<div class="modal fade" id="column-modal" role="dialog" tabindex="-1">
+<div class="modal" id="column-modal" role="dialog" tabindex="-1">
     <div class="modal-dialog" role="document">
         <div class="modal-content" data-bind="with: editColumn()">
-            <div class="modal-header">                
+            <div class="modal-header">
+                <h4 class="modal-title" id="myModalLabel">
+                    Manage
+                    <label data-bind="text: ColumnName"></label>
+                </h4>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                <h4 class="modal-title" id="myModalLabel">Manage <label data-bind="text: ColumnName"></label></h4>
             </div>
             <div class="modal-body">
                 <p>Choose options that will determine how users interact with this column on Reports</p>
                 <div class="form-horizontal">
                     <div class="control-group">
-                        <div class="form-group">
+                        <div class="form-group row">
                             <label class="col-md-3 col-sm-3 control-label" for="Display_Name" data-bind="attr:{placeholder:'Ex First Name'}" placeholder="Ex First Name">Display Name</label>
                             <div class="col-md-6 col-sm-6">
                                 <input class="form-control text-box single-line" data-val="true" data-val-required="The DisplayName field is required." id="DisplayName" name="DisplayName" type="text" value="First Name" data-bind="value: DisplayName, attr:{placeholder:'Ex First Name'}" placeholder="Ex First Name">
                             </div>
                             <div class="col-md-3 col-sm-3">
-                                <span data-toggle="tooltip" data-placement="right" class="glyphicon glyphicon-question-sign helptip" title="This is a friendly name to display to your users"></span>
+                                <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="This is a friendly name to display to your users"></span>
                             </div>
                         </div>
                     </div>
-                    @*<div class="control-group">
-                            <div class="form-group">
-                                <label class="col-md-3 col-sm-3 control-label" for="Display_Order" data-bind="">Display Order</label>
-                                <div class="col-md-6 col-sm-6">
-                                    <input class="form-control text-box single-line" data-val="true" data-val-number="The field DisplayOrder must be a number." data-val-required="The DisplayOrder field is required." id="DisplayOrder" name="DisplayOrder" type="number" value="0" data-bind="value: DisplayOrder">
-                                </div>
-                                <div class="col-md-3 col-sm-3">
-                                    <span class="field-validation-valid help-inline indent" data-valmsg-for="DisplayOrder" data-valmsg-replace="true"></span>
-                                </div>
-                            </div>
-                        </div>*@
                     <div class="control-group">
-                        <div class="form-group">
+                        <div class="form-group row">
                             <label class="col-md-3 col-sm-3 control-label" for="Field_Type" data-bind="">Field Type</label>
                             <div class="col-md-6 col-sm-6">
                                 <select class="form-control" id="FieldType_SelectedId" name="FieldType.SelectedId" data-bind="value: FieldType">
@@ -354,8 +342,9 @@
                                 <span class="field-validation-valid help-inline indent" data-valmsg-for="FieldType" data-valmsg-replace="true"></span>
                             </div>
                         </div>
-                    </div><div class="control-group">
-                        <div class="form-group">
+                    </div>
+                    <div class="control-group">
+                        <div class="form-group row">
                             <label class="col-md-3 col-sm-3 control-label" for="Primary_Key" data-bind="">Primary Key</label>
                             <div class="col-md-6 col-sm-6">
                                 <div class="checkbox">
@@ -370,7 +359,7 @@
                         </div>
                     </div>
                     <div class="control-group">
-                        <div class="form-group">
+                        <div class="form-group row">
                             <label class="col-md-3 col-sm-3 control-label" data-bind="">Do Not Display</label>
                             <div class="col-md-6 col-sm-6">
                                 <div class="checkbox">
@@ -380,12 +369,12 @@
                                 </div>
                             </div>
                             <div class="col-md-3 col-sm-3">
-                                <span data-toggle="tooltip" data-placement="right" class="glyphicon glyphicon-question-sign helptip" title="If this is checked, the column will not be displayed on Report Designer, but can still be used on Global Data Filters"></span>
+                                <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="If this is checked, the column will not be displayed on Report Designer, but can still be used on Global Data Filters"></span>
                             </div>
                         </div>
                     </div>
                     <div class="control-group">
-                        <div class="form-group">
+                        <div class="form-group row">
                             <label class="col-md-3 col-sm-3 control-label" for="Foreign_Key" data-bind="">Foreign Key</label>
                             <div class="col-md-6 col-sm-6">
                                 <div class="checkbox">
@@ -395,12 +384,12 @@
                                 </div>
                             </div>
                             <div class="col-md-3 col-sm-3">
-                                <span data-toggle="tooltip" data-placement="right" class="glyphicon glyphicon-question-sign helptip" title="Foreign keys allows friendly selection in Filters using a Dropdown List"></span>
+                                <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Foreign keys allows friendly selection in Filters using a Dropdown List"></span>
                             </div>
                         </div>
                     </div>
                     <div class="control-group">
-                        <div class="form-group">
+                        <div class="form-group row">
                             <label class="col-md-3 col-sm-3 control-label" for="Foreign_Table" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null, placeholder: 'Ex tblEmployees'}" placeholder="Ex tblEmployees" style="display: none;">Foreign Table</label>
                             <div class="col-md-6 col-sm-6">
                                 <select class="form-control" data-bind="value: JoinTable, visible:ForeignKey(), options: $root.Tables.model, optionsText: 'TableName'" placeholder="Ex tblEmployees" style="display: none;"></select>
@@ -412,7 +401,7 @@
                         </div>
                     </div>
                     <div class="control-group">
-                        <div class="form-group">
+                        <div class="form-group row">
                             <label class="col-md-3 col-sm-3 control-label" for="Foreign_Join" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" style="display: none;">Foreign Join</label>
                             <div class="col-md-6 col-sm-6">
                                 <select class="form-control" id="ForeignJoin_SelectedId" name="ForeignJoin.SelectedId" data-bind="value: ForeignJoin, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" style="display: none;">
@@ -427,24 +416,24 @@
                         </div>
                     </div>
                     <div class="control-group">
-                        <div class="form-group">
+                        <div class="form-group row">
                             <label class="col-md-3 col-sm-3 control-label" for="Foreign_Key_Field" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null, placeholder: 'Ex EmployeeId'}" placeholder="Ex EmployeeId" style="display: none;">Foreign Key Field</label>
                             <div class="col-md-6 col-sm-6">
                                 <select class="form-control" id="ForeignKeyField" name="ForeignKeyField" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignKeyField, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" placeholder="Ex EmployeeId" style="display: none;"></select>
                             </div>
                             <div class="col-md-3 col-sm-3">
-                                <span data-bind="visible:ForeignKey()" data-toggle="tooltip" data-placement="right" class="glyphicon glyphicon-question-sign helptip" style="display: none;" title="Foreign Key field is a Column from the Foreign table which is used as the Key field"></span>
+                                <span data-bind="visible:ForeignKey()" data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Foreign Key field is a Column from the Foreign table which is used as the Key field"></span>
                             </div>
                         </div>
                     </div>
                     <div class="control-group">
-                        <div class="form-group">
+                        <div class="form-group row">
                             <label class="col-md-3 col-sm-3 control-label" for="Foreign_Value_Field" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null, placeholder: 'Ex EmployeeName'}" placeholder="Ex EmployeeName" style="display: none;">Foreign Value Field</label>
                             <div class="col-md-6 col-sm-6">
                                 <select class="form-control" id="ForeignValueField" name="ForeignValueField" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignValueField, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" placeholder="Ex EmployeeName" style="display: none;"></select>
                             </div>
                             <div class="col-md-3 col-sm-3">
-                                <span data-bind="visible:ForeignKey()" data-toggle="tooltip" data-placement="right" class="glyphicon glyphicon-question-sign helptip" style="display: none;" title="Foreign Value field is a Column from the Foreign table which is used to display the value to the User in the Wizard"></span>
+                                <span data-bind="visible:ForeignKey()" data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Foreign Value field is a Column from the Foreign table which is used to display the value to the User in the Wizard"></span>
                             </div>
                         </div>
                     </div>
@@ -452,21 +441,21 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn btn-default" title="Manage Role Access" data-toggle="modal" data-target="#role-access-modal" data-bind="click: $root.selectAllowedRoles">
-                    <i class="glyphicon glyphicon-user"></i> Manage Role Access
+                <button class="btn btn-secondary" title="Manage Role Access" data-toggle="modal" data-target="#role-access-modal" data-bind="click: $root.selectAllowedRoles">
+                    <i class="fa fa-user"></i>Manage Role Access
                 </button>
-                <button type="button" class="btn btn-default" data-dismiss="modal">Done</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Done</button>
             </div>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="role-access-modal" role="dialog" tabindex="-2">
+<div class="modal" id="role-access-modal" role="dialog" tabindex="-2">
     <div class="modal-dialog" role="document">
         <div class="modal-content" data-bind="with: editAllowedRoles">
             <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                 <h4 class="modal-title">Manage Access by Roles</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
             </div>
             <div class="modal-body">
                 <p>Choose User Roles that will have Access</p>
@@ -474,76 +463,71 @@
                 <div class="list-group" data-bind="foreach: AllowedRoles">
                     <div class="list-group-item" style="padding-top: 2px; padding-bottom: 2px;">
                         <span data-bind="text: $data"></span>
-                        <button class="btn btn-xs btn-danger pull-right"><i class="glyphicon glyphicon-trash" data-bind="click: $root.removeAllowedRole"></i></button>
+                        <button class="btn btn-sm btn-danger pull-right"><i class="fa fa-trash" data-bind="click: $root.removeAllowedRole"></i></button>
                     </div>
                 </div>
-                <div class="form-horizontal">
-                    <div class="control-group">
-                        <div class="form-group">
-                            <div class="col-xs-10">
-                                <input class="form-control text-box single-line" type="text" data-bind="value: $root.newAllowedRole" placeholder="Ex Sales">
-                            </div>
-                            <div class="col-xs-2">
-                                <button class="btn btn-primary" data-bind="click: $root.addAllowedRole">Add</button>
-                            </div>
-                        </div>
+
+                <div class="row">
+                    <div class="col-10">
+                        <input class="form-control" type="text" data-bind="value: $root.newAllowedRole" placeholder="Ex Sales">
+                    </div>
+                    <div class="col-2">
+                        <button class="btn btn-primary" data-bind="click: $root.addAllowedRole">Add</button>
                     </div>
                 </div>
+
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Done</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Done</button>
             </div>
         </div>
     </div>
 </div>
 <div class="clearfix"></div>
 
-<div class="modal fade" id="add-connection-modal" role="dialog">
+<div class="modal" id="add-connection-modal" role="dialog">
     <div class="modal-dialog" role="document">
         <div class="modal-content" data-bind="with: newDataConnection">
             <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                 <h4 class="modal-title">Add a new Data Connection</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
             </div>
             <div class="modal-body">
                 <p>Choose User Roles that will have Access</p>
                 <p class="small">Note: All Users will have access if no restricted roles are setup</p>
-                <div class="form-horizontal">
-                    <div class="control-group">
-                        <div class="form-group">
-                            <label class="col-md-3 col-sm-3 control-label">Connection Name</label>
-                            <div class="col-md-6 col-sm-6">
-                                <input class="form-control text-box" data-val="true" data-val-required="Connection Name is required." type="text" data-bind="value: Name" placeholder="" id="add-conn-name">
-                            </div>                           
-                        </div>
-                        <div class="form-group">
-                            <label class="col-md-3 col-sm-3 control-label">Connection Key</label>
-                            <div class="col-md-6 col-sm-6">
-                                <input class="form-control text-box" data-val="true" data-val-required="Connection Key is required." type="text" data-bind="value: ConnectionKey" placeholder="" id="add-conn-key">
-                            </div>
-                            <div class="col-md-3 col-sm-3">
-                                <span data-toggle="tooltip" data-placement="right" class="glyphicon glyphicon-question-sign helptip" title="This is the Connection Key in your web.config for your SQL Connection String"></span>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <div class="check-box col-md-12">
-                                <label>
-                                    <input type="checkbox" data-bind="checked: copySchema">
-                                    Copy Schema from existing Connection
-                                </label>
-                            </div>
-                        </div>
-                        <div class="form-group" data-bind="visible: copySchema">
-                            <label class="col-md-3 col-sm-3 control-label">Choose Connection</label>
-                            <div class="col-md-6 col-sm-6">
-                                <select class="form-control" style="max-width: 300px;" data-bind="options: $root.DataConnections, optionsText: 'DataConnectName', optionsValue: 'DataConnectGuid', value: copyFrom"></select>
-                            </div>
-                        </div>
+
+                <div class="form-group row">
+                    <label class="col-md-3 col-sm-3 control-label">Connection Name</label>
+                    <div class="col-md-6 col-sm-6">
+                        <input class="form-control text-box" data-val="true" data-val-required="Connection Name is required." type="text" data-bind="value: Name" placeholder="" id="add-conn-name">
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <label class="col-md-3 col-sm-3 control-label">Connection Key</label>
+                    <div class="col-md-6 col-sm-6">
+                        <input class="form-control text-box" data-val="true" data-val-required="Connection Key is required." type="text" data-bind="value: ConnectionKey" placeholder="" id="add-conn-key">
+                    </div>
+                    <div class="col-md-3 col-sm-3">
+                        <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="This is the Connection Key in your web.config for your SQL Connection String"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="check-box col-md-12">
+                        <label>
+                            <input type="checkbox" data-bind="checked: copySchema">
+                            Copy Schema from existing Connection
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group row" data-bind="visible: copySchema">
+                    <label class="col-md-3 col-sm-3 control-label">Choose Connection</label>
+                    <div class="col-md-6 col-sm-6">
+                        <select class="form-control" style="max-width: 300px;" data-bind="options: $root.DataConnections, optionsText: 'DataConnectName', optionsValue: 'DataConnectGuid', value: copyFrom"></select>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-bind="click: $root.addDataConnection">Create</button>
+                <button type="button" class="btn btn-secondary" data-bind="click: $root.addDataConnection">Create</button>
             </div>
         </div>
     </div>

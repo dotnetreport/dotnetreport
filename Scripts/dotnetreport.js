@@ -754,7 +754,7 @@ var reportViewModel = function (options) {
 			}
 		}
 
-		_.forEach(self.FilterGroups, function (g) {
+		_.forEach(self.FilterGroups(), function (g) {
 			_.forEach(g.Filters(), function (x) {
 				if (x.Field().FieldId == field().FieldId) {
 					setRange(x.Value());
@@ -1333,7 +1333,7 @@ var reportViewModel = function (options) {
 			self.CanEdit(((!options.clientId || report.ClientId == options.clientId) && (!options.userId || report.UserId == options.userId)) || self.adminMode());
 			self.FilterGroups([]);		
 			self.AdditionalSeries([]);
-			self.scheduleBuilder.fromJs(report.Schedule)
+			self.scheduleBuilder.fromJs(report.Schedule);
 
 			var filterFieldsOnFly = [];
 
