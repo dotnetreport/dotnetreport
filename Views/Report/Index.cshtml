@@ -548,7 +548,7 @@
                     </div>
                 </td>
                 <td data-bind="with: Field">
-                    @Html.Partial("_reportFilter")
+                    <div data-bind="template: 'report-filter', data: $data"></div>
                 </td>
                 <td>
                     <button class="btn btn-sm" data-bind="click: $parent.RemoveFilter">Remove</button>
