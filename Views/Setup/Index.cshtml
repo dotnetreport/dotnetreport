@@ -4,54 +4,8 @@
     Layout = "~/Views/shared/_Layout.Report.cshtml";
 }
 
-<h2>Index</h2>
-
 @section head{
-    <style type="text/css">
-        *, *:before, *:after {
-            box-sizing: border-box !important;
-        }
-
-        .row {
-            -moz-column-width: 17em;
-            -webkit-column-width: 17em;
-            -moz-column-gap: -1em;
-            -webkit-column-gap: -1em;
-        }
-
-        .menu-category {
-            display: inline-block;
-            width: 100%;
-        }
-
-        .list-group-item {
-            padding-top: 2px;
-            padding-bottom: 2px;
-        }
-
-        .panel-heading {
-            padding-top: 2px;
-            padding-bottom: 2px;
-        }
-
-        .fix-top {
-            position: fixed;
-            top: 50px;
-            z-index: 999;
-            background-color: white;
-            left: 0;
-            width: 100%;
-            margin-left: auto;
-            margin-right: auto;
-            padding-left: 15px;
-        }
-
-        .fix-content {
-            padding-top: 170px;
-            width: 100% !important;
-            left: 0;
-        }
-    </style>
+    <link href="~/Content/bootstrap-editable.css" rel="stylesheet" />
 }
 @section scripts{
     <script src="~/Scripts/dotnetreport-setup.js"></script>
@@ -94,7 +48,7 @@
     </script>
 }
 
-<div class="fix-top">
+<div>
     <h2>Manage Database</h2>
     <p>
         You can select and manage display names for the Tables and Columns you would like to allow in .Net Report Builder.
@@ -105,8 +59,7 @@
     <div class="form-inline">
         <div class="form-group">
             <div class="control-group">
-                <label class="control-label">Data Connection</label>
-                <select class="form-control" style="max-width: 300px;" data-bind="options: DataConnections, optionsText: 'DataConnectName', optionsValue: 'DataConnectGuid', value: currentConnectionKey"></select>
+                <select class="form-control" data-bind="options: DataConnections, optionsText: 'DataConnectName', optionsValue: 'DataConnectGuid', value: currentConnectionKey"></select>
                 <button class="btn btn-primary btn-sm" data-bind="click: switchConnection, visible: canSwitchConnection">Switch Connection</button>
                 <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-connection-modal">Add New Connection</button>
                 <button class="btn btn-primary btn-sm" data-bind="click: exportAll">Export Connection</button>
@@ -133,8 +86,8 @@
     <div>
         <!-- Nav tabs -->
         <ul class="nav nav-tabs" role="tablist">
-            <li role="presentation" class="active"><a href="#tablesfields" aria-controls="home" role="tab" data-toggle="tab">Tables and Fields</a></li>
-            <li role="presentation"><a href="#relations" aria-controls="profile" role="tab" data-toggle="tab">Relations</a></li>
+            <li role="presentation" class="nav-item"><a class="nav-link active" href="#tablesfields" aria-controls="home" role="tab" data-toggle="tab">Tables and Fields</a></li>
+            <li role="presentation" class="nav-item"><a class="nav-link" href="#relations" aria-controls="profile" role="tab" data-toggle="tab">Relations</a></li>
         </ul>
     </div>
     <br />
