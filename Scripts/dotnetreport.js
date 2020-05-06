@@ -873,14 +873,15 @@ var reportViewModel = function (options) {
 
 		return groups;
 	};
-	self.SeriresDataIntoFilter = function (filtergroup) {
-		
+	self.SeriresDataIntoFilter = function (filtergroup, index) {
+		debugger;
 		var groups = [];
 		_.forEach(filtergroup, function (g) {
-			
+			var seriesFilter = [];
+			seriesFilter.push(self.AdditionalSeries()[index]);
 			var filters = [];
-			_.forEach(self.AdditionalSeries(), function (e, i) {
-				
+			_.forEach(seriesFilter, function (e, i) {
+				debugger;
 				var f =  {
 					SavedReportId: self.ReportID(),
 					FieldId: e.Field().fieldId,
@@ -907,11 +908,11 @@ var reportViewModel = function (options) {
 
 		return groups;
 	};
-	self.BuildReportData = function (drilldown, IsComparision) {
+	self.BuildReportData = function (drilldown, IsComparision, index) {
 		
 		drilldown = drilldown || [];
 
-		var filters = IsComparision ? self.SeriresDataIntoFilter(self.FilterGroups()) : self.BuildFilterData(self.FilterGroups());
+		var filters = IsComparision ? self.SeriresDataIntoFilter(self.FilterGroups(), index) : self.BuildFilterData(self.FilterGroups());
 
 		return {
 			ReportID: self.ReportID(),
@@ -994,7 +995,7 @@ var reportViewModel = function (options) {
 				data: JSON.stringify({
 					method: "/ReportApi/RunReport",
 					SaveReport: self.CanSaveReports() ? self.SaveReport() : false,
-					ReportJson: JSON.stringify(self.BuildReportData([], IsComparision)),
+					ReportJson: JSON.stringify(self.BuildReportData([], IsComparision, i-1)),
 					adminMode: self.adminMode()
 				}),
 				async: false,
