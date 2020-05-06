@@ -874,14 +874,14 @@ var reportViewModel = function (options) {
 		return groups;
 	};
 	self.SeriresDataIntoFilter = function (filtergroup, index) {
-		debugger;
+		
 		var groups = [];
 		_.forEach(filtergroup, function (g) {
 			var seriesFilter = [];
 			seriesFilter.push(self.AdditionalSeries()[index]);
 			var filters = [];
 			_.forEach(seriesFilter, function (e, i) {
-				debugger;
+				
 				var f =  {
 					SavedReportId: self.ReportID(),
 					FieldId: e.Field().fieldId,
