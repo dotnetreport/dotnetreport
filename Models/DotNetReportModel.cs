@@ -32,6 +32,8 @@ namespace ReportBuilder.Web.Models
         public string ChartData { get; set; }
         public bool IsDashboard { get; set; }
         public int SelectedFolder { get; set; }
+
+        public string ReportSeries { get; set; }
     }
 
     public class DotNetReportResultModel
@@ -413,7 +415,7 @@ namespace ReportBuilder.Web.Models
         /// </summary>
         public static string Decrypt(string encryptedText)
         {
-
+            encryptedText = encryptedText.Split(new string[] { "%2C" }, StringSplitOptions.RemoveEmptyEntries)[0];
             byte[] initVectorBytes = Encoding.ASCII.GetBytes("yk0z8f39lgpu70gi"); // PLESE DO NOT CHANGE THIS KEY
             int keysize = 256;
 
@@ -440,5 +442,35 @@ namespace ReportBuilder.Web.Models
                 }
             }
         }
+        public static string DecryptTest(string encryptedText)
+        {
+
+            byte[] initVectorBytes = Encoding.ASCII.GetBytes("yk0z8f39lgpu70gi"); // PLESE DO NOT CHANGE THIS KEY
+            int keysize = 256;
+
+            byte[] cipherTextBytes = Convert.FromBase64String(encryptedText);
+            var passPhrase = ConfigurationManager.AppSettings["dotNetReport.privateApiToken"].ToLower();
+            using (PasswordDeriveBytes password = new PasswordDeriveBytes(passPhrase, null))
+            {
+                byte[] keyBytes = password.GetBytes(keysize / 8);
+                using (RijndaelManaged symmetricKey = new RijndaelManaged())
+                {
+                    symmetricKey.Mode = CipherMode.CBC;
+                    using (ICryptoTransform decryptor = symmetricKey.CreateDecryptor(keyBytes, initVectorBytes))
+                    {
+                        using (MemoryStream memoryStream = new MemoryStream(cipherTextBytes))
+                        {
+                            using (CryptoStream cryptoStream = new CryptoStream(memoryStream, decryptor, CryptoStreamMode.Read))
+                            {
+                                byte[] plainTextBytes = new byte[cipherTextBytes.Length];
+                                int decryptedByteCount = cryptoStream.Read(plainTextBytes, 0, plainTextBytes.Length);
+                                return Encoding.UTF8.GetString(plainTextBytes, 0, decryptedByteCount);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
     }
 }

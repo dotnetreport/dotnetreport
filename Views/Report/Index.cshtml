@@ -368,7 +368,7 @@
                             <span data-bind="visible: !$root.isFieldValidForYAxis($index(), fieldType)">
                                 <span class="label label-danger" data-bind="visible: !groupInGraph()">Will not show in <span data-bind="text: $root.ReportType"></span> Chart</span>
                             </span>
-
+                            
                             <div class="input-group pull-right" style="margin-top: -5px;">
                                 <select class="form-control input-sm" style="width: 120px;" data-bind="options: $root.canDrilldown() && $index()>0 ? fieldAggregateWithDrilldown : fieldAggregate, value: selectedAggregate, visible: $parent.AggregateReport"></select>
                             </div>

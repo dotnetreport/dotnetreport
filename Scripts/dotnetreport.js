@@ -722,6 +722,8 @@ var reportViewModel = function (options) {
 	self.dateFields = ko.computed(function () {
 		return _.filter(self.SelectedFields(), function (x) { return x.fieldType == "DateTime"; });
 	});
+	self.TotalSeries = ko.observable(0);
+	self.AllSqlQuries = ko.observable("");
 
 	self.canAddSeries = ko.computed(function () {
 		var c1 = self.dateFields().length > 0 && ['Bar', 'Line'].indexOf(self.ReportType()) >= 0;
@@ -736,6 +738,7 @@ var reportViewModel = function (options) {
 	});
 
 	self.AddSeries = function (e) {
+		
 		e = e || {};
 		var field = ko.observable();
 
@@ -747,11 +750,12 @@ var reportViewModel = function (options) {
 
 		var range = ko.observableArray([]);
 		function setRange(newValue) {
-			if (newValue == 'This Year') {
+			
+			if (newValue === 'This Year') {
 				range(['Last Year', '2 Years ago', '3 Years ago', '4 Years ago', '5 Years ago']);
-			} else if (newValue == 'This Month') {
+			} else if (newValue === 'This Month') {
 				range(['Last Month', '2 Months ago', '3 Months ago', '4 Months ago', '5 Months ago']);
-			} else if (newValue == 'This Week') {
+			} else if (newValue === 'This Week') {
 				range(['Last Week', '2 Weeks ago', '3 Weeks ago', '4 Weeks ago', '5 Weeks ago']);
 			} else {
 				range([]);
@@ -759,7 +763,9 @@ var reportViewModel = function (options) {
 		}
 
 		_.forEach(self.FilterGroups(), function (g) {
+			
 			_.forEach(g.Filters(), function (x) {
+				
 				if (x.Field().FieldId == field().FieldId) {
 					setRange(x.Value());
 					x.Value.subscribe(function (newValue) {
@@ -833,10 +839,13 @@ var reportViewModel = function (options) {
 	};
 
 	self.BuildFilterData = function (filtergroup) {
+		
 		var groups = [];
 		_.forEach(filtergroup, function (g) {
+			
 			var filters = [];
 			_.forEach(g.Filters(), function (e, i) {
+				
 				var f = (e.Apply() && e.IsFilterOnFly) || !e.IsFilterOnFly ? {
 					SavedReportId: self.ReportID(),
 					FieldId: e.Field().fieldId,
@@ -864,11 +873,45 @@ var reportViewModel = function (options) {
 
 		return groups;
 	};
-
-	self.BuildReportData = function (drilldown) {
-		drilldown = drilldown || [];
+	self.SeriresDataIntoFilter = function (filtergroup) {
 		
-		var filters = self.BuildFilterData(self.FilterGroups());
+		var groups = [];
+		_.forEach(filtergroup, function (g) {
+			
+			var filters = [];
+			_.forEach(self.AdditionalSeries(), function (e, i) {
+				
+				var f =  {
+					SavedReportId: self.ReportID(),
+					FieldId: e.Field().fieldId,
+					AndOr: "AND",
+					Operator: e.Operator().toLowerCase(),
+					Value1: e.Operator() == "in" || e.Operator() == "not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 ? "blank" : e.Value()),
+					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
+				} 
+
+				if (f != null && !f.Value1 && !f.Value2) {
+					f = null;
+				}
+				if (f) filters.push(f);
+			});
+
+			groups.push({
+				SavedReportId: self.ReportID(),
+				isRoot: g.isRoot,
+				AndOr: g.AndOr(),
+				Filters: filters,
+			});
+
+		});
+
+		return groups;
+	};
+	self.BuildReportData = function (drilldown, IsComparision) {
+		
+		drilldown = drilldown || [];
+
+		var filters = IsComparision ? self.SeriresDataIntoFilter(self.FilterGroups()) : self.BuildFilterData(self.FilterGroups());
 
 		return {
 			ReportID: self.ReportID(),
@@ -926,57 +969,91 @@ var reportViewModel = function (options) {
 	};
 
 	self.RunReport = function (saveOnly) {
+		
 		saveOnly = saveOnly === true ? true : false;
-
+		self.TotalSeries(self.AdditionalSeries().length);
+		
 		if (!self.validateReport()) {
 			toastr.error("Please correct validation issues");
 			return;
 		}
-
-		ajaxcall({
-			url: options.runReportApiUrl,
-			type: "POST",
-			data: JSON.stringify({
-				method: "/ReportApi/RunReport",
-				SaveReport: self.CanSaveReports() ? self.SaveReport() : false,
-				ReportJson: JSON.stringify(self.BuildReportData()),
-				adminMode: self.adminMode()
-			})
-		}).done(function (result) {
-			if (result.d) { result = result.d; }
-			self.ReportID(result.reportId);
-			if (self.SaveReport()) {
+		let i = 0;
+		let IsComparision = false;
+		let IsExecuteReportQuery = false;
+		let _resultObj = null;
+		let SeriesCount = self.AdditionalSeries().length;
+		do {
+			if (i > 0) {
+				IsComparision = true;
+				self.CanSaveReports(false);
+            }
+			
+			ajaxcall({
+				url: options.runReportApiUrl,
+				type: "POST",
+				data: JSON.stringify({
+					method: "/ReportApi/RunReport",
+					SaveReport: self.CanSaveReports() ? self.SaveReport() : false,
+					ReportJson: JSON.stringify(self.BuildReportData([], IsComparision)),
+					adminMode: self.adminMode()
+				}),
+				async: false,
+			}).done(function (result) {
+				
+				_resultObj = result;
+				self.AllSqlQuries(self.AllSqlQuries() + (result.sql + ","))
+				
+				if (result.d) { result = result.d; }
+				self.ReportID(result.reportId);
+				if (self.SaveReport()) {
+					
+					if (saveOnly && SeriesCount === 0 ) {
+						//SeriesCount = 0;
+						toastr.success("Report Saved");
+					    self.LoadAllSavedReports();
+					}
+				}
+				
+				if (!saveOnly) {
+					if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard") {
+						
+						IsExecuteReportQuery = true;
+						self.ExecuteReportQuery(result.sql, result.connectKey);
+					}
+				}
+			});
+			i++;
+		}
+		while (i < SeriesCount + 1)
+		
+		if (IsExecuteReportQuery === false) {
+			if (saveOnly) {
 				toastr.success("Report Saved");
-				if (saveOnly) {
-					self.LoadAllSavedReports();
-				}
-			}
-
-			if (!saveOnly) {
-				if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard") {
-					self.ExecuteReportQuery(result.sql, result.connectKey);
-				}
-				else {
-					redirectToReport(options.runReportUrl, {
-						reportId: result.reportId,
-						reportName: self.ReportName(),
-						reportDescription: self.ReportDescription(),
-						includeSubTotal: self.IncludeSubTotal(),
-						showUniqueRecords: self.ShowUniqueRecords(),
-						aggregateReport: self.AggregateReport(),
-						showDataWithGraph: self.ShowDataWithGraph(),
-						reportSql: result.sql,
-						connectKey: result.connectKey,
-						reportFilter: JSON.stringify(_.map(self.FlyFilters(), function (x) { return ko.toJS(x); })),
-						reportType: self.ReportType(),
-						selectedFolder: self.SelectedFolder() != null ? self.SelectedFolder().Id : 0
-					});
-				}
-			}
-		});
+            }
+			redirectToReport(options.runReportUrl, {
+				reportId: _resultObj.reportId,
+				reportName: self.ReportName(),
+				reportDescription: self.ReportDescription(),
+				includeSubTotal: self.IncludeSubTotal(),
+				showUniqueRecords: self.ShowUniqueRecords(),
+				aggregateReport: self.AggregateReport(),
+				showDataWithGraph: self.ShowDataWithGraph(),
+				reportSql: self.AllSqlQuries(),
+				connectKey: _resultObj.connectKey,
+				reportFilter: JSON.stringify(_.map(self.FlyFilters(), function (x) { return ko.toJS(x); })),
+				reportType: self.ReportType(),
+				selectedFolder: self.SelectedFolder() != null ? self.SelectedFolder().Id : 0,
+				ReportSeries: _.map(self.AdditionalSeries(), function (e, i) {
+					
+					return e.Value();
+				
+				})
+			});
+        }
 	};
 
-	self.ExecuteReportQuery = function (reportSql, connectKey) {
+	self.ExecuteReportQuery = function (reportSql, connectKey, ReportSeries) {
+		
 		if (!reportSql || !connectKey) return;
 
 		return ajaxcall({
@@ -989,9 +1066,11 @@ var reportViewModel = function (options) {
 				pageNumber: self.pager.currentPage(),
 				pageSize: self.pager.pageSize(),
 				sortBy: self.pager.sortColumn() || '',
-				desc: self.pager.sortDescending() || false
+				desc: self.pager.sortDescending() || false,
+				ReportSeries: ReportSeries
 			})
 		}).done(function (result) {
+			
 			if (result.d) { result = result.d; }
 			var reportResult = self.ReportResult();
 			reportResult.HasError(result.HasError);
@@ -1068,7 +1147,7 @@ var reportViewModel = function (options) {
 					if (e.isExpanded()) e.collapse(); else e.expand();
 				};
 			});
-
+			
 			reportResult.ReportData(result.ReportData);
 
 			self.pager.totalRecords(result.Pager.TotalRecords);
@@ -1134,6 +1213,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.DrawChart = function () {
+		
 		if (!self.isChart()) return;
 		// Create the data table.
 		var reportData = self.ReportResult().ReportData();
@@ -1145,7 +1225,7 @@ var reportViewModel = function (options) {
 			var field = self.SelectedFields()[i];
 			if (i == 0) {
 				data.addColumn(e.IsNumeric ? 'number' : 'string', e.ColumnName);
-			} else if (field.groupInGraph()) {
+			} else if (typeof field !== "undefined" && field.groupInGraph()) {
 				subGroups.push({ index: i, column: e.ColumnName });
 			} else if (e.IsNumeric) {
 				valColumns.push({ index: i, column: e.ColumnName });
@@ -1294,7 +1374,8 @@ var reportViewModel = function (options) {
 		return e;
 	};
 
-	self.LoadReport = function (reportId, filterOnFly) {
+	self.LoadReport = function (reportId, filterOnFly, ReportSeries) {
+		
 		return ajaxcall({
 			url: options.apiUrl,
 			data: {
@@ -1395,13 +1476,14 @@ var reportViewModel = function (options) {
 			self.SaveReport(!filterOnFly && self.CanEdit());
 
 			if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard") {
-				self.ExecuteReportQuery(options.reportSql, options.reportConnect);
+				self.ExecuteReportQuery(options.reportSql, options.reportConnect, ReportSeries);
 			}
 		});
 	};
 
 	// Load saved reports
 	self.LoadAllSavedReports = function () {
+		
 		ajaxcall({
 			url: options.apiUrl,
 			data: {
