@@ -210,6 +210,7 @@ namespace ReportBuilder.Web.Controllers
                             dt = dtRun;
                             dtPaged = dtPagedRun;
                             dtCols = dtRun.Columns.Count;
+                            fields.AddRange(sqlFields);
                         }
                         else if (i > 0)
                         {
@@ -222,6 +223,7 @@ namespace ReportBuilder.Web.Controllers
                             {
                                 var col = dtPagedRun.Columns[j++];
                                 dtPaged.Columns.Add($"{col.ColumnName} ({series[i - 1]})", col.DataType);
+                                fields.Add(sqlFields[j-1]);
                             }
                             
                             foreach(DataRow dr in dtPaged.Rows)
