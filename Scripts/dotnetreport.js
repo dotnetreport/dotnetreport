@@ -726,8 +726,8 @@ var reportViewModel = function (options) {
 	self.AllSqlQuries = ko.observable("");
 
 	self.canAddSeries = ko.computed(function () {
-		var c1 = self.dateFields().length > 0 && ['Bar', 'Line'].indexOf(self.ReportType()) >= 0;
-		var c2 = _.filter(self.FilterGroups(), function (g) { return _.filter(g.Filters(), function (x) { return x.Operator() == 'range' && x.Value() && x.Value().indexOf('This') == 0; }).length > 0 }).length > 0;
+		var c1 = self.dateFields().length > 0 && ['Group', 'Bar', 'Line'].indexOf(self.ReportType()) >= 0 && self.SelectedFields()[0].fieldType == 'DateTime';
+		var c2 = _.filter(self.FilterGroups(), function (g) { return _.filter(g.Filters(), function (x) { return x.Operator() == 'range' && x.Value() && x.Value().indexOf('This') == 0; }).length > 0; }).length > 0;
 		return c1 && c2;
 	});
 
@@ -873,7 +873,7 @@ var reportViewModel = function (options) {
 
 		return groups;
 	};
-	self.SeriresDataIntoFilter = function (filtergroup, index) {
+	self.SeriesDataIntoFilter = function (filtergroup, index) {
 		
 		var groups = [];
 		_.forEach(filtergroup, function (g) {
@@ -882,14 +882,14 @@ var reportViewModel = function (options) {
 			var filters = [];
 			_.forEach(seriesFilter, function (e, i) {
 				
-				var f =  {
+				var f = {
 					SavedReportId: self.ReportID(),
 					FieldId: e.Field().fieldId,
 					AndOr: "AND",
 					Operator: e.Operator().toLowerCase(),
 					Value1: e.Operator() == "in" || e.Operator() == "not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 ? "blank" : e.Value()),
 					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
-				} 
+				};
 
 				if (f != null && !f.Value1 && !f.Value2) {
 					f = null;
@@ -901,7 +901,7 @@ var reportViewModel = function (options) {
 				SavedReportId: self.ReportID(),
 				isRoot: g.isRoot,
 				AndOr: g.AndOr(),
-				Filters: filters,
+				Filters: filters
 			});
 
 		});
@@ -912,7 +912,7 @@ var reportViewModel = function (options) {
 		
 		drilldown = drilldown || [];
 
-		var filters = IsComparision ? self.SeriresDataIntoFilter(self.FilterGroups(), index) : self.BuildFilterData(self.FilterGroups());
+		var filters = IsComparision ? self.SeriesDataIntoFilter(self.FilterGroups(), index) : self.BuildFilterData(self.FilterGroups());
 
 		return {
 			ReportID: self.ReportID(),
@@ -998,11 +998,11 @@ var reportViewModel = function (options) {
 					ReportJson: JSON.stringify(self.BuildReportData([], IsComparision, i-1)),
 					adminMode: self.adminMode()
 				}),
-				async: false,
+				async: false
 			}).done(function (result) {
 				
 				_resultObj = result;
-				self.AllSqlQuries(self.AllSqlQuries() + (result.sql + ","))
+				self.AllSqlQuries(self.AllSqlQuries() + (result.sql + ","));
 				
 				if (result.d) { result = result.d; }
 				self.ReportID(result.reportId);
@@ -1045,9 +1045,7 @@ var reportViewModel = function (options) {
 				reportType: self.ReportType(),
 				selectedFolder: self.SelectedFolder() != null ? self.SelectedFolder().Id : 0,
 				ReportSeries: _.map(self.AdditionalSeries(), function (e, i) {
-					
 					return e.Value();
-				
 				})
 			});
         }
