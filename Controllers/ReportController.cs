@@ -156,7 +156,7 @@ namespace ReportBuilder.Web.Controllers
         }
 
         public JsonResult RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, bool desc = false, string ReportSeries = null)
-    {
+        {
             string sql = "";
             try
             {
@@ -164,16 +164,16 @@ namespace ReportBuilder.Web.Controllers
                 {
                     throw new Exception("Query not found");
                 }
-                var AllSQL = reportSql.Split(new string[] { "%2C" }, StringSplitOptions.RemoveEmptyEntries);
+                var allSqls = reportSql.Split(new string[] { "%2C" }, StringSplitOptions.RemoveEmptyEntries);
                 DataTable dt = null;
-                var AllDt = new DataTable();
                 var dtPaged = new DataTable();
                 int Counter = 0;
-                List<string> SqlField = new List<string>();
-                string[] RelevantColumn = { "DATE", "YEAR", "MONTH", "WEEK", "DAYS" };
-                for (int i = 0; i < AllSQL.Length; i++)
+                List<string> fields = new List<string>();
+                string[] relevantColumns = { "DATE", "YEAR", "MONTH", "WEEK", "DAYS" };
+
+                for (int i = 0; i < allSqls.Length; i++)
                 {
-                    sql = DotNetReportHelper.Decrypt(AllSQL[i]);
+                    sql = DotNetReportHelper.Decrypt(allSqls[i]);
 
                     var sqlObj = sql.Substring(0, sql.IndexOf("FROM")).Replace("SELECT", "").Trim();
                     var sqlFields = Regex.Split(sqlObj, "], (?![^\\(]*?\\))").Where(x => x != "CONVERT(VARCHAR(3)").ToArray();
@@ -192,18 +192,24 @@ namespace ReportBuilder.Web.Controllers
                     }
 
                     // Execute sql
-                   
+                    DataTable masterDt = null;
                     using (var conn = new SqlConnection(ConfigurationManager.ConnectionStrings[connectKey].ConnectionString))
                     {
-                        int RelevantColumenIndex = 0;
+                        int relevantColumnIndex = 0;
                         dt = new DataTable();
                        
                         conn.Open();
                         var command = new SqlCommand(sql, conn);
                         var adapter = new SqlDataAdapter(command);
                         adapter.Fill(dt);
+                        dtPaged = (dt.Rows.Count > 0) ? dtPaged = dt.AsEnumerable().Skip((pageNumber - 1) * pageSize).Take(pageSize).CopyToDataTable() : dt;
+
                         string[] Series = { };
-                        if (i > 0)
+                        if (i == 0)
+                        {
+                            masterDt = dtPaged;
+                        }
+                        else if (i > 0)
                         {
                             if (dt.Rows.Count > 0)
                             {
@@ -223,11 +229,11 @@ namespace ReportBuilder.Web.Controllers
                                     Counter = Counter + 1;
                                     k++;
                                 }
-                                for (int r = 0; r < RelevantColumn.Length; r++)
+                                for (int r = 0; r < relevantColumns.Length; r++)
                                 {
-                                    if (TempCheckColumn.Contains(RelevantColumn[r]))
+                                    if (TempCheckColumn.Contains(relevantColumns[r]))
                                     {
-                                        RelevantColumenIndex = r;
+                                        relevantColumnIndex = r;
                                         break;
                                     }
                                 }
@@ -242,13 +248,13 @@ namespace ReportBuilder.Web.Controllers
                                         if (dc.ColumnName != "TEMP" + (i - 1))
                                         {
                                             var sqlField = sqlFields[j++];
-                                            SqlField.Add(sqlField.Substring(0, sqlField.IndexOf("AS")).Trim());
+                                            fields.Add(sqlField.Substring(0, sqlField.IndexOf("AS")).Trim());
 
                                         }
 
                                         Dy_ColumnValue = dc.DataType == typeof(DateTime) ? Convert.ToDateTime(Value).Year.ToString() : dc.DataType == typeof(string) && dc.ColumnName != "TEMP" + (i - 1) ? Value : Dy_ColumnValue;
 
-                                        if (!RelevantColumn.Contains(dc.ColumnName.ToUpper()) && (dc.DataType == typeof(double) || dc.DataType == typeof(Int32)))
+                                        if (!relevantColumns.Contains(dc.ColumnName.ToUpper()) && (dc.DataType == typeof(double) || dc.DataType == typeof(Int32)))
                                         {
                                             if (!dc.ColumnName.Contains(Dy_ColumnValue) && dc.ColumnName != "TEMP" + (i - 1))
                                             {
@@ -259,7 +265,7 @@ namespace ReportBuilder.Web.Controllers
                                             if (!dtPaged.Columns.Contains(dc.ColumnName.ToUpper().Trim()) && dc.ColumnName != "TEMP" + (i - 1))
                                             {
                                                 dtPaged.Columns.Add(dc.ColumnName.Trim(), dc.DataType);
-                                                SqlField.Add(dc.ColumnName.Trim());
+                                                fields.Add(dc.ColumnName.Trim());
                                                 // dt.Columns.Add(dc.ColumnName.Trim(), dc.DataType);
                                             }
                                         }
@@ -281,7 +287,7 @@ namespace ReportBuilder.Web.Controllers
                                 foreach (DataColumn dc in dt.Columns)
                                 {
                                         var sqlField = sqlFields[j++];
-                                        SqlField.Add(sqlField.Substring(0, sqlField.IndexOf("AS")).Trim());
+                                        fields.Add(sqlField.Substring(0, sqlField.IndexOf("AS")).Trim());
 
 
                                 }
@@ -299,13 +305,13 @@ namespace ReportBuilder.Web.Controllers
                         }
                         else
                         {
-                            if(AllSQL.Length == 1)
+                            if(allSqls.Length == 1)
                             {
                                 int j = 0;
                                 foreach (DataColumn dc in dt.Columns)
                                 {
                                     var sqlField = sqlFields[j++];
-                                    SqlField.Add(sqlField.Substring(0, sqlField.IndexOf("AS")).Trim());
+                                    fields.Add(sqlField.Substring(0, sqlField.IndexOf("AS")).Trim());
 
 
                                 }
@@ -321,9 +327,9 @@ namespace ReportBuilder.Web.Controllers
                 dtPaged = (dtPaged.Rows.Count > 0) ? dtPaged = dtPaged.AsEnumerable().Skip((pageNumber - 1) * pageSize).Take(pageSize).CopyToDataTable() : dtPaged;
                 var model = new DotNetReportResultModel
                 {
-                    ReportData = DataTableToDotNetReportDataModel(dtPaged, SqlField),
-                    Warnings = GetWarnings(AllSQL[0]),
-                    ReportSql = AllSQL[0],
+                    ReportData = DataTableToDotNetReportDataModel(dtPaged, fields),
+                    Warnings = GetWarnings(allSqls[0]),
+                    ReportSql = allSqls[0],
                     ReportDebug = Request.Url.Host.Contains("localhost"),
                     Pager = new DotNetReportPagerModel
                     {
