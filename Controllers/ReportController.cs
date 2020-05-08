@@ -253,7 +253,7 @@ namespace ReportBuilder.Web.Controllers
                                     j = 1;
                                     while (j < dtCols)
                                     {
-                                        dr[j + dtCols-1] = match[j];
+                                        dr[j + i + dtCols-2] = match[j];
                                         j++;
                                     }
                                 }
