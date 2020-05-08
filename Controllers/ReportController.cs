@@ -190,7 +190,14 @@ namespace ReportBuilder.Web.Controllers
                         {
                             sortBy = sortBy.Replace("MONTH(", "CONVERT(VARCHAR(3), DATENAME(MONTH, ");
                         }
-                        sql = sql.Substring(0, sql.IndexOf("ORDER BY")) + "ORDER BY " + sortBy + (desc ? " DESC" : "");
+                        if (!sql.Contains("ORDER BY"))
+                        {
+                            sql = sql + "ORDER BY " + sortBy + (desc ? " DESC" : "");
+                        }
+                        else
+                        {
+                            sql = sql.Substring(0, sql.IndexOf("ORDER BY")) + "ORDER BY " + sortBy + (desc ? " DESC" : "");
+                        }
                     }
 
                     // Execute sql
