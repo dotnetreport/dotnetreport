@@ -228,7 +228,19 @@ namespace ReportBuilder.Web.Controllers
                             
                             foreach(DataRow dr in dtPaged.Rows)
                             {
-                                var match = dtPagedRun.AsEnumerable().Where(r => r.Field<string>(0) == (string)dr[0]).FirstOrDefault();
+                                DataRow match = null;
+                                if (fields[0].ToUpper().StartsWith("CONVERT(VARCHAR(10)")) // group by day
+                                {
+                                    match = dtPagedRun.AsEnumerable().Where(r => !string.IsNullOrEmpty(r.Field<string>(0)) && !string.IsNullOrEmpty((string)dr[0]) && Convert.ToDateTime(r.Field<string>(0)).Day == Convert.ToDateTime((string)dr[0]).Day).FirstOrDefault();
+                                }
+                                else if (fields[0].ToUpper().StartsWith("CONVERT(VARCHAR(3)")) // group by month/year
+                                {
+
+                                }
+                                else
+                                {
+                                    match = dtPagedRun.AsEnumerable().Where(r => r.Field<string>(0) == (string)dr[0]).FirstOrDefault();
+                                }
                                 if (match != null)
                                 {
                                     j = 1;
