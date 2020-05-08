@@ -270,6 +270,7 @@ var manageAccess = function (options) {
 };
 
 var reportViewModel = function (options) {
+	
 	var self = this;
 
 	options = options || {};
@@ -281,6 +282,9 @@ var reportViewModel = function (options) {
 	self.currentUserId = options.userSettings.userId;
 	self.currentUserRole = (options.userSettings.currentUserRoles || []).join();
 	self.currentUserName = options.userSettings.currentUserName;
+	self.AllSqlQuries = ko.observable(typeof options.AllSqlQuries === "undefined" ? "" : options.AllSqlQuries);
+	//self.AllSqlQuries = options.userSettings.AllSqlQuries
+	self.ReportSeries = ko.observable(typeof options.ReportSeries === "undefined" ? "" : options.ReportSeries)
 	self.allowAdmin = ko.observable(options.userSettings.allowAdminMode);
 	self.ChartData = ko.observable();
 	self.ReportName = ko.observable();
@@ -723,8 +727,7 @@ var reportViewModel = function (options) {
 		return _.filter(self.SelectedFields(), function (x) { return x.fieldType == "DateTime"; });
 	});
 	self.TotalSeries = ko.observable(0);
-	self.AllSqlQuries = ko.observable("");
-
+	
 	self.canAddSeries = ko.computed(function () {
 		var c1 = self.dateFields().length > 0 && ['Group', 'Bar', 'Line'].indexOf(self.ReportType()) >= 0 && self.SelectedFields()[0].fieldType == 'DateTime';
 		var c2 = _.filter(self.FilterGroups(), function (g) { return _.filter(g.Filters(), function (x) { return x.Operator() == 'range' && x.Value() && x.Value().indexOf('This') == 0; }).length > 0; }).length > 0;
@@ -1570,7 +1573,8 @@ var reportViewModel = function (options) {
 
 	self.changeSort = function (sort) {
 		self.pager.changeSort(sort);
-		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey());
+		var sql = self.AllSqlQuries();
+		self.ExecuteReportQuery(self.AllSqlQuries(), self.currentConnectKey(), self.ReportSeries());
 		return false;
 	};
 

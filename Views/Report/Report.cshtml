@@ -16,7 +16,7 @@
 *@
 
 @section scripts{
-<script type="text/javascript">
+    <script type="text/javascript">
     function printReport() {
         var printWindow = window.open("");
         printWindow.document.open();
@@ -55,7 +55,8 @@
             reportMode: "execute",
             reportSql: "@Model.ReportSql",
             reportConnect: "@Model.ConnectKey",
-            ReportSeries : "@Model.ReportSeries"
+            ReportSeries: "@Model.ReportSeries",
+            AllSqlQuries : "@Model.ReportSql"
         });
 
         ko.applyBindings(vm);
@@ -66,7 +67,7 @@
         });
     });
 
-</script>
+    </script>
 }
 
 <div data-bind="with: ReportResult">
