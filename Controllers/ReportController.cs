@@ -155,7 +155,7 @@ namespace ReportBuilder.Web.Controllers
 
         }
 
-        public JsonResult RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, bool desc = false, string ReportSeries = null)
+        public JsonResult RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, bool desc = false, string reportSeries = null)
         {
             var sql = "";
 
@@ -168,6 +168,7 @@ namespace ReportBuilder.Web.Controllers
                 var allSqls = reportSql.Split(new string[] { "%2C" }, StringSplitOptions.RemoveEmptyEntries);
                 var dt = new DataTable();
                 var dtPaged = new DataTable();
+                var dtCols = 0;
 
                 List<string> fields = new List<string>();
                 string[] relevantColumns = { "DATE", "YEAR", "MONTH", "WEEK", "DAYS" };
@@ -203,19 +204,41 @@ namespace ReportBuilder.Web.Controllers
                         adapter.Fill(dtRun);
                         dtPagedRun = (dtRun.Rows.Count > 0) ? dtPagedRun = dtRun.AsEnumerable().Skip((pageNumber - 1) * pageSize).Take(pageSize).CopyToDataTable() : dtRun;
 
-                        string[] Series = { };
+                        string[] series = { };
                         if (i == 0)
                         {
                             dt = dtRun;
                             dtPaged = dtPagedRun;
+                            dtCols = dtRun.Columns.Count;
                         }
                         else if (i > 0)
                         {
-                           // merge in to dt
+                            // merge in to dt
+                            if (!string.IsNullOrEmpty(reportSeries))
+                                series = reportSeries.Split(new string[] { "%2C" }, StringSplitOptions.RemoveEmptyEntries);
 
-                        }                                                
-                    }
-                   
+                            var j = 1;
+                            while (j < dtPagedRun.Columns.Count)
+                            {
+                                var col = dtPagedRun.Columns[j++];
+                                dtPaged.Columns.Add($"{col.ColumnName} ({series[i - 1]})", col.DataType);
+                            }
+                            
+                            foreach(DataRow dr in dtPaged.Rows)
+                            {
+                                var match = dtPagedRun.AsEnumerable().Where(r => r.Field<string>(0) == (string)dr[0]).FirstOrDefault();
+                                if (match != null)
+                                {
+                                    j = 1;
+                                    while (j < dtCols)
+                                    {
+                                        dr[j + dtCols-1] = match[j];
+                                        j++;
+                                    }
+                                }
+                            }
+                        }
+                    }                   
                 }
                 
                 var model = new DotNetReportResultModel
