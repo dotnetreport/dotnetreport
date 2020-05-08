@@ -157,7 +157,8 @@ namespace ReportBuilder.Web.Controllers
 
         public JsonResult RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, bool desc = false, string ReportSeries = null)
         {
-            string sql = "";
+            var sql = "";
+
             try
             {
                 if (string.IsNullOrEmpty(reportSql))
@@ -165,9 +166,9 @@ namespace ReportBuilder.Web.Controllers
                     throw new Exception("Query not found");
                 }
                 var allSqls = reportSql.Split(new string[] { "%2C" }, StringSplitOptions.RemoveEmptyEntries);
-                DataTable dt = null;
+                var dt = new DataTable();
                 var dtPaged = new DataTable();
-                int Counter = 0;
+
                 List<string> fields = new List<string>();
                 string[] relevantColumns = { "DATE", "YEAR", "MONTH", "WEEK", "DAYS" };
 
@@ -192,139 +193,31 @@ namespace ReportBuilder.Web.Controllers
                     }
 
                     // Execute sql
-                    DataTable masterDt = null;
+                    var dtRun = new DataTable();
+                    var dtPagedRun = new DataTable();
                     using (var conn = new SqlConnection(ConfigurationManager.ConnectionStrings[connectKey].ConnectionString))
                     {
-                        int relevantColumnIndex = 0;
-                        dt = new DataTable();
-                       
                         conn.Open();
                         var command = new SqlCommand(sql, conn);
                         var adapter = new SqlDataAdapter(command);
-                        adapter.Fill(dt);
-                        dtPaged = (dt.Rows.Count > 0) ? dtPaged = dt.AsEnumerable().Skip((pageNumber - 1) * pageSize).Take(pageSize).CopyToDataTable() : dt;
+                        adapter.Fill(dtRun);
+                        dtPagedRun = (dtRun.Rows.Count > 0) ? dtPagedRun = dtRun.AsEnumerable().Skip((pageNumber - 1) * pageSize).Take(pageSize).CopyToDataTable() : dtRun;
 
                         string[] Series = { };
                         if (i == 0)
                         {
-                            masterDt = dtPaged;
+                            dt = dtRun;
+                            dtPaged = dtPagedRun;
                         }
                         else if (i > 0)
                         {
-                            if (dt.Rows.Count > 0)
-                            {
-                                if (!string.IsNullOrEmpty(ReportSeries))
-                                    Series = ReportSeries.Split(new string[] { "%2C" }, StringSplitOptions.RemoveEmptyEntries);
-                                string TempCheckColumn = string.Empty;
-                                int Inc = Convert.ToInt32(Math.Ceiling((decimal)(Series.Length) / 2));
-                                int k = 0;
-                                while (k < i)
-                                {
-                                    var TempDc = new DataColumn();
+                           // merge in to dt
 
-                                    TempDc.ColumnName = "TEMP" + Counter;
-                                    dt.Columns.Add(TempDc);
-                                    TempCheckColumn = Series.Length > 0 ? Series[k].ToUpper() : string.Empty;
-                                    TempDc.SetOrdinal(k + 1);
-                                    Counter = Counter + 1;
-                                    k++;
-                                }
-                                for (int r = 0; r < relevantColumns.Length; r++)
-                                {
-                                    if (TempCheckColumn.Contains(relevantColumns[r]))
-                                    {
-                                        relevantColumnIndex = r;
-                                        break;
-                                    }
-                                }
-                                string Dy_ColumnValue = string.Empty;
-                                foreach (DataRow dr in dt.Rows)
-                                {
-
-                                    int j = 0;
-                                    foreach (DataColumn dc in dt.Columns)
-                                    {
-                                        var Value = dr[dc].ToString();
-                                        if (dc.ColumnName != "TEMP" + (i - 1))
-                                        {
-                                            var sqlField = sqlFields[j++];
-                                            fields.Add(sqlField.Substring(0, sqlField.IndexOf("AS")).Trim());
-
-                                        }
-
-                                        Dy_ColumnValue = dc.DataType == typeof(DateTime) ? Convert.ToDateTime(Value).Year.ToString() : dc.DataType == typeof(string) && dc.ColumnName != "TEMP" + (i - 1) ? Value : Dy_ColumnValue;
-
-                                        if (!relevantColumns.Contains(dc.ColumnName.ToUpper()) && (dc.DataType == typeof(double) || dc.DataType == typeof(Int32)))
-                                        {
-                                            if (!dc.ColumnName.Contains(Dy_ColumnValue) && dc.ColumnName != "TEMP" + (i - 1))
-                                            {
-                                                if (!dtPaged.Columns.Contains(dc.ColumnName.ToUpper().Trim() + " " + Dy_ColumnValue))
-                                                    dc.ColumnName = dc.ColumnName + " " + Dy_ColumnValue;
-                                            }
-                                            // Year = "";
-                                            if (!dtPaged.Columns.Contains(dc.ColumnName.ToUpper().Trim()) && dc.ColumnName != "TEMP" + (i - 1))
-                                            {
-                                                dtPaged.Columns.Add(dc.ColumnName.Trim(), dc.DataType);
-                                                fields.Add(dc.ColumnName.Trim());
-                                                // dt.Columns.Add(dc.ColumnName.Trim(), dc.DataType);
-                                            }
-                                        }
-                                        else
-                                        {
-
-                                        }
-
-                                        dr[dc] = string.IsNullOrEmpty(dr[dc].ToString()) ? 0 : dr[dc];
-                                    }
-
-                                    dtPaged.Rows.Add(dr.ItemArray);
-                                }
-
-                            }
-                            else
-                            {
-                                int j = 0;
-                                foreach (DataColumn dc in dt.Columns)
-                                {
-                                        var sqlField = sqlFields[j++];
-                                        fields.Add(sqlField.Substring(0, sqlField.IndexOf("AS")).Trim());
-
-
-                                }
-                            }
-                            //        foreach (DataRow dr in dtPaged.Rows)
-                            //{
-                            //    foreach (DataColumn dc in dtPaged.Columns)
-                            //    {
-                            //        var Value = dr[dc].ToString();
-                            //         dr[dc] = dr[dc];
-                            //        dr[dc] = string.IsNullOrEmpty(dr[dc].ToString()) ? 0 : dr[dc];
-                            //    }
-                            //   // dtPaged.Rows.Add(dr.ItemArray);
-                            //}
-                        }
-                        else
-                        {
-                            if(allSqls.Length == 1)
-                            {
-                                int j = 0;
-                                foreach (DataColumn dc in dt.Columns)
-                                {
-                                    var sqlField = sqlFields[j++];
-                                    fields.Add(sqlField.Substring(0, sqlField.IndexOf("AS")).Trim());
-
-
-                                }
-                            }
-                            dtPaged = dt;
-                        }
-                        
+                        }                                                
                     }
                    
                 }
-               // dt.Columns.re
-                //dtPaged = dtPaged.Rows.Cast<DataRow>().Where(row => !row.ItemArray.All(field => field is DBNull || string.IsNullOrWhiteSpace(field as string))).CopyToDataTable();
-                dtPaged = (dtPaged.Rows.Count > 0) ? dtPaged = dtPaged.AsEnumerable().Skip((pageNumber - 1) * pageSize).Take(pageSize).CopyToDataTable() : dtPaged;
+                
                 var model = new DotNetReportResultModel
                 {
                     ReportData = DataTableToDotNetReportDataModel(dtPaged, fields),
