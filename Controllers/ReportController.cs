@@ -171,15 +171,15 @@ namespace ReportBuilder.Web.Controllers
                 var dtCols = 0;
 
                 List<string> fields = new List<string>();
-                string[] relevantColumns = { "DATE", "YEAR", "MONTH", "WEEK", "DAYS" };
-
                 for (int i = 0; i < allSqls.Length; i++)
                 {
                     sql = DotNetReportHelper.Decrypt(allSqls[i]);
 
-                    var sqlObj = sql.Substring(0, sql.IndexOf("FROM")).Replace("SELECT", "").Trim();
-                    var sqlFields = Regex.Split(sqlObj, "], (?![^\\(]*?\\))").Where(x => x != "CONVERT(VARCHAR(3)").ToArray();
-                   
+                    var sqlSplit = sql.Substring(0, sql.IndexOf("FROM")).Replace("SELECT", "").Trim();
+                    var sqlFields = Regex.Split(sqlSplit, "], (?![^\\(]*?\\))").Where(x => x != "CONVERT(VARCHAR(3)")
+                        .Select(x => x.EndsWith("]") ? x : x + "]")
+                        .ToList();
+
                     if (!String.IsNullOrEmpty(sortBy))
                     {
                         if (sortBy.StartsWith("DATENAME(MONTH, "))
@@ -521,7 +521,7 @@ namespace ReportBuilder.Web.Controllers
             return "";
         }        
 
-        private DotNetReportDataModel DataTableToDotNetReportDataModel(DataTable dt, List<string> sql)
+        private DotNetReportDataModel DataTableToDotNetReportDataModel(DataTable dt, List<string> sqlFields)
         {
             var model = new DotNetReportDataModel
             {
@@ -529,15 +529,13 @@ namespace ReportBuilder.Web.Controllers
                 Rows = new List<DotNetReportDataRowModel>()
             };
 
-
-            var DV = dt.DefaultView;
             int i = 0;
             foreach (DataColumn col in dt.Columns)
             {
-               
+                var sqlField = sqlFields[i++];
                 model.Columns.Add(new DotNetReportDataColumnModel
                 {
-                    SqlField = sql[i++],
+                    SqlField = sqlField.Substring(0, sqlField.IndexOf("AS")).Trim(),
                     ColumnName = col.ColumnName,
                     DataType = col.DataType.ToString(),
                     IsNumeric = IsNumericType(col.DataType)
