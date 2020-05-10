@@ -300,6 +300,7 @@ var reportViewModel = function (options) {
 	self.SelectedField = ko.observable();
 
 	self.AdditionalSeries = ko.observableArray([]);
+	self.ReportSeries = '';
 
 	self.IncludeSubTotal = ko.observable(false);
 	self.ShowUniqueRecords = ko.observable(false);
@@ -363,11 +364,11 @@ var reportViewModel = function (options) {
 	self.manageAccess = manageAccess(options);
 
 	self.pager.currentPage.subscribe(function () {
-		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey());
+		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey(), self.ReportSeries);
 	});
 
 	self.pager.pageSize.subscribe(function () {
-		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey());
+		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey(), self.ReportSeries);
 	});
 
 	self.createNewReport = function () {
@@ -1019,7 +1020,7 @@ var reportViewModel = function (options) {
 					if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard") {
 						
 						IsExecuteReportQuery = true;
-						self.ExecuteReportQuery(result.sql, result.connectKey);
+						self.ExecuteReportQuery(result.sql, result.connectKey, self.ReportSeries);
 					}
 				}
 			});
@@ -1077,6 +1078,7 @@ var reportViewModel = function (options) {
 			reportResult.Warnings(result.Warnings);
 			reportResult.ReportDebug(result.ReportDebug);
 			reportResult.ReportSql(result.ReportSql);
+			self.ReportSeries = reportSeries;
 
 			result.ReportData.IsDrillDown = ko.observable(false);
 			_.forEach(result.ReportData.Rows, function (e) {
@@ -1102,7 +1104,8 @@ var reportViewModel = function (options) {
 							pageNumber: e.pager.currentPage(),
 							pageSize: e.pager.pageSize(),
 							sortBy: e.pager.sortColumn() || '',
-							desc: e.pager.sortDescending() || false
+							desc: e.pager.sortDescending() || false,
+							ReportSeries: reportSeries
 						})
 					}).done(function (ddData) {
 						if (ddData.d) { ddData = ddData.d; }
@@ -1570,7 +1573,7 @@ var reportViewModel = function (options) {
 
 	self.changeSort = function (sort) {
 		self.pager.changeSort(sort);
-		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey());
+		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey(), self.ReportSeries);
 		return false;
 	};
 
