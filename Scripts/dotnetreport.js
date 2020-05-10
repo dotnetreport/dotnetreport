@@ -909,11 +909,11 @@ var reportViewModel = function (options) {
 
 		return groups;
 	};
-	self.BuildReportData = function (drilldown, IsComparision, index) {
+	self.BuildReportData = function (drilldown, isComparision, index) {
 		
 		drilldown = drilldown || [];
 
-		var filters = IsComparision ? self.SeriesDataIntoFilter(self.FilterGroups(), index) : self.BuildFilterData(self.FilterGroups());
+		var filters = isComparision ? self.SeriesDataIntoFilter(self.FilterGroups(), index) : self.BuildFilterData(self.FilterGroups());
 
 		return {
 			ReportID: self.ReportID(),
@@ -980,60 +980,60 @@ var reportViewModel = function (options) {
 			return;
 		}
 		let i = 0;
-		let IsComparision = false;
-		let IsExecuteReportQuery = false;
-		let _resultObj = null;
-		let SeriesCount = self.AdditionalSeries().length;
+		let isComparision = false;
+		let isExecuteReportQuery = false;
+		let _result = null;
+		let seriesCount = self.AdditionalSeries().length;
 		do {
 			if (i > 0) {
-				IsComparision = true;
+				isComparision = true;
 				self.CanSaveReports(false);
-            }
-			
+			}
+
 			ajaxcall({
 				url: options.runReportApiUrl,
 				type: "POST",
 				data: JSON.stringify({
 					method: "/ReportApi/RunReport",
 					SaveReport: self.CanSaveReports() ? self.SaveReport() : false,
-					ReportJson: JSON.stringify(self.BuildReportData([], IsComparision, i-1)),
+					ReportJson: JSON.stringify(self.BuildReportData([], isComparision, i - 1)),
 					adminMode: self.adminMode()
 				}),
 				async: false
 			}).done(function (result) {
-				
-				_resultObj = result;
+
+				_result = result;
 				self.AllSqlQuries(self.AllSqlQuries() + (result.sql + ","));
-				
+
 				if (result.d) { result = result.d; }
 				self.ReportID(result.reportId);
 				if (self.SaveReport()) {
-					
-					if (saveOnly && SeriesCount === 0 ) {
+
+					if (saveOnly && seriesCount === 0) {
 						//SeriesCount = 0;
 						toastr.success("Report Saved");
-					    self.LoadAllSavedReports();
+						self.LoadAllSavedReports();
 					}
 				}
-				
+
 				if (!saveOnly) {
 					if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard") {
-						
-						IsExecuteReportQuery = true;
+
+						isExecuteReportQuery = true;
 						self.ExecuteReportQuery(result.sql, result.connectKey, self.ReportSeries);
 					}
 				}
 			});
 			i++;
 		}
-		while (i < SeriesCount + 1)
+		while (i < seriesCount + 1);
 		
-		if (IsExecuteReportQuery === false) {
+		if (isExecuteReportQuery === false) {
 			if (saveOnly) {
 				toastr.success("Report Saved");
             }
 			redirectToReport(options.runReportUrl, {
-				reportId: _resultObj.reportId,
+				reportId: _result.reportId,
 				reportName: self.ReportName(),
 				reportDescription: self.ReportDescription(),
 				includeSubTotal: self.IncludeSubTotal(),
@@ -1041,7 +1041,7 @@ var reportViewModel = function (options) {
 				aggregateReport: self.AggregateReport(),
 				showDataWithGraph: self.ShowDataWithGraph(),
 				reportSql: self.AllSqlQuries(),
-				connectKey: _resultObj.connectKey,
+				connectKey: _result.connectKey,
 				reportFilter: JSON.stringify(_.map(self.FlyFilters(), function (x) { return ko.toJS(x); })),
 				reportType: self.ReportType(),
 				selectedFolder: self.SelectedFolder() != null ? self.SelectedFolder().Id : 0,

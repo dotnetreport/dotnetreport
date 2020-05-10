@@ -159,7 +159,7 @@ namespace ReportBuilder.Web.Controllers
         {
             var sql = "";
 
-            try
+            //try
             {
                 if (string.IsNullOrEmpty(reportSql))
                 {
@@ -286,18 +286,18 @@ namespace ReportBuilder.Web.Controllers
 
             }
 
-            catch (Exception ex)
-            {
-                var model = new DotNetReportResultModel
-                {
-                    ReportData = new DotNetReportDataModel(),
-                    ReportSql = sql,
-                    HasError = true,
-                    Exception = ex.Message
-                };
+            //catch (Exception ex)
+            //{
+            //    var model = new DotNetReportResultModel
+            //    {
+            //        ReportData = new DotNetReportDataModel(),
+            //        ReportSql = sql,
+            //        HasError = true,
+            //        Exception = ex.Message
+            //    };
 
-                return Json(model, JsonRequestBehavior.AllowGet);
-            }
+            //    return Json(model, JsonRequestBehavior.AllowGet);
+            //}
         }
 
         public async Task<JsonResult> GetDashboards(bool adminMode = false)
@@ -504,9 +504,16 @@ namespace ReportBuilder.Web.Controllers
 
                     case TypeCode.Double:
                     case TypeCode.Decimal:
-                        return col.ColumnName.Contains("%")
-                            ? (Convert.ToDouble(row[col].ToString()) / 100).ToString("P2")
-                            : Convert.ToDouble(row[col].ToString()).ToString("C");
+                        try
+                        {
+                            return col.ColumnName.Contains("%")
+                                ? (Convert.ToDouble(row[col].ToString()) / 100).ToString("P2")
+                                : Convert.ToDouble(row[col].ToString()).ToString("C");
+                        }
+                        catch
+                        {
+                            return row[col] != null ? row[col].ToString() : null;
+                        }
 
 
                     case TypeCode.Boolean:
@@ -532,7 +539,7 @@ namespace ReportBuilder.Web.Controllers
                         }
                         else
                         {
-                            return row[col].ToString();
+                            return row[col] != null ? row[col].ToString() : null;
                         }
 
                 }
