@@ -59,7 +59,7 @@ namespace ReportBuilder.Web.Controllers
         }
 
         public ActionResult Report(int reportId, string reportName, string reportDescription, bool includeSubTotal, bool showUniqueRecords,
-            bool aggregateReport, bool showDataWithGraph, string reportSql, string connectKey, string reportFilter, string reportType, int selectedFolder, string ReportSeries)
+            bool aggregateReport, bool showDataWithGraph, string reportSql, string connectKey, string reportFilter, string reportType, int selectedFolder, string reportSeries)
         {
             var model = new DotNetReportModel
             {
@@ -73,7 +73,7 @@ namespace ReportBuilder.Web.Controllers
                 ShowUniqueRecords = showUniqueRecords,
                 ShowDataWithGraph = showDataWithGraph,
                 SelectedFolder = selectedFolder,
-                ReportSeries = !string.IsNullOrEmpty(ReportSeries) ? ReportSeries.Replace("%20", " ") : string.Empty,
+                ReportSeries = !string.IsNullOrEmpty(reportSeries) ? reportSeries.Replace("%20", " ") : string.Empty,
                 ReportFilter = reportFilter // json data to setup filter correctly again
                 
             };
@@ -146,8 +146,8 @@ namespace ReportBuilder.Web.Controllers
                 {
                     var sqlqeuery = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(stringContent);
                     object value;
-                    var KeyValuePair = sqlqeuery.TryGetValue("sql", out value);
-                    var sql = DotNetReportHelper.DecryptTest(value.ToString());
+                    var keyValuePair = sqlqeuery.TryGetValue("sql", out value);
+                    var sql = DotNetReportHelper.Decrypt(value.ToString());
                 }
                 Response.StatusCode = (int)response.StatusCode;
                 return Json((new JavaScriptSerializer()).Deserialize<dynamic>(stringContent), JsonRequestBehavior.AllowGet);

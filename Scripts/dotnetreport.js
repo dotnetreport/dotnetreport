@@ -1044,14 +1044,14 @@ var reportViewModel = function (options) {
 				reportFilter: JSON.stringify(_.map(self.FlyFilters(), function (x) { return ko.toJS(x); })),
 				reportType: self.ReportType(),
 				selectedFolder: self.SelectedFolder() != null ? self.SelectedFolder().Id : 0,
-				ReportSeries: _.map(self.AdditionalSeries(), function (e, i) {
+				reportSeries: _.map(self.AdditionalSeries(), function (e, i) {
 					return e.Value();
 				})
 			});
         }
 	};
 
-	self.ExecuteReportQuery = function (reportSql, connectKey, ReportSeries) {
+	self.ExecuteReportQuery = function (reportSql, connectKey, reportSeries) {
 		
 		if (!reportSql || !connectKey) return;
 
@@ -1066,7 +1066,7 @@ var reportViewModel = function (options) {
 				pageSize: self.pager.pageSize(),
 				sortBy: self.pager.sortColumn() || '',
 				desc: self.pager.sortDescending() || false,
-				ReportSeries: ReportSeries
+				ReportSeries: reportSeries
 			})
 		}).done(function (result) {
 			
@@ -1373,7 +1373,7 @@ var reportViewModel = function (options) {
 		return e;
 	};
 
-	self.LoadReport = function (reportId, filterOnFly, ReportSeries) {
+	self.LoadReport = function (reportId, filterOnFly, reportSeries) {
 		
 		return ajaxcall({
 			url: options.apiUrl,
@@ -1475,7 +1475,7 @@ var reportViewModel = function (options) {
 			self.SaveReport(!filterOnFly && self.CanEdit());
 
 			if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard") {
-				self.ExecuteReportQuery(options.reportSql, options.reportConnect, ReportSeries);
+				self.ExecuteReportQuery(options.reportSql, options.reportConnect, reportSeries);
 			}
 		});
 	};
