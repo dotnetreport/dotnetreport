@@ -159,7 +159,7 @@ namespace ReportBuilder.Web.Controllers
         {
             var sql = "";
 
-            //try
+            try
             {
                 if (string.IsNullOrEmpty(reportSql))
                 {
@@ -286,18 +286,18 @@ namespace ReportBuilder.Web.Controllers
 
             }
 
-            //catch (Exception ex)
-            //{
-            //    var model = new DotNetReportResultModel
-            //    {
-            //        ReportData = new DotNetReportDataModel(),
-            //        ReportSql = sql,
-            //        HasError = true,
-            //        Exception = ex.Message
-            //    };
+            catch (Exception ex)
+            {
+                var model = new DotNetReportResultModel
+                {
+                    ReportData = new DotNetReportDataModel(),
+                    ReportSql = sql,
+                    HasError = true,
+                    Exception = ex.Message
+                };
 
-            //    return Json(model, JsonRequestBehavior.AllowGet);
-            //}
+                return Json(model, JsonRequestBehavior.AllowGet);
+            }
         }
 
         public async Task<JsonResult> GetDashboards(bool adminMode = false)

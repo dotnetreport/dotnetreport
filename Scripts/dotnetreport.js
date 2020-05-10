@@ -1,4 +1,4 @@
-﻿/// .Net Report Builder view model v3.0.3
+﻿/// .Net Report Builder view model v3.1.0
 /// License has to be purchased for use
 /// 2015-2018 (c) www.dotnetreport.com
 function pagerViewModel(args) {
