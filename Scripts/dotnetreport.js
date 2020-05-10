@@ -909,11 +909,11 @@ var reportViewModel = function (options) {
 
 		return groups;
 	};
-	self.BuildReportData = function (drilldown, isComparision, index) {
+	self.BuildReportData = function (drilldown, isComparison, index) {
 		
 		drilldown = drilldown || [];
 
-		var filters = isComparision ? self.SeriesDataIntoFilter(self.FilterGroups(), index) : self.BuildFilterData(self.FilterGroups());
+		var filters = isComparison ? self.SeriesDataIntoFilter(self.FilterGroups(), index) : self.BuildFilterData(self.FilterGroups());
 
 		return {
 			ReportID: self.ReportID(),
@@ -980,13 +980,13 @@ var reportViewModel = function (options) {
 			return;
 		}
 		let i = 0;
-		let isComparision = false;
+		let isComparison = false;
 		let isExecuteReportQuery = false;
 		let _result = null;
 		let seriesCount = self.AdditionalSeries().length;
 		do {
 			if (i > 0) {
-				isComparision = true;
+				isComparison = true;
 				self.CanSaveReports(false);
 			}
 
@@ -996,7 +996,7 @@ var reportViewModel = function (options) {
 				data: JSON.stringify({
 					method: "/ReportApi/RunReport",
 					SaveReport: self.CanSaveReports() ? self.SaveReport() : false,
-					ReportJson: JSON.stringify(self.BuildReportData([], isComparision, i - 1)),
+					ReportJson: JSON.stringify(self.BuildReportData([], isComparison, i - 1)),
 					adminMode: self.adminMode()
 				}),
 				async: false
