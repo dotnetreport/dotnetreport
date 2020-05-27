@@ -5,11 +5,14 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.OleDb;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
 using System.Web;
 using System.Web.Mvc;
+using System.Windows.Media.Animation;
 
 namespace ReportBuilder.Web.Controllers
 {
@@ -19,15 +22,16 @@ namespace ReportBuilder.Web.Controllers
         {
             var connect = GetConnection(databaseApiKey);
             var tables = new List<TableViewModel>();
-
+            var procedures = new List<TableViewModel>();
             tables.AddRange(await GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
             tables.AddRange(await GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
-
+            procedures.AddRange(await GetProcedure("PROCEDURE", connect.AccountApiKey, connect.DatabaseApiKey));
             var model = new ManageViewModel
             {
                 AccountApiKey = connect.AccountApiKey,
                 DatabaseApiKey = connect.DatabaseApiKey,
-                Tables = tables
+                Tables = tables,
+                Procedures = procedures
             };
 
             return View(model);
@@ -286,6 +290,279 @@ namespace ReportBuilder.Web.Controllers
             return tables;
         }
 
+        private async Task<List<TableViewModel>> GetProcedure(string type = "PROCEDURE", string accountKey = null, string dataConnectKey = null)
+        {
+            var tables = new List<TableViewModel>();
+
+            var currentTables = new List<TableViewModel>();
+
+            if (!String.IsNullOrEmpty(accountKey) && !String.IsNullOrEmpty(dataConnectKey))
+            {
+                currentTables = await GetApiTables(accountKey, dataConnectKey);
+            }
+
+            var connString = await GetConnectionString(GetConnection(dataConnectKey));
+            using (OleDbConnection conn = new OleDbConnection(connString))
+            {
+                // open the connection to the database 
+                conn.Open();
+                string Query = @"Select * from StoreProcedures";
+                OleDbCommand cmd = new OleDbCommand(Query, conn);
+                cmd.CommandType = CommandType.Text;
+                DataTable dtProcedures = new DataTable();
+                dtProcedures.Load(cmd.ExecuteReader());
+
+                foreach(DataRow dr in dtProcedures.Rows)
+                {
+                    TableViewModel table = new TableViewModel();
+                    table.Id = Convert.ToInt32(dr["ID"].ToString());
+                    table.TableName = dr["StoreProcedureName"].ToString();
+
+                    // Get Store Procedure Paramater
+                     Query = @"Select * from StoreProcedureColumnDetail where StoreProcedureID = ?";
+                     cmd = new OleDbCommand(Query, conn);
+                    cmd.CommandType = CommandType.Text;
+                    cmd.Parameters.AddWithValue("@ProcedureID", table.Id);
+                    DataTable dtdetail = new DataTable();
+                    dtdetail.Load(cmd.ExecuteReader());
+                    List<ColumnViewModel> columnViewModels = new List<ColumnViewModel>();
+                    foreach(DataRow drdetail in dtdetail.Rows)
+                    {
+                        var column = new ColumnViewModel
+                        {
+                            ColumnName = drdetail["ColumnName"].ToString()
+                        };
+                        columnViewModels.Add(column);
+                    }
+                    table.Columns = columnViewModels;
+                    dtdetail.Clear();
+                    Query = @"Select * from StoreProcedureParameterDetail where StoreProcedureID = ?";
+                    cmd = new OleDbCommand(Query, conn);
+                    cmd.CommandType = CommandType.Text;
+                    cmd.Parameters.AddWithValue("@ProcedureID", table.Id);
+                   
+                    dtdetail.Load(cmd.ExecuteReader());
+                    List<ParameterViewModel> parameterViewModels = new List<ParameterViewModel>();
+                    foreach (DataRow drdetail in dtdetail.Rows)
+                    {
+                        var parameter = new ParameterViewModel
+                        {
+                            ParameterName = drdetail["ParameterName"].ToString(),
+                            ParameterDataTypeString = GetType(ConvertToJetDataType(Convert.ToInt32(drdetail["ParameterDataType"].ToString()))).Name
+                        };
+                        parameterViewModels.Add(parameter);
+                    }
+                    table.Parameters = parameterViewModels;
+                    tables.Add(table);
+                }
+               // cmd.ExecuteReader();
+
+                conn.Close();
+                conn.Dispose();
+            }
+
+
+            return tables;
+        }
+
+        private async Task<List<TableViewModel>> GetApiProcedure(string accountKey, string dataConnectKey)
+        {
+            var tables = new List<TableViewModel>();
+
+
+            return tables;
+        }
+
+        private Type GetType(FieldTypes type)
+        {
+            switch (type)
+            {
+                case FieldTypes.Boolean:
+                    return typeof(bool);
+                case FieldTypes.DateTime:
+                    return typeof(DateTime);
+                case FieldTypes.Double:
+                    return typeof(Double);
+                case FieldTypes.Int:
+                    return typeof(int);
+                case FieldTypes.Money:
+                    return typeof(decimal);
+                case FieldTypes.Varchar:
+                    return typeof(string);
+                default:
+                    return typeof(string);
+
+            }
+        }
+
+        [HttpPost]
+        public async Task<ActionResult> SearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
+        {
+            var tables = new List<TableViewModel>();
+            var connString = await GetConnectionString(GetConnection(dataConnectKey));
+            using (OleDbConnection conn = new OleDbConnection(connString))
+            {
+                // open the connection to the database 
+                conn.Open();
+               // value = value + ";1";
+                // Get the Tables
+               // var SchemaTable = conn.GetOleDbSchemaTable(OleDbSchemaGuid.Procedures, new Object[] { null, value, null, null, });
+
+              //  var dtField = conn.GetOleDbSchemaTable(OleDbSchemaGuid.Procedure_Columns, new object[] { null, null, null });
+              //  var dtField1 = conn.GetOleDbSchemaTable(OleDbSchemaGuid.Procedure_Parameters, new object[] { null, null, value });
+                OleDbCommand cmd = new OleDbCommand(value, conn);
+                cmd.CommandType = CommandType.StoredProcedure;
+                // Get the parameters.
+                OleDbCommandBuilder.DeriveParameters(cmd);
+                List<ParameterViewModel> parameterViewModels = new List<ParameterViewModel>();
+                foreach (OleDbParameter param in cmd.Parameters)
+                {
+                    
+                    if (param.Direction == ParameterDirection.Input)
+                    {
+                        var parameter = new ParameterViewModel
+                        {
+                            ParameterName = param.ParameterName,
+                            ParamterDataTypeOleDbTypeInteger = Convert.ToInt32(param.OleDbType),
+                            ParamterDataTypeOleDbType = param.OleDbType,
+                            
+                            ParameterDataTypeString = GetType(ConvertToJetDataType(Convert.ToInt32(param.OleDbType))).Name
+                        };
+                        parameterViewModels.Add(parameter);
+                    }
+                }
+                DataTable dt = new DataTable();
+                cmd = new OleDbCommand(value, conn);
+                cmd.CommandType = CommandType.StoredProcedure;
+                foreach (var data in parameterViewModels)
+                {
+                    cmd.Parameters.Add(new OleDbParameter { Value = DBNull.Value, ParameterName = data.ParameterName, Direction = ParameterDirection.Input, IsNullable = true });
+                }
+                OleDbDataReader reader = cmd.ExecuteReader();
+                dt = reader.GetSchemaTable();
+                // dt.Load(cmd.ExecuteReader());
+
+                // Store the table names in the class scoped array list of table names
+                List<ColumnViewModel> columnViewModels = new List<ColumnViewModel>();
+                for (int i = 0; i < dt.Rows.Count; i++)
+                {
+                    var column = new ColumnViewModel
+                    {
+                        ColumnName = dt.Rows[i].ItemArray[0].ToString(),
+                        DisplayName = dt.Rows[i].ItemArray[0].ToString()
+                    };
+                    columnViewModels.Add(column);
+                }
+                tables.Add(new TableViewModel
+                {
+                    TableName = value,
+                    Parameters = parameterViewModels,
+                    Columns = columnViewModels
+                });
+                conn.Close();
+                conn.Dispose();
+            }
+
+
+            return Json(tables,JsonRequestBehavior.AllowGet);
+        }
+
+        [HttpPost]
+        public async Task<ActionResult> SaveProcedure(List<TableViewModel> model, string accountKey = null, string dataConnectKey = null)
+        {
+            try
+            {
+                var connString = await GetConnectionString(GetConnection(dataConnectKey));
+                using (OleDbConnection conn = new OleDbConnection(connString))
+                {
+                    // open the connection to the database 
+                    conn.Open();
+                    foreach (var data in model)
+                    {
+                        string Query = @"INSERT into StoreProcedures ([StoreProcedureName]) values (?); SELECT CAST(SCOPE_IDENTITY() AS INT);";
+
+                        OleDbCommand cmd = new OleDbCommand(Query, conn);
+                        cmd.CommandType = CommandType.Text;
+                        cmd.Parameters.AddWithValue("@StoreProcedureName", data.TableName);
+                        var Id = Convert.ToInt32(cmd.ExecuteScalar());
+
+                        foreach (var column in data.Columns)
+                        {
+                            Query = @"INSERT into StoreProcedureColumnDetail ([StoreProcedureID],[ColumnName]) values (?,?)";
+
+                            cmd = new OleDbCommand(Query, conn);
+                            cmd.CommandType = CommandType.Text;
+                            cmd.Parameters.AddWithValue("@StoreProcedureID", Id);
+                            cmd.Parameters.AddWithValue("@ColumnName", column.ColumnName);
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+                        foreach (var para in data.Parameters)
+                        {
+                            Query = @"INSERT into StoreProcedureParameterDetail ([StoreProcedureID],[ParameterName],[ParameterDataType]) values (?,?,?)";
+
+                            cmd = new OleDbCommand(Query, conn);
+                            cmd.CommandType = CommandType.Text;
+                            cmd.Parameters.AddWithValue("@StoreProcedureID", Id);
+                            cmd.Parameters.AddWithValue("@ParameterName", para.ParameterName);
+                            cmd.Parameters.AddWithValue("@ParameterDataType", para.ParamterDataTypeOleDbTypeInteger);
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+                    }
+                    conn.Close();
+                    conn.Dispose();
+                }
+                return Json(1);
+            }
+            catch(OleDbException dbEx)
+            {
+                StringBuilder sb = new StringBuilder();
+                sb.Append(dbEx.ErrorCode + System.Environment.NewLine);
+                sb.Append(dbEx.Message + System.Environment.NewLine);
+                return Json(sb);
+            }
+            catch(Exception ex)
+            {
+                return Json(ex.Message);
+            }
+        }
+
+        [HttpPost]
+        public async Task<ActionResult> DeleteProcedure(int Id = 0, string accountKey = null, string dataConnectKey = null)
+        {
+            try
+            { 
+                var connString = await GetConnectionString(GetConnection(dataConnectKey));
+                using (OleDbConnection conn = new OleDbConnection(connString))
+                {
+                    // open the connection to the database 
+                    conn.Open();
+                    string Query = @"Delete from StoreProcedureColumnDetail where StoreProcedureID = ? ;";
+                    Query += @"Delete from StoreProcedureParameterDetail where StoreProcedureID = ? ;";
+                    Query += @"Delete from StoreProcedures where ID = ? ;";
+                    OleDbCommand cmd = new OleDbCommand(Query, conn);
+                    cmd.CommandType = CommandType.Text;
+                    cmd.Parameters.AddWithValue("@StoreProcedureID", Id);
+                    cmd.Parameters.AddWithValue("@StoreProcedureID", Id);
+                    cmd.Parameters.AddWithValue("@ID", Id);
+                    await cmd.ExecuteNonQueryAsync();
+
+                    conn.Close();
+                    conn.Dispose();
+                }
+                return Json(1);
+            }
+            catch(OleDbException dbEx)
+            {
+                StringBuilder sb = new StringBuilder();
+                sb.Append(dbEx.ErrorCode + System.Environment.NewLine);
+                sb.Append(dbEx.Message + System.Environment.NewLine);
+                return Json(sb);
+            }
+            catch(Exception ex)
+            {
+                return Json(ex.Message);
+            }
+        }
         #endregion
     }
 }

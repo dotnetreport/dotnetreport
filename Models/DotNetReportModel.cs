@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
+using System.Data.OleDb;
 using System.Data.SqlClient;
 using System.IO;
 using System.Security.Cryptography;
@@ -96,9 +97,23 @@ namespace ReportBuilder.Web.Models
         public string AccountIdField { get; set; }
 
         public List<ColumnViewModel> Columns { get; set; }
+
+        public List<ParameterViewModel> Parameters { get; set; }
         public List<string> AllowedRoles { get; set; }
     }
 
+    public class ParameterViewModel
+    {
+        public string ParameterName { get; set; }
+
+        public string ParameterValue { get; set; }
+
+        public string ParameterDataTypeString { get; set; }
+        public Type ParameterDataTypeCLR { get; set; }
+        public OleDbType ParamterDataTypeOleDbType { get; set; }
+        public int ParamterDataTypeOleDbTypeInteger { get; set; }
+
+    }
     public class RelationModel
     {
         public int Id { get; set; }
@@ -165,6 +180,7 @@ namespace ReportBuilder.Web.Models
         public string DatabaseApiKey { get; set; }
 
         public List<TableViewModel> Tables { get; set; }
+        public List<TableViewModel> Procedures { get; set; }
     }
 
     public class DotNetReportApiCall

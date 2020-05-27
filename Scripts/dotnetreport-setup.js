@@ -7,7 +7,11 @@
 	};
 
 	self.DataConnections = ko.observableArray([]);
-	self.Tables = new tablesViewModel(options)
+	self.Tables = new tablesViewModel(options);
+
+	self.Procedures = new proceduresViewModel(options);
+	self.filteredProceduresBySearch = ko.observableArray([]);
+	self.searchprocedurevalue = ko.observable("");
 	self.Joins = ko.observableArray([]);
 	self.currentConnectionKey = ko.observable(self.keys.DatabaseApiKey);
 	self.canSwitchConnection = ko.computed(function () {
@@ -177,6 +181,35 @@
 		}).done(function (result) {
 			self.DataConnections(result);
 			self.currentConnectionKey(self.keys.DatabaseApiKey);
+		});
+	}
+	self.serachStoreProcedure = function () {
+		
+		ajaxcall({
+			url: "/Setup/SearchProcedure",
+			type: 'POST',
+			data: JSON.stringify({
+				value: self.searchprocedurevalue(),
+				accountKey: self.keys.AccountApiKey,
+				dataConnectKey: self.keys.DatabaseApiKey
+			})
+		}).done(function (result) {
+			debugger;
+			self.filteredProceduresBySearch(result)
+		});
+	}
+	self.saveProcedure = function () {
+		var e = ko.mapping.toJS(self.filteredProceduresBySearch());
+		ajaxcall({
+			url: "/Setup/SaveProcedure",
+			type: 'POST',
+			data: JSON.stringify({
+				model: e,
+				account: self.keys.AccountApiKey,
+				dataConnect: self.keys.DatabaseApiKey
+			})
+		}).done(function (result) {
+			toastr.success("Saved Procedure " + e.DisplayName);
 		});
 	}
 
@@ -457,4 +490,41 @@ var tablesViewModel = function (options) {
 		});
 
 	}
+}
+
+var proceduresViewModel = function (options) {
+	var self = this;
+	self.proceduremodel = ko.mapping.fromJS(options.model.Procedures);
+
+	$.each(self.proceduremodel(), function (i, t) {
+
+		t.deleteTable = function (apiKey, dbKey) {
+			var e = ko.mapping.toJS(t);
+
+			bootbox.confirm("Are you sure you would like to delete Procedure '" + e.TableName + "'?", function (r) {
+				if (r) {
+					ajaxcall({
+						url: "/Setup/DeleteProcedure",
+						type: 'POST',
+						data: JSON.stringify({
+							Id: e.Id,
+							accountKey: apiKey,
+							dataConnectKey: dbKey
+							
+						})
+					}).done(function () {
+						toastr.success("Deleted procedure " + e.TableName);
+					});
+				}
+			});
+
+			return;
+		}
+			
+
+	});
+
+	self.filteredProcedures = ko.computed(function () {
+		return self.proceduremodel();
+	})
 }

@@ -135,6 +135,7 @@
         <ul class="nav nav-tabs" role="tablist">
             <li role="presentation" class="active"><a href="#tablesfields" aria-controls="home" role="tab" data-toggle="tab">Tables and Fields</a></li>
             <li role="presentation"><a href="#relations" aria-controls="profile" role="tab" data-toggle="tab">Relations</a></li>
+            <li role="presentation"><a href="#procedure" aria-controls="procedure" role="tab" data-toggle="tab">Procedures</a></li>
         </ul>
     </div>
     <br />
@@ -301,6 +302,69 @@
             </form>
 
         </div>
+        <div id="procedure" class="tab-pane">
+            <br />
+
+            <button class="btn btn-primary" data-toggle="modal" data-target="#procedure-modal" >Search Procedure from database</button>
+            <br />
+            <br />
+            <div class="menu row" data-bind="with: Procedures" style="margin-left: 20px;">
+                <!-- ko foreach: filteredProcedures -->
+
+                <div class="menu-category panel panel-default">
+
+                    <div class="panel-heading clearfix" style="">
+                        <div class="pull-left">
+                            <label>
+                                <span data-bind="text: TableName"></span>
+                                <span class="label-xs">Procedure</span>
+                            </label>
+                            <button class="btn btn-xs" title="Delete this Procedure" data-bind="click: function(){$data.deleteTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}"><i class="glyphicon glyphicon-remove-circle"></i></button>
+                           
+                        </div>
+                       
+                    </div>
+                    <div data-bind="attr: {id: 'table'+$index()}" class="panel-collapse collapse in">
+
+
+                        <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Columns().length"></span> Columns</label>
+
+                        <div class="list-group">
+                            <!-- ko foreach: Columns -->
+                            <div class="list-group-item">
+                                <div class="checkbox">
+                                    <label>
+
+                                        <span data-bind="text: ColumnName"></span>
+                                    </label>
+
+                                </div>
+
+                            </div>
+                            <!-- /ko -->
+                        </div>
+                        <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Parameters().length"></span> Parameters</label>
+
+                        <div class="list-group">
+                            <!-- ko foreach: Parameters -->
+                            <div class="list-group-item">
+                                <div class="checkbox">
+                                    <label>
+
+                                        <span data-bind="text: ParameterName"></span>
+                                        <span data-bind="text: ParameterDataTypeString"></span>
+                                    </label>
+
+                                </div>
+
+                            </div>
+                            <!-- /ko -->
+                        </div>
+                    </div>
+                </div>
+                <!-- /ko -->
+            </div>
+        </div>
     </div>
 </div>
 
@@ -461,6 +525,85 @@
     </div>
 </div>
 
+<div class="modal fade" id="procedure-modal" role="dialog" tabindex="-2">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">Search Procedure From Database</h4>
+            </div>
+            <div class="modal-body">
+                <div class="col-md-10">
+                    <input type="text" class="form-control" data-bind="value: searchprocedurevalue" placeholder="Search store procedure by name" />
+                </div>
+                <div class="col-md-2">
+                   <button class="btn btn-default"  data-bind="click:serachStoreProcedure">Search</button>
+                </div>
+                <hr />
+                <br />
+                <div class="menu row"  style="margin-left: 20px;">
+                    <!-- ko foreach: filteredProceduresBySearch -->
+
+                    <div class="menu-category panel panel-default">
+
+                        <div class="panel-heading clearfix" style="">
+                            <div class="pull-left">
+                                <label>
+                                    <span data-bind="text: TableName"></span>
+                                    <span class="label-xs">Procedure</span>
+                                </label>
+                                <button class="btn btn-xs" title="Save this Procedure" data-bind="click: function(){$root.saveProcedure($root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}"><i class="glyphicon glyphicon-floppy-disk"></i></button>
+
+                            </div>
+
+                        </div>
+                        <div data-bind="attr: {id: 'table'+$index()}" class="panel-collapse collapse in">
+
+
+                            <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Columns.length"></span> Columns</label>
+
+                            <div class="list-group">
+                                <!-- ko foreach: Columns -->
+                                <div class="list-group-item">
+                                    <div class="checkbox">
+                                        <label>
+
+                                            <span data-bind="text: DisplayName"></span>
+                                        </label>
+
+                                    </div>
+
+                                </div>
+                                <!-- /ko -->
+                            </div>
+                            <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Parameters.length"></span> Paramters</label>
+
+                            <div class="list-group">
+                                <!-- ko foreach: Parameters -->
+                                <div class="list-group-item">
+                                    <div class="checkbox">
+                                        <label>
+
+                                            <span data-bind="text: ParameterName"></span>
+                                        </label>
+
+                                    </div>
+
+                                </div>
+                                <!-- /ko -->
+                            </div>
+                        </div>
+                    </div>
+                    <!-- /ko -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Done</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="role-access-modal" role="dialog" tabindex="-2">
     <div class="modal-dialog" role="document">
         <div class="modal-content" data-bind="with: editAllowedRoles">
@@ -496,6 +639,7 @@
         </div>
     </div>
 </div>
+
 <div class="clearfix"></div>
 
 <div class="modal fade" id="add-connection-modal" role="dialog">
