@@ -54,11 +54,12 @@
             reportFilter: htmlDecode('@HttpUtility.UrlDecode(Model.ReportFilter)'),
             reportMode: "execute",
             reportSql: "@Model.ReportSql",
-            reportConnect: "@Model.ConnectKey"
+            reportConnect: "@Model.ConnectKey",
+            ReportSeries : "@Model.ReportSeries"
         });
 
         ko.applyBindings(vm);
-        vm.LoadReport(@Model.ReportId, true);
+        vm.LoadReport(@Model.ReportId, true,"@Model.ReportSeries");
 
         $(window).resize(function(){
             vm.DrawChart();

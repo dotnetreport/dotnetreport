@@ -1,4 +1,5 @@
-﻿using ReportBuilder.Web.Models;
+﻿using Newtonsoft.Json;
+using ReportBuilder.Web.Models;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -6,16 +7,15 @@ using System.Data;
 using System.Data.SqlClient;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Web;
+using System.Web.Helpers;
 using System.Web.Mvc;
 using System.Web.Script.Serialization;
-using System.Net.Http;
-using System.Threading.Tasks;
-using System.Text.RegularExpressions;
 using System.Web.Security;
-using Newtonsoft.Json;
-using System.Web.Helpers;
 
 namespace ReportBuilder.Web.Controllers
 {
@@ -59,7 +59,7 @@ namespace ReportBuilder.Web.Controllers
         }
 
         public ActionResult Report(int reportId, string reportName, string reportDescription, bool includeSubTotal, bool showUniqueRecords,
-            bool aggregateReport, bool showDataWithGraph, string reportSql, string connectKey, string reportFilter, string reportType, int selectedFolder)
+            bool aggregateReport, bool showDataWithGraph, string reportSql, string connectKey, string reportFilter, string reportType, int selectedFolder, string reportSeries)
         {
             var model = new DotNetReportModel
             {
@@ -73,7 +73,9 @@ namespace ReportBuilder.Web.Controllers
                 ShowUniqueRecords = showUniqueRecords,
                 ShowDataWithGraph = showDataWithGraph,
                 SelectedFolder = selectedFolder,
+                ReportSeries = !string.IsNullOrEmpty(reportSeries) ? reportSeries.Replace("%20", " ") : string.Empty,
                 ReportFilter = reportFilter // json data to setup filter correctly again
+                
             };
 
             return View(model);
@@ -139,51 +141,132 @@ namespace ReportBuilder.Web.Controllers
                 var content = new FormUrlEncodedContent(keyvalues);
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + method), content);
                 var stringContent = await response.Content.ReadAsStringAsync();
-                
+            
+                if (stringContent.Contains("sql"))
+                {
+                    var sqlqeuery = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(stringContent);
+                    object value;
+                    var keyValuePair = sqlqeuery.TryGetValue("sql", out value);
+                    var sql = DotNetReportHelper.Decrypt(value.ToString());
+                }
                 Response.StatusCode = (int)response.StatusCode;
                 return Json((new JavaScriptSerializer()).Deserialize<dynamic>(stringContent), JsonRequestBehavior.AllowGet);
             }
 
         }
 
-        public JsonResult RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, bool desc = false)
+        public JsonResult RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, bool desc = false, string reportSeries = null)
         {
-            var sql = DotNetReportHelper.Decrypt(reportSql);
+            var sql = "";
 
             try
             {
-                if (!String.IsNullOrEmpty(sortBy))
+                if (string.IsNullOrEmpty(reportSql))
                 {
-                    if (sortBy.StartsWith("DATENAME(MONTH, "))
-                    {
-                        sortBy = sortBy.Replace("DATENAME(MONTH, ", "MONTH(");
-                    }
-                    if (sortBy.StartsWith("MONTH(") && sortBy.Contains(")) +") && sql.Contains("Group By"))
-                    {
-                        sortBy = sortBy.Replace("MONTH(", "CONVERT(VARCHAR(3), DATENAME(MONTH, ");
-                    }
-                    sql = sql.Substring(0, sql.IndexOf("ORDER BY")) + "ORDER BY " + sortBy + (desc ? " DESC" : "");
+                    throw new Exception("Query not found");
                 }
-
-                // Execute sql
+                var allSqls = reportSql.Split(new string[] { "%2C" }, StringSplitOptions.RemoveEmptyEntries);
                 var dt = new DataTable();
                 var dtPaged = new DataTable();
-                using (var conn = new SqlConnection(ConfigurationManager.ConnectionStrings[connectKey].ConnectionString))
+                var dtCols = 0;
+
+                List<string> fields = new List<string>();
+                for (int i = 0; i < allSqls.Length; i++)
                 {
-                    conn.Open();
-                    var command = new SqlCommand(sql, conn);
-                    var adapter = new SqlDataAdapter(command);
+                    sql = DotNetReportHelper.Decrypt(allSqls[i]);
 
-                    adapter.Fill(dt);
+                    var sqlSplit = sql.Substring(0, sql.IndexOf("FROM")).Replace("SELECT", "").Trim();
+                    var sqlFields = Regex.Split(sqlSplit, "], (?![^\\(]*?\\))").Where(x => x != "CONVERT(VARCHAR(3)")
+                        .Select(x => x.EndsWith("]") ? x : x + "]")
+                        .ToList();
+
+                    if (!String.IsNullOrEmpty(sortBy))
+                    {
+                        if (sortBy.StartsWith("DATENAME(MONTH, "))
+                        {
+                            sortBy = sortBy.Replace("DATENAME(MONTH, ", "MONTH(");
+                        }
+                        if (sortBy.StartsWith("MONTH(") && sortBy.Contains(")) +") && sql.Contains("Group By"))
+                        {
+                            sortBy = sortBy.Replace("MONTH(", "CONVERT(VARCHAR(3), DATENAME(MONTH, ");
+                        }
+                        if (!sql.Contains("ORDER BY"))
+                        {
+                            sql = sql + "ORDER BY " + sortBy + (desc ? " DESC" : "");
+                        }
+                        else
+                        {
+                            sql = sql.Substring(0, sql.IndexOf("ORDER BY")) + "ORDER BY " + sortBy + (desc ? " DESC" : "");
+                        }
+                    }
+
+                    // Execute sql
+                    var dtRun = new DataTable();
+                    var dtPagedRun = new DataTable();
+                    using (var conn = new SqlConnection(ConfigurationManager.ConnectionStrings[connectKey].ConnectionString))
+                    {
+                        conn.Open();
+                        var command = new SqlCommand(sql, conn);
+                        var adapter = new SqlDataAdapter(command);
+                        adapter.Fill(dtRun);
+                        dtPagedRun = (dtRun.Rows.Count > 0) ? dtPagedRun = dtRun.AsEnumerable().Skip((pageNumber - 1) * pageSize).Take(pageSize).CopyToDataTable() : dtRun;
+
+                        string[] series = { };
+                        if (i == 0)
+                        {
+                            dt = dtRun;
+                            dtPaged = dtPagedRun;
+                            dtCols = dtRun.Columns.Count;
+                            fields.AddRange(sqlFields);
+                        }
+                        else if (i > 0)
+                        {
+                            // merge in to dt
+                            if (!string.IsNullOrEmpty(reportSeries))
+                                series = reportSeries.Split(new string[] { "%2C" }, StringSplitOptions.RemoveEmptyEntries);
+
+                            var j = 1;
+                            while (j < dtPagedRun.Columns.Count)
+                            {
+                                var col = dtPagedRun.Columns[j++];
+                                dtPaged.Columns.Add($"{col.ColumnName} ({series[i - 1]})", col.DataType);
+                                fields.Add(sqlFields[j-1]);
+                            }
+                            
+                            foreach(DataRow dr in dtPaged.Rows)
+                            {
+                                DataRow match = null;
+                                if (fields[0].ToUpper().StartsWith("CONVERT(VARCHAR(10)")) // group by day
+                                {
+                                    match = dtPagedRun.AsEnumerable().Where(r => !string.IsNullOrEmpty(r.Field<string>(0)) && !string.IsNullOrEmpty((string)dr[0]) && Convert.ToDateTime(r.Field<string>(0)).Day == Convert.ToDateTime((string)dr[0]).Day).FirstOrDefault();
+                                }
+                                else if (fields[0].ToUpper().StartsWith("CONVERT(VARCHAR(3)")) // group by month/year
+                                {
+
+                                }
+                                else
+                                {
+                                    match = dtPagedRun.AsEnumerable().Where(r => r.Field<string>(0) == (string)dr[0]).FirstOrDefault();
+                                }
+                                if (match != null)
+                                {
+                                    j = 1;
+                                    while (j < dtCols)
+                                    {
+                                        dr[j + i + dtCols-2] = match[j];
+                                        j++;
+                                    }
+                                }
+                            }
+                        }
+                    }                   
                 }
-
-                dtPaged = (dt.Rows.Count > 0) ? dtPaged = dt.AsEnumerable().Skip((pageNumber - 1) * pageSize).Take(pageSize).CopyToDataTable() : dt;
-
+                
                 var model = new DotNetReportResultModel
                 {
-                    ReportData = DataTableToDotNetReportDataModel(dtPaged, sql),
-                    Warnings = GetWarnings(sql),
-                    ReportSql = sql,
+                    ReportData = DataTableToDotNetReportDataModel(dtPaged, fields),
+                    Warnings = GetWarnings(allSqls[0]),
+                    ReportSql = allSqls[0],
                     ReportDebug = Request.Url.Host.Contains("localhost"),
                     Pager = new DotNetReportPagerModel
                     {
@@ -421,9 +504,16 @@ namespace ReportBuilder.Web.Controllers
 
                     case TypeCode.Double:
                     case TypeCode.Decimal:
-                        return col.ColumnName.Contains("%")
-                            ? (Convert.ToDouble(row[col].ToString()) / 100).ToString("P2")
-                            : Convert.ToDouble(row[col].ToString()).ToString("C");
+                        try
+                        {
+                            return col.ColumnName.Contains("%")
+                                ? (Convert.ToDouble(row[col].ToString()) / 100).ToString("P2")
+                                : Convert.ToDouble(row[col].ToString()).ToString("C");
+                        }
+                        catch
+                        {
+                            return row[col] != null ? row[col].ToString() : null;
+                        }
 
 
                     case TypeCode.Boolean:
@@ -449,7 +539,7 @@ namespace ReportBuilder.Web.Controllers
                         }
                         else
                         {
-                            return row[col].ToString();
+                            return row[col] != null ? row[col].ToString() : null;
                         }
 
                 }
@@ -457,16 +547,13 @@ namespace ReportBuilder.Web.Controllers
             return "";
         }        
 
-        private DotNetReportDataModel DataTableToDotNetReportDataModel(DataTable dt, string sql)
+        private DotNetReportDataModel DataTableToDotNetReportDataModel(DataTable dt, List<string> sqlFields)
         {
             var model = new DotNetReportDataModel
             {
                 Columns = new List<DotNetReportDataColumnModel>(),
                 Rows = new List<DotNetReportDataRowModel>()
             };
-
-            sql = sql.Substring(0, sql.IndexOf("FROM")).Replace("SELECT", "").Trim();
-            var sqlFields = Regex.Split(sql, "], (?![^\\(]*?\\))").Where(x => x != "CONVERT(VARCHAR(3)").ToArray();
 
             int i = 0;
             foreach (DataColumn col in dt.Columns)
@@ -489,14 +576,16 @@ namespace ReportBuilder.Web.Controllers
 
                 foreach (DataColumn col in dt.Columns)
                 {
-                    items.Add(new DotNetReportDataRowItemModel
-                    {
-                        Column = model.Columns[i],
-                        Value = row[col] != null ? row[col].ToString() : null,
-                        FormattedValue = GetFormattedValue(col, row),
-                        LabelValue = GetLabelValue(col, row)
-                    });
-                    i += 1;
+                    
+                        items.Add(new DotNetReportDataRowItemModel
+                        {
+                            Column = model.Columns[i],
+                            Value = row[col] != null ? row[col].ToString() : null,
+                            FormattedValue = GetFormattedValue(col, row),
+                            LabelValue = GetLabelValue(col, row)
+                        });
+                        i += 1;
+                   
                 }
 
                 model.Rows.Add(new DotNetReportDataRowModel
