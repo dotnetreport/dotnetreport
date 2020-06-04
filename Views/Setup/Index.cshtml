@@ -189,10 +189,8 @@
                             <div class="list-group-item">
                                 <div class="checkbox">
                                     <label>
-                                        <input type="checkbox" data-bind="checked: Selected, enable: $parent.Selected()">
-                                        @*<span data-bind="text: ColumnName"></span> <br />*@
+                                        <input type="checkbox" data-bind="checked: Selected, enable: $parent.Selected()">                                        
                                         <span data-bind="editable: DisplayName"></span>
-                                        @*<span data-bind="text: DisplayOrder"></span>*@
                                         <label data-bind="visible: PrimaryKey" class="label label-primary">Primary</label>
                                         <label data-bind="visible: ForeignKey" class="label label-info">Foreign</label>
                                     </label>
