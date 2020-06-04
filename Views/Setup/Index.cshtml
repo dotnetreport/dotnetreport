@@ -185,7 +185,7 @@
                         <button class="btn btn-xs btn-link pull-right label-sm" data-bind="click: $parent.unselectAllColumns, visible: Selected">Unselect All</button>
                         <button class="btn btn-xs btn-link pull-right label-sm" data-bind="click: $parent.selectAllColumns, visible: Selected">Select All</button>
                         <div class="list-group" data-bind="sortable: { data: Columns, options: { handle: '.sortable', cursor: 'move' }, afterMove: $parent.columnSorted }">
-                            @*<!-- ko foreach: Columns -->*@
+                            <!-- ko foreach: Columns -->
                             <div class="list-group-item">
                                 <div class="checkbox">
                                     <label>
