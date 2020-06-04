@@ -133,7 +133,7 @@
                         <th></th>
                         <!-- /ko -->
                         <!-- ko foreach: Columns -->
-                        <th data-bind="attr: { id: 'col' + $index() }">
+                        <th data-bind="attr: { id: 'col' + $index() }, css: {'right-align': IsNumeric}">
                             <a href="" data-bind="click: function(){ $parentContext.$parentContext.$parent.changeSort(SqlField); }">
                                 <span data-bind="text: ColumnName"></span>
                                 <span data-bind="text: $parentContext.$parentContext.$parent.pager.sortColumn() === SqlField ? ($parentContext.$parentContext.$parent.pager.sortDescending() ? '&#9660;' : '&#9650;') : ''"></span>
@@ -154,7 +154,7 @@
                         <td><a href="#" data-bind="click: function(){ toggle(); }"><span class="fa" data-bind="css: {'fa-plus': !isExpanded(), 'fa-minus': isExpanded()}"></span></a></td>
                         <!-- /ko -->
                         <!-- ko foreach: Items -->
-                        <td data-bind="html: FormattedValue"></td>
+                        <td data-bind="html: FormattedValue, css: {'right-align': Column.IsNumeric}"></td>
                         <!-- /ko -->
                     </tr>
                     <!-- ko if: isExpanded -->
@@ -184,7 +184,7 @@
                                     <!-- ko foreach: Rows  -->
                                     <tr>
                                         <!-- ko foreach: Items -->
-                                        <td data-bind="html: FormattedValue"></td>
+                                        <td data-bind="html: FormattedValue, css: {'right-align': Column.IsNumeric}"></td>
                                         <!-- /ko -->
                                     </tr>
                                     <!-- /ko -->
@@ -198,19 +198,19 @@
                                     <div class="pull-left">
                                         @using (Html.BeginForm("DownloadExcel", "Report", FormMethod.Post))
                                         {
-                                            <input type="hidden" id="reportSql" name="reportSql" data-bind="value: $parent.sql" />
-                                            <input type="hidden" id="connectKey" name="connectKey" data-bind="value: $parent.connectKey" />
-                                            <input type="hidden" id="reportName" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parentContext.$parentContext.$parent.ReportName()" />
-                                            <button type="submit" class="btn btn-xs" title="Download Excel"><span class="fa fa-file-excel-o"></span></button>
+                                        <input type="hidden" id="reportSql" name="reportSql" data-bind="value: $parent.sql" />
+                                        <input type="hidden" id="connectKey" name="connectKey" data-bind="value: $parent.connectKey" />
+                                        <input type="hidden" id="reportName" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parentContext.$parentContext.$parent.ReportName()" />
+                                        <button type="submit" class="btn btn-xs" title="Download Excel"><span class="fa fa-file-excel-o"></span></button>
                                         }
                                     </div>
                                     <div class="pull-left">
                                         @using (Html.BeginForm("DownloadXml", "Report", FormMethod.Post))
                                         {
-                                            <input type="hidden" id="reportSql" name="reportSql" data-bind="value: $parent.sql" />
-                                            <input type="hidden" id="connectKey" name="connectKey" data-bind="value: $parent.connectKey" />
-                                            <input type="hidden" id="reportName" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parentContext.$parentContext.$parent.ReportName()" />
-                                            <button type="submit" class="btn btn-xs" title="Download XML"><span class="fa fa-file-code-o"></span></button>
+                                        <input type="hidden" id="reportSql" name="reportSql" data-bind="value: $parent.sql" />
+                                        <input type="hidden" id="connectKey" name="connectKey" data-bind="value: $parent.connectKey" />
+                                        <input type="hidden" id="reportName" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parentContext.$parentContext.$parent.ReportName()" />
+                                        <button type="submit" class="btn btn-xs" title="Download XML"><span class="fa fa-file-code-o"></span></button>
                                         }
                                     </div>
                                     <div class="form-group pull-right" data-bind="visible: pages()">
@@ -224,6 +224,18 @@
                     <!-- /ko -->
                     <!-- /ko -->
                 </tbody>
+                <!-- ko if: $parent.SubTotals().length == 1 -->
+                <tfoot data-bind="foreach: $parent.SubTotals">
+                    <tr>
+                        <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() -->
+                        <td></td>
+                        <!-- /ko -->
+                        <!-- ko foreach: Items -->
+                        <td data-bind="html: FormattedValue, css: {'right-align': Column.IsNumeric}"></td>
+                        <!-- /ko -->
+                    </tr>
+                </tfoot>
+                <!-- /ko -->
             </table>
         </div>
 

@@ -1602,11 +1602,11 @@ var reportViewModel = function (options) {
 		var curInputs = options.reportWizard.find("input,select"),
 			isValid = true;
 
-		$(".form-group").removeClass("has-error");
+		$(".form-group").removeClass("needs-validation");
 		for (var i = 0; i < curInputs.length; i++) {
 			if (!self.isInputValid(curInputs[i])) {
 				isValid = false;
-				$(curInputs[i]).closest(".form-group").addClass("has-error");
+				$(curInputs[i]).closest(".form-group").addClass("needs-validation");
 			}
 		}
 
@@ -1712,9 +1712,9 @@ var dashboardViewModel = function (options) {
 	}
 
 	self.saveDashboard = function () {
-		$(".form-group").removeClass("has-error");
+		$(".form-group").removeClass("needs-validation");
 		if (!self.dashboard.Name()) {
-			$("#add-dash-name").closest(".form-group").addClass("has-error");
+			$("#add-dash-name").closest(".form-group").addClass("needs-validation");
 			return false;
 		}
 
