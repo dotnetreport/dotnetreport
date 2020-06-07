@@ -105,6 +105,19 @@
         max-width: 80%;
     }
 
+.modal-content {
+    position: relative;
+    background-color: #fff;
+    -webkit-background-clip: padding-box;
+    background-clip: padding-box;
+    border: 0;
+    border: 0;
+    border-radius: 0;
+    outline: 0;
+    max-height: 100%;
+    overflow: scroll;
+}
+
 .modal.fade:not(.in) .modal-dialog {
     -webkit-transform: translate3d(80%, 0, 0);
     transform: translate3d(80%, 0, 0);
