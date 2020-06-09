@@ -409,56 +409,68 @@ namespace ReportBuilder.Web.Controllers
                // var SchemaTable = conn.GetOleDbSchemaTable(OleDbSchemaGuid.Procedures, new Object[] { null, value, null, null, });
 
               //  var dtField = conn.GetOleDbSchemaTable(OleDbSchemaGuid.Procedure_Columns, new object[] { null, null, null });
-              //  var dtField1 = conn.GetOleDbSchemaTable(OleDbSchemaGuid.Procedure_Parameters, new object[] { null, null, value });
-                OleDbCommand cmd = new OleDbCommand(value, conn);
-                cmd.CommandType = CommandType.StoredProcedure;
-                // Get the parameters.
-                OleDbCommandBuilder.DeriveParameters(cmd);
-                List<ParameterViewModel> parameterViewModels = new List<ParameterViewModel>();
-                foreach (OleDbParameter param in cmd.Parameters)
+              // var dtField1 = conn.GetOleDbSchemaTable(OleDbSchemaGuid.Procedure_Parameters, new object[] { null, null, null,null });
+                string spQUery = "SELECT ROUTINE_NAME, ROUTINE_DEFINITION FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_DEFINITION LIKE '%"+value+"%' AND ROUTINE_TYPE = 'PROCEDURE'";
+                OleDbCommand cmd = new OleDbCommand(spQUery, conn);
+                cmd.CommandType = CommandType.Text;
+                DataTable dtProcedures = new DataTable();
+                dtProcedures.Load(cmd.ExecuteReader());
+                int count = 1;
+                foreach (DataRow dr in dtProcedures.Rows)
                 {
-                    
-                    if (param.Direction == ParameterDirection.Input)
+                    string ProcName = dr["ROUTINE_NAME"].ToString();
+                     cmd = new OleDbCommand(ProcName, conn);
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    // Get the parameters.
+                    OleDbCommandBuilder.DeriveParameters(cmd);
+                    List<ParameterViewModel> parameterViewModels = new List<ParameterViewModel>();
+                    foreach (OleDbParameter param in cmd.Parameters)
                     {
-                        var parameter = new ParameterViewModel
-                        {
-                            ParameterName = param.ParameterName,
-                            ParamterDataTypeOleDbTypeInteger = Convert.ToInt32(param.OleDbType),
-                            ParamterDataTypeOleDbType = param.OleDbType,
-                            
-                            ParameterDataTypeString = GetType(ConvertToJetDataType(Convert.ToInt32(param.OleDbType))).Name
-                        };
-                        parameterViewModels.Add(parameter);
-                    }
-                }
-                DataTable dt = new DataTable();
-                cmd = new OleDbCommand(value, conn);
-                cmd.CommandType = CommandType.StoredProcedure;
-                foreach (var data in parameterViewModels)
-                {
-                    cmd.Parameters.Add(new OleDbParameter { Value = DBNull.Value, ParameterName = data.ParameterName, Direction = ParameterDirection.Input, IsNullable = true });
-                }
-                OleDbDataReader reader = cmd.ExecuteReader();
-                dt = reader.GetSchemaTable();
-                // dt.Load(cmd.ExecuteReader());
 
-                // Store the table names in the class scoped array list of table names
-                List<ColumnViewModel> columnViewModels = new List<ColumnViewModel>();
-                for (int i = 0; i < dt.Rows.Count; i++)
-                {
-                    var column = new ColumnViewModel
+                        if (param.Direction == ParameterDirection.Input)
+                        {
+                            var parameter = new ParameterViewModel
+                            {
+                                ParameterName = param.ParameterName,
+                                ParamterDataTypeOleDbTypeInteger = Convert.ToInt32(param.OleDbType),
+                                ParamterDataTypeOleDbType = param.OleDbType,
+
+                                ParameterDataTypeString = GetType(ConvertToJetDataType(Convert.ToInt32(param.OleDbType))).Name
+                            };
+                            parameterViewModels.Add(parameter);
+                        }
+                    }
+                    DataTable dt = new DataTable();
+                    cmd = new OleDbCommand(ProcName, conn);
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    foreach (var data in parameterViewModels)
                     {
-                        ColumnName = dt.Rows[i].ItemArray[0].ToString(),
-                        DisplayName = dt.Rows[i].ItemArray[0].ToString()
-                    };
-                    columnViewModels.Add(column);
+                        cmd.Parameters.Add(new OleDbParameter { Value = DBNull.Value, ParameterName = data.ParameterName, Direction = ParameterDirection.Input, IsNullable = true });
+                    }
+                    OleDbDataReader reader = cmd.ExecuteReader();
+                    dt = reader.GetSchemaTable();
+                    // dt.Load(cmd.ExecuteReader());
+
+                    // Store the table names in the class scoped array list of table names
+                    List<ColumnViewModel> columnViewModels = new List<ColumnViewModel>();
+                    for (int i = 0; i < dt.Rows.Count; i++)
+                    {
+                        var column = new ColumnViewModel
+                        {
+                            ColumnName = dt.Rows[i].ItemArray[0].ToString(),
+                            DisplayName = dt.Rows[i].ItemArray[0].ToString()
+                        };
+                        columnViewModels.Add(column);
+                    }
+                    tables.Add(new TableViewModel
+                    {
+                        Id = count,
+                        TableName = ProcName,
+                        Parameters = parameterViewModels,
+                        Columns = columnViewModels
+                    });
+                    count++;
                 }
-                tables.Add(new TableViewModel
-                {
-                    TableName = value,
-                    Parameters = parameterViewModels,
-                    Columns = columnViewModels
-                });
                 conn.Close();
                 conn.Dispose();
             }

@@ -198,8 +198,14 @@
 			self.filteredProceduresBySearch(result)
 		});
 	}
-	self.saveProcedure = function () {
-		var e = ko.mapping.toJS(self.filteredProceduresBySearch());
+	self.saveProcedure = function (id) {
+		debugger;
+		var proc = _.filter(self.filteredProceduresBySearch(), function (e) {
+			return e.Id === id;
+		})
+		debugger;
+		var e = ko.mapping.toJS(proc);
+		debugger;
 		ajaxcall({
 			url: "/Setup/SaveProcedure",
 			type: 'POST',
