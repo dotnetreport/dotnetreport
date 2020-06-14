@@ -1412,7 +1412,6 @@ var reportViewModel = function (options) {
 			self.manageAccess.setupList(self.manageAccess.viewOnlyUserRoles, report.ViewOnlyUserRoles || '');
 			self.manageAccess.setupList(self.manageAccess.viewOnlyUsers, report.ViewOnlyUserId || '');
 
-			var sortcol = _.find(report.SelectedFields, { fieldId: report.SortBy });
 			self.IncludeSubTotal(report.IncludeSubTotals);
 			self.ShowUniqueRecords(report.ShowUniqueRecords);
 			self.AggregateReport(report.IsAggregateReport);
@@ -1421,7 +1420,6 @@ var reportViewModel = function (options) {
 			self.SortByField(report.SortBy);
 			self.SortDesc(report.SortDesc);
 			self.pager.sortDescending(report.SortDesc);
-			self.pager.sortColumn(sortcol ? sortcol.dbField : '');
 			self.CanEdit(((!options.clientId || report.ClientId == options.clientId) && (!options.userId || report.UserId == options.userId)) || self.adminMode());
 			self.FilterGroups([]);		
 			self.AdditionalSeries([]);

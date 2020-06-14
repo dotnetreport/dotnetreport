@@ -261,12 +261,13 @@ namespace ReportBuilder.Web.Controllers
                         }
                     }                   
                 }
-                
+
+                sql = DotNetReportHelper.Decrypt(allSqls[0]);
                 var model = new DotNetReportResultModel
                 {
                     ReportData = DataTableToDotNetReportDataModel(dtPaged, fields),
-                    Warnings = GetWarnings(allSqls[0]),
-                    ReportSql = allSqls[0],
+                    Warnings = GetWarnings(sql),
+                    ReportSql = sql,
                     ReportDebug = Request.Url.Host.Contains("localhost"),
                     Pager = new DotNetReportPagerModel
                     {
