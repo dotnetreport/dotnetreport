@@ -427,8 +427,16 @@
                     </div>
                     <div class="form-group">
                         <label class="col-sm-2 control-label">Sort By</label>
-                        <div class="col-sm-10">
+                        <div class="col-sm-8">
                             <select class="form-control" required data-bind="options: enabledFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: SortByField"></select>
+                        </div>
+                        <div class="col-sm-2">
+                            <div class="checkbox">
+                                <label>
+                                    <input type="checkbox" data-bind="checked: SortDesc" />
+                                    Sort Descending
+                                </label>
+                            </div>
                         </div>
                     </div>
                     <div class="checkbox">

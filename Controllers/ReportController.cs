@@ -142,7 +142,7 @@ namespace ReportBuilder.Web.Controllers
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + method), content);
                 var stringContent = await response.Content.ReadAsStringAsync();
             
-                if (stringContent.Contains("sql"))
+                if (stringContent.Contains("\"sql\":"))
                 {
                     var sqlqeuery = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(stringContent);
                     object value;

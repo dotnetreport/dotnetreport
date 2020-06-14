@@ -306,6 +306,7 @@ var reportViewModel = function (options) {
 	self.ShowUniqueRecords = ko.observable(false);
 	self.AggregateReport = ko.observable(false);
 	self.SortByField = ko.observable();
+	self.SortDesc = ko.observable(false);
 	
 	self.FilterGroups = ko.observableArray();
 	self.FilterGroups.subscribe(function (newArray) {
@@ -527,7 +528,7 @@ var reportViewModel = function (options) {
 		self.ShowUniqueRecords(false);
 		self.AggregateReport(false);
 		self.SortByField(null);
-		
+		self.SortDesc(false);
 		self.FilterGroups([]);
 		self.ReportID(0);
 		self.SaveReport(self.CanSaveReports());
@@ -936,6 +937,7 @@ var reportViewModel = function (options) {
 			ShowDataWithGraph: self.ShowDataWithGraph(),
 			ShowOnDashboard: self.ShowOnDashboard(),
 			SortBy: self.SortByField(),
+			SortDesc: self.SortDesc(),
 			ReportType: self.ReportType(),
 			GroupFunctionList: _.map(self.SelectedFields(), function (x) {
 				return {
@@ -1410,12 +1412,16 @@ var reportViewModel = function (options) {
 			self.manageAccess.setupList(self.manageAccess.viewOnlyUserRoles, report.ViewOnlyUserRoles || '');
 			self.manageAccess.setupList(self.manageAccess.viewOnlyUsers, report.ViewOnlyUserId || '');
 
+			var sortcol = _.find(report.SelectedFields, { fieldId: report.SortBy });
 			self.IncludeSubTotal(report.IncludeSubTotals);
 			self.ShowUniqueRecords(report.ShowUniqueRecords);
 			self.AggregateReport(report.IsAggregateReport);
 			self.ShowDataWithGraph(report.ShowDataWithGraph);
 			self.ShowOnDashboard(report.ShowOnDashboard);
 			self.SortByField(report.SortBy);
+			self.SortDesc(report.SortDesc);
+			self.pager.sortDescending(report.SortDesc);
+			self.pager.sortColumn(sortcol ? sortcol.dbField : '');
 			self.CanEdit(((!options.clientId || report.ClientId == options.clientId) && (!options.userId || report.UserId == options.userId)) || self.adminMode());
 			self.FilterGroups([]);		
 			self.AdditionalSeries([]);
@@ -1667,7 +1673,7 @@ var dashboardViewModel = function (options) {
 		Name: ko.observable(currentDash.name),
 		Description: ko.observable(currentDash.description),
 		manageAccess: manageAccess(options)
-	}
+	};
 
 	self.currentDashboard = ko.observable(currentDash);
 	self.selectDashboard = ko.observable(currentDash.id);
@@ -1709,7 +1715,7 @@ var dashboardViewModel = function (options) {
 				r.selected(selectedReports.indexOf(r.reportId.toString()) >= 0);
 			});
 		});
-	}
+	};
 
 	self.saveDashboard = function () {
 		$(".form-group").removeClass("has-error");
