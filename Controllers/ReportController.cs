@@ -142,7 +142,7 @@ namespace ReportBuilder.Web.Controllers
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + method), content);
                 var stringContent = await response.Content.ReadAsStringAsync();
             
-                if (stringContent.Contains("sql"))
+                if (stringContent.Contains("\"sql\":"))
                 {
                     var sqlqeuery = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(stringContent);
                     object value;
@@ -261,12 +261,13 @@ namespace ReportBuilder.Web.Controllers
                         }
                     }                   
                 }
-                
+
+                sql = DotNetReportHelper.Decrypt(allSqls[0]);
                 var model = new DotNetReportResultModel
                 {
                     ReportData = DataTableToDotNetReportDataModel(dtPaged, fields),
-                    Warnings = GetWarnings(allSqls[0]),
-                    ReportSql = allSqls[0],
+                    Warnings = GetWarnings(sql),
+                    ReportSql = sql,
                     ReportDebug = Request.Url.Host.Contains("localhost"),
                     Pager = new DotNetReportPagerModel
                     {
