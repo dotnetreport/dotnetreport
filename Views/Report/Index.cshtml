@@ -444,12 +444,7 @@
                             <select class="form-control" required data-bind="options: enabledFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: SortByField"></select>
                         </div>
                         <div class="col-sm-2">
-                            <div class="checkbox">
-                                <label>
-                                    <input type="checkbox" data-bind="checked: SortDesc" />
-                                    Sort Descending
-                                </label>
-                            </div>
+                            <button class="btn btn-secondary" data-bind="text: !SortDesc() ? '▲ Sort Ascending' : 'Sort Descending ▼', click: function() { SortDesc(!SortDesc()); return false; }"></button>
                         </div>
                     </div>
                     <div class="checkbox">
@@ -578,7 +573,7 @@
                     <td>
                         <button class="btn btn-sm btn-secondary" data-bind="click: $parent.RemoveFilter">Remove</button>
                          <!-- ko if: Field() && Field().fieldType == 'DateTime' && Operator() == 'range' && $root.canAddSeries() && $index()==0 -->
-                        <button class="btn btn-sm" data-bind="click: $root.AddSeries.bind($data)">Add Comparison</button>
+                        <button class="btn btn-sm btn-secondary" data-bind="click: $root.AddSeries.bind($data)">Add Comparison</button>
                         <!--/ko -->
                     </td>
                 </tr>

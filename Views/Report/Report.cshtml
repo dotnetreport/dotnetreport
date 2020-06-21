@@ -101,26 +101,26 @@
             <a href="@Url.Action("Index","Report")?reportId=@Model.ReportId&folderId =@Model.SelectedFolder" class="btn btn-primary">
                 Edit Report
             </a>
-            <button type="button" class="btn btn-default" onclick="printReport();">
-                <span class="glyphicon glyphicon-print" aria-hidden="true"></span> Print Report
+            <button type="button" class="btn btn-secondary" onclick="printReport();">
+                <span class="fa fa-print" aria-hidden="true"></span> Print Report
             </button>
 
             <div class="btn-group">
-                <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     <span class="fa fa-download"></span> Export <span class="caret"></span>
                 </button>
                 <ul class="dropdown-menu">
-                    <li>
+                    <li class="dropdown-item">
                         <a href="#" onclick="downloadPdf();">
                             <span class="fa fa-file-pdf-o"></span> Pdf
                         </a>
                     </li>
-                    <li>
+                    <li class="dropdown-item">
                         <a href="#" onclick="downloadExcel();">
                             <span class="fa fa-file-excel-o"></span> Excel
                         </a>
                     </li>
-                    <li>
+                    <li class="dropdown-item">
                         <a href="#" onclick="downloadXml();">
                             <span class="fa fa-file-code-o"></span> Xml
                         </a>
