@@ -1295,7 +1295,17 @@ var reportViewModel = function (options) {
 				}
 			}
 		});
-		
+
+
+		var getRandomColor = function () {
+			var letters = '0123456789ABCDEF';
+			var color = '#';
+			for (var i = 0; i < 6; i++) {
+				color += letters[Math.floor(Math.random() * 16)];
+			}
+			return color;
+		};
+
 		var chartColors = [
 			'rgb(255, 99, 132)',
 			'rgb(255, 159, 64)',
@@ -1309,8 +1319,7 @@ var reportViewModel = function (options) {
 		for (var i = 1; i < columns.length; i++) {
 			data.datasets.push({
 				label: columns[i],
-				backgroundColor: chartColors[i-1],
-				borderColor: chartColors[i-1],
+				backgroundColor: self.ReportType() == "Pie" ? [] : chartColors[i-1],
 				data: []
 			});
 		}
@@ -1321,6 +1330,9 @@ var reportViewModel = function (options) {
 					data.labels.push(col);
 				} else {
 					data.datasets[i-1].data.push(col);
+					if (self.ReportType() == "Pie") {
+						data.datasets[i - 1].backgroundColor.push(getRandomColor());
+					}
 				}
 			});
 		});
