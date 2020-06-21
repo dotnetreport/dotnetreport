@@ -1165,8 +1165,7 @@ var reportViewModel = function (options) {
 			}
 
 			if (self.isChart()) {
-				google.charts.load('current', { packages: ['corechart'] });
-				google.charts.setOnLoadCallback(self.DrawChart);
+				self.DrawChart();
 			}
 
 			if (self.IncludeSubTotal()) {
@@ -1221,14 +1220,18 @@ var reportViewModel = function (options) {
 		if (!self.isChart()) return;
 		// Create the data table.
 		var reportData = self.ReportResult().ReportData();
-		var data = new google.visualization.DataTable();
+		var data = {
+			labels: [],
+			datasets: []
+		};
 
+		var columns = [];
 		var subGroups = [];
 		var valColumns = [];
 		_.forEach(reportData.Columns, function (e, i) {
 			var field = self.SelectedFields()[i];
 			if (i == 0) {
-				data.addColumn(e.IsNumeric ? 'number' : 'string', e.ColumnName);
+				columns.push(e.ColumnName);
 			} else if (typeof field !== "undefined" && field.groupInGraph()) {
 				subGroups.push({ index: i, column: e.ColumnName });
 			} else if (e.IsNumeric) {
@@ -1239,7 +1242,7 @@ var reportViewModel = function (options) {
 		if (subGroups.length == 0) {
 			_.forEach(reportData.Columns, function (e, i) {
 				if (i > 0 && e.IsNumeric) {
-					data.addColumn(e.IsNumeric ? 'number' : 'string', e.ColumnName);
+					columns.push(e.ColumnName);					
 				}
 			});
 		}
@@ -1270,7 +1273,7 @@ var reportViewModel = function (options) {
 							dataColumns.push(r.Value || '');
 
 							_.forEach(valColumns, function (j) {
-								data.addColumn('number', r.Value + (j == 0 ? '' : '-' + j));
+								columns.push(r.Value + (j == 0 ? '' : '-' + j));
 							});
 
 						}
@@ -1286,46 +1289,84 @@ var reportViewModel = function (options) {
 		});
 
 		_.forEach(rowArray, function (x) {
-			if (x.length != data.getNumberOfColumns()) {
-				for (var i = 0; i <= data.getNumberOfColumns() - x.length; i++) {
+			if (x.length != columns.length) {
+				for (var i = 0; i <= columns.length - x.length; i++) {
 					x.push(0);
 				}
 			}
 		});
+		
+		var chartColors = [
+			'rgb(255, 99, 132)',
+			'rgb(255, 159, 64)',
+			'rgb(255, 205, 86)',
+			'rgb(75, 192, 192)',
+			'rgb(54, 162, 235)',
+			'rgb(153, 102, 255)',
+			'rgb(201, 203, 207)'
+		];
 
-		data.addRows(rowArray);
+		for (var i = 1; i < columns.length; i++) {
+			data.datasets.push({
+				label: columns[i],
+				backgroundColor: chartColors[i-1],
+				borderColor: chartColors[i-1],
+				data: []
+			});
+		}
+
+		_.forEach(rowArray, function (row) {			
+			_.forEach(row, function (col, i) {				
+				if (i == 0) {
+					data.labels.push(col);
+				} else {
+					data.datasets[i-1].data.push(col);
+				}
+			});
+		});
 
 		// Set chart options
 		var options = {
-			'title': self.ReportName(),
-			animation: {
-				startup: true,
-				duration: 1000,
-				easing: 'out'
+			responsive: true,
+			legend: {
+				position: 'top',
+			},
+			title: {
+				display: true,
+				text: self.ReportName()
 			}
 		};
 
 		var chartDiv = document.getElementById('chart_div_' + self.ReportID());
+		var ctx = chartDiv.getContext('2d');
 		var chart = null;
 
 		if (self.ReportType() == "Pie") {
-			chart = new google.visualization.PieChart(chartDiv);
+			chart = new Chart(ctx, {
+				type: 'pie',
+				data: data,
+				options: options
+			});
 		}
 
 		if (self.ReportType() == "Bar") {
-			chart = new google.visualization.ColumnChart(chartDiv);
+			chart = new Chart(ctx, {
+				type: 'bar',
+				data: data,
+				options: options
+			});
 		}
 
 		if (self.ReportType() == "Line") {
-			chart = new google.visualization.LineChart(chartDiv);
+			chart = new Chart(ctx, {
+				type: 'line',
+				data: data,
+				options: options
+			});
 		}
 
-		if (self.ReportType() == "Map") {
-			chart = new google.visualization.GeoChart(chartDiv);
-		}
-
-		chart.draw(data, options);
-		self.ChartData(chart.getImageURI());
+		//chart.draw(data, options);
+		//self.ChartData(chart.getImageURI());
 	};
 
 	self.loadFolders = function (folderId) {

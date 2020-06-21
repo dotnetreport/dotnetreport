@@ -16,7 +16,7 @@
     <link href="~/Content/font-awesome.min.css" rel="stylesheet" />
     <link href="~/Content/css/select2.min.css" rel="stylesheet" />
     <link href="~/Content/dotnetreport.css?v=3.0.0" rel="stylesheet" />
-    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.min.js"></script>
     @RenderSection("head", required: false)
     <style type="text/css">
         body {
@@ -138,7 +138,7 @@
     </script>
 
     <script type="text/html" id="report-template">
-        <div class="report-chart" data-bind="attr: {id: 'chart_div_' + $parent.ReportID()}, visible: $parent.isChart"></div>
+        <canvas class="report-chart" data-bind="attr: {id: 'chart_div_' + $parent.ReportID()}, visible: $parent.isChart"></canvas>
 
         <div class="table-responsive" data-bind="with: ReportData">
             <table class="table table-hover table-condensed">
