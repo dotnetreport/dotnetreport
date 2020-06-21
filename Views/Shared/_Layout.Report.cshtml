@@ -182,7 +182,7 @@
                                 <thead>
                                     <tr class="no-highlight">
                                         <!-- ko foreach: Columns -->
-                                        <th>
+                                        <th data-bind="css: {'right-align': IsNumeric}">
                                             <a href="" data-bind="click: function(){ $parents[1].changeSort(SqlField); }">
                                                 <span data-bind="text: ColumnName"></span>
                                                 <span data-bind="text: $parents[1].pager.sortColumn() === SqlField ? ($parents[1].pager.sortDescending() ? '&#9660;' : '&#9650;') : ''">

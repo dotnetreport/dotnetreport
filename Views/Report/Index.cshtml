@@ -431,12 +431,7 @@
                             <select class="form-control" required data-bind="options: enabledFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: SortByField"></select>
                         </div>
                         <div class="col-sm-2">
-                            <div class="checkbox">
-                                <label>
-                                    <input type="checkbox" data-bind="checked: SortDesc" />
-                                    Sort Descending
-                                </label>
-                            </div>
+                            <button class="btn btn-default" data-bind="text: !SortDesc() ? '▲ Sort Ascending' : 'Sort Descending ▼', click: function() { SortDesc(!SortDesc()); return false; }"></button>
                         </div>
                     </div>
                     <div class="checkbox">
