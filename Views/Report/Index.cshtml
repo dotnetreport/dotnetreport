@@ -286,26 +286,29 @@
                         </div>
                         <!-- /ko -->
                     </div>
-                    <div data-bind="if: isFormulaField">
-                        <br />
-                        <div class="col-xs-12 padded-div">
-                            <div class="small pull-left">
-                                Setup your Formula for calculating this Field
+                </div>
+
+                <div data-bind="if: isFormulaField">
+                    <br />
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-sm-6 small">
+                                    Setup your Formula for calculating this Field
+                                </div>
+                                <div class="col-sm-6 right-align">
+                                    <a href="#" class="btn btn-secondary btn-sm" data-bind="click: addFormulaParentheses">Add ( )</a>
+                                    <a href="#" class="btn btn-secondary btn-sm" title="Add a Constant Value" data-bind="click: addFormulaConstantValue">Add Value</a>
+                                    <a href="#" class="btn btn-secondary btn-sm" data-bind="click: clearFormulaField">Clear</a>
+                                </div>
                             </div>
-                            <div class="pull-right">
-                                <a href="#" class="btn btn-secondary btn-sm" data-bind="click: addFormulaParentheses">Add ( )</a>
-                                <a href="#" class="btn btn-secondary btn-sm" title="Add a Constant Value" data-bind="click: addFormulaConstantValue">Add Value</a>
-                                <a href="#" class="btn btn-secondary btn-sm" data-bind="click: clearFormulaField">Clear</a>
-                            </div>
-                        </div>
-                        <div class="form-horizontal">
-                            <div class="form-group">
+                            <div class="form-group row">
                                 <label class="col-sm-2 control-label">Field Label</label>
                                 <div class="col-sm-10">
                                     <input type="text" class="form-control form-control-sm" data-bind="value: formulaFieldLabel" required placeholder="Custom Field Label" />
                                 </div>
                             </div>
-                            <div class="form-group">
+                            <div class="form-group row">
                                 <label class="col-sm-2 control-label">Data Format</label>
                                 <div class="col-sm-10">
                                     <select class="form-control form-control-sm" data-bind="value: formulaDataFormat" required>
@@ -323,7 +326,7 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="form-group">
+                            <div class="form-group row">
                                 <label class="col-sm-2 control-label">Field Formula</label>
                                 <div class="col-sm-10">
                                     <!-- ko foreach: formulaFields -->
@@ -351,10 +354,8 @@
                                 </div>
                             </div>
                         </div>
-
-                        <div class="clearfix"></div>
-
                     </div>
+                    <div class="clearfix"></div>
                 </div>
                 <!-- ko if: SelectedFields().length>0 -->
                 <hr />
@@ -440,8 +441,11 @@
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-2 control-label">Sort By</label>
-                        <div class="col-sm-10">
-                            <select class="form-control" style="width: 100%;" required data-bind="options: enabledFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: SortByField"></select>
+                        <div class="col-sm-8">
+                            <select class="form-control" required data-bind="options: enabledFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: SortByField"></select>
+                        </div>
+                        <div class="col-sm-2">
+                            <button class="btn btn-sm btn-secondary" data-bind="text: !SortDesc() ? '▲ Sort Ascending' : 'Sort Descending ▼', click: function() { SortDesc(!SortDesc()); return false; }"></button>
                         </div>
                     </div>
                     <div class="checkbox">
@@ -569,23 +573,23 @@
                     </td>
                     <td>
                         <button class="btn btn-sm btn-secondary" data-bind="click: $parent.RemoveFilter">Remove</button>
-                         <!-- ko if: Field() && Field().fieldType == 'DateTime' && Operator() == 'range' && $root.canAddSeries() && $index()==0 -->
-                        <button class="btn btn-sm" data-bind="click: $root.AddSeries.bind($data)">Add Comparison</button>
+                        <!-- ko if: Field() && Field().fieldType == 'DateTime' && Operator() == 'range' && $root.canAddSeries() && $index()==0 -->
+                        <button class="btn btn-sm btn-secondary" data-bind="click: $root.AddSeries.bind($data)">Add Comparison</button>
                         <!--/ko -->
                     </td>
                 </tr>
                 <!-- ko foreach: compareTo -->
-            <tr>
-                <td></td>
-                <td style="text-align: right"><button class="btn btn-xs" data-bind="click: $root.RemoveSeries"><span class="fa fa-trash-o"></span></button></td>
-                <td>Compare To</td>
-                <td>
-                    <div class="form-group">
-                        <select class="form-control" data-bind="options: Range, value: Value" required></select>
-                    </div>
-                </td>
-            </tr>
-            <!-- /ko -->
+                <tr>
+                    <td></td>
+                    <td style="text-align: right"><button class="btn btn-xs" data-bind="click: $root.RemoveSeries"><span class="fa fa-trash-o"></span></button></td>
+                    <td>Compare To</td>
+                    <td>
+                        <div class="form-group">
+                            <select class="form-control" data-bind="options: Range, value: Value" required></select>
+                        </div>
+                    </td>
+                </tr>
+                <!-- /ko -->
             </tbody>
         </table>
     </div>

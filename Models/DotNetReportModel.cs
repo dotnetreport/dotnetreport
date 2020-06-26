@@ -293,7 +293,7 @@ namespace ReportBuilder.Web.Models
                         ws.Column(i).Style.Numberformat.Format = "#0.00";
 
                     if (dc.DataType == typeof(DateTime))
-                        ws.Column(i).Style.Numberformat.Format = "dd/mm/yyyy";
+                        ws.Column(i).Style.Numberformat.Format = "mm/dd/yyyy";
 
                     i++;
                 }
@@ -320,7 +320,7 @@ namespace ReportBuilder.Web.Models
                 document.Open();
                 PdfPTable table = new PdfPTable(dt.Columns.Count);
                 table.WidthPercentage = 100;
-               // table.DefaultCell.Border = 1;
+                // table.DefaultCell.Border = 1;
                 //Set columns names in the pdf file
                 for (int k = 0; k < dt.Columns.Count; k++)
                 {
