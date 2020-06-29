@@ -1606,11 +1606,13 @@ var reportViewModel = function (options) {
 		var curInputs = options.reportWizard.find("input,select"),
 			isValid = true;
 
-		$(".form-group").removeClass("needs-validation");
+		$(".needs-validation").removeClass("was-validated");
 		for (var i = 0; i < curInputs.length; i++) {
+			$(curInputs[i]).removeClass("is-invalid");
 			if (!self.isInputValid(curInputs[i])) {
 				isValid = false;
-				$(curInputs[i]).closest(".form-group").addClass("needs-validation");
+				$(".needs-validation").addClass("was-validated");
+				$(curInputs[i]).addClass("is-invalid");
 			}
 		}
 
