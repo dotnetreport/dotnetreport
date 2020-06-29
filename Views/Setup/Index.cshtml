@@ -56,7 +56,7 @@
     <div class="alert alert-danger">
         Do not expose this Setup Tool to end users who should not have access to it. Ideally, only Developers should be given access to this utility.
     </div>
-    <div class="form-inline">
+    <div class="form-row">
         <div class="form-group">
             <div class="control-group">
                 <select class="form-control" data-bind="options: DataConnections, optionsText: 'DataConnectName', optionsValue: 'DataConnectGuid', value: currentConnectionKey"></select>
@@ -116,7 +116,7 @@
                             <label>
                                 <input type="checkbox" data-bind="checked: Selected">
                                 <span data-bind="text: TableName"></span>
-                                <span data-bind="visible: IsView" class="label-xs">(view)</span>
+                                <span data-bind="visible: IsView" class="label-sm">(view)</span>
                             </label>
                             <button class="btn btn-sm" title="Save this Table" data-bind="click: function(){$data.saveTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}"><i class="fa fa-floppy-o"></i></button>
                             <button class="btn btn-sm" title="Manage Role Access" data-toggle="modal" data-target="#role-access-modal" data-bind="click: $root.selectAllowedRoles">
@@ -130,11 +130,11 @@
                     <div data-bind="attr: {id: 'table'+$index()}" class="panel-collapse collapse in">
                         <div class="card-body">
                             <p>
-                                <label class="label-xs">Display Name</label><br />
+                                <label class="label-sm">Display Name</label><br />
                                 <span data-bind="editable: DisplayName"></span>
                             </p>
                             <p>
-                                <label class="label-xs">Account Id Field</label><br />
+                                <label class="label-sm">Account Id Field</label><br />
                                 <span data-bind="editable: AccountIdField"></span>
                             </p>
                         </div>
