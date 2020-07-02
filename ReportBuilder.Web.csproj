@@ -321,6 +321,7 @@
     <Content Include="fonts\fontawesome-webfont.eot" />
     <Content Include="Views\Report\Dashboard.cshtml" />
     <Content Include="Views\Setup\Index.cshtml" />
+    <Content Include="Views\Setup\RunProcedure.cshtml" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>

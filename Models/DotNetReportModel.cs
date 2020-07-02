@@ -98,6 +98,7 @@ namespace ReportBuilder.Web.Models
 
         public List<ColumnViewModel> Columns { get; set; }
 
+        public DataTable dataTable { get; set; }
         public List<ParameterViewModel> Parameters { get; set; }
         public List<string> AllowedRoles { get; set; }
     }
