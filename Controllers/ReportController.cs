@@ -176,8 +176,8 @@ namespace ReportBuilder.Web.Controllers
                     sql = DotNetReportHelper.Decrypt(allSqls[i]);
 
                     var sqlSplit = sql.Substring(0, sql.IndexOf("FROM")).Replace("SELECT", "").Trim();
-                    var sqlFields = Regex.Split(sqlSplit, "], (?![^\\(]*?\\))").Where(x => x != "CONVERT(VARCHAR(3)")
-                        .Select(x => x.EndsWith("]") ? x : x + "]")
+                    var sqlFields = Regex.Split(sqlSplit, "\", (?!\"^\\(\"*?\\))").Where(x => x != "CONVERT(VARCHAR(3)")
+                        .Select(x => x.EndsWith("\"") ? x : x + "\"")
                         .ToList();
 
                     if (!String.IsNullOrEmpty(sortBy))
