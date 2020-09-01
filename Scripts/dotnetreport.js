@@ -1606,11 +1606,13 @@ var reportViewModel = function (options) {
 		var curInputs = options.reportWizard.find("input,select"),
 			isValid = true;
 
-		$(".form-group").removeClass("has-error");
+		$(".needs-validation").removeClass("was-validated");
 		for (var i = 0; i < curInputs.length; i++) {
+			$(curInputs[i]).removeClass("is-invalid");
 			if (!self.isInputValid(curInputs[i])) {
 				isValid = false;
-				$(curInputs[i]).closest(".form-group").addClass("has-error");
+				$(".needs-validation").addClass("was-validated");
+				$(curInputs[i]).addClass("is-invalid");
 			}
 		}
 
@@ -1716,9 +1718,9 @@ var dashboardViewModel = function (options) {
 	};
 
 	self.saveDashboard = function () {
-		$(".form-group").removeClass("has-error");
+		$(".form-group").removeClass("needs-validation");
 		if (!self.dashboard.Name()) {
-			$("#add-dash-name").closest(".form-group").addClass("has-error");
+			$("#add-dash-name").closest(".form-group").addClass("needs-validation");
 			return false;
 		}
 

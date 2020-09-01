@@ -8,7 +8,7 @@
     <title>Asp .Net Ad Hoc Report Builder - @ViewBag.Title </title>
     <meta name="keywords" content="ad-hoc reporting, reporting, asp .net reporting, asp .net report, report builder, ad hoc report builder, ad-hoc report builder, adhoc report, ad hoc reports, .net report viewer, reportviewer, sql reportviewer, report builder mvc, report mvc, report builder web forms, query builder, sql report builder,visual report builder,custom query,query maker" />
     <meta name="description" content="Ad hoc Reporting software that allows programmers to easily add Reporting functionality to their ASP .NET Web Software Solution" />
-    <link href="~/Content/bootstrap.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
     <link href="~/Content/bootstrap-mvc-validation.css" rel="stylesheet" />
     <link href="~/Content/themes/base/datepicker.css" rel="stylesheet" />
     <link href="~/Content/themes/base/theme.css" rel="stylesheet" />
@@ -17,34 +17,16 @@
     <link href="~/Content/css/select2.min.css" rel="stylesheet" />
     <link href="~/Content/dotnetreport.css?v=3.0.0" rel="stylesheet" />
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-    @RenderSection("head", required: false)
-    <style type="text/css">
-        body {
-            padding-top: 80px;
-            padding-bottom: 40px;
-        }
-    </style>
+    @RenderSection("head", required: false)    
 </head>
 
 <body>
-    <div class="navbar navbar-default navbar-fixed-top">
+    <div class="navbar  border-bottom box-shadow ">
         <div class="">
-            <div class="navbar-header">
-                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                </button>
-                <div class="navbar-brand">
-                    <a href="/">
-                        <img src="~/Content/img/report-logo.png" alt=".Net Report Builder" width="150" />
-                    </a>
-                </div>
-            </div>
-            <div class="navbar-collapse collapse">
-                <ul class="nav navbar-nav">
-                    @*<li>@Html.ActionLink("Home", "Index", "Home")</li>*@
-                </ul>
+            <div class="navbar-brand">
+                <a href="/">
+                    <img src="/content/img/report-logo.png" alt=".Net Report Builder" width="200" />
+                </a>
             </div>
         </div>
     </div>
@@ -70,7 +52,10 @@
             <input class="form-control" data-bind="datepicker: $parent.Value" required />
             <!-- /ko -->
             <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
-            From <input required class="form-control" data-bind="datepicker: $parent.Value" /> to <input data-bind="datepicker: $parent.Value2" class="form-control" required />
+            From
+            <input required class="form-control" data-bind="datepicker: $parent.Value" />
+            to
+            <input data-bind="    datepicker: $parent.Value2" class="form-control" required />
             <!-- /ko -->
             <!-- ko if: ['range'].indexOf($parent.Operator()) != -1 -->
             <select data-bind="value: $parent.Value" class="form-control">
@@ -92,7 +77,10 @@
             <input class="form-control" type="number" data-bind="value: $parent.Value" required />
             <!-- /ko -->
             <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
-            From <input class="form-control" type="number" data-bind="value: $parent.Value" required /> to <input class="form-control" type="number" data-bind="value: $parent.Value2" required />
+            From
+            <input class="form-control" type="number" data-bind="value: $parent.Value" required />
+            to
+            <input class="form-control" type="number" data-bind="    value: $parent.Value2" required />
             <!-- /ko -->
             <!-- /ko -->
             <!-- ko if: fieldType=='Boolean' -->
@@ -102,18 +90,15 @@
             </select>
             <!-- /ko -->
             <!-- ko if: ['Int','Money','Float','Date','DateTime','Boolean'].indexOf(fieldType) == -1 -->
-            <!-- ko if: ['is blank', 'is not blank'].indexOf($parent.Operator()) < 0 -->
             <input class="form-control" type="text" data-bind="value: $parent.Value" required />
             <!-- /ko -->
             <!-- /ko -->
-            <!-- /ko -->
             <!-- ko if: hasForeignKey-->
-            @*Show lookup list*@
             <!-- ko if: $parent.Operator()=='='-->
-            <select required class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true, multiple: false }, options: $parent.LookupList, optionsText:'text', optionsValue:'id', value: $parent.Value"></select>
+            <select required class="form-control" data-bind="options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', value: $parent.Value, optionsCaption: 'Please Choose'"></select>
             <!-- /ko -->
             <!-- ko if: $parent.Operator()=='in' || $parent.Operator()=='not in'-->
-            <select multiple class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText:'text', optionsValue:'id', selectedOptions: $parent.ValueIn"></select>
+            <select multiple class="form-control" data-bind=" select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ValueIn"></select>
             <!-- /ko -->
             <!-- /ko -->
         </div>
@@ -151,8 +136,7 @@
                         <th data-bind="attr: { id: 'col' + $index() }, css: {'right-align': IsNumeric}">
                             <a href="" data-bind="click: function(){ $parentContext.$parentContext.$parent.changeSort(SqlField); }">
                                 <span data-bind="text: ColumnName"></span>
-                                <span data-bind="text: $parentContext.$parentContext.$parent.pager.sortColumn() === SqlField ? ($parentContext.$parentContext.$parent.pager.sortDescending() ? '&#9660;' : '&#9650;') : ''">
-                                </span>
+                                <span data-bind="text: $parentContext.$parentContext.$parent.pager.sortColumn() === SqlField ? ($parentContext.$parentContext.$parent.pager.sortDescending() ? '&#9660;' : '&#9650;') : ''"></span>
                             </a>
                         </th>
                         <!-- /ko -->
@@ -185,8 +169,7 @@
                                         <th data-bind="css: {'right-align': IsNumeric}">
                                             <a href="" data-bind="click: function(){ $parents[1].changeSort(SqlField); }">
                                                 <span data-bind="text: ColumnName"></span>
-                                                <span data-bind="text: $parents[1].pager.sortColumn() === SqlField ? ($parents[1].pager.sortDescending() ? '&#9660;' : '&#9650;') : ''">
-                                                </span>
+                                                <span data-bind="text: $parents[1].pager.sortColumn() === SqlField ? ($parents[1].pager.sortDescending() ? '&#9660;' : '&#9650;') : ''"></span>
                                             </a>
                                         </th>
                                         <!-- /ko -->
@@ -215,19 +198,19 @@
                                     <div class="pull-left">
                                         @using (Html.BeginForm("DownloadExcel", "Report", FormMethod.Post))
                                         {
-                                            <input type="hidden" id="reportSql" name="reportSql" data-bind="value: $parent.sql" />
-                                            <input type="hidden" id="connectKey" name="connectKey" data-bind="value: $parent.connectKey" />
-                                            <input type="hidden" id="reportName" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parentContext.$parentContext.$parent.ReportName()" />
-                                            <button type="submit" class="btn btn-xs" title="Download Excel"><span class="fa fa-file-excel-o"></span></button>
+                                        <input type="hidden" id="reportSql" name="reportSql" data-bind="value: $parent.sql" />
+                                        <input type="hidden" id="connectKey" name="connectKey" data-bind="value: $parent.connectKey" />
+                                        <input type="hidden" id="reportName" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parentContext.$parentContext.$parent.ReportName()" />
+                                        <button type="submit" class="btn btn-xs" title="Download Excel"><span class="fa fa-file-excel-o"></span></button>
                                         }
                                     </div>
                                     <div class="pull-left">
                                         @using (Html.BeginForm("DownloadXml", "Report", FormMethod.Post))
                                         {
-                                            <input type="hidden" id="reportSql" name="reportSql" data-bind="value: $parent.sql" />
-                                            <input type="hidden" id="connectKey" name="connectKey" data-bind="value: $parent.connectKey" />
-                                            <input type="hidden" id="reportName" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parentContext.$parentContext.$parent.ReportName()" />
-                                            <button type="submit" class="btn btn-xs" title="Download XML"><span class="fa fa-file-code-o"></span></button>
+                                        <input type="hidden" id="reportSql" name="reportSql" data-bind="value: $parent.sql" />
+                                        <input type="hidden" id="connectKey" name="connectKey" data-bind="value: $parent.connectKey" />
+                                        <input type="hidden" id="reportName" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parentContext.$parentContext.$parent.ReportName()" />
+                                        <button type="submit" class="btn btn-xs" title="Download XML"><span class="fa fa-file-code-o"></span></button>
                                         }
                                     </div>
                                     <div class="form-group pull-right" data-bind="visible: pages()">
@@ -267,14 +250,14 @@
         </div>
 
         <div class="alert alert-info" data-bind="visible: adminMode">
-            <i class="fa fa-user-circle"></i> Admin Mode is turned on now, it allows you to setup and view Reports or Dashboards for all roles and users. You should remove the Admin mode toggle for non-admin users.<br />
+            <i class="fa fa-user-circle"></i>Admin Mode is turned on now, it allows you to setup and view Reports or Dashboards for all roles and users. You should remove the Admin mode toggle for non-admin users.<br />
         </div>
     </script>
     <script type="text/html" id="manage-access-template">
-        <h5><span class="fa fa-key"></span> Manage Access</h5>
+        <h5><span class="fa fa-key"></span>Manage Access</h5>
         <div class="panel panel-default panel-body" style="margin-left: 20px;">
             <div class="alert alert-info">
-                <span class="fa fa-lightbulb-o fa-2x"></span> &nbsp;User level rights over rule Role level rights. No selection for a rule implies report is available to all.
+                <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;User level rights over rule Role level rights. No selection for a rule implies report is available to all.
             </div>
             <b>Manage by User</b> (allow edit/delete)
             <div class="row container-fluid">
@@ -332,16 +315,16 @@
         </div>
     </script>
     <script type="text/html" id="fly-filter-template">
-        <div class="panel panel-default" data-bind="visible: FlyFilters().length>0">
-            <div class="panel-heading">
-                <h3 class="panel-title">
+        <div class="card" data-bind="visible: FlyFilters().length>0">
+            <div class="card-header">
+                <h5 class="card-title">
                     <a data-toggle="collapse" data-target="#filter-panel" href="#">
-                        <i class="fa fa-filter"></i> Choose filter options
+                        <i class="fa fa-filter"></i>Choose filter options
                     </a>
-                </h3>
+                </h5>
             </div>
-            <div id="filter-panel" class="panel-collapse">
-                <div class="panel-body">
+            <div id="filter-panel" class="card-body">
+                <div>
                     <!-- ko foreach: FlyFilters -->
                     <div class="row">
 
@@ -392,13 +375,14 @@
     </div>
 
     @* Required Javascript Libraries *@
-    <script src="~/Scripts/@Html.Raw(ReportUtil.GetScriptFile("jquery-{0}.min.js"))"></script>
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"></script>
     <script src="~/Scripts/@Html.Raw(ReportUtil.GetScriptFile("jquery-ui-{0}.min.js"))"></script>
     <script src="~/Scripts/jquery.validate.min.js"></script>
-    <script src="~/Scripts/bootstrap.js"></script>
     <script src="~/Scripts/@Html.Raw(ReportUtil.GetScriptFile("knockout-{0}.js"))"></script>
     <script src="~/Scripts/jquery.blockUI.js"></script>
-    <script src="~/Scripts/bootbox.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootbox.js/5.4.0/bootbox.min.js"></script>
     <script src="~/Scripts/toastr.min.js"></script>
     <script src="~/Scripts/knockout-sortable.min.js"></script>
     <script src="~/Scripts/select2.min.js"></script>
