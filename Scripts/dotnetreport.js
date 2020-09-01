@@ -70,6 +70,20 @@ function formulaFieldViewModel(args) {
 	self.constantValue = ko.observable(args.constantValue);
 }
 
+function linkFieldViewModel(args) {
+	args = args || {};
+	var self = this;
+
+	self.LinksToReport = ko.observable(args.LinksToReport || false);
+	self.LinkedToReportId = ko.observable(args.LinkedToReportId);
+	self.SendAsFilterParameter = ko.observable(args.SendAsFilterParameter);
+	self.SelectedFilterId = ko.observable(args.SelectedFilterId);
+
+	self.LinkToUrl = ko.observable(args.LinkToUrl);
+	self.SendAsQueryParameter = ko.observable(args.SendAsQueryParameter);
+	self.QueryParameterName = ko.observable(args.QueryParameterName);
+}
+
 function scheduleBuilder() {
 	var self = this;
 	
@@ -621,6 +635,8 @@ var reportViewModel = function (options) {
 			disabled: false,
 			groupInGraph: false,
 			hideInDetail: false,
+			linkField: false,
+			linkFieldItem: null,
 			fieldAggregate: ['Group', 'Count'],
 			fieldAggregateWithDrilldown: ['Group', 'Count'],
 			isFormulaField: true,
@@ -947,7 +963,8 @@ var reportViewModel = function (options) {
 					Disabled: x.disabled(),
 					GroupInGraph: x.groupInGraph(),
 					HideInDetail: x.hideInDetail(),
-
+					LinkField: x.linkField(),
+					LinkFieldItem: ko.toJS(x.linkFieldItem),
 					IsCustom: x.isFormulaField(),
 					CustomLabel: x.fieldName,
 					DataFormat: x.fieldFormat,
@@ -1359,6 +1376,8 @@ var reportViewModel = function (options) {
 		e.groupInGraph = ko.observable(e.groupInGraph);
 		e.hideInDetail = ko.observable(e.hideInDetail);
 		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail');
+		e.linkField = ko.observable(e.linkField);
+		e.linkFieldItem = new linkFieldViewModel(e.linkFieldItem);
 
 		e.isFormulaField = ko.observable(e.isFormulaField);
 
