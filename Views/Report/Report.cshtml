@@ -26,7 +26,9 @@
                                 '</head><body>' + $('.report-inner').html() +
                                 '</body></html>');
 
-        setTimeout(function(){
+        setTimeout(function () {
+            printWindow.document.close();
+            printWindow.focus();
             printWindow.print();
             printWindow.close();
         }, 250);

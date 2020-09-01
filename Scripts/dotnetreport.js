@@ -1165,7 +1165,7 @@ var reportViewModel = function (options) {
 			}
 
 			if (self.isChart()) {
-				google.charts.load('current', { packages: ['corechart'] });
+				google.charts.load('current', { packages: ['corechart', 'geochart'] });
 				google.charts.setOnLoadCallback(self.DrawChart);
 			}
 
