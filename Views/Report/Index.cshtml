@@ -22,13 +22,13 @@
             var vm = new reportViewModel({
                 runReportUrl: '@Url.Action("Report")',
                 reportWizard: $("#modal-reportbuilder"),
+                linkModal: $("#linkModal"),
                 lookupListUrl: '@Url.Action("GetLookupList")',
                 apiUrl: '@Url.Action("CallReportApi")',
                 runReportApiUrl: '@Url.Action("RunReportApi")',
                 getUsersAndRolesUrl: '@Url.Action("GetUsersAndRoles")',
                 reportId: @(Request.QueryString["reportId"] != null ? Request.QueryString["reportId"] : "0"),
                 userSettings: data
-                //dataFilters: { EmployeeId: '1,2' }, // You can also pass a list of Global Data filters using format { Column1: 'val1, val2, ...', Column2: '1,2,3,...', ...}
             });
 
             vm.init(@(Request.QueryString["folderId"]!=null? Request.QueryString["folderId"]: "0"), data.noAccount);
@@ -405,6 +405,11 @@
                                             <span class="fa fa-line-chart" aria-hidden="true" title="Include in series"></span>
                                         </span>
                                     </div>
+                                    <div class="pull-right" style="padding-right: 15px;">
+                                        <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ linkField(!linkField()); }, css: {active: linkField()==true}">
+                                            <span class="fa fa-link" aria-hidden="true" title="Link to another Report or Url"></span>
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </li>
@@ -494,7 +499,6 @@
     </div>
 </div>
 
-
 <!-- Folder Edit Modal -->
 <div class="modal" id="folderModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog">
@@ -517,6 +521,55 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" data-bind="click: saveFolder">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Link Edit Modal -->
+<div class="modal" id="linkModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Setup Link Field</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" data-bind="with: editLinkField">
+                <div class="form-group row">
+                    <label class="col-sm-5 col-md-5 control-label">This field will link to a</label>
+                    <div class="col-sm-7 col-md-7">
+                        <select class="form-control" data-bind="options: linkTypes, value: selectedLinkType"></select>
+                    </div> 
+                </div>
+                <div data-bind="if: LinksToReport">
+
+                </div>
+                <div data-bind="ifnot: LinksToReport">
+                    <div class="form-group row">
+                        <label class="col-sm-5 col-md-5 control-label">Link to this URL</label>
+                        <div class="col-sm-7 col-md-7">
+                            <input type="url" class="form-control" required placeholder="Enter a url to open" data-bind="value: LinkToUrl">
+                        </div>
+                    </div>
+                    <div class="checkbox">
+                        <label>
+                            <input type="checkbox" data-bind="checked: SendAsQueryParameter" />
+                            Send field value as Query Parameter
+                        </label>
+                    </div>
+                    <div class="form-group row" data-bind="if: SendAsQueryParameter">
+                        <label class="col-sm-5 col-md-5 control-label">Parameter Name to use</label>
+                        <div class="col-sm-7 col-md-7">
+                            <input type="url" class="form-control" required placeholder="Enter parameter name to send value as" data-bind="value: QueryParameterName">
+                        </div>
+                    </div>
+                    <br />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-dismiss="modal">Done</button>
             </div>
         </div>
     </div>

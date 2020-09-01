@@ -74,14 +74,30 @@ function linkFieldViewModel(args) {
 	args = args || {};
 	var self = this;
 
+	self.linkTypes = ['Report', 'URL'];
+	self.selectedLinkType = ko.observable();
 	self.LinksToReport = ko.observable(args.LinksToReport || false);
 	self.LinkedToReportId = ko.observable(args.LinkedToReportId);
-	self.SendAsFilterParameter = ko.observable(args.SendAsFilterParameter);
+	self.SendAsFilterParameter = ko.observable(args.SendAsFilterParameter || false);
 	self.SelectedFilterId = ko.observable(args.SelectedFilterId);
 
 	self.LinkToUrl = ko.observable(args.LinkToUrl);
-	self.SendAsQueryParameter = ko.observable(args.SendAsQueryParameter);
+	self.SendAsQueryParameter = ko.observable(args.SendAsQueryParameter || false);
 	self.QueryParameterName = ko.observable(args.QueryParameterName);
+
+	self.selectedLinkType.subscribe(function () {
+		self.LinksToReport(self.selectedLinkType() == 'Report');
+	});
+
+	self.clear = function () {
+		self.LinksToReport(false);
+		self.LinkedToReportId(null);
+		self.SendAsFilterParameter(false);
+		self.SelectedFilterId(null);
+		self.LinkToUrl = ko.observable(null);
+		self.SendAsQueryParameter(false);
+		self.QueryParameterName(null);
+	}
 }
 
 function scheduleBuilder() {
@@ -1368,6 +1384,8 @@ var reportViewModel = function (options) {
 		});
 	};
 
+	self.editLinkField = ko.observable();
+
 	self.setupField = function (e) {
 		e.selectedFieldName = e.tableName + " > " + e.fieldName;
 		e.selectedAggregate = ko.observable(e.aggregateFunction);
@@ -1394,6 +1412,16 @@ var reportViewModel = function (options) {
 
 		e.formulaItems = ko.observableArray(formulaItems);
 		e.setupFormula = new formulaFieldViewModel();
+
+		e.linkField.subscribe(function (x) {
+			if (x) {
+				self.editLinkField(e.linkFieldItem);
+				options.linkModal.modal('show');
+			} else {
+				e.linkFieldItem.clear();
+				options.linkModal.modal('hide');
+			}
+		})
 		return e;
 	};
 
