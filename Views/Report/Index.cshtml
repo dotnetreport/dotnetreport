@@ -532,9 +532,6 @@
         <div class="modal-content" data-bind="with: editLinkField">
             <div class="modal-header">
                 <h5 class="modal-title">Setup Link Field</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
             </div>
             <div class="modal-body needs-validation" data-bind="with: linkFieldItem">
                 <div class="form-group row">
@@ -567,7 +564,7 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-md-5 control-label">Link to this URL</label>
                         <div class="col-sm-7 col-md-7">
-                            <input type="url" class="form-control" required placeholder="Enter a url to open" data-bind="value: LinkToUrl">
+                            <input type="url" class="form-control" required placeholder="Enter a url to open" data-bind="value: LinkToUrl" title="Valid URL needs to start with http:// or https://">
                         </div>
                     </div>
                     <div class="checkbox">
@@ -579,7 +576,7 @@
                     <div class="form-group row" data-bind="if: SendAsQueryParameter">
                         <label class="col-sm-5 col-md-5 control-label">Parameter Name to use</label>
                         <div class="col-sm-7 col-md-7">
-                            <input type="url" class="form-control" required placeholder="Enter parameter name to send value as" data-bind="value: QueryParameterName">
+                            <input type="text" class="form-control" required placeholder="Enter parameter name to send value as" data-bind="value: QueryParameterName">
                         </div>
                     </div>
                     <br />

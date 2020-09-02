@@ -74,11 +74,12 @@ function linkFieldViewModel(args, options) {
 	args = args || {};
 	var self = this;
 
+	var init = true;
 	self.linkTypes = ['Report', 'URL'];
-	self.selectedLinkType = ko.observable();
+	self.selectedLinkType = ko.observable(args.LinksToReport ? 'Report' : 'URL');
 	self.allFields = ko.observableArray([]);
 	self.LinksToReport = ko.observable(args.LinksToReport || false);
-	self.LinkedToReportId = ko.observable(args.LinkedToReportId);
+	self.LinkedToReportId = ko.observable();
 	self.SendAsFilterParameter = ko.observable(args.SendAsFilterParameter || false);
 	self.SelectedFilterId = ko.observable(args.SelectedFilterId);
 
@@ -114,9 +115,16 @@ function linkFieldViewModel(args, options) {
 				}
 			}).done(function (report) {
 				self.allFields(report.SelectedFields);
+				if (init && self.LinksToReport()) {
+					self.SelectedFilterId(args.SelectedFilterId);
+					init = false;
+				}
 			});
 		}
 	});
+
+	if (self.LinksToReport()) 
+		self.LinkedToReportId(args.LinkedToReportId);
 
 	// ui-validation
 	self.isInputValid = function (ctl) {
