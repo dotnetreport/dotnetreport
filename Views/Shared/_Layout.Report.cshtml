@@ -154,7 +154,14 @@
                         <td><a href="#" data-bind="click: function(){ toggle(); }"><span class="fa" data-bind="css: {'fa-plus': !isExpanded(), 'fa-minus': isExpanded()}"></span></a></td>
                         <!-- /ko -->
                         <!-- ko foreach: Items -->
-                        <td data-bind="html: FormattedValue, css: {'right-align': Column.IsNumeric}"></td>
+                            <!-- ko if: LinkTo-->
+                            <td data-bind="css: {'right-align': Column.IsNumeric}">
+                                <a data-bind="attr: {href: LinkTo}"><span data-bind="html: FormattedValue"></span></a>
+                            </td>
+                            <!-- /ko-->                        
+                            <!-- ko ifnot: LinkTo-->
+                            <td data-bind="html: FormattedValue, css: {'right-align': Column.IsNumeric}"></td>
+                        <!-- /ko-->
                         <!-- /ko -->
                     </tr>
                     <!-- ko if: isExpanded -->

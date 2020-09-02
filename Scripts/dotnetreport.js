@@ -1,4 +1,4 @@
-﻿/// .Net Report Builder view model v3.1.0
+﻿/// .Net Report Builder view model v4.0.0
 /// License has to be purchased for use
 /// 2015-2018 (c) www.dotnetreport.com
 function pagerViewModel(args) {
@@ -1261,6 +1261,25 @@ var reportViewModel = function (options) {
 				e.toggle = function () {
 					if (e.isExpanded()) e.collapse(); else e.expand();
 				};
+
+				_.forEach(e.Items, function (r, i) {
+					r.LinkTo = '';
+					var col = self.SelectedFields()[i];
+					if (col && col.linkField()) {
+						var linkItem = col.linkFieldItem.toJs();
+						var link = '';
+						if (linkItem.LinksToReport) {
+							link = options.runReportUrl + '?reportId=' + linkItem.LinkedToReportId;
+							if (linkItem.SendAsFilterParameter) {
+								link += '&filterId=' + linkItem.SelectedFilterId + '&filterValue=' + r.LabelValue;
+							}
+						}
+						else {
+							link = linkItem.LinkToUrl + (linkItem.SendAsQueryParameter ? ('?' + linkItem.QueryParameterName + '=' + r.LabelValue) : '');
+						}
+						r.LinkTo = link;
+					}
+				});
 			});
 			
 			reportResult.ReportData(result.ReportData);
