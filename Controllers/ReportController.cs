@@ -79,7 +79,38 @@ namespace ReportBuilder.Web.Controllers
             };
 
             return View(model);
-        }        
+        }
+
+        public async Task<ActionResult> ReportLink(int reportId, int? filterId = null, string filterValue = "", bool adminMode = false)
+        {
+            var model = new DotNetReportModel();
+            var settings = GetSettings();
+            
+            using (var client = new HttpClient())
+            {
+                var content = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("account", settings.AccountApiToken),
+                    new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
+                    new KeyValuePair<string, string>("clientId", settings.ClientId),
+                    new KeyValuePair<string, string>("userId", settings.UserId),
+                    new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
+                    new KeyValuePair<string, string>("reportId", reportId.ToString()),
+                    new KeyValuePair<string, string>("filterId", filterId.HasValue ? filterId.ToString() : ""),
+                    new KeyValuePair<string, string>("filterValue", filterValue.ToString()),
+                    new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
+                });
+
+                var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/RunLinkedReport"), content);
+                var stringContent = await response.Content.ReadAsStringAsync();
+
+                model = (new JavaScriptSerializer()).Deserialize<DotNetReportModel>(stringContent);
+                
+            }
+
+            return View("Report", model);
+        }
+
 
         public JsonResult GetLookupList(string lookupSql, string connectKey)
         {
@@ -577,16 +608,15 @@ namespace ReportBuilder.Web.Controllers
 
                 foreach (DataColumn col in dt.Columns)
                 {
-                    
-                        items.Add(new DotNetReportDataRowItemModel
-                        {
-                            Column = model.Columns[i],
-                            Value = row[col] != null ? row[col].ToString() : null,
-                            FormattedValue = GetFormattedValue(col, row),
-                            LabelValue = GetLabelValue(col, row)
-                        });
-                        i += 1;
-                   
+
+                    items.Add(new DotNetReportDataRowItemModel
+                    {
+                        Column = model.Columns[i],
+                        Value = row[col] != null ? row[col].ToString() : null,
+                        FormattedValue = GetFormattedValue(col, row),
+                        LabelValue = GetLabelValue(col, row)
+                    });
+                    i += 1;
                 }
 
                 model.Rows.Add(new DotNetReportDataRowModel
@@ -597,10 +627,7 @@ namespace ReportBuilder.Web.Controllers
 
             return model;
         }
-
-
     }
-
 }
 
 namespace ReportBuilder.Web

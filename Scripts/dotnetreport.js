@@ -1269,7 +1269,7 @@ var reportViewModel = function (options) {
 						var linkItem = col.linkFieldItem.toJs();
 						var link = '';
 						if (linkItem.LinksToReport) {
-							link = options.runReportUrl + '?reportId=' + linkItem.LinkedToReportId;
+							link = options.runLinkReportUrl + '?reportId=' + linkItem.LinkedToReportId;
 							if (linkItem.SendAsFilterParameter) {
 								link += '&filterId=' + linkItem.SelectedFilterId + '&filterValue=' + r.LabelValue;
 							}

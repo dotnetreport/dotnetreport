@@ -16,7 +16,7 @@
 *@
 
 @section scripts{
-<script type="text/javascript">
+    <script type="text/javascript">
     function printReport() {
         var printWindow = window.open("");
         printWindow.document.open();
@@ -49,6 +49,7 @@
         var vm = new reportViewModel({
             runReportUrl: "@Url.Action("Report")",
             execReportUrl: "@Url.Action("RunReport")",
+            runLinkReportUrl: "@Url.Action("ReportLink")",
             reportWizard: $("#filter-panel"),
             lookupListUrl: "@Url.Action("GetLookupList")",
             apiUrl: '@Url.Action("CallReportApi")',
@@ -68,7 +69,7 @@
         });
     });
 
-</script>
+    </script>
 }
 
 <div data-bind="with: ReportResult">
