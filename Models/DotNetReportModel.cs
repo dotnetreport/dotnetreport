@@ -1,6 +1,5 @@
 ﻿using iTextSharp.text;
 using iTextSharp.text.pdf;
-using iTextSharp.xmp.impl;
 using OfficeOpenXml;
 using System;
 using System.Collections.Generic;
@@ -10,7 +9,6 @@ using System.Data.SqlClient;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
-using System.Windows.Media;
 
 namespace ReportBuilder.Web.Models
 {

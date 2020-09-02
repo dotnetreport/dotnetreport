@@ -1031,7 +1031,7 @@ var reportViewModel = function (options) {
 			FolderID: self.FolderID(),
 			SelectedFieldIDs: _.map(self.SelectedFields(), function (x) { return x.fieldId; }),
 			Filters: filters,
-			Series: _.map(self.AdditionalSeries(), function (e, i) {
+			Series: _.map(self.AdditionalSeries(), function (e) {
 				return {
 					SavedReportId: self.ReportID(),
 					FieldId: e.Field().fieldId,
@@ -1092,11 +1092,11 @@ var reportViewModel = function (options) {
 			toastr.error("Please correct validation issues");
 			return;
 		}
-		let i = 0;
-		let isComparison = false;
-		let isExecuteReportQuery = false;
-		let _result = null;
-		let seriesCount = self.AdditionalSeries().length;
+		var i = 0;
+		var isComparison = false;
+		var isExecuteReportQuery = false;
+		var _result = null;
+		var seriesCount = self.AdditionalSeries().length;
 		do {
 			if (i > 0) {
 				isComparison = true;

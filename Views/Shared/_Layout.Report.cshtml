@@ -55,7 +55,7 @@
             From
             <input required class="form-control" data-bind="datepicker: $parent.Value" />
             to
-            <input data-bind="    datepicker: $parent.Value2" class="form-control" required />
+            <input data-bind="datepicker: $parent.Value2" class="form-control" required />
             <!-- /ko -->
             <!-- ko if: ['range'].indexOf($parent.Operator()) != -1 -->
             <select data-bind="value: $parent.Value" class="form-control">
@@ -80,7 +80,7 @@
             From
             <input class="form-control" type="number" data-bind="value: $parent.Value" required />
             to
-            <input class="form-control" type="number" data-bind="    value: $parent.Value2" required />
+            <input class="form-control" type="number" data-bind="value: $parent.Value2" required />
             <!-- /ko -->
             <!-- /ko -->
             <!-- ko if: fieldType=='Boolean' -->
@@ -98,7 +98,7 @@
             <select required class="form-control" data-bind="options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', value: $parent.Value, optionsCaption: 'Please Choose'"></select>
             <!-- /ko -->
             <!-- ko if: $parent.Operator()=='in' || $parent.Operator()=='not in'-->
-            <select multiple class="form-control" data-bind=" select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ValueIn"></select>
+            <select multiple class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ValueIn"></select>
             <!-- /ko -->
             <!-- /ko -->
         </div>
