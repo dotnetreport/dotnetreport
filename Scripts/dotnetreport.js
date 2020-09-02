@@ -86,6 +86,18 @@ function linkFieldViewModel(args, options) {
 	self.SendAsQueryParameter = ko.observable(args.SendAsQueryParameter || false);
 	self.QueryParameterName = ko.observable(args.QueryParameterName);
 
+	self.toJs = function () {
+		return {
+			LinksToReport: self.LinksToReport(),
+			LinkedToReportId: self.LinkedToReportId(),
+			SendAsFilterParameter: self.SendAsFilterParameter(),
+			SelectedFilterId: self.SelectedFilterId(),
+			LinkToUrl: self.LinkToUrl(),
+			SendAsQueryParameter: self.SendAsQueryParameter(),
+			QueryParameterName: self.QueryParameterName()
+		}
+	}
+
 	self.selectedLinkType.subscribe(function () {
 		self.LinksToReport(self.selectedLinkType() == 'Report');
 	});
@@ -1048,7 +1060,9 @@ var reportViewModel = function (options) {
 							Operation: f.formulaOperation(),
 							ConstantValue: f.constantValue()
 						};
-					})
+					}),
+					LinkField: x.linkField(),
+					LinkFieldItem: x.linkField() ? x.linkFieldItem.toJs() : null
 				};
 			}),
 			Schedule: self.scheduleBuilder.toJs(),
