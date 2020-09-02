@@ -106,6 +106,44 @@ function linkFieldViewModel(args, options) {
 		}
 	});
 
+	// ui-validation
+	self.isInputValid = function (ctl) {
+		// first check for custom validation
+		if ($(ctl).attr("data-notempty") != null) {
+			if ($(ctl).children("option").length == 0)
+				return false;
+		}
+
+		// next try html5 validation if availble
+		if (ctl.validity) {
+			return ctl.validity.valid;
+		}
+
+		// finally just check for required attr
+		if ($(ctl).attr("required") != null && $(ctl).val() == "")
+			return false;
+
+		return true;
+	};
+
+	self.validateLink = function () {
+		if (options.linkModal == null) return;
+		var curInputs = options.linkModal.find("input,select"),
+			isValid = true;
+
+		$(".needs-validation").removeClass("was-validated");
+		for (var i = 0; i < curInputs.length; i++) {
+			$(curInputs[i]).removeClass("is-invalid");
+			if (!self.isInputValid(curInputs[i])) {
+				isValid = false;
+				$(".needs-validation").addClass("was-validated");
+				$(curInputs[i]).addClass("is-invalid");
+			}
+		}
+
+		return isValid;
+	};
+
 	self.clear = function () {
 		self.LinksToReport(true);
 		self.selectedLinkType('Report');
@@ -1431,15 +1469,25 @@ var reportViewModel = function (options) {
 		e.formulaItems = ko.observableArray(formulaItems);
 		e.setupFormula = new formulaFieldViewModel();
 
-		e.linkField.subscribe(function (x) {
-			if (x) {
-				self.editLinkField(e.linkFieldItem);
-				options.linkModal.modal('show');
-			} else {
-				e.linkFieldItem.clear();
-				options.linkModal.modal('hide');
+		e.setupLinkField = function () {
+			self.editLinkField(e);
+			options.linkModal.modal('show');
+		}
+
+		e.removeLinkField = function () {
+			e.linkField(false);
+			e.linkFieldItem.clear();
+			options.linkModal.modal('hide');
+		}
+
+		e.saveLinkField = function () {
+			if (!e.linkFieldItem.validateLink()) {
+				toastr.error("Please correct validation issues");
+				return;
 			}
-		})
+			e.linkField(true);
+			options.linkModal.modal('hide');
+		}
 		return e;
 	};
 

@@ -406,7 +406,7 @@
                                         </span>
                                     </div>
                                     <div class="pull-right" style="padding-right: 15px;">
-                                        <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ linkField(!linkField()); }, css: {active: linkField()==true}">
+                                        <span class="button-box no-padding" tabindex="0" data-bind="click: setupLinkField, css: {active: linkField()==true}">
                                             <span class="fa fa-link" aria-hidden="true" title="Link to another Report or Url"></span>
                                         </span>
                                     </div>
@@ -529,25 +529,25 @@
 <!-- Link Edit Modal -->
 <div class="modal" id="linkModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog" style="max-width: 750px;">
-        <div class="modal-content">
+        <div class="modal-content" data-bind="with: editLinkField">
             <div class="modal-header">
                 <h5 class="modal-title">Setup Link Field</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <div class="modal-body" data-bind="with: editLinkField">
+            <div class="modal-body needs-validation" data-bind="with: linkFieldItem">
                 <div class="form-group row">
                     <label class="col-sm-5 col-md-5 control-label">This field will link to</label>
                     <div class="col-sm-7 col-md-7">
-                        <select class="form-control" data-bind="options: linkTypes, value: selectedLinkType"></select>
+                        <select class="form-control" required data-bind="options: linkTypes, value: selectedLinkType"></select>
                     </div> 
                 </div>
                 <div data-bind="if: LinksToReport">
                     <div class="form-group row">
                         <label class="col-sm-5 col-md-5 control-label">Link to this Report</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-control" data-bind="options: $root.SavedReports, optionsText: 'reportName', optionsValue: 'reportId', value: LinkedToReportId, optionsCaption: 'Choose the Report to link to'"></select>
+                            <select class="form-control" required data-bind="options: $root.SavedReports, optionsText: 'reportName', optionsValue: 'reportId', value: LinkedToReportId, optionsCaption: 'Choose the Report to link to'"></select>
                         </div>
                     </div>
                     <div class="checkbox" data-bind="if: LinkedToReportId">
@@ -559,7 +559,7 @@
                     <div class="form-group row" data-bind="if: SendAsFilterParameter">
                         <label class="col-sm-5 col-md-5 control-label">Link to this Report Filter</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-control" data-bind="options: allFields, optionsText: 'fieldName', optionsValue: 'fieldId', value: SelectedFilterId, optionsCaption: 'Choose the Field to Filter by value'"></select>
+                            <select class="form-control" required data-bind="options: allFields, optionsText: 'fieldName', optionsValue: 'fieldId', value: SelectedFilterId, optionsCaption: 'Choose the Field to Filter by value'"></select>
                         </div>
                     </div>
                 </div>
@@ -586,8 +586,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary" data-dismiss="modal">Save Changes</button>
-                <button type="button" class="btn btn-danger" data-dismiss="modal">Remove Link</button>
+                <button type="button" class="btn btn-danger" data-bind="click: removeLinkField">Remove Link</button>
+                <button type="button" class="btn btn-primary" data-bind="click: saveLinkField">Save Changes</button>
             </div>
         </div>
     </div>
