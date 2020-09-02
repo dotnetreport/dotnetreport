@@ -528,7 +528,7 @@
 
 <!-- Link Edit Modal -->
 <div class="modal" id="linkModal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog" style="max-width: 750px;">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Setup Link Field</h5>
@@ -538,13 +538,30 @@
             </div>
             <div class="modal-body" data-bind="with: editLinkField">
                 <div class="form-group row">
-                    <label class="col-sm-5 col-md-5 control-label">This field will link to a</label>
+                    <label class="col-sm-5 col-md-5 control-label">This field will link to</label>
                     <div class="col-sm-7 col-md-7">
                         <select class="form-control" data-bind="options: linkTypes, value: selectedLinkType"></select>
                     </div> 
                 </div>
                 <div data-bind="if: LinksToReport">
-
+                    <div class="form-group row">
+                        <label class="col-sm-5 col-md-5 control-label">Link to this Report</label>
+                        <div class="col-sm-7 col-md-7">
+                            <select class="form-control" data-bind="options: $root.SavedReports, optionsText: 'reportName', optionsValue: 'reportId', value: LinkedToReportId, optionsCaption: 'Choose the Report to link to'"></select>
+                        </div>
+                    </div>
+                    <div class="checkbox" data-bind="if: LinkedToReportId">
+                        <label>
+                            <input type="checkbox" data-bind="checked: SendAsFilterParameter" />
+                            Send field value as Report Filter Parameter
+                        </label>
+                    </div>
+                    <div class="form-group row" data-bind="if: SendAsFilterParameter">
+                        <label class="col-sm-5 col-md-5 control-label">Link to this Report Filter</label>
+                        <div class="col-sm-7 col-md-7">
+                            <select class="form-control" data-bind="options: allFields, optionsText: 'fieldName', optionsValue: 'fieldId', value: SelectedFilterId, optionsCaption: 'Choose the Field to Filter by value'"></select>
+                        </div>
+                    </div>
                 </div>
                 <div data-bind="ifnot: LinksToReport">
                     <div class="form-group row">
@@ -569,7 +586,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary" data-dismiss="modal">Done</button>
+                <button type="button" class="btn btn-primary" data-dismiss="modal">Save Changes</button>
+                <button type="button" class="btn btn-danger" data-dismiss="modal">Remove Link</button>
             </div>
         </div>
     </div>

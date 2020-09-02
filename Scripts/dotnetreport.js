@@ -70,12 +70,13 @@ function formulaFieldViewModel(args) {
 	self.constantValue = ko.observable(args.constantValue);
 }
 
-function linkFieldViewModel(args) {
+function linkFieldViewModel(args, options) {
 	args = args || {};
 	var self = this;
 
 	self.linkTypes = ['Report', 'URL'];
 	self.selectedLinkType = ko.observable();
+	self.allFields = ko.observableArray([]);
 	self.LinksToReport = ko.observable(args.LinksToReport || false);
 	self.LinkedToReportId = ko.observable(args.LinkedToReportId);
 	self.SendAsFilterParameter = ko.observable(args.SendAsFilterParameter || false);
@@ -89,8 +90,25 @@ function linkFieldViewModel(args) {
 		self.LinksToReport(self.selectedLinkType() == 'Report');
 	});
 
+	self.LinkedToReportId.subscribe(function (reportId) {
+		if (reportId) {
+			return ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/LoadReport",
+					model: JSON.stringify({
+						reportId: reportId,
+					})
+				}
+			}).done(function (report) {
+				self.allFields(report.SelectedFields);
+			});
+		}
+	});
+
 	self.clear = function () {
-		self.LinksToReport(false);
+		self.LinksToReport(true);
+		self.selectedLinkType('Report');
 		self.LinkedToReportId(null);
 		self.SendAsFilterParameter(false);
 		self.SelectedFilterId(null);
@@ -1395,7 +1413,7 @@ var reportViewModel = function (options) {
 		e.hideInDetail = ko.observable(e.hideInDetail);
 		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail');
 		e.linkField = ko.observable(e.linkField);
-		e.linkFieldItem = new linkFieldViewModel(e.linkFieldItem);
+		e.linkFieldItem = new linkFieldViewModel(e.linkFieldItem, options);
 
 		e.isFormulaField = ko.observable(e.isFormulaField);
 
