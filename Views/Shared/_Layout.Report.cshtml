@@ -60,6 +60,7 @@
             <!-- ko if: ['range'].indexOf($parent.Operator()) != -1 -->
             <select data-bind="value: $parent.Value" class="form-control">
                 <option>Today</option>
+                <option>Yesterday</option>
                 <option>This Week</option>
                 <option>Last Week</option>
                 <option>This Month</option>
@@ -89,7 +90,7 @@
                 <option value="0">No</option>
             </select>
             <!-- /ko -->
-            <!-- ko if: ['Int','Money','Float','Date','DateTime','Boolean'].indexOf(fieldType) == -1 -->
+            <!-- ko if: ['Int','Money','Float','Date','DateTime','Boolean'].indexOf(fieldType) == -1 && ['is blank', 'is not blank'].indexOf($parent.Operator()) == -1 -->
             <input class="form-control" type="text" data-bind="value: $parent.Value" required />
             <!-- /ko -->
             <!-- /ko -->
@@ -394,7 +395,7 @@
     <script src="~/Scripts/knockout-sortable.min.js"></script>
     <script src="~/Scripts/select2.min.js"></script>
     <script src="~/Scripts/dotnetreport-helper.js"></script>
-    <script src="~/Scripts/dotnetreport.js?v=3.1.0"></script>
+    <script src="~/Scripts/dotnetreport.js?v=4.0.0"></script>
     <script src="~/Scripts/lodash.min.js"></script>
     @RenderSection("scripts", required: false)
     @Html.PageScripts()
