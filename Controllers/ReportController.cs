@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using MySql.Data.MySqlClient;
+using Newtonsoft.Json;
 using ReportBuilder.Web.Models;
 using System;
 using System.Collections.Generic;
@@ -121,11 +122,11 @@ namespace ReportBuilder.Web.Controllers
 
             var json = new StringBuilder();
             var dt = new DataTable();
-            using (var conn = new SqlConnection(ConfigurationManager.ConnectionStrings[connectKey].ConnectionString))
+            using (var conn = new MySqlConnection(ConfigurationManager.ConnectionStrings[connectKey].ConnectionString))
             {
                 conn.Open();
-                var command = new SqlCommand(sql, conn);
-                var adapter = new SqlDataAdapter(command);
+                var command = new MySqlCommand(sql, conn);
+                var adapter = new MySqlDataAdapter(command);
 
                 adapter.Fill(dt);
             }
@@ -186,6 +187,74 @@ namespace ReportBuilder.Web.Controllers
 
         }
 
+        private static char[] _sep = new char[1] { ' ' };
+
+        private static string ConvertMStoMySQL(string sql)
+        {
+            // Assume this is in the general format of "SELECT a,b,c FROM table JOIN tabl2 on X=y WHERE x=2 ORDER BY XX"
+            sql = sql.Replace("[", "`");  // Change M$ brackets to MySQL left quotes.
+            sql = sql.Replace("]", "`");
+
+            const string kFrom = "FROM ";
+            int iFrom = sql.IndexOf(kFrom) + kFrom.Length;  // e.g. "vw_clients  , vw_employees  , vw_visits" terminated for "LEFT , JOIN, WHERE, ORDER
+
+            const string withRU = "WITH (READUNCOMMITTED)";  
+            int iFromEnd = sql.IndexOf(withRU);
+            if (iFromEnd >= 0)
+            {
+                sql = sql.Replace(withRU, "");
+                iFromEnd -= iFrom;
+            }
+            else
+            {
+                // withRU was not present so search manually.
+                var MatchFrom = Regex.Match(sql.Substring(iFrom), @"^[a-z_, `]*");     // ASSUME all my tables are lower case. SQL commands are upper case.
+                // ASSUME MatchFrom.Index = 0;
+                iFromEnd = MatchFrom.Length;
+            }
+
+            string tables = sql.Substring(iFrom, iFromEnd).Trim();     // maybe one of several tables in a natural join.
+            sql = sql.Remove(iFrom, iFromEnd);
+            sql = sql.Insert(iFrom, " (" + tables + ") ");    // must use parens for syntax to be correct.
+
+            const string kConvertDate = "CONVERT(date,";
+
+            // Change 'CONVERT(DATE,f)'. Maybe use MySQL style cast ?
+            int i = 0;
+            while (true)
+            {
+                i = sql.IndexOf(kConvertDate, i);
+                if (i < 0)
+                    break;
+
+                int i2 = sql.IndexOf(")", i + kConvertDate.Length);    // find end.
+                string sDate = sql.Substring(i + kConvertDate.Length, (i2 - i) - kConvertDate.Length);
+                sql = sql.Remove(i, (i2 - i) + 1);    // remove old.
+
+                // replace.
+                sql = sql.Insert(i, sDate);
+            }
+
+            // M$ uses '10/1/2011' when MySQL wants '2015-09-23'
+            i = 0;
+            var regDate = new Regex(@"'(0?[1-9]|1[012])/(0?[1-9]|[12][0-9]|3[01])/(19|20)\d\d'"); // e.g. '10/1/2011'
+            while (true)
+            {
+                var match = regDate.Match(sql.Substring(i));
+                if (!match.Success)
+                    break;
+                i += match.Index;
+                var dt = Convert.ToDateTime(sql.Substring(i + 1, match.Length - 2)); // inside quotes.
+                sql = sql.Remove(i + 1, match.Length - 2);
+                string sDtNew = dt.ToString("yyyy-MM-dd");   // reformat this correctly. "yyyy-MM-dd"
+                sql = sql.Insert(i + 1, sDtNew);
+                i += sDtNew.Length;
+            }
+
+            return sql;
+        }
+
+
         public JsonResult RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, bool desc = false, string reportSeries = null)
         {
             var sql = "";
@@ -205,10 +274,11 @@ namespace ReportBuilder.Web.Controllers
                 for (int i = 0; i < allSqls.Length; i++)
                 {
                     sql = DotNetReportHelper.Decrypt(allSqls[i]);
+                    sql = ConvertMStoMySQL(sql);
 
                     var sqlSplit = sql.Substring(0, sql.IndexOf("FROM")).Replace("SELECT", "").Trim();
-                    var sqlFields = Regex.Split(sqlSplit, "], (?![^\\(]*?\\))").Where(x => x != "CONVERT(VARCHAR(3)")
-                        .Select(x => x.EndsWith("]") ? x : x + "]")
+                    var sqlFields = Regex.Split(sqlSplit, "`, (?!`^\\(`*?\\))").Where(x => x != "CONVERT(VARCHAR(3)")
+                        .Select(x => x.EndsWith("`") ? x : x + "`")
                         .ToList();
 
                     if (!String.IsNullOrEmpty(sortBy))
@@ -234,11 +304,11 @@ namespace ReportBuilder.Web.Controllers
                     // Execute sql
                     var dtRun = new DataTable();
                     var dtPagedRun = new DataTable();
-                    using (var conn = new SqlConnection(ConfigurationManager.ConnectionStrings[connectKey].ConnectionString))
+                    using (var conn = new MySqlConnection(ConfigurationManager.ConnectionStrings[connectKey].ConnectionString))
                     {
                         conn.Open();
-                        var command = new SqlCommand(sql, conn);
-                        var adapter = new SqlDataAdapter(command);
+                        var command = new MySqlCommand(sql, conn);
+                        var adapter = new MySqlDataAdapter(command);
                         adapter.Fill(dtRun);
                         dtPagedRun = (dtRun.Rows.Count > 0) ? dtPagedRun = dtRun.AsEnumerable().Skip((pageNumber - 1) * pageSize).Take(pageSize).CopyToDataTable() : dtRun;
 
@@ -294,6 +364,7 @@ namespace ReportBuilder.Web.Controllers
                 }
 
                 sql = DotNetReportHelper.Decrypt(allSqls[0]);
+                sql = ConvertMStoMySQL(sql);
                 var model = new DotNetReportResultModel
                 {
                     ReportData = DataTableToDotNetReportDataModel(dtPaged, fields),
