@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using MySql.Data.MySqlClient;
+using Newtonsoft.Json;
 using ReportBuilder.Web.Models;
 using System;
 using System.Collections.Generic;
@@ -54,13 +55,7 @@ namespace ReportBuilder.Web.Controllers
 
                 var content = await response.Content.ReadAsStringAsync();
                 var connString = ConfigurationManager.ConnectionStrings[content.Replace("\"", "")].ConnectionString;
-                connString = connString.Replace("Trusted_Connection=True", "");
-
-                if (!connString.ToLower().StartsWith("provider"))
-                {
-                    connString = "Provider=sqloledb;" + connString;
-                }
-
+                
                 return connString;
             }
             
@@ -126,6 +121,39 @@ namespace ReportBuilder.Web.Controllers
                     return FieldTypes.Varchar; // 
                     //throw new ArgumentException(string.Format("The data type {0} is not handled by Jet. Did you retrieve this from Jet?", ((OleDbType)oleDbDataType)));
             }
+        }
+
+        private FieldTypes ConvertMySqlDataTypeToFieldType(string dbDataType)
+        {
+            if (dbDataType.Contains("int"))
+                return FieldTypes.Int;
+
+            if (dbDataType.Contains("date"))
+            {
+                return FieldTypes.DateTime;
+            }
+
+            if (dbDataType.Contains("text") || dbDataType.Contains("char"))
+            {
+                return FieldTypes.Varchar;
+            }
+
+            if (dbDataType.Contains("bit") || dbDataType.Contains("bool"))
+            {
+                return FieldTypes.Boolean;
+            }
+
+            if (dbDataType.Contains("currency") || dbDataType.Contains("money"))
+            {
+                return FieldTypes.Money;
+            }
+
+            if (dbDataType.Contains("double") || dbDataType.Contains("float"))
+            {
+                return FieldTypes.Double;
+            }
+
+            return FieldTypes.Varchar; // default
         }
 
         private async Task<List<TableViewModel>> GetApiTables(string accountKey, string dataConnectKey)
@@ -211,13 +239,13 @@ namespace ReportBuilder.Web.Controllers
             }
 
             var connString = await GetConnectionString(GetConnection(dataConnectKey));
-            using (OleDbConnection conn = new OleDbConnection(connString))
+            using (var conn = new MySqlConnection(connString))
             {
                 // open the connection to the database 
                 conn.Open();
 
                 // Get the Tables
-                var SchemaTable = conn.GetOleDbSchemaTable(OleDbSchemaGuid.Tables, new Object[] { null, null, null, type });
+                var SchemaTable = conn.GetSchema("Tables");
 
                 // Store the table names in the class scoped array list of table names
                 for (int i = 0; i < SchemaTable.Rows.Count; i++)
@@ -242,37 +270,39 @@ namespace ReportBuilder.Web.Controllers
                         AllowedRoles = matchTable != null ? matchTable.AllowedRoles : new List<string>()
                     };
 
-                    var dtField = conn.GetOleDbSchemaTable(OleDbSchemaGuid.Columns, new object[] { null, null, tableName });
+                    var dtField = conn.GetSchema("Columns");
                     var idx = 0;
 
                     foreach (DataRow dr in dtField.Rows)
                     {
-                        ColumnViewModel matchColumn = matchTable != null ? matchTable.Columns.FirstOrDefault(x => x.ColumnName.ToLower() == dr["COLUMN_NAME"].ToString().ToLower()) : null;
-                        var column = new ColumnViewModel
-                        {
-                            ColumnName = matchColumn != null ? matchColumn.ColumnName : dr["COLUMN_NAME"].ToString(),
-                            DisplayName = matchColumn != null ? matchColumn.DisplayName : dr["COLUMN_NAME"].ToString(),
-                            PrimaryKey = matchColumn != null ? matchColumn.PrimaryKey : dr["COLUMN_NAME"].ToString().ToLower().EndsWith("id") && idx == 0,
-                            DisplayOrder = matchColumn != null ? matchColumn.DisplayOrder : idx++,
-                            FieldType = matchColumn != null ? matchColumn.FieldType : ConvertToJetDataType((int)dr["DATA_TYPE"]).ToString(),
-                            AllowedRoles = matchColumn != null ? matchColumn.AllowedRoles : new List<string>()
-                        };
+                        if (dr[2].ToString().ToLower() == table.TableName.ToLower()) {
+                            ColumnViewModel matchColumn = matchTable != null ? matchTable.Columns.FirstOrDefault(x => x.ColumnName.ToLower() == dr["COLUMN_NAME"].ToString().ToLower()) : null;
+                            var column = new ColumnViewModel
+                            {
+                                ColumnName = matchColumn != null ? matchColumn.ColumnName : dr["COLUMN_NAME"].ToString(),
+                                DisplayName = matchColumn != null ? matchColumn.DisplayName : dr["COLUMN_NAME"].ToString(),
+                                PrimaryKey = matchColumn != null ? matchColumn.PrimaryKey : dr["COLUMN_NAME"].ToString().ToLower().EndsWith("id") && idx == 0,
+                                DisplayOrder = matchColumn != null ? matchColumn.DisplayOrder : idx++,
+                                FieldType = matchColumn != null ? matchColumn.FieldType : ConvertMySqlDataTypeToFieldType(dr["DATA_TYPE"].ToString().ToLower()).ToString(),
+                                AllowedRoles = matchColumn != null ? matchColumn.AllowedRoles : new List<string>()
+                            };
 
-                        if (matchColumn != null)
-                        {
-                            column.ForeignKey = matchColumn.ForeignKey;
-                            column.ForeignJoin = matchColumn.ForeignJoin;
-                            column.ForeignTable = matchColumn.ForeignTable;
-                            column.ForeignKeyField = matchColumn.ForeignKeyField;
-                            column.ForeignValueField = matchColumn.ForeignValueField;
-                            column.Id = matchColumn.Id;
-                            column.DoNotDisplay = matchColumn.DoNotDisplay;
-                            column.DisplayOrder = matchColumn.DisplayOrder;
+                            if (matchColumn != null)
+                            {
+                                column.ForeignKey = matchColumn.ForeignKey;
+                                column.ForeignJoin = matchColumn.ForeignJoin;
+                                column.ForeignTable = matchColumn.ForeignTable;
+                                column.ForeignKeyField = matchColumn.ForeignKeyField;
+                                column.ForeignValueField = matchColumn.ForeignValueField;
+                                column.Id = matchColumn.Id;
+                                column.DoNotDisplay = matchColumn.DoNotDisplay;
+                                column.DisplayOrder = matchColumn.DisplayOrder;
 
-                            column.Selected = true;
+                                column.Selected = true;
+                            }
+
+                            table.Columns.Add(column);
                         }
-
-                        table.Columns.Add(column);
                     }
                     table.Columns = table.Columns.OrderBy(x => x.DisplayOrder).ToList();
                     tables.Add(table);
