@@ -176,7 +176,7 @@ function linkFieldViewModel(args, options) {
 	}
 }
 
-function scheduleBuilder() {
+function scheduleBuilder(userId) {
 	var self = this;
 	
 	self.options = ['day', 'week', 'month', 'year'];
@@ -241,7 +241,8 @@ function scheduleBuilder() {
 			SelectedHour: self.selectedHour(),
 			SelectedMinute: self.selectedMinute(),
 			SelectedAmPm: self.selectedAmPm(),
-			EmailTo: self.emailTo()
+			EmailTo: self.emailTo(),
+			UserId: userId
 		} : null;
 	};
 
@@ -388,6 +389,8 @@ var reportViewModel = function (options) {
 	self.currentUserRole = (options.userSettings.currentUserRoles || []).join();
 	self.currentUserName = options.userSettings.currentUserName;
 	self.allowAdmin = ko.observable(options.userSettings.allowAdminMode);
+	self.userIdForSchedule = options.userSettings.userIdForSchedule || self.currentUserId;
+
 	self.ChartData = ko.observable();
 	self.ReportName = ko.observable();
 	self.ReportType = ko.observable("List");
@@ -518,7 +521,7 @@ var reportViewModel = function (options) {
 		return _.filter(self.SelectedFields(), function (x) { return !x.disabled(); });
 	});
 
-	self.scheduleBuilder = new scheduleBuilder();	
+	self.scheduleBuilder = new scheduleBuilder(self.userIdForSchedule);	
 
 	self.ManageFolder = {
 		FolderName: ko.observable(),
@@ -1540,7 +1543,8 @@ var reportViewModel = function (options) {
 				method: "/ReportApi/LoadReport",
 				model: JSON.stringify({
 					reportId: reportId,
-					adminMode: self.adminMode()
+					adminMode: self.adminMode(),
+					userIdForSchedule: self.userIdForSchedule
 				})
 			}
 		}).done(function (report) {

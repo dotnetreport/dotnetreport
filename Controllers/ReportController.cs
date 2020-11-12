@@ -34,7 +34,7 @@ namespace ReportBuilder.Web.Controllers
 
             settings.ClientId = "";  // You can pass your multi-tenant client id here to track their reports and folders
             settings.UserId = ""; // You can pass your current authenticated user id here to track their reports and folders            
-            settings.UserName = ""; 
+            settings.UserName = "";
             settings.CurrentUserRole = new List<string>(); // Populate your current authenticated user's roles
 
             settings.Users = new List<string>(); // Populate all your application's user, ex  { "Jane", "John" }
@@ -443,7 +443,8 @@ namespace ReportBuilder.Web.Controllers
                 currentUserId = settings.UserId,
                 currentUserRoles = settings.UserRoles,
                 currentUserName = settings.UserName,
-                allowAdminMode = settings.CanUseAdminMode
+                allowAdminMode = settings.CanUseAdminMode,
+                userIdForSchedule = settings.UserIdForSchedule
             }, JsonRequestBehavior.AllowGet);
         }
 

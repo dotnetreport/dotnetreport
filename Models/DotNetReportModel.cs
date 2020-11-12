@@ -217,6 +217,11 @@ namespace ReportBuilder.Web.Models
         public string UserId { get; set; }
 
         /// <summary>
+        /// If you want to use user id for schedule but not for authentication, use this property
+        /// </summary>
+        public string UserIdForSchedule { get; set; }
+
+        /// <summary>
         /// Current User name to display
         /// </summary>
         public string UserName { get; set; }
