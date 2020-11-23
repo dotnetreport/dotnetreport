@@ -256,8 +256,8 @@ function scheduleBuilder(userId) {
 		};		
 
 		self.selectedOption(data.SelectedOption);
-		self.selectedDays(_.map(data.SelectedDays.split(','), function (x) { return parseInt(x); }));
-		self.selectedMonths(_.map(data.SelectedMonths.split(','), function (x) { return parseInt(x); }));
+		self.selectedDays(data.SelectedDays.split(','));
+		self.selectedMonths(data.SelectedMonths.split(','));
 		self.selectedDates(_.map(data.SelectedDates.split(','), function (x) { return parseInt(x); }));
 		self.selectedHour(data.SelectedHour || '12');
 		self.selectedMinute(data.SelectedMinute || '00');
