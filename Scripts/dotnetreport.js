@@ -438,6 +438,9 @@ var reportViewModel = function (options) {
 	self.CanManageFolders = ko.observable(true);
 	self.CanEdit = ko.observable(true);
 
+	self.fieldFormatTypes = ['None', 'Number', 'Decimal', 'Currency', 'Percentage', 'Date', 'Date and Time', 'Time'];
+	self.fieldAlignments = ['Left', 'Right', 'Center'];
+
 	self.ReportResult = ko.observable({
 		HasError: ko.observable(false),
 		ReportDebug: ko.observable(false),
@@ -1058,8 +1061,6 @@ var reportViewModel = function (options) {
 					Disabled: x.disabled(),
 					GroupInGraph: x.groupInGraph(),
 					HideInDetail: x.hideInDetail(),
-					LinkField: x.linkField(),
-					LinkFieldItem: ko.toJS(x.linkFieldItem),
 					IsCustom: x.isFormulaField(),
 					CustomLabel: x.fieldName,
 					DataFormat: x.fieldFormat,
@@ -1485,6 +1486,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.editLinkField = ko.observable();
+	self.editFieldOptions = ko.observable();
 
 	self.setupField = function (e) {
 		e.selectedFieldName = e.tableName + " > " + e.fieldName;
@@ -1492,12 +1494,17 @@ var reportViewModel = function (options) {
 		e.filterOnFly = ko.observable(e.filterOnFly);
 		e.disabled = ko.observable(e.disabled);
 		e.groupInGraph = ko.observable(e.groupInGraph);
-		e.hideInDetail = ko.observable(e.hideInDetail);
+		e.hideInDetail = ko.observable(e.hideInDetail);3
 		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail');
 		e.linkField = ko.observable(e.linkField);
 		e.linkFieldItem = new linkFieldViewModel(e.linkFieldItem, options);
-
 		e.isFormulaField = ko.observable(e.isFormulaField);
+		e.fieldFormat = ko.observable(e.fieldFormat);
+		e.fieldLabel = ko.observable(e.fieldLabel);
+		e.fieldAlign = ko.observable(e.fieldAlign);
+		e.fontColor = ko.observable(e.fontColor);
+		e.backColor = ko.observable(e.backColor);
+		e.fontBold = ko.observable(e.fontBold);
 
 		var formulaItems = [];
 		_.forEach(e.formulaItems || [], function (e) {
@@ -1515,13 +1522,13 @@ var reportViewModel = function (options) {
 
 		e.setupLinkField = function () {
 			self.editLinkField(e);
-			options.linkModal.modal('show');
+			if (options.linkModal) options.linkModal.modal('show');
 		}
 
 		e.removeLinkField = function () {
 			e.linkField(false);
 			e.linkFieldItem.clear();
-			options.linkModal.modal('hide');
+			if (options.linkModal) options.linkModal.modal('hide');
 		}
 
 		e.saveLinkField = function () {
@@ -1530,8 +1537,36 @@ var reportViewModel = function (options) {
 				return;
 			}
 			e.linkField(true);
-			options.linkModal.modal('hide');
+			if (options.linkModal) options.linkModal.modal('hide');
 		}
+
+		e.setupFieldOptions = function () {
+			self.currentFieldOptions = {
+				fieldFormat: e.fieldFormat(),
+				fieldLabel: e.fieldLabel(),
+				fieldAlign: e.fieldAlign(),
+				fontColor: e.fontColor(),
+				backColor: e.backColor(),
+				fontBold: e.fontBold()
+            }
+			self.editFieldOptions(e);
+			if (options.fieldOptionsModal) options.fieldOptionsModal.modal('show');
+		}
+
+		e.saveFieldOptions = function () {
+			if (options.fieldOptionsModal) options.fieldOptionsModal.modal('hide');
+		}
+
+		e.cancelFieldOptions = function () {
+			e.fieldFormat(self.currentFieldOptions.fieldFormat);
+			e.fieldLabel(self.currentFieldOptions.fieldLabel);
+			e.fieldAlign(self.currentFieldOptions.fieldAlign);
+			e.fontColor(self.currentFieldOptions.fontColor);
+			e.backColor(self.currentFieldOptions.backColor);
+			e.fontBold(self.currentFieldOptions.fontBold);
+			if (options.fieldOptionsModal) options.fieldOptionsModal.modal('hide');
+        }
+
 		return e;
 	};
 

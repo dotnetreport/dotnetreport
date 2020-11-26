@@ -23,6 +23,7 @@
                 runReportUrl: '@Url.Action("Report")',
                 reportWizard: $("#modal-reportbuilder"),
                 linkModal: $("#linkModal"),
+                fieldOptionsModal: $("#fieldOptionsModal"),
                 lookupListUrl: '@Url.Action("GetLookupList")',
                 apiUrl: '@Url.Action("CallReportApi")',
                 runReportApiUrl: '@Url.Action("RunReportApi")',
@@ -410,6 +411,11 @@
                                             <span class="fa fa-link" aria-hidden="true" title="Link to another Report or Url"></span>
                                         </span>
                                     </div>
+                                    <div class="pull-right" style="padding-right: 15px;">
+                                        <span class="button-box no-padding" tabindex="0" data-bind="click: setupFieldOptions">
+                                            <span class="fa fa-gear" aria-hidden="true" title="More Options"></span>
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </li>
@@ -538,7 +544,7 @@
                     <label class="col-sm-5 col-md-5 control-label">This field will link to</label>
                     <div class="col-sm-7 col-md-7">
                         <select class="form-control" required data-bind="options: linkTypes, value: selectedLinkType"></select>
-                    </div> 
+                    </div>
                 </div>
                 <div data-bind="if: LinksToReport">
                     <div class="form-group row">
@@ -585,6 +591,59 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-danger" data-bind="click: removeLinkField">Remove Link</button>
                 <button type="button" class="btn btn-primary" data-bind="click: saveLinkField">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Link Edit Modal -->
+<div class="modal" id="fieldOptionsModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" style="max-width: 750px;">
+        <div class="modal-content" data-bind="with: editFieldOptions">
+            <div class="modal-header">
+                <h5 class="modal-title">Setup Additional Field Options</h5>
+            </div>
+            <div class="modal-body needs-validation">
+                <div class="form-group row">
+                    <label class="col-sm-5 col-md-5 control-label">Pick Data Format</label>
+                    <div class="col-sm-7 col-md-7">
+                        <select class="form-control" required data-bind="options: $root.fieldFormatTypes, value: fieldFormat"></select>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <label class="col-sm-5 col-md-5 control-label">Choose Column Label</label>
+                    <div class="col-sm-7 col-md-7">
+                        <input type="text" class="form-control" required data-bind="value: fieldLabel" />
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <label class="col-sm-5 col-md-5 control-label">Choose Text Alignment</label>
+                    <div class="col-sm-7 col-md-7">
+                        <select class="form-control" required data-bind="options: $root.fieldAlignments, value: fieldAlign"></select>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <label class="col-sm-5 col-md-5 control-label">Pick Text Color</label>
+                    <div class="col-sm-7 col-md-7">
+                        <input type="color" class="form-control" required data-bind="value: fontColor" />
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <label class="col-sm-5 col-md-5 control-label">Pick Background Color</label>
+                    <div class="col-sm-7 col-md-7">
+                        <input type="color" class="form-control" required data-bind="value: backColor" />
+                    </div>
+                </div>
+                <div class="checkbox">
+                    <label>
+                        <input type="checkbox" data-bind="checked: fontBold" />
+                        Make Text Bold
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" data-bind="click: cancelFieldOptions">Cancel</button>
+                <button type="button" class="btn btn-primary" data-bind="click: saveFieldOptions">Save Changes</button>
             </div>
         </div>
     </div>
