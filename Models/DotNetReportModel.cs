@@ -321,6 +321,7 @@ namespace ReportBuilder.Web.Models
             {
                 PdfWriter writer = PdfWriter.GetInstance(document, ms);
                 document.Open();
+                document.Add(new Phrase(reportName));
                 PdfPTable table = new PdfPTable(dt.Columns.Count);
                 table.WidthPercentage = 100;
                 // table.DefaultCell.Border = 1;
