@@ -1063,7 +1063,7 @@ var reportViewModel = function (options) {
 					HideInDetail: x.hideInDetail(),
 					IsCustom: x.isFormulaField(),
 					CustomLabel: x.fieldName,
-					DataFormat: x.fieldFormat,
+					DataFormat: x.fieldFormat() == 'None' ? null : x.fieldFormat(),
 					CustomFieldDetails: _.map(x.formulaItems(), function (f) {
 						return {
 							FieldId: f.fieldId(),
@@ -1074,7 +1074,12 @@ var reportViewModel = function (options) {
 						};
 					}),
 					LinkField: x.linkField(),
-					LinkFieldItem: x.linkField() ? x.linkFieldItem.toJs() : null
+					LinkFieldItem: x.linkField() ? x.linkFieldItem.toJs() : null,
+					FieldLabel: x.fieldLabel(),
+					FieldAlign: x.fieldAlign(),
+					FontColor: x.fontColor(),
+					BackColor: x.backColor(),
+					FontBold: x.fontBold()
 				};
 			}),
 			Schedule: self.scheduleBuilder.toJs(),
@@ -1494,7 +1499,7 @@ var reportViewModel = function (options) {
 		e.filterOnFly = ko.observable(e.filterOnFly);
 		e.disabled = ko.observable(e.disabled);
 		e.groupInGraph = ko.observable(e.groupInGraph);
-		e.hideInDetail = ko.observable(e.hideInDetail);3
+		e.hideInDetail = ko.observable(e.hideInDetail);
 		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail');
 		e.linkField = ko.observable(e.linkField);
 		e.linkFieldItem = new linkFieldViewModel(e.linkFieldItem, options);
