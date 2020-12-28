@@ -112,6 +112,27 @@ namespace ReportBuilder.Web.Controllers
         }
 
 
+        public ActionResult ReportPrint(int reportId, string reportName, string reportDescription, string reportSql, string connectKey, string reportFilter, string reportType,
+            int selectedFolder = 0, bool includeSubTotal = true, bool showUniqueRecords = false, bool aggregateReport = false, bool showDataWithGraph = true)
+        {
+            var model = new DotNetReportModel
+            {
+                ReportId = reportId,
+                ReportType = reportType,
+                ReportName = HttpUtility.UrlDecode(reportName),
+                ReportDescription = HttpUtility.UrlDecode(reportDescription),
+                ReportSql = reportSql,
+                ConnectKey = connectKey,
+                IncludeSubTotals = includeSubTotal,
+                ShowUniqueRecords = showUniqueRecords,
+                ShowDataWithGraph = showDataWithGraph,
+                SelectedFolder = selectedFolder,
+                ReportFilter = reportFilter // json data to setup filter correctly again
+            };
+
+            return View(model);
+        }
+
         public JsonResult GetLookupList(string lookupSql, string connectKey)
         {
             var sql = DotNetReportHelper.Decrypt(lookupSql);
@@ -425,9 +446,10 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpPost]
-        public ActionResult DownloadPdf(string reportSql, string connectKey, string reportName, string ChartData = null)
+        public async Task<ActionResult> DownloadPdf(string printUrl, int reportId, string reportSql, string connectKey, string reportName)
         {
-            var pdf = DotNetReportHelper.GetPdfFile(reportSql, connectKey, reportName, ChartData);
+            reportSql = HttpUtility.HtmlDecode(reportSql);
+            var pdf = await DotNetReportHelper.GetPdfFile(printUrl, reportId, reportSql, connectKey, reportName);
             return File(pdf, "application/pdf", reportName + ".pdf");
         }
 
