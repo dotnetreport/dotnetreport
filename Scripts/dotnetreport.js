@@ -1469,7 +1469,7 @@ var reportViewModel = function (options) {
 
 	self.loadFolders = function (folderId) {
 		// Load folders
-		ajaxcall({
+		return ajaxcall({
 			url: options.apiUrl,
 			data: {
 				method: "/ReportApi/GetFolders",
@@ -1755,21 +1755,23 @@ var reportViewModel = function (options) {
 	};
 
 	if (self.ReportMode() != "dashboard") {
-		self.LoadAllSavedReports();
-		ajaxcall({
-			url: options.apiUrl,
-			data: {
-				method: "/ReportApi/CanSaveReports",
-				model: "{}"
-			}
-		}).done(function (x) {
-			if (x.d) { x = x.d; }
-			x = x || {
-				allowUsersToCreateReports: true,
-				allowUsersToManageFolders: true
-			};
-			self.CanSaveReports(x.allowUsersToCreateReports);
-			self.CanManageFolders(x.allowUsersToManageFolders);
+		self.loadFolders().done(function () {
+			self.LoadAllSavedReports();
+			ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/CanSaveReports",
+					model: "{}"
+				}
+			}).done(function (x) {
+				if (x.d) { x = x.d; }
+				x = x || {
+					allowUsersToCreateReports: true,
+					allowUsersToManageFolders: true
+				};
+				self.CanSaveReports(x.allowUsersToCreateReports);
+				self.CanManageFolders(x.allowUsersToManageFolders);
+			});
 		});
 	}
 
