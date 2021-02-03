@@ -29,9 +29,16 @@ namespace ReportBuilder.Web.Controllers
                 AccountApiToken = ConfigurationManager.AppSettings["dotNetReport.accountApiToken"], // Your Account Api Token from your http://dotnetreport.com Account
                 DataConnectApiToken = ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"] // Your Data Connect Api Token from your http://dotnetreport.com Account
             };
+
+            if (TempData["reportPrint"] != null && TempData["reportPrint"].ToString() == "true")
+            {
+                if (TempData["clientId"] != null) settings.ClientId = (string)TempData["clientId"];
+                if (TempData["userId"] != null) settings.UserId= (string)TempData["userId"];
+                settings.CurrentUserRole = (TempData["currentUserRole"] != null) ? ((string)TempData["currentUserRole"]).Split(',').ToList() : new List<string>();
+                return settings;
+            } 
             
             // Populate the values below using your Application Roles/Claims if applicable
-
             settings.ClientId = "";  // You can pass your multi-tenant client id here to track their reports and folders
             settings.UserId = ""; // You can pass your current authenticated user id here to track their reports and folders            
             settings.UserName = "";
@@ -48,7 +55,7 @@ namespace ReportBuilder.Web.Controllers
 
                 settings.Users = Roles.GetAllRoles().SelectMany(x => Roles.GetUsersInRole(x)).ToList();
                 settings.UserRoles = Roles.GetAllRoles().ToList();                
-            } 
+            }            
 
             return settings;
         }
@@ -113,8 +120,14 @@ namespace ReportBuilder.Web.Controllers
 
 
         public ActionResult ReportPrint(int reportId, string reportName, string reportDescription, string reportSql, string connectKey, string reportFilter, string reportType,
-            int selectedFolder = 0, bool includeSubTotal = true, bool showUniqueRecords = false, bool aggregateReport = false, bool showDataWithGraph = true)
+            int selectedFolder = 0, bool includeSubTotal = true, bool showUniqueRecords = false, bool aggregateReport = false, bool showDataWithGraph = true,
+            string userId = null, string clientId = null, string currentUserRole = null)
         {
+            TempData["reportPrint"] = "true";
+            TempData["userId"] = userId;
+            TempData["clientId"] = clientId;
+            TempData["currentUserRole"] = currentUserRole;
+
             var model = new DotNetReportModel
             {
                 ReportId = reportId,
@@ -449,7 +462,8 @@ namespace ReportBuilder.Web.Controllers
         public async Task<ActionResult> DownloadPdf(string printUrl, int reportId, string reportSql, string connectKey, string reportName)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            var pdf = await DotNetReportHelper.GetPdfFile(printUrl, reportId, reportSql, connectKey, reportName);
+            var settings = GetSettings();
+            var pdf = await DotNetReportHelper.GetPdfFile(printUrl, reportId, reportSql, connectKey, reportName, settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole));
             return File(pdf, "application/pdf", reportName + ".pdf");
         }
 

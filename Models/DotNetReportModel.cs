@@ -307,7 +307,8 @@ namespace ReportBuilder.Web.Models
             }
         }
 
-        public static async Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName, string chartData = null)
+        public static async Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName, 
+                    string userId = null, string clientId = null, string currentUserRole = null)
         {
             var installPath = AppContext.BaseDirectory + "\\App_Data\\local-chromium";
             await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync(BrowserFetcher.DefaultRevision);
@@ -325,6 +326,9 @@ namespace ReportBuilder.Web.Models
             formData.AppendLine($"<input name=\"reportId\" value=\"{reportId}\" />");
             formData.AppendLine($"<input name=\"pageNumber\" value=\"{1}\" />");
             formData.AppendLine($"<input name=\"pageSize\" value=\"{99999}\" />");
+            formData.AppendLine($"<input name=\"userId\" value=\"{userId}\" />");
+            formData.AppendLine($"<input name=\"clientId\" value=\"{clientId}\" />");
+            formData.AppendLine($"<input name=\"currentUserRole\" value=\"{currentUserRole}\" />");
             formData.AppendLine($"</form>");
             formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");
             formData.AppendLine("</body></html>");
