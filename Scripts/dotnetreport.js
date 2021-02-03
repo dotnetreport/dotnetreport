@@ -1496,6 +1496,11 @@ var reportViewModel = function (options) {
 
 		e.isFormulaField = ko.observable(e.isFormulaField);
 
+		e.toggleDisable = function () {
+			if (!e.disabled() && self.enabledFields().length < 2) return;
+			e.disabled(!e.disabled());
+        }
+
 		var formulaItems = [];
 		_.forEach(e.formulaItems || [], function (e) {
 			formulaItems.push(new formulaFieldViewModel({

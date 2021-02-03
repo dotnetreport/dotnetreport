@@ -246,6 +246,12 @@
                             <p>Map</p>
                         </div>
                     </div>
+                    <div class="col-md-3 col-sm-3 col-xs-6">
+                        <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Single'); }, css: {active: ReportType()=='Single'}">
+                            <span class="fa fa-2x fa-list"></span>
+                            <p>Single Value</p>
+                        </div>
+                    </div>
                 </div>
                 <hr />
                 <h5><span class="fa fa-database"></span>Choose Data for Report</h5>
@@ -395,6 +401,11 @@
                                             <span class="fa fa-filter" aria-hidden="true" title="Filter by this field on the Report"></span>
                                         </span>
                                     </div>
+                                    <div class="pull-right" style="padding-right: 15px;">
+                                        <span class="button-box no-padding" tabindex="0" data-bind="click: toggleDisable, css: {active: disabled()==true}">
+                                            <span class="fa fa-close" aria-hidden="true" title="Do not show"></span>
+                                        </span>
+                                    </div>
                                     <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $root.ReportType()=='Summary'">
                                         <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ hideInDetail(!hideInDetail()); }, css: {active: hideInDetail()==true}">
                                             <span class="fa fa-eye-slash" aria-hidden="true" title="Hide in Details"></span>
@@ -447,7 +458,7 @@
                     <div class="form-group row">
                         <label class="col-sm-2 control-label">Sort By</label>
                         <div class="col-sm-8">
-                            <select class="form-control" required data-bind="options: enabledFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: SortByField"></select>
+                            <select class="form-control" required data-bind="options: SelectedFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: SortByField"></select>
                         </div>
                         <div class="col-sm-2">
                             <button class="btn btn-sm btn-secondary" data-bind="text: !SortDesc() ? '▲ Sort Ascending' : 'Sort Descending ▼', click: function() { SortDesc(!SortDesc()); return false; }"></button>
