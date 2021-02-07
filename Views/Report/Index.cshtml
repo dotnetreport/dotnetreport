@@ -20,7 +20,7 @@
     $(document).ready(function () {
         ajaxcall({ url: '@Url.Action("GetUsersAndRoles")' }).done(function (data) {
             var vm = new reportViewModel({
-                runReportUrl: '@Url.Action("Report")',
+               runReportUrl: '@Url.Action("Report")',
                 reportWizard: $("#modal-reportbuilder"),
                 linkModal: $("#linkModal"),
                 fieldOptionsModal: $("#fieldOptionsModal"),
@@ -126,7 +126,7 @@
                     <div class="list-group-item">
                         <div class="row">
                             <div class="col-sm-7">
-                                <div class="fa fa-2x pull-left" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map'}"></div>
+                                <div class="fa fa-2x pull-left" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map', 'fa-window-maximize': reportType=='Single'}"></div>
                                 <div class="pull-left">
                                     <h4><a data-bind="text: reportName, click: runReport" style="cursor: pointer"></a></h4>
                                 </div>
@@ -135,16 +135,16 @@
                                 <!-- ko if: $parent.adminMode -->
                                 <div class="small">
                                     <b>Report Access</b><br />
-                                    Manage by User <span class="label label-info" data-bind="text: userId ? userId : 'No User'"></span>
+                                    Manage by User <span class="badge badge-info" data-bind="text: userId ? userId : 'No User'"></span>
                                     <br />
-                                    View only by User <span class="label label-info" data-bind="text: (viewOnlyUserId ? viewOnlyUserId : (userId ? userId : 'Any User'))"></span>
+                                    View only by User <span class="badge badge-info" data-bind="text: (viewOnlyUserId ? viewOnlyUserId : (userId ? userId : 'Any User'))"></span>
                                     <br />
                                     <!-- ko if: userRole -->
-                                    Manage by Role <span class="label label-info" data-bind="text: userRole ? userRole : 'No Role'"></span>
+                                    Manage by Role <span class="badge badge-info" data-bind="text: userRole ? userRole : 'No Role'"></span>
                                     <br />
                                     <!-- /ko -->
                                     <!-- ko if: viewOnlyUserRole -->
-                                    View only by Role <span class="label label-info" data-bind="text: viewOnlyUserRole ? viewOnlyUserRole : 'Any Role'"></span>
+                                    View only by Role <span class="badge badge-info" data-bind="text: viewOnlyUserRole ? viewOnlyUserRole : 'Any Role'"></span>
                                     <br />
                                     <!-- /ko -->
                                     <!-- ko if: clientId -->
@@ -205,11 +205,15 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="myModalLabel">Design your Report</h5>
+                <h5 class="modal-title" id="myModalLabel">
+                    <a title="Need help setting up a report?" target="_blank" href="https://dotnetreport.com/kb/docs/designing-reports/">
+                        <span class="fa fa-question-circle"></span>
+                    </a>Design your Report
+                </h5>
                 <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
             </div>
             <div class="modal-body needs-validation">
-                <h5><span class="fa fa-file"></span>Choose Report Type</h5>
+                <h5><span class="fa fa-file"></span>&nbsp;Choose Report Type</h5>
                 <div class="row">
                     <div class="col-md-3 col-sm-3 col-xs-6">
                         <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('List'); }, css: {active: ReportType()=='List'}">
@@ -247,9 +251,15 @@
                             <p>Map</p>
                         </div>
                     </div>
+                    <div class="col-md-3 col-sm-3 col-xs-6">
+                        <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Single'); }, css: {active: ReportType()=='Single'}">
+                            <span class="fa fa-2x fa-window-maximize"></span>
+                            <p>Single Value</p>
+                        </div>
+                    </div>
                 </div>
                 <hr />
-                <h5><span class="fa fa-database"></span>Choose Data for Report</h5>
+                <h5><span class="fa fa-database"></span>&nbsp;Choose Data for Report</h5>
                 <div class="row">
                     <div class="col-md-12">
                         <select class="form-control" data-bind="options: Tables, optionsCaption: 'Choose Section...', optionsText: 'tableName', value: SelectedTable, disable: isFormulaField"></select>
@@ -360,7 +370,7 @@
                 </div>
                 <!-- ko if: SelectedFields().length>0 -->
                 <hr />
-                <h5><span class="fa fa-table"></span>Selected data for the Report</h5>
+                <h5><span class="fa fa-table"></span>&nbsp;Selected data for the Report</h5>
                 <div>
                     <div class="alert alert-info" data-bind="visible: ReportType()=='Bar'">
                         <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For Bar Graph, the first field below will show on the x-axis. All other fields will show on y-axis, but they must be numeric.
@@ -378,7 +388,7 @@
                                     <span class="fa fa-columns"></span>
                                     <span data-bind="text: selectedFieldName"></span>
                                     <span data-bind="visible: !$root.isFieldValidForYAxis($index(), fieldType)">
-                                        <span class="label label-danger" data-bind="visible: !groupInGraph()">Will not show in <span data-bind="text: $root.ReportType"></span>Chart</span>
+                                        <span class="badge badge-danger" data-bind="visible: !groupInGraph()">Will not show in <span data-bind="text: $root.ReportType"></span>Chart</span>
                                     </span>
                                 </div>
                                 <div class="col">
@@ -396,7 +406,12 @@
                                             <span class="fa fa-filter" aria-hidden="true" title="Filter by this field on the Report"></span>
                                         </span>
                                     </div>
-                                    <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $root.ReportType()=='Summary'">
+                                    <div class="pull-right" style="padding-right: 15px;">
+                                        <span class="button-box no-padding" tabindex="0" data-bind="click: toggleDisable, css: {active: disabled()==true}">
+                                            <span class="fa fa-close" aria-hidden="true" title="Do not include in Report"></span>
+                                        </span>
+                                    </div>
+                                    <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $root.ReportType()!='List'">
                                         <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ hideInDetail(!hideInDetail()); }, css: {active: hideInDetail()==true}">
                                             <span class="fa fa-eye-slash" aria-hidden="true" title="Hide in Details"></span>
                                         </span>
@@ -422,7 +437,7 @@
                     </ul>
                 </div>
                 <hr />
-                <h5><span class="fa fa-filter"></span>Choose filters</h5>
+                <h5><span class="fa fa-filter"></span>&nbsp;Choose filters</h5>
 
                 <div class="row" style="padding: 10px 10px; overflow-x: auto;">
                     <div data-bind="template: {name: 'filter-group'}" class="col"></div>
@@ -430,7 +445,7 @@
                 </div>
                 <!-- /ko -->
                 <hr />
-                <h5><span class="fa fa-hourglass"></span>Choose Schedule</h5>
+                <h5><span class="fa fa-hourglass"></span>&nbsp;Choose Schedule</h5>
 
                 <div style="padding: 10px 10px">
                     <div data-bind="template: {name: 'report-schedule'}"></div>
@@ -453,7 +468,7 @@
                     <div class="form-group row">
                         <label class="col-sm-2 control-label">Sort By</label>
                         <div class="col-sm-8">
-                            <select class="form-control" required data-bind="options: enabledFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: SortByField"></select>
+                            <select class="form-control" required data-bind="options: SelectedFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: SortByField"></select>
                         </div>
                         <div class="col-sm-2">
                             <button class="btn btn-sm btn-secondary" data-bind="text: !SortDesc() ? '▲ Sort Ascending' : 'Sort Descending ▼', click: function() { SortDesc(!SortDesc()); return false; }"></button>
@@ -596,7 +611,7 @@
     </div>
 </div>
 
-<!-- Link Edit Modal -->
+<!-- Field Options Modal -->
 <div class="modal" id="fieldOptionsModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog" style="max-width: 750px;">
         <div class="modal-content" data-bind="with: editFieldOptions">
@@ -608,6 +623,12 @@
                     <label class="col-sm-5 col-md-5 control-label">Pick Data Format</label>
                     <div class="col-sm-7 col-md-7">
                         <select class="form-control" required data-bind="options: $root.fieldFormatTypes, value: fieldFormat"></select>
+                    </div>
+                </div>
+                <div class="form-group row" data-bind="visible: $root.decimalFormatTypes.indexOf($data.fieldFormat())>=0">
+                    <label class="col-sm-5 col-md-5 control-label">Pick Decimal Places</label>
+                    <div class="col-sm-7 col-md-7">
+                        <input type="number" class="form-control" data-bind="value: decimalPlaces" placeholder="" />
                     </div>
                 </div>
                 <div class="form-group row">
@@ -623,15 +644,33 @@
                     </div>
                 </div>
                 <div class="form-group row">
+                    <label class="col-sm-5 col-md-5 control-label">Pick Header Text Color</label>
+                    <div class="col-sm-7 col-md-7">
+                        <input type="color" style="width: 50px" class="form-control" required data-bind="value: headerFontColor" />
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <label class="col-sm-5 col-md-5 control-label">Pick Header Background Color</label>
+                    <div class="col-sm-7 col-md-7">
+                        <input type="color" style="width: 50px" class="form-control" required data-bind="value: headerBackColor" />
+                    </div>
+                </div>
+                <div class="form-group row">
                     <label class="col-sm-5 col-md-5 control-label">Pick Text Color</label>
                     <div class="col-sm-7 col-md-7">
-                        <input type="color" class="form-control" required data-bind="value: fontColor" />
+                        <input type="color" style="width: 50px" class="form-control" required data-bind="value: fontColor" />
                     </div>
                 </div>
                 <div class="form-group row">
                     <label class="col-sm-5 col-md-5 control-label">Pick Background Color</label>
                     <div class="col-sm-7 col-md-7">
-                        <input type="color" class="form-control" required data-bind="value: backColor" />
+                        <input type="color" style="width: 50px" class="form-control" required data-bind="value: backColor" />
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <label class="col-sm-5 col-md-5 control-label">Choose Width (leave blank for auto)</label>
+                    <div class="col-sm-7 col-md-7">
+                        <input type="text" class="form-control" required data-bind="value: fieldWidth" />
                     </div>
                 </div>
                 <div class="checkbox">

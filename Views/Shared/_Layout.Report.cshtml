@@ -17,7 +17,7 @@
     <link href="~/Content/css/select2.min.css" rel="stylesheet" />
     <link href="~/Content/dotnetreport.css?v=3.0.0" rel="stylesheet" />
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-    @RenderSection("head", required: false)    
+    @RenderSection("head", required: false)
 </head>
 
 <body>
@@ -108,10 +108,10 @@
         <div class="pager-container">
             <a href="" title="first" data-bind="click: first, enable: !isFirstPage()"><i class="fa fa-backward report-pager-btn" style="font-size: 18px;"></i></a>&nbsp;
             <a href="" title="previous" data-bind="click: previous, enable: !isFirstPage()"><i class="fa fa-caret-left fa-2x report-pager-btn"></i></a>
-            <select class="form-control input-sm" data-bind="options: [30,50,100,150,200,500], value: pageSize"></select>
+            <select class="form-control form-control-sm" data-bind="options: [30,50,100,150,200,500], value: pageSize"></select>
             <span class="pager-pageinfo">
                 <span>Page</span>&nbsp;
-                <input type="number" min="1" pattern="[0-9]*" class="text-center" data-bind="
+                <input type="number" min="1" pattern="[0-9]*" class="form-control form-control-sm text-center" data-bind="
                                     value: currentPage,
                                     attr: { max: pages() }" />&nbsp;
                 <span>of</span>&nbsp;
@@ -123,24 +123,40 @@
         </div>
     </script>
 
+    <script type="text/html" id="report-column-header">
+        <!-- ko foreach: Columns -->
+        <th data-bind="attr: { id: fieldId }, css: {'right-align': IsNumeric}, style: {'width': fieldWidth, 'background-color': headerBackColor }" style="border-right: 1px solid;">
+            <a href="" data-bind="click: function(){ $parents[1].pager ? $parents[1].changeSort(SqlField) : $parents[2].changeSort(SqlField); }, style: {'color': headerFontColor, 'font-bold': fontBold }">
+                <span data-bind="text: fieldLabel ? fieldLabel : ColumnName"></span>
+                <span data-bind="text: ($parents[1].pager ? $parents[1].pager.sortColumn() : $parents[2].pager.sortColumn()) === SqlField ? (($parents[1].pager ? $parents[1].pager.sortDescending() : $parents[2].pager.sortDescending()) ? '&#9660;' : '&#9650;') : ''"></span>
+            </a>
+        </th>
+        <!-- /ko -->
+    </script>
+    <script type="text/html" id="report-column">
+        <!-- ko foreach: Items -->
+        <td data-bind="style: {'background-color': backColor, 'color': fontColor, 'font-bold': fontBold, 'text-align': $parents[3].pager && $parents[3].ReportType()=='Single' ? 'center' : Column.IsNumeric ? 'right' : 'left', 'font-size':$parents[3].pager && $parents[3].ReportType()=='Single' ? '64px' : ''}">
+            <!-- ko if: LinkTo-->
+            <a data-bind="attr: {href: LinkTo}"><span data-bind="html: FormattedValue"></span></a>
+            <!-- /ko-->
+            <!-- ko ifnot: LinkTo-->
+            <span data-bind="html: FormattedValue"></span>
+            <!-- /ko-->
+        </td>
+    </script>
+
     <script type="text/html" id="report-template">
         <div class="report-chart" data-bind="attr: {id: 'chart_div_' + $parent.ReportID()}, visible: $parent.isChart"></div>
 
         <div class="table-responsive" data-bind="with: ReportData">
             <table class="table table-hover table-condensed">
-                <thead>
+                <thead data-bind="if: $parents[1].ReportType() != 'Single'">
                     <tr class="no-highlight">
                         <!-- ko if: $parentContext.$parent.canDrilldown() && !IsDrillDown() -->
-                        <th></th>
+                        <th style="width: 30px; border-left: 1px solid;"></th>
                         <!-- /ko -->
-                        <!-- ko foreach: Columns -->
-                        <th data-bind="attr: { id: 'col' + $index() }, css: {'right-align': IsNumeric}">
-                            <a href="" data-bind="click: function(){ $parentContext.$parentContext.$parent.changeSort(SqlField); }">
-                                <span data-bind="text: ColumnName"></span>
-                                <span data-bind="text: $parentContext.$parentContext.$parent.pager.sortColumn() === SqlField ? ($parentContext.$parentContext.$parent.pager.sortDescending() ? '&#9660;' : '&#9650;') : ''"></span>
-                            </a>
-                        </th>
-                        <!-- /ko -->
+                        <!-- ko template: 'report-column-header', data: $data -->
+                        <!-- /ko-->
                     </tr>
                 </thead>
                 <tbody>
@@ -152,35 +168,21 @@
                     <!-- ko foreach: Rows  -->
                     <tr>
                         <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() -->
-                        <td><a href="#" data-bind="click: function(){ toggle(); }"><span class="fa" data-bind="css: {'fa-plus': !isExpanded(), 'fa-minus': isExpanded()}"></span></a></td>
+                        <td style="width: 30px; vertical-align: middle;"><a href="#" data-bind="click: function(){ toggle(); }"><span class="fa" data-bind="css: {'fa-plus': !isExpanded(), 'fa-minus': isExpanded()}"></span></a></td>
                         <!-- /ko -->
-                        <!-- ko foreach: Items -->
-                            <!-- ko if: LinkTo-->
-                            <td data-bind="css: {'right-align': Column.IsNumeric}">
-                                <a data-bind="attr: {href: LinkTo}"><span data-bind="html: FormattedValue"></span></a>
-                            </td>
-                            <!-- /ko-->                        
-                            <!-- ko ifnot: LinkTo-->
-                            <td data-bind="html: FormattedValue, css: {'right-align': Column.IsNumeric}"></td>
+                        <!-- ko template: 'report-column', data: $data -->
                         <!-- /ko-->
-                        <!-- /ko -->
                     </tr>
                     <!-- ko if: isExpanded -->
                     <tr>
-                        <td></td>
-                        <td data-bind="attr:{colspan: $parent.Columns.length }">
+                        <td style="width: 30px;"></td>
+                        <td data-bind="attr:{colspan: $parent.Columns.length }" style="padding-left: 0px;">
                             <!-- ko if: DrillDownData -->
                             <table class="table table-hover table-condensed" data-bind="with: DrillDownData">
                                 <thead>
                                     <tr class="no-highlight">
-                                        <!-- ko foreach: Columns -->
-                                        <th data-bind="css: {'right-align': IsNumeric}">
-                                            <a href="" data-bind="click: function(){ $parents[1].changeSort(SqlField); }">
-                                                <span data-bind="text: ColumnName"></span>
-                                                <span data-bind="text: $parents[1].pager.sortColumn() === SqlField ? ($parents[1].pager.sortDescending() ? '&#9660;' : '&#9650;') : ''"></span>
-                                            </a>
-                                        </th>
-                                        <!-- /ko -->
+                                        <!-- ko template: 'report-column-header', data: $data -->
+                                        <!-- /ko-->
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -191,9 +193,8 @@
                                     </tr>
                                     <!-- ko foreach: Rows  -->
                                     <tr>
-                                        <!-- ko foreach: Items -->
-                                        <td data-bind="html: FormattedValue, css: {'right-align': Column.IsNumeric}"></td>
-                                        <!-- /ko -->
+                                        <!-- ko template: 'report-column', data: $data -->
+                                        <!-- /ko-->
                                     </tr>
                                     <!-- /ko -->
                                 </tbody>
@@ -206,19 +207,19 @@
                                     <div class="pull-left">
                                         @using (Html.BeginForm("DownloadExcel", "Report", FormMethod.Post))
                                         {
-                                        <input type="hidden" id="reportSql" name="reportSql" data-bind="value: $parent.sql" />
-                                        <input type="hidden" id="connectKey" name="connectKey" data-bind="value: $parent.connectKey" />
-                                        <input type="hidden" id="reportName" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parentContext.$parentContext.$parent.ReportName()" />
-                                        <button type="submit" class="btn btn-xs" title="Download Excel"><span class="fa fa-file-excel-o"></span></button>
+                                            <input type="hidden" id="reportSql" name="reportSql" data-bind="value: $parent.sql" />
+                                            <input type="hidden" id="connectKey" name="connectKey" data-bind="value: $parent.connectKey" />
+                                            <input type="hidden" id="reportName" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parentContext.$parentContext.$parent.ReportName()" />
+                                            <button type="submit" class="btn btn-xs" title="Download Excel"><span class="fa fa-file-excel-o"></span></button>
                                         }
                                     </div>
                                     <div class="pull-left">
                                         @using (Html.BeginForm("DownloadXml", "Report", FormMethod.Post))
                                         {
-                                        <input type="hidden" id="reportSql" name="reportSql" data-bind="value: $parent.sql" />
-                                        <input type="hidden" id="connectKey" name="connectKey" data-bind="value: $parent.connectKey" />
-                                        <input type="hidden" id="reportName" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parentContext.$parentContext.$parent.ReportName()" />
-                                        <button type="submit" class="btn btn-xs" title="Download XML"><span class="fa fa-file-code-o"></span></button>
+                                            <input type="hidden" id="reportSql" name="reportSql" data-bind="value: $parent.sql" />
+                                            <input type="hidden" id="connectKey" name="connectKey" data-bind="value: $parent.connectKey" />
+                                            <input type="hidden" id="reportName" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parentContext.$parentContext.$parent.ReportName()" />
+                                            <button type="submit" class="btn btn-xs" title="Download XML"><span class="fa fa-file-code-o"></span></button>
                                         }
                                     </div>
                                     <div class="form-group pull-right" data-bind="visible: pages()">
@@ -317,9 +318,7 @@
                     </div>
                 </div>
                 <!-- /ko -->
-
             </div>
-
         </div>
     </script>
     <script type="text/html" id="fly-filter-template">

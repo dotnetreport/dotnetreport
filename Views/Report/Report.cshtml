@@ -46,7 +46,7 @@
     }
 
     $(document).ready(function () {
-        var vm = new reportViewModel({
+         var vm = new reportViewModel({
             runReportUrl: "@Url.Action("Report")",
             execReportUrl: "@Url.Action("RunReport")",
             runLinkReportUrl: "@Url.Action("ReportLink")",
@@ -61,8 +61,9 @@
             ReportSeries : "@Model.ReportSeries"
         });
 
-        ko.applyBindings(vm);
-        vm.LoadReport(@Model.ReportId, true,"@Model.ReportSeries");
+        vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {
+            ko.applyBindings(vm);
+        });
 
         $(window).resize(function(){
             vm.DrawChart();
