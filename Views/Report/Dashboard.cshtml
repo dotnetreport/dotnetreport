@@ -24,10 +24,10 @@
 
         @foreach (var r in Model.Reports)
         {
-        @:reports.push({ reportSql: "@r.ReportSql", reportId: @r.ReportId, reportFilter: htmlDecode('@HttpUtility.UrlDecode(r.ReportFilter)'), connectKey: "@r.ConnectKey", x: @r.X, y: @r.Y, width: @r.Width, height: @r.Height });
+        @:reports.push({ reportSql: "@r.ReportSql", reportId: @r.ReportId, reportFilter: htmlDecode('@System.Web.HttpUtility.UrlDecode(r.ReportFilter)'), connectKey: "@r.ConnectKey", x: @r.X, y: @r.Y, width: @r.Width, height: @r.Height });
         }
 
-        ajaxcall({ url: '@Url.Action("GetUsersAndRoles")' }).done(function (data) {
+       ajaxcall({ url: '@Url.Action("GetUsersAndRoles")' }).done(function (data) {
             var vm = new dashboardViewModel({
                 runReportUrl: "@Url.Action("Report")",
                 execReportUrl: "@Url.Action("RunReport")",
@@ -52,18 +52,15 @@
                         verticalMargin: 10
                     };
                     $('.grid-stack').gridstack(options);
-                    //$(".list-overflow-auto").each(function () {
-                    //    $(this).css('height', $(this).height() - 10);
-                    //});
-                    $('.grid-stack').on('gsresizestop', function (event, elem) {
-                        var newHeight = $(elem).attr('data-gs-height');
-                        $(elem).closest(".list-overflow-auto").css('height', newHeight - 50);
-                    });
                     $('.grid-stack').on('change', function (event, items) {
                         _.forEach(items, function (x) {
                             vm.updatePosition(x);
                         });
                     });
+
+                    setTimeout(function () {
+                        vm.drawChart();
+                    }, 500);
                 });
             });
 
@@ -93,6 +90,7 @@
         </div>
     </div>
 </div>
+
 <div class="clearfix"></div>
 
 <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
@@ -166,7 +164,6 @@
     </div>
 </div>
 
-
 <div class="clearfix"></div>
 
 <div class="grid-stack">
@@ -177,19 +174,18 @@
             <div class="card-header">
                 <span data-bind="text: ReportName"></span>
                 <div class="pull-right">
-                    @using (Html.BeginForm("DownloadExcel", "Report", FormMethod.Post))
-                    {
+                    <form action="/Report/DownloadExcel" method="post">
                         <input type="hidden" id="reportSql" name="reportSql" data-bind="value: currentSql" />
                         <input type="hidden" id="connectKey" name="connectKey" data-bind="value: currentConnectKey" />
                         <input type="hidden" id="reportName" name="reportName" data-bind="value: ReportName" />
                         <button type="submit" class="btn btn-default btn-xs"><span class="fa fa-file-excel-o"></span></button>
-                    }
+                    </form>
                 </div>
                 <!-- ko if: FlyFilters().length> 0-->
                 <button class="btn btn-default btn-xs pull-right" data-bind="click: toggleFlyFilters"><i class="fa fa-filter" title="Filter Report"></i></button>
                 <!-- /ko -->
 
-                <a data-bind="attr: {href: '@Url.Action("Index","Report")?reportId=' + ReportID()}" class="btn btn-default btn-xs pull-right">
+                <a data-bind="attr: {href: '/Report/Report?reportId=' + ReportID()}" class="btn btn-default btn-xs pull-right">
                     <i class="fa fa-pencil-square-o" title="Edit Report"></i>
                 </a>
             </div>
@@ -201,7 +197,7 @@
                     <div data-bind="template: 'report-template', data: $data"></div>
                 </div>
             </div>
-            <div class="card-footer">
+            <div class="card-footer form-inline">
                 <div class="small" data-bind="with: pager">
                     <div class="form-group pull-left total-records">
                         <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
