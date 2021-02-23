@@ -1,4 +1,4 @@
-// knockout-sortable 1.1.0 | (c) 2017 Ryan Niemeyer |  http://www.opensource.org/licenses/mit-license
+// knockout-sortable 1.2.0 | (c) 2019 Ryan Niemeyer |  http://www.opensource.org/licenses/mit-license
 ;(function(factory) {
     if (typeof define === "function" && define.amd) {
         // AMD anonymous module
@@ -41,13 +41,16 @@
     //prepare the proper options for the template binding
     var prepareTemplateOptions = function(valueAccessor, dataName) {
         var result = {},
-            options = unwrap(valueAccessor()) || {},
+            options = {},
             actualAfterRender;
 
         //build our options to pass to the template engine
-        if (options.data) {
+        if (ko.utils.peekObservable(valueAccessor()).data) {
+            options = unwrap(valueAccessor() || {});
             result[dataName] = options.data;
-            result.name = options.template;
+            if (options.hasOwnProperty("template")) {
+                result.name = options.template;
+            }
         } else {
             result[dataName] = valueAccessor();
         }
@@ -82,7 +85,7 @@
         var unwrapped = unwrap(items);
 
         if (unwrapped) {
-            for (var i = 0; i < index; i++) {
+            for (var i = 0; i <= index; i++) {
                 //add one for every destroyed item we find before the targetIndex in the target array
                 if (unwrapped[i] && unwrap(unwrapped[i]._destroy)) {
                     index++;

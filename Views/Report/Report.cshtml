@@ -26,7 +26,9 @@
                                 '</head><body>' + $('.report-inner').html() +
                                 '</body></html>');
 
-        setTimeout(function(){
+        setTimeout(function () {
+            printWindow.document.close();
+            printWindow.focus();
             printWindow.print();
             printWindow.close();
         }, 250);
@@ -44,9 +46,10 @@
     }
 
     $(document).ready(function () {
-        var vm = new reportViewModel({
+         var vm = new reportViewModel({
             runReportUrl: "@Url.Action("Report")",
             execReportUrl: "@Url.Action("RunReport")",
+            runLinkReportUrl: "@Url.Action("ReportLink")",
             reportWizard: $("#filter-panel"),
             lookupListUrl: "@Url.Action("GetLookupList")",
             apiUrl: '@Url.Action("CallReportApi")',
@@ -59,8 +62,9 @@
             AllSqlQuries : "@Model.ReportSql"
         });
 
-        ko.applyBindings(vm);
-        vm.LoadReport(@Model.ReportId, true,"@Model.ReportSeries");
+        vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {
+            ko.applyBindings(vm);
+        });
 
         $(window).resize(function(){
             vm.DrawChart();
@@ -89,7 +93,8 @@
         }
         @using (Html.BeginForm("DownloadPdf", "Report", FormMethod.Post, new { id = "downloadPdf" }))
         {
-            <input type="hidden" id="chartdata" name="chartData" data-bind="value: ChartData" />
+            <input type="hidden" id="reportId" name="reportId" data-bind="value: ReportID" />
+            <input type="hidden" id="printUrl" name="printUrl" value="@Url.Action("ReportPrint", "Report", null, this.Request.Url.Scheme)" />
             <input type="hidden" id="reportSql" name="reportSql" data-bind="value: currentSql" />
             <input type="hidden" id="connectKey" name="connectKey" data-bind="value: currentConnectKey" />
             <input type="hidden" id="reportName" name="reportName" data-bind="value: ReportName" />
@@ -102,26 +107,26 @@
             <a href="@Url.Action("Index","Report")?reportId=@Model.ReportId&folderId =@Model.SelectedFolder" class="btn btn-primary">
                 Edit Report
             </a>
-            <button type="button" class="btn btn-default" onclick="printReport();">
-                <span class="glyphicon glyphicon-print" aria-hidden="true"></span> Print Report
+            <button type="button" class="btn btn-secondary" onclick="printReport();">
+                <span class="fa fa-print" aria-hidden="true"></span> Print Report
             </button>
 
             <div class="btn-group">
-                <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     <span class="fa fa-download"></span> Export <span class="caret"></span>
                 </button>
                 <ul class="dropdown-menu">
-                    <li>
+                    <li class="dropdown-item">
                         <a href="#" onclick="downloadPdf();">
                             <span class="fa fa-file-pdf-o"></span> Pdf
                         </a>
                     </li>
-                    <li>
+                    <li class="dropdown-item">
                         <a href="#" onclick="downloadExcel();">
                             <span class="fa fa-file-excel-o"></span> Excel
                         </a>
                     </li>
-                    <li>
+                    <li class="dropdown-item">
                         <a href="#" onclick="downloadXml();">
                             <span class="fa fa-file-code-o"></span> Xml
                         </a>
@@ -135,8 +140,8 @@
         <br />
         <div data-bind="template: {name: 'fly-filter-template'}"></div>
         <div data-bind="if: canDrilldown">
-            <button class="btn btn-default btn-xs" data-bind="click: ExpandAll">Expand All</button>
-            <button class="btn btn-default btn-xs" data-bind="click: CollapseAll">Collapse All</button>
+            <button class="btn btn-secondary btn-xs" data-bind="click: ExpandAll">Expand All</button>
+            <button class="btn btn-secondary btn-xs" data-bind="click: CollapseAll">Collapse All</button>
             <br />
             <br />
         </div>
@@ -147,7 +152,7 @@
                         <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
                     </div>
                     <div class="pull-left">
-                        <button class="btn btn-default btn-sm" onclick="downloadExcel();" data-bind="visible: !$root.isChart() || $root.ShowDataWithGraph()" title="Export to Excel">
+                        <button class="btn btn-secondary btn-sm" onclick="downloadExcel();" data-bind="visible: !$root.isChart() || $root.ShowDataWithGraph()" title="Export to Excel">
                             <span class="fa fa-file-excel-o"></span>
                         </button>
                     </div>

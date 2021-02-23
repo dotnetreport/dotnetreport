@@ -29,12 +29,19 @@ namespace ReportBuilder.Web.Controllers
                 AccountApiToken = ConfigurationManager.AppSettings["dotNetReport.accountApiToken"], // Your Account Api Token from your http://dotnetreport.com Account
                 DataConnectApiToken = ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"] // Your Data Connect Api Token from your http://dotnetreport.com Account
             };
+
+            if (TempData["reportPrint"] != null && TempData["reportPrint"].ToString() == "true")
+            {
+                if (TempData["clientId"] != null) settings.ClientId = (string)TempData["clientId"];
+                if (TempData["userId"] != null) settings.UserId= (string)TempData["userId"];
+                settings.CurrentUserRole = (TempData["currentUserRole"] != null) ? ((string)TempData["currentUserRole"]).Split(',').ToList() : new List<string>();
+                return settings;
+            } 
             
             // Populate the values below using your Application Roles/Claims if applicable
-
             settings.ClientId = "";  // You can pass your multi-tenant client id here to track their reports and folders
             settings.UserId = ""; // You can pass your current authenticated user id here to track their reports and folders            
-            settings.UserName = ""; 
+            settings.UserName = "";
             settings.CurrentUserRole = new List<string>(); // Populate your current authenticated user's roles
 
             settings.Users = new List<string>(); // Populate all your application's user, ex  { "Jane", "John" }
@@ -48,7 +55,7 @@ namespace ReportBuilder.Web.Controllers
 
                 settings.Users = Roles.GetAllRoles().SelectMany(x => Roles.GetUsersInRole(x)).ToList();
                 settings.UserRoles = Roles.GetAllRoles().ToList();                
-            } 
+            }            
 
             return settings;
         }
@@ -59,7 +66,7 @@ namespace ReportBuilder.Web.Controllers
         }
 
         public ActionResult Report(int reportId, string reportName, string reportDescription, bool includeSubTotal, bool showUniqueRecords,
-            bool aggregateReport, bool showDataWithGraph, string reportSql, string connectKey, string reportFilter, string reportType, int selectedFolder, string ReportSeries)
+            bool aggregateReport, bool showDataWithGraph, string reportSql, string connectKey, string reportFilter, string reportType, int selectedFolder, string reportSeries)
         {
             var model = new DotNetReportModel
             {
@@ -73,13 +80,71 @@ namespace ReportBuilder.Web.Controllers
                 ShowUniqueRecords = showUniqueRecords,
                 ShowDataWithGraph = showDataWithGraph,
                 SelectedFolder = selectedFolder,
-                ReportSeries = !string.IsNullOrEmpty(ReportSeries) ? ReportSeries.Replace("%20", " ") : string.Empty,
+                ReportSeries = !string.IsNullOrEmpty(reportSeries) ? reportSeries.Replace("%20", " ") : string.Empty,
                 ReportFilter = reportFilter // json data to setup filter correctly again
                 
             };
 
             return View(model);
-        }        
+        }
+
+        public async Task<ActionResult> ReportLink(int reportId, int? filterId = null, string filterValue = "", bool adminMode = false)
+        {
+            var model = new DotNetReportModel();
+            var settings = GetSettings();
+            
+            using (var client = new HttpClient())
+            {
+                var content = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("account", settings.AccountApiToken),
+                    new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
+                    new KeyValuePair<string, string>("clientId", settings.ClientId),
+                    new KeyValuePair<string, string>("userId", settings.UserId),
+                    new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
+                    new KeyValuePair<string, string>("reportId", reportId.ToString()),
+                    new KeyValuePair<string, string>("filterId", filterId.HasValue ? filterId.ToString() : ""),
+                    new KeyValuePair<string, string>("filterValue", filterValue.ToString()),
+                    new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
+                });
+
+                var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/RunLinkedReport"), content);
+                var stringContent = await response.Content.ReadAsStringAsync();
+
+                model = (new JavaScriptSerializer()).Deserialize<DotNetReportModel>(stringContent);
+                
+            }
+
+            return View("Report", model);
+        }
+
+
+        public ActionResult ReportPrint(int reportId, string reportName, string reportDescription, string reportSql, string connectKey, string reportFilter, string reportType,
+            int selectedFolder = 0, bool includeSubTotal = true, bool showUniqueRecords = false, bool aggregateReport = false, bool showDataWithGraph = true,
+            string userId = null, string clientId = null, string currentUserRole = null)
+        {
+            TempData["reportPrint"] = "true";
+            TempData["userId"] = userId;
+            TempData["clientId"] = clientId;
+            TempData["currentUserRole"] = currentUserRole;
+
+            var model = new DotNetReportModel
+            {
+                ReportId = reportId,
+                ReportType = reportType,
+                ReportName = HttpUtility.UrlDecode(reportName),
+                ReportDescription = HttpUtility.UrlDecode(reportDescription),
+                ReportSql = reportSql,
+                ConnectKey = connectKey,
+                IncludeSubTotals = includeSubTotal,
+                ShowUniqueRecords = showUniqueRecords,
+                ShowDataWithGraph = showDataWithGraph,
+                SelectedFolder = selectedFolder,
+                ReportFilter = reportFilter // json data to setup filter correctly again
+            };
+
+            return View(model);
+        }
 
         public JsonResult GetLookupList(string lookupSql, string connectKey)
         {
@@ -142,12 +207,12 @@ namespace ReportBuilder.Web.Controllers
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + method), content);
                 var stringContent = await response.Content.ReadAsStringAsync();
             
-                if (stringContent.Contains("sql"))
+                if (stringContent.Contains("\"sql\":"))
                 {
                     var sqlqeuery = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(stringContent);
                     object value;
-                    var KeyValuePair = sqlqeuery.TryGetValue("sql", out value);
-                    var sql = DotNetReportHelper.DecryptTest(value.ToString());
+                    var keyValuePair = sqlqeuery.TryGetValue("sql", out value);
+                    var sql = DotNetReportHelper.Decrypt(value.ToString());
                 }
                 Response.StatusCode = (int)response.StatusCode;
                 return Json((new JavaScriptSerializer()).Deserialize<dynamic>(stringContent), JsonRequestBehavior.AllowGet);
@@ -261,12 +326,13 @@ namespace ReportBuilder.Web.Controllers
                         }
                     }                   
                 }
-                
+
+                sql = DotNetReportHelper.Decrypt(allSqls[0]);
                 var model = new DotNetReportResultModel
                 {
                     ReportData = DataTableToDotNetReportDataModel(dtPaged, fields),
-                    Warnings = GetWarnings(allSqls[0]),
-                    ReportSql = allSqls[0],
+                    Warnings = GetWarnings(sql),
+                    ReportSql = sql,
                     ReportDebug = Request.Url.Host.Contains("localhost"),
                     Pager = new DotNetReportPagerModel
                     {
@@ -393,10 +459,11 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpPost]
-        public ActionResult DownloadPdf(string reportSql, string connectKey, string reportName, string ChartData = null)
+        public async Task<ActionResult> DownloadPdf(string printUrl, int reportId, string reportSql, string connectKey, string reportName)
         {
-
-            var pdf = DotNetReportHelper.GetPdfFile(reportSql, connectKey, reportName, ChartData);
+            reportSql = HttpUtility.HtmlDecode(reportSql);
+            var settings = GetSettings();
+            var pdf = await DotNetReportHelper.GetPdfFile(printUrl, reportId, reportSql, connectKey, reportName, settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole));
             return File(pdf, "application/pdf", reportName + ".pdf");
         }
 
@@ -411,7 +478,8 @@ namespace ReportBuilder.Web.Controllers
                 currentUserId = settings.UserId,
                 currentUserRoles = settings.UserRoles,
                 currentUserName = settings.UserName,
-                allowAdminMode = settings.CanUseAdminMode
+                allowAdminMode = settings.CanUseAdminMode,
+                userIdForSchedule = settings.UserIdForSchedule
             }, JsonRequestBehavior.AllowGet);
         }
 
@@ -504,9 +572,16 @@ namespace ReportBuilder.Web.Controllers
 
                     case TypeCode.Double:
                     case TypeCode.Decimal:
-                        return col.ColumnName.Contains("%")
-                            ? (Convert.ToDouble(row[col].ToString()) / 100).ToString("P2")
-                            : Convert.ToDouble(row[col].ToString()).ToString("C");
+                        try
+                        {
+                            return col.ColumnName.Contains("%")
+                                ? (Convert.ToDouble(row[col].ToString()) / 100).ToString("P2")
+                                : Convert.ToDouble(row[col].ToString()).ToString("C");
+                        }
+                        catch
+                        {
+                            return row[col] != null ? row[col].ToString() : null;
+                        }
 
 
                     case TypeCode.Boolean:
@@ -532,7 +607,7 @@ namespace ReportBuilder.Web.Controllers
                         }
                         else
                         {
-                            return row[col].ToString();
+                            return row[col] != null ? row[col].ToString() : null;
                         }
 
                 }
@@ -569,16 +644,15 @@ namespace ReportBuilder.Web.Controllers
 
                 foreach (DataColumn col in dt.Columns)
                 {
-                    
-                        items.Add(new DotNetReportDataRowItemModel
-                        {
-                            Column = model.Columns[i],
-                            Value = row[col] != null ? row[col].ToString() : null,
-                            FormattedValue = GetFormattedValue(col, row),
-                            LabelValue = GetLabelValue(col, row)
-                        });
-                        i += 1;
-                   
+
+                    items.Add(new DotNetReportDataRowItemModel
+                    {
+                        Column = model.Columns[i],
+                        Value = row[col] != null ? row[col].ToString() : null,
+                        FormattedValue = GetFormattedValue(col, row),
+                        LabelValue = GetLabelValue(col, row)
+                    });
+                    i += 1;
                 }
 
                 model.Rows.Add(new DotNetReportDataRowModel
@@ -589,10 +663,7 @@ namespace ReportBuilder.Web.Controllers
 
             return model;
         }
-
-
     }
-
 }
 
 namespace ReportBuilder.Web
