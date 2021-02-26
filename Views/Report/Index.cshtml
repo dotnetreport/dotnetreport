@@ -49,6 +49,11 @@
     <div data-bind="if: currentUserName">Current User: <span data-bind="text: currentUserName"></span></div>
     <div data-bind="if: currentUserRole">Current Roles: <span data-bind="text: currentUserRole"></span></div>
 </div>
+<div class="alert alert-info">
+    To view Combined Reports, please <a href="@Url.Action("Combined","Report")">click here</a>.<br />
+    <div data-bind="if: currentUserName">Current User: <span data-bind="text: currentUserName"></span></div>
+    <div data-bind="if: currentUserRole">Current Roles: <span data-bind="text: currentUserRole"></span></div>
+</div>
 <div class="alert alert-warning">
     You can easily integrate the Report Builder in your Application. See how to <a href="https://dotnetreport.com/blog/2016/03/getting-started-with-dotnet-report/">Get Started here</a>. <br />
 </div>

@@ -339,6 +339,7 @@
     <Content Include="Scripts\jquery-3.5.0.slim.min.map" />
     <Content Include="Scripts\jquery-3.5.0.min.map" />
     <Content Include="Views\Report\ReportPrint.cshtml" />
+    <Content Include="Views\Report\Combined.cshtml" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>

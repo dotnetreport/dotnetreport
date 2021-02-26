@@ -427,7 +427,44 @@ namespace ReportBuilder.Web.Controllers
             });
         }
 
-        
+        public async Task<ActionResult> Combined(int? id = null, bool adminMode = false)
+        {
+            var model = new List<DotNetDasboardReportModel>();
+            var settings = GetSettings();
+
+            var dashboards = (DynamicJsonArray)(await GetDashboards(adminMode)).Data;
+            if (!id.HasValue && dashboards.Length > 0)
+            {
+                id = ((dynamic)dashboards.First()).id;
+            }
+
+            using (var client = new HttpClient())
+            {
+                var content = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("account", settings.AccountApiToken),
+                    new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
+                    new KeyValuePair<string, string>("clientId", settings.ClientId),
+                    new KeyValuePair<string, string>("userId", settings.UserId),
+                    new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
+                    new KeyValuePair<string, string>("id", id.HasValue ? id.Value.ToString() : "0"),
+                    new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
+                });
+
+                var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/LoadSavedDashboard"), content);
+                var stringContent = await response.Content.ReadAsStringAsync();
+
+                model = (new JavaScriptSerializer()).Deserialize<List<DotNetDasboardReportModel>>(stringContent);
+            }
+
+            return View(new DotNetDashboardModel
+            {
+                Dashboards = dashboards.Select(x => (dynamic)x).ToList(),
+                Reports = model
+            });
+        }
+
+
         [HttpPost]
         public ActionResult DownloadExcel(string reportSql, string connectKey, string reportName)
         {
