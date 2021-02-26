@@ -2270,3 +2270,242 @@ var dashboardViewModel = function (options) {
 		self.init();
 	});
 }; 
+
+var combinedViewModel = function (options) {
+	var self = this;
+
+	self.dashboards = ko.observableArray(options.dashboards || []);
+	self.adminMode = ko.observable(false);
+	self.currentUserId = options.userId;
+	self.currentUserRole = (options.currentUserRole || []).join();
+	self.reportsAndFolders = ko.observableArray([]);
+	self.allowAdmin = ko.observable(options.allowAdmin);
+
+	var currentDash = options.dashboardId > 0
+		? (_.find(self.dashboards(), { id: options.dashboardId }) || { name: '', description: '' })
+		: (self.dashboards().length > 0 ? self.dashboards()[0] : { name: '', description: '' });
+
+	self.dashboard = {
+		Id: ko.observable(currentDash.id),
+		Name: ko.observable(currentDash.name),
+		Description: ko.observable(currentDash.description),
+		manageAccess: manageAccess(options)
+	};
+
+	self.currentDashboard = ko.observable(currentDash);
+	self.selectDashboard = ko.observable(currentDash.id);
+
+	self.selectDashboard.subscribe(function (newValue) {
+		if (newValue != self.currentDashboard().id) {
+			window.location = window.location.href.split("?")[0] + "?id=" + newValue;
+		}
+	});
+
+	self.newDashboard = function () {
+		self.dashboard.Id(0);
+		self.dashboard.Name('');
+		self.dashboard.Description('');
+		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.users, '');
+		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.userRoles, '');
+		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.viewOnlyUserRoles, '');
+		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.viewOnlyUsers, '');
+
+		_.forEach(self.reportsAndFolders(), function (f) {
+			_.forEach(f.reports, function (r) {
+				r.selected(false);
+			});
+		});
+	};
+
+	self.editDashboard = function () {
+		self.dashboard.Id(self.currentDashboard().id);
+		self.dashboard.Name(self.currentDashboard().name);
+		self.dashboard.Description(self.currentDashboard().description);
+		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.users, self.currentDashboard().userId || '');
+		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.userRoles, self.currentDashboard().userRoles || '');
+		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.viewOnlyUserRoles, self.currentDashboard().viewOnlyUserRoles || '');
+		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.viewOnlyUsers, self.currentDashboard().viewOnlyUserId || '');
+
+		var selectedReports = (self.currentDashboard().selectedReports || '').split(',');
+		_.forEach(self.reportsAndFolders(), function (f) {
+			_.forEach(f.reports, function (r) {
+				r.selected(selectedReports.indexOf(r.reportId.toString()) >= 0);
+			});
+		});
+	};
+
+	self.saveDashboard = function () {
+		$(".form-group").removeClass("needs-validation");
+		if (!self.dashboard.Name()) {
+			$("#add-dash-name").closest(".form-group").addClass("needs-validation");
+			return false;
+		}
+
+		var list = '';
+		_.forEach(self.reportsAndFolders(), function (f) {
+			_.forEach(f.reports, function (r) {
+				if (r.selected()) list += (list ? ',' : '') + r.reportId;
+			});
+		});
+
+		var model = {
+			id: self.dashboard.Id() || 0,
+			name: self.dashboard.Name(),
+			description: self.dashboard.Description(),
+			selectedReports: list,
+			userIdAccess: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.users),
+			viewOnlyUserId: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.viewOnlyUsers),
+			userRolesAccess: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.userRoles),
+			viewOnlyUserRoles: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.viewOnlyUserRoles),
+			adminMode: self.adminMode()
+		};
+
+		ajaxcall({
+			url: options.apiUrl,
+			data: {
+				method: "/ReportApi/SaveDashboard",
+				model: JSON.stringify(model)
+			}
+		}).done(function (result) {
+			if (result.d) { result = result.d; }
+			toastr.success("Dashboard saved successfully");
+			setTimeout(function () {
+				window.location = window.location.href.split("?")[0] + "?id=" + result.id;
+			}, 500);
+		});
+
+		return true;
+	};
+
+	self.deleteDashboard = function () {
+		bootbox.confirm("Are you sure you would like to Delete this Dashboard?", function (r) {
+			if (r) {
+				ajaxcall({
+					url: options.apiUrl,
+					data: {
+						method: "/ReportApi/DeleteDashboard",
+						model: JSON.stringify({ id: self.currentDashboard().id, adminMode: self.adminMode() })
+					}
+				}).done(function (result) {
+					toastr.success("Dashboard deleted successfully");
+					setTimeout(function () {
+						window.location = window.location.href.split("?")[0];
+					}, 500);
+				});
+			}
+		});
+	};
+
+	self.reports = ko.observableArray([]);
+	var i = 0;
+	_.forEach(options.reports, function (x) {
+		var report = new reportViewModel({
+			runReportUrl: options.runReportUrl,
+			execReportUrl: options.execReportUrl,
+			reportWizard: options.reportWizard,
+			lookupListUrl: options.lookupListUrl,
+			runReportApiUrl: options.runReportApiUrl,
+			apiUrl: options.apiUrl,
+			reportFilter: x.reportFilter,
+			reportMode: "dashboard",
+			reportSql: x.reportSql,
+			reportId: x.reportId,
+			reportConnect: x.connectKey,
+			users: options.users,
+			userRoles: options.userRoles,
+			skipDraw: true
+		});
+
+		report.x = ko.observable(x.x);
+		report.y = ko.observable(x.y);
+		report.width = ko.observable(x.width);
+		report.height = ko.observable(x.height);
+		report.panelStyle = 'panel-' + (i == 0 ? 'default' : (i == 1 ? 'info' : (i == 2 ? 'warning' : 'danger')));
+		i = i == 3 ? 0 : i + 1;
+		self.reports.push(report);
+		report.LoadReport(x.reportId, true);
+
+		report.showFlyFilters = ko.observable(false);
+		report.toggleFlyFilters = function () {
+			report.showFlyFilters(!report.showFlyFilters());
+		};
+	});
+
+	self.drawChart = function () {
+		_.forEach(self.reports(), function (x) {
+			x.skipDraw = false;
+			x.DrawChart();
+		});
+	};
+
+	self.updatePosition = function (item) {
+		if (!item || !item.id) return;
+		ajaxcall({
+			url: options.apiUrl,
+			noBlocking: true,
+			data: {
+				method: '/ReportApi/UpdateDashboardReportPosition',
+				model: JSON.stringify({
+					x: item.x,
+					y: item.y,
+					width: item.width,
+					height: item.height,
+					dashboardId: self.currentDashboard().id,
+					reportId: parseInt(item.id)
+				})
+			}
+		});
+	};
+
+	self.init = function () {
+		var getReports = function () {
+			return ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/GetSavedReports",
+					model: JSON.stringify({ adminMode: self.adminMode() })
+				}
+			});
+		};
+
+		var getFolders = function () {
+			return ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/GetFolders",
+					model: JSON.stringify({
+						adminMode: self.adminMode()
+					})
+				}
+			});
+		};
+
+		return $.when(getReports(), getFolders()).done(function (allReports, allFolders) {
+			var setup = [];
+			if (allFolders[0].d) { allFolders[0] = allFolders[0].d; }
+			if (allReports[0].d) { allReports[0] = allReports[0].d; }
+
+			_.forEach(allFolders[0], function (x) {
+				var folderReports = _.filter(allReports[0], { folderId: x.Id });
+				setup.push({
+					folderId: x.Id,
+					folder: x.FolderName,
+					reports: _.map(folderReports, function (r) {
+						return {
+							reportId: r.reportId,
+							reportName: r.reportName,
+							reportDescription: r.reportDescription,
+							reportType: r.reportType,
+							selected: ko.observable(false)
+						};
+					})
+				});
+			});
+			self.reportsAndFolders(setup);
+		});
+	};
+
+	self.adminMode.subscribe(function (newValue) {
+		self.init();
+	});
+}; 

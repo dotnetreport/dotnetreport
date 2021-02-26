@@ -28,7 +28,7 @@
         }
 
         ajaxcall({ url: '@Url.Action("GetUsersAndRoles")' }).done(function (data) {
-            var vm = new dashboardViewModel({
+            var vm = new combinedViewModel({
                 runReportUrl: "@Url.Action("Report")",
                 execReportUrl: "@Url.Action("RunReport")",
                 reportWizard: $("#filter-panel"),
@@ -83,8 +83,8 @@
             <label class="col-5">Choose Combined Report</label>
             <select class="col-3 form-control" data-bind="options: dashboards, optionsText: 'name', optionsValue: 'id', value: selectDashboard"></select>
             <div class="col-4">
-                <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Edit Dashboard Settings" data-bind="click: editDashboard">Edit</button>
-                <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Add a New Dashboard" data-bind="click: newDashboard">Add</button>
+                <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Edit Combined Report Settings" data-bind="click: editDashboard">Edit</button>
+                <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Add a New Combined Report" data-bind="click: newDashboard">Add</button>
             </div>
         </div>
     </div>
@@ -105,7 +105,7 @@
     <div class="modal-dialog" role="document">
         <div class="modal-content" data-bind="with: dashboard">
             <div class="modal-header">
-                <h4 class="modal-title"><span data-bind="text: Id() ? 'Edit' : 'Add'"></span> Dashboard</h4>
+                <h4 class="modal-title"><span data-bind="text: Id() ? 'Edit' : 'Add'"></span> Combined Report</h4>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
             </div>
             <div class="modal-body">
@@ -114,20 +114,20 @@
                         <div class="form-group row">
                             <label class="col-md-3 col-sm-3 control-label">Name</label>
                             <div class="col-md-6 col-sm-6">
-                                <input class="form-control text-box" style="width: 100%;" data-val="true" data-val-required="Dashboard Name is required." type="text" data-bind="value: Name" placeholder="Dashboard Name, ex Sales, Accounting" id="add-dash-name" />
+                                <input class="form-control text-box" style="width: 100%;" data-val="true" data-val-required="Combined Report Name is required." type="text" data-bind="value: Name" placeholder="Combined Report Name, ex Sales Summary, Accounting Summary" id="add-dash-name" />
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-md-3 col-sm-3 control-label">Description</label>
                             <div class="col-md-6 col-sm-6">
-                                <textarea class="form-control text-box" style="width: 100%;" data-bind="value: Description" placeholder="Optional Description for the Dashboard">
+                                <textarea class="form-control text-box" style="width: 100%;" data-bind="value: Description" placeholder="Optional Description for the Combined Report">
                                 </textarea>
                             </div>
                         </div>
                     </div>
                 </div>
                 <hr />
-                <h5><span class="fa fa-paperclip"></span> Choose Reports for the Dashboard</h5>
+                <h5><span class="fa fa-paperclip"></span> Choose Reports for the Combined Report</h5>
                 <div data-bind="foreach: $parent.reportsAndFolders" class="card" style="margin-left: 20px;">
                     <div class="card-body">
                         <a class="btn btn-link" role="button" data-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }">
@@ -155,13 +155,12 @@
                 <!-- /ko -->
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-danger" data-bind="click: $root.deleteDashboard, visible: Id">Delete Dashboard</button>
-                <button type="button" class="btn btn-primary" data-bind="click: $root.saveDashboard">Save Dashboard</button>
+                <button type="button" class="btn btn-danger" data-bind="click: $root.deleteDashboard, visible: Id">Delete Combined Report</button>
+                <button type="button" class="btn btn-primary" data-bind="click: $root.saveDashboard">Save Combined Report</button>
             </div>
         </div>
     </div>
 </div>
-
 
 <div class="clearfix"></div>
 
