@@ -366,6 +366,57 @@ namespace ReportBuilder.Web.Models
             return File.ReadAllBytes(pdfFile);
         }
 
+        public static async Task<byte[]> GetCombinedPdfFile(string printUrl, int id, string reportName, bool adminMode = false)
+        {
+            var installPath = AppContext.BaseDirectory + "\\App_Data\\local-chromium";
+            await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync(BrowserFetcher.DefaultRevision);
+            var executablePath = $"{Directory.GetDirectories(installPath)[0]}\\chrome-win\\chrome.exe";
+            var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = true, ExecutablePath = executablePath });
+            var page = await browser.NewPageAsync();
+            await page.SetRequestInterceptionAsync(true);
+
+            var formPosted = false;
+            var formData = new StringBuilder();
+            formData.AppendLine("<html><body>");
+            formData.AppendLine($"<form action=\"{printUrl}\" method=\"post\">");
+            formData.AppendLine($"<input name=\"id\" value=\"{id}\" />");
+            formData.AppendLine($"</form>");
+            formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");
+            formData.AppendLine("</body></html>");
+
+            page.Request += async (sender, e) =>
+            {
+                if (formPosted)
+                {
+                    await e.Request.ContinueAsync();
+                    return;
+                }
+
+                await e.Request.RespondAsync(new ResponseData
+                {
+                    Status = System.Net.HttpStatusCode.OK,
+                    Body = formData.ToString()
+                });
+
+                formPosted = true;
+            };
+
+            await page.GoToAsync(printUrl, new NavigationOptions
+            {
+                WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
+            });
+
+            await page.WaitForSelectorAsync(".report-inner", new WaitForSelectorOptions { Visible = true });
+
+            var pdfFile = Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
+            await page.PdfAsync(pdfFile, new PdfOptions
+            {
+                Format = PaperFormat.Letter,
+                MarginOptions = new MarginOptions() { Top = "0.75in", Bottom = "0.75in" }
+            });
+            return File.ReadAllBytes(pdfFile);
+        }
+
         private static byte[] Combine(byte[] a, byte[] b)
         {
             byte[] c = new byte[a.Length + b.Length];

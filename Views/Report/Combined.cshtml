@@ -164,12 +164,13 @@
 
 <div class="clearfix"></div>
 
-<div>
-    @using (Html.BeginForm("DownloadExcel", "Report", FormMethod.Post))
+<div data-bind="with: $root">
+    @using (Html.BeginForm("DownloadCombinedPdf", "Report", FormMethod.Post))
     {
-        <input type="hidden" name="reportSql" data-bind="value: ''" />
-        <input type="hidden" name="connectKey" data-bind="value: ''" />
-        <input type="hidden" name="reportName" data-bind="value: ''" />
+        <input type="hidden" id="id" name="id" data-bind="value: currentDashboard().id" />
+        <input type="hidden" id="combinedReportName" name="combinedReportName" data-bind="value: currentDashboard().name ? currentDashboard().name : 'Combined Report'" />
+        <input type="hidden" id="printUrl" name="printUrl" value="@Url.Action("CombinedPrint", "Report", null, this.Request.Url.Scheme)" />
+        <input type="hidden" id="adminMode" name="adminMode" value="false" />
         <button type="submit" class="btn btn-default btn-xs"><span class="fa fa-file-pdf-o"></span> Export to PDF</button>
     }
 </div>

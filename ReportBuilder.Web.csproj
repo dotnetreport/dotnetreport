@@ -340,6 +340,7 @@
     <Content Include="Scripts\jquery-3.5.0.min.map" />
     <Content Include="Views\Report\ReportPrint.cshtml" />
     <Content Include="Views\Report\Combined.cshtml" />
+    <Content Include="Views\Report\CombinedPrint.cshtml" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>

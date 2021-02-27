@@ -146,6 +146,36 @@ namespace ReportBuilder.Web.Controllers
             return View(model);
         }
 
+        public async Task<ActionResult> CombinedPrint(int id, bool adminMode = false)
+        {
+            var model = new List<DotNetDasboardReportModel>();
+            var settings = GetSettings();
+
+            using (var client = new HttpClient())
+            {
+                var content = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("account", settings.AccountApiToken),
+                    new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
+                    new KeyValuePair<string, string>("clientId", settings.ClientId),
+                    new KeyValuePair<string, string>("userId", settings.UserId),
+                    new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
+                    new KeyValuePair<string, string>("id", id.ToString()),
+                    new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
+                });
+
+                var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/LoadSavedDashboard"), content);
+                var stringContent = await response.Content.ReadAsStringAsync();
+
+                model = (new JavaScriptSerializer()).Deserialize<List<DotNetDasboardReportModel>>(stringContent);
+            }
+
+            return View(new DotNetDashboardModel
+            {
+                Reports = model
+            });
+        }
+
         public JsonResult GetLookupList(string lookupSql, string connectKey)
         {
             var sql = DotNetReportHelper.Decrypt(lookupSql);
@@ -502,6 +532,13 @@ namespace ReportBuilder.Web.Controllers
             var settings = GetSettings();
             var pdf = await DotNetReportHelper.GetPdfFile(printUrl, reportId, reportSql, connectKey, reportName, settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole));
             return File(pdf, "application/pdf", reportName + ".pdf");
+        }
+
+        [HttpPost]
+        public async Task<ActionResult> DownloadCombinedPdf(int id, string printUrl, string combinedReportName, bool adminMode)
+        {
+            var pdf = await DotNetReportHelper.GetCombinedPdfFile(printUrl, id, combinedReportName, adminMode);
+            return File(pdf, "application/pdf", combinedReportName + ".pdf");
         }
 
         public JsonResult GetUsersAndRoles()
