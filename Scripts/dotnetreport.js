@@ -437,6 +437,7 @@ var reportViewModel = function (options) {
 	self.CanSaveReports = ko.observable(true);
 	self.CanManageFolders = ko.observable(true);
 	self.CanEdit = ko.observable(true);
+	self.ExecuteReportAsync = ko.observable(true);
 
 	self.fieldFormatTypes = ['Auto', 'Number', 'Decimal', 'Currency', 'Percentage', 'Date', 'Date and Time', 'Time'];
 	self.decimalFormatTypes = ['Number', 'Decimal', 'Currency', 'Percentage'];
@@ -1686,6 +1687,7 @@ var reportViewModel = function (options) {
 		return e;
 	};
 
+
 	self.LoadReport = function (reportId, filterOnFly, reportSeries) {
 
 		return ajaxcall({
@@ -1698,7 +1700,7 @@ var reportViewModel = function (options) {
 					userIdForSchedule: self.userIdForSchedule
 				})
 			}
-		}).done(function (report) {
+		}).then(function (report) {
 			if (report.d) { report = report.d; }
 			self.ReportID(report.ReportID);
 			self.ReportType(report.ReportType);
@@ -1791,7 +1793,16 @@ var reportViewModel = function (options) {
 			self.SaveReport(!filterOnFly && self.CanEdit());
 
 			if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard") {
-				self.ExecuteReportQuery(options.reportSql, options.reportConnect, reportSeries);
+				if (self.ExecuteReportAsync()) {
+					self.ExecuteReportQuery(options.reportSql, options.reportConnect, reportSeries);
+					return true;
+				}
+				else {
+					return $.when(self.ExecuteReportQuery(options.reportSql, options.reportConnect, reportSeries)).done(function () {
+						return true;
+					});
+                }
+
 			}
 		});
 	};
@@ -2280,7 +2291,7 @@ var combinedViewModel = function (options) {
 	self.currentUserRole = (options.currentUserRole || []).join();
 	self.reportsAndFolders = ko.observableArray([]);
 	self.allowAdmin = ko.observable(options.allowAdmin);
-
+	
 	var currentDash = options.dashboardId > 0
 		? (_.find(self.dashboards(), { id: options.dashboardId }) || { name: '', description: '' })
 		: (self.dashboards().length > 0 ? self.dashboards()[0] : { name: '', description: '' });
@@ -2416,6 +2427,8 @@ var combinedViewModel = function (options) {
 			skipDraw: true
 		});
 
+		report.ReportID(x.reportId);
+		report.ExecuteReportAsync(false);
 		report.x = ko.observable(x.x);
 		report.y = ko.observable(x.y);
 		report.width = ko.observable(x.width);
@@ -2423,7 +2436,7 @@ var combinedViewModel = function (options) {
 		report.panelStyle = 'panel-' + (i == 0 ? 'default' : (i == 1 ? 'info' : (i == 2 ? 'warning' : 'danger')));
 		i = i == 3 ? 0 : i + 1;
 		self.reports.push(report);
-		report.LoadReport(x.reportId, true);
+		//load report
 
 		report.showFlyFilters = ko.observable(false);
 		report.toggleFlyFilters = function () {
@@ -2480,29 +2493,39 @@ var combinedViewModel = function (options) {
 			});
 		};
 
-		return $.when(getReports(), getFolders()).done(function (allReports, allFolders) {
-			var setup = [];
-			if (allFolders[0].d) { allFolders[0] = allFolders[0].d; }
-			if (allReports[0].d) { allReports[0] = allReports[0].d; }
-
-			_.forEach(allFolders[0], function (x) {
-				var folderReports = _.filter(allReports[0], { folderId: x.Id });
-				setup.push({
-					folderId: x.Id,
-					folder: x.FolderName,
-					reports: _.map(folderReports, function (r) {
-						return {
-							reportId: r.reportId,
-							reportName: r.reportName,
-							reportDescription: r.reportDescription,
-							reportType: r.reportType,
-							selected: ko.observable(false)
-						};
-					})
-				});
-			});
-			self.reportsAndFolders(setup);
+		var deferreds = [];
+		_.forEach(self.reports(), function (x) {
+			deferreds.push(x.LoadReport(x.ReportID(), true));
 		});
+		
+		return $.when.apply(null, deferreds)
+			.then(function () {
+			
+			return $.when(getReports(), getFolders()).done(function (allReports, allFolders) {
+				var setup = [];
+				if (allFolders[0].d) { allFolders[0] = allFolders[0].d; }
+				if (allReports[0].d) { allReports[0] = allReports[0].d; }
+
+				_.forEach(allFolders[0], function (x) {
+					var folderReports = _.filter(allReports[0], { folderId: x.Id });
+					setup.push({
+						folderId: x.Id,
+						folder: x.FolderName,
+						reports: _.map(folderReports, function (r) {
+							return {
+								reportId: r.reportId,
+								reportName: r.reportName,
+								reportDescription: r.reportDescription,
+								reportType: r.reportType,
+								selected: ko.observable(false)
+							};
+						})
+					});
+				});
+				self.reportsAndFolders(setup);
+			});
+		});
+		
 	};
 
 	self.adminMode.subscribe(function (newValue) {

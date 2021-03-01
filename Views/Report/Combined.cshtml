@@ -46,6 +46,16 @@
 
             vm.init().done(function () {
                 ko.applyBindings(vm);
+
+                var filterColumns = [];
+                _.forEach(vm.reports(), function (report) {
+                    _.forEach(report.ReportResult().ReportData().Columns, function (col) {
+                        if (col.DataType == 'System.DateTime') {
+                            filterColumns.push(col);
+                        }
+                    });
+                });
+
                 $(function () {
                     var options = {
                         cellHeight: 80,
