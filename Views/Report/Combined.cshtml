@@ -45,16 +45,16 @@
             });
 
             vm.init().done(function () {
-                ko.applyBindings(vm);
-
-                var filterColumns = [];
+                vm.FilterColumns = [];
                 _.forEach(vm.reports(), function (report) {
                     _.forEach(report.ReportResult().ReportData().Columns, function (col) {
                         if (col.DataType == 'System.DateTime') {
-                            filterColumns.push(col);
+                            vm.FilterColumns.push(col);
                         }
                     });
                 });
+
+                ko.applyBindings(vm);
 
                 $(function () {
                     var options = {
@@ -173,6 +173,12 @@
 </div>
 
 <div class="clearfix"></div>
+
+<div class="row" data-bind="with: $root">
+    <div class="col-6" data-bind="visible: FilterColumns.length > 0">
+        <div data-bind="template: {name: 'combined-filter-template'}"></div>
+    </div>
+</div>
 
 <div data-bind="with: $root">
     @using (Html.BeginForm("DownloadCombinedPdf", "Report", FormMethod.Post))
