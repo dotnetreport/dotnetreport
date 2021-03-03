@@ -2291,6 +2291,7 @@ var combinedViewModel = function (options) {
 	self.currentUserRole = (options.currentUserRole || []).join();
 	self.reportsAndFolders = ko.observableArray([]);
 	self.allowAdmin = ko.observable(options.allowAdmin);
+	self.FlyFilters = ko.observableArray([]);
 	
 	var currentDash = options.dashboardId > 0
 		? (_.find(self.dashboards(), { id: options.dashboardId }) || { name: '', description: '' })
@@ -2470,6 +2471,23 @@ var combinedViewModel = function (options) {
 		});
 	};
 
+	self.RunReport = function () {
+		_.forEach(self.reports(), function (report) {
+			_.forEach(self.FlyFilters(), function (combinedFilter) {
+				_.forEach(report.FilterGroups(), function (fg) {
+					_.forEach(fg.Filters(), function (f) {
+						if (f.IsFilterOnFly && combinedFilter.fieldId == f.fieldId) {
+							f.Operator(combinedFilter.Operator());
+							f.Value(combinedFilter.Value());
+						}
+					});
+				});
+			});
+			
+			report.RunReport();
+		});
+    }
+
 	self.init = function () {
 		var getReports = function () {
 			return ajaxcall({
@@ -2500,6 +2518,29 @@ var combinedViewModel = function (options) {
 		
 		return $.when.apply(null, deferreds)
 			.then(function () {
+
+			_.forEach(self.reports(), function (report) {
+				_.forEach(report.FilterGroups(), function (fg) {
+					_.forEach(fg.Filters(), function (f) {
+						if (f.IsFilterOnFly
+								&& f.Field().fieldType == 'DateTime'
+								&& _.filter(self.FlyFilters(), function (x) { return f.fieldId == x.fieldId; }).length == 0) {
+							var filter = {
+								AndOr: ko.observable(' AND '),
+								Field: ko.observable(f.Field()),
+								Operator: ko.observable(null),
+								Value: ko.observable(null),
+								Value2: ko.observable(null),
+								ValueIn: ko.observable(null),
+								LookupList: ko.observable(f.LookupList()),
+								Apply: ko.observable(false),
+								IsFilterOnFly: true
+							};
+							self.FlyFilters.push(filter);
+						}						
+					});
+				});
+			});
 			
 			return $.when(getReports(), getFolders()).done(function (allReports, allFolders) {
 				var setup = [];

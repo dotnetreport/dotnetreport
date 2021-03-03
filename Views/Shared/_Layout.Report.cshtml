@@ -361,36 +361,7 @@
             </div>
         </div>
     </script>
-    <script type="text/html" id="combined-filter-template">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title">
-                    <a data-toggle="collapse" data-target="#filter-panel" href="#">
-                        <i class="fa fa-filter"></i> Choose filter options
-                    </a>
-                </h5>
-            </div>
-            <div id="filter-panel" class="card-body">
-                <div>
-                    <!-- ko foreach: FilterColumns -->
-                    <div class="row">
-                        <div class="col-sm-5 col-xs-4">
-                            <div class="checkbox">
-                                <div class="checkbox">
-                                    <label>
-                                        <input type="checkbox" checked="checked" title="Apply this filter" /> <span data-bind="text: ColumnName"></span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>                        
-                    </div>
-                    <!-- /ko -->
-                    <button class="btn btn-primary">Refresh Report</button>
-                </div>
-            </div>
-        </div>
-    </script>
-
+    
     <div class="modal" id="noaccountModal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
