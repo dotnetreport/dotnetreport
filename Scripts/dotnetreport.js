@@ -438,6 +438,7 @@ var reportViewModel = function (options) {
 	self.CanManageFolders = ko.observable(true);
 	self.CanEdit = ko.observable(true);
 	self.ExecuteReportAsync = ko.observable(true);
+	self.DisablePaging = ko.observable(false);
 
 	self.fieldFormatTypes = ['Auto', 'Number', 'Decimal', 'Currency', 'Percentage', 'Date', 'Date and Time', 'Time'];
 	self.decimalFormatTypes = ['Number', 'Decimal', 'Currency', 'Percentage'];
@@ -1190,9 +1191,7 @@ var reportViewModel = function (options) {
 		}
 	};
 
-	self.ExecuteReportQuery = function (reportSql, connectKey, reportSeries, enablePaging) {
-		enablePaging = (typeof enablePaging === 'undefined') ? true : enablePaging;
-
+	self.ExecuteReportQuery = function (reportSql, connectKey, reportSeries) {		
 		if (!reportSql || !connectKey) return;
 
 		return ajaxcall({
@@ -1203,7 +1202,7 @@ var reportViewModel = function (options) {
 				connectKey: connectKey,
 				reportType: self.ReportType(),
 				pageNumber: self.pager.currentPage(),
-				pageSize: self.pager.pageSize(),
+				pageSize: (self.DisablePaging() ? 999999 : self.pager.pageSize()),
 				sortBy: self.pager.sortColumn() || '',
 				desc: self.pager.sortDescending() || false,
 				ReportSeries: reportSeries
@@ -1688,11 +1687,8 @@ var reportViewModel = function (options) {
 		return e;
 	};
 
-
-	self.LoadReport = function (reportId, filterOnFly, reportSeries, enablePaging, overrideExecute) {
-		enablePaging = (typeof enablePaging === 'undefined') ? true : enablePaging;
-		overrideExecute = (typeof enablePaging === 'undefined') ? false : overrideExecute;
-
+	self.LoadReport = function (reportId, filterOnFly, reportSeries) {
+		
 		return ajaxcall({
 			url: options.apiUrl,
 			data: {
@@ -1795,13 +1791,13 @@ var reportViewModel = function (options) {
 
 			self.SaveReport(!filterOnFly && self.CanEdit());
 
-			if ((self.ReportMode() == "execute" || self.ReportMode() == "dashboard") && !overrideExecute) {
+			if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard") {
 				if (self.ExecuteReportAsync()) {
-					self.ExecuteReportQuery(options.reportSql, options.reportConnect, reportSeries, enablePaging);
+					self.ExecuteReportQuery(options.reportSql, options.reportConnect, reportSeries);
 					return true;
 				}
 				else {
-					return $.when(self.ExecuteReportQuery(options.reportSql, options.reportConnect, reportSeries, enablePaging)).done(function () {
+					return $.when(self.ExecuteReportQuery(options.reportSql, options.reportConnect, reportSeries)).done(function () {
 						return true;
 					});
                 }
@@ -2442,6 +2438,7 @@ var combinedViewModel = function (options) {
 
 		report.ReportID(x.reportId);
 		report.ExecuteReportAsync(false);
+		report.DisablePaging(true);
 		report.x = ko.observable(x.x);
 		report.y = ko.observable(x.y);
 		report.width = ko.observable(x.width);
@@ -2547,7 +2544,7 @@ var combinedViewModel = function (options) {
 
 		var deferreds = [];
 		_.forEach(self.reports(), function (x) {
-			deferreds.push(x.LoadReport(x.ReportID(), true, null, true, forPdf));
+			deferreds.push(x.LoadReport(x.ReportID(), true));
 		});
 		
 		return $.when.apply(null, deferreds)
