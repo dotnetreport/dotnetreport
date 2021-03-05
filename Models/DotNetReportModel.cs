@@ -189,6 +189,8 @@ namespace ReportBuilder.Web.Models
     {
         public List<dynamic> Dashboards { get; set; }
         public List<DotNetDasboardReportModel> Reports { get; set; }
+        public int? DashboardId { get; set; }
+        public string CombinedFilters { get; set; }
     }
 
     public class DotNetReportSettings
@@ -366,7 +368,7 @@ namespace ReportBuilder.Web.Models
             return File.ReadAllBytes(pdfFile);
         }
 
-        public static async Task<byte[]> GetCombinedPdfFile(string printUrl, int id, string reportName, bool adminMode = false)
+        public static async Task<byte[]> GetCombinedPdfFile(string printUrl, int id, string reportName, string combinedFilters = "", bool adminMode = false)
         {
             var installPath = AppContext.BaseDirectory + "\\App_Data\\local-chromium";
             await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync(BrowserFetcher.DefaultRevision);
@@ -380,6 +382,7 @@ namespace ReportBuilder.Web.Models
             formData.AppendLine("<html><body>");
             formData.AppendLine($"<form action=\"{printUrl}\" method=\"post\">");
             formData.AppendLine($"<input name=\"id\" value=\"{id}\" />");
+            formData.AppendLine($"<input name=\"combinedFilters\" value=\"{HttpUtility.HtmlEncode(combinedFilters)}\" />");
             formData.AppendLine($"</form>");
             formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");
             formData.AppendLine("</body></html>");

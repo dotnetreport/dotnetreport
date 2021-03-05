@@ -146,10 +146,12 @@ namespace ReportBuilder.Web.Controllers
             return View(model);
         }
 
-        public async Task<ActionResult> CombinedPrint(int id, bool adminMode = false)
+        public async Task<ActionResult> CombinedPrint(int id, string combinedFilters = "", bool adminMode = false)
         {
             var model = new List<DotNetDasboardReportModel>();
             var settings = GetSettings();
+
+            var dashboards = (DynamicJsonArray)(await GetDashboards(adminMode)).Data;
 
             using (var client = new HttpClient())
             {
@@ -161,7 +163,7 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("userId", settings.UserId),
                     new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
                     new KeyValuePair<string, string>("id", id.ToString()),
-                    new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
+                    new KeyValuePair<string, string>("adminMode", adminMode.ToString())
                 });
 
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/LoadSavedDashboard"), content);
@@ -172,7 +174,10 @@ namespace ReportBuilder.Web.Controllers
 
             return View(new DotNetDashboardModel
             {
-                Reports = model
+                DashboardId = id,
+                Dashboards = dashboards.Select(x => (dynamic)x).ToList(),
+                Reports = model,
+                CombinedFilters = combinedFilters
             });
         }
 
@@ -535,9 +540,9 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult> DownloadCombinedPdf(int id, string printUrl, string combinedReportName, bool adminMode)
+        public async Task<ActionResult> DownloadCombinedPdf(int id, string printUrl, string combinedReportName, string combinedFilters, bool adminMode)
         {
-            var pdf = await DotNetReportHelper.GetCombinedPdfFile(printUrl, id, combinedReportName, adminMode);
+            var pdf = await DotNetReportHelper.GetCombinedPdfFile(printUrl, id, combinedReportName, combinedFilters, adminMode);
             return File(pdf, "application/pdf", combinedReportName + ".pdf");
         }
 

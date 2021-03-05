@@ -1190,7 +1190,8 @@ var reportViewModel = function (options) {
 		}
 	};
 
-	self.ExecuteReportQuery = function (reportSql, connectKey, reportSeries) {
+	self.ExecuteReportQuery = function (reportSql, connectKey, reportSeries, enablePaging) {
+		enablePaging = (typeof enablePaging === 'undefined') ? true : enablePaging;
 
 		if (!reportSql || !connectKey) return;
 
@@ -1688,7 +1689,9 @@ var reportViewModel = function (options) {
 	};
 
 
-	self.LoadReport = function (reportId, filterOnFly, reportSeries) {
+	self.LoadReport = function (reportId, filterOnFly, reportSeries, enablePaging, overrideExecute) {
+		enablePaging = (typeof enablePaging === 'undefined') ? true : enablePaging;
+		overrideExecute = (typeof enablePaging === 'undefined') ? false : overrideExecute;
 
 		return ajaxcall({
 			url: options.apiUrl,
@@ -1792,13 +1795,13 @@ var reportViewModel = function (options) {
 
 			self.SaveReport(!filterOnFly && self.CanEdit());
 
-			if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard") {
+			if ((self.ReportMode() == "execute" || self.ReportMode() == "dashboard") && !overrideExecute) {
 				if (self.ExecuteReportAsync()) {
-					self.ExecuteReportQuery(options.reportSql, options.reportConnect, reportSeries);
+					self.ExecuteReportQuery(options.reportSql, options.reportConnect, reportSeries, enablePaging);
 					return true;
 				}
 				else {
-					return $.when(self.ExecuteReportQuery(options.reportSql, options.reportConnect, reportSeries)).done(function () {
+					return $.when(self.ExecuteReportQuery(options.reportSql, options.reportConnect, reportSeries, enablePaging)).done(function () {
 						return true;
 					});
                 }
@@ -2292,6 +2295,15 @@ var combinedViewModel = function (options) {
 	self.reportsAndFolders = ko.observableArray([]);
 	self.allowAdmin = ko.observable(options.allowAdmin);
 	self.FlyFilters = ko.observableArray([]);
+
+	if (options.combinedFilter && options.combinedFilter != '[]') {
+		self.FlyFilters(JSON.parse(options.combinedFilter));
+    }		
+
+	self.stringifyFlyFilters = ko.computed(function () {
+		var self = this;
+		return JSON.stringify(_.map(self.FlyFilters(), function (x) { return ko.toJS(x); }))
+	}, self);
 	
 	var currentDash = options.dashboardId > 0
 		? (_.find(self.dashboards(), { id: options.dashboardId }) || { name: '', description: '' })
@@ -2436,13 +2448,14 @@ var combinedViewModel = function (options) {
 		report.height = ko.observable(x.height);
 		report.panelStyle = 'panel-' + (i == 0 ? 'default' : (i == 1 ? 'info' : (i == 2 ? 'warning' : 'danger')));
 		i = i == 3 ? 0 : i + 1;
-		self.reports.push(report);
-		//load report
 
+		self.reports.push(report);
+		
 		report.showFlyFilters = ko.observable(false);
 		report.toggleFlyFilters = function () {
 			report.showFlyFilters(!report.showFlyFilters());
 		};
+
 	});
 
 	self.drawChart = function () {
@@ -2486,9 +2499,30 @@ var combinedViewModel = function (options) {
 			
 			report.RunReport();
 		});
-    }
+	}
 
-	self.init = function () {
+	self.RunReportWithFilters = function () {
+		_.forEach(self.reports(), function (report) {
+			_.forEach(self.FlyFilters(), function (combinedFilter) {
+				if (combinedFilter.Apply) {
+					_.forEach(report.FilterGroups(), function (fg) {
+						_.forEach(fg.Filters(), function (f) {
+							if (f.IsFilterOnFly && combinedFilter.Field.fieldId == f.Field().fieldId) {
+								f.Operator(combinedFilter.Operator);
+								f.Value(combinedFilter.Value);
+							}
+						});
+					});
+                }
+			});
+
+			report.RunReport();
+		});
+	}
+
+	self.init = function (forPdf) {
+		forPdf = (typeof forPdf === 'undefined') ? false : forPdf;
+
 		var getReports = function () {
 			return ajaxcall({
 				url: options.apiUrl,
@@ -2513,58 +2547,61 @@ var combinedViewModel = function (options) {
 
 		var deferreds = [];
 		_.forEach(self.reports(), function (x) {
-			deferreds.push(x.LoadReport(x.ReportID(), true));
+			deferreds.push(x.LoadReport(x.ReportID(), true, null, true, forPdf));
 		});
 		
 		return $.when.apply(null, deferreds)
 			.then(function () {
 
-			_.forEach(self.reports(), function (report) {
-				_.forEach(report.FilterGroups(), function (fg) {
-					_.forEach(fg.Filters(), function (f) {
-						if (f.IsFilterOnFly
+			if (!forPdf) {
+				_.forEach(self.reports(), function (report) {
+					_.forEach(report.FilterGroups(), function (fg) {
+						_.forEach(fg.Filters(), function (f) {
+							if (f.IsFilterOnFly
 								&& f.Field().fieldType == 'DateTime'
 								&& _.filter(self.FlyFilters(), function (x) { return f.fieldId == x.fieldId; }).length == 0) {
-							var filter = {
-								AndOr: ko.observable(' AND '),
-								Field: ko.observable(f.Field()),
-								Operator: ko.observable(null),
-								Value: ko.observable(null),
-								Value2: ko.observable(null),
-								ValueIn: ko.observable(null),
-								LookupList: ko.observable(f.LookupList()),
-								Apply: ko.observable(false),
-								IsFilterOnFly: true
-							};
-							self.FlyFilters.push(filter);
-						}						
+								var filter = {
+									AndOr: ko.observable(' AND '),
+									Field: ko.observable(f.Field()),
+									Operator: ko.observable(null),
+									Value: ko.observable(null),
+									Value2: ko.observable(null),
+									ValueIn: ko.observable(null),
+									LookupList: ko.observable(f.LookupList()),
+									Apply: ko.observable(false),
+									IsFilterOnFly: true
+								};
+								self.FlyFilters.push(filter);
+							}
+						});
 					});
 				});
-			});
-			
-			return $.when(getReports(), getFolders()).done(function (allReports, allFolders) {
-				var setup = [];
-				if (allFolders[0].d) { allFolders[0] = allFolders[0].d; }
-				if (allReports[0].d) { allReports[0] = allReports[0].d; }
 
-				_.forEach(allFolders[0], function (x) {
-					var folderReports = _.filter(allReports[0], { folderId: x.Id });
-					setup.push({
-						folderId: x.Id,
-						folder: x.FolderName,
-						reports: _.map(folderReports, function (r) {
-							return {
-								reportId: r.reportId,
-								reportName: r.reportName,
-								reportDescription: r.reportDescription,
-								reportType: r.reportType,
-								selected: ko.observable(false)
-							};
-						})
+				return $.when(getReports(), getFolders()).done(function (allReports, allFolders) {
+					var setup = [];
+					if (allFolders[0].d) { allFolders[0] = allFolders[0].d; }
+					if (allReports[0].d) { allReports[0] = allReports[0].d; }
+
+					_.forEach(allFolders[0], function (x) {
+						var folderReports = _.filter(allReports[0], { folderId: x.Id });
+						setup.push({
+							folderId: x.Id,
+							folder: x.FolderName,
+							reports: _.map(folderReports, function (r) {
+								return {
+									reportId: r.reportId,
+									reportName: r.reportName,
+									reportDescription: r.reportDescription,
+									reportType: r.reportType,
+									selected: ko.observable(false)
+								};
+							})
+						});
 					});
+					self.reportsAndFolders(setup);
 				});
-				self.reportsAndFolders(setup);
-			});
+            }
+									
 		});
 		
 	};
