@@ -2291,9 +2291,10 @@ var combinedViewModel = function (options) {
 	self.reportsAndFolders = ko.observableArray([]);
 	self.allowAdmin = ko.observable(options.allowAdmin);
 	self.FlyFilters = ko.observableArray([]);
+	self.pdfFilters = ko.observableArray([]);
 
 	if (options.combinedFilter && options.combinedFilter != '[]') {
-		self.FlyFilters(JSON.parse(options.combinedFilter));
+		self.pdfFilters(JSON.parse(options.combinedFilter));
     }		
 
 	self.stringifyFlyFilters = ko.computed(function () {
@@ -2489,6 +2490,9 @@ var combinedViewModel = function (options) {
 						if (f.IsFilterOnFly && combinedFilter.fieldId == f.fieldId) {
 							f.Operator(combinedFilter.Operator());
 							f.Value(combinedFilter.Value());
+							f.Value2(combinedFilter.Value2());
+							f.ValueIn(combinedFilter.ValueIn());
+							f.LookupList(combinedFilter.LookupList());
 						}
 					});
 				});
@@ -2498,15 +2502,18 @@ var combinedViewModel = function (options) {
 		});
 	}
 
-	self.RunReportWithFilters = function () {
+	self.RunReportForPdf = function () {
 		_.forEach(self.reports(), function (report) {
-			_.forEach(self.FlyFilters(), function (combinedFilter) {
+			_.forEach(self.pdfFilters(), function (combinedFilter) {
 				if (combinedFilter.Apply) {
 					_.forEach(report.FilterGroups(), function (fg) {
 						_.forEach(fg.Filters(), function (f) {
 							if (f.IsFilterOnFly && combinedFilter.Field.fieldId == f.Field().fieldId) {
 								f.Operator(combinedFilter.Operator);
 								f.Value(combinedFilter.Value);
+								f.Value2(combinedFilter.Value2);
+								f.ValueIn(combinedFilter.ValueIn);
+								f.LookupList(combinedFilter.LookupList);
 							}
 						});
 					});
