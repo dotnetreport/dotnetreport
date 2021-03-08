@@ -82,6 +82,9 @@
                         <li class="nav-item active">
                             <a href="#" class="nav-link" data-bind="click: createNewReport" data-toggle="modal" data-target="#modal-reportbuilder">Create a New Report</a>
                         </li>
+                        <li class="nav-item active">
+                            <a class="nav-link" href="@Url.Action("Combined","Report", new { add = "1"})">Create a Combined Report</a>
+                        </li>
                         <!-- /ko -->
                         <!-- ko if: CanManageFolders() || adminMode() -->
                         <li class="nav-item">

@@ -2292,6 +2292,8 @@ var combinedViewModel = function (options) {
 	self.allowAdmin = ko.observable(options.allowAdmin);
 	self.FlyFilters = ko.observableArray([]);
 	self.pdfFilters = ko.observableArray([]);
+	self.folders = ko.observableArray([]);
+	self.savedFolderId = ko.observable(null);
 
 	if (options.combinedFilter && options.combinedFilter != '[]') {
 		self.pdfFilters(JSON.parse(options.combinedFilter));
@@ -2321,6 +2323,14 @@ var combinedViewModel = function (options) {
 			window.location = window.location.href.split("?")[0] + "?id=" + newValue;
 		}
 	});
+
+	self.cancelCombinedReport = function (redirectUrl) {
+		bootbox.confirm("Are you sure you would like to cancel editing this Combined Report?", function (r) {
+			if (r) {
+				window.location = redirectUrl;
+			}
+		});
+    }
 
 	self.newDashboard = function () {
 		self.dashboard.Id(0);
@@ -2603,6 +2613,13 @@ var combinedViewModel = function (options) {
 						});
 					});
 					self.reportsAndFolders(setup);
+					var folders = _.map(allFolders[0], function (f) {
+						return {
+							folderId: f.Id,
+							folderName: f.FolderName
+                        }
+					});
+					self.folders(folders);
 				});
             }
 									
