@@ -1,20 +1,15 @@
-﻿using iTextSharp.text.pdf.qrcode;
-using Newtonsoft.Json;
-using OfficeOpenXml.FormulaParsing.Excel.Functions.DateTime;
+﻿using Newtonsoft.Json;
 using ReportBuilder.Web.Models;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.OleDb;
-using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
-using System.Web;
 using System.Web.Mvc;
-using System.Windows.Media.Animation;
 
 namespace ReportBuilder.Web.Controllers
 {
@@ -85,15 +80,7 @@ namespace ReportBuilder.Web.Controllers
                 response.EnsureSuccessStatusCode();
 
                 var content = await response.Content.ReadAsStringAsync();
-                var connString = ConfigurationManager.ConnectionStrings[content.Replace("\"", "")].ConnectionString;
-                connString = connString.Replace("Trusted_Connection=True", "");
-
-                if (!connString.ToLower().StartsWith("provider"))
-                {
-                    connString = "Provider=sqloledb;" + connString;
-                }
-
-                return connString;
+                return DotNetReportHelper.GetConnectionString(content.Replace("\"", ""));
             }
             
         }

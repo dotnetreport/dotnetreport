@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.OleDb;
-using System.Data.SqlClient;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
@@ -273,17 +272,30 @@ namespace ReportBuilder.Web.Models
 
     public class DotNetReportHelper
     {
+        public static string GetConnectionString(string key)
+        {
+            var connString = ConfigurationManager.ConnectionStrings[key].ConnectionString;
+            connString = connString.Replace("Trusted_Connection=True", "");
+
+            if (!connString.ToLower().StartsWith("provider"))
+            {
+                connString = "Provider=sqloledb;" + connString;
+            }
+
+            return connString;
+        }
+
         public static byte[] GetExcelFile(string reportSql, string connectKey, string reportName)
         {
             var sql = Decrypt(reportSql);
 
             // Execute sql
             var dt = new DataTable();
-            using (var conn = new SqlConnection(ConfigurationManager.ConnectionStrings[connectKey].ConnectionString))
+            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
             {
                 conn.Open();
-                var command = new SqlCommand(sql, conn);
-                var adapter = new SqlDataAdapter(command);
+                var command = new OleDbCommand(sql, conn);
+                var adapter = new OleDbDataAdapter(command);
 
                 adapter.Fill(dt);
             }
@@ -397,11 +409,11 @@ namespace ReportBuilder.Web.Models
             // Execute sql
             var dt = new DataTable();
             var ds = new DataSet();
-            using (var conn = new SqlConnection(ConfigurationManager.ConnectionStrings[connectKey].ConnectionString))
+            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
             {
                 conn.Open();
-                var command = new SqlCommand(sql, conn);
-                var adapter = new SqlDataAdapter(command);
+                var command = new OleDbCommand(sql, conn);
+                var adapter = new OleDbDataAdapter(command);
 
                 adapter.Fill(dt);
             }
