@@ -6,6 +6,24 @@
 
 @section head{
     <link href="~/Content/bootstrap-editable.css" rel="stylesheet" />
+    <style type="text/css">
+        .glyphicon-ok:before {
+            content: "\f00c";
+        }
+
+        .glyphicon-remove:before {
+            content: "\f00d";
+        }
+
+        .glyphicon {
+            display: inline-block;
+            font: normal normal normal 14px/1 FontAwesome;
+            font-size: inherit;
+            text-rendering: auto;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+    </style>
 }
 @section scripts{
     <script src="~/Scripts/dotnetreport-setup.js"></script>
@@ -88,7 +106,7 @@
         <ul class="nav nav-tabs" role="tablist">
             <li role="presentation" class="nav-item"><a class="nav-link active" href="#tablesfields" aria-controls="home" role="tab" data-toggle="tab">Tables and Fields</a></li>
             <li role="presentation" class="nav-item"><a class="nav-link" href="#relations" aria-controls="profile" role="tab" data-toggle="tab">Relations</a></li>
-            <li role="presentation" class="nav-item"><a class="nav-link" href="#procedure" aria-controls="procedure" role="tab" data-toggle="tab">Procedures</a></li>
+            <li role="presentation" class="nav-item"><a class="nav-link" href="#procedure" aria-controls="procedure" role="tab" data-toggle="tab">Stored Procs</a></li>
         </ul>
     </div>
     <br />
@@ -254,60 +272,65 @@
         <div id="procedure" class="tab-pane">
             <br />
 
-            <button class="btn btn-primary" data-toggle="modal" data-target="#procedure-modal" >Search Procedure from database</button>
+            <button class="btn btn-primary" data-toggle="modal" data-target="#procedure-modal" >Add Stored Procs from database</button>
             <br />
             <br />
             <div class="menu row" data-bind="with: Procedures" style="margin-left: 20px;">
                 <!-- ko foreach: filteredProcedures -->
 
-                <div class="menu-category panel panel-default">
+                <div class="menu-category card">
 
-                    <div class="panel-heading clearfix" style="">
+                    <div class="card-header clearfix" style="">
                         <div class="pull-left">
                             <label>
                                 <span data-bind="text: TableName"></span>
                                 <span class="label-xs">Procedure</span>
                             </label>
-                            <button class="btn btn-xs" title="Delete this Procedure" data-bind="click: function(){$data.deleteTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}"><i class="glyphicon glyphicon-remove-circle"></i></button>
+                            <button class="btn btn-sm" title="Delete this Procedure" data-bind="click: function(){$data.deleteTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}">
+                                <span class="fa fa-trash"></span>
+                            </button>
                            
                         </div>
-                       
+                        <a class="pull-right" data-toggle="collapse" data-bind="attr: {'data-target': '#table'+$index()}">
+                            <span class="fa fa-chevron-down"></span>
+                        </a>
                     </div>
                     <div data-bind="attr: {id: 'table'+$index()}" class="panel-collapse collapse in">
+                        <div class="card-body">
 
+                            <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Columns().length"></span> Columns</label>
 
-                        <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Columns().length"></span> Columns</label>
+                            <div class="list-group">
+                                <!-- ko foreach: Columns -->
+                                <div class="list-group-item">
+                                    <div class="checkbox">
+                                        <label>
 
-                        <div class="list-group">
-                            <!-- ko foreach: Columns -->
-                            <div class="list-group-item">
-                                <div class="checkbox">
-                                    <label>
+                                            <span data-bind="text: ColumnName"></span>
+                                        </label>
 
-                                        <span data-bind="text: ColumnName"></span>
-                                    </label>
-
-                                </div>
-
-                            </div>
-                            <!-- /ko -->
-                        </div>
-                        <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Parameters().length"></span> Parameters</label>
-
-                        <div class="list-group">
-                            <!-- ko foreach: Parameters -->
-                            <div class="list-group-item">
-                                <div class="checkbox">
-                                    <label>
-
-                                        <span data-bind="text: ParameterName"></span>
-                                        <span data-bind="text: ParameterDataTypeString"></span>
-                                    </label>
+                                    </div>
 
                                 </div>
-
+                                <!-- /ko -->
                             </div>
-                            <!-- /ko -->
+                            <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Parameters().length"></span> Parameters</label>
+
+                            <div class="list-group">
+                                <!-- ko foreach: Parameters -->
+                                <div class="list-group-item">
+                                    <div class="checkbox">
+                                        <label>
+
+                                            <span data-bind="text: ParameterName"></span>
+                                            <span data-bind="text: ParameterDataTypeString"></span>
+                                        </label>
+
+                                    </div>
+
+                                </div>
+                                <!-- /ko -->
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -467,72 +490,75 @@
     </div>
 </div>
 
-<div class="modal fade" id="procedure-modal" role="dialog" tabindex="-2">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
+<div class="modal" id="procedure-modal" role="dialog" tabindex="-2">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content ">
             <div class="modal-header">
+                <h4 class="modal-title">Add Stored Proc</h4>                
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                <h4 class="modal-title">Search Procedure From Database</h4>
             </div>
             <div class="modal-body">
-                <div class="col-md-10">
-                    <input type="text" class="form-control" data-bind="value: searchprocedurevalue" placeholder="Search store procedure by name" />
+                <div class="row">
+                    <label class="col-md-2 control-label">
+                        Search for
+                    </label>
+                    <div class="col-md-6">
+                        <input type="text" class="form-control" data-bind="value: searchprocedurevalue" placeholder="Search stored procedures by name" />
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-primary" data-bind="click:serachStoreProcedure">Search</button>
+                    </div>
                 </div>
-                <div class="col-md-2">
-                   <button class="btn btn-default"  data-bind="click:serachStoreProcedure">Search</button>
-                </div>
-                <hr />
                 <br />
-                <div class="menu row"  style="margin-left: 20px;">
+                <div class="menu row" style="margin-left: 20px;">
                     <!-- ko foreach: filteredProceduresBySearch -->
-
-                    <div class="menu-category panel panel-default">
-
-                        <div class="panel-heading clearfix" style="">
+                    <div class="menu-category card">
+                        <div class="card-header clearfix" style="">
                             <div class="pull-left">
                                 <label>
                                     <span data-bind="text: TableName"></span>
                                     <span class="label-xs">Procedure</span>
                                 </label>
-                                <button class="btn btn-xs" title="Save this Procedure" data-bind="click: function(){$root.saveProcedure($data.Id, $root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}"><i class="glyphicon glyphicon-floppy-disk"></i></button>
-
+                                <button class="btn btn-sm" title="Save this Procedure" data-bind="click: function(){$root.saveProcedure($data.Id, $root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}">
+                                    <span class="fa fa-save"></span>
+                                </button>
                             </div>
-
+                            <a class="pull-right" data-toggle="collapse" data-bind="attr: {'data-target': '#sp_'+$index()}">
+                                <span class="fa fa-chevron-down"></span>
+                            </a>
                         </div>
-                        <div data-bind="attr: {id: 'table'+$index()}" class="panel-collapse collapse in">
+                        <div data-bind="attr: {id: 'sp_'+$index()}" class="panel-collapse collapse in">
+                            <div class="card-body">
+                                <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Columns.length"></span> Columns</label>
 
-
-                            <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Columns.length"></span> Columns</label>
-
-                            <div class="list-group">
-                                <!-- ko foreach: Columns -->
-                                <div class="list-group-item">
-                                    <div class="checkbox">
-                                        <label>
-
-                                            <span data-bind="text: DisplayName"></span>
-                                        </label>
-
-                                    </div>
-
-                                </div>
-                                <!-- /ko -->
-                            </div>
-                            <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Parameters.length"></span> Paramters</label>
-
-                            <div class="list-group">
-                                <!-- ko foreach: Parameters -->
-                                <div class="list-group-item">
-                                    <div class="checkbox">
-                                        <label>
-
-                                            <span data-bind="text: ParameterName"></span>
-                                        </label>
+                                <div class="list-group">
+                                    <!-- ko foreach: Columns -->
+                                    <div class="list-group-item">
+                                        <div class="checkbox">
+                                            <label>
+                                                <span data-bind="text: DisplayName"></span>
+                                            </label>
+                                        </div>
 
                                     </div>
-
+                                    <!-- /ko -->
                                 </div>
-                                <!-- /ko -->
+                                <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Parameters.length"></span> Paramters</label>
+
+                                <div class="list-group">
+                                    <!-- ko foreach: Parameters -->
+                                    <div class="list-group-item">
+                                        <div class="checkbox">
+                                            <label>
+
+                                                <span data-bind="text: ParameterName"></span>
+                                            </label>
+
+                                        </div>
+
+                                    </div>
+                                    <!-- /ko -->
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -540,7 +566,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Done</button>
+                <button type="button" class="btn btn-primary" data-dismiss="modal">Done</button>
             </div>
         </div>
     </div>

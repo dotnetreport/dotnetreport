@@ -443,7 +443,7 @@ namespace ReportBuilder.Web.Controllers
         public async Task<ActionResult> SearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
         {
 
-            return Json(GetSearchProcedure(value, accountKey, dataConnectKey), JsonRequestBehavior.AllowGet);
+            return Json(await GetSearchProcedure(value, accountKey, dataConnectKey), JsonRequestBehavior.AllowGet);
         }
 
         private async Task<List<TableViewModel>> GetSearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
@@ -454,16 +454,16 @@ namespace ReportBuilder.Web.Controllers
             {
                 // open the connection to the database 
                 conn.Open();
-                string spQUery = "SELECT ROUTINE_NAME, ROUTINE_DEFINITION FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_DEFINITION LIKE '%" + value + "%' AND ROUTINE_TYPE = 'PROCEDURE'";
-                OleDbCommand cmd = new OleDbCommand(spQUery, conn);
+                string spQuery = "SELECT ROUTINE_NAME, ROUTINE_DEFINITION FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_DEFINITION LIKE '%" + value + "%' AND ROUTINE_TYPE = 'PROCEDURE'";
+                OleDbCommand cmd = new OleDbCommand(spQuery, conn);
                 cmd.CommandType = CommandType.Text;
                 DataTable dtProcedures = new DataTable();
                 dtProcedures.Load(cmd.ExecuteReader());
                 int count = 1;
                 foreach (DataRow dr in dtProcedures.Rows)
                 {
-                    string ProcName = dr["ROUTINE_NAME"].ToString();
-                    cmd = new OleDbCommand(ProcName, conn);
+                    string procName = dr["ROUTINE_NAME"].ToString();
+                    cmd = new OleDbCommand(procName, conn);
                     cmd.CommandType = CommandType.StoredProcedure;
                     // Get the parameters.
                     OleDbCommandBuilder.DeriveParameters(cmd);
@@ -485,7 +485,7 @@ namespace ReportBuilder.Web.Controllers
                         }
                     }
                     DataTable dt = new DataTable();
-                    cmd = new OleDbCommand(ProcName, conn);
+                    cmd = new OleDbCommand(procName, conn);
                     cmd.CommandType = CommandType.StoredProcedure;
                     foreach (var data in parameterViewModels)
                     {
@@ -493,7 +493,6 @@ namespace ReportBuilder.Web.Controllers
                     }
                     OleDbDataReader reader = cmd.ExecuteReader();
                     dt = reader.GetSchemaTable();
-                    // dt.Load(cmd.ExecuteReader());
 
                     // Store the table names in the class scoped array list of table names
                     List<ColumnViewModel> columnViewModels = new List<ColumnViewModel>();
@@ -509,7 +508,7 @@ namespace ReportBuilder.Web.Controllers
                     tables.Add(new TableViewModel
                     {
                         Id = count,
-                        TableName = ProcName,
+                        TableName = procName,
                         Parameters = parameterViewModels,
                         Columns = columnViewModels
                     });
@@ -521,7 +520,7 @@ namespace ReportBuilder.Web.Controllers
             return tables;
         }
 
-        private async  Task<DataTable> GetStoreProcedureResult(TableViewModel model, string accountKey = null, string dataConnectKey = null)
+        private async Task<DataTable> GetStoreProcedureResult(TableViewModel model, string accountKey = null, string dataConnectKey = null)
         {
             DataTable dt = new DataTable();
             var connString = await GetConnectionString(GetConnection(dataConnectKey));
