@@ -258,15 +258,14 @@
                         </div>
                     </div>
                 </div>
-
                 <hr />
                 <h5 class="pull-left"><span class="fa fa-database"></span>&nbsp;Choose Data for Report</h5>
                 <div class="pull-right btn-group btn-group-toggle btn-group-sm" data-toggle="buttons" role="group">
                     <label class="btn btn-primary active" style="margin-right: 0px;">
-                        <input type="radio" name="dataoption" id="table" checked data-bind="checked: useStoredProc, checkedValue: false" > Dynamic
+                        <input type="radio" name="dataoption" id="table" checked data-bind="checked: useStoredProc, checkedValue: false"> Dynamic
                     </label>
-                    <label class="btn btn-primary" >
-                        <input type="radio" name="dataoption" id="proc" value="1" data-bind="checked: useStoredProc, checkedValue: true" > Predefined
+                    <label class="btn btn-primary">
+                        <input type="radio" name="dataoption" id="proc" value="1" data-bind="checked: useStoredProc, checkedValue: true"> Predefined
                     </label>
                 </div>
                 <div class="row">
@@ -520,14 +519,13 @@
                     <!-- /ko -->
                 </div>
             </div>
-        </div>
-        <div class="modal-footer">
-            <a href="#" class="btn btn-danger" data-bind="click: cancelCreateReport">Cancel editing Report</a>
-            <button class="btn btn-primary" type="button" data-bind="visible: SaveReport() && CanSaveReports(), click: SaveWithoutRun" style="padding-right: 10px;">Save Report</button>
-            <button class="btn btn-primary" type="button" data-bind="text: SaveReport() && CanSaveReports()? 'Save & Run Report': 'Run Report', click: RunReport">Run Report</button>
+            <div class="modal-footer">
+                <a href="#" class="btn btn-danger" data-bind="click: cancelCreateReport">Cancel editing Report</a>
+                <button class="btn btn-primary" type="button" data-bind="visible: SaveReport() && CanSaveReports(), click: SaveWithoutRun" style="padding-right: 10px;">Save Report</button>
+                <button class="btn btn-primary" type="button" data-bind="text: SaveReport() && CanSaveReports()? 'Save & Run Report': 'Run Report', click: RunReport">Run Report</button>
+            </div>
         </div>
     </div>
-</div>
 </div>
 
 <!-- Folder Edit Modal -->
