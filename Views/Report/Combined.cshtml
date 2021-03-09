@@ -20,21 +20,8 @@
     <script type="text/javascript" src='//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.min.js'></script>
     <script type="text/javascript" src='//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.jQueryUI.min.js'></script>
     <script type="text/javascript">
-        function printReport() {
-            var printWindow = window.open("");
-            printWindow.document.open();
-            printWindow.document.write('<html><head>' +
-                '<link href="/Content/bootstrap.css" rel="stylesheet" />' +
-                '<style type="text/css">a[href]:after {content: none !important;}</style>' +
-                '</head><body>' + $('.report-inner').html() +
-                '</body></html>');
-
-            setTimeout(function () {
-                printWindow.document.close();
-                printWindow.focus();
-                printWindow.print();
-                printWindow.close();
-            }, 250);
+        function printReport() {          
+            $("#printReport").submit();
         }
         function downloadPdf() {
             $("#downloadPdf").submit();
@@ -42,7 +29,6 @@
         function downloadExcel() {
             $("#downloadExcel").submit();
         }
-
         function downloadXml() {
             $("#downloadXml").submit();
         }
@@ -210,6 +196,14 @@
         }
     </div>
 
+    <div data-bind="with: $root">
+        @using (Html.BeginForm("CombinedPrint", "Report", new { mode = "print" }, FormMethod.Post, new { id = "printReport", target = "_blank" }))
+        {
+            <input type="hidden" id="id" name="id" data-bind="value: currentDashboard().id" />
+            <input type="hidden" id="combinedFilters" name="combinedFilters" data-bind="value: stringifyFlyFilters()" />        
+        }
+    </div>
+
     <div class="pull-right">
         <a href="@Url.Action("Index","Report")" class="btn btn-primary">
             Back to Reports
@@ -268,6 +262,6 @@
             </div>
         </div>
     </div>
-        
+
 </div>
 

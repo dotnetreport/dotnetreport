@@ -227,6 +227,12 @@
                 }, 1000);
 
                 vm.RunReportForPdf();
+
+                @if (Request.QueryString["mode"] == "print")
+                {
+                    @:setTimeout(function () { window.onafterprint = window.close; window.print(); }, 1000);
+                }
+                
             });
 
             $(window).resize(function () {
