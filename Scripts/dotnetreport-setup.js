@@ -194,20 +194,17 @@
 				dataConnectKey: self.keys.DatabaseApiKey
 			})
 		}).done(function (result) {
-			debugger;
 			self.filteredProceduresBySearch(result)
 		});
 	}
 	self.saveProcedure = function (id) {
-		debugger;
 		var proc = _.filter(self.filteredProceduresBySearch(), function (e) {
 			return e.Id === id;
 		})
-		debugger;
 		var e = ko.mapping.toJS(proc);
-		debugger;
+
 		ajaxcall({
-			url: "/Setup/SaveProcedure",
+			url: options.saveProcUrl,
 			type: 'POST',
 			data: JSON.stringify({
 				model: e,

@@ -55,6 +55,7 @@
             getDataConnectionsUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/GetDataConnections',
             saveRelationsUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/SaveRelations',
             addDataConnectionUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/AddDataConnection',
+            saveProcUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/SaveProcedure',
         };
 
         var vm = new manageViewModel(options);
@@ -158,7 +159,7 @@
                             </p>
                         </div>
 
-                        <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Columns().length"></span>Columns</label>
+                        <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Columns().length"></span> Columns</label>
                         <button class="btn btn-sm btn-link label-sm" data-bind="click: $parent.unselectAllColumns, visible: Selected">Unselect All</button>
                         <button class="btn btn-sm btn-link label-sm" data-bind="click: $parent.selectAllColumns, visible: Selected">Select All</button>
                         <div class="list-group" data-bind="sortable: { data: Columns, options: { handle: '.sortable', cursor: 'move' }, afterMove: $parent.columnSorted }">
@@ -270,12 +271,13 @@
 
         </div>
         <div id="procedure" class="tab-pane">
-            <br />
-
             <button class="btn btn-primary" data-toggle="modal" data-target="#procedure-modal" >Add Stored Procs from database</button>
             <br />
             <br />
             <div class="menu row" data-bind="with: Procedures" style="margin-left: 20px;">
+                <div data-bind="if: filteredProcedures().length == 0">
+                    No Stored Procedures have been setup yet.
+                </div>
                 <!-- ko foreach: filteredProcedures -->
 
                 <div class="menu-category card">
@@ -297,7 +299,10 @@
                     </div>
                     <div data-bind="attr: {id: 'table'+$index()}" class="panel-collapse collapse in">
                         <div class="card-body">
-
+                            <p>
+                                <label class="label-sm">Display Name</label><br />
+                                <span data-bind="editable: DisplayName"></span>
+                            </p>
                             <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Columns().length"></span> Columns</label>
 
                             <div class="list-group">
@@ -305,12 +310,9 @@
                                 <div class="list-group-item">
                                     <div class="checkbox">
                                         <label>
-
-                                            <span data-bind="text: ColumnName"></span>
+                                            <span data-bind="editable: DisplayName"></span>
                                         </label>
-
                                     </div>
-
                                 </div>
                                 <!-- /ko -->
                             </div>
@@ -321,9 +323,8 @@
                                 <div class="list-group-item">
                                     <div class="checkbox">
                                         <label>
-
                                             <span data-bind="text: ParameterName"></span>
-                                            <span data-bind="text: ParameterDataTypeString"></span>
+                                            <span class="badge badge-info" data-bind="text: ParameterDataTypeString"></span>
                                         </label>
 
                                     </div>
