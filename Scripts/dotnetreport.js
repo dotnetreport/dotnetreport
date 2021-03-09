@@ -456,6 +456,7 @@ var reportViewModel = function (options) {
 		SubTotals: ko.observableArray([])
 	});
 
+	self.useStoredProc = ko.observable(false);
 	self.pager = new pagerViewModel();
 	self.currentSql = ko.observable();
 	self.currentConnectKey = ko.observable();
