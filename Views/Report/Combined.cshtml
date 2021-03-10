@@ -20,7 +20,7 @@
     <script type="text/javascript" src='//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.min.js'></script>
     <script type="text/javascript" src='//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.jQueryUI.min.js'></script>
     <script type="text/javascript">
-        function printReport() {          
+        function printReport() {
             $("#printReport").submit();
         }
         function downloadPdf() {
@@ -65,7 +65,7 @@
             });
 
             vm.init().done(function () {
-                
+
                 ko.applyBindings(vm);
 
                 $(function () {
@@ -90,7 +90,12 @@
                     @:vm.newDashboard();
                     @:$('#add-dashboard-modal').modal('show');
                 }
-                
+                @if (Request.QueryString["edit"] == "1")
+                {
+                    @:vm.editDashboard();
+                    @:$('#add-dashboard-modal').modal('show');
+                }
+
             });
 
             $(window).resize(function () {

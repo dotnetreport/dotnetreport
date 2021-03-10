@@ -1865,6 +1865,16 @@ var reportViewModel = function (options) {
 					});
 				};
 
+				e.runCombinedReport = function (url) {
+					// Run Combined Report
+					location.href = url + "?id=2159"; // + e.reportId;
+                }
+
+				e.editCombinedReport = function (url) {
+					// Edit Combined Report
+					location.href = url + "?edit=1&id=2159"; // + e.reportId;
+				}
+
 				if (options.reportId > 0 && e.reportId == options.reportId) {
 					e.openReport();
 					options.reportWizard.modal('show');
@@ -2382,10 +2392,10 @@ var combinedViewModel = function (options) {
 		// Save Combined Report as a Saved Reports
 		var combinedReportModel = {
 			ReportID: 0,
-			ReportName: "Test Combined",
-			ReportDescription: "",
+			ReportName: self.dashboard.Name(),
+			ReportDescription: self.dashboard.Description(),
 			ReportType: 'Combined',
-			FolderID: 0,
+			FolderID: self.savedFolderId(),
 			SortBy: 1,
 			Filters: [],
 			GroupFunctionList: []
