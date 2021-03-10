@@ -2293,7 +2293,7 @@ var combinedViewModel = function (options) {
 	self.FlyFilters = ko.observableArray([]);
 	self.pdfFilters = ko.observableArray([]);
 	self.folders = ko.observableArray([]);
-	self.savedFolderId = ko.observable(null);
+	self.savedFolderId = ko.observable(0);
 
 	if (options.combinedFilter && options.combinedFilter != '[]') {
 		self.pdfFilters(JSON.parse(options.combinedFilter));
@@ -2384,7 +2384,11 @@ var combinedViewModel = function (options) {
 			ReportID: 0,
 			ReportName: "Test Combined",
 			ReportDescription: "",
+			ReportType: 'Combined',
 			FolderID: 0,
+			SortBy: 1,
+			Filters: [],
+			GroupFunctionList: []
 		}
 		ajaxcall({
 			url: options.runReportApiUrl,
@@ -2396,11 +2400,9 @@ var combinedViewModel = function (options) {
 				adminMode: self.adminMode()
 			}),
 			async: false
-		}).done(function (result) {
+		}).done(function (savedCombinedReportId) {
 
 			toastr.success("Saving report...");
-
-			var savedCombinedReportId = 100;
 
 			// Save Combined Report as a Dashboard with a Saved Report Id
 			var model = {
