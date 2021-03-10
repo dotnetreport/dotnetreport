@@ -242,7 +242,7 @@
 				self.Procedures.savedProcedures.push(proc);
 			}
 
-			toastr.success("Added Procedure " + e.TableName);
+			toastr.success("Saved Procedure " + e.TableName);
 		});
 
 		return false;

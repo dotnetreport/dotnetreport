@@ -403,7 +403,9 @@ var reportViewModel = function (options) {
 	self.ReportID = ko.observable();
 
 	self.Tables = ko.observableArray([]);
+	self.Procs = ko.observableArray([]);
 	self.SelectedTable = ko.observable();
+	self.SelectedProc = ko.observable();
 
 	self.ChooseFields = ko.observableArray([]); // List of fields to show in First List to choose from
 	self.ChosenFields = ko.observableArray([]); // List of fields selected by user in the First List
@@ -466,6 +468,13 @@ var reportViewModel = function (options) {
 	self.y = ko.observable(0);
 	self.width = ko.observable(3);
 	self.height = ko.observable(2);
+
+	self.useStoredProc.subscribe(function () {
+		self.SelectedTable(null);
+		self.SelectedProc(null);
+		self.SelectedFields([]);
+		self.clearReport();
+	});
 
 	self.adminMode.subscribe(function (newValue) {
 		self.LoadAllSavedReports();
@@ -653,7 +662,28 @@ var reportViewModel = function (options) {
 		self.scheduleBuilder.clear();
 	};
 
+	self.SelectedProc.subscribe(function (proc) {
+		self.ChooseFields([]);
+		self.SelectedFields([]);
+
+		if (proc == null) {
+			return;
+		}
+
+		var selectedFields = _.map(proc.Columns, function (e) {
+			var field = self.getEmptyFormulaField();
+			field.fieldName = e.DisplayName;
+			field.tableName = proc.DisplayName;
+			field.procColumnId = e.Id
+			return self.setupField(field)
+		});
+
+		self.SelectedFields(selectedFields);
+		
+	});
+
 	self.SelectedTable.subscribe(function (table) {
+		self.SelectedProc(null);
 		if (table == null) {
 			self.ChooseFields([]);
 			return;
@@ -728,6 +758,7 @@ var reportViewModel = function (options) {
 
 		return result;
 	});
+
 	self.getEmptyFormulaField = function () {
 		return {
 			tableName: 'Custom',
@@ -1948,6 +1979,21 @@ var reportViewModel = function (options) {
 		return isValid;
 	};
 
+	self.loadProcs = function () {
+		ajaxcall({
+			url: options.apiUrl,
+			data: {
+				method: "/ReportApi/GetProcedures",
+				model: JSON.stringify({
+					adminMode: self.adminMode()
+				})
+			}
+		}).done(function (procs) {
+			if (procs.d) { procs = procs.d; }
+			self.Procs(procs);
+		});
+	};
+
 	self.loadTables = function () {
 		// Load tables
 		ajaxcall({
@@ -1972,6 +2018,7 @@ var reportViewModel = function (options) {
 
 		self.loadFolders(folderId);
 		self.loadTables();
+		self.loadProcs();
 
 		var adminMode = false;
 		if (localStorage) adminMode = localStorage.getItem('reportAdminMode');

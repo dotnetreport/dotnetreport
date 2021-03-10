@@ -260,17 +260,19 @@
                 </div>
                 <hr />
                 <h5 class="pull-left"><span class="fa fa-database"></span>&nbsp;Choose Data for Report</h5>
-                <div class="pull-right btn-group btn-group-toggle btn-group-sm" data-toggle="buttons" role="group">
-                    <label class="btn btn-primary active" style="margin-right: 0px;">
+                <div class="pull-right btn-group btn-group-toggle btn-group-sm" data-toggle="buttons" role="group" data-bind="if: ReportID() <= 0">
+                    <label class="btn btn-primary active" style="margin-right: 0px;" title="You can change the Data source only when creating a new report, changing this will clear all selections">
                         <input type="radio" name="dataoption" id="table" checked data-bind="checked: useStoredProc, checkedValue: false"> Dynamic
                     </label>
                     <label class="btn btn-primary">
                         <input type="radio" name="dataoption" id="proc" value="1" data-bind="checked: useStoredProc, checkedValue: true"> Predefined
                     </label>
                 </div>
+                <div class="clearfix"></div>
                 <div class="row">
                     <div class="col-md-12">
-                        <select class="form-control" data-bind="options: Tables, optionsCaption: 'Choose Section...', optionsText: 'tableName', value: SelectedTable, disable: isFormulaField"></select>
+                        <select class="form-control" data-bind="options: Procs, optionsCaption: 'Choose Section...', optionsText: 'DisplayName', value: SelectedProc, disable: isFormulaField, visible: useStoredProc"></select>
+                        <select class="form-control" data-bind="options: Tables, optionsCaption: 'Choose Section...', optionsText: 'tableName', value: SelectedTable, disable: isFormulaField, hidden: useStoredProc"></select>
                     </div>
 
                     <div class="col-md-12 padded-div" data-bind="visible: ChooseFields().length>0">
@@ -401,7 +403,7 @@
                                 </div>
                                 <div class="col">
                                     <div class="pull-right" style="margin-top: -5px;">
-                                        <select class="form-control form-control-sm" data-bind="options: $root.canDrilldown() && $index()>0 ? fieldAggregateWithDrilldown : fieldAggregate, value: selectedAggregate, visible: $parent.AggregateReport"></select>
+                                        <select class="form-control form-control-sm" data-bind="options: $root.canDrilldown() && $index()>0 ? fieldAggregateWithDrilldown : fieldAggregate, value: selectedAggregate, visible: $parent.AggregateReport() && !$parent.useStoredProc()"></select>
                                     </div>
                                     <div class="sortable pull-right" style="padding-right: 15px;">
                                         <span class="fa fa-arrows " aria-hidden="true" title="Drag to reorder"></span>
@@ -409,7 +411,7 @@
                                     <div class="pull-right" style="padding-right: 15px;">
                                         <span class="fa fa-trash" style="cursor: pointer;" aria-hidden="true" title="Delete this Field" data-bind="click: $parent.RemoveField"></span>
                                     </div>
-                                    <div class="pull-right" style="padding-right: 15px;">
+                                    <div class="pull-right" style="padding-right: 15px;" data-bind="ifnot: $parent.useStoredProc">
                                         <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ filterOnFly(!filterOnFly()); }, css: {active: filterOnFly()==true}">
                                             <span class="fa fa-filter" aria-hidden="true" title="Filter by this field on the Report"></span>
                                         </span>
