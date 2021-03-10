@@ -8,10 +8,10 @@
 
 	self.DataConnections = ko.observableArray([]);
 	self.Tables = new tablesViewModel(options);
-
 	self.Procedures = new proceduresViewModel(options);
-	self.filteredProceduresBySearch = ko.observableArray([]);
-	self.searchprocedurevalue = ko.observable("");
+
+	self.foundProcedures = ko.observableArray([]);
+	self.searchProcedureTerm = ko.observable("");
 	self.Joins = ko.observableArray([]);
 	self.currentConnectionKey = ko.observable(self.keys.DatabaseApiKey);
 	self.canSwitchConnection = ko.computed(function () {
@@ -183,13 +183,14 @@
 			self.currentConnectionKey(self.keys.DatabaseApiKey);
 		});
 	}
-	self.serachStoreProcedure = function () {
+
+	self.searchStoredProcedure = function () {
 		
 		ajaxcall({
 			url: "/Setup/SearchProcedure",
 			type: 'POST',
 			data: JSON.stringify({
-				value: self.searchprocedurevalue(),
+				value: self.searchProcedureTerm(),
 				accountKey: self.keys.AccountApiKey,
 				dataConnectKey: self.keys.DatabaseApiKey
 			})
@@ -205,12 +206,21 @@
 				s.DisplayName = ko.observable(s.DisplayName);
 			});
 
-			self.filteredProceduresBySearch(result)
+			self.foundProcedures(result)
 		});
 	}
 
-	self.saveProcedure = function (procName) {
-		var proc = _.find(self.filteredProceduresBySearch(), function (e) {
+	self.addProcedure = function (procName) {
+		var match = _.find(self.Procedures.savedProcedures(), function (e) {
+			return e.TableName == procName;
+		});
+
+		if (match != null) {
+			toastr.error('Stored Proc already added');
+			return false;
+        }
+
+		var proc = _.find(self.foundProcedures(), function (e) {
 			return e.TableName === procName;
 		});
 
@@ -231,9 +241,10 @@
             }
 			if (proc.Id == 0) {
 				proc.Id = result;
-				self.Procedures.proceduremodel.push(proc);
+				self.Procedures.setupProcedure(proc);		
+				self.Procedures.savedProcedures.push(proc);
             }
-			toastr.success("Saved Procedure " + e.DisplayName);
+			toastr.success("Added Procedure " + e.TableName);
 		});
 
 		return false;
@@ -520,37 +531,36 @@ var tablesViewModel = function (options) {
 
 var proceduresViewModel = function (options) {
 	var self = this;
-	self.proceduremodel = ko.mapping.fromJS(options.model.Procedures);
+	self.savedProcedures = ko.mapping.fromJS(options.model.Procedures);
 
-	$.each(self.proceduremodel(), function (i, t) {
-
-		t.deleteTable = function (apiKey, dbKey) {
-			var e = ko.mapping.toJS(t);
+	self.setupProcedure = function (p) {
+		p.deleteTable = function (apiKey, dbKey) {
+			var e = ko.mapping.toJS(p);
 
 			bootbox.confirm("Are you sure you would like to delete Procedure '" + e.TableName + "'?", function (r) {
 				if (r) {
 					ajaxcall({
-						url: "/Setup/DeleteProcedure",
+						url: options.deleteProcUrl,
 						type: 'POST',
 						data: JSON.stringify({
-							Id: e.Id,
-							accountKey: apiKey,
-							dataConnectKey: dbKey
-							
+							procId: e.Id,
+							account: apiKey,
+							dataConnect: dbKey
+
 						})
 					}).done(function () {
 						toastr.success("Deleted procedure " + e.TableName);
+						self.savedProcedures.remove(p);
 					});
 				}
 			});
 
 			return;
 		}
-			
+	}
 
+	_.forEach(self.savedProcedures(), function (p) {
+		self.setupProcedure(p);
 	});
 
-	self.filteredProcedures = ko.computed(function () {
-		return self.proceduremodel();
-	});
 }

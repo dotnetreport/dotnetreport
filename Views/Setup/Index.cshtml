@@ -56,6 +56,7 @@
             saveRelationsUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/SaveRelations',
             addDataConnectionUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/AddDataConnection',
             saveProcUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/SaveProcedure',
+            deleteProcUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/DeleteProcedure',
         };
 
         var vm = new manageViewModel(options);
@@ -275,10 +276,10 @@
             <br />
             <br />
             <div class="menu row" data-bind="with: Procedures" style="margin-left: 20px;">
-                <div data-bind="if: filteredProcedures().length == 0">
+                <div data-bind="if: savedProcedures().length == 0">
                     No Stored Procedures have been setup yet.
                 </div>
-                <!-- ko foreach: filteredProcedures -->
+                <!-- ko foreach: savedProcedures -->
 
                 <div class="menu-category card">
 
@@ -499,15 +500,15 @@
                         Search for
                     </label>
                     <div class="col-md-6">
-                        <input type="text" class="form-control" data-bind="value: searchprocedurevalue" placeholder="Search stored procedures by name" />
+                        <input type="text" class="form-control" data-bind="value: searchProcedureTerm" placeholder="Search stored procedures by name" />
                     </div>
                     <div class="col-md-2">
-                        <button class="btn btn-primary" data-bind="click:serachStoreProcedure">Search</button>
+                        <button class="btn btn-primary" data-bind="click: searchStoredProcedure">Search</button>
                     </div>
                 </div>
                 <br />
                 <div class="menu row" style="margin-left: 20px;">
-                    <!-- ko foreach: filteredProceduresBySearch -->
+                    <!-- ko foreach: foundProcedures -->
                     <div class="menu-category card">
                         <div class="card-header clearfix" style="">
                             <div class="pull-left">
@@ -515,7 +516,7 @@
                                     <span data-bind="text: TableName"></span>
                                     <span class="label-xs">Procedure</span>
                                 </label>
-                                <button class="btn btn-sm" title="Save this Procedure" data-bind="click: function(){$root.saveProcedure($data.TableName, $root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}">
+                                <button class="btn btn-sm" title="Save this Procedure" data-bind="click: function(){$root.addProcedure($data.TableName, $root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}">
                                     <span class="fa fa-save"></span>
                                 </button>
                             </div>

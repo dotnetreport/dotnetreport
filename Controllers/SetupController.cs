@@ -481,43 +481,6 @@ namespace ReportBuilder.Web.Controllers
             return dt;
         }
 
-        [HttpPost]
-        public async Task<ActionResult> DeleteProcedure(int Id = 0, string accountKey = null, string dataConnectKey = null)
-        {
-            try
-            { 
-                var connString = await GetConnectionString(GetConnection(dataConnectKey));
-                using (OleDbConnection conn = new OleDbConnection(connString))
-                {
-                    // open the connection to the database 
-                    conn.Open();
-                    string Query = @"Delete from StoreProcedureColumnDetail where StoreProcedureID = ? ;";
-                    Query += @"Delete from StoreProcedureParameterDetail where StoreProcedureID = ? ;";
-                    Query += @"Delete from StoreProcedures where ID = ? ;";
-                    OleDbCommand cmd = new OleDbCommand(Query, conn);
-                    cmd.CommandType = CommandType.Text;
-                    cmd.Parameters.AddWithValue("@StoreProcedureID", Id);
-                    cmd.Parameters.AddWithValue("@StoreProcedureID", Id);
-                    cmd.Parameters.AddWithValue("@ID", Id);
-                    await cmd.ExecuteNonQueryAsync();
-
-                    conn.Close();
-                    conn.Dispose();
-                }
-                return Json(1);
-            }
-            catch(OleDbException dbEx)
-            {
-                StringBuilder sb = new StringBuilder();
-                sb.Append(dbEx.ErrorCode + System.Environment.NewLine);
-                sb.Append(dbEx.Message + System.Environment.NewLine);
-                return Json(sb);
-            }
-            catch(Exception ex)
-            {
-                return Json(ex.Message);
-            }
-        }
         #endregion
     }
 }
