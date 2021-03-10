@@ -2379,31 +2379,57 @@ var combinedViewModel = function (options) {
 			});
 		});
 
-		var model = {
-			id: self.dashboard.Id() || 0,
-			name: self.dashboard.Name(),
-			description: self.dashboard.Description(),
-			selectedReports: list,
-			userIdAccess: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.users),
-			viewOnlyUserId: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.viewOnlyUsers),
-			userRolesAccess: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.userRoles),
-			viewOnlyUserRoles: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.viewOnlyUserRoles),
-			adminMode: self.adminMode()
-		};
-
+		// Save Combined Report as a Saved Reports
+		var combinedReportModel = {
+			ReportID: 0,
+			ReportName: "Test Combined",
+			ReportDescription: "",
+			FolderID: 0,
+		}
 		ajaxcall({
-			url: options.apiUrl,
-			data: {
-				method: "/ReportApi/SaveDashboard",
-				model: JSON.stringify(model)
-			}
+			url: options.runReportApiUrl,
+			type: "POST",
+			data: JSON.stringify({
+				method: "/ReportApi/SaveReport",
+				SaveReport: true,
+				ReportJson: JSON.stringify(combinedReportModel),
+				adminMode: self.adminMode()
+			}),
+			async: false
 		}).done(function (result) {
-			if (result.d) { result = result.d; }
-			toastr.success("Dashboard saved successfully");
-			setTimeout(function () {
-				window.location = window.location.href.split("?")[0] + "?id=" + result.id;
-			}, 500);
-		});
+
+			toastr.success("Saving report...");
+
+			var savedCombinedReportId = 100;
+
+			// Save Combined Report as a Dashboard with a Saved Report Id
+			var model = {
+				id: self.dashboard.Id() || 0,
+				name: self.dashboard.Name(),
+				description: self.dashboard.Description(),
+				selectedReports: list,
+				userIdAccess: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.users),
+				viewOnlyUserId: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.viewOnlyUsers),
+				userRolesAccess: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.userRoles),
+				viewOnlyUserRoles: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.viewOnlyUserRoles),
+				adminMode: self.adminMode(),
+				savedReportId: savedCombinedReportId
+			};
+
+			ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/SaveDashboard",
+					model: JSON.stringify(model)
+				}
+			}).done(function (result) {
+				if (result.d) { result = result.d; }
+				toastr.success("Dashboard saved successfully");
+				setTimeout(function () {
+					window.location = window.location.href.split("?")[0] + "?id=" + result.id;
+				}, 500);
+			});
+		});		
 
 		return true;
 	};
