@@ -194,13 +194,26 @@
 				dataConnectKey: self.keys.DatabaseApiKey
 			})
 		}).done(function (result) {
+			_.forEach(result, function (s) {
+				_.forEach(s.Columns, function (c) {
+					c.DisplayName = ko.observable(c.DisplayName);
+				});
+				_.forEach(s.Parameters, function (p) {
+					p.DisplayName = ko.observable(p.DisplayName);
+				});
+
+				s.DisplayName = ko.observable(s.DisplayName);
+			});
+
 			self.filteredProceduresBySearch(result)
 		});
 	}
-	self.saveProcedure = function (id) {
-		var proc = _.filter(self.filteredProceduresBySearch(), function (e) {
-			return e.Id === id;
-		})
+
+	self.saveProcedure = function (procName) {
+		var proc = _.find(self.filteredProceduresBySearch(), function (e) {
+			return e.TableName === procName;
+		});
+
 		var e = ko.mapping.toJS(proc);
 
 		ajaxcall({
@@ -212,8 +225,18 @@
 				dataConnect: self.keys.DatabaseApiKey
 			})
 		}).done(function (result) {
+			if (!result) {
+				toastr.error('Error saving Procedure: ' + result.Message);
+				return false;
+            }
+			if (proc.Id == 0) {
+				proc.Id = result;
+				self.Procedures.proceduremodel.push(proc);
+            }
 			toastr.success("Saved Procedure " + e.DisplayName);
 		});
+
+		return false;
 	}
 
 	self.LoadJoins = function () {
@@ -529,5 +552,5 @@ var proceduresViewModel = function (options) {
 
 	self.filteredProcedures = ko.computed(function () {
 		return self.proceduremodel();
-	})
+	});
 }

@@ -340,21 +340,8 @@ namespace ReportBuilder.Web.Controllers
                 var response = await client.GetAsync(String.Format("{0}/ReportApi/GetProcedures?account={1}&dataConnect={2}&clientId=", ConfigurationManager.AppSettings["dotNetReport.apiUrl"], accountKey, dataConnectKey));
                 response.EnsureSuccessStatusCode();
                 var content = await response.Content.ReadAsStringAsync();
-                dynamic values = JsonConvert.DeserializeObject<dynamic>(content);
-                var tables = new List<TableViewModel>();
-                foreach (var item in values)
-                {
-                    tables.Add(new TableViewModel
-                    {
-                        Id = item.tableId,
-                        TableName = item.tableDbName,
-                        DisplayName = item.tableName,
-                        AllowedRoles = item.tableRoles.ToObject<List<string>>(),
-                        Columns = (List<ColumnViewModel>)item.columns,
-                        Parameters = (List<ParameterViewModel>)item.parameters
-                    });
-                }
-
+                var tables = JsonConvert.DeserializeObject<List<TableViewModel>>(content);
+               
                 return tables;
             }
         }
@@ -448,7 +435,6 @@ namespace ReportBuilder.Web.Controllers
                     }
                     tables.Add(new TableViewModel
                     {
-                        Id = count,
                         TableName = procName,
                         DisplayName = procName,
                         Parameters = parameterViewModels,

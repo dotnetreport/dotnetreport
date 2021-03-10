@@ -271,7 +271,7 @@
 
         </div>
         <div id="procedure" class="tab-pane">
-            <button class="btn btn-primary" data-toggle="modal" data-target="#procedure-modal" >Add Stored Procs from database</button>
+            <button class="btn btn-primary" data-toggle="modal" data-target="#procedure-modal">Add Stored Procs from database</button>
             <br />
             <br />
             <div class="menu row" data-bind="with: Procedures" style="margin-left: 20px;">
@@ -291,7 +291,7 @@
                             <button class="btn btn-sm" title="Delete this Procedure" data-bind="click: function(){$data.deleteTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}">
                                 <span class="fa fa-trash"></span>
                             </button>
-                           
+
                         </div>
                         <a class="pull-right" data-toggle="collapse" data-bind="attr: {'data-target': '#table'+$index()}">
                             <span class="fa fa-chevron-down"></span>
@@ -308,11 +308,10 @@
                             <div class="list-group">
                                 <!-- ko foreach: Columns -->
                                 <div class="list-group-item">
-                                    <div class="checkbox">
-                                        <label>
-                                            <span data-bind="editable: DisplayName"></span>
-                                        </label>
-                                    </div>
+                                    <label>
+                                        <span data-bind="editable: DisplayName"></span>
+                                        <span class="badge badge-info" data-bind="text: FieldType"></span>
+                                    </label>
                                 </div>
                                 <!-- /ko -->
                             </div>
@@ -321,14 +320,10 @@
                             <div class="list-group">
                                 <!-- ko foreach: Parameters -->
                                 <div class="list-group-item">
-                                    <div class="checkbox">
-                                        <label>
-                                            <span data-bind="text: ParameterName"></span>
-                                            <span class="badge badge-info" data-bind="text: ParameterDataTypeString"></span>
-                                        </label>
-
-                                    </div>
-
+                                    <label>
+                                        <span data-bind="editable: DisplayName"></span>
+                                        <span class="badge badge-info" data-bind="text: ParameterDataTypeString"></span>
+                                    </label>
                                 </div>
                                 <!-- /ko -->
                             </div>
@@ -495,7 +490,7 @@
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content ">
             <div class="modal-header">
-                <h4 class="modal-title">Add Stored Proc</h4>                
+                <h4 class="modal-title">Add Stored Proc</h4>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
             </div>
             <div class="modal-body">
@@ -520,7 +515,7 @@
                                     <span data-bind="text: TableName"></span>
                                     <span class="label-xs">Procedure</span>
                                 </label>
-                                <button class="btn btn-sm" title="Save this Procedure" data-bind="click: function(){$root.saveProcedure($data.Id, $root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}">
+                                <button class="btn btn-sm" title="Save this Procedure" data-bind="click: function(){$root.saveProcedure($data.TableName, $root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}">
                                     <span class="fa fa-save"></span>
                                 </button>
                             </div>
@@ -530,17 +525,16 @@
                         </div>
                         <div data-bind="attr: {id: 'sp_'+$index()}" class="panel-collapse collapse in">
                             <div class="card-body">
+                                Display Name<br />
+                                <span data-bind="editable: DisplayName"></span>
+                                <br />
                                 <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Columns.length"></span> Columns</label>
 
                                 <div class="list-group">
                                     <!-- ko foreach: Columns -->
                                     <div class="list-group-item">
-                                        <div class="checkbox">
-                                            <label>
-                                                <span data-bind="text: DisplayName"></span>
-                                            </label>
-                                        </div>
-
+                                        <span data-bind="editable: DisplayName"></span>
+                                        <span class="badge badge-info" data-bind="text: FieldType"></span>
                                     </div>
                                     <!-- /ko -->
                                 </div>
@@ -549,14 +543,8 @@
                                 <div class="list-group">
                                     <!-- ko foreach: Parameters -->
                                     <div class="list-group-item">
-                                        <div class="checkbox">
-                                            <label>
-
-                                                <span data-bind="text: ParameterName"></span>
-                                            </label>
-
-                                        </div>
-
+                                        <span data-bind="editable: DisplayName"></span>
+                                        <span class="badge badge-info" data-bind="text: ParameterDataTypeString"></span>
                                     </div>
                                     <!-- /ko -->
                                 </div>
