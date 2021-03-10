@@ -289,6 +289,10 @@
                                 <span data-bind="text: TableName"></span>
                                 <span class="label-xs">Procedure</span>
                             </label>
+
+                            <button class="btn btn-sm" title="Save this Procedure" data-bind="click: function(){$root.saveProcedure($data.TableName, false);}">
+                                <span class="fa fa-save"></span>
+                            </button>
                             <button class="btn btn-sm" title="Delete this Procedure" data-bind="click: function(){$data.deleteTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}">
                                 <span class="fa fa-trash"></span>
                             </button>
@@ -304,7 +308,7 @@
                                 <label class="label-sm">Display Name</label><br />
                                 <span data-bind="editable: DisplayName"></span>
                             </p>
-                            <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Columns().length"></span> Columns</label>
+                            <label style="padding-left: 15px;" class="label-sm">Columns</label>
 
                             <div class="list-group">
                                 <!-- ko foreach: Columns -->
@@ -316,7 +320,7 @@
                                 </div>
                                 <!-- /ko -->
                             </div>
-                            <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Parameters().length"></span> Parameters</label>
+                            <label style="padding-left: 15px;" class="label-sm">Parameters</label>
 
                             <div class="list-group">
                                 <!-- ko foreach: Parameters -->
@@ -516,7 +520,7 @@
                                     <span data-bind="text: TableName"></span>
                                     <span class="label-xs">Procedure</span>
                                 </label>
-                                <button class="btn btn-sm" title="Save this Procedure" data-bind="click: function(){$root.addProcedure($data.TableName, $root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}">
+                                <button class="btn btn-sm" title="Save this Procedure" data-bind="click: function(){$root.saveProcedure($data.TableName, true);}">
                                     <span class="fa fa-save"></span>
                                 </button>
                             </div>

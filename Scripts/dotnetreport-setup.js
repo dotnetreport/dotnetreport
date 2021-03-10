@@ -210,21 +210,14 @@
 		});
 	}
 
-	self.addProcedure = function (procName) {
-		var match = _.find(self.Procedures.savedProcedures(), function (e) {
-			return e.TableName == procName;
-		});
-
-		if (match != null) {
-			toastr.error('Stored Proc already added');
-			return false;
-        }
-
-		var proc = _.find(self.foundProcedures(), function (e) {
+	self.saveProcedure = function (procName, adding) {		
+		var proc = _.find(adding === true ? self.foundProcedures() : self.Procedures.savedProcedures(), function (e) {
 			return e.TableName === procName;
 		});
 
-		var e = ko.mapping.toJS(proc);
+		var e = ko.mapping.toJS(proc, {
+			'ignore': ["dataTable", "deleteTable"]
+		});
 
 		ajaxcall({
 			url: options.saveProcUrl,
@@ -238,12 +231,17 @@
 			if (!result) {
 				toastr.error('Error saving Procedure: ' + result.Message);
 				return false;
-            }
-			if (proc.Id == 0) {
+			}
+
+			if (adding) {
+				self.Procedures.savedProcedures.remove(_.find(self.Procedures.savedProcedures(), function (e) {
+					return e.TableName() === procName;
+				}));
 				proc.Id = result;
 				self.Procedures.setupProcedure(proc);		
 				self.Procedures.savedProcedures.push(proc);
-            }
+			}
+
 			toastr.success("Added Procedure " + e.TableName);
 		});
 
@@ -531,7 +529,9 @@ var tablesViewModel = function (options) {
 
 var proceduresViewModel = function (options) {
 	var self = this;
-	self.savedProcedures = ko.mapping.fromJS(options.model.Procedures);
+	self.savedProcedures = ko.mapping.fromJS(options.model.Procedures, {
+		'ignore': ["TableName"]
+	});
 
 	self.setupProcedure = function (p) {
 		p.deleteTable = function (apiKey, dbKey) {
