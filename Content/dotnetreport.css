@@ -448,3 +448,7 @@ input[type="checkbox"].input-validation-error {
 .form-control {
     /*width: auto;*/
 }
+
+.blockUI {
+    z-index: 2200 !important;
+}

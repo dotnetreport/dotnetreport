@@ -685,17 +685,25 @@ var reportViewModel = function (options) {
 		self.SelectedFields(selectedFields);
 
 		var parameters = _.map(proc.Parameters, function (e) {
-			e.useDefault = ko.observable(false);
-			e.operators = ['=', 'is default', 'is blank'];
-			e.Operator = ko.observable();
-			e.Value = ko.observable(e.ParameterValue);
+			var match = ko.toJS(proc.SelectedParameters && proc.SelectedParameters.length ? _.find(proc.SelectedParameters, { ParameterName: e.ParameterName }) : null);
+			e.operators = ['='];
+			if (e.ParameterValue) e.operators.push('is default');
+			if (!e.Required) e.operators.push('is blank');
+			e.Operator = ko.observable(match ? match.Operator : '=');
+			e.Value = ko.observable(match ? match.Value : e.ParameterValue);
 			e.Field = {
 				hasForeignKey: false,
 				fieldType: e.ParameterDataTypeString
-            }
+			}
+			e.Operator.subscribe(function (newValue) {
+				if (newValue == 'is default') {
+					e.Value(e.ParameterValue);
+				}
+			});
 			return e;
 		});
 
+		proc.SelectedParameters = null;
 		self.Parameters(parameters);
 
 	});
@@ -1150,7 +1158,16 @@ var reportViewModel = function (options) {
 			ViewOnlyUserId: self.manageAccess.getAsList(self.manageAccess.viewOnlyUsers),
 			UserRoles: self.manageAccess.getAsList(self.manageAccess.userRoles),
 			ViewOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.viewOnlyUserRoles),
-			DataFilters: options.dataFilters
+			DataFilters: options.dataFilters,
+			SelectedParameters: self.useStoredProc() ? _.map(self.Parameters(), function (x) {
+				return {
+					UseDefault: x.Operator() == 'is default',
+					ParameterId: x.Id,
+					ParameterName: x.ParameterName,
+					Value: x.Value(),
+					Operator: x.Operator()
+                }
+			}): []
 		};
 	};
 
@@ -1766,6 +1783,7 @@ var reportViewModel = function (options) {
 			if (self.useStoredProc()) {
 				var proc = _.find(self.Procs(), { Id: report.StoredProcId });
 				proc.SelectedFields = report.SelectedFields;
+				proc.SelectedParameters = report.SelectedParameters;
 				self.SelectedProc(proc);
 			} else {
 				_.forEach(report.SelectedFields, function (e) {

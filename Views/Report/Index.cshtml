@@ -732,9 +732,9 @@
             <table class="table  table-hover table-borderless" data-bind="visible: Parameters().length>0">
                 <thead>
                     <tr>
-                        <th style="width: 30%">Field</th>
-                        <th style="width: 10%"></th>
-                        <th style="width: 30%">Filter</th>
+                        <th style="width: 30%">Paramter</th>
+                        <th style="width: 20%"></th>
+                        <th style="width: 30%">Value</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -750,8 +750,7 @@
                         <td data-bind="with: Field">
                             <div data-bind="template: 'report-filter', data: $data"></div>
                         </td>
-                        <td>
-                        </td>
+                        <td></td>
                     </tr>
 
                 </tbody>
