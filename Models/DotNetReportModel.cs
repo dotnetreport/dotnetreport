@@ -111,6 +111,12 @@ namespace ReportBuilder.Web.Models
         public Type ParameterDataTypeCLR { get; set; }
         public OleDbType ParamterDataTypeOleDbType { get; set; }
         public int ParamterDataTypeOleDbTypeInteger { get; set; }
+        public bool Required { get; set; }
+        public bool ForeignKey { get; set; }
+        public string ForeignTable { get; set; }
+        public string ForeignJoin { get; set; }
+        public string ForeignKeyField { get; set; }
+        public string ForeignValueField { get; set; }
 
     }
     public class RelationModel

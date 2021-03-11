@@ -327,8 +327,10 @@
                                 <div class="list-group-item">
                                     <label>
                                         <span data-bind="editable: DisplayName"></span>
-                                        <span class="badge badge-info" data-bind="text: ParameterDataTypeString"></span><br />
-                                        Default Value: <span data-bind="editable: ParameterValue"></span>
+                                        <span class="badge badge-info" data-bind="text: ParameterDataTypeString"></span>
+                                        &nbsp;
+                                        &nbsp;
+                                        <button class="btn btn-sm btn-primary pull-right" data-toggle="modal" data-target="#parameter-modal" title="All Parameter options" data-bind="click: $root.editParameter">...</button>
                                     </label>
                                 </div>
                                 <!-- /ko -->
@@ -475,7 +477,7 @@
                                 <select class="form-control" id="ForeignValueField" name="ForeignValueField" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignValueField, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" placeholder="Ex EmployeeName" style="display: none;"></select>
                             </div>
                             <div class="col-md-3 col-sm-3">
-                                <span data-bind="visible:ForeignKey()" data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Foreign Value field is a Column from the Foreign table which is used to display the value to the User in the Wizard"></span>
+                                <span data-bind="visible:ForeignKey()" data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Foreign Value field is a Column from the Foreign table which is used to display the value to the User in the Report Designer"></span>
                             </div>
                         </div>
                     </div>
@@ -562,6 +564,125 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-primary" data-dismiss="modal">Done</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="parameter-modal" role="dialog" tabindex="-1">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content" data-bind="with: editParameter()">
+            <div class="modal-header">
+                <h4 class="modal-title" id="myModalLabel">
+                    Manage
+                    <label data-bind="text: ParameterName"></label>
+                </h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <p>Choose options that will determine how users interact with this parameter on Reports</p>
+                <div class="form-horizontal">
+                    <div class="control-group">
+                        <div class="form-group row">
+                            <label class="col-md-3 col-sm-3 control-label" for="Display_Name" data-bind="attr:{placeholder:'Ex First Name'}" placeholder="Ex First Name">Display Name</label>
+                            <div class="col-md-6 col-sm-6">
+                                <input class="form-control text-box single-line" data-val="true" data-val-required="The DisplayName field is required." name="DisplayName" type="text" value="First Name" data-bind="value: DisplayName, attr:{placeholder:'Ex First Name'}" placeholder="Ex First Name">
+                            </div>
+                            <div class="col-md-3 col-sm-3">
+                                <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="This is a friendly name to display to your users"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <div class="form-group row">
+                            <label class="col-md-3 col-sm-3 control-label">Default Value</label>
+                            <div class="col-md-6 col-sm-6">
+                                <span data-bind="editable: ParameterValue"></span>
+                            </div>
+                        </div>
+                    </div>
+                    @*<div class="control-group">
+                        <div class="form-group row">
+                            <label class="col-md-3 col-sm-3 control-label" for="Field_Type" data-bind="">Field Type</label>
+                            <div class="col-md-6 col-sm-6">
+                                <select class="form-control" data-bind="value: ParameterDataTypeString">
+                                    <option value="Boolean">Boolean</option>
+                                    <option value="DateTime">Date Time</option>
+                                    <option value="Varchar">Varchar</option>
+                                    <option value="String">String</option>
+                                    <option value="Money">Money</option>
+                                    <option value="Int">Int</option>
+                                    <option value="Double">Double</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>*@
+                    <div class="control-group">
+                        <div class="form-group row">
+                            <label class="col-md-3 col-sm-3 control-label" data-bind="">Required</label>
+                            <div class="col-md-6 col-sm-6">
+                                <div class="checkbox">
+                                    <label>
+                                        <input class="check-box" data-val="true" type="checkbox" value="true" data-bind="checked:Required">
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <div class="form-group row">
+                            <label class="col-md-3 col-sm-3 control-label" for="Foreign_Key" data-bind="">Use Lookup Table</label>
+                            <div class="col-md-6 col-sm-6">
+                                <div class="checkbox">
+                                    <label>
+                                        <input class="check-box" data-val="true" name="ForeignKey" type="checkbox" value="true" data-bind="checked:ForeignKey"><input name="ForeignKey" type="hidden" value="false">
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-sm-3">
+                                <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Using lookup table allows friendly selection in report using a Dropdown List"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <div class="form-group row">
+                            <label class="col-md-3 col-sm-3 control-label" for="Foreign_Table" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null, placeholder: 'Ex tblEmployees'}" placeholder="Ex tblEmployees" style="display: none;">Lookup Table</label>
+                            <div class="col-md-6 col-sm-6">
+                                <select class="form-control" data-bind="value: JoinTable, visible:ForeignKey(), options: $root.Procedures.tables, optionsText: 'TableName'" placeholder="Ex tblEmployees" style="display: none;"></select>
+
+                            </div>
+                            <div class="col-md-3 col-sm-3">
+                                <span class="field-validation-valid help-inline indent" data-valmsg-for="ForeignTable" data-valmsg-replace="true"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <div class="form-group row">
+                            <label class="col-md-3 col-sm-3 control-label" for="Foreign_Key_Field" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null, placeholder: 'Ex EmployeeId'}" placeholder="Ex EmployeeId" style="display: none;">Lookup Key Field</label>
+                            <div class="col-md-6 col-sm-6">
+                                <select class="form-control" name="ForeignKeyField" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignKeyField, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" placeholder="Ex EmployeeId" style="display: none;"></select>
+                            </div>
+                            <div class="col-md-3 col-sm-3">
+                                <span data-bind="visible:ForeignKey()" data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Foreign Key field is a Column from the Foreign table which is used as the Key field"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <div class="form-group row">
+                            <label class="col-md-3 col-sm-3 control-label" for="Foreign_Value_Field" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null, placeholder: 'Ex EmployeeName'}" placeholder="Ex EmployeeName" style="display: none;">Lookup Value Field</label>
+                            <div class="col-md-6 col-sm-6">
+                                <select class="form-control" name="ForeignValueField" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignValueField, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" placeholder="Ex EmployeeName" style="display: none;"></select>
+                            </div>
+                            <div class="col-md-3 col-sm-3">
+                                <span data-bind="visible:ForeignKey()" data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Lookup Value field is a Column from the Lookup table which is used to display the value to the User in the Report Designer"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            <div class="modal-footer">                
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Done</button>
             </div>
         </div>
     </div>

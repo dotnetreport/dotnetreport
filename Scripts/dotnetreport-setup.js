@@ -56,9 +56,12 @@
 	self.JoinTypes = ["INNER", "LEFT", "LEFT OUTER", "RIGHT", "RIGHT OUTER"];
 
 	self.editColumn = ko.observable();
-
 	self.selectColumn = function (e) {
 		self.editColumn(e);
+	}
+	self.editParameter = ko.observable();
+	self.selectParameter = function (e) {
+		self.editParameter(e);
 	}
 
 	self.editAllowedRoles = ko.observable();
@@ -221,9 +224,9 @@
 		});
 
 		var e = ko.mapping.toJS(proc, {
-			'ignore': ["dataTable", "deleteTable"]
+			'ignore': ["dataTable", "deleteTable", "JoinTable"]
 		});
-
+				
 		ajaxcall({
 			url: options.saveProcUrl,
 			type: 'POST',
@@ -281,7 +284,7 @@
 	};
 
 	self.getJoinsToSave = function () {
-		$.each(self.Joins(), function (i, x) {
+		_.forEach(self.Joins(), function (x) {
 			x.TableId(x.JoinTable().Id());
 			x.JoinedTableId(x.OtherTable().Id());
 		});
@@ -334,7 +337,7 @@
 
 		bootbox.confirm("Are you sure you would like to continue with saving your changes?<br><b>Note: </b>This will make changes to your account that cannot be undone.", function (r) {
 			if (r) {
-				$.each(tablesToSave, function (i, e) {
+				_.forEach(tablesToSave, function (e) {
 					e.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey);
 				});
 			}
@@ -377,7 +380,7 @@
 		var reader = new FileReader();
 		reader.onload = function (event) {
 			var importedData = JSON.parse(event.target.result);
-			$.each(importedData.tables, function (i, e) {
+			_.forEach(importedData.tables, function (e) {
 				var tableMatch = _.filter(self.Tables.model(), function (x) {
 					return x.TableName().toLowerCase() == e.TableName.toLowerCase();
 				});
@@ -406,7 +409,7 @@ var tablesViewModel = function (options) {
 	var self = this;
 	self.model = ko.mapping.fromJS(options.model.Tables);
 
-	$.each(self.model(), function (i, t) {
+	_.forEach(self.model(), function (t) {
 
 		t.availableColumns = ko.computed(function () {
 			return _.filter(t.Columns(), function (e) {
@@ -414,7 +417,7 @@ var tablesViewModel = function (options) {
 			});
 		});
 
-		$.each(t.Columns(), function (i, e) {
+		_.forEach(t.Columns(), function (e) {
 			var tableMatch = _.filter(self.model(), function (x) { return x.TableName() == e.ForeignTable(); });
 			e.JoinTable = ko.observable(tableMatch != null && tableMatch.length > 0 ? tableMatch[0] : null);
 			e.JoinTable.subscribe(function (newValue) {
@@ -493,10 +496,10 @@ var tablesViewModel = function (options) {
 	}
 
 	self.selectAll = function () {
-		$.each(self.model(), function (i, e) {
+		_.forEach(self.model(), function (e) {
 			if (!e.Selected()) {
 				e.Selected(true);
-				$.each(e.Columns(), function (j, c) {
+				_.forEach(e.Columns(), function (c) {
 					c.Selected(true);
 				});
 			}
@@ -504,28 +507,28 @@ var tablesViewModel = function (options) {
 	}
 
 	self.unselectAll = function () {
-		$.each(self.model(), function (i, e) {
+		_.forEach(self.model(), function (e) {
 			e.Selected(false);
-			$.each(e.Columns(), function (j, c) {
+			_.forEach(e.Columns(), function (c) {
 				c.Selected(false);
 			});
 		});
 	}
 
 	self.selectAllColumns = function (e) {
-		$.each(e.Columns(), function (j, c) {
+		_.forEach(e.Columns(), function (c) {
 			c.Selected(true);
 		});
 	}
 
 	self.unselectAllColumns = function (e) {
-		$.each(e.Columns(), function (j, c) {
+		_.forEach(e.Columns(), function (c) {
 			c.Selected(false);
 		});
 	}
 
 	self.columnSorted = function (args) {
-		$.each(args.targetParent(), function (i, e) {
+		_.forEach(args.targetParent(), function (e) {
 			e.DisplayOrder(i);
 		});
 
@@ -538,11 +541,20 @@ var proceduresViewModel = function (options) {
 		'ignore': ["TableName"]
 	});
 
+	self.tables = options.model.Tables;
 	self.setupProcedure = function (p) {
+		_.forEach(p.Parameters(), function (e) {
+			var tableMatch = _.filter(self.tables, function (x) { return x.TableName == e.ForeignTable(); });
+			e.JoinTable = ko.observable(tableMatch != null && tableMatch.length > 0 ? tableMatch[0] : null);
+			e.JoinTable.subscribe(function (newValue) {
+				e.ForeignTable(newValue.TableName);
+			});
+		});
+
 		p.deleteTable = function (apiKey, dbKey) {
 			var e = ko.mapping.toJS(p);
 
-			bootbox.confirm("Are you sure you would like to delete Procedure '" + e.TableName + "'?", function (r) {
+			bootbox.confirm("Are you sure you would like to delete Procedure '" + e.TableName + "'? <br><br>WARNING: Deleting the stored procedure will also delete all Reports using this Stored Proc.", function (r) {
 				if (r) {
 					ajaxcall({
 						url: options.deleteProcUrl,
@@ -551,7 +563,6 @@ var proceduresViewModel = function (options) {
 							procId: e.Id,
 							account: apiKey,
 							dataConnect: dbKey
-
 						})
 					}).done(function () {
 						toastr.success("Deleted procedure " + e.TableName);
