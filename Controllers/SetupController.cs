@@ -405,6 +405,7 @@ namespace ReportBuilder.Web.Controllers
                             {
                                 ParameterName = param.ParameterName,
                                 DisplayName = param.ParameterName,
+                                ParameterValue = param.Value != null ? param.Value.ToString() : "",
                                 ParamterDataTypeOleDbTypeInteger = Convert.ToInt32(param.OleDbType),
                                 ParamterDataTypeOleDbType = param.OleDbType,
                                 ParameterDataTypeString = GetType(ConvertToJetDataType(Convert.ToInt32(param.OleDbType))).Name
@@ -429,7 +430,8 @@ namespace ReportBuilder.Web.Controllers
                         var column = new ColumnViewModel
                         {
                             ColumnName = dt.Rows[i].ItemArray[0].ToString(),
-                            DisplayName = dt.Rows[i].ItemArray[0].ToString()
+                            DisplayName = dt.Rows[i].ItemArray[0].ToString(),
+                            FieldType = ConvertToJetDataType((int)dt.Rows[i]["ProviderType"]).ToString()
                         };
                         columnViewModels.Add(column);
                     }

@@ -185,6 +185,10 @@
 	}
 
 	self.searchStoredProcedure = function () {
+		if (!self.searchProcedureTerm()) {
+			toastr.error('Please enter a term to search stored procs');
+			return;
+        }
 		
 		ajaxcall({
 			url: "/Setup/SearchProcedure",
@@ -201,6 +205,7 @@
 				});
 				_.forEach(s.Parameters, function (p) {
 					p.DisplayName = ko.observable(p.DisplayName);
+					p.ParameterValue = ko.observable(p.ParameterValue);
 				});
 
 				s.DisplayName = ko.observable(s.DisplayName);

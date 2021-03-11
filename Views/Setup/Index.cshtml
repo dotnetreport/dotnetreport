@@ -308,7 +308,7 @@
                                 <label class="label-sm">Display Name</label><br />
                                 <span data-bind="editable: DisplayName"></span>
                             </p>
-                            <label style="padding-left: 15px;" class="label-sm">Columns</label>
+                            <label class="small">Columns</label>
 
                             <div class="list-group">
                                 <!-- ko foreach: Columns -->
@@ -320,14 +320,15 @@
                                 </div>
                                 <!-- /ko -->
                             </div>
-                            <label style="padding-left: 15px;" class="label-sm">Parameters</label>
+                            <label class="small">Parameters</label>
 
                             <div class="list-group">
                                 <!-- ko foreach: Parameters -->
                                 <div class="list-group-item">
                                     <label>
                                         <span data-bind="editable: DisplayName"></span>
-                                        <span class="badge badge-info" data-bind="text: ParameterDataTypeString"></span>
+                                        <span class="badge badge-info" data-bind="text: ParameterDataTypeString"></span><br />
+                                        Default Value: <span data-bind="editable: ParameterValue"></span>
                                     </label>
                                 </div>
                                 <!-- /ko -->
@@ -532,8 +533,7 @@
                             <div class="card-body">
                                 Display Name<br />
                                 <span data-bind="editable: DisplayName"></span>
-                                <br />
-                                <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Columns.length"></span> Columns</label>
+                                <label class="small">Columns</label>
 
                                 <div class="list-group">
                                     <!-- ko foreach: Columns -->
@@ -543,13 +543,14 @@
                                     </div>
                                     <!-- /ko -->
                                 </div>
-                                <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Parameters.length"></span> Paramters</label>
+                                <label class="small">Paramters</label>
 
                                 <div class="list-group">
                                     <!-- ko foreach: Parameters -->
                                     <div class="list-group-item">
                                         <span data-bind="editable: DisplayName"></span>
-                                        <span class="badge badge-info" data-bind="text: ParameterDataTypeString"></span>
+                                        <span class="badge badge-info" data-bind="text: ParameterDataTypeString"></span><br />
+                                        Default Value: <span data-bind="editable: ParameterValue"></span>
                                     </div>
                                     <!-- /ko -->
                                 </div>
