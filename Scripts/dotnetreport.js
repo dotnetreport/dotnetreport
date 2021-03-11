@@ -702,6 +702,9 @@ var reportViewModel = function (options) {
 			});
 
 			e.LookupList = ko.observableArray([]);
+			if (e.Value()) {
+				e.LookupList.push({ id: e.Value(), text: e.Value() });
+			}
 			if (e.ForeignKey) {
 				ajaxcall({
 					url: options.apiUrl,
@@ -1804,9 +1807,11 @@ var reportViewModel = function (options) {
 
 			if (self.useStoredProc()) {
 				var proc = _.find(self.Procs(), { Id: report.StoredProcId });
-				proc.SelectedFields = report.SelectedFields;
-				proc.SelectedParameters = report.SelectedParameters;
-				self.SelectedProc(proc);
+				if (proc) {
+					proc.SelectedFields = report.SelectedFields;
+					proc.SelectedParameters = report.SelectedParameters;
+					self.SelectedProc(proc);
+				}
 			} else {
 				_.forEach(report.SelectedFields, function (e) {
 					e = self.setupField(e);

@@ -236,35 +236,38 @@ namespace ReportBuilder.Web.Controllers
                 var dtCols = 0;
 
                 List<string> fields = new List<string>();
+                List<string> sqlFields = new List<string>();
                 for (int i = 0; i < allSqls.Length; i++)
                 {
                     sql = DotNetReportHelper.Decrypt(allSqls[i]);
-
-                    var sqlSplit = sql.Substring(0, sql.IndexOf("FROM")).Replace("SELECT", "").Trim();
-                    var sqlFields = Regex.Split(sqlSplit, "], (?![^\\(]*?\\))").Where(x => x != "CONVERT(VARCHAR(3)")
-                        .Select(x => x.EndsWith("]") ? x : x + "]")
-                        .ToList();
-
-                    if (!String.IsNullOrEmpty(sortBy))
+                    if (!sql.StartsWith("EXEC"))
                     {
-                        if (sortBy.StartsWith("DATENAME(MONTH, "))
+
+                        var sqlSplit = sql.Substring(0, sql.IndexOf("FROM")).Replace("SELECT", "").Trim();
+                        sqlFields = Regex.Split(sqlSplit, "], (?![^\\(]*?\\))").Where(x => x != "CONVERT(VARCHAR(3)")
+                            .Select(x => x.EndsWith("]") ? x : x + "]")
+                            .ToList();
+
+                        if (!String.IsNullOrEmpty(sortBy))
                         {
-                            sortBy = sortBy.Replace("DATENAME(MONTH, ", "MONTH(");
-                        }
-                        if (sortBy.StartsWith("MONTH(") && sortBy.Contains(")) +") && sql.Contains("Group By"))
-                        {
-                            sortBy = sortBy.Replace("MONTH(", "CONVERT(VARCHAR(3), DATENAME(MONTH, ");
-                        }
-                        if (!sql.Contains("ORDER BY"))
-                        {
-                            sql = sql + "ORDER BY " + sortBy + (desc ? " DESC" : "");
-                        }
-                        else
-                        {
-                            sql = sql.Substring(0, sql.IndexOf("ORDER BY")) + "ORDER BY " + sortBy + (desc ? " DESC" : "");
+                            if (sortBy.StartsWith("DATENAME(MONTH, "))
+                            {
+                                sortBy = sortBy.Replace("DATENAME(MONTH, ", "MONTH(");
+                            }
+                            if (sortBy.StartsWith("MONTH(") && sortBy.Contains(")) +") && sql.Contains("Group By"))
+                            {
+                                sortBy = sortBy.Replace("MONTH(", "CONVERT(VARCHAR(3), DATENAME(MONTH, ");
+                            }
+                            if (!sql.Contains("ORDER BY"))
+                            {
+                                sql = sql + "ORDER BY " + sortBy + (desc ? " DESC" : "");
+                            }
+                            else
+                            {
+                                sql = sql.Substring(0, sql.IndexOf("ORDER BY")) + "ORDER BY " + sortBy + (desc ? " DESC" : "");
+                            }
                         }
                     }
-
                     // Execute sql
                     var dtRun = new DataTable();
                     var dtPagedRun = new DataTable();
@@ -275,6 +278,11 @@ namespace ReportBuilder.Web.Controllers
                         var adapter = new OleDbDataAdapter(command);
                         adapter.Fill(dtRun);
                         dtPagedRun = (dtRun.Rows.Count > 0) ? dtPagedRun = dtRun.AsEnumerable().Skip((pageNumber - 1) * pageSize).Take(pageSize).CopyToDataTable() : dtRun;
+
+                        if (!sqlFields.Any())
+                        {
+                            foreach (DataColumn c in dtRun.Columns) { sqlFields.Add($"{c.ColumnName} AS {c.ColumnName}"); }
+                        }
 
                         string[] series = { };
                         if (i == 0)
