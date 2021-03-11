@@ -612,7 +612,7 @@ var reportViewModel = function (options) {
 				toastr.error("Cannot delete Default folder");
 				return;
 			}
-			bootbox.confirm("Are you sure you want to delete this Folder?\n\nWARNING: Deleting a folder will delete all reports and this action cannot be undone.", function (r) {
+			bootbox.confirm("Are you sure you want to delete this Folder?\n\nWARNING: Deleting a folder will delete all reports in the folder and this action cannot be undone.", function (r) {
 				if (r) {
 					ajaxcall({
 						url: options.apiUrl,
@@ -692,7 +692,7 @@ var reportViewModel = function (options) {
 			e.Operator = ko.observable(match ? match.Operator : '=');
 			e.Value = ko.observable(match ? match.Value : e.ParameterValue);
 			e.Field = {
-				hasForeignKey: false,
+				hasForeignKey: e.ForeignKey,
 				fieldType: e.ParameterDataTypeString
 			}
 			e.Operator.subscribe(function (newValue) {
@@ -700,6 +700,28 @@ var reportViewModel = function (options) {
 					e.Value(e.ParameterValue);
 				}
 			});
+
+			e.LookupList = ko.observableArray([]);
+			if (e.ForeignKey) {
+				ajaxcall({
+					url: options.apiUrl,
+					data: {
+						method: "/ReportApi/GetPrmLookupList",
+						model: JSON.stringify({ parameterId: e.Id, procId: proc.Id})
+					}
+				}).done(function (result) {
+					if (result.d) { result = result.d; }
+					ajaxcall({
+						type: 'POST',
+						url: options.lookupListUrl,
+						data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey })
+					}).done(function (list) {
+						if (list.d) { list = list.d; }
+						e.LookupList(list);
+					});
+				});
+			}
+
 			return e;
 		});
 
