@@ -663,13 +663,12 @@ var reportViewModel = function (options) {
 	};
 
 	self.SelectedProc.subscribe(function (proc) {
-		self.ChooseFields([]);
-		self.SelectedFields([]);
-
 		if (proc == null) {
 			return;
 		}
-
+		self.ChooseFields([]);
+		self.SelectedFields([]);
+		
 		var selectedFields = _.map(proc.Columns, function (e) {
 			var field = self.getEmptyFormulaField();
 			field.fieldName = e.DisplayName;
@@ -1735,6 +1734,7 @@ var reportViewModel = function (options) {
 			}
 		}).done(function (report) {
 			if (report.d) { report = report.d; }
+			self.useStoredProc(report.UseStoredProc);
 			self.ReportID(report.ReportID);
 			self.ReportType(report.ReportType);
 			self.ReportName(report.ReportName);

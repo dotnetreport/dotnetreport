@@ -408,7 +408,7 @@
                                     <div class="sortable pull-right" style="padding-right: 15px;">
                                         <span class="fa fa-arrows " aria-hidden="true" title="Drag to reorder"></span>
                                     </div>
-                                    <div class="pull-right" style="padding-right: 15px;">
+                                    <div class="pull-right" style="padding-right: 15px;" data-bind="ifnot: $parent.useStoredProc">
                                         <span class="fa fa-trash" style="cursor: pointer;" aria-hidden="true" title="Delete this Field" data-bind="click: $parent.RemoveField"></span>
                                     </div>
                                     <div class="pull-right" style="padding-right: 15px;" data-bind="ifnot: $parent.useStoredProc">
@@ -421,7 +421,7 @@
                                             <span class="fa fa-close" aria-hidden="true" title="Do not include in Report"></span>
                                         </span>
                                     </div>
-                                    <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $root.ReportType()!='List'">
+                                    <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $root.ReportType()!='List' && !$parent.useStoredProc()">
                                         <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ hideInDetail(!hideInDetail()); }, css: {active: hideInDetail()==true}">
                                             <span class="fa fa-eye-slash" aria-hidden="true" title="Hide in Details"></span>
                                         </span>
