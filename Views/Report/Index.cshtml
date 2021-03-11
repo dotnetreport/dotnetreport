@@ -405,7 +405,7 @@
                                     <div class="pull-right" style="margin-top: -5px;">
                                         <select class="form-control form-control-sm" data-bind="options: $root.canDrilldown() && $index()>0 ? fieldAggregateWithDrilldown : fieldAggregate, value: selectedAggregate, visible: $parent.AggregateReport() && !$parent.useStoredProc()"></select>
                                     </div>
-                                    <div class="sortable pull-right" style="padding-right: 15px;">
+                                    <div class="sortable pull-right" style="padding-right: 15px;" data-bind="ifnot: $parent.useStoredProc">
                                         <span class="fa fa-arrows " aria-hidden="true" title="Drag to reorder"></span>
                                     </div>
                                     <div class="pull-right" style="padding-right: 15px;" data-bind="ifnot: $parent.useStoredProc">
@@ -416,7 +416,7 @@
                                             <span class="fa fa-filter" aria-hidden="true" title="Filter by this field on the Report"></span>
                                         </span>
                                     </div>
-                                    <div class="pull-right" style="padding-right: 15px;">
+                                    <div class="pull-right" style="padding-right: 15px;" data-bind="ifnot: $parent.useStoredProc">
                                         <span class="button-box no-padding" tabindex="0" data-bind="click: toggleDisable, css: {active: disabled()==true}">
                                             <span class="fa fa-close" aria-hidden="true" title="Do not include in Report"></span>
                                         </span>
@@ -447,11 +447,21 @@
                     </ul>
                 </div>
                 <hr />
-                <h5><span class="fa fa-filter"></span>&nbsp;Choose filters</h5>
+                <div data-bind="if: useStoredProc">
+                    <h5><span class="fa fa-filter"></span>&nbsp;Choose filters</h5>
 
-                <div class="row" style="padding: 10px 10px; overflow-x: auto;">
-                    <div data-bind="template: {name: 'filter-group'}" class="col"></div>
-                    <br />
+                    <div class="row" style="padding: 10px 10px; overflow-x: auto;">
+                        <div data-bind="template: {name: 'filter-parameters'}" class="col"></div>
+                        <br />
+                    </div>
+                </div>
+                <div data-bind="ifnot: useStoredProc">
+                    <h5><span class="fa fa-filter"></span>&nbsp;Choose filters</h5>
+
+                    <div class="row" style="padding: 10px 10px; overflow-x: auto;">
+                        <div data-bind="template: {name: 'filter-group'}" class="col"></div>
+                        <br />
+                    </div>
                 </div>
                 <!-- /ko -->
                 <hr />
@@ -712,6 +722,40 @@
                 <hr />
             </div>
             <div data-bind="template: {name: 'filter-inner'}"></div>
+        </div>
+    </div>
+</script>
+
+<script type="text/html" id="filter-parameters">
+    <div class="table-responsive card" style="margin-left: 20px;">
+        <div class="card-body">
+            <table class="table  table-hover table-borderless" data-bind="visible: Parameters().length>0">
+                <thead>
+                    <tr>
+                        <th style="width: 30%">Field</th>
+                        <th style="width: 10%"></th>
+                        <th style="width: 30%">Filter</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody data-bind="foreach: Parameters">
+                    <tr>
+                        <td data-bind="text: DisplayName">
+                        </td>
+                        <td>
+                            <div class="form-group">
+                                <select class="form-control" style="width: 100%;" data-bind="options: operators, value: Operator" required></select>
+                            </div>
+                        </td>
+                        <td data-bind="with: Field">
+                            <div data-bind="template: 'report-filter', data: $data"></div>
+                        </td>
+                        <td>
+                        </td>
+                    </tr>
+
+                </tbody>
+            </table>
         </div>
     </div>
 </script>

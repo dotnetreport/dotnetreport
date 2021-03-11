@@ -460,6 +460,7 @@ var reportViewModel = function (options) {
 
 	self.useStoredProc = ko.observable(false);
 	self.StoredProcId = ko.observable();
+	self.Parameters = ko.observableArray([]);
 	self.pager = new pagerViewModel();
 	self.currentSql = ko.observable();
 	self.currentConnectKey = ko.observable();
@@ -651,6 +652,7 @@ var reportViewModel = function (options) {
 		self.SelectedFields([]);
 		self.SelectFields([]);
 		self.SelectedField(null);
+		self.SelectedProc(null);
 
 		self.IncludeSubTotal(false);
 		self.ShowUniqueRecords(false);
@@ -671,7 +673,7 @@ var reportViewModel = function (options) {
 		self.SelectedFields([]);
 		
 		var selectedFields = _.map(proc.Columns, function (e) {			
-			var match = proc.SelectedFields && proc.SelectedFields.length ? _.find(proc.SelectedFields, { fieldName: e.ColumnName }) : null;
+			var match = ko.toJS(proc.SelectedFields && proc.SelectedFields.length ? _.find(proc.SelectedFields, { fieldName: e.ColumnName }) : null);
 			var field = match ?? self.getEmptyFormulaField();
 			field.fieldName = e.DisplayName;
 			field.tableName = proc.DisplayName;
@@ -680,7 +682,21 @@ var reportViewModel = function (options) {
 		});
 
 		self.SelectedFields(selectedFields);
-		
+
+		var parameters = _.map(proc.Parameters, function (e) {
+			e.useDefault = ko.observable(false);
+			e.operators = ['=', 'is default', 'is blank'];
+			e.Operator = ko.observable();
+			e.Value = ko.observable(e.ParameterValue);
+			e.Field = {
+				hasForeignKey: false,
+				fieldType: e.ParameterDataTypeString
+            }
+			return e;
+		});
+
+		self.Parameters(parameters);
+
 	});
 
 	self.SelectedTable.subscribe(function (table) {
