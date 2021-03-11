@@ -681,6 +681,7 @@ var reportViewModel = function (options) {
 			return self.setupField(field)
 		});
 
+		proc.SelectedFields = null;
 		self.SelectedFields(selectedFields);
 
 		var parameters = _.map(proc.Parameters, function (e) {
@@ -1763,21 +1764,9 @@ var reportViewModel = function (options) {
 			self.FolderID(report.FolderID);
 
 			if (self.useStoredProc()) {
-				ajaxcall({
-					url: options.apiUrl,
-					data: {
-						method: "/ReportApi/GetProcedures",
-						model: JSON.stringify({
-							adminMode: self.adminMode(),
-							storedProcId: report.StoredProcId
-						})
-					}
-				}).done(function (procs) {
-					if (procs.d) { procs = procs.d; }
-					self.Procs(procs);
-					procs[0].SelectedFields = report.SelectedFields;
-					self.SelectedProc(procs[0]);
-				});
+				var proc = _.find(self.Procs(), { Id: report.StoredProcId });
+				proc.SelectedFields = report.SelectedFields;
+				self.SelectedProc(proc);
 			} else {
 				_.forEach(report.SelectedFields, function (e) {
 					e = self.setupField(e);
