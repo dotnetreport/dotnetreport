@@ -475,6 +475,7 @@
                             <textarea class="form-control" style="width: 100%;" rows="3" placeholder="Optional Report Description" data-bind="value: ReportDescription"></textarea>
                         </div>
                     </div>
+                    <!-- ko ifnot: useStoredProc -->
                     <div class="form-group row">
                         <label class="col-sm-2 control-label">Sort By</label>
                         <div class="col-sm-8">
@@ -496,6 +497,7 @@
                             Show only Unique Records
                         </label>
                     </div>
+                    <!-- /ko -->
                     <div class="checkbox" data-bind="visible: isChart">
                         <label>
                             <input type="checkbox" data-bind="checked: ShowDataWithGraph" />

@@ -459,6 +459,7 @@ var reportViewModel = function (options) {
 	});
 
 	self.useStoredProc = ko.observable(false);
+	self.StoredProcId = ko.observable();
 	self.pager = new pagerViewModel();
 	self.currentSql = ko.observable();
 	self.currentConnectKey = ko.observable();
@@ -669,8 +670,9 @@ var reportViewModel = function (options) {
 		self.ChooseFields([]);
 		self.SelectedFields([]);
 		
-		var selectedFields = _.map(proc.Columns, function (e) {
-			var field = self.getEmptyFormulaField();
+		var selectedFields = _.map(proc.Columns, function (e) {			
+			var match = proc.SelectedFields && proc.SelectedFields.length ? _.find(proc.SelectedFields, { fieldName: e.ColumnName }) : null;
+			var field = match ?? self.getEmptyFormulaField();
 			field.fieldName = e.DisplayName;
 			field.tableName = proc.DisplayName;
 			field.procColumnId = e.Id
@@ -1088,6 +1090,8 @@ var reportViewModel = function (options) {
 			SortBy: self.SortByField(),
 			SortDesc: self.SortDesc(),
 			ReportType: self.ReportType(),
+			UseStoredProc: self.useStoredProc(),
+			StoredProcId: self.useStoredProc() ? self.SelectedProc().Id : null,
 			GroupFunctionList: _.map(self.SelectedFields(), function (x) {
 				return {
 					FieldID: x.fieldId,
@@ -1735,18 +1739,36 @@ var reportViewModel = function (options) {
 		}).done(function (report) {
 			if (report.d) { report = report.d; }
 			self.useStoredProc(report.UseStoredProc);
+			
 			self.ReportID(report.ReportID);
 			self.ReportType(report.ReportType);
 			self.ReportName(report.ReportName);
 			self.ReportDescription(report.ReportDescription);
 			self.FolderID(report.FolderID);
 
-			_.forEach(report.SelectedFields, function (e) {
-				e = self.setupField(e);
-			});
+			if (self.useStoredProc()) {
+				ajaxcall({
+					url: options.apiUrl,
+					data: {
+						method: "/ReportApi/GetProcedures",
+						model: JSON.stringify({
+							adminMode: self.adminMode(),
+							storedProcId: report.StoredProcId
+						})
+					}
+				}).done(function (procs) {
+					if (procs.d) { procs = procs.d; }
+					self.Procs(procs);
+					procs[0].SelectedFields = report.SelectedFields;
+					self.SelectedProc(procs[0]);
+				});
+			} else {
+				_.forEach(report.SelectedFields, function (e) {
+					e = self.setupField(e);
+				});
 
-			self.SelectedFields(report.SelectedFields);
-
+				self.SelectedFields(report.SelectedFields);
+			}
 			self.ChosenFields([]);
 			self.SelectFields([]);
 			self.SelectedField(null);
