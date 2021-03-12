@@ -191,8 +191,8 @@
 		if (!self.searchProcedureTerm()) {
 			toastr.error('Please enter a term to search stored procs');
 			return;
-        }
-		
+		}
+
 		ajaxcall({
 			url: "/Setup/SearchProcedure",
 			type: 'POST',
@@ -218,7 +218,7 @@
 		});
 	}
 
-	self.saveProcedure = function (procName, adding) {		
+	self.saveProcedure = function (procName, adding) {
 		var proc = _.find(adding === true ? self.foundProcedures() : self.Procedures.savedProcedures(), function (e) {
 			return e.TableName === procName;
 		});
@@ -226,7 +226,7 @@
 		var e = ko.mapping.toJS(proc, {
 			'ignore': ["dataTable", "deleteTable", "JoinTable"]
 		});
-				
+
 		ajaxcall({
 			url: options.saveProcUrl,
 			type: 'POST',
@@ -247,7 +247,7 @@
 				}));
 				proc.Id = result;
 				proc = ko.mapping.fromJS(proc);
-				self.Procedures.setupProcedure(proc);		
+				self.Procedures.setupProcedure(proc);
 				self.Procedures.savedProcedures.push(proc);
 			}
 
@@ -306,7 +306,7 @@
 	}
 
 	self.SaveJoins = function () {
-		
+
 		var joinsToSave = self.getJoinsToSave();
 
 		ajaxcall({
@@ -324,7 +324,7 @@
 
 
 	self.saveChanges = function () {
-		
+
 		var tablesToSave = $.map(self.Tables.model(), function (x) {
 			if (x.Selected()) {
 				return x;
@@ -345,7 +345,7 @@
 		})
 	}
 
-	self.download = function(content, fileName, contentType) {
+	self.download = function (content, fileName, contentType) {
 		var a = document.createElement("a");
 		var file = new Blob([content], { type: contentType });
 		a.href = URL.createObjectURL(file);
@@ -449,7 +449,7 @@ var tablesViewModel = function (options) {
 					}
 				});
 
-				
+
 				return;
 			}
 
