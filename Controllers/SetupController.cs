@@ -144,6 +144,7 @@ namespace ReportBuilder.Web.Controllers
                     tables.Add(new TableViewModel
                     {
                         Id = item.tableId,
+                        SchemaName = item.schemaName,
                         TableName = item.tableDbName,
                         DisplayName = item.tableName,
                         AllowedRoles = item.tableRoles.ToObject<List<string>>()
@@ -215,12 +216,12 @@ namespace ReportBuilder.Web.Controllers
                 conn.Open();
 
                 // Get the Tables
-                var SchemaTable = conn.GetOleDbSchemaTable(OleDbSchemaGuid.Tables, new Object[] { null, null, null, type });
+                var schemaTable = conn.GetOleDbSchemaTable(OleDbSchemaGuid.Tables, new Object[] { null, null, null, type });
 
                 // Store the table names in the class scoped array list of table names
-                for (int i = 0; i < SchemaTable.Rows.Count; i++)
+                for (int i = 0; i < schemaTable.Rows.Count; i++)
                 {
-                    var tableName = SchemaTable.Rows[i].ItemArray[2].ToString();
+                    var tableName = schemaTable.Rows[i].ItemArray[2].ToString();
 
                     // see if this table is already in database
                     var matchTable = currentTables.FirstOrDefault(x => x.TableName.ToLower() == tableName.ToLower());
@@ -232,6 +233,7 @@ namespace ReportBuilder.Web.Controllers
                     var table = new TableViewModel
                     {
                         Id = matchTable != null ? matchTable.Id : 0,
+                        SchemaName = matchTable != null ? matchTable.SchemaName : schemaTable.Rows[i]["TABLE_SCHEMA"].ToString(),
                         TableName = matchTable != null ? matchTable.TableName : tableName,
                         DisplayName = matchTable != null ? matchTable.DisplayName : tableName,
                         IsView = type == "VIEW",
@@ -366,7 +368,7 @@ namespace ReportBuilder.Web.Controllers
             {
                 // open the connection to the database 
                 conn.Open();
-                string spQuery = "SELECT ROUTINE_NAME, ROUTINE_DEFINITION FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_DEFINITION LIKE '%" + value + "%' AND ROUTINE_TYPE = 'PROCEDURE'";
+                string spQuery = "SELECT ROUTINE_NAME, ROUTINE_DEFINITION, ROUTINE_SCHEMA FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_DEFINITION LIKE '%" + value + "%' AND ROUTINE_TYPE = 'PROCEDURE'";
                 OleDbCommand cmd = new OleDbCommand(spQuery, conn);
                 cmd.CommandType = CommandType.Text;
                 DataTable dtProcedures = new DataTable();
@@ -421,6 +423,7 @@ namespace ReportBuilder.Web.Controllers
                     tables.Add(new TableViewModel
                     {
                         TableName = procName,
+                        SchemaName = dr["ROUTINE_SCHEMA"].ToString(),
                         DisplayName = procName,
                         Parameters = parameterViewModels,
                         Columns = columnViewModels
