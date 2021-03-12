@@ -174,14 +174,14 @@ namespace ReportBuilder.Web.Models
         public string UserName { get; set; }
         public string Password { get; set; }
         public bool IntegratedSecurity { get; set; }
-
-
+        public string ApiUrl { get; set; }
         public string AccountApiKey { get; set; }
         public string DatabaseApiKey { get; set; }
     }
 
     public class ManageViewModel
     {
+        public string ApiUrl { get; set; }
         public string AccountApiKey { get; set; }
         public string DatabaseApiKey { get; set; }
 
@@ -291,6 +291,125 @@ namespace ReportBuilder.Web.Models
             return connString;
         }
 
+        public static bool IsNumericType(Type type)
+        {
+
+            switch (Type.GetTypeCode(type))
+            {
+                case TypeCode.Int16:
+                case TypeCode.UInt16:
+                case TypeCode.Int32:
+                case TypeCode.UInt32:
+                case TypeCode.Int64:
+                case TypeCode.UInt64:
+                case TypeCode.Single:
+                case TypeCode.Double:
+                case TypeCode.Decimal:
+                    return true;
+
+                case TypeCode.Boolean:
+                case TypeCode.DateTime:
+                case TypeCode.String:
+                default:
+                    return false;
+            }
+        }
+
+        public static string GetLabelValue(DataColumn col, DataRow row)
+        {
+            if (@row[col] != null)
+            {
+                switch (Type.GetTypeCode(col.DataType))
+                {
+                    case TypeCode.Int16:
+                    case TypeCode.UInt16:
+                    case TypeCode.Int32:
+                    case TypeCode.UInt32:
+                    case TypeCode.Int64:
+                    case TypeCode.UInt64:
+                    case TypeCode.Single:
+                        return row[col].ToString();
+
+                    case TypeCode.Double:
+                    case TypeCode.Decimal:
+                        return @row[col].ToString();// "'" + (Convert.ToDouble(@row[col].ToString()).ToString("C")) + "'";
+
+                    case TypeCode.Boolean:
+                        return (Convert.ToBoolean(@row[col]) ? "Yes" : "No");
+
+                    case TypeCode.DateTime:
+                        try
+                        {
+                            return "'" + @Convert.ToDateTime(@row[col]).ToShortDateString() + "'";
+                        }
+                        catch
+                        {
+                            return "'" + @row[col] + "'";
+                        }
+
+                    case TypeCode.String:
+                    default:
+                        return "'" + @row[col].ToString().Replace("'", "") + "'";
+                }
+            }
+
+            return "";
+        }
+
+        public static string GetFormattedValue(DataColumn col, DataRow row)
+        {
+            if (@row[col] != null)
+            {
+                switch (Type.GetTypeCode(col.DataType))
+                {
+                    case TypeCode.Int16:
+                    case TypeCode.UInt16:
+                    case TypeCode.Int32:
+                    case TypeCode.UInt32:
+                    case TypeCode.Int64:
+                    case TypeCode.UInt64:
+                    case TypeCode.Single:
+                        return row[col].ToString();
+
+
+                    case TypeCode.Double:
+                    case TypeCode.Decimal:
+                        return col.ColumnName.Contains("%")
+                            ? (Convert.ToDouble(row[col].ToString()) / 100).ToString("P2")
+                            : Convert.ToDouble(row[col].ToString()).ToString("C");
+
+
+                    case TypeCode.Boolean:
+                        return (Convert.ToBoolean(row[col]) ? "Yes" : "No");
+
+
+                    case TypeCode.DateTime:
+                        try
+                        {
+                            return Convert.ToDateTime(row[col]).ToShortDateString();
+                        }
+                        catch
+                        {
+                            return row[col] != null ? row[col].ToString() : null;
+                        }
+
+                    case TypeCode.String:
+                    default:
+                        if (row[col].ToString() == "System.Byte[]")
+                        {
+
+                            return "<img src=\"data:image/png;base64," + Convert.ToBase64String((byte[])row[col], 0, ((byte[])row[col]).Length) + "\" style=\"max-width: 200px;\" />";
+                        }
+                        else
+                        {
+                            return row[col].ToString();
+                        }
+
+                }
+            }
+            return "";
+        }
+
         public static byte[] GetExcelFile(string reportSql, string connectKey, string reportName)
         {
             var sql = Decrypt(reportSql);
@@ -342,7 +461,25 @@ namespace ReportBuilder.Web.Models
             }
         }
 
-        public static async Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName, 
+        /// <summary>
+        /// Customize this method with a login for dotnet report so that it can login to print pdf reports
+        /// </summary>
+        public static async Task PerformLogin(Page page, string printUrl)
+        {
+            var loginUrl = printUrl.Replace("/DotNetReport/ReportPrint", "/Account/Login"); // link to your login page
+            var loginEmail = "yourloginid@yourcompany.com"; // your login id
+            var loginPassword = "yourPassword"; // your login password
+
+            await page.GoToAsync(loginUrl, new NavigationOptions
+            {
+                WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
+            });
+            await page.TypeAsync("#Email", loginEmail); // Make sure #Email is replaced with the username form input id
+            await page.TypeAsync("#Password", loginPassword); // Make sure #Password is replaced with the password form input id
+            await page.ClickAsync("#LoginSubmit"); // Make sure #LoginSubmit is replaced with the login button form input id
+        }
+
+        public static async Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
                     string userId = null, string clientId = null, string currentUserRole = null)
         {
             var installPath = AppContext.BaseDirectory + "\\App_Data\\local-chromium";
@@ -426,11 +563,11 @@ namespace ReportBuilder.Web.Models
 
             ds.Tables.Add(dt);
             ds.DataSetName = "data";
-            foreach(DataColumn c in dt.Columns)
+            foreach (DataColumn c in dt.Columns)
             {
                 c.ColumnName = c.ColumnName.Replace(" ", "_").Replace("(", "").Replace(")", "");
             }
-            dt.TableName = "item";            
+            dt.TableName = "item";
             var xml = ds.GetXml();
             return xml;
         }
@@ -467,6 +604,5 @@ namespace ReportBuilder.Web.Models
                 }
             }
         }
-
     }
 }

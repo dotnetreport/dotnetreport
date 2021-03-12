@@ -46,11 +46,12 @@
     }
 
     $(document).ready(function () {
-         var vm = new reportViewModel({
+        var vm = new reportViewModel({
             runReportUrl: "@Url.Action("Report")",
             execReportUrl: "@Url.Action("RunReport")",
             runLinkReportUrl: "@Url.Action("ReportLink")",
             reportWizard: $("#filter-panel"),
+            reportHeader: "report-header",
             lookupListUrl: "@Url.Action("GetLookupList")",
             apiUrl: '@Url.Action("CallReportApi")',
             runReportApiUrl: '@Url.Action("RunReportApi")',
@@ -80,24 +81,24 @@
     <div class="report-view" data-bind="with: $root">
         @using (Html.BeginForm("DownloadExcel", "Report", FormMethod.Post, new { id = "downloadExcel" }))
         {
-            <input type="hidden" id="reportSql" name="reportSql" data-bind="value: currentSql" />
-            <input type="hidden" id="connectKey" name="connectKey" data-bind="value: currentConnectKey" />
-            <input type="hidden" id="reportName" name="reportName" data-bind="value: ReportName" />
+            <input type="hidden" name="reportSql" data-bind="value: currentSql" />
+            <input type="hidden" name="connectKey" data-bind="value: currentConnectKey" />
+            <input type="hidden" name="reportName" data-bind="value: ReportName" />
         }
 
         @using (Html.BeginForm("DownloadXml", "Report", FormMethod.Post, new { id = "downloadXml" }))
         {
-            <input type="hidden" id="reportSql" name="reportSql" data-bind="value: currentSql" />
-            <input type="hidden" id="connectKey" name="connectKey" data-bind="value: currentConnectKey" />
-            <input type="hidden" id="reportName" name="reportName" data-bind="value: ReportName" />
+            <input type="hidden" name="reportSql" data-bind="value: currentSql" />
+            <input type="hidden" name="connectKey" data-bind="value: currentConnectKey" />
+            <input type="hidden" name="reportName" data-bind="value: ReportName" />
         }
         @using (Html.BeginForm("DownloadPdf", "Report", FormMethod.Post, new { id = "downloadPdf" }))
         {
-            <input type="hidden" id="reportId" name="reportId" data-bind="value: ReportID" />
-            <input type="hidden" id="printUrl" name="printUrl" value="@Url.Action("ReportPrint", "Report", null, this.Request.Url.Scheme)" />
-            <input type="hidden" id="reportSql" name="reportSql" data-bind="value: currentSql" />
-            <input type="hidden" id="connectKey" name="connectKey" data-bind="value: currentConnectKey" />
-            <input type="hidden" id="reportName" name="reportName" data-bind="value: ReportName" />
+            <input type="hidden" name="reportId" data-bind="value: ReportID" />
+            <input type="hidden" name="printUrl" value="@Url.Action("ReportPrint", "Report", null, Context.Request.Scheme)" />
+            <input type="hidden" name="reportSql" data-bind="value: currentSql" />
+            <input type="hidden" name="connectKey" data-bind="value: currentConnectKey" />
+            <input type="hidden" name="reportName" data-bind="value: ReportName" />
         }
 
         <div class="pull-right">
@@ -138,7 +139,33 @@
         <br />
         <div style="clear: both;"></div>
         <br />
-        <div data-bind="template: {name: 'fly-filter-template'}"></div>
+
+        <div data-bind="if: EditFiltersOnReport">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">
+                        <a data-toggle="collapse" data-target="#filter-panel" href="#">
+                            <i class="fa fa-filter"></i>Choose filter options
+                        </a>
+                    </h5>
+                </div>
+                <div id="filter-panel" class="card-body">
+                    <div>
+                        <div class="row">
+                            <div data-bind="template: {name: 'filter-group'}" class="col"></div>
+                        </div>
+
+                        <br />
+                        <button class="btn btn-primary" data-bind="click: SaveFilterAndRunReport">Update Filters</button>
+                    </div>
+                </div>
+            </div>
+            <br />
+        </div>
+        <div data-bind="ifnot: EditFiltersOnReport">
+            <div data-bind="template: {name: 'fly-filter-template'}"></div>
+            <br />
+        </div>
         <div data-bind="if: canDrilldown">
             <button class="btn btn-secondary btn-xs" data-bind="click: ExpandAll">Expand All</button>
             <button class="btn btn-secondary btn-xs" data-bind="click: CollapseAll">Collapse All</button>
@@ -165,6 +192,7 @@
         <div class="report-canvas">
             <div class="report-container">
                 <div class="report-inner">
+                    <canvas id="report-header" width="900" height="120" data-bind="visible: useReportHeader"></canvas>
                     <h2 data-bind="text: ReportName"></h2>
                     <p data-bind="html: ReportDescription">
                     </p>

@@ -118,7 +118,6 @@ namespace ReportBuilder.Web.Controllers
             return View("Report", model);
         }
 
-
         public ActionResult ReportPrint(int reportId, string reportName, string reportDescription, string reportSql, string connectKey, string reportFilter, string reportType,
             int selectedFolder = 0, bool includeSubTotal = true, bool showUniqueRecords = false, bool aggregateReport = false, bool showDataWithGraph = true,
             string userId = null, string clientId = null, string currentUserRole = null)
@@ -172,6 +171,21 @@ namespace ReportBuilder.Web.Controllers
             }
 
             return Json((new JavaScriptSerializer()).DeserializeObject("[" + json.ToString() + "]"), JsonRequestBehavior.AllowGet);
+        }
+
+        public class PostReportApiCallMode
+        {
+            public string method { get; set; }
+            public string headerJson { get; set; }
+            public bool useReportHeader { get; set; }
+
+        }
+
+        [HttpPost]
+        public async Task<JsonResult> PostReportApi(PostReportApiCallMode data)
+        {
+            string method = data.method;
+            return await CallReportApi(method, JsonConvert.SerializeObject(data));
         }
 
         [HttpPost]
