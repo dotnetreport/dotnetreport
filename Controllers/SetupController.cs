@@ -43,23 +43,6 @@ namespace ReportBuilder.Web.Controllers
             });
         }
 
-        [HttpPost]
-        public async Task<ActionResult> RunProcedure(TableViewModel model)
-        {
-            ViewBag.StoreProcedureList = await GetProcedureName(null, null);
-            if (model.Parameters == null)
-                model.Parameters = new List<ParameterViewModel>();
-            if (!string.IsNullOrEmpty(model.TableName) && model.Parameters.Count == 0)
-            {
-                var result = await GetSearchProcedure(model.TableName);
-                if (result.Count > 0)
-                    model = result[0];
-                return View(model);
-            }
-            model.dataTable =  await GetStoreProcedureResult(model);
-            return View(model);
-        }
-
         #region "Private Methods"
 
         private ConnectViewModel GetConnection(string databaseApiKey)
@@ -413,8 +396,8 @@ namespace ReportBuilder.Web.Controllers
                             parameterViewModels.Add(parameter);
                         }
                     }
-                    DataTable dt = new DataTable();
-                    cmd = new OleDbCommand(procName, conn);
+                    DataTable dt = new DataTable(); 
+                    cmd = new OleDbCommand($"[{procName}]", conn);
                     cmd.CommandType = CommandType.StoredProcedure;
                     foreach (var data in parameterViewModels)
                     {
@@ -448,39 +431,6 @@ namespace ReportBuilder.Web.Controllers
                 conn.Dispose();
             }
             return tables;
-        }
-
-        private async Task<DataTable> GetStoreProcedureResult(TableViewModel model, string accountKey = null, string dataConnectKey = null)
-        {
-            DataTable dt = new DataTable();
-            var connString = await GetConnectionString(GetConnection(dataConnectKey));
-            using (OleDbConnection conn = new OleDbConnection(connString))
-            {
-                // open the connection to the database 
-                conn.Open();
-                OleDbCommand cmd = new OleDbCommand(model.TableName, conn);
-                cmd.CommandType = CommandType.StoredProcedure;
-                foreach (var para in model.Parameters)
-                {
-                    if (string.IsNullOrEmpty(para.ParameterValue))
-                    {
-                        if(para.ParamterDataTypeOleDbType == OleDbType.DBTimeStamp || para.ParamterDataTypeOleDbType == OleDbType.DBDate)
-                        {
-                            para.ParameterValue = DateTime.Now.ToShortDateString();
-                        }
-                    }
-                    cmd.Parameters.AddWithValue("@" + para.ParameterName, para.ParameterValue);
-                    //cmd.Parameters.Add(new OleDbParameter { 
-                    //    Value =  string.IsNullOrEmpty(para.ParameterValue) ? DBNull.Value : (object)para.ParameterValue , 
-                    //    ParameterName = para.ParameterName, 
-                    //    Direction = ParameterDirection.Input, 
-                    //    IsNullable = true });
-                }
-                dt.Load(cmd.ExecuteReader());
-                conn.Close();
-                conn.Dispose();
-            }
-            return dt;
         }
 
         #endregion

@@ -246,6 +246,7 @@
 					return e.TableName() === procName;
 				}));
 				proc.Id = result;
+				proc = ko.mapping.fromJS(proc);
 				self.Procedures.setupProcedure(proc);		
 				self.Procedures.savedProcedures.push(proc);
 			}
