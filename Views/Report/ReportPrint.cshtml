@@ -183,13 +183,13 @@
     $(document).ready(function () {
         var vm = new reportViewModel({
             runReportUrl: "@Url.Action("Report")",
-            execReportUrl: "@Url.Action("RunReport", "ReportApi")",
+            execReportUrl: "@Url.Action("RunReport")",
             runLinkReportUrl: "@Url.Action("ReportLink")",
             reportWizard: $("#filter-panel"),
             reportHeader: "report-header",
-            lookupListUrl: "@Url.Action("GetLookupList", "ReportApi")",
-            apiUrl: '@Url.Action("CallReportApi", "ReportApi")',
-            runReportApiUrl: '@Url.Action("RunReportApi", "ReportApi")',
+            lookupListUrl: "@Url.Action("GetLookupList")",
+            apiUrl: '@Url.Action("CallReportApi")',
+            runReportApiUrl: '@Url.Action("RunReportApi")',
             reportFilter: htmlDecode('@System.Web.HttpUtility.UrlDecode(Model.ReportFilter)'),
             reportMode: "execute",
             reportSql: "@Model.ReportSql",
