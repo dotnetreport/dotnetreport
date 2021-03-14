@@ -95,7 +95,7 @@
         @using (Html.BeginForm("DownloadPdf", "Report", FormMethod.Post, new { id = "downloadPdf" }))
         {
             <input type="hidden" name="reportId" data-bind="value: ReportID" />
-            <input type="hidden" name="printUrl" value="@Url.Action("ReportPrint", "Report", null, Context.Request.Scheme)" />
+            <input type="hidden" name="printUrl" value="@Url.Action("ReportPrint", "Report", null, this.Request.Url.Scheme)" />
             <input type="hidden" name="reportSql" data-bind="value: currentSql" />
             <input type="hidden" name="connectKey" data-bind="value: currentConnectKey" />
             <input type="hidden" name="reportName" data-bind="value: ReportName" />

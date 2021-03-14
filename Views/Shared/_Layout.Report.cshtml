@@ -147,7 +147,7 @@
 
     <script type="text/html" id="report-template">
         <div class="report-chart" data-bind="attr: {id: 'chart_div_' + $parent.ReportID()}, visible: $parent.isChart"></div>
-        <!-- ko if: $parent.ShowDataWithGraph() -->
+        <!-- ko if: !$parent.isChart() || $parent.ShowDataWithGraph() -->
         <div class="table-responsive" data-bind="with: ReportData">
             <table class="table table-hover table-condensed">
                 <thead data-bind="if: $parents[1].ReportType() != 'Single'">
