@@ -1346,11 +1346,22 @@ var reportViewModel = function (options) {
 			title: {
 				display: true,
 				text: self.ReportName()
+			},
+			scales: {
+				yAxes: [{
+					ticks: {
+						beginAtZero: true,
+						min: 0
+					}
+				}]
 			}
 		};
 
 		var chartDiv = document.getElementById('chart_div_' + self.ReportID());
 		var ctx = chartDiv.getContext('2d');
+		if (self.chart != null) {
+			self.chart.destroy();
+        }
 		var chart = null;
 
 		if (self.ReportType() == "Pie") {
@@ -1377,6 +1388,7 @@ var reportViewModel = function (options) {
 			});
 		}
 
+		self.chart = chart;
 		//chart.draw(data, options);
 		//self.ChartData(chart.getImageURI());
 	};
