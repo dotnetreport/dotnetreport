@@ -533,8 +533,15 @@
                     <h5><span class="fa fa-filter"></span>&nbsp;Choose filters</h5>
 
                     <div class="row" style="padding: 10px 10px; overflow-x: auto;">
-                        <div data-bind="template: {name: 'filter-group'}" class="col"></div>
+                        <div data-bind="template: {name: 'filter-group'}" class="col-12"></div>
                         <br />
+
+                        <div class="checkbox col-12">
+                            <label>
+                                <input type="checkbox" data-bind="checked: EditFiltersOnReport" />
+                                Allow setting up and saving filters on Report
+                            </label>
+                        </div>
                     </div>
                 </div>
                 <!-- /ko -->
