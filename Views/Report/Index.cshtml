@@ -30,7 +30,8 @@
                 runReportApiUrl: '@Url.Action("RunReportApi")',
                 getUsersAndRolesUrl: '@Url.Action("GetUsersAndRoles")',
                 reportId: @(Request.QueryString["reportId"] != null ? Request.QueryString["reportId"] : "0"),
-                userSettings: data
+                userSettings: data,
+                dataFilters: data.dataFilters
             });
 
             vm.init(@(Request.QueryString["folderId"]!=null? Request.QueryString["folderId"]: "0"), data.noAccount);

@@ -2551,6 +2551,7 @@ var dashboardViewModel = function (options) {
 			reportConnect: x.connectKey,
 			users: options.users,
 			userRoles: options.userRoles,
+			dataFilters: options.dataFilters,
 			skipDraw: true
 		});
 
