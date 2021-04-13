@@ -578,7 +578,7 @@ namespace ReportBuilder.Web.Controllers
 
         public static string GetFormattedValue(DataColumn col, DataRow row)
         {
-            if (@row[col] != null)
+            if (row[col] != null && row[col] != DBNull.Value)
             {
                 switch (Type.GetTypeCode(col.DataType))
                 {
