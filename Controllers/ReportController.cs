@@ -216,7 +216,7 @@ namespace ReportBuilder.Web.Controllers
                 {
                     if (key != "adminMode" || (key == "adminMode" && settings.CanUseAdminMode))
                     {
-                        keyvalues.Add(new KeyValuePair<string, string>(key, data[key].ToString()));
+                        keyvalues.Add(new KeyValuePair<string, string>(key, data[key] != null ? data[key].ToString() : ""));
                     }
                 }
 
