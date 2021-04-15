@@ -196,6 +196,7 @@ namespace ReportBuilder.Web.Models
         public string ReportJson { get; set; }
         public bool adminMode { get; set; }
         public bool SubTotalMode { get; set; }
+        public string userIdForFilter { get; set; }
     }
 
     public class DotNetDasboardReportModel : DotNetReportModel
@@ -244,6 +245,11 @@ namespace ReportBuilder.Web.Models
         /// If you want to use user id for schedule but not for authentication, use this property
         /// </summary>
         public string UserIdForSchedule { get; set; }
+
+        /// <summary>
+        /// If you want to use save different filters for each user, pass user id here
+        /// </summary>
+        public string UserIdForFilter { get; set; }
 
         /// <summary>
         /// Current User name to display

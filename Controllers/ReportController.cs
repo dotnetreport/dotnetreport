@@ -48,6 +48,8 @@ namespace ReportBuilder.Web.Controllers
             settings.UserRoles = new List<string>(); // Populate all your application's user roles, ex  { "Admin", "Normal" }       
             settings.CanUseAdminMode = true; // Set to true only if current user can use Admin mode to setup reports and dashboard
             settings.DataFilters = new { }; // add global data filters
+            settings.UserIdForSchedule = ""; // add user id for saving schedules per user
+            settings.UserIdForFilter = ""; // add user id for saving filter per user
 
             // An example of populating Roles using MVC web security if available
             if (Roles.Enabled && User.Identity.IsAuthenticated) {
@@ -503,6 +505,7 @@ namespace ReportBuilder.Web.Controllers
                 currentUserName = settings.UserName,
                 allowAdminMode = settings.CanUseAdminMode,
                 userIdForSchedule = settings.UserIdForSchedule,
+                userIdForFilter = settings.UserIdForFilter,
                 dataFilters = settings.DataFilters
             }, JsonRequestBehavior.AllowGet);
         }

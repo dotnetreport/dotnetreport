@@ -556,6 +556,7 @@ var reportViewModel = function (options) {
 	self.currentUserName = options.userSettings.currentUserName;
 	self.allowAdmin = ko.observable(options.userSettings.allowAdminMode);
 	self.userIdForSchedule = options.userSettings.userIdForSchedule || self.currentUserId;
+	self.userIdForFilter = options.userSettings.userIdForFilter || '';
 
 	self.ChartData = ko.observable();
 	self.ReportName = ko.observable();
@@ -1407,7 +1408,8 @@ var reportViewModel = function (options) {
 				method: "/ReportApi/SaveReportFilter",
 				SaveReport: false,
 				ReportJson: JSON.stringify(self.BuildReportData()),
-				adminMode: self.adminMode()
+				adminMode: self.adminMode(),
+				userIdForFilter: self.userIdForFilter
 			})
 		})
 		self.RunReport(false);
@@ -1447,7 +1449,8 @@ var reportViewModel = function (options) {
 					method: "/ReportApi/RunReport",
 					SaveReport: self.CanSaveReports() ? self.SaveReport() : false,
 					ReportJson: JSON.stringify(self.BuildReportData([], isComparison, i - 1)),
-					adminMode: self.adminMode()
+					adminMode: self.adminMode(),
+					userIdForFilter: self.userIdForFilter
 				}),
 				async: false
 			}).done(function (result) {
@@ -2023,7 +2026,8 @@ var reportViewModel = function (options) {
 				model: JSON.stringify({
 					reportId: reportId,
 					adminMode: self.adminMode(),
-					userIdForSchedule: self.userIdForSchedule
+					userIdForSchedule: self.userIdForSchedule,
+					userIdForFilter: self.userIdForFilter
 				})
 			}
 		}).done(function (report) {
