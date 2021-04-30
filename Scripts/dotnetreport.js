@@ -403,18 +403,35 @@ var headerDesigner = function (options) {
 			fontUnderline: ko.observable()
 		}
 
-		// snap to grid
 		canvas.on('object:moving', function (options) {
-			options.target.set({
-				left: Math.round(options.target.left / grid) * grid,
-				top: Math.round(options.target.top / grid) * grid
-			});
+			// keep in bounds
+			var obj = options.target;
+			// if object is too big ignore
+			if (obj.currentHeight > obj.canvas.height || obj.currentWidth > obj.canvas.width) {
+				return;
+			}
+			obj.setCoords();
+			// top-left  corner
+			if (obj.getBoundingRect().top < 0 || obj.getBoundingRect().left < 0) {
+				obj.top = Math.max(obj.top, obj.top - obj.getBoundingRect().top);
+				obj.left = Math.max(obj.left, obj.left - obj.getBoundingRect().left);
+			}
+			// bot-right corner
+			if (obj.getBoundingRect().top + obj.getBoundingRect().height > obj.canvas.height || obj.getBoundingRect().left + obj.getBoundingRect().width > obj.canvas.width) {
+				obj.top = Math.min(obj.top, obj.canvas.height - obj.getBoundingRect().height + obj.top - obj.getBoundingRect().top);
+				obj.left = Math.min(obj.left, obj.canvas.width - obj.getBoundingRect().width + obj.left - obj.getBoundingRect().left);
+			}
 		});
 
 		// handle selection
 		canvas.on('selection:created', function (obj) {
 			self.selectedObject(obj);
 			self.objectProperties.fontFamily(self.getFontFamily());
+			self.objectProperties.fontBold(self.getFontBold());
+			self.objectProperties.fontItalic(self.getFontItalic());
+			self.objectProperties.fontColor(self.getFontColor());
+			self.objectProperties.fontUnderline(self.getFontUnderline());
+			self.objectProperties.textAlign(self.getTextAlign());
 		});
 
 		canvas.on('selection:cleared', function (obj) {
@@ -539,7 +556,37 @@ var headerDesigner = function (options) {
 	self.setFontFamily = function (value, e) {
 		setActiveProp('fontFamily', e.currentTarget.value);
 	};
-
+	self.getFontBold = function () {
+		return getActiveProp('fontWeight').toLowerCase();
+	};
+	self.setFontBold = function (value, e) {
+		setActiveProp('fontWeight', getActiveProp('fontWeight') == 'bold' ? '' : 'bold');
+	};
+	self.getFontItalic = function () {
+		return getActiveProp('fontStyle').toLowerCase();
+	};
+	self.setFontItalic = function (value, e) {
+		setActiveProp('fontStyle', getActiveProp('fontStyle') == 'italic' ? '' : 'italic');
+	};
+	self.getFontColor = function () {
+		return getActiveProp('stroke');
+	};
+	self.setFontColor = function (value, e) {
+		setActiveProp('stroke', e.currentTarget.value);
+		setActiveProp('fill', e.currentTarget.value);
+	};
+	self.getFontUnderline = function () {
+		return getActiveProp('underline').toLowerCase();
+	};
+	self.setFontUnderline = function (value, e) {
+		setActiveProp('underline', getActiveProp('underline') ? '' : 'underline');
+	};
+	self.getTextAlign = function () {
+		return getActiveProp('textAlign');
+	};
+	self.setTextAlign = function (value, e) {
+		setActiveProp('textAlign', e.currentTarget.value.toLowerCase());
+	};
 }
 
 var reportViewModel = function (options) {
@@ -653,6 +700,7 @@ var reportViewModel = function (options) {
 	self.currentSql = ko.observable();
 	self.currentConnectKey = ko.observable();
 	self.adminMode = ko.observable(false);
+	self.allExpanded = ko.observable(false);
 
 	self.x = ko.observable(0);
 	self.y = ko.observable(0);
@@ -1370,6 +1418,7 @@ var reportViewModel = function (options) {
 					HeaderFontColor: x.headerFontColor(),
 					HeaderBackColor: x.headerBackColor(),
 					FontBold: x.fontBold(),
+					HeaderFontBold: x.headerFontBold(),
 					FieldWidth: x.fieldWidth(),
 					FieldConditionOp: x.fieldConditionOp(),
 					FieldConditionVal: x.fieldConditionVal()
@@ -1434,13 +1483,14 @@ var reportViewModel = function (options) {
 		var isExecuteReportQuery = false;
 		var _result = null;
 		var seriesCount = self.AdditionalSeries().length;
+		var promises = [];
 		do {
 			if (i > 0) {
 				isComparison = true;
 				self.CanSaveReports(false);
 			}
 
-			ajaxcall({
+			promises.push(ajaxcall({
 				url: options.runReportApiUrl,
 				type: "POST",
 				data: JSON.stringify({
@@ -1451,11 +1501,10 @@ var reportViewModel = function (options) {
 				}),
 				async: false
 			}).done(function (result) {
-
+				if (result.d) { result = result.d; }
 				_result = result;
 				self.AllSqlQuries(self.AllSqlQuries() + (result.sql + ","));
 
-				if (result.d) { result = result.d; }
 				self.ReportID(result.reportId);
 				if (self.SaveReport()) {
 
@@ -1473,34 +1522,35 @@ var reportViewModel = function (options) {
 						self.ExecuteReportQuery(result.sql, result.connectKey, self.ReportSeries);
 					}
 				}
-			});
+			}));
 			i++;
 		}
 		while (i < seriesCount + 1);
-
-		if (isExecuteReportQuery === false) {
-			if (saveOnly) {
-				toastr.success("Report Saved");
-				return;
+		$.when.apply($, promises).done(function () {
+			if (isExecuteReportQuery === false) {
+				if (saveOnly) {
+					toastr.success("Report Saved");
+					return;
+				}
+				redirectToReport(options.runReportUrl, {
+					reportId: _result.reportId,
+					reportName: self.ReportName(),
+					reportDescription: self.ReportDescription(),
+					includeSubTotal: self.IncludeSubTotal(),
+					showUniqueRecords: self.ShowUniqueRecords(),
+					aggregateReport: self.AggregateReport(),
+					showDataWithGraph: self.ShowDataWithGraph(),
+					reportSql: self.AllSqlQuries(),
+					connectKey: _result.connectKey,
+					reportFilter: JSON.stringify(_.map(self.FlyFilters(), function (x) { return ko.toJS(x); })),
+					reportType: self.ReportType(),
+					selectedFolder: self.SelectedFolder() != null ? self.SelectedFolder().Id : 0,
+					reportSeries: _.map(self.AdditionalSeries(), function (e, i) {
+						return e.Value();
+					})
+				});
 			}
-			redirectToReport(options.runReportUrl, {
-				reportId: _result.reportId,
-				reportName: self.ReportName(),
-				reportDescription: self.ReportDescription(),
-				includeSubTotal: self.IncludeSubTotal(),
-				showUniqueRecords: self.ShowUniqueRecords(),
-				aggregateReport: self.AggregateReport(),
-				showDataWithGraph: self.ShowDataWithGraph(),
-				reportSql: self.AllSqlQuries(),
-				connectKey: _result.connectKey,
-				reportFilter: JSON.stringify(_.map(self.FlyFilters(), function (x) { return ko.toJS(x); })),
-				reportType: self.ReportType(),
-				selectedFolder: self.SelectedFolder() != null ? self.SelectedFolder().Id : 0,
-				reportSeries: _.map(self.AdditionalSeries(), function (e, i) {
-					return e.Value();
-				})
-			});
-		}
+		});
 	};
 
 	self.ExecuteReportQuery = function (reportSql, connectKey, reportSeries) {
@@ -1569,6 +1619,7 @@ var reportViewModel = function (options) {
 					e.fieldLabel = col.fieldLabel;
 					e.fieldWidth = col.fieldWidth;
 					e.fontBold = col.fontBold;
+					e.headerFontBold = col.headerFontBold;
 					e.headerFontColor = col.headerFontColor;
 					e.headerBackColor = col.headerBackColor;
 					e.fieldId = col.fieldId;
@@ -1730,7 +1781,8 @@ var reportViewModel = function (options) {
 							pageNumber: 1,
 							pageSize: 1,
 							sortBy: '',
-							desc: false
+							desc: false,
+							ReportSeries: null
 						})
 					}).done(function (subtotalResult) {
 						if (subtotalResult.d) { subtotalResult = subtotalResult.d; }
@@ -1749,12 +1801,14 @@ var reportViewModel = function (options) {
 		_.forEach(self.ReportResult().ReportData().Rows, function (e) {
 			e.expand();
 		});
+		self.allExpanded(true);
 	};
 
 	self.CollapseAll = function () {
 		_.forEach(self.ReportResult().ReportData().Rows, function (e) {
 			e.collapse();
 		});
+		self.allExpanded(false);
 	};
 
 	self.skipDraw = options.skipDraw === true ? true : false;
@@ -1769,18 +1823,18 @@ var reportViewModel = function (options) {
 		_.forEach(reportData.Columns, function (e, i) {
 			var field = self.SelectedFields()[i];
 			if (i == 0) {
-				data.addColumn(e.IsNumeric ? 'number' : 'string', e.ColumnName);
+				data.addColumn(e.IsNumeric ? 'number' : 'string', e.fieldLabel || e.ColumnName);
 			} else if (typeof field !== "undefined" && field.groupInGraph()) {
-				subGroups.push({ index: i, column: e.ColumnName });
+				subGroups.push({ index: i, column: e.fieldLabel || e.ColumnName });
 			} else if (e.IsNumeric) {
-				valColumns.push({ index: i, column: e.ColumnName });
+				valColumns.push({ index: i, column: e.fieldLabel || e.ColumnName });
 			}
 		});
 
 		if (subGroups.length == 0) {
 			_.forEach(reportData.Columns, function (e, i) {
 				if (i > 0 && e.IsNumeric) {
-					data.addColumn(e.IsNumeric ? 'number' : 'string', e.ColumnName);
+					data.addColumn(e.IsNumeric ? 'number' : 'string', e.fieldLabel || e.ColumnName);
 				}
 			});
 		}
@@ -1915,6 +1969,7 @@ var reportViewModel = function (options) {
 		e.headerFontColor = ko.observable(e.headerFontColor);
 		e.headerBackColor = ko.observable(e.headerBackColor || '#ffffff');
 		e.fontBold = ko.observable(e.fontBold);
+		e.headerFontBold = ko.observable(e.headerFontBold);
 		e.fieldWidth = ko.observable(e.fieldWidth);
 		e.fieldConditionOp = ko.observable(e.fieldConditionOp);
 		e.fieldConditionVal = ko.observable(e.fieldConditionVal);
@@ -1924,6 +1979,7 @@ var reportViewModel = function (options) {
 		e.applyAllFontColor = ko.observable(false);
 		e.applyAllBackColor = ko.observable(false);
 		e.applyAllBold = ko.observable(false);
+		e.applyAllHeaderBold = ko.observable(false);
 
 		e.toggleDisable = function () {
 			if (!e.disabled() && self.enabledFields().length < 2) return;
@@ -1975,6 +2031,7 @@ var reportViewModel = function (options) {
 				headerFontColor: e.headerFontColor(),
 				headerBackColor: e.headerBackColor(),
 				fontBold: e.fontBold(),
+				headerFontBold: e.headerFontBold(),
 				fieldWidth: e.fieldWidth(),
 				fieldConditionOp: e.fieldConditionOp(),
 				fieldConditionVal: e.fieldConditionVal()
@@ -1990,6 +2047,7 @@ var reportViewModel = function (options) {
 				if (e.applyAllFontColor()) f.fontColor(e.fontColor());
 				if (e.applyAllBackColor()) f.backColor(e.backColor());
 				if (e.applyAllBold()) f.fontBold(e.fontBold());
+				if (e.applyAllHeaderBold()) f.headerFontBold(e.headerFontBold());
 			});
 
 			if (options.fieldOptionsModal) options.fieldOptionsModal.modal('hide');
@@ -2005,6 +2063,7 @@ var reportViewModel = function (options) {
 			e.headerFontColor(self.currentFieldOptions.headerFontColor);
 			e.headerBackColor(self.currentFieldOptions.headerBackColor);
 			e.fontBold(self.currentFieldOptions.fontBold);
+			e.headerFontBold(self.currentFieldOptions.headerFontBold);
 			e.fieldWidth(self.currentFieldOptions.fieldWidth);
 			e.fieldConditionOp(self.currentFieldOptions.fieldConditionOp);
 			e.fieldConditionVal(self.currentFieldOptions.fieldConditionVal);
@@ -2152,7 +2211,7 @@ var reportViewModel = function (options) {
 			}
 
 			if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard") {
-				self.ExecuteReportQuery(options.reportSql, options.reportConnect, reportSeries);
+				return self.ExecuteReportQuery(options.reportSql, options.reportConnect, reportSeries);
 			}
 		});
 	};
@@ -2551,7 +2610,6 @@ var dashboardViewModel = function (options) {
 			reportConnect: x.connectKey,
 			users: options.users,
 			userRoles: options.userRoles,
-			dataFilters: options.dataFilters,
 			skipDraw: true
 		});
 
@@ -2562,7 +2620,7 @@ var dashboardViewModel = function (options) {
 		report.panelStyle = 'panel-' + (i == 0 ? 'default' : (i == 1 ? 'info' : (i == 2 ? 'warning' : 'danger')));
 		i = i == 3 ? 0 : i + 1;
 		self.reports.push(report);
-		report.LoadReport(x.reportId, true);
+		report.LoadReport(x.reportId, true, '');
 
 		report.showFlyFilters = ko.observable(false);
 		report.toggleFlyFilters = function () {
