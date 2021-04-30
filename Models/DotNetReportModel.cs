@@ -410,7 +410,26 @@ namespace ReportBuilder.Web.Models
             return "";
         }
 
-        public static byte[] GetExcelFile(string reportSql, string connectKey, string reportName)
+        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart)
+        {
+            ws.Cells[rowstart, colstart].LoadFromDataTable(dt, true);
+            ws.Cells[rowstart, colstart, rowstart, dt.Columns.Count].Style.Font.Bold = true;
+
+            int i = 1;
+            foreach (DataColumn dc in dt.Columns)
+            {
+                if (dc.DataType == typeof(decimal))
+                    ws.Column(i).Style.Numberformat.Format = "#0.00";
+
+                if (dc.DataType == typeof(DateTime))
+                    ws.Column(i).Style.Numberformat.Format = "mm/dd/yyyy";
+
+                i++;
+            }
+            ws.Cells[ws.Dimension.Address].AutoFitColumns();
+        }
+
+        public static byte[] GetExcelFile(string reportSql, string connectKey, string reportName, bool allExpanded=false, List<string> expandSqls = null)
         {
             var sql = Decrypt(reportSql);
 
@@ -423,41 +442,46 @@ namespace ReportBuilder.Web.Models
                 var adapter = new OleDbDataAdapter(command);
 
                 adapter.Fill(dt);
-            }
 
-            using (ExcelPackage xp = new ExcelPackage())
-            {
 
-                ExcelWorksheet ws = xp.Workbook.Worksheets.Add(reportName);
-
-                int rowstart = 1;
-                int colstart = 1;
-                int rowend = rowstart;
-                int colend = dt.Columns.Count;
-
-                ws.Cells[rowstart, colstart, rowend, colend].Merge = true;
-                ws.Cells[rowstart, colstart, rowend, colend].Value = reportName;
-                ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Bold = true;
-                ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Size = 14;
-
-                rowstart += 2;
-                rowend = rowstart + dt.Rows.Count;
-                ws.Cells[rowstart, colstart].LoadFromDataTable(dt, true);
-                ws.Cells[rowstart, colstart, rowstart, colend].Style.Font.Bold = true;
-
-                int i = 1;
-                foreach (DataColumn dc in dt.Columns)
+                using (ExcelPackage xp = new ExcelPackage())
                 {
-                    if (dc.DataType == typeof(decimal))
-                        ws.Column(i).Style.Numberformat.Format = "#0.00";
+                    ExcelWorksheet ws = xp.Workbook.Worksheets.Add(reportName);
 
-                    if (dc.DataType == typeof(DateTime))
-                        ws.Column(i).Style.Numberformat.Format = "mm/dd/yyyy";
+                    int rowstart = 1;
+                    int colstart = 1;
+                    int rowend = rowstart;
+                    int colend = dt.Columns.Count;
 
-                    i++;
+                    ws.Cells[rowstart, colstart, rowend, colend].Merge = true;
+                    ws.Cells[rowstart, colstart, rowend, colend].Value = reportName;
+                    ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Bold = true;
+                    ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Size = 14;
+
+                    rowstart += 2;
+                    rowend = rowstart + dt.Rows.Count;
+
+                    FormatExcelSheet(dt, ws, rowstart, colstart);
+
+                    if (allExpanded)
+                    {
+                        var j = 0;
+                        foreach (DataRow dr in dt.Rows)
+                        {
+                            if (j < expandSqls.Count)
+                            {
+                                var dtNew = new DataTable();
+                                command.CommandText = Decrypt(expandSqls[j++]);
+                                adapter.Fill(dtNew);
+
+                                var wsNew = xp.Workbook.Worksheets.Add(dr[0].ToString());
+                                FormatExcelSheet(dtNew, wsNew, 1, 1);
+                            }
+                        }
+                    }
+
+                    return xp.GetAsByteArray();
                 }
-                ws.Cells[ws.Dimension.Address].AutoFitColumns();
-                return xp.GetAsByteArray();
             }
         }
 

@@ -452,10 +452,10 @@ namespace ReportBuilder.Web.Controllers
 
         
         [HttpPost]
-        public ActionResult DownloadExcel(string reportSql, string connectKey, string reportName)
+        public ActionResult DownloadExcel(string reportSql, string connectKey, string reportName, bool allExpanded, string expandSqls)
         {
 
-            var excel = DotNetReportHelper.GetExcelFile(reportSql, connectKey, reportName);
+            var excel = DotNetReportHelper.GetExcelFile(reportSql, connectKey, reportName, allExpanded, expandSqls.Split(',').ToList());
             Response.ClearContent();
 
             Response.AddHeader("content-disposition", "attachment; filename=" + reportName + ".xlsx");

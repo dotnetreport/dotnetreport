@@ -1706,7 +1706,7 @@ var reportViewModel = function (options) {
 					});
 				};
 
-				e.expand = function () {
+				e.expand = function (index) {
 					// load drill down data
 					ajaxcall({
 						url: options.runReportApiUrl,
@@ -1718,9 +1718,10 @@ var reportViewModel = function (options) {
 							adminMode: self.adminMode()
 						})
 					}).done(function (ddResult) {
-						if (ddResult.d) { ddResult = ddResult.d; }
+						if (ddResult.d) { ddResult = ddResult.d; }						
 						e.sql = ddResult.sql;
 						e.connectKey = ddResult.connectKey;
+						self.expandSqls.push({ index: index, sql: e.sql });
 						e.execute();
 					});
 
@@ -1797,9 +1798,12 @@ var reportViewModel = function (options) {
 		});
 	};
 
+	self.expandSqls = ko.observableArray([]);
 	self.ExpandAll = function () {
+		self.expandSqls([]);
+		var i = 0;
 		_.forEach(self.ReportResult().ReportData().Rows, function (e) {
-			e.expand();
+			e.expand(i++);
 		});
 		self.allExpanded(true);
 	};
@@ -1809,7 +1813,13 @@ var reportViewModel = function (options) {
 			e.collapse();
 		});
 		self.allExpanded(false);
+		self.expandSqls([]);
 	};
+
+	self.getExpandSqls = ko.computed(function () {
+		if (!self.allExpanded() || self.expandSqls().length == 0) return [];
+		return _.map(_.orderBy(self.expandSqls(), 'index'), function (x) { return x.sql; });
+	});
 
 	self.skipDraw = options.skipDraw === true ? true : false;
 	self.DrawChart = function () {
