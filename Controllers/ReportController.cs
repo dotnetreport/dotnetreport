@@ -47,7 +47,7 @@ namespace ReportBuilder.Web.Controllers
             settings.Users = new List<string>(); // Populate all your application's user, ex  { "Jane", "John" }
             settings.UserRoles = new List<string>(); // Populate all your application's user roles, ex  { "Admin", "Normal" }       
             settings.CanUseAdminMode = true; // Set to true only if current user can use Admin mode to setup reports and dashboard
-            settings.DataFilters = new { }; // add global data filters
+            settings.DataFilters = new { }; // add global data filters to apply as needed https://dotnetreport.com/kb/docs/advance-topics/global-filters/
 
             // An example of populating Roles using MVC web security if available
             if (Roles.Enabled && User.Identity.IsAuthenticated) {
@@ -107,6 +107,7 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("filterId", filterId.HasValue ? filterId.ToString() : ""),
                     new KeyValuePair<string, string>("filterValue", filterValue.ToString()),
                     new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
+                    new KeyValuePair<string, string>("dataFilters", (new JavaScriptSerializer()).Serialize(settings.DataFilters))
                 });
 
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/RunLinkedReport"), content);
