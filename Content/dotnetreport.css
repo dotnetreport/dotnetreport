@@ -452,3 +452,14 @@ input[type="checkbox"].input-validation-error {
 .blockUI {
     z-index: 2200 !important;
 }
+
+.canvas-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+    .canvas-container canvas {
+        /*border: solid 1px;*/
+        width: 100%;
+    }

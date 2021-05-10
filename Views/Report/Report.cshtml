@@ -65,10 +65,12 @@
 
         vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {
             ko.applyBindings(vm);
+            vm.headerDesigner.resizeCanvas();
         });
 
         $(window).resize(function(){
             vm.DrawChart();
+            vm.headerDesigner.resizeCanvas();
         });
     });
 
@@ -195,7 +197,9 @@
         <div class="report-canvas">
             <div class="report-container">
                 <div class="report-inner">
-                    <canvas id="report-header" width="900" height="120" data-bind="visible: useReportHeader"></canvas>
+                    <div class="canvas-container">
+                        <canvas id="report-header" width="900" height="120" data-bind="visible: useReportHeader"></canvas>
+                    </div>
                     <h2 data-bind="text: ReportName"></h2>
                     <p data-bind="html: ReportDescription">
                     </p>
