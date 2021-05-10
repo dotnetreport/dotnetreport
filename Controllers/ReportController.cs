@@ -35,6 +35,7 @@ namespace ReportBuilder.Web.Controllers
                 if (TempData["clientId"] != null) settings.ClientId = (string)TempData["clientId"];
                 if (TempData["userId"] != null) settings.UserId= (string)TempData["userId"];
                 settings.CurrentUserRole = (TempData["currentUserRole"] != null) ? ((string)TempData["currentUserRole"]).Split(',').ToList() : new List<string>();
+                settings.DataFilters = (TempData["dataFilters"] != null) ? JsonConvert.DeserializeObject<dynamic>((string)TempData["dataFilters"]) : new { };
                 return settings;
             } 
             
@@ -69,6 +70,7 @@ namespace ReportBuilder.Web.Controllers
         public ActionResult Report(int reportId, string reportName, string reportDescription, bool includeSubTotal, bool showUniqueRecords,
             bool aggregateReport, bool showDataWithGraph, string reportSql, string connectKey, string reportFilter, string reportType, int selectedFolder, string reportSeries)
         {
+            var settings = GetSettings();
             var model = new DotNetReportModel
             {
                 ReportId = reportId,
@@ -122,12 +124,13 @@ namespace ReportBuilder.Web.Controllers
 
         public ActionResult ReportPrint(int reportId, string reportName, string reportDescription, string reportSql, string connectKey, string reportFilter, string reportType,
             int selectedFolder = 0, bool includeSubTotal = true, bool showUniqueRecords = false, bool aggregateReport = false, bool showDataWithGraph = true,
-            string userId = null, string clientId = null, string currentUserRole = null)
+            string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "")
         {
             TempData["reportPrint"] = "true";
             TempData["userId"] = userId;
             TempData["clientId"] = clientId;
             TempData["currentUserRole"] = currentUserRole;
+            TempData["dataFilters"] = dataFilters;
 
             var model = new DotNetReportModel
             {
@@ -455,7 +458,6 @@ namespace ReportBuilder.Web.Controllers
         [HttpPost]
         public ActionResult DownloadExcel(string reportSql, string connectKey, string reportName, bool allExpanded, string expandSqls)
         {
-
             var excel = DotNetReportHelper.GetExcelFile(reportSql, connectKey, reportName, allExpanded, expandSqls.Split(',').ToList());
             Response.ClearContent();
 
@@ -470,7 +472,6 @@ namespace ReportBuilder.Web.Controllers
         [HttpPost]
         public ActionResult DownloadXml(string reportSql, string connectKey, string reportName)
         {
-
             var xml = DotNetReportHelper.GetXmlFile(reportSql, connectKey, reportName);
             Response.ClearContent();
 
@@ -487,7 +488,8 @@ namespace ReportBuilder.Web.Controllers
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
             var settings = GetSettings();
-            var pdf = await DotNetReportHelper.GetPdfFile(printUrl, reportId, reportSql, connectKey, reportName, settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole));
+            var dataFilters = settings.DataFilters != null ? JsonConvert.SerializeObject(settings.DataFilters) : "";
+            var pdf = await DotNetReportHelper.GetPdfFile(printUrl, reportId, reportSql, connectKey, reportName, settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), dataFilters);
             return File(pdf, "application/pdf", reportName + ".pdf");
         }
 
