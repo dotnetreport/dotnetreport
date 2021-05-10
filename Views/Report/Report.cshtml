@@ -20,16 +20,23 @@
     function printReport() {
         var printWindow = window.open("");
         printWindow.document.open();
+        var header = document.getElementById('report-header').toDataURL();  
+
         printWindow.document.write('<html><head>'+
                                 '<link href="/Content/bootstrap.css" rel="stylesheet" />'+
                                 '<style type="text/css">a[href]:after {content: none !important;}</style>'+
                                 '</head><body>' + $('.report-inner').html() +
                                 '</body></html>');
 
+        var headerDiv = printWindow.document.createElement('div');
+        headerDiv.innerHTML = '<img src="' + header + '" height="120" />';
+        var headerCanvas = printWindow.document.getElementById('report-header');
+        headerCanvas.parentNode.replaceChild(headerDiv, headerCanvas);
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+
         setTimeout(function () {
-            printWindow.document.close();
-            printWindow.focus();
-            printWindow.print();
             printWindow.close();
         }, 250);
     }
