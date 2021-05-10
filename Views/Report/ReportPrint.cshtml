@@ -22,6 +22,12 @@
     <link href="~/Content/css/select2.min.css" rel="stylesheet" />
     <link href="~/Content/dotnetreport.css?v=3.0.0" rel="stylesheet" />
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <style type="text/css">
+        .report-view {
+            margin: 0 50px 0 50px;
+            max-width: inherit;
+        }
+    </style>
 </head>
 
 <body>
@@ -31,7 +37,7 @@
 
         <div class="report-view" data-bind="with: $root">
             <div class="report-inner">
-                <canvas id="report-header" width="900" height="120" data-bind="visible: useReportHeader"></canvas>
+                <canvas id="report-header" width="1100" height="120" data-bind="visible: useReportHeader"></canvas>
                 <h2 data-bind="text: ReportName"></h2>
                 <p data-bind="html: ReportDescription">
                 </p>
@@ -198,8 +204,8 @@
         });
 
         ko.applyBindings(vm);
-        vm.LoadReport(@Model.ReportId, true,"@Model.ReportSeries");
-
+        vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries");
+        
         $(window).resize(function(){
             vm.DrawChart();
         });
