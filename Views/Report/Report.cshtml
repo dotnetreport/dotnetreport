@@ -20,14 +20,30 @@
     function printReport() {
         var printWindow = window.open("");
         printWindow.document.open();
+        var header = document.getElementById('report-header').toDataURL();
+        var chart = document.getElementById('chart_div_@Model.ReportId').toDataURL();
+
         printWindow.document.write('<html><head>'+
                                 '<link href="/Content/bootstrap.css" rel="stylesheet" />'+
                                 '<style type="text/css">a[href]:after {content: none !important;}</style>'+
                                 '</head><body>' + $('.report-inner').html() +
                                 '</body></html>');
 
-        setTimeout(function(){
-            printWindow.print();
+        var headerDiv = printWindow.document.createElement('div');
+        headerDiv.innerHTML = '<img src="' + header + '" height="120" />';
+        var headerCanvas = printWindow.document.getElementById('report-header');
+        headerCanvas.parentNode.replaceChild(headerDiv, headerCanvas);
+
+        var chartDiv = printWindow.document.createElement('div');
+        chartDiv.innerHTML = '<img src="' + chart + '" />';
+        var chartCanvas = printWindow.document.getElementById('chart_div_@Model.ReportId');
+        chartCanvas.parentNode.replaceChild(chartDiv, chartCanvas);
+
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+
+        setTimeout(function () {
             printWindow.close();
         }, 250);
     }
