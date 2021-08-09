@@ -124,7 +124,8 @@ namespace ReportBuilder.Web.Controllers
 
         public ActionResult ReportPrint(int reportId, string reportName, string reportDescription, string reportSql, string connectKey, string reportFilter, string reportType,
             int selectedFolder = 0, bool includeSubTotal = true, bool showUniqueRecords = false, bool aggregateReport = false, bool showDataWithGraph = true,
-            string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "")
+            string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "",
+            string reportSeries = "", bool expandAll = false)
         {
             TempData["reportPrint"] = "true";
             TempData["userId"] = userId;
@@ -144,7 +145,8 @@ namespace ReportBuilder.Web.Controllers
                 ShowUniqueRecords = showUniqueRecords,
                 ShowDataWithGraph = showDataWithGraph,
                 SelectedFolder = selectedFolder,
-                ReportFilter = reportFilter // json data to setup filter correctly again
+                ReportFilter = reportFilter, // json data to setup filter correctly again
+                ExpandAll = expandAll
             };
 
             return View(model);
@@ -485,12 +487,12 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult> DownloadPdf(string printUrl, int reportId, string reportSql, string connectKey, string reportName)
+        public async Task<ActionResult> DownloadPdf(string printUrl, int reportId, string reportSql, string connectKey, string reportName, bool expandAll)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
             var settings = GetSettings();
             var dataFilters = settings.DataFilters != null ? JsonConvert.SerializeObject(settings.DataFilters) : "";
-            var pdf = await DotNetReportHelper.GetPdfFile(printUrl, reportId, reportSql, connectKey, reportName, settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), dataFilters);
+            var pdf = await DotNetReportHelper.GetPdfFile(printUrl, reportId, reportSql, connectKey, reportName, settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), dataFilters, expandAll);
             return File(pdf, "application/pdf", reportName + ".pdf");
         }
 
