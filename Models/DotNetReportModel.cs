@@ -34,6 +34,7 @@ namespace ReportBuilder.Web.Models
         public int SelectedFolder { get; set; }
 
         public string ReportSeries { get; set; }
+        public bool ExpandAll { get; set; }
     }
 
     public class DotNetReportResultModel
@@ -118,6 +119,7 @@ namespace ReportBuilder.Web.Models
         public string ForeignJoin { get; set; }
         public string ForeignKeyField { get; set; }
         public string ForeignValueField { get; set; }
+        public bool Hidden { get; set; }
 
     }
     public class RelationModel
@@ -317,7 +319,7 @@ namespace ReportBuilder.Web.Models
 
         public static string GetLabelValue(DataColumn col, DataRow row)
         {
-            if (@row[col] != null)
+            if (@row[col] != null && row[col] != DBNull.Value)
             {
                 switch (Type.GetTypeCode(col.DataType))
                 {
@@ -358,7 +360,7 @@ namespace ReportBuilder.Web.Models
 
         public static string GetFormattedValue(DataColumn col, DataRow row)
         {
-            if (@row[col] != null)
+            if (@row[col] != null && row[col] != DBNull.Value)
             {
                 switch (Type.GetTypeCode(col.DataType))
                 {
@@ -429,7 +431,7 @@ namespace ReportBuilder.Web.Models
             ws.Cells[ws.Dimension.Address].AutoFitColumns();
         }
 
-        public static byte[] GetExcelFile(string reportSql, string connectKey, string reportName, bool allExpanded=false, List<string> expandSqls = null)
+        public static byte[] GetExcelFile(string reportSql, string connectKey, string reportName, bool allExpanded = false, List<string> expandSqls = null)
         {
             var sql = Decrypt(reportSql);
 
@@ -504,7 +506,7 @@ namespace ReportBuilder.Web.Models
         }
 
         public static async Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
-                    string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "")
+                    string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false)
         {
             var installPath = AppContext.BaseDirectory + "\\App_Data\\local-chromium";
             await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync(BrowserFetcher.DefaultRevision);
@@ -525,6 +527,7 @@ namespace ReportBuilder.Web.Models
             formData.AppendLine($"<input name=\"userId\" value=\"{userId}\" />");
             formData.AppendLine($"<input name=\"clientId\" value=\"{clientId}\" />");
             formData.AppendLine($"<input name=\"currentUserRole\" value=\"{currentUserRole}\" />");
+            formData.AppendLine($"<input name=\"expandAll\" value=\"{expandAll}\" />");
             formData.AppendLine($"<input name=\"dataFilters\" value=\"{HttpUtility.HtmlEncode(dataFilters)}\" />");
             formData.AppendLine($"</form>");
             formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");

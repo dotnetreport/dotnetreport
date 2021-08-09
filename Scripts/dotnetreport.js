@@ -1,4 +1,4 @@
-﻿/// dotnet Report Builder view model v4.1.0
+﻿/// dotnet Report Builder view model v4.2.0
 /// License has to be purchased for use
 /// 2018-2021 (c) www.dotnetreport.com
 function pagerViewModel(args) {
@@ -678,6 +678,7 @@ var reportViewModel = function (options) {
 
 	self.fieldFormatTypes = ['Auto', 'Number', 'Decimal', 'Currency', 'Percentage', 'Date', 'Date and Time', 'Time'];
 	self.decimalFormatTypes = ['Number', 'Decimal', 'Currency', 'Percentage'];
+	self.dateFormatTypes = ['Date', 'Date and Time', 'Time'];
 	self.fieldAlignments = ['Auto', 'Left', 'Right', 'Center'];
 	self.designingHeader = ko.observable(false);
 	self.headerDesigner = new headerDesigner({
@@ -704,6 +705,7 @@ var reportViewModel = function (options) {
 	self.useStoredProc = ko.observable(false);
 	self.StoredProcId = ko.observable();
 	self.Parameters = ko.observableArray([]);
+	self.showParameters = ko.observable(true);
 	self.pager = new pagerViewModel();
 	self.currentSql = ko.observable();
 	self.currentConnectKey = ko.observable();
@@ -930,6 +932,7 @@ var reportViewModel = function (options) {
 		proc.SelectedFields = null;
 		self.SelectedFields(selectedFields);
 
+		var allHidden = true;
 		var parameters = _.map(proc.Parameters, function (e) {
 			var match = ko.toJS(proc.SelectedParameters && proc.SelectedParameters.length ? _.find(proc.SelectedParameters, { ParameterName: e.ParameterName }) : null);
 			e.operators = ['='];
@@ -971,12 +974,16 @@ var reportViewModel = function (options) {
 				});
 			}
 
+			if (!e.Hidden) {
+				allHidden = false;
+			}
+
 			return e;
 		});
 
 		proc.SelectedParameters = null;
 		self.Parameters(parameters);
-
+		self.showParameters(!allHidden);
 	});
 
 	self.SelectedTable.subscribe(function (table) {
@@ -1668,6 +1675,13 @@ var reportViewModel = function (options) {
 							case 'Percentage': r.FormattedValue = r.FormattedValue + '%'; break;
 						}
 					}
+					if (self.dateFormatTypes.indexOf(col.fieldFormat) >= 0) {
+						switch (col.fieldFormat) {
+							case 'Date': r.FormattedValue = r.FormattedValue; break;
+							case 'Date and Time': r.FormattedValue = r.FormattedValue; break;
+							case 'Time': r.FormattedValue = r.FormattedValue; break;
+						}
+					}
 				});
 			}
 
@@ -1726,7 +1740,7 @@ var reportViewModel = function (options) {
 							adminMode: self.adminMode()
 						})
 					}).done(function (ddResult) {
-						if (ddResult.d) { ddResult = ddResult.d; }						
+						if (ddResult.d) { ddResult = ddResult.d; }
 						e.sql = ddResult.sql;
 						e.connectKey = ddResult.connectKey;
 						self.expandSqls.push({ index: index, sql: e.sql });
@@ -2723,4 +2737,4 @@ var dashboardViewModel = function (options) {
 	self.adminMode.subscribe(function (newValue) {
 		self.init();
 	});
-}; 
+};

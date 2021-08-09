@@ -150,18 +150,17 @@
                                 <option value="engagement">Engagement</option>
                             </select>
                             &nbsp;
-                            <select class="form-control form-control-sm" title="Text Align">
+                            <select class="form-control form-control-sm" title="Text Align" data-bind="event: {change: setTextAlign }, value: objectProperties.textAlign">
                                 <option>Left</option>
                                 <option>Center</option>
                                 <option>Right</option>
                                 <option>Justify</option>
                             </select>
                             &nbsp;
-                            <input type="color" size="5" class="btn-object-action" title="Font Color">
-                            <input type="range" value="" min="1" max="120" step="1" id="text-font-size" class="btn-object-action" title="Font Size">
-                            <button class="btn btn-sm" title="Bold"><span class="fa fa-bold"></span></button>
-                            <button class="btn btn-sm" title="Italic"><span class="fa fa-italic"></span></button>
-                            <button class="btn btn-sm" title="Underline"><span class="fa fa-underline"></span></button>
+                            <input type="color" size="5" class="btn-object-action" title="Font Color" data-bind="event: {change: setFontColor }, value: objectProperties.fontColor">
+                            <button class="btn btn-sm" title="Bold" data-bind="event: {click: setFontBold }, value: objectProperties.fontBold"><span class="fa fa-bold"></span></button>
+                            <button class="btn btn-sm" title="Italic" data-bind="event: {click: setFontItalic }, value: objectProperties.fontItalic"><span class="fa fa-italic"></span></button>
+                            <button class="btn btn-sm" title="Underline" data-bind="event: {click: setFontUnderline }, value: objectProperties.fontUnderline"><span class="fa fa-underline"></span></button>
                             <!-- /ko -->
                         </div>
                         <!-- /ko-->
@@ -770,6 +769,7 @@
                     <label class="col-sm-5 col-md-5 control-label">Pick Header Text Color</label>
                     <div class="col-sm-7 col-md-7">
                         <input type="color" style="width: 50px" class="form-control pull-left" required data-bind="value: headerFontColor" />
+                        <input type="text" style="width: 100px" class="form-control pull-left" required data-bind="value: headerFontColor" />
                         <button class="btn btn-sm pull-left" title="Apply to all columns" data-bind="click: function(){applyAllHeaderFontColor(!applyAllHeaderFontColor()); }">
                             <span class="fa" data-bind="css: applyAllHeaderFontColor() ? 'fa-check' : 'fa-paste'"></span>
                         </button>
@@ -779,6 +779,7 @@
                     <label class="col-sm-5 col-md-5 control-label">Pick Header Background Color</label>
                     <div class="col-sm-7 col-md-7">
                         <input type="color" style="width: 50px" class="form-control pull-left" required data-bind="value: headerBackColor" />
+                        <input type="text" style="width: 100px" class="form-control pull-left" required data-bind="value: headerBackColor" />
                         <button class="btn btn-sm pull-left" title="Apply to all columns" data-bind="click: function(){applyAllHeaderBackColor(!applyAllHeaderBackColor()); }">
                             <span class="fa" data-bind="css: applyAllHeaderBackColor() ? 'fa-check' : 'fa-paste'"></span>
                         </button>
@@ -788,6 +789,7 @@
                     <label class="col-sm-5 col-md-5 control-label">Pick Text Color</label>
                     <div class="col-sm-7 col-md-7">
                         <input type="color" style="width: 50px" class="form-control pull-left" required data-bind="value: fontColor" />
+                        <input type="text" style="width: 100px" class="form-control pull-left" data-bind="value: fontColor" />
                         <button class="btn btn-sm pull-left" title="Apply to all columns" data-bind="click: function(){applyAllFontColor(!applyAllFontColor()); }">
                             <span class="fa" data-bind="css: applyAllFontColor() ? 'fa-check' : 'fa-paste'"></span>
                         </button>
@@ -797,6 +799,7 @@
                     <label class="col-sm-5 col-md-5 control-label">Pick Background Color</label>
                     <div class="col-sm-7 col-md-7">
                         <input type="color" style="width: 50px" class="form-control pull-left" required data-bind="value: backColor" />
+                        <input type="text" style="width: 100px" class="form-control pull-left" data-bind="value: backColor" />
                         <button class="btn btn-sm pull-left" title="Apply to all columns" data-bind="click: function(){applyAllBackColor(!applyAllBackColor()); }">
                             <span class="fa" data-bind="css: applyAllBackColor() ? 'fa-check' : 'fa-paste'"></span>
                         </button>
@@ -808,16 +811,31 @@
                         <input type="text" class="form-control" required data-bind="value: fieldWidth" />
                     </div>
                 </div>
-                <div class="form-group">
-                    <div class="checkbox pull-left" style="padding-top: 5px;">
-                        <label>
-                            <input type="checkbox" data-bind="checked: fontBold" />
-                            Make Text Bold
-                        </label>
+                <div class="form-group row">
+                    <div class="col-sm-12">
+                        <div class="checkbox pull-left" style="padding-top: 5px;">
+                            <label>
+                                <input type="checkbox" data-bind="checked: headerFontBold" />
+                                Make Header Text Bold
+                            </label>
+                        </div>
+                        <button class="btn btn-sm pull-left" title="Apply to all columns" data-bind="click: function(){applyAllHeaderBold(!applyAllHeaderBold()); }">
+                            <span class="fa" data-bind="css: applyAllHeaderBold() ? 'fa-check' : 'fa-paste'"></span>
+                        </button>
                     </div>
-                    <button class="btn btn-sm pull-left" title="Apply to all columns" data-bind="click: function(){applyAllBold(!applyAllBold()); }">
-                        <span class="fa" data-bind="css: applyAllBold() ? 'fa-check' : 'fa-paste'"></span>
-                    </button>
+                </div>
+                <div class="form-group row">
+                    <div class="col-sm-12">
+                        <div class="checkbox pull-left" style="padding-top: 5px;">
+                            <label>
+                                <input type="checkbox" data-bind="checked: fontBold" />
+                                Make Text Bold
+                            </label>
+                        </div>
+                        <button class="btn btn-sm pull-left" title="Apply to all columns" data-bind="click: function(){applyAllBold(!applyAllBold()); }">
+                            <span class="fa" data-bind="css: applyAllBold() ? 'fa-check' : 'fa-paste'"></span>
+                        </button>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">

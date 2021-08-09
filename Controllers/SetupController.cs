@@ -25,6 +25,7 @@ namespace ReportBuilder.Web.Controllers
             procedures.AddRange(await GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
             var model = new ManageViewModel
             {
+                ApiUrl = connect.ApiUrl,
                 AccountApiKey = connect.AccountApiKey,
                 DatabaseApiKey = connect.DatabaseApiKey,
                 Tables = tables,
@@ -34,21 +35,13 @@ namespace ReportBuilder.Web.Controllers
             return View(model);
         }
 
-        public async Task<ActionResult> RunProcedure()
-        {
-            ViewBag.StoreProcedureList = await GetProcedureName(null, null);
-            return View(new TableViewModel()
-            {
-                Parameters = new List<ParameterViewModel>()
-            });
-        }
-
         #region "Private Methods"
 
         private ConnectViewModel GetConnection(string databaseApiKey)
         {
             return new ConnectViewModel
             {
+                ApiUrl = ConfigurationManager.AppSettings["dotNetReport.apiUrl"],
                 AccountApiKey = ConfigurationManager.AppSettings["dotNetReport.accountApiToken"],
                 DatabaseApiKey = string.IsNullOrEmpty(databaseApiKey) ? ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"] : databaseApiKey
             };
@@ -58,7 +51,7 @@ namespace ReportBuilder.Web.Controllers
         {
             using (var client = new HttpClient())
             {
-                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetDataConnectKey?account={1}&dataConnect={2}", ConfigurationManager.AppSettings["dotNetReport.apiUrl"], connect.AccountApiKey, connect.DatabaseApiKey));
+                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetDataConnectKey?account={1}&dataConnect={2}", connect.ApiUrl, connect.AccountApiKey, connect.DatabaseApiKey));
 
                 response.EnsureSuccessStatusCode();
 
@@ -145,6 +138,7 @@ namespace ReportBuilder.Web.Controllers
                     {
                         Id = item.tableId,
                         SchemaName = item.schemaName,
+                        AccountIdField = item.accountIdField,
                         TableName = item.tableDbName,
                         DisplayName = item.tableName,
                         AllowedRoles = item.tableRoles.ToObject<List<string>>()
@@ -286,38 +280,6 @@ namespace ReportBuilder.Web.Controllers
             return tables;
         }
 
-        public async Task<List<SelectListItem>> GetProcedureName(string accountKey = null, string dataConnectKey = null)
-        {
-            List<SelectListItem> selectListItems = new List<SelectListItem>();
-            var connString = await GetConnectionString(GetConnection(dataConnectKey));
-            using (OleDbConnection conn = new OleDbConnection(connString))
-            {
-                // open the connection to the database 
-                conn.Open();
-                string Query = @"Select * from StoreProcedures";
-                OleDbCommand cmd = new OleDbCommand(Query, conn);
-                cmd.CommandType = CommandType.Text;
-                DataTable dtProcedures = new DataTable();
-                dtProcedures.Load(cmd.ExecuteReader());
-               
-                foreach (DataRow dr in dtProcedures.Rows)
-                {
-                    SelectListItem item = new SelectListItem();
-                    item.Value = dr["StoreProcedureName"].ToString();
-                    item.Text = dr["StoreProcedureName"].ToString();
-
-                    selectListItems.Add(item);
-                }
-                // cmd.ExecuteReader();
-
-                conn.Close();
-                conn.Dispose();
-            }
-
-
-            return selectListItems;
-        }
-
         private async Task<List<TableViewModel>> GetApiProcs(string accountKey, string dataConnectKey)
         {
             using (var client = new HttpClient())
@@ -434,6 +396,39 @@ namespace ReportBuilder.Web.Controllers
                 conn.Dispose();
             }
             return tables;
+        }
+
+        private async Task<DataTable> GetStoreProcedureResult(TableViewModel model, string accountKey = null, string dataConnectKey = null)
+        {
+            DataTable dt = new DataTable();
+            var connString = await GetConnectionString(GetConnection(dataConnectKey));
+            using (OleDbConnection conn = new OleDbConnection(connString))
+            {
+                // open the connection to the database 
+                conn.Open();
+                OleDbCommand cmd = new OleDbCommand(model.TableName, conn);
+                cmd.CommandType = CommandType.StoredProcedure;
+                foreach (var para in model.Parameters)
+                {
+                    if (string.IsNullOrEmpty(para.ParameterValue))
+                    {
+                        if (para.ParamterDataTypeOleDbType == OleDbType.DBTimeStamp || para.ParamterDataTypeOleDbType == OleDbType.DBDate)
+                        {
+                            para.ParameterValue = DateTime.Now.ToShortDateString();
+                        }
+                    }
+                    cmd.Parameters.AddWithValue("@" + para.ParameterName, para.ParameterValue);
+                    //cmd.Parameters.Add(new OleDbParameter { 
+                    //    Value =  string.IsNullOrEmpty(para.ParameterValue) ? DBNull.Value : (object)para.ParameterValue , 
+                    //    ParameterName = para.ParameterName, 
+                    //    Direction = ParameterDirection.Input, 
+                    //    IsNullable = true });
+                }
+                dt.Load(cmd.ExecuteReader());
+                conn.Close();
+                conn.Dispose();
+            }
+            return dt;
         }
 
         #endregion

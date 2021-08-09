@@ -33,7 +33,7 @@ namespace ReportBuilder.Web.Controllers
             if (TempData["reportPrint"] != null && TempData["reportPrint"].ToString() == "true")
             {
                 if (TempData["clientId"] != null) settings.ClientId = (string)TempData["clientId"];
-                if (TempData["userId"] != null) settings.UserId= (string)TempData["userId"];
+                if (TempData["userId"] != null) settings.UserId = (string)TempData["userId"];
                 settings.CurrentUserRole = (TempData["currentUserRole"] != null) ? ((string)TempData["currentUserRole"]).Split(',').ToList() : new List<string>();
                 settings.DataFilters = (TempData["dataFilters"] != null) ? JsonConvert.DeserializeObject<dynamic>((string)TempData["dataFilters"]) : new { };
                 return settings;
@@ -210,6 +210,7 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
                     new KeyValuePair<string, string>("clientId", settings.ClientId),
                     new KeyValuePair<string, string>("userId", settings.UserId),
+                    new KeyValuePair<string, string>("userIdForSchedule", settings.UserIdForSchedule),
                     new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole))
                 };
 
@@ -258,7 +259,7 @@ namespace ReportBuilder.Web.Controllers
                 List<string> sqlFields = new List<string>();
                 for (int i = 0; i < allSqls.Length; i++)
                 {
-                    sql = DotNetReportHelper.Decrypt(allSqls[i]);
+                    sql = DotNetReportHelper.Decrypt(HttpUtility.HtmlDecode(allSqls[i]));
                     if (!sql.StartsWith("EXEC"))
                     {
 
@@ -315,17 +316,17 @@ namespace ReportBuilder.Web.Controllers
                         {
                             // merge in to dt
                             if (!string.IsNullOrEmpty(reportSeries))
-                                series = reportSeries.Split(new string[] { "%2C" }, StringSplitOptions.RemoveEmptyEntries);
+                                series = reportSeries.Split(new string[] { "%2C", "," }, StringSplitOptions.RemoveEmptyEntries);
 
                             var j = 1;
                             while (j < dtPagedRun.Columns.Count)
                             {
                                 var col = dtPagedRun.Columns[j++];
                                 dtPaged.Columns.Add($"{col.ColumnName} ({series[i - 1]})", col.DataType);
-                                fields.Add(sqlFields[j-1]);
+                                fields.Add(sqlFields[j - 1]);
                             }
                             
-                            foreach(DataRow dr in dtPaged.Rows)
+                            foreach (DataRow dr in dtPaged.Rows)
                             {
                                 DataRow match = null;
                                 if (fields[0].ToUpper().StartsWith("CONVERT(VARCHAR(10)")) // group by day
@@ -345,7 +346,7 @@ namespace ReportBuilder.Web.Controllers
                                     j = 1;
                                     while (j < dtCols)
                                     {
-                                        dr[j + i + dtCols-2] = match[j];
+                                        dr[j + i + dtCols - 2] = match[j];
                                         j++;
                                     }
                                 }
@@ -354,7 +355,7 @@ namespace ReportBuilder.Web.Controllers
                     }                   
                 }
 
-                sql = DotNetReportHelper.Decrypt(allSqls[0]);
+                sql = DotNetReportHelper.Decrypt(HttpUtility.HtmlDecode(allSqls[0]));
                 var model = new DotNetReportResultModel
                 {
                     ReportData = DataTableToDotNetReportDataModel(dtPaged, fields),
@@ -519,128 +520,7 @@ namespace ReportBuilder.Web.Controllers
             }
 
             return warning;
-        }        
-
-        public static bool IsNumericType(Type type)
-        {
-
-            switch (Type.GetTypeCode(type))
-            {
-                case TypeCode.Int16:
-                case TypeCode.UInt16:
-                case TypeCode.Int32:
-                case TypeCode.UInt32:
-                case TypeCode.Int64:
-                case TypeCode.UInt64:
-                case TypeCode.Single:
-                case TypeCode.Double:
-                case TypeCode.Decimal:
-                    return true;
-
-                case TypeCode.Boolean:
-                case TypeCode.DateTime:
-                case TypeCode.String:
-                default:
-                    return false;
-            }
-        }
-
-        public static string GetLabelValue(DataColumn col, DataRow row)
-        {
-            switch (Type.GetTypeCode(col.DataType))
-            {
-                case TypeCode.Int16:
-                case TypeCode.UInt16:
-                case TypeCode.Int32:
-                case TypeCode.UInt32:
-                case TypeCode.Int64:
-                case TypeCode.UInt64:
-                case TypeCode.Single:
-                    return row[col].ToString();
-
-                case TypeCode.Double:
-                case TypeCode.Decimal:
-                    return @row[col].ToString();// "'" + (Convert.ToDouble(@row[col].ToString()).ToString("C")) + "'";
-
-                case TypeCode.Boolean:
-                    return (Convert.ToBoolean(@row[col]) ? "Yes" : "No");
-
-                case TypeCode.DateTime:
-                    try
-                    {
-                        return "'" + @Convert.ToDateTime(@row[col]).ToShortDateString() + "'";
-                    }
-                    catch
-                    {
-                        return "'" + @row[col] + "'";
-                    }
-
-                case TypeCode.String:
-                default:
-                    return "'" + @row[col].ToString().Replace("'", "") + "'";
-            }
-        }
-
-        public static string GetFormattedValue(DataColumn col, DataRow row)
-        {
-            if (row[col] != null && row[col] != DBNull.Value)
-            {
-                switch (Type.GetTypeCode(col.DataType))
-                {
-                    case TypeCode.Int16:
-                    case TypeCode.UInt16:
-                    case TypeCode.Int32:
-                    case TypeCode.UInt32:
-                    case TypeCode.Int64:
-                    case TypeCode.UInt64:
-                    case TypeCode.Single:
-                        return row[col].ToString();
-
-
-                    case TypeCode.Double:
-                    case TypeCode.Decimal:
-                        try
-                        {
-                            return col.ColumnName.Contains("%")
-                                ? (Convert.ToDouble(row[col].ToString()) / 100).ToString("P2")
-                                : Convert.ToDouble(row[col].ToString()).ToString("C");
-                        }
-                        catch
-                        {
-                            return row[col] != null ? row[col].ToString() : null;
-                        }
-
-
-                    case TypeCode.Boolean:
-                        return (Convert.ToBoolean(row[col]) ? "Yes" : "No");
-
-
-                    case TypeCode.DateTime:
-                        try
-                        {
-                            return Convert.ToDateTime(row[col]).ToShortDateString();
-                        }
-                        catch
-                        {
-                            return row[col] != null ? row[col].ToString() : null;
-                        }
-
-                    case TypeCode.String:
-                    default:
-                        if (row[col].ToString() == "System.Byte[]")
-                        {
-
-                            return "<img src=\"data:image/png;base64," + Convert.ToBase64String((byte[])row[col], 0, ((byte[])row[col]).Length) + "\" style=\"max-width: 200px;\" />";
-                        }
-                        else
-                        {
-                            return row[col] != null ? row[col].ToString() : null;
-                        }
-
-                }
-            }
-            return "";
-        }        
+        } 
 
         private DotNetReportDataModel DataTableToDotNetReportDataModel(DataTable dt, List<string> sqlFields)
         {
@@ -659,7 +539,7 @@ namespace ReportBuilder.Web.Controllers
                     SqlField = sqlField.Substring(0, sqlField.IndexOf("AS")).Trim(),
                     ColumnName = col.ColumnName,
                     DataType = col.DataType.ToString(),
-                    IsNumeric = IsNumericType(col.DataType)
+                    IsNumeric = DotNetReportHelper.IsNumericType(col.DataType)
                 });
 
             }
@@ -676,8 +556,8 @@ namespace ReportBuilder.Web.Controllers
                     {
                         Column = model.Columns[i],
                         Value = row[col] != null ? row[col].ToString() : null,
-                        FormattedValue = GetFormattedValue(col, row),
-                        LabelValue = GetLabelValue(col, row)
+                        FormattedValue = DotNetReportHelper.GetFormattedValue(col, row),
+                        LabelValue = DotNetReportHelper.GetLabelValue(col, row)
                     });
                     i += 1;
                 }

@@ -48,7 +48,7 @@
         <div class="form-group">
             <!-- ko if: !hasForeignKey-->
             <!-- ko if: fieldType=='DateTime'-->
-            <!-- ko if: ['=','>','<','>=','<='].indexOf($parent.Operator()) != -1 -->
+            <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 -->
             <input class="form-control" data-bind="datepicker: $parent.Value" required />
             <!-- /ko -->
             <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
@@ -74,7 +74,7 @@
             <!-- /ko -->
             <!-- /ko -->
             <!-- ko if: ['Int','Money','Float'].indexOf(fieldType) != -1 -->
-            <!-- ko if: ['=','>','<','>=','<='].indexOf($parent.Operator()) != -1 -->
+            <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 && ['is blank', 'is not blank'].indexOf($parent.Operator()) == -1 -->
             <input class="form-control" type="number" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default'" required />
             <!-- /ko -->
             <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
@@ -84,7 +84,7 @@
             <input class="form-control" type="number" data-bind="value: $parent.Value2" required />
             <!-- /ko -->
             <!-- /ko -->
-            <!-- ko if: fieldType=='Boolean' -->
+            <!-- ko if: fieldType=='Boolean' && ['is blank', 'is not blank'].indexOf($parent.Operator()) == -1 -->
             <select required class="form-control" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default'">
                 <option value="1">Yes</option>
                 <option value="0">No</option>
@@ -126,7 +126,7 @@
     <script type="text/html" id="report-column-header">
         <!-- ko foreach: Columns -->
         <th data-bind="attr: { id: fieldId }, css: {'right-align': IsNumeric}, style: {'width': fieldWidth, 'background-color': headerBackColor }" style="border-right: 1px solid;">
-            <a href="" data-bind="click: function(){ $parents[1].pager ? $parents[1].changeSort(SqlField) : $parents[2].changeSort(SqlField); }, style: {'color': headerFontColor, 'font-bold': fontBold }">
+            <a href="" data-bind="click: function(){ $parents[1].pager ? $parents[1].changeSort(SqlField) : $parents[2].changeSort(SqlField); }, style: {'color': headerFontColor, 'font-weight': headerFontBold ? 'bold' : 'normal'}">
                 <span data-bind="text: fieldLabel ? fieldLabel : ColumnName"></span>
                 <span data-bind="text: ($parents[1].pager ? $parents[1].pager.sortColumn() : $parents[2].pager.sortColumn()) === SqlField ? (($parents[1].pager ? $parents[1].pager.sortDescending() : $parents[2].pager.sortDescending()) ? '&#9660;' : '&#9650;') : ''"></span>
             </a>
@@ -135,7 +135,7 @@
     </script>
     <script type="text/html" id="report-column">
         <!-- ko foreach: Items -->
-        <td data-bind="style: {'background-color': backColor, 'color': fontColor, 'font-bold': fontBold, 'text-align': $parents[3].pager && $parents[3].ReportType()=='Single' ? 'center' : Column.IsNumeric ? 'right' : 'left', 'font-size':$parents[3].pager && $parents[3].ReportType()=='Single' ? '64px' : ''}">
+        <td data-bind="style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold ? 'bold' : 'normal', 'text-align': $parents[3].pager && $parents[3].ReportType()=='Single' ? 'center' : Column.IsNumeric ? 'right' : 'left', 'font-size':$parents[3].pager && $parents[3].ReportType()=='Single' ? '64px' : ''}">
             <!-- ko if: LinkTo-->
             <a data-bind="attr: {href: LinkTo}"><span data-bind="html: FormattedValue"></span></a>
             <!-- /ko-->
@@ -207,18 +207,18 @@
                                     <div class="pull-left">
                                         @using (Html.BeginForm("DownloadExcel", "Report", FormMethod.Post))
                                         {
-                                            <input type="hidden" id="reportSql" name="reportSql" data-bind="value: $parent.sql" />
-                                            <input type="hidden" id="connectKey" name="connectKey" data-bind="value: $parent.connectKey" />
-                                            <input type="hidden" id="reportName" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parentContext.$parentContext.$parent.ReportName()" />
+                                            <input type="hidden" name="reportSql" data-bind="value: $parent.sql" />
+                                            <input type="hidden" name="connectKey" data-bind="value: $parent.connectKey" />
+                                            <input type="hidden" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parentContext.$parentContext.$parent.ReportName()" />
                                             <button type="submit" class="btn btn-xs" title="Download Excel"><span class="fa fa-file-excel-o"></span></button>
                                         }
                                     </div>
                                     <div class="pull-left">
                                         @using (Html.BeginForm("DownloadXml", "Report", FormMethod.Post))
                                         {
-                                            <input type="hidden" id="reportSql" name="reportSql" data-bind="value: $parent.sql" />
-                                            <input type="hidden" id="connectKey" name="connectKey" data-bind="value: $parent.connectKey" />
-                                            <input type="hidden" id="reportName" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parentContext.$parentContext.$parent.ReportName()" />
+                                            <input type="hidden" name="reportSql" data-bind="value: $parent.sql" />
+                                            <input type="hidden" name="connectKey" data-bind="value: $parent.connectKey" />
+                                            <input type="hidden" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parentContext.$parentContext.$parent.ReportName()" />
                                             <button type="submit" class="btn btn-xs" title="Download XML"><span class="fa fa-file-code-o"></span></button>
                                         }
                                     </div>
@@ -444,7 +444,8 @@
     <script type="text/html" id="filter-parameters">
         <div class="table-responsive card" style="margin-left: 20px;">
             <div class="card-body">
-                <table class="table  table-hover table-borderless" data-bind="visible: Parameters().length>0">
+                <span data-bind="hidden: showParameters">No filters available to choose</span>
+                <table class="table  table-hover table-borderless" data-bind="visible: showParameters">
                     <thead>
                         <tr>
                             <th style="width: 30%">Paramter</th>

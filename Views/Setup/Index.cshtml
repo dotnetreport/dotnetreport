@@ -173,7 +173,7 @@
                                 <div class="checkbox">
                                     <label>
                                         <input type="checkbox" data-bind="checked: Selected, enable: $parent.Selected()">
-                                        <span data-bind="editable: DisplayName"></span>
+                                        <span data-bind="editable: DisplayName, attr: {title: 'DB field is ' + ColumnName()}"></span>
                                         <label data-bind="visible: PrimaryKey" class="badge badge-primary">Primary</label>
                                         <label data-bind="visible: ForeignKey" class="badge badge-info">Foreign</label>
                                     </label>
@@ -322,7 +322,7 @@
                                 <!-- ko foreach: Columns -->
                                 <div class="list-group-item">
                                     <label>
-                                        <span data-bind="editable: DisplayName"></span>
+                                        <span data-bind="editable: DisplayName, attr: {title: 'DB field is ' + ColumnName()}"></span>
                                         <span class="badge badge-info" data-bind="text: FieldType"></span>
                                     </label>
                                 </div>
@@ -334,7 +334,7 @@
                                 <!-- ko foreach: Parameters -->
                                 <div class="list-group-item">
                                     <label>
-                                        <span data-bind="editable: DisplayName"></span>
+                                        <span data-bind="editable: DisplayName, attr: {title: 'DB field is ' + ParameterName()}"></span>
                                         <span class="badge badge-info" data-bind="text: ParameterDataTypeString"></span>
                                         &nbsp;
                                         &nbsp;
@@ -609,22 +609,18 @@
                             </div>
                         </div>
                     </div>
-                    @*<div class="control-group">
+                    <div class="control-group">
                         <div class="form-group row">
-                            <label class="col-md-3 col-sm-3 control-label" for="Field_Type" data-bind="">Field Type</label>
+                            <label class="col-md-3 col-sm-3 control-label" data-bind="">Hidden Parameter</label>
                             <div class="col-md-6 col-sm-6">
-                                <select class="form-control" data-bind="value: ParameterDataTypeString">
-                                    <option value="Boolean">Boolean</option>
-                                    <option value="DateTime">Date Time</option>
-                                    <option value="Varchar">Varchar</option>
-                                    <option value="String">String</option>
-                                    <option value="Money">Money</option>
-                                    <option value="Int">Int</option>
-                                    <option value="Double">Double</option>
-                                </select>
+                                <div class="checkbox">
+                                    <label>
+                                        <input class="check-box" data-val="true" type="checkbox" value="true" data-bind="checked: Hidden, enable: ParameterValue">
+                                    </label>
+                                </div>
                             </div>
                         </div>
-                    </div>*@
+                    </div>
                     <div class="control-group">
                         <div class="form-group row">
                             <label class="col-md-3 col-sm-3 control-label" data-bind="">Required</label>

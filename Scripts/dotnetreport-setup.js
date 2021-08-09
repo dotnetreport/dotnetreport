@@ -550,6 +550,12 @@ var proceduresViewModel = function (options) {
 			e.JoinTable.subscribe(function (newValue) {
 				e.ForeignTable(newValue.TableName);
 			});
+
+			e.ParameterValue.subscribe(function (x) {
+				if (!x) {
+					e.Hidden(false);
+				}
+			});
 		});
 
 		p.deleteTable = function (apiKey, dbKey) {
