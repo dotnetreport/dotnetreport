@@ -1677,9 +1677,9 @@ var reportViewModel = function (options) {
 					}
 					if (self.dateFormatTypes.indexOf(col.fieldFormat) >= 0) {
 						switch (col.fieldFormat) {
-							case 'Date': r.FormattedValue = r.FormattedValue; break;
-							case 'Date and Time': r.FormattedValue = r.FormattedValue; break;
-							case 'Time': r.FormattedValue = r.FormattedValue; break;
+							case 'Date': r.FormattedValue = (new Date(r.Value)).toLocaleDateString("en-US", { year: 'numeric', month: 'numeric', day: 'numeric' }); break;
+							case 'Date and Time': r.FormattedValue = (new Date(r.Value)).toLocaleDateString("en-US", { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
+							case 'Time': r.FormattedValue = (new Date(r.Value)).toLocaleTimeString("en-US", { hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
 						}
 					}
 				});
