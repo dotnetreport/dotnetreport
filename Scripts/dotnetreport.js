@@ -921,7 +921,7 @@ var reportViewModel = function (options) {
 		self.SelectedFields([]);
 
 		var selectedFields = _.map(proc.Columns, function (e) {
-			var match = ko.toJS(proc.SelectedFields && proc.SelectedFields.length ? _.find(proc.SelectedFields, { fieldName: e.ColumnName }) : null);
+			var match = ko.toJS(proc.SelectedFields && proc.SelectedFields.length ? _.find(proc.SelectedFields, { fieldName: e.DisplayName }) : null);
 			var field = match || self.getEmptyFormulaField();
 			field.fieldName = e.DisplayName;
 			field.tableName = proc.DisplayName;
