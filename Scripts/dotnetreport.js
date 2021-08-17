@@ -925,7 +925,8 @@ var reportViewModel = function (options) {
 			var field = match || self.getEmptyFormulaField();
 			field.fieldName = e.DisplayName;
 			field.tableName = proc.DisplayName;
-			field.procColumnId = e.Id
+			field.procColumnId = e.Id;
+			field.procColumnName = e.ColumnName;
 			return self.setupField(field)
 		});
 
@@ -1616,7 +1617,11 @@ var reportViewModel = function (options) {
 
 			function processCols(cols) {
 				_.forEach(cols, function (e, i) {
-					var col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.fieldName, e.ColumnName); });
+					var col;
+					if (self.useStoredProc()) 
+						col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.procColumnName, e.ColumnName); });
+					else 
+						col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.fieldName, e.ColumnName); });
 					if (col && col.linkField()) {
 						e.linkItem = col.linkFieldItem.toJs();
 						e.linkField = true;
@@ -1632,6 +1637,7 @@ var reportViewModel = function (options) {
 					e.fieldConditionVal = col.fieldConditionVal;
 					e.fieldFormat = col.fieldFormat;
 					e.fieldLabel = col.fieldLabel;
+					e.fieldName = col.fieldName;
 					e.fieldWidth = col.fieldWidth;
 					e.fontBold = col.fontBold;
 					e.headerFontBold = col.headerFontBold;
@@ -2397,7 +2403,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.loadProcs = function () {
-		ajaxcall({
+		return ajaxcall({
 			url: options.apiUrl,
 			data: {
 				method: "/ReportApi/GetProcedures",
