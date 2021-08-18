@@ -1644,6 +1644,8 @@ var reportViewModel = function (options) {
 					e.headerFontColor = col.headerFontColor;
 					e.headerBackColor = col.headerBackColor;
 					e.fieldId = col.fieldId;
+					e.fontColor = col.fontColor;
+					e.backColor = col.backColor;
 				});
 			}
 
