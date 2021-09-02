@@ -357,6 +357,7 @@ namespace ReportBuilder.Web.Controllers
                                 ParamterDataTypeOleDbType = param.OleDbType,
                                 ParameterDataTypeString = GetType(ConvertToJetDataType(Convert.ToInt32(param.OleDbType))).Name
                             };
+                            if (parameter.ParameterDataTypeString.StartsWith("Int")) parameter.ParameterDataTypeString = "Int";
                             parameterViewModels.Add(parameter);
                         }
                     }
