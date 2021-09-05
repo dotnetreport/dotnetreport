@@ -1,4 +1,4 @@
-﻿/// dotnet Report Builder view model v4.2.0
+﻿/// dotnet Report Builder view model v4.2.2
 /// License has to be purchased for use
 /// 2018-2021 (c) www.dotnetreport.com
 function pagerViewModel(args) {
@@ -939,18 +939,26 @@ var reportViewModel = function (options) {
 			e.operators = ['='];
 			if (e.ParameterValue) e.operators.push('is default');
 			if (!e.Required) e.operators.push('is blank');
-			e.Operator = ko.observable(match ? match.Operator : '=');
-			e.Value = ko.observable(match ? match.Value : e.ParameterValue);
+
+			if (e.Operator) {
+				e.Operator(match ? match.Operator : '=');
+				e.Value(match ? match.Value : e.ParameterValue);
+			}
+			else {
+				e.Operator = ko.observable(match ? match.Operator : '=');
+				e.Value = ko.observable(match ? match.Value : e.ParameterValue);
+
+				e.Operator.subscribe(function (newValue) {
+					if (newValue == 'is default') {
+						e.Value(e.ParameterValue);
+					}
+				});
+			}
+
 			e.Field = {
 				hasForeignKey: e.ForeignKey,
 				fieldType: e.ParameterDataTypeString
 			}
-			e.Operator.subscribe(function (newValue) {
-				if (newValue == 'is default') {
-					e.Value(e.ParameterValue);
-				}
-			});
-
 			e.LookupList = ko.observableArray([]);
 			if (e.Value()) {
 				e.LookupList.push({ id: e.Value(), text: e.Value() });
@@ -1618,9 +1626,9 @@ var reportViewModel = function (options) {
 			function processCols(cols) {
 				_.forEach(cols, function (e, i) {
 					var col;
-					if (self.useStoredProc()) 
+					if (self.useStoredProc())
 						col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.procColumnName, e.ColumnName); });
-					else 
+					else
 						col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.fieldName, e.ColumnName); });
 					if (col && col.linkField()) {
 						e.linkItem = col.linkFieldItem.toJs();
