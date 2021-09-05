@@ -20,7 +20,7 @@
     function printReport() {
         var printWindow = window.open("");
         printWindow.document.open();
-        var header = document.getElementById('report-header').toDataURL();  
+        var header = document.getElementById('report-header').toDataURL();
 
         printWindow.document.write('<html><head>'+
                                 '<link href="/Content/bootstrap.css" rel="stylesheet" />'+
@@ -71,11 +71,11 @@
         });
 
         vm.loadProcs().done(function () {
-                                vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {
-                                    ko.applyBindings(vm);
-                                    vm.headerDesigner.resizeCanvas();
-                                });
-            });       
+            vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {
+                ko.applyBindings(vm);
+                vm.headerDesigner.resizeCanvas();
+            });
+        });
 
         $(window).resize(function(){
             vm.DrawChart();
