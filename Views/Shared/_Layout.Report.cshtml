@@ -455,7 +455,7 @@
                         </tr>
                     </thead>
                     <tbody data-bind="foreach: Parameters">
-                        <tr>
+                        <tr data-bind="ifnot: Hidden">
                             <td data-bind="text: DisplayName">
                             </td>
                             <td>
