@@ -939,6 +939,7 @@ var reportViewModel = function (options) {
 			e.operators = ['='];
 			if (e.ParameterValue) e.operators.push('is default');
 			if (!e.Required) e.operators.push('is blank');
+			if (!e.Required) e.operators.push('is null');
 
 			if (e.Operator) {
 				e.Operator(match ? match.Operator : '=');
