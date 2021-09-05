@@ -437,7 +437,7 @@
                                     <div class="pull-left" style="margin-left: 15px;" data-bind="visible: $parent.showFormulaOperation($index())">
                                         <select class="form-control form-control-sm" style="max-width: 50px;" data-bind="value: setupFormula.formulaOperation">
                                             <option>+</option>
-                                            <!-- ko if: ['Int','Money','Float'].indexOf(fieldType) != -1 -->
+                                            <!-- ko if: ['Int','Money','Float','Double'].indexOf(fieldType) != -1 -->
                                             <option>-</option>
                                             <option>*</option>
                                             <option>/</option>
