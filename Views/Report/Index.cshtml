@@ -238,6 +238,7 @@
                                     <div class="d-none d-md-block">
                                         <br />
                                         <!-- ko if: $root.CanSaveReports() || $root.adminMode()-->
+                                        <!-- ko ifnot: reportType == 'Combined' -->
                                         <button class="btn btn-sm btn-secondary" data-bind="click: openReport, visible: canEdit" data-toggle="modal" data-target="#modal-reportbuilder">
                                             <span class="fa fa-edit" aria-hidden="true"></span>Edit
                                         </button>
@@ -245,9 +246,20 @@
                                             <span class="fa fa-copy" aria-hidden="true"></span>Copy
                                         </button>
                                         <!-- /ko -->
+                                        <!-- ko if: reportType == 'Combined' -->
+                                        <button type="button" class="btn btn-danger" data-bind="click: function() {editCombinedReport('@Url.Action("Combined","Report")')}, visible: canEdit">
+                                            <span class="fa fa-edit" aria-hidden="true"></span>Edit
+                                        </button>
+                                        <button class="btn btn-sm btn-primary" data-bind="click: function() {runCombinedReport('@Url.Action("Combined","Report")')}">
+                                            <span class="fa fa-gears" aria-hidden="true"></span>Run
+                                        </button>
+                                        <!-- /ko -->
+                                        <!-- /ko -->
+                                        <!-- ko ifnot: reportType == 'Combined' -->
                                         <button class="btn btn-sm btn-primary" data-bind="click: runReport">
                                             <span class="fa fa-gears" aria-hidden="true"></span>Run
                                         </button>
+                                        <!-- /ko -->
                                         <button class="btn btn-sm btn-danger" data-bind="click: deleteReport, visible: canEdit">
                                             <span class="fa fa-trash" aria-hidden="true"></span>Delete
                                         </button>

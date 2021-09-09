@@ -2779,6 +2779,7 @@ var dashboardViewModel = function (options) {
 var combinedViewModel = function (options) {
 	var self = this;
 
+	self.useStoredProc = ko.observable(false);
 	self.dashboards = ko.observableArray(options.dashboards || []);
 	self.adminMode = ko.observable(false);
 	self.currentUserId = options.userId;
