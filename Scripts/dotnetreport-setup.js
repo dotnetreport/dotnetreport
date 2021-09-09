@@ -7,7 +7,11 @@
 	};
 
 	self.DataConnections = ko.observableArray([]);
-	self.Tables = new tablesViewModel(options)
+	self.Tables = new tablesViewModel(options);
+	self.Procedures = new proceduresViewModel(options);
+
+	self.foundProcedures = ko.observableArray([]);
+	self.searchProcedureTerm = ko.observable("");
 	self.Joins = ko.observableArray([]);
 	self.currentConnectionKey = ko.observable(self.keys.DatabaseApiKey);
 	self.canSwitchConnection = ko.computed(function () {
@@ -52,9 +56,12 @@
 	self.JoinTypes = ["INNER", "LEFT", "LEFT OUTER", "RIGHT", "RIGHT OUTER"];
 
 	self.editColumn = ko.observable();
-
 	self.selectColumn = function (e) {
 		self.editColumn(e);
+	}
+	self.editParameter = ko.observable();
+	self.selectParameter = function (e) {
+		self.editParameter(e);
 	}
 
 	self.editAllowedRoles = ko.observable();
@@ -180,6 +187,76 @@
 		});
 	}
 
+	self.searchStoredProcedure = function () {
+		if (!self.searchProcedureTerm()) {
+			toastr.error('Please enter a term to search stored procs');
+			return;
+		}
+
+		ajaxcall({
+			url: "/Setup/SearchProcedure",
+			type: 'POST',
+			data: JSON.stringify({
+				value: self.searchProcedureTerm(),
+				accountKey: self.keys.AccountApiKey,
+				dataConnectKey: self.keys.DatabaseApiKey
+			})
+		}).done(function (result) {
+			_.forEach(result, function (s) {
+				_.forEach(s.Columns, function (c) {
+					c.DisplayName = ko.observable(c.DisplayName);
+				});
+				_.forEach(s.Parameters, function (p) {
+					p.DisplayName = ko.observable(p.DisplayName);
+					p.ParameterValue = ko.observable(p.ParameterValue);
+				});
+
+				s.DisplayName = ko.observable(s.DisplayName);
+			});
+
+			self.foundProcedures(result)
+		});
+	}
+
+	self.saveProcedure = function (procName, adding) {
+		var proc = _.find(adding === true ? self.foundProcedures() : self.Procedures.savedProcedures(), function (e) {
+			return e.TableName === procName;
+		});
+
+		var e = ko.mapping.toJS(proc, {
+			'ignore': ["dataTable", "deleteTable", "JoinTable"]
+		});
+
+		ajaxcall({
+			url: options.saveProcUrl,
+			type: 'POST',
+			data: JSON.stringify({
+				model: e,
+				account: self.keys.AccountApiKey,
+				dataConnect: self.keys.DatabaseApiKey
+			})
+		}).done(function (result) {
+			if (!result) {
+				toastr.error('Error saving Procedure: ' + result.Message);
+				return false;
+			}
+
+			if (adding) {
+				self.Procedures.savedProcedures.remove(_.find(self.Procedures.savedProcedures(), function (e) {
+					return e.TableName() === procName;
+				}));
+				proc.Id = result;
+				proc = ko.mapping.fromJS(proc);
+				self.Procedures.setupProcedure(proc);
+				self.Procedures.savedProcedures.push(proc);
+			}
+
+			toastr.success("Saved Procedure " + e.TableName);
+		});
+
+		return false;
+	}
+
 	self.LoadJoins = function () {
 		// Load and setup Relations
 
@@ -208,7 +285,7 @@
 	};
 
 	self.getJoinsToSave = function () {
-		$.each(self.Joins(), function (i, x) {
+		_.forEach(self.Joins(), function (x) {
 			x.TableId(x.JoinTable().Id());
 			x.JoinedTableId(x.OtherTable().Id());
 		});
@@ -229,7 +306,7 @@
 	}
 
 	self.SaveJoins = function () {
-		
+
 		var joinsToSave = self.getJoinsToSave();
 
 		ajaxcall({
@@ -247,7 +324,7 @@
 
 
 	self.saveChanges = function () {
-		
+
 		var tablesToSave = $.map(self.Tables.model(), function (x) {
 			if (x.Selected()) {
 				return x;
@@ -261,14 +338,14 @@
 
 		bootbox.confirm("Are you sure you would like to continue with saving your changes?<br><b>Note: </b>This will make changes to your account that cannot be undone.", function (r) {
 			if (r) {
-				$.each(tablesToSave, function (i, e) {
+				_.forEach(tablesToSave, function (e) {
 					e.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey);
 				});
 			}
 		})
 	}
 
-	self.download = function(content, fileName, contentType) {
+	self.download = function (content, fileName, contentType) {
 		var a = document.createElement("a");
 		var file = new Blob([content], { type: contentType });
 		a.href = URL.createObjectURL(file);
@@ -304,7 +381,7 @@
 		var reader = new FileReader();
 		reader.onload = function (event) {
 			var importedData = JSON.parse(event.target.result);
-			$.each(importedData.tables, function (i, e) {
+			_.forEach(importedData.tables, function (e) {
 				var tableMatch = _.filter(self.Tables.model(), function (x) {
 					return x.TableName().toLowerCase() == e.TableName.toLowerCase();
 				});
@@ -333,7 +410,7 @@ var tablesViewModel = function (options) {
 	var self = this;
 	self.model = ko.mapping.fromJS(options.model.Tables);
 
-	$.each(self.model(), function (i, t) {
+	_.forEach(self.model(), function (t) {
 
 		t.availableColumns = ko.computed(function () {
 			return _.filter(t.Columns(), function (e) {
@@ -341,7 +418,7 @@ var tablesViewModel = function (options) {
 			});
 		});
 
-		$.each(t.Columns(), function (i, e) {
+		_.forEach(t.Columns(), function (e) {
 			var tableMatch = _.filter(self.model(), function (x) { return x.TableName() == e.ForeignTable(); });
 			e.JoinTable = ko.observable(tableMatch != null && tableMatch.length > 0 ? tableMatch[0] : null);
 			e.JoinTable.subscribe(function (newValue) {
@@ -372,7 +449,7 @@ var tablesViewModel = function (options) {
 					}
 				});
 
-				
+
 				return;
 			}
 
@@ -420,10 +497,10 @@ var tablesViewModel = function (options) {
 	}
 
 	self.selectAll = function () {
-		$.each(self.model(), function (i, e) {
+		_.forEach(self.model(), function (e) {
 			if (!e.Selected()) {
 				e.Selected(true);
-				$.each(e.Columns(), function (j, c) {
+				_.forEach(e.Columns(), function (c) {
 					c.Selected(true);
 				});
 			}
@@ -431,30 +508,82 @@ var tablesViewModel = function (options) {
 	}
 
 	self.unselectAll = function () {
-		$.each(self.model(), function (i, e) {
+		_.forEach(self.model(), function (e) {
 			e.Selected(false);
-			$.each(e.Columns(), function (j, c) {
+			_.forEach(e.Columns(), function (c) {
 				c.Selected(false);
 			});
 		});
 	}
 
 	self.selectAllColumns = function (e) {
-		$.each(e.Columns(), function (j, c) {
+		_.forEach(e.Columns(), function (c) {
 			c.Selected(true);
 		});
 	}
 
 	self.unselectAllColumns = function (e) {
-		$.each(e.Columns(), function (j, c) {
+		_.forEach(e.Columns(), function (c) {
 			c.Selected(false);
 		});
 	}
 
 	self.columnSorted = function (args) {
-		$.each(args.targetParent(), function (i, e) {
+		_.forEach(args.targetParent(), function (e) {
 			e.DisplayOrder(i);
 		});
 
 	}
+}
+
+var proceduresViewModel = function (options) {
+	var self = this;
+	self.savedProcedures = ko.mapping.fromJS(options.model.Procedures, {
+		'ignore': ["TableName"]
+	});
+
+	self.tables = options.model.Tables;
+	self.setupProcedure = function (p) {
+		_.forEach(p.Parameters(), function (e) {
+			var tableMatch = _.filter(self.tables, function (x) { return x.TableName == e.ForeignTable(); });
+			e.JoinTable = ko.observable(tableMatch != null && tableMatch.length > 0 ? tableMatch[0] : null);
+			e.JoinTable.subscribe(function (newValue) {
+				e.ForeignTable(newValue.TableName);
+			});
+
+			e.ParameterValue.subscribe(function (x) {
+				if (!x) {
+					e.Hidden(false);
+				}
+			});
+		});
+
+		p.deleteTable = function (apiKey, dbKey) {
+			var e = ko.mapping.toJS(p);
+
+			bootbox.confirm("Are you sure you would like to delete Procedure '" + e.TableName + "'? <br><br>WARNING: Deleting the stored procedure will also delete all Reports using this Stored Proc.", function (r) {
+				if (r) {
+					ajaxcall({
+						url: options.deleteProcUrl,
+						type: 'POST',
+						data: JSON.stringify({
+							procId: e.Id,
+							account: apiKey,
+							dataConnect: dbKey
+						})
+					}).done(function () {
+						toastr.success("Deleted procedure " + e.TableName);
+						self.savedProcedures.remove(p);
+					});
+				}
+			});
+
+			return;
+		}
+	}
+
+	_.forEach(self.savedProcedures(), function (p) {
+		self.setupProcedure(p);
+	});
+
 }
