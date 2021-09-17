@@ -1537,6 +1537,7 @@ var reportViewModel = function (options) {
 					if (saveOnly && seriesCount === 0) {
 						//SeriesCount = 0;
 						toastr.success("Report Saved");
+						self.AllSqlQuries("");
 						self.LoadAllSavedReports();
 					}
 				}
@@ -1555,7 +1556,6 @@ var reportViewModel = function (options) {
 		$.when.apply($, promises).done(function () {
 			if (isExecuteReportQuery === false) {
 				if (saveOnly) {
-					toastr.success("Report Saved");
 					return;
 				}
 				redirectToReport(options.runReportUrl, {
