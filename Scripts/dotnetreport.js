@@ -970,7 +970,7 @@ var reportViewModel = function (options) {
 					url: options.apiUrl,
 					data: {
 						method: "/ReportApi/GetPrmLookupList",
-						model: JSON.stringify({ parameterId: e.Id, procId: proc.Id })
+						model: JSON.stringify({ parameterId: e.Id, procId: proc.Id, dataFilters: options.dataFilters })
 					}
 				}).done(function (result) {
 					if (result.d) { result = result.d; }
