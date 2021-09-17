@@ -126,10 +126,15 @@
     <script type="text/html" id="report-column-header">
         <!-- ko foreach: Columns -->
         <th data-bind="attr: { id: fieldId }, css: {'right-align': IsNumeric}, style: {'width': fieldWidth, 'background-color': headerBackColor }" style="border-right: 1px solid;">
+            <!-- ko if: $parents[1].useStoredProc ? $parents[1].useStoredProc() : ($parents[2].useStoredProc ? $parents[2].useStoredProc() : false) -->
+            <span data-bind="text: fieldLabel ? fieldLabel : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold ? 'bold' : 'normal'}"></span>
+            <!-- /ko -->
+            <!-- ko ifnot: $parents[1].useStoredProc ? $parents[1].useStoredProc() : ($parents[2].useStoredProc ? $parents[2].useStoredProc() : false)  -->
             <a href="" data-bind="click: function(){ $parents[1].pager ? $parents[1].changeSort(SqlField) : $parents[2].changeSort(SqlField); }, style: {'color': headerFontColor, 'font-weight': headerFontBold ? 'bold' : 'normal'}">
-                <span data-bind="text: ($root.useStoredProc() ? (fieldLabel ? fieldLabel : fieldName) : (fieldLabel ? fieldLabel : ColumnName))"></span>
+                <span data-bind="text: fieldLabel ? fieldLabel : ColumnName"></span>
                 <span data-bind="text: ($parents[1].pager ? $parents[1].pager.sortColumn() : $parents[2].pager.sortColumn()) === SqlField ? (($parents[1].pager ? $parents[1].pager.sortDescending() : $parents[2].pager.sortDescending()) ? '&#9660;' : '&#9650;') : ''"></span>
             </a>
+            <!-- /ko -->
         </th>
         <!-- /ko -->
     </script>

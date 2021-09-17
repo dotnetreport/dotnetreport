@@ -2123,8 +2123,111 @@ var reportViewModel = function (options) {
 		return e;
 	};
 
-	self.LoadReport = function (reportId, filterOnFly, reportSeries) {
+	self.PopulateReport = function (report, filterOnFly, reportSeries) {
+		self.ReportID(report.ReportID);
+		self.ReportType(report.ReportType);
+		self.ReportName(report.ReportName);
+		self.ReportDescription(report.ReportDescription);
+		self.FolderID(report.FolderID);
 
+		self.ChosenFields([]);
+		self.SelectFields([]);
+		self.SelectedField(null);
+
+		self.manageAccess.setupList(self.manageAccess.users, report.UserId || '');
+		self.manageAccess.setupList(self.manageAccess.userRoles, report.UserRoles || '');
+		self.manageAccess.setupList(self.manageAccess.viewOnlyUserRoles, report.ViewOnlyUserRoles || '');
+		self.manageAccess.setupList(self.manageAccess.viewOnlyUsers, report.ViewOnlyUserId || '');
+
+		self.IncludeSubTotal(report.IncludeSubTotals);
+		self.EditFiltersOnReport(report.EditFiltersOnReport);
+		self.ShowUniqueRecords(report.ShowUniqueRecords);
+		self.AggregateReport(report.IsAggregateReport);
+		self.ShowDataWithGraph(report.ShowDataWithGraph);
+		self.ShowOnDashboard(report.ShowOnDashboard);
+		self.SortByField(report.SortBy);
+		self.SortDesc(report.SortDesc);
+		self.pager.sortDescending(report.SortDesc);
+		self.CanEdit(((!options.clientId || report.ClientId == options.clientId) && (!options.userId || report.UserId == options.userId)) || self.adminMode());
+		self.FilterGroups([]);
+		self.AdditionalSeries([]);
+		self.SortFields([]);
+		self.scheduleBuilder.fromJs(report.Schedule);
+		self.HideReportHeader(report.HideReportHeader);
+		self.useReportHeader(report.UseReportHeader && !report.HideReportHeader);
+
+		if (self.ReportMode() == "execute") {
+			if (self.useReportHeader()) {
+				self.headerDesigner.init(true);
+				self.headerDesigner.loadCanvas(true);
+			} else {
+				self.headerDesigner.dispose();
+			}
+		}
+
+		var filterFieldsOnFly = [];
+
+		function addSavedFilters(filters, group) {
+			if (!filters || filters.length == 0) return;
+
+			_.forEach(filters, function (e) {
+				if (!e.FieldId) {
+					group = (group == null) ? self.FilterGroups()[0] : group.AddFilterGroup({ AndOr: e.AndOr });
+				} else if (filterFieldsOnFly.indexOf(e.FieldId) < 0) {
+					var onFly = _.filter(self.SelectedFields(), function (x) { return x.filterOnFly() == true && x.fieldId == e.FieldId; }).length > 0;
+					if (onFly) filterFieldsOnFly.push({ fieldId: e.FieldId });
+
+					if (group == null) group = self.FilterGroups()[0];
+					group.AddFilter(e, onFly);
+				}
+
+				addSavedFilters(e.Filters, group);
+			});
+		}
+
+		if (filterOnFly == true) {
+			if (options.reportFilter && options.reportFilter != '[]') {
+				// get fields on the fly submitted by user before
+				var filters = JSON.parse(options.reportFilter);
+				_.forEach(filters, function (e) {
+					var match = _.filter(filterFieldsOnFly, function (x) { return x.fieldId == e.Field.fieldId });
+					if (match.length > 0) {
+						e.FieldId = e.Field.fieldId;
+						e.Value1 = e.Value;
+						filterFieldsOnFly.push(match[0]);
+						self.FilterGroups()[0].AddFilter(e, true);
+					}
+				});
+			}
+
+			addSavedFilters(report.Filters);
+		}
+		else {
+			addSavedFilters(report.Filters);
+		}
+
+		_.forEach(report.Series, function (e) {
+			self.AddSeries(e);
+		});
+
+		_.forEach(report.SelectedSorts, function (e) {
+			self.addSortField(e.FieldId, e.Descending);
+		});
+
+		self.SaveReport(!filterOnFly && self.CanEdit());
+
+		if (!reportSeries && self.AdditionalSeries().length > 0) {
+			reportSeries = (_.map(self.AdditionalSeries(), function (e, i) {
+				return e.Value();
+			})).join(",");
+		}
+
+		if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard") {
+			return self.ExecuteReportQuery(options.reportSql, options.reportConnect, reportSeries);
+		}
+	}
+
+	self.LoadReport = function (reportId, filterOnFly, reportSeries) {
 		return ajaxcall({
 			url: options.apiUrl,
 			data: {
@@ -2139,129 +2242,31 @@ var reportViewModel = function (options) {
 			if (report.d) { report = report.d; }
 			self.useStoredProc(report.UseStoredProc);
 
-			self.ReportID(report.ReportID);
-			self.ReportType(report.ReportType);
-			self.ReportName(report.ReportName);
-			self.ReportDescription(report.ReportDescription);
-			self.FolderID(report.FolderID);
-
 			if (self.useStoredProc()) {
-				var proc = _.find(self.Procs(), { Id: report.StoredProcId });
-				if (proc) {
-					proc.SelectedFields = report.SelectedFields;
-					proc.SelectedParameters = report.SelectedParameters;
-					self.SelectedProc(proc);
+				function continueWithProc() {
+					var proc = _.find(self.Procs(), { Id: report.StoredProcId });
+					if (proc) {
+						proc.SelectedFields = report.SelectedFields;
+						proc.SelectedParameters = report.SelectedParameters;
+						self.SelectedProc(proc);
+						return self.PopulateReport(report, filterOnFly, reportSeries);
+					}
 				}
+				if (self.Procs().length == 0) {
+					self.loadProcs().done(function () {
+						continueWithProc();
+					});
+				} else {
+					continueWithProc();
+				}
+
 			} else {
 				_.forEach(report.SelectedFields, function (e) {
 					e = self.setupField(e);
 				});
 
 				self.SelectedFields(report.SelectedFields);
-			}
-			self.ChosenFields([]);
-			self.SelectFields([]);
-			self.SelectedField(null);
-
-			self.manageAccess.setupList(self.manageAccess.users, report.UserId || '');
-			self.manageAccess.setupList(self.manageAccess.userRoles, report.UserRoles || '');
-			self.manageAccess.setupList(self.manageAccess.viewOnlyUserRoles, report.ViewOnlyUserRoles || '');
-			self.manageAccess.setupList(self.manageAccess.viewOnlyUsers, report.ViewOnlyUserId || '');
-
-			self.IncludeSubTotal(report.IncludeSubTotals);
-			self.EditFiltersOnReport(report.EditFiltersOnReport);
-			self.ShowUniqueRecords(report.ShowUniqueRecords);
-			self.AggregateReport(report.IsAggregateReport);
-			self.ShowDataWithGraph(report.ShowDataWithGraph);
-			self.ShowOnDashboard(report.ShowOnDashboard);
-			self.SortByField(report.SortBy);
-			self.SortDesc(report.SortDesc);
-			self.pager.sortDescending(report.SortDesc);
-			self.CanEdit(((!options.clientId || report.ClientId == options.clientId) && (!options.userId || report.UserId == options.userId)) || self.adminMode());
-			self.FilterGroups([]);
-			self.AdditionalSeries([]);
-			self.SortFields([]);
-			self.scheduleBuilder.fromJs(report.Schedule);
-			self.HideReportHeader(report.HideReportHeader);
-			self.useReportHeader(report.UseReportHeader && !report.HideReportHeader);
-
-			if (self.ReportMode() == "execute") {
-				if (self.useReportHeader()) {
-					self.headerDesigner.init(true);
-					self.headerDesigner.loadCanvas(true);
-				} else {
-					self.headerDesigner.dispose();
-				}
-			}
-
-			var filterFieldsOnFly = [];
-
-			function addSavedFilters(filters, group) {
-				if (!filters || filters.length == 0) return;
-
-				_.forEach(filters, function (e) {
-					if (!e.FieldId) {
-						group = (group == null) ? self.FilterGroups()[0] : group.AddFilterGroup({ AndOr: e.AndOr });
-					} else if (filterFieldsOnFly.indexOf(e.FieldId) < 0) {
-						var onFly = _.filter(self.SelectedFields(), function (x) { return x.filterOnFly() == true && x.fieldId == e.FieldId; }).length > 0;
-						if (onFly) filterFieldsOnFly.push({ fieldId: e.FieldId });
-
-						if (group == null) group = self.FilterGroups()[0];
-						group.AddFilter(e, onFly);
-					}
-
-					addSavedFilters(e.Filters, group);
-				});
-			}
-
-			if (filterOnFly == true) {
-				if (options.reportFilter && options.reportFilter != '[]') {
-					// get fields on the fly submitted by user before
-					var filters = JSON.parse(options.reportFilter);
-					_.forEach(filters, function (e) {
-						var match = _.filter(filterFieldsOnFly, function (x) { return x.fieldId == e.Field.fieldId });
-						if (match.length > 0) {
-							e.FieldId = e.Field.fieldId;
-							e.Value1 = e.Value;
-							filterFieldsOnFly.push(match[0]);
-							self.FilterGroups()[0].AddFilter(e, true);
-						}
-					});
-				}
-
-				addSavedFilters(report.Filters);
-
-				// get fields with filter on fly applied and set it up as filters
-				//var flyFilters = _.filter(self.SelectedFields(), function (x) { return x.filterOnFly() == true && _.filter(filterFieldsOnFly, function (y) { return y.fieldId == x.fieldId }).length > 0; });
-				//if (flyFilters.length > 0) {
-				//	var flyGroup = self.FilterGroups()[0].AddFilterGroup({ AndOr: 'Or' });
-				//	_.forEach(flyFilters, function (e) {
-				//		flyGroup.AddFilter(e, true);									
-				//	});
-				//}				
-			}
-			else {
-				addSavedFilters(report.Filters);
-			}
-
-			_.forEach(report.Series, function (e) {
-				self.AddSeries(e);
-			});
-
-			_.forEach(report.SelectedSorts, function (e) {
-				self.addSortField(e.FieldId, e.Descending);
-			});
-
-			self.SaveReport(!filterOnFly && self.CanEdit());
-
-			if (!reportSeries && self.AdditionalSeries().length > 0) {
-				reportSeries = (_.map(self.AdditionalSeries(), function (e, i) {
-					return e.Value();
-				})).join(",");
-			}
-
-			if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard") {
-				return self.ExecuteReportQuery(options.reportSql, options.reportConnect, reportSeries);
+				return self.PopulateReport(report, filterOnFly, reportSeries);
 			}
 		});
 	};
@@ -2705,6 +2710,13 @@ var dashboardViewModel = function (options) {
 	};
 
 	self.init = function () {
+		var adminMode = false;
+		if (localStorage) adminMode = localStorage.getItem('reportAdminMode');
+
+		if (adminMode === 'true') {
+			self.adminMode(true);
+		}
+
 		var getReports = function () {
 			return ajaxcall({
 				url: options.apiUrl,
@@ -2753,6 +2765,7 @@ var dashboardViewModel = function (options) {
 	};
 
 	self.adminMode.subscribe(function (newValue) {
-		self.init();
+		if (localStorage) localStorage.setItem('reportAdminMode', newValue);
+
 	});
 };
