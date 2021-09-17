@@ -161,7 +161,7 @@ namespace ReportBuilder.Web.Models
         public bool ForeignKey { get; set; }
         public bool AccountIdField { get; set; }
         public string ForeignTable { get; set; }
-        public JoinTypes ForeignJoin { get; set; }
+        public string ForeignJoin { get; set; }
         public string ForeignKeyField { get; set; }
         public string ForeignValueField { get; set; }
         public bool DoNotDisplay { get; set; }

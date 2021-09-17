@@ -176,14 +176,11 @@ namespace ReportBuilder.Web.Controllers
                         DisplayOrder = item.fieldOrder,
                         ForeignKeyField = item.foreignKey,
                         ForeignValueField = item.foreignValue,
+                        ForeignJoin = item.foreignJoin,
                         ForeignTable = item.foreignTable,
                         DoNotDisplay = item.doNotDisplay,
                         AllowedRoles = item.columnRoles.ToObject<List<string>>()
                     };
-
-                    JoinTypes join;
-                    Enum.TryParse<JoinTypes>((string)item.foreignJoin, out join);
-                    column.ForeignJoin = join;
 
                     columns.Add(column);
                 }
