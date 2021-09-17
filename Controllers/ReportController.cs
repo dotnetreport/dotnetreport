@@ -219,7 +219,7 @@ namespace ReportBuilder.Web.Controllers
                 var data = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(model);
                 foreach (var key in data.Keys)
                 {
-                    if (key != "adminMode" || (key == "adminMode" && settings.CanUseAdminMode))
+                    if ((key != "adminMode" || (key == "adminMode" && settings.CanUseAdminMode)) && data[key] != null)
                     {
                         keyvalues.Add(new KeyValuePair<string, string>(key, data[key].ToString()));
                     }
