@@ -321,7 +321,7 @@ function filterGroupViewModel(args) {
 					url: args.options.apiUrl,
 					data: {
 						method: "/ReportApi/GetLookupList",
-						model: JSON.stringify({ fieldId: newField.fieldId })
+						model: JSON.stringify({ fieldId: newField.fieldId, dataFilters: args.options.dataFilters })
 					}
 				}).done(function (result) {
 					if (result.d) { result = result.d; }
