@@ -717,6 +717,8 @@ var reportViewModel = function (options) {
 	self.width = ko.observable(3);
 	self.height = ko.observable(2);
 
+	self.customColumnNames = ko.observableArray([]);
+
 	self.useStoredProc.subscribe(function () {
 		self.SelectedTable(null);
 		self.SelectedProc(null);
@@ -1640,6 +1642,9 @@ var reportViewModel = function (options) {
 					}
 					col = ko.toJS(col || {});
 
+					var customCol = { ReportColumnName: col.fieldName, DisplayColumnName: col.fieldLabel };
+					self.customColumnNames.push(customCol);
+
 					e.decimalPlaces = col.decimalPlaces;
 					e.fieldAlign = col.fieldAlign;
 					e.fieldConditionOp = col.fieldConditionOp;
@@ -1858,6 +1863,13 @@ var reportViewModel = function (options) {
 	self.getExpandSqls = ko.computed(function () {
 		if (!self.allExpanded() || self.expandSqls().length == 0) return [];
 		return _.map(_.orderBy(self.expandSqls(), 'index'), function (x) { return x.sql; });
+	});
+
+	self.getCustomColumnNames = ko.computed(function () {
+		var formatData = JSON.stringify(self.customColumnNames());
+		//var formatData = '[{ "ReportColumnName":"CustomerSetUp", "DisplayColumnName":"CUST"}, { "ReportColumnName": "Price", "DisplayColumnName": "PR" }]';
+		
+		return formatData;
 	});
 
 	self.skipDraw = options.skipDraw === true ? true : false;

@@ -97,6 +97,7 @@
             <input type="hidden" name="reportName" data-bind="value: ReportName" />
             <input type="hidden" name="allExpanded" data-bind="value: allExpanded" />
             <input type="hidden" name="expandSqls" data-bind="value: getExpandSqls" />
+            <input type="hidden" name="customColumnNames" data-bind="value: getCustomColumnNames" />
         }
 
         @using (Html.BeginForm("DownloadXml", "Report", FormMethod.Post, new { id = "downloadXml" }))
