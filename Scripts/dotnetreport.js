@@ -1627,6 +1627,7 @@ var reportViewModel = function (options) {
 			}
 
 			function processCols(cols) {
+				self.customColumnNames([]);
 				_.forEach(cols, function (e, i) {
 					var col;
 					if (self.useStoredProc())
@@ -1642,8 +1643,7 @@ var reportViewModel = function (options) {
 					}
 					col = ko.toJS(col || {});
 
-					var customCol = { ReportColumnName: col.fieldName, DisplayColumnName: col.fieldLabel };
-					self.customColumnNames.push(customCol);
+					self.customColumnNames.push({ ReportColumnName: col.fieldName, DisplayColumnName: col.fieldLabel });
 
 					e.decimalPlaces = col.decimalPlaces;
 					e.fieldAlign = col.fieldAlign;
@@ -1867,8 +1867,6 @@ var reportViewModel = function (options) {
 
 	self.getCustomColumnNames = ko.computed(function () {
 		var formatData = JSON.stringify(self.customColumnNames());
-		//var formatData = '[{ "ReportColumnName":"CustomerSetUp", "DisplayColumnName":"CUST"}, { "ReportColumnName": "Price", "DisplayColumnName": "PR" }]';
-		
 		return formatData;
 	});
 

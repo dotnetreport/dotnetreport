@@ -280,14 +280,8 @@ namespace ReportBuilder.Web.Models
 
     public class CustomColumnName
     {
-        
         public string ReportColumnName { get; set; }
         public string DisplayColumnName { get; set; }
-    }
-
-    public class CustomColumnNameList
-    {
-        List<CustomColumnName> CustomColumnNames { get; set; }
     }
 
     public class DotNetReportHelper
