@@ -245,6 +245,8 @@ namespace ReportBuilder.Web.Controllers
         public JsonResult RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, bool desc = false, string reportSeries = null)
         {
             var sql = "";
+            var sqlCount = "";
+            int totalRecords = 0;
 
             try
             {
@@ -253,7 +255,6 @@ namespace ReportBuilder.Web.Controllers
                     throw new Exception("Query not found");
                 }
                 var allSqls = reportSql.Split(new string[] { "%2C" }, StringSplitOptions.RemoveEmptyEntries);
-                var dt = new DataTable();
                 var dtPaged = new DataTable();
                 var dtCols = 0;
 
@@ -269,6 +270,8 @@ namespace ReportBuilder.Web.Controllers
                         sqlFields = Regex.Split(sqlSplit, "], (?![^\\(]*?\\))").Where(x => x != "CONVERT(VARCHAR(3)")
                             .Select(x => x.EndsWith("]") ? x : x + "]")
                             .ToList();
+
+                        sqlCount = $"SELECT COUNT(*) FROM ({ sql.Substring(0, sql.IndexOf("ORDER BY")) }) as countQry";
 
                         if (!String.IsNullOrEmpty(sortBy))
                         {
@@ -289,29 +292,31 @@ namespace ReportBuilder.Web.Controllers
                                 sql = sql.Substring(0, sql.IndexOf("ORDER BY")) + "ORDER BY " + sortBy + (desc ? " DESC" : "");
                             }
                         }
+
+                        sql = sql + $" OFFSET {pageNumber - 1} ROWS FETCH NEXT {pageSize} ROWS ONLY";
                     }
                     // Execute sql
-                    var dtRun = new DataTable();
                     var dtPagedRun = new DataTable();
                     using (var conn = new OleDbConnection(DotNetReportHelper.GetConnectionString(connectKey)))
                     {
                         conn.Open();
-                        var command = new OleDbCommand(sql, conn);
+                        var command = new OleDbCommand(sqlCount, conn);
+                        totalRecords = (int)command.ExecuteScalar();
+
+                        command = new OleDbCommand(sql, conn);
                         var adapter = new OleDbDataAdapter(command);
-                        adapter.Fill(dtRun);
-                        dtPagedRun = (dtRun.Rows.Count > 0) ? dtPagedRun = dtRun.AsEnumerable().Skip((pageNumber - 1) * pageSize).Take(pageSize).CopyToDataTable() : dtRun;
+                        adapter.Fill(dtPagedRun);
 
                         if (!sqlFields.Any())
                         {
-                            foreach (DataColumn c in dtRun.Columns) { sqlFields.Add($"{c.ColumnName} AS {c.ColumnName}"); }
+                            foreach (DataColumn c in dtPagedRun.Columns) { sqlFields.Add($"{c.ColumnName} AS {c.ColumnName}"); }
                         }
 
                         string[] series = { };
                         if (i == 0)
                         {
-                            dt = dtRun;
                             dtPaged = dtPagedRun;
-                            dtCols = dtRun.Columns.Count;
+                            dtCols = dtPagedRun.Columns.Count;
                             fields.AddRange(sqlFields);
                         }
                         else if (i > 0)
@@ -368,8 +373,8 @@ namespace ReportBuilder.Web.Controllers
                     {
                         CurrentPage = pageNumber,
                         PageSize = pageSize,
-                        TotalRecords = dt.Rows.Count,
-                        TotalPages = (int)((dt.Rows.Count / pageSize) + 1)
+                        TotalRecords = totalRecords,
+                        TotalPages = (int)((totalRecords / pageSize) + 1)
                     }
                 };
 
