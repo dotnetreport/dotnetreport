@@ -114,7 +114,19 @@ function linkFieldViewModel(args, options) {
 					})
 				}
 			}).done(function (report) {
-				self.allFields(report.SelectedFields);
+				if (report.d) { report = report.d; }
+				if (report.UseStoredProc) {
+					self.allFields(_.map(report.SelectedParameters, function (x) {
+						return {
+							fieldId: x.ParameterId,
+							fieldName: x.ParameterName
+                        }
+					}));
+				}
+				else {
+					self.allFields(report.SelectedFields);					
+				}
+
 				if (init && self.LinksToReport()) {
 					self.SelectedFilterId(args.SelectedFilterId);
 					init = false;
