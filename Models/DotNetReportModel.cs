@@ -165,6 +165,7 @@ namespace ReportBuilder.Web.Models
         public string ForeignKeyField { get; set; }
         public string ForeignValueField { get; set; }
         public bool DoNotDisplay { get; set; }
+        public bool ForceFilter { get; set; }
         public List<string> AllowedRoles { get; set; }
     }
 
@@ -283,12 +284,12 @@ namespace ReportBuilder.Web.Models
         public static string GetConnectionString(string key)
         {
             var connString = ConfigurationManager.ConnectionStrings[key].ConnectionString;
-            connString = connString.Replace("Trusted_Connection=True", "");
+            //connString = connString.Replace("Trusted_Connection=True", "");
 
-            if (!connString.ToLower().StartsWith("provider"))
-            {
-                connString = "Provider=sqloledb;" + connString;
-            }
+            //if (!connString.ToLower().StartsWith("provider"))
+            //{
+            //    connString = "Provider=sqloledb;" + connString;
+            //}
 
             return connString;
         }
