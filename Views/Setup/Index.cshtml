@@ -177,7 +177,7 @@
                                         <label data-bind="visible: PrimaryKey" class="badge badge-primary">Primary</label>
                                         <label data-bind="visible: ForeignKey" class="badge badge-info">Foreign</label>
                                     </label>
-                                    <button class="btn btn-sm pull-right" data-toggle="modal" data-target="#column-modal" title="All column options" data-bind="click: $root.selectColumn">...</button>
+                                    <button class="btn btn-sm pull-right" data-toggle="modal" data-target="#column-modal" title="All column options" data-bind="click: $root.selectColumn.bind($data, false)">...</button>
 
                                     <div class="btn btn-sm pull-right sortable">
                                         <span class="fa fa-arrows" aria-hidden="true" title="Drag to reorder"></span>
@@ -325,6 +325,8 @@
                                         <span data-bind="editable: DisplayName, attr: {title: 'DB field is ' + ColumnName()}"></span>
                                         <span class="badge badge-info" data-bind="text: FieldType"></span>
                                     </label>
+                                    <button class="btn btn-sm pull-right" data-toggle="modal" data-target="#column-modal" title="All column options" data-bind="click: $root.selectColumn.bind($data, true)">...</button>
+
                                 </div>
                                 <!-- /ko -->
                             </div>
@@ -377,7 +379,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="control-group">
+                    <div class="control-group" data-bind="if: $root.isStoredProcColumn() == false">
                         <div class="form-group row">
                             <label class="col-md-3 col-sm-3 control-label" for="Field_Type" data-bind="">Field Type</label>
                             <div class="col-md-6 col-sm-6">
@@ -395,7 +397,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="control-group">
+                    <div class="control-group" data-bind="if: $root.isStoredProcColumn() == false">
                         <div class="form-group row">
                             <label class="col-md-3 col-sm-3 control-label" for="Primary_Key" data-bind="">Primary Key</label>
                             <div class="col-md-6 col-sm-6">
@@ -425,7 +427,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="control-group">
+                    <div class="control-group" data-bind="if: $root.isStoredProcColumn() == false">
                         <div class="form-group row">
                             <label class="col-md-3 col-sm-3 control-label" for="Foreign_Key" data-bind="">Foreign Key</label>
                             <div class="col-md-6 col-sm-6">
@@ -440,7 +442,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="control-group">
+                    <div class="control-group" data-bind="if: $root.isStoredProcColumn() == false">
                         <div class="form-group row">
                             <label class="col-md-3 col-sm-3 control-label" for="Foreign_Table" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null, placeholder: 'Ex tblEmployees'}" placeholder="Ex tblEmployees" style="display: none;">Foreign Table</label>
                             <div class="col-md-6 col-sm-6">
@@ -452,7 +454,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="control-group">
+                    <div class="control-group" data-bind="if: $root.isStoredProcColumn() == false">
                         <div class="form-group row">
                             <label class="col-md-3 col-sm-3 control-label" for="Foreign_Join" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" style="display: none;">Foreign Join</label>
                             <div class="col-md-6 col-sm-6">
@@ -467,7 +469,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="control-group">
+                    <div class="control-group" data-bind="if: $root.isStoredProcColumn() == false">
                         <div class="form-group row">
                             <label class="col-md-3 col-sm-3 control-label" for="Foreign_Key_Field" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null, placeholder: 'Ex EmployeeId'}" placeholder="Ex EmployeeId" style="display: none;">Foreign Key Field</label>
                             <div class="col-md-6 col-sm-6">
@@ -478,7 +480,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="control-group">
+                    <div class="control-group" data-bind="if: $root.isStoredProcColumn() == false">
                         <div class="form-group row">
                             <label class="col-md-3 col-sm-3 control-label" for="Foreign_Value_Field" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null, placeholder: 'Ex EmployeeName'}" placeholder="Ex EmployeeName" style="display: none;">Foreign Value Field</label>
                             <div class="col-md-6 col-sm-6">
@@ -493,7 +495,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" title="Manage Role Access" data-toggle="modal" data-target="#role-access-modal" data-bind="click: $root.selectAllowedRoles">
+                <button class="btn btn-secondary" title="Manage Role Access" data-toggle="modal" data-target="#role-access-modal" data-bind="visible: $root.isStoredProcColumn() == false, click: $root.selectAllowedRoles">
                     <i class="fa fa-user"></i>Manage Role Access
                 </button>
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Done</button>

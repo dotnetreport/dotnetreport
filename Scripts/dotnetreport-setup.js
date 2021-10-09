@@ -56,8 +56,11 @@
 	self.JoinTypes = ["INNER", "LEFT", "LEFT OUTER", "RIGHT", "RIGHT OUTER"];
 
 	self.editColumn = ko.observable();
-	self.selectColumn = function (e) {
-		self.editColumn(e);
+	self.isStoredProcColumn = ko.observable();
+	self.selectColumn = function (isStoredProcColumn, data, e) {		
+		self.isStoredProcColumn(null);
+		self.editColumn(data);
+		self.isStoredProcColumn(isStoredProcColumn);
 	}
 	self.editParameter = ko.observable();
 	self.selectParameter = function (e) {
