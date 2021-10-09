@@ -271,7 +271,8 @@ namespace ReportBuilder.Web.Controllers
                             .Select(x => x.EndsWith("]") ? x : x + "]")
                             .ToList();
 
-                        sqlCount = $"SELECT COUNT(*) FROM ({ sql.Substring(0, sql.IndexOf("ORDER BY")) }) as countQry";
+                        var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(sql.IndexOf("FROM"))}";
+                        sqlCount = $"SELECT COUNT(*) FROM ({ sqlFrom.Substring(0, sqlFrom.IndexOf("ORDER BY")) }) as countQry";
 
                         if (!String.IsNullOrEmpty(sortBy))
                         {
@@ -306,7 +307,7 @@ namespace ReportBuilder.Web.Controllers
                         command = new OleDbCommand(sql, conn);
                         var adapter = new OleDbDataAdapter(command);
                         adapter.Fill(dtPagedRun);
-                        if (!sql.StartsWith("EXEC")) totalRecords = dtPagedRun.Rows.Count;
+                        if (sql.StartsWith("EXEC")) totalRecords = dtPagedRun.Rows.Count;
 
                         if (!sqlFields.Any())
                         {
