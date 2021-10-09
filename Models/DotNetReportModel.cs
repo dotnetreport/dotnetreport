@@ -106,6 +106,7 @@ namespace ReportBuilder.Web.Models
 
     public class ParameterViewModel
     {
+        public int Id { get; set; }
         public string ParameterName { get; set; }
         public string DisplayName { get; set; }
         public string ParameterValue { get; set; }
