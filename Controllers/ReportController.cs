@@ -301,11 +301,12 @@ namespace ReportBuilder.Web.Controllers
                     {
                         conn.Open();
                         var command = new OleDbCommand(sqlCount, conn);
-                        totalRecords = (int)command.ExecuteScalar();
+                        if (!sql.StartsWith("EXEC")) totalRecords = (int)command.ExecuteScalar();
 
                         command = new OleDbCommand(sql, conn);
                         var adapter = new OleDbDataAdapter(command);
                         adapter.Fill(dtPagedRun);
+                        if (!sql.StartsWith("EXEC")) totalRecords = dtPagedRun.Rows.Count;
 
                         if (!sqlFields.Any())
                         {
