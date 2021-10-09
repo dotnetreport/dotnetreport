@@ -429,6 +429,21 @@
                     </div>
                     <div class="control-group" data-bind="if: $root.isStoredProcColumn() == false">
                         <div class="form-group row">
+                            <label class="col-md-3 col-sm-3 control-label" data-bind="">Force Filter</label>
+                            <div class="col-md-6 col-sm-6">
+                                <div class="checkbox">
+                                    <label>
+                                        <input class="check-box" data-val="true" type="checkbox" value="true" data-bind="checked:ForceFilter">
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-sm-3">
+                                <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="If this is checked, the column will always require the user to pick a filtered value"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <div class="form-group row">
                             <label class="col-md-3 col-sm-3 control-label" for="Foreign_Key" data-bind="">Foreign Key</label>
                             <div class="col-md-6 col-sm-6">
                                 <div class="checkbox">

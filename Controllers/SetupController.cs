@@ -179,6 +179,7 @@ namespace ReportBuilder.Web.Controllers
                         ForeignJoin = item.foreignJoin,
                         ForeignTable = item.foreignTable,
                         DoNotDisplay = item.doNotDisplay,
+                        ForceFilter = item.forceFilter,
                         AllowedRoles = item.columnRoles.ToObject<List<string>>()
                     };
 
@@ -259,7 +260,7 @@ namespace ReportBuilder.Web.Controllers
                             column.Id = matchColumn.Id;
                             column.DoNotDisplay = matchColumn.DoNotDisplay;
                             column.DisplayOrder = matchColumn.DisplayOrder;
-
+                            column.ForceFilter = matchColumn.ForceFilter;
                             column.Selected = true;
                         }
 

@@ -165,6 +165,7 @@ namespace ReportBuilder.Web.Models
         public string ForeignKeyField { get; set; }
         public string ForeignValueField { get; set; }
         public bool DoNotDisplay { get; set; }
+        public bool ForceFilter { get; set; }
         public List<string> AllowedRoles { get; set; }
     }
 
