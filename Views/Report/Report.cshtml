@@ -53,33 +53,37 @@
     }
 
     $(document).ready(function () {
-        var vm = new reportViewModel({
-            runReportUrl: "@Url.Action("Report")",
-            execReportUrl: "@Url.Action("RunReport")",
-            runLinkReportUrl: "@Url.Action("ReportLink")",
-            reportWizard: $("#filter-panel"),
-            reportHeader: "report-header",
-            lookupListUrl: "@Url.Action("GetLookupList")",
-            apiUrl: '@Url.Action("CallReportApi")',
-            runReportApiUrl: '@Url.Action("RunReportApi")',
-            reportFilter: htmlDecode('@HttpUtility.UrlDecode(Model.ReportFilter)'),
-            reportMode: "execute",
-            reportSql: "@Model.ReportSql",
-            reportConnect: "@Model.ConnectKey",
-            ReportSeries: "@Model.ReportSeries",
-            AllSqlQuries : "@Model.ReportSql"
-        });
+        ajaxcall({ url: '@Url.Action("GetUsersAndRoles")' }).done(function (data) {
+            var vm = new reportViewModel({
+                runReportUrl: "@Url.Action("Report")",
+                execReportUrl: "@Url.Action("RunReport")",
+                runLinkReportUrl: "@Url.Action("ReportLink")",
+                reportWizard: $("#filter-panel"),
+                reportHeader: "report-header",
+                lookupListUrl: "@Url.Action("GetLookupList")",
+                apiUrl: '@Url.Action("CallReportApi")',
+                runReportApiUrl: '@Url.Action("RunReportApi")',
+                reportFilter: htmlDecode('@HttpUtility.UrlDecode(Model.ReportFilter)'),
+                reportMode: "execute",
+                reportSql: "@Model.ReportSql",
+                reportConnect: "@Model.ConnectKey",
+                ReportSeries: "@Model.ReportSeries",
+                AllSqlQuries: "@Model.ReportSql",
+                userSettings: data,
+                dataFilters: data.dataFilters
+            });
 
-        vm.loadProcs().done(function () {
-            vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {
-                ko.applyBindings(vm);
+            vm.loadProcs().done(function () {
+                vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {
+                    ko.applyBindings(vm);
+                    vm.headerDesigner.resizeCanvas();
+                });
+            });
+
+            $(window).resize(function () {
+                vm.DrawChart();
                 vm.headerDesigner.resizeCanvas();
             });
-        });
-
-        $(window).resize(function(){
-            vm.DrawChart();
-            vm.headerDesigner.resizeCanvas();
         });
     });
 
