@@ -442,7 +442,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="control-group">
+                    <div class="control-group" data-bind="if: $root.isStoredProcColumn() == false">
                         <div class="form-group row">
                             <label class="col-md-3 col-sm-3 control-label" for="Foreign_Key" data-bind="">Foreign Key</label>
                             <div class="col-md-6 col-sm-6">

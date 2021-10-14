@@ -933,7 +933,9 @@ var reportViewModel = function (options) {
 		self.ChooseFields([]);
 		self.SelectedFields([]);
 
-		var selectedFields = _.map(proc.Columns, function (e) {
+		var displayFields = _.filter(proc.Columns, function (x) { return x.DoNotDisplay == false; });
+
+		var selectedFields = _.map(displayFields, function (e) {
 			var match = ko.toJS(proc.SelectedFields && proc.SelectedFields.length ? _.find(proc.SelectedFields, { fieldName: e.DisplayName }) : null);
 			var field = match || self.getEmptyFormulaField();
 			field.fieldName = e.DisplayName;
@@ -1640,8 +1642,10 @@ var reportViewModel = function (options) {
 			function processCols(cols) {
 				_.forEach(cols, function (e, i) {
 					var col;
-					if (self.useStoredProc())
+					if (self.useStoredProc()) {
 						col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.procColumnName, e.ColumnName); });
+						e.hideStoredProcColumn = (col ? col.disabled() : true);
+                    }						
 					else
 						col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.fieldName, e.ColumnName); });
 					if (col && col.linkField()) {
@@ -1716,6 +1720,10 @@ var reportViewModel = function (options) {
 			}
 
 			processCols(result.ReportData.Columns);
+			if (self.useStoredProc()) {
+				result.ReportData.Columns = _.filter(result.ReportData.Columns, function (x) { return x.hideStoredProcColumn == false; });
+			}
+			var validFieldNames = _.map(result.ReportData.Columns, 'SqlField');
 			result.ReportData.IsDrillDown = ko.observable(false);
 			_.forEach(result.ReportData.Rows, function (e) {
 				e.DrillDownData = ko.observable(null);
@@ -1791,6 +1799,9 @@ var reportViewModel = function (options) {
 					if (e.isExpanded()) e.collapse(); else e.expand();
 				};
 
+				if (self.useStoredProc()) {
+					e.Items = _.filter(e.Items, function (x) { return _.includes(validFieldNames, x.Column.SqlField); });
+				}
 				processRow(e.Items, result.ReportData.Columns);
 			});
 
