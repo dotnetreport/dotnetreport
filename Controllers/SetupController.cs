@@ -245,7 +245,7 @@ namespace ReportBuilder.Web.Controllers
                 conn.Open();
 
                 // Get the Tables
-                var SchemaTable = conn.GetSchema("Tables");
+                var SchemaTable = conn.GetSchema(type == "TABLE" ? "Tables" : "Views");
 
                 // Store the table names in the class scoped array list of table names
                 for (int i = 0; i < SchemaTable.Rows.Count; i++)
