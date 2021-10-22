@@ -280,6 +280,12 @@ namespace ReportBuilder.Web.Models
         public bool CanUseAdminMode { get; set; }
     }
 
+    public class CustomColumnName
+    {
+        public string ReportColumnName { get; set; }
+        public string DisplayColumnName { get; set; }
+    }
+
     public class DotNetReportHelper
     {
         public static string GetConnectionString(string key)
@@ -433,7 +439,7 @@ namespace ReportBuilder.Web.Models
             ws.Cells[ws.Dimension.Address].AutoFitColumns();
         }
 
-        public static byte[] GetExcelFile(string reportSql, string connectKey, string reportName, bool allExpanded = false, List<string> expandSqls = null)
+        public static byte[] GetExcelFile(string reportSql, string connectKey, string reportName, bool allExpanded = false, List<string> expandSqls = null, List<CustomColumnName> customColumnNames = null)
         {
             var sql = Decrypt(reportSql);
 
@@ -447,6 +453,14 @@ namespace ReportBuilder.Web.Models
 
                 adapter.Fill(dt);
 
+                if (customColumnNames?.Count > 0)
+                {
+                    foreach (var customName in customColumnNames)
+                    {
+                        if (!String.IsNullOrWhiteSpace(customName.DisplayColumnName) && dt.Columns.Contains(customName.ReportColumnName))
+                            dt.Columns[customName.ReportColumnName].ColumnName = customName.DisplayColumnName;
+                    }
+                }
 
                 using (ExcelPackage xp = new ExcelPackage())
                 {
@@ -488,6 +502,13 @@ namespace ReportBuilder.Web.Models
                 }
             }
         }
+
+        public static void UpdateColumnNames(DataTable dt)
+        {
+
+        }
+
+        
 
         /// <summary>
         /// Customize this method with a login for dotnet report so that it can login to print pdf reports

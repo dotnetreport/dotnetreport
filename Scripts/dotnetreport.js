@@ -730,6 +730,8 @@ var reportViewModel = function (options) {
 	self.width = ko.observable(3);
 	self.height = ko.observable(2);
 
+	self.customColumnNames = ko.observableArray([]);
+
 	self.useStoredProc.subscribe(function () {
 		self.SelectedTable(null);
 		self.SelectedProc(null);
@@ -1640,6 +1642,7 @@ var reportViewModel = function (options) {
 			}
 
 			function processCols(cols) {
+				self.customColumnNames([]);
 				_.forEach(cols, function (e, i) {
 					var col;
 					if (self.useStoredProc()) {
@@ -1656,6 +1659,8 @@ var reportViewModel = function (options) {
 						e.linkField = false;
 					}
 					col = ko.toJS(col || {});
+
+					self.customColumnNames.push({ ReportColumnName: col.fieldName, DisplayColumnName: col.fieldLabel });
 
 					e.decimalPlaces = col.decimalPlaces;
 					e.fieldAlign = col.fieldAlign;
@@ -1882,6 +1887,11 @@ var reportViewModel = function (options) {
 	self.getExpandSqls = ko.computed(function () {
 		if (!self.allExpanded() || self.expandSqls().length == 0) return [];
 		return _.map(_.orderBy(self.expandSqls(), 'index'), function (x) { return x.sql; });
+	});
+
+	self.getCustomColumnNames = ko.computed(function () {
+		var formatData = JSON.stringify(self.customColumnNames());
+		return formatData;
 	});
 
 	self.skipDraw = options.skipDraw === true ? true : false;
