@@ -73,7 +73,7 @@
             </select>
             <!-- /ko -->
             <!-- /ko -->
-            <!-- ko if: ['Int','Money','Float'].indexOf(fieldType) != -1 -->
+            <!-- ko if: ['Int','Money','Float','Double'].indexOf(fieldType) != -1 -->
             <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
             <input class="form-control" type="number" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default'" required />
             <!-- /ko -->
@@ -90,7 +90,7 @@
                 <option value="0">No</option>
             </select>
             <!-- /ko -->
-            <!-- ko if: ['Int','Money','Float','Date','DateTime','Boolean'].indexOf(fieldType) == -1 && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
+            <!-- ko if: ['Int','Money','Float','Double','Date','DateTime','Boolean'].indexOf(fieldType) == -1 && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
             <input class="form-control" type="text" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default'" required />
             <!-- /ko -->
             <!-- /ko -->
