@@ -1,4 +1,4 @@
-﻿/// dotnet Report Builder view model v4.2.2
+﻿/// dotnet Report Builder view model v4.2.3
 /// License has to be purchased for use
 /// 2018-2021 (c) www.dotnetreport.com
 function pagerViewModel(args) {
@@ -1690,7 +1690,7 @@ var reportViewModel = function (options) {
 						if (linkItem.LinksToReport) {
 							link = options.runLinkReportUrl + '?reportId=' + linkItem.LinkedToReportId;
 							if (linkItem.SendAsFilterParameter) {
-								link += '&filterId=' + linkItem.SelectedFilterId + '&filterValue=' + r.LabelValue;
+								link += '&filterId=' + linkItem.SelectedFilterId + '&filterValue=' + r.Value;
 							}
 						}
 						else {
