@@ -307,8 +307,12 @@ namespace ReportBuilder.Web.Controllers
                         command = new OleDbCommand(sql, conn);
                         var adapter = new OleDbDataAdapter(command);
                         adapter.Fill(dtPagedRun);
-                        if (sql.StartsWith("EXEC")) totalRecords = dtPagedRun.Rows.Count;
-
+                        if (sql.StartsWith("EXEC"))
+                        {
+                            totalRecords = dtPagedRun.Rows.Count;
+                            if (dtPagedRun.Rows.Count > 0)
+                                dtPagedRun = dtPagedRun.AsEnumerable().Skip((pageNumber - 1) * pageSize).Take(pageSize).CopyToDataTable();
+                        }
                         if (!sqlFields.Any())
                         {
                             foreach (DataColumn c in dtPagedRun.Columns) { sqlFields.Add($"{c.ColumnName} AS {c.ColumnName}"); }
