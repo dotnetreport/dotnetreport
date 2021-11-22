@@ -328,6 +328,7 @@ function filterGroupViewModel(args) {
 		};
 
 		field.subscribe(function (newField) {
+			filter.Value(null);
 			if (newField && newField.hasForeignKey) {
 				ajaxcall({
 					url: args.options.apiUrl,
