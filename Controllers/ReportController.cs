@@ -272,7 +272,7 @@ namespace ReportBuilder.Web.Controllers
                             .ToList();
 
                         var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(sql.IndexOf("FROM"))}";
-                        sqlCount = $"SELECT COUNT(*) FROM ({ sqlFrom.Substring(0, sqlFrom.IndexOf("ORDER BY")) }) as countQry";
+                        sqlCount = $"SELECT COUNT(*) FROM ({ (sqlFrom.Contains("ORDER BY") ? sqlFrom.Substring(0, sqlFrom.IndexOf("ORDER BY")) : sqlFrom)}) as countQry";
 
                         if (!String.IsNullOrEmpty(sortBy))
                         {
@@ -294,7 +294,8 @@ namespace ReportBuilder.Web.Controllers
                             }
                         }
 
-                        sql = sql + $" OFFSET {pageNumber - 1} ROWS FETCH NEXT {pageSize} ROWS ONLY";
+                        if (sql.Contains("ORDER BY"))
+                            sql = sql + $" OFFSET {pageNumber - 1} ROWS FETCH NEXT {pageSize} ROWS ONLY";
                     }
                     // Execute sql
                     var dtPagedRun = new DataTable();
