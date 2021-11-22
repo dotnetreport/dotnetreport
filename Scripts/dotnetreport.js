@@ -2261,6 +2261,7 @@ var reportViewModel = function (options) {
 	}
 
 	self.LoadReport = function (reportId, filterOnFly, reportSeries) {
+		self.SelectedTable(null);
 		return ajaxcall({
 			url: options.apiUrl,
 			data: {
