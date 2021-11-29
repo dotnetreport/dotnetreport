@@ -327,8 +327,9 @@ function filterGroupViewModel(args) {
 			IsFilterOnFly: isFilterOnFly === true ? true : false
 		};
 
+		var addingFilter = true;
 		field.subscribe(function (newField) {
-			filter.Value(null);
+			if (!addingFilter) filter.Value(null);
 			if (newField && newField.hasForeignKey) {
 				ajaxcall({
 					url: args.options.apiUrl,
@@ -363,7 +364,7 @@ function filterGroupViewModel(args) {
 		});
 
 		self.Filters.push(filter);
-
+		addingFilter = false;
 	};
 
 	self.RemoveFilter = function (filter) {
