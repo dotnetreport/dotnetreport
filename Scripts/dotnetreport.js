@@ -2278,6 +2278,7 @@ var reportViewModel = function (options) {
 		}).done(function (report) {
 			if (report.d) { report = report.d; }
 			self.useStoredProc(report.UseStoredProc);
+			self.ReportType(report.ReportType);
 
 			if (self.useStoredProc()) {
 				function continueWithProc() {
