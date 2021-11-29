@@ -2182,7 +2182,8 @@ var reportViewModel = function (options) {
 		self.SortByField(report.SortBy);
 		self.SortDesc(report.SortDesc);
 		self.pager.sortDescending(report.SortDesc);
-		self.CanEdit(((!options.clientId || report.ClientId == options.clientId) && (!options.userId || report.UserId == options.userId)) || self.adminMode());
+		var match = _.find(self.SavedReports(), { reportId: report.ReportID }) || {canEdit: false};
+		self.CanEdit(match.canEdit || self.adminMode());
 		self.FilterGroups([]);
 		self.AdditionalSeries([]);
 		self.SortFields([]);
