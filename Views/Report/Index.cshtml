@@ -470,7 +470,7 @@
                                 <div class="col">
                                     <span class="fa fa-columns"></span>
                                     <span data-bind="text: selectedFieldName"></span>
-                                    <span data-bind="visible: !$root.isFieldValidForYAxis($index(), fieldType)">
+                                    <span data-bind="visible: !$root.isFieldValidForYAxis($index(), fieldType, selectedAggregate())">
                                         <span class="badge badge-danger" data-bind="visible: !groupInGraph()">Will not show in <span data-bind="text: $root.ReportType"></span>Chart</span>
                                     </span>
                                 </div>
@@ -499,8 +499,8 @@
                                             <span class="fa fa-eye-slash" aria-hidden="true" title="Hide in Details"></span>
                                         </span>
                                     </div>
-                                    <div class="pull-right" style="padding-right: 15px;" data-bind="visible: !$root.isFieldValidForSubGroup($index(), fieldType) && $root.isChart()">
-                                        <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ groupInGraph(!groupInGraph()); }, css: {active: groupInGraph()==true}">
+                                    <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $root.isFieldValidForYAxis($index(), fieldType, selectedAggregate())  && $root.isChart() && $index()>0">
+                                        <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ groupInGraph(!groupInGraph()); }, css: {active: groupInGraph()==false}">
                                             <span class="fa fa-line-chart" aria-hidden="true" title="Include in series"></span>
                                         </span>
                                     </div>

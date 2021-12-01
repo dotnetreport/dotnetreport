@@ -120,11 +120,11 @@ function linkFieldViewModel(args, options) {
 						return {
 							fieldId: x.ParameterId,
 							fieldName: x.ParameterName
-                        }
+						}
 					}));
 				}
 				else {
-					self.allFields(report.SelectedFields);					
+					self.allFields(report.SelectedFields);
 				}
 
 				if (init && self.LinksToReport()) {
@@ -1179,9 +1179,9 @@ var reportViewModel = function (options) {
 		self.formulaFields.push(constval);
 	};
 
-	self.isFieldValidForYAxis = function (i, fieldType) {
+	self.isFieldValidForYAxis = function (i, fieldType, aggregate) {
 		if (i > 0) {
-			if (self.ReportType() == "Bar" && ["Int", "Double", "Money"].indexOf(fieldType) < 0) {
+			if (self.ReportType() == "Bar" && ["Int", "Double", "Money"].indexOf(fieldType) < 0 && aggregate != "Count") {
 				return false;
 			}
 		}
@@ -1650,7 +1650,7 @@ var reportViewModel = function (options) {
 					if (self.useStoredProc()) {
 						col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.procColumnName, e.ColumnName); });
 						e.hideStoredProcColumn = (col ? col.disabled() : true);
-                    }						
+					}
 					else
 						col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.fieldName, e.ColumnName); });
 					if (col && col.linkField()) {
@@ -1679,6 +1679,7 @@ var reportViewModel = function (options) {
 					e.fieldId = col.fieldId;
 					e.fontColor = col.fontColor;
 					e.backColor = col.backColor;
+					e.groupInGraph = col.groupInGraph;
 				});
 			}
 
@@ -1909,16 +1910,16 @@ var reportViewModel = function (options) {
 			var field = self.SelectedFields()[i];
 			if (i == 0) {
 				data.addColumn(e.IsNumeric ? 'number' : 'string', e.fieldLabel || e.ColumnName);
-			} else if (typeof field !== "undefined" && field.groupInGraph()) {
-				subGroups.push({ index: i, column: e.fieldLabel || e.ColumnName });
-			} else if (e.IsNumeric) {
+				//} else if (typeof field !== "undefined" && field.groupInGraph()) {
+				//	subGroups.push({ index: i, column: e.fieldLabel || e.ColumnName });
+			} else if (e.IsNumeric && !e.groupInGraph) {
 				valColumns.push({ index: i, column: e.fieldLabel || e.ColumnName });
 			}
 		});
 
 		if (subGroups.length == 0) {
 			_.forEach(reportData.Columns, function (e, i) {
-				if (i > 0 && e.IsNumeric) {
+				if (i > 0 && e.IsNumeric && !e.groupInGraph) {
 					data.addColumn(e.IsNumeric ? 'number' : 'string', e.fieldLabel || e.ColumnName);
 				}
 			});
@@ -1931,6 +1932,7 @@ var reportViewModel = function (options) {
 			var itemArray = [];
 
 			_.forEach(e.Items, function (r, n) {
+				var column = reportData.Columns[n];
 				if (n == 0) {
 					if (subGroups.length > 0) {
 						itemArray = _.filter(rowArray, function (x) { return x[0] == r.Value; });
@@ -1957,7 +1959,7 @@ var reportViewModel = function (options) {
 					} else if (r.Column.IsNumeric) {
 						itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.Value) || (r.Column.IsNumeric ? 0 : ''));
 					}
-				} else if (r.Column.IsNumeric) {
+				} else if (r.Column.IsNumeric && !column.groupInGraph) {
 					itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.Value) || (r.Column.IsNumeric ? 0 : ''));
 				}
 			});
@@ -2183,7 +2185,7 @@ var reportViewModel = function (options) {
 		self.SortByField(report.SortBy);
 		self.SortDesc(report.SortDesc);
 		self.pager.sortDescending(report.SortDesc);
-		var match = _.find(self.SavedReports(), { reportId: report.ReportID }) || {canEdit: false};
+		var match = _.find(self.SavedReports(), { reportId: report.ReportID }) || { canEdit: false };
 		self.CanEdit(match.canEdit || self.adminMode());
 		self.FilterGroups([]);
 		self.AdditionalSeries([]);
