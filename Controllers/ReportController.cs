@@ -381,7 +381,7 @@ namespace ReportBuilder.Web.Controllers
                         CurrentPage = pageNumber,
                         PageSize = pageSize,
                         TotalRecords = totalRecords,
-                        TotalPages = (int)((totalRecords / pageSize) + 1)
+                        TotalPages = (int)(totalRecords == pageSize ? (totalRecords / pageSize) : (totalRecords / pageSize) + 1)
                     }
                 };
 
