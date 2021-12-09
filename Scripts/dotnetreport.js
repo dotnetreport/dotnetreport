@@ -1493,6 +1493,7 @@ var reportViewModel = function (options) {
 			return;
 		}
 
+		self.pager.currentPage(1);
 		ajaxcall({
 			url: options.runReportApiUrl,
 			type: "POST",
