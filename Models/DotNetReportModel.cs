@@ -284,6 +284,7 @@ namespace ReportBuilder.Web.Models
     {
         public string ReportColumnName { get; set; }
         public string DisplayColumnName { get; set; }
+        public bool IsHidden { get; set; }
     }
 
     public class DotNetReportHelper
@@ -457,8 +458,14 @@ namespace ReportBuilder.Web.Models
                 {
                     foreach (var customName in customColumnNames)
                     {
-                        if (!String.IsNullOrWhiteSpace(customName.DisplayColumnName) && dt.Columns.Contains(customName.ReportColumnName))
+                        if (dt.Columns.Contains(customName.ReportColumnName) && customName.IsHidden)
+                        {
+                            dt.Columns.Remove(customName.ReportColumnName);
+                        }
+                        else if (!String.IsNullOrWhiteSpace(customName.DisplayColumnName) && dt.Columns.Contains(customName.ReportColumnName))
+                        {
                             dt.Columns[customName.ReportColumnName].ColumnName = customName.DisplayColumnName;
+                        }
                     }
                 }
 
