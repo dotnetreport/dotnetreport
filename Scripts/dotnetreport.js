@@ -1557,7 +1557,7 @@ var reportViewModel = function (options) {
 						//SeriesCount = 0;
 						toastr.success("Report Saved");
 						self.AllSqlQuries("");
-						self.LoadAllSavedReports();
+						self.LoadAllSavedReports(true);
 					}
 				}
 
@@ -2313,7 +2313,7 @@ var reportViewModel = function (options) {
 	};
 
 	// Load saved reports
-	self.LoadAllSavedReports = function () {
+	self.LoadAllSavedReports = function (skipOpen) {
 
 		ajaxcall({
 			url: options.apiUrl,
@@ -2371,7 +2371,7 @@ var reportViewModel = function (options) {
 					});
 				};
 
-				if (options.reportId > 0 && e.reportId == options.reportId) {
+				if (options.reportId > 0 && e.reportId == options.reportId && skipOpen !== true) {
 					e.openReport();
 					options.reportWizard.modal('show');
 				}
