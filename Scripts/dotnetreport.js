@@ -928,6 +928,7 @@ var reportViewModel = function (options) {
 		self.SaveReport(self.CanSaveReports());
 		self.scheduleBuilder.clear();
 		self.SortFields([]);
+		self.isFormulaField(false);
 	};
 
 	self.SelectedProc.subscribe(function (proc) {
@@ -1077,6 +1078,7 @@ var reportViewModel = function (options) {
 	self.formulaFields = ko.observableArray([]);
 	self.formulaFieldLabel = ko.observable('');
 	self.formulaDataFormat = ko.observable('')
+
 	self.formulaOnlyHasDateFields = ko.computed(function () {
 		var allFields = self.formulaFields();
 		if (allFields.length <= 0) return false;
@@ -1091,6 +1093,28 @@ var reportViewModel = function (options) {
 
 		return result;
 	});
+
+	self.formulaFields.subscribe(function (value) {
+		if (!value) return;
+		var result = self.formulaOnlyHasDateFields();
+		if (result && ['Days', 'Hours', 'Minutes', 'Seconds'].indexOf(self.formulaDataFormat()) < 0) self.formulaDataFormat('Days');
+		if (!result && ['String', 'Integer', 'Double'].indexOf(self.formulaDataFormat()) < 0) self.formulaDataFormat('String');
+	});
+
+	self.formulaHasConstantValue = ko.computed(function () {
+		var allFields = self.formulaFields();
+		if (allFields.length <= 0) return false;
+
+		var result = false;
+		_.forEach(allFields, function (x) {
+			if (!x.setupFormula.isParenthesesStart() && !x.setupFormula.isParenthesesEnd() && x.setupFormula.isConstantValue()) {
+				result = true;
+				return false;
+			}
+		});
+		return result;
+	});
+
 
 	self.getEmptyFormulaField = function () {
 		return {
@@ -1153,6 +1177,12 @@ var reportViewModel = function (options) {
 		if (self.formulaFields()[c + 1].setupFormula.isParenthesesEnd() || self.formulaFields()[c].setupFormula.isParenthesesStart()) return false;
 
 		return true;
+	};
+
+	self.isConstantOperation = function (c) {
+		var l = self.formulaFields().length;
+		if (l <= 1 || c == l - 1 || c == l) return false;
+		return self.formulaFields()[c + 1].setupFormula.isConstantValue();
 	};
 
 	self.addFormulaParentheses = function () {
@@ -2268,6 +2298,7 @@ var reportViewModel = function (options) {
 
 	self.LoadReport = function (reportId, filterOnFly, reportSeries) {
 		self.SelectedTable(null);
+		self.isFormulaField(false);
 		return ajaxcall({
 			url: options.apiUrl,
 			data: {

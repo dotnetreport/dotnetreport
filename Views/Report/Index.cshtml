@@ -392,8 +392,15 @@
                                 </div>
                                 <div class="col-sm-6 right-align">
                                     <a href="#" class="btn btn-secondary btn-sm" data-bind="click: addFormulaParentheses">Add ( )</a>
-                                    <a href="#" class="btn btn-secondary btn-sm" title="Add a Constant Value" data-bind="click: addFormulaConstantValue">Add Value</a>
+                                    <a href="#" class="btn btn-secondary btn-sm" title="Add a Constant Value" data-bind="click: addFormulaConstantValue, hidden: formulaOnlyHasDateFields">Add Value</a>
                                     <a href="#" class="btn btn-secondary btn-sm" data-bind="click: clearFormulaField">Clear</a>
+                                </div>
+                            </div>
+                            <div class="form-group-row" data-bind="if: formulaOnlyHasDateFields">
+                                <div class="col-sm-12">
+                                    <div class="alert alert-info">
+                                        For Dates Field calculation, you can only substract date fields and display the result as days, hours, minutes or seconds. 
+                                    </div>
                                 </div>
                             </div>
                             <div class="form-group row">
@@ -436,9 +443,11 @@
                                     <h3 class="pull-left" data-bind="visible: setupFormula.isParenthesesEnd" style="margin-top: 0;">)</h3>
                                     <div class="pull-left" style="margin-left: 15px;" data-bind="visible: $parent.showFormulaOperation($index())">
                                         <select class="form-control form-control-sm" style="max-width: 50px;" data-bind="value: setupFormula.formulaOperation">
+                                            <!-- ko if: !$root.formulaOnlyHasDateFields() || ($root.formulaOnlyHasDateFields() && $root.isConstantOperation($index())) -->
                                             <option>+</option>
-                                            <!-- ko if: ['Int','Money','Float','Double'].indexOf(fieldType) != -1 -->
+                                            <!-- /ko -->
                                             <option>-</option>
+                                            <!-- ko if: ['Int','Money','Float','Double'].indexOf(fieldType) != -1 -->
                                             <option>*</option>
                                             <option>/</option>
                                             <!-- /ko -->
@@ -470,6 +479,7 @@
                                 <div class="col">
                                     <span class="fa fa-columns"></span>
                                     <span data-bind="text: selectedFieldName"></span>
+                                    <span data-bind="text: isFormulaField() ? '(' + fieldFormat() + ')' : ''"></span>
                                     <span data-bind="visible: !$root.isFieldValidForYAxis($index(), fieldType, selectedAggregate())">
                                         <span class="badge badge-danger" data-bind="visible: !groupInGraph()">Will not show in <span data-bind="text: $root.ReportType"></span>Chart</span>
                                     </span>
