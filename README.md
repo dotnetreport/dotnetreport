@@ -3,7 +3,7 @@
 
 It features an easy and intutive Report Builder for end users, and all the tools you need to different type of List or Summary Repots. It can also handle Pie Charts, Bar Charts and Line Charts. Users can also select functions like Sorting, Formatting, Filtering, Grouping and apply Aggregate functions like COUNT, SUM, MIN, MAX and AVERAGE.
 
-![Report Builder](https://dotnetreport.com/content/img/pie-chart-screen-shot.png)
+![Report Builder](https://dotnetreport.com/wp-content/uploads/2021/12/mk-7-1024x775.png)
 
 For more details, see
 
