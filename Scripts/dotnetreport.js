@@ -327,6 +327,11 @@ function filterGroupViewModel(args) {
 			IsFilterOnFly: isFilterOnFly === true ? true : false
 		};
 
+		filter.Operator.subscribe(function () {
+			filter.Value(null);
+			filter.Value2(null);
+		});
+
 		var addingFilter = true;
 		field.subscribe(function (newField) {
 			if (!addingFilter) filter.Value(null);

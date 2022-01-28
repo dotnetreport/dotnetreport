@@ -58,7 +58,7 @@
             <input data-bind="datepicker: $parent.Value2" class="form-control" required />
             <!-- /ko -->
             <!-- ko if: ['range'].indexOf($parent.Operator()) != -1 -->
-            <select data-bind="value: $parent.Value" class="form-control">
+            <select data-bind="value: $parent.Value" class="form-control" required>
                 <option>Today</option>
                 <option>Yesterday</option>
                 <option>This Week</option>
@@ -70,6 +70,7 @@
                 <option>This Month To Date</option>
                 <option>This Year To Date</option>
                 <option>Last 30 Days</option>
+                <option value=""></option>
             </select>
             <!-- /ko -->
             <!-- /ko -->
