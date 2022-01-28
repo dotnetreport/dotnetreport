@@ -473,7 +473,7 @@ namespace ReportBuilder.Web.Controllers
         [HttpPost]
         public ActionResult DownloadExcel(string reportSql, string connectKey, string reportName, bool allExpanded, string expandSqls, string customColumnNames = null)
         {
-            var customColumnNameList = JsonConvert.DeserializeObject<List<CustomColumnName>>(customColumnNames);
+            var customColumnNameList = customColumnNames == null ? new List<CustomColumnName>() :  JsonConvert.DeserializeObject<List<CustomColumnName>>(customColumnNames);
             
             var excel = DotNetReportHelper.GetExcelFile(reportSql, connectKey, reportName, allExpanded, expandSqls.Split(',').ToList(), customColumnNameList);
             Response.ClearContent();
