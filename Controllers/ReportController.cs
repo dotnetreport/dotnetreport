@@ -69,7 +69,7 @@ namespace ReportBuilder.Web.Controllers
 
         public ActionResult Report(int reportId, string reportName, string reportDescription, bool includeSubTotal, bool showUniqueRecords,
             bool aggregateReport, bool showDataWithGraph, string reportSql, string connectKey, string reportFilter, string reportType, int selectedFolder, string reportSeries)
-        {
+        {            
             var settings = GetSettings();
             var model = new DotNetReportModel
             {
@@ -471,11 +471,11 @@ namespace ReportBuilder.Web.Controllers
 
         
         [HttpPost]
-        public ActionResult DownloadExcel(string reportSql, string connectKey, string reportName, bool allExpanded, string expandSqls, string customColumnNames = null)
+        public ActionResult DownloadExcel(string reportSql, string connectKey, string reportName, bool allExpanded, string expandSqls, string columnDetails = null)
         {
-            var customColumnNameList = customColumnNames == null ? new List<CustomColumnName>() :  JsonConvert.DeserializeObject<List<CustomColumnName>>(customColumnNames);
+            var columns = columnDetails == null ? new List<ReportHeaderColumn>() :  JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(columnDetails);
             
-            var excel = DotNetReportHelper.GetExcelFile(reportSql, connectKey, reportName, allExpanded, expandSqls.Split(',').ToList(), customColumnNameList);
+            var excel = DotNetReportHelper.GetExcelFile(reportSql, connectKey, reportName, allExpanded, expandSqls.Split(',').ToList(), columns);
             Response.ClearContent();
 
             Response.AddHeader("content-disposition", "attachment; filename=" + reportName + ".xlsx");

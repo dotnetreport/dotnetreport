@@ -737,7 +737,7 @@ var reportViewModel = function (options) {
 	self.width = ko.observable(3);
 	self.height = ko.observable(2);
 
-	self.customColumnNames = ko.observableArray([]);
+	self.columnDetails = ko.observableArray([]);
 
 	self.useStoredProc.subscribe(function () {
 		self.SelectedTable(null);
@@ -1680,7 +1680,7 @@ var reportViewModel = function (options) {
 			}
 
 			function processCols(cols) {
-				self.customColumnNames([]);
+				self.columnDetails([]);
 				_.forEach(cols, function (e, i) {
 					var col;
 					if (self.useStoredProc()) {
@@ -1698,7 +1698,7 @@ var reportViewModel = function (options) {
 					}
 					col = ko.toJS(col || { fieldName: e.ColumnName });
 
-					self.customColumnNames.push({ ReportColumnName: col.fieldName, DisplayColumnName: col.fieldLabel, IsHidden: e.hideStoredProcColumn });
+					self.columnDetails.push(col);
 
 					e.decimalPlaces = col.decimalPlaces;
 					e.fieldAlign = col.fieldAlign;
@@ -1928,8 +1928,8 @@ var reportViewModel = function (options) {
 		return _.map(_.orderBy(self.expandSqls(), 'index'), function (x) { return x.sql; });
 	});
 
-	self.getCustomColumnNames = ko.computed(function () {
-		var formatData = JSON.stringify(self.customColumnNames());
+	self.getColumnDetails = ko.computed(function () {
+		var formatData = JSON.stringify(self.columnDetails());
 		return formatData;
 	});
 

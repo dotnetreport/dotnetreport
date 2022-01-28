@@ -280,11 +280,14 @@ namespace ReportBuilder.Web.Models
         public bool CanUseAdminMode { get; set; }
     }
 
-    public class CustomColumnName
+    public class ReportHeaderColumn
     {
-        public string ReportColumnName { get; set; }
-        public string DisplayColumnName { get; set; }
-        public bool IsHidden { get; set; }
+        public string fieldName { get; set; }
+        public string fieldLabel { get; set; }
+        public bool hideStoredProcColumn { get; set; }
+        public int? decimalPlaces { get; set; }
+        public string fieldAlign { get; set; }
+        public string fieldFormat { get; set; }
     }
 
     public class DotNetReportHelper
@@ -440,7 +443,7 @@ namespace ReportBuilder.Web.Models
             ws.Cells[ws.Dimension.Address].AutoFitColumns();
         }
 
-        public static byte[] GetExcelFile(string reportSql, string connectKey, string reportName, bool allExpanded = false, List<string> expandSqls = null, List<CustomColumnName> customColumnNames = null)
+        public static byte[] GetExcelFile(string reportSql, string connectKey, string reportName, bool allExpanded = false, List<string> expandSqls = null, List<ReportHeaderColumn> columns = null)
         {
             var sql = Decrypt(reportSql);
 
@@ -454,17 +457,17 @@ namespace ReportBuilder.Web.Models
 
                 adapter.Fill(dt);
 
-                if (customColumnNames?.Count > 0)
+                if (columns?.Count > 0)
                 {
-                    foreach (var customName in customColumnNames)
+                    foreach (var col in columns)
                     {
-                        if (dt.Columns.Contains(customName.ReportColumnName) && customName.IsHidden)
+                        if (dt.Columns.Contains(col.fieldName) && col.hideStoredProcColumn)
                         {
-                            dt.Columns.Remove(customName.ReportColumnName);
+                            dt.Columns.Remove(col.fieldName);
                         }
-                        else if (!String.IsNullOrWhiteSpace(customName.DisplayColumnName) && dt.Columns.Contains(customName.ReportColumnName))
+                        else if (!String.IsNullOrWhiteSpace(col.fieldLabel) && dt.Columns.Contains(col.fieldName))
                         {
-                            dt.Columns[customName.ReportColumnName].ColumnName = customName.DisplayColumnName;
+                            dt.Columns[col.fieldName].ColumnName = col.fieldLabel;
                         }
                     }
                 }
