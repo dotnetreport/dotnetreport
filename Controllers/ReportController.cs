@@ -500,13 +500,26 @@ namespace ReportBuilder.Web.Controllers
             return View();
         }
 
+
         [HttpPost]
-        public async Task<ActionResult> DownloadPdf(string printUrl, int reportId, string reportSql, string connectKey, string reportName, bool expandAll)
+        public ActionResult DownloadPdf(string reportSql, string connectKey, string reportName, string chartData = null, string columnDetails = null)
+        {
+            var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(columnDetails);
+
+            reportSql = HttpUtility.HtmlDecode(reportSql);
+            var settings = GetSettings();
+            var dataFilters = settings.DataFilters != null ? JsonConvert.SerializeObject(settings.DataFilters) : "";
+            var pdf = DotNetReportHelper.GetPdfFile(reportSql, connectKey, reportName, chartData, columns);
+            return File(pdf, "application/pdf", reportName + ".pdf");
+        }
+
+        [HttpPost]
+        public async Task<ActionResult> DownloadPdfUsingBrowser(string printUrl, int reportId, string reportSql, string connectKey, string reportName, bool expandAll)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
             var settings = GetSettings();
             var dataFilters = settings.DataFilters != null ? JsonConvert.SerializeObject(settings.DataFilters) : "";
-            var pdf = await DotNetReportHelper.GetPdfFile(printUrl, reportId, reportSql, connectKey, reportName, settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), dataFilters, expandAll);
+            var pdf = await DotNetReportHelper.GetPdfFileUsingBrowser(printUrl, reportId, reportSql, connectKey, reportName, settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), dataFilters, expandAll);
             return File(pdf, "application/pdf", reportName + ".pdf");
         }
 

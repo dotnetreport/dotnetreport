@@ -1,4 +1,6 @@
-﻿using OfficeOpenXml;
+﻿using iTextSharp.text;
+using iTextSharp.text.pdf;
+using OfficeOpenXml;
 using PuppeteerSharp;
 using PuppeteerSharp.Media;
 using System;
@@ -513,12 +515,97 @@ namespace ReportBuilder.Web.Models
             }
         }
 
-        public static void UpdateColumnNames(DataTable dt)
+        public static byte[] GetPdfFile(string reportSql, string connectKey, string reportName, string chartData = null, List<ReportHeaderColumn> columns = null)
         {
+            var sql = Decrypt(reportSql);
+            var dt = new DataTable();
+            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
+            {
+                conn.Open();
+                var command = new OleDbCommand(sql, conn);
+                var adapter = new OleDbDataAdapter(command);
 
+                adapter.Fill(dt);
+
+                if (columns?.Count > 0)
+                {
+                    foreach (var col in columns)
+                    {
+                        if (dt.Columns.Contains(col.fieldName) && col.hideStoredProcColumn)
+                        {
+                            dt.Columns.Remove(col.fieldName);
+                        }
+                        else if (!String.IsNullOrWhiteSpace(col.fieldLabel) && dt.Columns.Contains(col.fieldName))
+                        {
+                            dt.Columns[col.fieldName].ColumnName = col.fieldLabel;
+                        }
+                    }
+                }
+            }
+            Document document = new Document();
+            using (var ms = new MemoryStream())
+            {
+                PdfWriter writer = PdfWriter.GetInstance(document, ms);
+                document.Open();
+                document.Add(new Phrase(reportName));
+                PdfPTable table = new PdfPTable(dt.Columns.Count);
+                table.WidthPercentage = 100;
+                // table.DefaultCell.Border = 1;
+                //Set columns names in the pdf file
+                for (int k = 0; k < dt.Columns.Count; k++)
+                {
+                    PdfPCell cell = new PdfPCell(new Phrase(dt.Columns[k].ColumnName));
+                    cell.HorizontalAlignment = PdfPCell.ALIGN_CENTER;
+                    cell.VerticalAlignment = PdfPCell.ALIGN_CENTER;
+                    cell.BorderColor = BaseColor.LIGHT_GRAY;
+                    cell.BorderWidth = 1f;
+                    // cell.BackgroundColor = new iTextSharp.text.BaseColor(51, 102, 102);
+                    table.AddCell(cell);
+                }
+                //Add values of DataTable in pdf file
+                for (int i = 0; i < dt.Rows.Count; i++)
+                {
+                    for (int j = 0; j < dt.Columns.Count; j++)
+                    {
+                        PdfPCell cell = new PdfPCell(new Phrase(dt.Rows[i][j].ToString()));
+                        //Align the cell in the center
+                        cell.HorizontalAlignment = PdfPCell.ALIGN_LEFT;
+                        cell.VerticalAlignment = PdfPCell.ALIGN_LEFT;
+                        cell.BorderColor = BaseColor.LIGHT_GRAY;
+                        cell.BorderWidth = 1f;
+                        table.AddCell(cell);
+                    }
+                }
+                //Create a PdfReader bound to that byte array
+                if (!string.IsNullOrEmpty(chartData))
+                {
+                    byte[] sPDFDecoded = Convert.FromBase64String(chartData.Substring(chartData.LastIndexOf(',') + 1));
+                    var image = Image.GetInstance(sPDFDecoded);
+                    if (image.Height > image.Width)
+                    {
+                        //Maximum height is 800 pixels.
+                        float percentage = 0.0f;
+                        percentage = 700 / image.Height;
+                        image.ScalePercent(percentage * 100);
+                    }
+                    else
+                    {
+                        //Maximum width is 600 pixels.
+                        float percentage = 0.0f;
+                        percentage = 540 / image.Width;
+                        image.ScalePercent(percentage * 100);
+                    }
+                    // If need to add boarder
+                    //   image.Border = iTextSharp.text.Rectangle.BOX;
+                    //  image.BorderColor = iTextSharp.text.BaseColor.BLACK;
+                    //  image.BorderWidth = 3f;
+                    document.Add(image);
+                }
+                document.Add(table);
+                document.Close();
+                return ms.ToArray();
+            }
         }
-
-        
 
         /// <summary>
         /// Customize this method with a login for dotnet report so that it can login to print pdf reports
@@ -538,7 +625,7 @@ namespace ReportBuilder.Web.Models
             await page.ClickAsync("#LoginSubmit"); // Make sure #LoginSubmit is replaced with the login button form input id
         }
 
-        public static async Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
+        public static async Task<byte[]> GetPdfFileUsingBrowser(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
                     string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false)
         {
             var installPath = AppContext.BaseDirectory + "\\App_Data\\local-chromium";
