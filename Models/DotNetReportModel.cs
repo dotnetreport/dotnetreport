@@ -9,6 +9,7 @@ using System.Configuration;
 using System.Data;
 using System.Data.OleDb;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -426,7 +427,7 @@ namespace ReportBuilder.Web.Models
             return "";
         }
 
-        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart)
+        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null)
         {
             ws.Cells[rowstart, colstart].LoadFromDataTable(dt, true);
             ws.Cells[rowstart, colstart, rowstart, dt.Columns.Count].Style.Font.Bold = true;
@@ -435,10 +436,16 @@ namespace ReportBuilder.Web.Models
             foreach (DataColumn dc in dt.Columns)
             {
                 if (dc.DataType == typeof(decimal))
-                    ws.Column(i).Style.Numberformat.Format = "#0.00";
+                    ws.Column(i).Style.Numberformat.Format = "###,###,##0.00";
 
                 if (dc.DataType == typeof(DateTime))
                     ws.Column(i).Style.Numberformat.Format = "mm/dd/yyyy";
+
+                var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
+                if (formatColumn != null && formatColumn.fieldFormat == "Currency")
+                {
+                    ws.Column(i).Style.Numberformat.Format = "$###,###,##0.00";
+                }
 
                 i++;
             }
@@ -491,7 +498,7 @@ namespace ReportBuilder.Web.Models
                     rowstart += 2;
                     rowend = rowstart + dt.Rows.Count;
 
-                    FormatExcelSheet(dt, ws, rowstart, colstart);
+                    FormatExcelSheet(dt, ws, rowstart, colstart, columns);
 
                     if (allExpanded)
                     {
@@ -563,13 +570,20 @@ namespace ReportBuilder.Web.Models
                     table.AddCell(cell);
                 }
                 //Add values of DataTable in pdf file
-                for (int i = 0; i < dt.Rows.Count; i++)
+                foreach (DataRow dr in dt.Rows)
                 {
-                    for (int j = 0; j < dt.Columns.Count; j++)
+                    foreach (DataColumn dc in dt.Columns)
                     {
-                        PdfPCell cell = new PdfPCell(new Phrase(dt.Rows[i][j].ToString()));
-                        //Align the cell in the center
-                        cell.HorizontalAlignment = PdfPCell.ALIGN_LEFT;
+                        var value = GetFormattedValue(dc, dr);
+                        var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
+                        if (formatColumn != null && formatColumn.fieldFormat == "Currency")
+                        {
+                           value = Convert.ToDouble(dr[dc].ToString()).ToString("C");
+                        }
+
+                        PdfPCell cell = new PdfPCell(new Phrase(value));
+
+                        cell.HorizontalAlignment = IsNumericType(dc.DataType) ? PdfPCell.ALIGN_RIGHT : PdfPCell.ALIGN_LEFT;
                         cell.VerticalAlignment = PdfPCell.ALIGN_LEFT;
                         cell.BorderColor = BaseColor.LIGHT_GRAY;
                         cell.BorderWidth = 1f;
