@@ -305,6 +305,15 @@ function filterGroupViewModel(args) {
 		e = e || {};
 		var lookupList = ko.observableArray([]);
 
+		var url = new URL(window.location.href);
+		var filterId = url.searchParams.get("filterId");
+		var filterValue = url.searchParams.get("filterValue");
+
+		if (filterId && filterValue && e.FieldId == parseInt(filterId)) {
+			e.Value1 = filterValue;
+			e.Operator = "=";
+		}
+
 		if (e.Value1) {
 			lookupList.push({ id: e.Value1, text: e.Value1 });
 		}
