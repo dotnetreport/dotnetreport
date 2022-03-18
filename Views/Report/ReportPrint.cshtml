@@ -202,6 +202,7 @@
             reportConnect: "@Model.ConnectKey",
             ReportSeries : "@Model.ReportSeries"
         });
+        vm.pager.pageSize(10000);
 
         ko.applyBindings(vm);
         vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {

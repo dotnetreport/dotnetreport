@@ -739,7 +739,7 @@ var reportViewModel = function (options) {
 	self.currentConnectKey = ko.observable();
 	self.adminMode = ko.observable(false);
 	self.allExpanded = ko.observable(false);
-	self.pager.currentPage(1)
+	self.pager.currentPage(1);
 
 	self.x = ko.observable(0);
 	self.y = ko.observable(0);
