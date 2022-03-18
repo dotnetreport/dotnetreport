@@ -180,6 +180,10 @@ namespace ReportBuilder.Web.Controllers
                         ForeignTable = item.foreignTable,
                         DoNotDisplay = item.doNotDisplay,
                         ForceFilter = item.forceFilter,
+                        ForceFilterForTable = item.forceFilterForTable,
+                        RestrictedDateRange = item.restrictedDateRange,
+                        RestrictedEndDate = item.restrictedEndDate,
+                        RestrictedStartDate = item.restrictedStartDate,
                         AllowedRoles = item.columnRoles.ToObject<List<string>>()
                     };
 
@@ -261,6 +265,10 @@ namespace ReportBuilder.Web.Controllers
                             column.DoNotDisplay = matchColumn.DoNotDisplay;
                             column.DisplayOrder = matchColumn.DisplayOrder;
                             column.ForceFilter = matchColumn.ForceFilter;
+                            column.ForceFilterForTable = matchColumn.ForceFilterForTable;
+                            column.RestrictedDateRange = matchColumn.RestrictedDateRange;
+                            column.RestrictedStartDate = matchColumn.RestrictedStartDate;
+                            column.RestrictedEndDate = matchColumn.RestrictedEndDate;
                             column.Selected = true;
                         }
 

@@ -167,6 +167,10 @@ namespace ReportBuilder.Web.Models
         public string ForeignValueField { get; set; }
         public bool DoNotDisplay { get; set; }
         public bool ForceFilter { get; set; }
+        public bool ForceFilterForTable { get; set; }
+        public string RestrictedDateRange { get; set; }
+        public DateTime? RestrictedStartDate { get; set; }
+        public DateTime? RestrictedEndDate { get; set; }
         public List<string> AllowedRoles { get; set; }
     }
 
