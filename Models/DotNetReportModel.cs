@@ -7,6 +7,7 @@ using System.Configuration;
 using System.Data;
 using System.Data.OleDb;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -428,7 +429,7 @@ namespace ReportBuilder.Web.Models
             return "";
         }
 
-        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart)
+        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null)
         {
             ws.Cells[rowstart, colstart].LoadFromDataTable(dt, true);
             ws.Cells[rowstart, colstart, rowstart, dt.Columns.Count].Style.Font.Bold = true;
@@ -437,10 +438,16 @@ namespace ReportBuilder.Web.Models
             foreach (DataColumn dc in dt.Columns)
             {
                 if (dc.DataType == typeof(decimal))
-                    ws.Column(i).Style.Numberformat.Format = "#0.00";
+                    ws.Column(i).Style.Numberformat.Format = "###,###,##0.00";
 
                 if (dc.DataType == typeof(DateTime))
                     ws.Column(i).Style.Numberformat.Format = "mm/dd/yyyy";
+
+                var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
+                if (formatColumn != null && formatColumn.fieldFormat == "Currency")
+                {
+                    ws.Column(i).Style.Numberformat.Format = "$###,###,##0.00";
+                }
 
                 i++;
             }
@@ -493,7 +500,7 @@ namespace ReportBuilder.Web.Models
                     rowstart += 2;
                     rowend = rowstart + dt.Rows.Count;
 
-                    FormatExcelSheet(dt, ws, rowstart, colstart);
+                    FormatExcelSheet(dt, ws, rowstart, colstart, columns);
 
                     if (allExpanded)
                     {

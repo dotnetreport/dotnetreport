@@ -739,7 +739,7 @@ var reportViewModel = function (options) {
 	self.currentConnectKey = ko.observable();
 	self.adminMode = ko.observable(false);
 	self.allExpanded = ko.observable(false);
-	self.pager.currentPage(1)
+	self.pager.currentPage(1);
 
 	self.x = ko.observable(0);
 	self.y = ko.observable(0);
@@ -2492,6 +2492,14 @@ var reportViewModel = function (options) {
 				$(curInputs[i]).addClass("is-invalid");
 			}
 		}
+
+		_.forEach(self.SavedReports(), function (e) {
+			if (e.reportName == self.ReportName() && e.reportId != self.ReportID()) {
+				isValid = false;
+				toastr.error("Report name is already in use, please choose a different name");
+				return false;
+            }
+		});
 
 		return isValid;
 	};
