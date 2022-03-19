@@ -865,8 +865,13 @@
             </label>
         </div>
         <div data-bind="if: hasSchedule">
+            
             <div class="form-inline form-group">
-                Every&nbsp;<select class="form-control" required data-bind="options: options, value: selectedOption"></select>
+                <span data-bind="text: selectedOption() != 'once' ? 'Every ' : ''"></span>&nbsp;
+                <select class="form-control" required data-bind="options: options, value: selectedOption"></select>
+                <!-- ko if: selectedOption() == 'once' -->
+                &nbsp;on&nbsp;<input data-bind="datepicker: selectedDate" class="form-control" required />
+                <!-- /ko -->
                 <!-- ko if: showDays -->
                 &nbsp;on&nbsp;<select multiple class="form-control" required style="width: 30%;" data-bind="select2: { placeholder: 'Choose Days', allowClear: true }, options: days, selectedOptions: selectedDays"></select>
                 <!-- /ko -->
@@ -886,7 +891,10 @@
                 <!-- /ko-->
             </div>
             <div class="alert alert-info">
-                Report will be run and emailed every <span data-bind="text: selectedOption"></span>
+                Report will be run and emailed <span data-bind="text: selectedOption() != 'once' ? 'every' : ''"></span> <span data-bind="text: selectedOption"></span>
+                <!-- ko if: selectedOption() == 'once' -->
+                on <span class="error" data-bind="visible: !selectedDate()">Please pick a Date</span> <span data-bind="text: selectedDate"></span>
+                <!-- /ko -->
                 <!-- ko if: showDays -->
                 on <span class="error" data-bind="visible: selectedDays().length == 0">Please pick Day(s)</span> <span data-bind="text: selectedDays"></span>
                 <!-- /ko -->

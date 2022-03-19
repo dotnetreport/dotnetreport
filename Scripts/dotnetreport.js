@@ -191,7 +191,7 @@ function linkFieldViewModel(args, options) {
 function scheduleBuilder(userId) {
 	var self = this;
 
-	self.options = ['day', 'week', 'month', 'year'];
+	self.options = ['day', 'week', 'month', 'year', 'once'];
 	self.showAtTime = ko.observable(true);
 	self.showDays = ko.observable(false);
 	self.showMonths = ko.observable(false);
@@ -204,6 +204,7 @@ function scheduleBuilder(userId) {
 	self.selectedHour = ko.observable('12');
 	self.selectedMinute = ko.observable('00');
 	self.selectedAmPm = ko.observable('PM');
+	self.selectedDate = ko.observable();
 
 	self.days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 	self.months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -221,6 +222,7 @@ function scheduleBuilder(userId) {
 		self.selectedMonths([]);
 		self.selectedDates([]);
 		switch (newValue) {
+			case 'once':
 			case 'day':
 				self.showDays(false);
 				self.showDates(false);
@@ -249,7 +251,7 @@ function scheduleBuilder(userId) {
 			SelectedOption: self.selectedOption(),
 			SelectedDays: self.selectedDays().join(","),
 			SelectedMonths: self.selectedMonths().join(","),
-			SelectedDates: self.selectedDates().join(","),
+			SelectedDates: self.selectedOption() == 'once' ? self.selectedDate() : self.selectedDates().join(","),
 			SelectedHour: self.selectedHour(),
 			SelectedMinute: self.selectedMinute(),
 			SelectedAmPm: self.selectedAmPm(),
@@ -270,7 +272,12 @@ function scheduleBuilder(userId) {
 		self.selectedOption(data.SelectedOption);
 		self.selectedDays(data.SelectedDays.split(','));
 		self.selectedMonths(data.SelectedMonths.split(','));
-		self.selectedDates(_.map(data.SelectedDates.split(','), function (x) { return parseInt(x); }));
+
+		if (self.selectedOption() == 'once') {
+			self.selectedDate(data.SelectedDates);
+		} else {
+			self.selectedDates(_.map(data.SelectedDates.split(','), function (x) { return parseInt(x); }));
+		}
 		self.selectedHour(data.SelectedHour || '12');
 		self.selectedMinute(data.SelectedMinute || '00');
 		self.selectedAmPm(data.SelectedAmPm || 'PM');
