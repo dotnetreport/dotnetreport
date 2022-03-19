@@ -386,6 +386,7 @@ function filterGroupViewModel(args) {
 
 		self.Filters.push(filter);
 		addingFilter = false;
+		return filter;
 	};
 
 	self.RemoveFilter = function (filter) {
@@ -1035,6 +1036,19 @@ var reportViewModel = function (options) {
 		proc.SelectedParameters = null;
 		self.Parameters(parameters);
 		self.showParameters(!allHidden);
+	});
+
+	self.SelectedFields.subscribe(function (fields) {
+		var newField = fields.length > 0 ? fields[fields.length - 1] : null;
+		if (newField && newField.forceFilter) {
+
+			var group = self.FilterGroups()[0];
+			var newFilter = group.AddFilter();
+			setTimeout(function () {
+				newField.forced = true;
+				newFilter.Field(newField);
+			}, 500);
+        }
 	});
 
 	self.SelectedTable.subscribe(function (table) {
