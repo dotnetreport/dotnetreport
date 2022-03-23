@@ -1048,7 +1048,7 @@ var reportViewModel = function (options) {
 				newField.forced = true;
 				newFilter.Field(newField);
 			}, 500);
-        }
+		}
 	});
 
 	self.SelectedTable.subscribe(function (table) {
@@ -1566,7 +1566,8 @@ var reportViewModel = function (options) {
 				method: "/ReportApi/SaveReportFilter",
 				SaveReport: false,
 				ReportJson: JSON.stringify(self.BuildReportData()),
-				adminMode: self.adminMode()
+				adminMode: self.adminMode(),
+				SubTotalMode: false
 			})
 		})
 		self.RunReport(false);
@@ -1607,7 +1608,8 @@ var reportViewModel = function (options) {
 					method: "/ReportApi/RunReport",
 					SaveReport: self.CanSaveReports() ? self.SaveReport() : false,
 					ReportJson: JSON.stringify(self.BuildReportData([], isComparison, i - 1)),
-					adminMode: self.adminMode()
+					adminMode: self.adminMode(),
+					SubTotalMode: false
 				}),
 				async: false
 			}).done(function (result) {
@@ -1849,7 +1851,8 @@ var reportViewModel = function (options) {
 							method: "/ReportApi/RunDrillDownReport",
 							SaveReport: false,
 							ReportJson: JSON.stringify(self.BuildReportData(e.Items)),
-							adminMode: self.adminMode()
+							adminMode: self.adminMode(),
+							SubTotalMode: false
 						})
 					}).done(function (ddResult) {
 						if (ddResult.d) { ddResult = ddResult.d; }
@@ -2104,12 +2107,12 @@ var reportViewModel = function (options) {
 
 	self.setupField = function (e) {
 		e.selectedFieldName = e.tableName + " > " + e.fieldName;
+		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail').concat('Group in Detail');
 		e.selectedAggregate = ko.observable(e.aggregateFunction);
 		e.filterOnFly = ko.observable(e.filterOnFly);
 		e.disabled = ko.observable(e.disabled);
 		e.groupInGraph = ko.observable(e.groupInGraph);
 		e.hideInDetail = ko.observable(e.hideInDetail);
-		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail').concat('Group in Detail');
 		e.linkField = ko.observable(e.linkField);
 		e.linkFieldItem = new linkFieldViewModel(e.linkFieldItem, options);
 		e.isFormulaField = ko.observable(e.isFormulaField);
@@ -2519,7 +2522,7 @@ var reportViewModel = function (options) {
 				isValid = false;
 				toastr.error("Report name is already in use, please choose a different name");
 				return false;
-            }
+			}
 		});
 
 		return isValid;
