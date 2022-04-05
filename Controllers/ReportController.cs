@@ -295,7 +295,7 @@ namespace ReportBuilder.Web.Controllers
                         }
 
                         if (sql.Contains("ORDER BY"))
-                            sql = sql + $" OFFSET {pageNumber - 1} ROWS FETCH NEXT {pageSize} ROWS ONLY";
+                            sql = sql + $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
                     }
                     // Execute sql
                     var dtPagedRun = new DataTable();
