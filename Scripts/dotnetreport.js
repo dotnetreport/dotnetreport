@@ -374,6 +374,35 @@ function filterGroupViewModel(args) {
 					});
 				});
 			}
+
+			if (newField && newField.restrictedDateRange && newField.fieldType == 'DateTime') {
+				// apply date range selection
+				filter.Value.subscribe(function (newValue) {
+					if (newValue && filter.Operator() == 'range') {
+						if (!self.isRangeValid(newValue, newField.restrictedDateRange)) {
+							toastr.error("Filter range is more than " + newField.restrictedDateRange + ". Please choose a shorter date range");
+							filter.Value(null);
+                        }
+					}
+					if (newValue && filter.Operator() == 'between') {
+						var newValue2 = filter.Value2();
+						if (self.isDate(newValue) && self.isDate(newValue2) && !self.isBetweenValid(newValue, filter.Value2(), newField.restrictedDateRange)) {
+							toastr.error("Filter range is more than " + newField.restrictedDateRange + ". Please choose a shorter date range");
+							filter.Value(null);
+						}
+                    }
+				});
+
+				filter.Value2.subscribe(function (newValue2) {
+					var newValue1 = filter.Value();
+					if (self.isDate(newValue1) && self.isDate(newValue2) && filter.Operator() == 'between') {
+						if (!self.isBetweenValid(newValue1, newValue2, newField.restrictedDateRange)) {
+							toastr.error("Filter range is more than " + newField.restrictedDateRange + ". Please choose a shorter date range");
+							filter.Value2(null);
+						}
+                    }
+				});
+            }
 		});
 
 		if (e.FieldId) {
@@ -392,6 +421,62 @@ function filterGroupViewModel(args) {
 	self.RemoveFilter = function (filter) {
 		self.Filters.remove(filter);
 	};
+
+	self.isRangeValid = function (selectedRange, restrictedRange) {
+		if (!selectedRange || !restrictedRange) return false;
+
+		var tokens = restrictedRange.split(' ');
+		var rangeNumber = parseInt(tokens[0]);
+		var rangePeriod = tokens[1];
+
+		var isValid = true;
+		if (selectedRange == 'This Month To Date') {
+			if (rangePeriod == 'Years') isValid = false;
+			if (rangePeriod == 'Days' && rangeNumber < 30) isValid = false;
+		}
+		else if (selectedRange.indexOf('Month') >= 0) {
+			if (rangePeriod == 'Years') isValid = false;
+			if (rangePeriod == 'Days' && rangeNumber < 30) isValid = false;
+		}
+		if (selectedRange == 'This Year To Date') {
+			if (rangePeriod == 'Months' && rangeNumber < 12) isValid = false;
+			if (rangePeriod == 'Days' && rangeNumber < 365) isValid = false;
+		}
+		else if (selectedRange.indexOf('Year') >= 0) {
+			if (rangePeriod == 'Months' && rangeNumber < 12) isValid = false;
+			if (rangePeriod == 'Days' && rangeNumber > 365) isValid = false;
+		}
+		else if (selectedRange.indexOf('Week') >= 0) {
+			if (rangePeriod == 'Days' && rangeNumber < 7) isValid = false;
+		}
+		else if (selectedRange == 'Last 30 Days') {
+			if (rangePeriod == 'Days' && rangeNumber < 30) isValid = false;
+		}
+
+		return isValid;
+	}	
+
+	self.isBetweenValid = function (date1, date2, restrictedRange) {
+		var tokens = restrictedRange.split(' ');
+		var rangeNumber = parseInt(tokens[0]);
+		var rangePeriod = tokens[1];
+
+		var diffDays = (new Date(date2) - new Date(date1)) / (1000 * 3600 * 24);
+		var isValid = true;
+
+		switch (rangePeriod) {
+			case "Days": isValid = diffDays < rangeNumber && diffDays > 0; break;
+			case "Months": isValid = diffDays < (rangeNumber * 30); break;
+			case "Years": isValid = diffDays < (rangeNumber * 365); break;
+        }
+
+		return isValid;
+    }
+
+	self.isDate = function (date) {
+		if (!date) return false;
+		return (new Date(date) !== "Invalid Date") && !isNaN(new Date(date));
+	}
 }
 
 var manageAccess = function (options) {
