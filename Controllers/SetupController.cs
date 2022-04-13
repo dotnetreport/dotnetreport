@@ -184,7 +184,14 @@ namespace ReportBuilder.Web.Controllers
                         RestrictedDateRange = item.restrictedDateRange,
                         RestrictedEndDate = item.restrictedEndDate,
                         RestrictedStartDate = item.restrictedStartDate,
-                        AllowedRoles = item.columnRoles.ToObject<List<string>>()
+                        AllowedRoles = item.columnRoles.ToObject<List<string>>(),
+
+                        ForeignParentKey = item.hasForeignParentKey,
+                        ForeignParentApplyTo = item.foreignParentApplyTo,
+                        ForeignParentKeyField = item.foreignParentKey,
+                        ForeignParentValueField = item.foreignParentValue,
+                        ForeignParentTable = item.foreignParentTable,
+                        ForeignParentRequired = item.foreignParentRequired,
                     };
 
                     columns.Add(column);
@@ -269,6 +276,13 @@ namespace ReportBuilder.Web.Controllers
                             column.RestrictedDateRange = matchColumn.RestrictedDateRange;
                             column.RestrictedStartDate = matchColumn.RestrictedStartDate;
                             column.RestrictedEndDate = matchColumn.RestrictedEndDate;
+                            column.ForeignParentKey = matchColumn.ForeignParentKey;
+                            column.ForeignParentApplyTo = matchColumn.ForeignParentApplyTo;
+                            column.ForeignParentTable = matchColumn.ForeignParentTable;
+                            column.ForeignParentKeyField = matchColumn.ForeignParentKeyField;
+                            column.ForeignParentValueField = matchColumn.ForeignParentValueField;
+                            column.ForeignParentRequired = matchColumn.ForeignParentRequired;
+
                             column.Selected = true;
                         }
 

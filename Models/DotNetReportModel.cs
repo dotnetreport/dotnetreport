@@ -173,6 +173,12 @@ namespace ReportBuilder.Web.Models
         public DateTime? RestrictedStartDate { get; set; }
         public DateTime? RestrictedEndDate { get; set; }
         public List<string> AllowedRoles { get; set; }
+        public bool ForeignParentKey { get; set; }
+        public string ForeignParentTable { get; set; }
+        public string ForeignParentApplyTo { get; set; }
+        public string ForeignParentKeyField { get; set; }
+        public string ForeignParentValueField { get; set; }
+        public bool ForeignParentRequired { get; set; }
     }
 
     public class ConnectViewModel

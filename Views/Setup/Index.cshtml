@@ -557,6 +557,87 @@
                                 </div>
                             </div>
 
+                            <div data-bind="if: ForeignKey">
+                                <div class="alert alert-info">
+                                    You can setup a cascading filter by setting up a parent for the foreign key below
+                                </div>
+                                <div class="control-group">
+                                    <div class="form-group row">
+                                        <label class="col-md-3 col-sm-3 control-label">Setup Foreign Key Parent?</label>
+                                        <div class="col-md-6 col-sm-6">
+                                            <div class="checkbox">
+                                                <label>
+                                                    <input class="check-box" type="checkbox" data-bind="checked:ForeignParentKey">
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3 col-sm-3">
+                                            <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Foreign keys parent allows cascading dropdown selection in Filters"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="control-group">
+                                    <div class="form-group row">
+                                        <label class="col-md-3 col-sm-3 control-label" data-bind="visible:ForeignParentKey(), attr: {required: ForeignParentKey()?'True':null, placeholder: 'Ex tblEmployees'}" placeholder="Ex tblEmployees" style="display: none;">Parent Table</label>
+                                        <div class="col-md-6 col-sm-6">
+                                            <select class="form-control" data-bind="value: ForeignJoinTable, visible:ForeignParentKey(), options: $root.Tables.model, optionsText: 'TableName'" placeholder="Ex tblEmployees" style="display: none;"></select>
+
+                                        </div>
+                                        <div class="col-md-3 col-sm-3">
+                                            <span class="field-validation-valid help-inline indent" data-valmsg-for="ForeignJoinTable" data-valmsg-replace="true"></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="control-group" data-bind="visible:ForeignParentKey()" style="display: none;">
+                                    <div class="form-group row">
+                                        <label class="col-md-3 col-sm-3 control-label" data-bind="attr: {required: ForeignParentKey()?'True':null, placeholder: 'Ex EmployeeId'}">Parent Key Field</label>
+                                        <div class="col-md-6 col-sm-6">
+                                            <select class="form-control" data-bind="options: ForeignJoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignParentKeyField, attr: {required: ForeignParentKey()?'True':null}" placeholder="Ex EmployeeId"></select>
+                                        </div>
+                                        <div class="col-md-3 col-sm-3">
+                                            <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Parent Key field is a Column from the Parent table which is used as the key in cascading filters"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="control-group" data-bind="visible:ForeignParentKey()" style="display: none;">
+                                    <div class="form-group row">
+                                        <label class="col-md-3 col-sm-3 control-label" data-bind="attr: {required: ForeignParentKey()?'True':null, placeholder: 'Ex EmployeeName'}">Parent Value Field</label>
+                                        <div class="col-md-6 col-sm-6">
+                                            <select class="form-control" data-bind="options: ForeignJoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignParentValueField, attr: {required: ForeignParentKey()?'True':null}" placeholder="Ex EmployeeName"></select>
+                                        </div>
+                                        <div class="col-md-3 col-sm-3">
+                                            <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Parent Value field is a Column from the Parent table which is used to display the value to the User in the Report Designer for cascading filters"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="control-group" data-bind="visible:ForeignParentKey()" style="display: none;">
+                                    <div class="form-group row">
+                                        <label class="col-md-3 col-sm-3 control-label" data-bind="attr: {required: ForeignParentKey()?'True':null, placeholder: 'Ex EmployeeName'}">Foreign Key Filter Field</label>
+                                        <div class="col-md-6 col-sm-6">
+                                            <select class="form-control" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignParentApplyTo, attr: {required: ForeignParentKey()?'True':null}" placeholder="Ex EmployeeName"></select>
+                                        </div>
+                                        <div class="col-md-3 col-sm-3">
+                                            <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Foreign Key Filter Value field is a Column from the Foreign table where the selected parent filter will be applied for cascading filters"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                @*<div class="control-group">
+                                    <div class="form-group row">
+                                        <label class="col-md-3 col-sm-3 control-label">Require Foreign Key Parent?</label>
+                                        <div class="col-md-6 col-sm-6">
+                                            <div class="checkbox">
+                                                <label>
+                                                    <input class="check-box" type="checkbox" data-bind="checked:ForeignParentRequired">
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3 col-sm-3">
+                                            <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Foreign keys parent can be optional or set to required for cascading filters"></span>
+                                        </div>
+                                    </div>
+                                </div>*@
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">
