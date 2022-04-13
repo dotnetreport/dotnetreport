@@ -96,6 +96,9 @@
             <!-- /ko -->
             <!-- /ko -->
             <!-- ko if: hasForeignKey-->
+            <!-- ko if: hasForeignParentKey-->
+            <select multiple class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.ParentList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ParentIn"></select>
+            <!-- /ko -->
             <!-- ko if: $parent.Operator()=='='-->
             <select required class="form-control" data-bind="options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', value: $parent.Value, optionsCaption: 'Please Choose'"></select>
             <!-- /ko -->

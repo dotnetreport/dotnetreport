@@ -311,6 +311,7 @@ function filterGroupViewModel(args) {
 	self.AddFilter = function (e, isFilterOnFly) {
 		e = e || {};
 		var lookupList = ko.observableArray([]);
+		var parentList = ko.observableArray([]);
 
 		var url = new URL(window.location.href);
 		var filterId = url.searchParams.get("filterId");
@@ -339,6 +340,8 @@ function filterGroupViewModel(args) {
 			Value2: ko.observable(e.Value2),
 			ValueIn: ko.observableArray(valueIn),
 			LookupList: lookupList,
+			ParentList: parentList,
+			ParentIn: ko.observableArray([]),
 			Apply: ko.observable(e.Apply != null ? e.Apply : true),
 			IsFilterOnFly: isFilterOnFly === true ? true : false
 		};
@@ -348,31 +351,67 @@ function filterGroupViewModel(args) {
 			filter.Value2(null);
 		});
 
+		function loadLookupList(fieldId, dataFilters) {
+			ajaxcall({
+				url: args.options.apiUrl,
+				data: {
+					method: "/ReportApi/GetLookupList",
+					model: JSON.stringify({ fieldId: fieldId, dataFilters: dataFilters })
+				}
+			}).done(function (result) {
+				if (result.d) { result = result.d; }
+				ajaxcall({
+					type: 'POST',
+					url: args.options.lookupListUrl,
+					data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey })
+				}).done(function (list) {
+					if (list.d) { list = list.d; }
+					lookupList(list);
+					if (valueIn.length > 0) {
+						filter.ValueIn(valueIn);
+						valueIn = [];
+					}
+				});
+			});
+        }
+
 		var addingFilter = true;
 		field.subscribe(function (newField) {
 			if (!addingFilter) filter.Value(null);
 			if (newField && newField.hasForeignKey) {
-				ajaxcall({
-					url: args.options.apiUrl,
-					data: {
-						method: "/ReportApi/GetLookupList",
-						model: JSON.stringify({ fieldId: newField.fieldId, dataFilters: args.options.dataFilters })
-					}
-				}).done(function (result) {
-					if (result.d) { result = result.d; }
+
+				if (newField.hasForeignParentKey) {
 					ajaxcall({
-						type: 'POST',
-						url: args.options.lookupListUrl,
-						data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey })
-					}).done(function (list) {
-						if (list.d) { list = list.d; }
-						lookupList(list);
-						if (valueIn.length > 0) {
-							filter.ValueIn(valueIn);
-							valueIn = [];
+						url: args.options.apiUrl,
+						data: {
+							method: "/ReportApi/GetLookupList",
+							model: JSON.stringify({ fieldId: newField.fieldId, dataFilters: args.options.dataFilters, parentLookup: true })
 						}
+					}).done(function (result) {
+						if (result.d) { result = result.d; }
+						ajaxcall({
+							type: 'POST',
+							url: args.options.lookupListUrl,
+							data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey })
+						}).done(function (list) {
+							if (list.d) { list = list.d; }
+							parentList(list);
+						});
 					});
-				});
+
+					filter.ParentIn.subscribe(function (newValue) {
+						if (newValue && newValue.length > 0) {
+							var df = Object.assign({}, args.options.dataFilters || {});
+							df[newField.foreignTable + '__' + newField.foreignParentApplyTo] = newValue.join();
+							loadLookupList(newField.fieldId, df);
+						} else {
+							loadLookupList(newField.fieldId, args.options.dataFilters);
+                        }
+					});
+                }
+
+				loadLookupList(newField.fieldId, args.options.dataFilters);
+				
 			}
 
 			if (newField && newField.restrictedDateRange && newField.fieldType == 'DateTime') {
