@@ -205,6 +205,7 @@ function scheduleBuilder(userId) {
 	self.selectedMinute = ko.observable('00');
 	self.selectedAmPm = ko.observable('PM');
 	self.selectedDate = ko.observable();
+	var lastDay = 'Last day of the month';
 
 	self.days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 	self.months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -213,6 +214,7 @@ function scheduleBuilder(userId) {
 	self.minutes = ['00', '15', '30', '45'];
 	for (var i = 1; i <= 31; i++) { self.dates.push(i); }
 	for (var i = 1; i <= 12; i++) { self.hours.push(i); }
+	self.dates.push(lastDay);
 
 	self.hasSchedule = ko.observable(false);
 	self.emailTo = ko.observable('');
@@ -275,7 +277,10 @@ function scheduleBuilder(userId) {
 
 		if (self.selectedOption() == 'once') {
 			self.selectedDate(data.SelectedDates);
-		} else {
+		}
+		else if (data.SelectedDates == lastDay) {
+			self.selectedDates([data.SelectedDates]);
+		}else {
 			self.selectedDates(_.map(data.SelectedDates.split(','), function (x) { return parseInt(x); }));
 		}
 		self.selectedHour(data.SelectedHour || '12');
