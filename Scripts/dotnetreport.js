@@ -191,7 +191,7 @@ function linkFieldViewModel(args, options) {
 function scheduleBuilder(userId) {
 	var self = this;
 
-	self.options = ['day', 'week', 'month', 'year'];
+	self.options = ['day', 'week', 'month', 'year', 'once'];
 	self.showAtTime = ko.observable(true);
 	self.showDays = ko.observable(false);
 	self.showMonths = ko.observable(false);
@@ -204,6 +204,8 @@ function scheduleBuilder(userId) {
 	self.selectedHour = ko.observable('12');
 	self.selectedMinute = ko.observable('00');
 	self.selectedAmPm = ko.observable('PM');
+	self.selectedDate = ko.observable();
+	var lastDay = 'Last day of the month';
 
 	self.days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 	self.months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -212,6 +214,7 @@ function scheduleBuilder(userId) {
 	self.minutes = ['00', '15', '30', '45'];
 	for (var i = 1; i <= 31; i++) { self.dates.push(i); }
 	for (var i = 1; i <= 12; i++) { self.hours.push(i); }
+	self.dates.push(lastDay);
 
 	self.hasSchedule = ko.observable(false);
 	self.emailTo = ko.observable('');
@@ -221,6 +224,7 @@ function scheduleBuilder(userId) {
 		self.selectedMonths([]);
 		self.selectedDates([]);
 		switch (newValue) {
+			case 'once':
 			case 'day':
 				self.showDays(false);
 				self.showDates(false);
@@ -249,7 +253,7 @@ function scheduleBuilder(userId) {
 			SelectedOption: self.selectedOption(),
 			SelectedDays: self.selectedDays().join(","),
 			SelectedMonths: self.selectedMonths().join(","),
-			SelectedDates: self.selectedDates().join(","),
+			SelectedDates: self.selectedOption() == 'once' ? self.selectedDate() : self.selectedDates().join(","),
 			SelectedHour: self.selectedHour(),
 			SelectedMinute: self.selectedMinute(),
 			SelectedAmPm: self.selectedAmPm(),
@@ -270,7 +274,15 @@ function scheduleBuilder(userId) {
 		self.selectedOption(data.SelectedOption);
 		self.selectedDays(data.SelectedDays.split(','));
 		self.selectedMonths(data.SelectedMonths.split(','));
-		self.selectedDates(_.map(data.SelectedDates.split(','), function (x) { return parseInt(x); }));
+
+		if (self.selectedOption() == 'once') {
+			self.selectedDate(data.SelectedDates);
+		}
+		else if (data.SelectedDates == lastDay) {
+			self.selectedDates([data.SelectedDates]);
+		}else {
+			self.selectedDates(_.map(data.SelectedDates.split(','), function (x) { return parseInt(x); }));
+		}
 		self.selectedHour(data.SelectedHour || '12');
 		self.selectedMinute(data.SelectedMinute || '00');
 		self.selectedAmPm(data.SelectedAmPm || 'PM');
@@ -304,6 +316,7 @@ function filterGroupViewModel(args) {
 	self.AddFilter = function (e, isFilterOnFly) {
 		e = e || {};
 		var lookupList = ko.observableArray([]);
+		var parentList = ko.observableArray([]);
 
 		var url = new URL(window.location.href);
 		var filterId = url.searchParams.get("filterId");
@@ -332,6 +345,8 @@ function filterGroupViewModel(args) {
 			Value2: ko.observable(e.Value2),
 			ValueIn: ko.observableArray(valueIn),
 			LookupList: lookupList,
+			ParentList: parentList,
+			ParentIn: ko.observableArray([]),
 			Apply: ko.observable(e.Apply != null ? e.Apply : true),
 			IsFilterOnFly: isFilterOnFly === true ? true : false
 		};
@@ -341,32 +356,97 @@ function filterGroupViewModel(args) {
 			filter.Value2(null);
 		});
 
+		function loadLookupList(fieldId, dataFilters) {
+			ajaxcall({
+				url: args.options.apiUrl,
+				data: {
+					method: "/ReportApi/GetLookupList",
+					model: JSON.stringify({ fieldId: fieldId, dataFilters: dataFilters })
+				}
+			}).done(function (result) {
+				if (result.d) { result = result.d; }
+				ajaxcall({
+					type: 'POST',
+					url: args.options.lookupListUrl,
+					data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey })
+				}).done(function (list) {
+					if (list.d) { list = list.d; }
+					lookupList(list);
+					if (valueIn.length > 0) {
+						filter.ValueIn(valueIn);
+						valueIn = [];
+					}
+				});
+			});
+        }
+
 		var addingFilter = true;
 		field.subscribe(function (newField) {
 			if (!addingFilter) filter.Value(null);
 			if (newField && newField.hasForeignKey) {
-				ajaxcall({
-					url: args.options.apiUrl,
-					data: {
-						method: "/ReportApi/GetLookupList",
-						model: JSON.stringify({ fieldId: newField.fieldId, dataFilters: args.options.dataFilters })
-					}
-				}).done(function (result) {
-					if (result.d) { result = result.d; }
+
+				if (newField.hasForeignParentKey) {
 					ajaxcall({
-						type: 'POST',
-						url: args.options.lookupListUrl,
-						data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey })
-					}).done(function (list) {
-						if (list.d) { list = list.d; }
-						lookupList(list);
-						if (valueIn.length > 0) {
-							filter.ValueIn(valueIn);
-							valueIn = [];
+						url: args.options.apiUrl,
+						data: {
+							method: "/ReportApi/GetLookupList",
+							model: JSON.stringify({ fieldId: newField.fieldId, dataFilters: args.options.dataFilters, parentLookup: true })
 						}
+					}).done(function (result) {
+						if (result.d) { result = result.d; }
+						ajaxcall({
+							type: 'POST',
+							url: args.options.lookupListUrl,
+							data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey })
+						}).done(function (list) {
+							if (list.d) { list = list.d; }
+							parentList(list);
+						});
 					});
-				});
+
+					filter.ParentIn.subscribe(function (newValue) {
+						if (newValue && newValue.length > 0) {
+							var df = Object.assign({}, args.options.dataFilters || {});
+							df[newField.foreignTable + '__' + newField.foreignParentApplyTo] = newValue.join();
+							loadLookupList(newField.fieldId, df);
+						} else {
+							loadLookupList(newField.fieldId, args.options.dataFilters);
+                        }
+					});
+                }
+
+				loadLookupList(newField.fieldId, args.options.dataFilters);
+				
 			}
+
+			if (newField && newField.restrictedDateRange && newField.fieldType == 'DateTime') {
+				// apply date range selection
+				filter.Value.subscribe(function (newValue) {
+					if (newValue && filter.Operator() == 'range') {
+						if (!self.isRangeValid(newValue, newField.restrictedDateRange)) {
+							toastr.error("Filter range is more than " + newField.restrictedDateRange + ". Please choose a shorter date range");
+							filter.Value(null);
+                        }
+					}
+					if (newValue && filter.Operator() == 'between') {
+						var newValue2 = filter.Value2();
+						if (self.isDate(newValue) && self.isDate(newValue2) && !self.isBetweenValid(newValue, filter.Value2(), newField.restrictedDateRange)) {
+							toastr.error("Filter range is more than " + newField.restrictedDateRange + ". Please choose a shorter date range");
+							filter.Value(null);
+						}
+                    }
+				});
+
+				filter.Value2.subscribe(function (newValue2) {
+					var newValue1 = filter.Value();
+					if (self.isDate(newValue1) && self.isDate(newValue2) && filter.Operator() == 'between') {
+						if (!self.isBetweenValid(newValue1, newValue2, newField.restrictedDateRange)) {
+							toastr.error("Filter range is more than " + newField.restrictedDateRange + ". Please choose a shorter date range");
+							filter.Value2(null);
+						}
+                    }
+				});
+            }
 		});
 
 		if (e.FieldId) {
@@ -379,11 +459,68 @@ function filterGroupViewModel(args) {
 
 		self.Filters.push(filter);
 		addingFilter = false;
+		return filter;
 	};
 
 	self.RemoveFilter = function (filter) {
 		self.Filters.remove(filter);
 	};
+
+	self.isRangeValid = function (selectedRange, restrictedRange) {
+		if (!selectedRange || !restrictedRange) return false;
+
+		var tokens = restrictedRange.split(' ');
+		var rangeNumber = parseInt(tokens[0]);
+		var rangePeriod = tokens[1];
+
+		var isValid = true;
+		if (selectedRange == 'This Month To Date') {
+			if (rangePeriod == 'Years') isValid = false;
+			if (rangePeriod == 'Days' && rangeNumber < 30) isValid = false;
+		}
+		else if (selectedRange.indexOf('Month') >= 0) {
+			if (rangePeriod == 'Years') isValid = false;
+			if (rangePeriod == 'Days' && rangeNumber < 30) isValid = false;
+		}
+		if (selectedRange == 'This Year To Date') {
+			if (rangePeriod == 'Months' && rangeNumber < 12) isValid = false;
+			if (rangePeriod == 'Days' && rangeNumber < 365) isValid = false;
+		}
+		else if (selectedRange.indexOf('Year') >= 0) {
+			if (rangePeriod == 'Months' && rangeNumber < 12) isValid = false;
+			if (rangePeriod == 'Days' && rangeNumber > 365) isValid = false;
+		}
+		else if (selectedRange.indexOf('Week') >= 0) {
+			if (rangePeriod == 'Days' && rangeNumber < 7) isValid = false;
+		}
+		else if (selectedRange == 'Last 30 Days') {
+			if (rangePeriod == 'Days' && rangeNumber < 30) isValid = false;
+		}
+
+		return isValid;
+	}	
+
+	self.isBetweenValid = function (date1, date2, restrictedRange) {
+		var tokens = restrictedRange.split(' ');
+		var rangeNumber = parseInt(tokens[0]);
+		var rangePeriod = tokens[1];
+
+		var diffDays = (new Date(date2) - new Date(date1)) / (1000 * 3600 * 24);
+		var isValid = true;
+
+		switch (rangePeriod) {
+			case "Days": isValid = diffDays < rangeNumber && diffDays > 0; break;
+			case "Months": isValid = diffDays < (rangeNumber * 30); break;
+			case "Years": isValid = diffDays < (rangeNumber * 365); break;
+        }
+
+		return isValid;
+    }
+
+	self.isDate = function (date) {
+		if (!date) return false;
+		return (new Date(date) !== "Invalid Date") && !isNaN(new Date(date));
+	}
 }
 
 var manageAccess = function (options) {
@@ -930,6 +1067,8 @@ var reportViewModel = function (options) {
 		self.SelectFields([]);
 		self.SelectedField(null);
 		self.SelectedProc(null);
+		self.SelectedTable(null);
+		self.useStoredProc(false);
 
 		self.IncludeSubTotal(false);
 		self.EditFiltersOnReport(false);
@@ -1028,6 +1167,19 @@ var reportViewModel = function (options) {
 		proc.SelectedParameters = null;
 		self.Parameters(parameters);
 		self.showParameters(!allHidden);
+	});
+
+	self.SelectedFields.subscribe(function (fields) {
+		var newField = fields.length > 0 ? fields[fields.length - 1] : null;
+		if (newField && newField.forceFilter) {
+
+			var group = self.FilterGroups()[0];
+			var newFilter = group.AddFilter();
+			setTimeout(function () {
+				newField.forced = true;
+				newFilter.Field(newField);
+			}, 500);
+		}
 	});
 
 	self.SelectedTable.subscribe(function (table) {
@@ -1545,7 +1697,8 @@ var reportViewModel = function (options) {
 				method: "/ReportApi/SaveReportFilter",
 				SaveReport: false,
 				ReportJson: JSON.stringify(self.BuildReportData()),
-				adminMode: self.adminMode()
+				adminMode: self.adminMode(),
+				SubTotalMode: false
 			})
 		})
 		self.RunReport(false);
@@ -1586,7 +1739,8 @@ var reportViewModel = function (options) {
 					method: "/ReportApi/RunReport",
 					SaveReport: self.CanSaveReports() ? self.SaveReport() : false,
 					ReportJson: JSON.stringify(self.BuildReportData([], isComparison, i - 1)),
-					adminMode: self.adminMode()
+					adminMode: self.adminMode(),
+					SubTotalMode: false
 				}),
 				async: false
 			}).done(function (result) {
@@ -1828,7 +1982,8 @@ var reportViewModel = function (options) {
 							method: "/ReportApi/RunDrillDownReport",
 							SaveReport: false,
 							ReportJson: JSON.stringify(self.BuildReportData(e.Items)),
-							adminMode: self.adminMode()
+							adminMode: self.adminMode(),
+							SubTotalMode: false
 						})
 					}).done(function (ddResult) {
 						if (ddResult.d) { ddResult = ddResult.d; }
@@ -2083,12 +2238,12 @@ var reportViewModel = function (options) {
 
 	self.setupField = function (e) {
 		e.selectedFieldName = e.tableName + " > " + e.fieldName;
+		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail').concat('Group in Detail');
 		e.selectedAggregate = ko.observable(e.aggregateFunction);
 		e.filterOnFly = ko.observable(e.filterOnFly);
 		e.disabled = ko.observable(e.disabled);
 		e.groupInGraph = ko.observable(e.groupInGraph);
 		e.hideInDetail = ko.observable(e.hideInDetail);
-		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail').concat('Group in Detail');
 		e.linkField = ko.observable(e.linkField);
 		e.linkFieldItem = new linkFieldViewModel(e.linkFieldItem, options);
 		e.isFormulaField = ko.observable(e.isFormulaField);
@@ -2498,7 +2653,7 @@ var reportViewModel = function (options) {
 				isValid = false;
 				toastr.error("Report name is already in use, please choose a different name");
 				return false;
-            }
+			}
 		});
 
 		return isValid;

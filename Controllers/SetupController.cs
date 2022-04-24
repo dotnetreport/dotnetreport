@@ -180,7 +180,18 @@ namespace ReportBuilder.Web.Controllers
                         ForeignTable = item.foreignTable,
                         DoNotDisplay = item.doNotDisplay,
                         ForceFilter = item.forceFilter,
-                        AllowedRoles = item.columnRoles.ToObject<List<string>>()
+                        ForceFilterForTable = item.forceFilterForTable,
+                        RestrictedDateRange = item.restrictedDateRange,
+                        RestrictedEndDate = item.restrictedEndDate,
+                        RestrictedStartDate = item.restrictedStartDate,
+                        AllowedRoles = item.columnRoles.ToObject<List<string>>(),
+
+                        ForeignParentKey = item.hasForeignParentKey,
+                        ForeignParentApplyTo = item.foreignParentApplyTo,
+                        ForeignParentKeyField = item.foreignParentKey,
+                        ForeignParentValueField = item.foreignParentValue,
+                        ForeignParentTable = item.foreignParentTable,
+                        ForeignParentRequired = item.foreignParentRequired,
                     };
 
                     columns.Add(column);
@@ -261,6 +272,17 @@ namespace ReportBuilder.Web.Controllers
                             column.DoNotDisplay = matchColumn.DoNotDisplay;
                             column.DisplayOrder = matchColumn.DisplayOrder;
                             column.ForceFilter = matchColumn.ForceFilter;
+                            column.ForceFilterForTable = matchColumn.ForceFilterForTable;
+                            column.RestrictedDateRange = matchColumn.RestrictedDateRange;
+                            column.RestrictedStartDate = matchColumn.RestrictedStartDate;
+                            column.RestrictedEndDate = matchColumn.RestrictedEndDate;
+                            column.ForeignParentKey = matchColumn.ForeignParentKey;
+                            column.ForeignParentApplyTo = matchColumn.ForeignParentApplyTo;
+                            column.ForeignParentTable = matchColumn.ForeignParentTable;
+                            column.ForeignParentKeyField = matchColumn.ForeignParentKeyField;
+                            column.ForeignParentValueField = matchColumn.ForeignParentValueField;
+                            column.ForeignParentRequired = matchColumn.ForeignParentRequired;
+
                             column.Selected = true;
                         }
 

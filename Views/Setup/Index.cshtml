@@ -368,152 +368,285 @@
             <div class="modal-body">
                 <p>Choose options that will determine how users interact with this column on Reports</p>
                 <div class="form-horizontal">
-                    <div class="control-group">
-                        <div class="form-group row">
-                            <label class="col-md-3 col-sm-3 control-label" for="Display_Name" data-bind="attr:{placeholder:'Ex First Name'}" placeholder="Ex First Name">Display Name</label>
-                            <div class="col-md-6 col-sm-6">
-                                <input class="form-control text-box single-line" data-val="true" data-val-required="The DisplayName field is required." id="DisplayName" name="DisplayName" type="text" value="First Name" data-bind="value: DisplayName, attr:{placeholder:'Ex First Name'}" placeholder="Ex First Name">
-                            </div>
-                            <div class="col-md-3 col-sm-3">
-                                <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="This is a friendly name to display to your users"></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="control-group" data-bind="if: $root.isStoredProcColumn() == false">
-                        <div class="form-group row">
-                            <label class="col-md-3 col-sm-3 control-label" for="Field_Type" data-bind="">Field Type</label>
-                            <div class="col-md-6 col-sm-6">
-                                <select class="form-control" id="FieldType_SelectedId" name="FieldType.SelectedId" data-bind="value: FieldType">
-                                    <option value="Boolean">Boolean</option>
-                                    <option value="DateTime">Date Time</option>
-                                    <option value="Varchar">Varchar</option>
-                                    <option value="Money">Money</option>
-                                    <option value="Int">Int</option>
-                                    <option value="Double">Double</option>
-                                </select>
-                            </div>
-                            <div class="col-md-3 col-sm-3">
-                                <span class="field-validation-valid help-inline indent" data-valmsg-for="FieldType" data-valmsg-replace="true"></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="control-group" data-bind="if: $root.isStoredProcColumn() == false">
-                        <div class="form-group row">
-                            <label class="col-md-3 col-sm-3 control-label" for="Primary_Key" data-bind="">Primary Key</label>
-                            <div class="col-md-6 col-sm-6">
-                                <div class="checkbox">
-                                    <label>
-                                        <input class="check-box" data-val="true" data-val-required="The PrimaryKey field is required." id="PrimaryKey" name="PrimaryKey" type="checkbox" value="true" data-bind="checked:PrimaryKey"><input name="PrimaryKey" type="hidden" value="false">
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="col-md-3 col-sm-3">
-                                <span class="field-validation-valid help-inline indent" data-valmsg-for="PrimaryKey" data-valmsg-replace="true"></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="control-group">
-                        <div class="form-group row">
-                            <label class="col-md-3 col-sm-3 control-label" data-bind="">Do Not Display</label>
-                            <div class="col-md-6 col-sm-6">
-                                <div class="checkbox">
-                                    <label>
-                                        <input class="check-box" data-val="true" type="checkbox" value="true" data-bind="checked:DoNotDisplay">
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="col-md-3 col-sm-3">
-                                <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="If this is checked, the column will not be displayed on Report Designer, but can still be used on Global Data Filters"></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="control-group" data-bind="if: $root.isStoredProcColumn() == false">
-                        <div class="form-group row">
-                            <label class="col-md-3 col-sm-3 control-label" data-bind="">Force Filter</label>
-                            <div class="col-md-6 col-sm-6">
-                                <div class="checkbox">
-                                    <label>
-                                        <input class="check-box" data-val="true" type="checkbox" value="true" data-bind="checked:ForceFilter">
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="col-md-3 col-sm-3">
-                                <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="If this is checked, the column will always require the user to pick a filtered value"></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="control-group" data-bind="if: $root.isStoredProcColumn() == false">
-                        <div class="form-group row">
-                            <label class="col-md-3 col-sm-3 control-label" for="Foreign_Key" data-bind="">Foreign Key</label>
-                            <div class="col-md-6 col-sm-6">
-                                <div class="checkbox">
-                                    <label>
-                                        <input class="check-box" data-val="true" data-val-required="The ForeignKey field is required." id="ForeignKey" name="ForeignKey" type="checkbox" value="true" data-bind="checked:ForeignKey"><input name="ForeignKey" type="hidden" value="false">
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="col-md-3 col-sm-3">
-                                <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Foreign keys allows friendly selection in Filters using a Dropdown List"></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="control-group" data-bind="if: $root.isStoredProcColumn() == false">
-                        <div class="form-group row">
-                            <label class="col-md-3 col-sm-3 control-label" for="Foreign_Table" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null, placeholder: 'Ex tblEmployees'}" placeholder="Ex tblEmployees" style="display: none;">Foreign Table</label>
-                            <div class="col-md-6 col-sm-6">
-                                <select class="form-control" data-bind="value: JoinTable, visible:ForeignKey(), options: $root.Tables.model, optionsText: 'TableName'" placeholder="Ex tblEmployees" style="display: none;"></select>
 
-                            </div>
-                            <div class="col-md-3 col-sm-3">
-                                <span class="field-validation-valid help-inline indent" data-valmsg-for="ForeignTable" data-valmsg-replace="true"></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="control-group" data-bind="if: $root.isStoredProcColumn() == false">
-                        <div class="form-group row">
-                            <label class="col-md-3 col-sm-3 control-label" for="Foreign_Join" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" style="display: none;">Foreign Join</label>
-                            <div class="col-md-6 col-sm-6">
-                                <select class="form-control" id="ForeignJoin_SelectedId" name="ForeignJoin.SelectedId" data-bind="value: ForeignJoin, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" style="display: none;">
-                                    <option selected="selected" value="Inner">Inner</option>
-                                    <option value="Left">Left</option>
-                                    <option value="Right">Right</option>
-                                </select>
-                            </div>
-                            <div class="col-md-3 col-sm-3">
-                                <span class="field-validation-valid help-inline indent" data-valmsg-for="ForeignJoin" data-valmsg-replace="true"></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="control-group" data-bind="if: $root.isStoredProcColumn() == false">
-                        <div class="form-group row">
-                            <label class="col-md-3 col-sm-3 control-label" for="Foreign_Key_Field" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null, placeholder: 'Ex EmployeeId'}" placeholder="Ex EmployeeId" style="display: none;">Foreign Key Field</label>
-                            <div class="col-md-6 col-sm-6">
-                                <select class="form-control" id="ForeignKeyField" name="ForeignKeyField" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignKeyField, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" placeholder="Ex EmployeeId" style="display: none;"></select>
-                            </div>
-                            <div class="col-md-3 col-sm-3">
-                                <span data-bind="visible:ForeignKey()" data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Foreign Key field is a Column from the Foreign table which is used as the Key field"></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="control-group" data-bind="if: $root.isStoredProcColumn() == false">
-                        <div class="form-group row">
-                            <label class="col-md-3 col-sm-3 control-label" for="Foreign_Value_Field" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null, placeholder: 'Ex EmployeeName'}" placeholder="Ex EmployeeName" style="display: none;">Foreign Value Field</label>
-                            <div class="col-md-6 col-sm-6">
-                                <select class="form-control" id="ForeignValueField" name="ForeignValueField" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignValueField, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" placeholder="Ex EmployeeName" style="display: none;"></select>
-                            </div>
-                            <div class="col-md-3 col-sm-3">
-                                <span data-bind="visible:ForeignKey()" data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Foreign Value field is a Column from the Foreign table which is used to display the value to the User in the Report Designer"></span>
-                            </div>
-                        </div>
-                    </div>
+                    <ul class="nav nav-tabs" role="tablist">
+                        <li role="presentation" class="nav-item"><a class="nav-link active" href="#column-main" aria-controls="home" role="tab" data-toggle="tab">Main Options</a></li>
+                        <li role="presentation" class="nav-item"><a class="nav-link" href="#column-foreign" aria-controls="profile" role="tab" data-toggle="tab">Foreign Key Options</a></li>
+                        <li role="presentation" class="nav-item"><a class="nav-link" href="#column-filter" aria-controls="procedure" role="tab" data-toggle="tab">Filter Options</a></li>
+                    </ul>
+                    <div class="tab-content">
+                        <br />
+                        <div role="tabpanel" class="tab-pane active" id="column-main">
 
+                            <div class="control-group">
+                                <div class="form-group row">
+                                    <label class="col-md-3 col-sm-3 control-label" for="Display_Name" data-bind="attr:{placeholder:'Ex First Name'}" placeholder="Ex First Name">Display Name</label>
+                                    <div class="col-md-6 col-sm-6">
+                                        <input class="form-control text-box single-line" data-val="true" data-val-required="The DisplayName field is required." id="DisplayName" name="DisplayName" type="text" value="First Name" data-bind="value: DisplayName, attr:{placeholder:'Ex First Name'}" placeholder="Ex First Name">
+                                    </div>
+                                    <div class="col-md-3 col-sm-3">
+                                        <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="This is a friendly name to display to your users"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="control-group" data-bind="if: $root.isStoredProcColumn() == false">
+                                <div class="form-group row">
+                                    <label class="col-md-3 col-sm-3 control-label" for="Field_Type" data-bind="">Field Type</label>
+                                    <div class="col-md-6 col-sm-6">
+                                        <select class="form-control" id="FieldType_SelectedId" name="FieldType.SelectedId" data-bind="value: FieldType">
+                                            <option value="Boolean">Boolean</option>
+                                            <option value="DateTime">Date Time</option>
+                                            <option value="Varchar">Varchar</option>
+                                            <option value="Money">Money</option>
+                                            <option value="Int">Int</option>
+                                            <option value="Double">Double</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3 col-sm-3">
+                                        <span class="field-validation-valid help-inline indent" data-valmsg-for="FieldType" data-valmsg-replace="true"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="control-group" data-bind="if: $root.isStoredProcColumn() == false">
+                                <div class="form-group row">
+                                    <label class="col-md-3 col-sm-3 control-label" for="Primary_Key" data-bind="">Primary Key</label>
+                                    <div class="col-md-6 col-sm-6">
+                                        <div class="checkbox">
+                                            <label>
+                                                <input class="check-box" data-val="true" data-val-required="The PrimaryKey field is required." id="PrimaryKey" name="PrimaryKey" type="checkbox" value="true" data-bind="checked:PrimaryKey"><input name="PrimaryKey" type="hidden" value="false">
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 col-sm-3">
+                                        <span class="field-validation-valid help-inline indent" data-valmsg-for="PrimaryKey" data-valmsg-replace="true"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="control-group">
+                                <div class="form-group row">
+                                    <label class="col-md-3 col-sm-3 control-label" data-bind="">Do Not Display</label>
+                                    <div class="col-md-6 col-sm-6">
+                                        <div class="checkbox">
+                                            <label>
+                                                <input class="check-box" data-val="true" type="checkbox" value="true" data-bind="checked:DoNotDisplay">
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 col-sm-3">
+                                        <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="If this is checked, the column will not be displayed on Report Designer, but can still be used on Global Data Filters"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div role="tabpanel" class="tab-pane" id="column-filter">
+                            <div class="control-group" data-bind="if: $root.isStoredProcColumn() == false">
+                                <div class="form-group row">
+                                    <label class="col-md-4 col-sm-4 control-label" data-bind="">Require Filter if Column is selected</label>
+                                    <div class="col-md-6 col-sm-6">
+                                        <div class="checkbox">
+                                            <label>
+                                                <input class="check-box" data-val="true" type="checkbox" value="true" data-bind="checked:ForceFilter">
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2 col-sm-2">
+                                        <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="If this is checked, the column will always require the user to pick a filtered value"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="control-group" data-bind="if: $root.isStoredProcColumn() == false">
+                                <div class="form-group row">
+                                    <label class="col-md-4 col-sm-4 control-label" data-bind="">Require Filter if Table is selected</label>
+                                    <div class="col-md-6 col-sm-6">
+                                        <div class="checkbox">
+                                            <label>
+                                                <input class="check-box" data-val="true" type="checkbox" value="true" data-bind="checked:ForceFilterForTable">
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2 col-sm-2">
+                                        <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="If this is checked, the report will always require the user to pick a filter value if user picks the column in report"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="control-group" data-bind="if: FieldType() == 'DateTime'">
+                                <div class="form-group row">
+                                    <label class="col-md-4 col-sm-4 control-label" data-bind="">Restrict Filter Date Range</label>
+                                    <div class="col-md-1 col-sm-1">
+                                        <input class="check-box" type="checkbox" data-bind="checked: restrictDateRangeFilter" />
+                                    </div>
+                                    <div class="col-md-2 col-sm-2" data-bind="if: restrictDateRangeFilter">
+                                        <input class="form-control" type="number" data-bind="value: restrictDateRangeNumber" />
+                                    </div>
+                                    <div class="col-md-3 col-sm-3" data-bind="if: restrictDateRangeFilter">
+                                        <select class="form-control" data-bind="value: restrictDateRangeValue">
+                                            <option value="Days">Day(s)</option>
+                                            <option value="Months">Month(s)</option>
+                                            <option value="Years">Year(s)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2 col-sm-2">
+                                        <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="If this is selected, user will not be able to pick date range larger than this selection"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div role="tabpanel" class="tab-pane" id="column-foreign">
+                            <div class="control-group" data-bind="if: $root.isStoredProcColumn() == false">
+                                <div class="form-group row">
+                                    <label class="col-md-3 col-sm-3 control-label" for="Foreign_Key" data-bind="">Foreign Key</label>
+                                    <div class="col-md-6 col-sm-6">
+                                        <div class="checkbox">
+                                            <label>
+                                                <input class="check-box" data-val="true" data-val-required="The ForeignKey field is required." id="ForeignKey" name="ForeignKey" type="checkbox" value="true" data-bind="checked:ForeignKey"><input name="ForeignKey" type="hidden" value="false">
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 col-sm-3">
+                                        <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Foreign keys allows friendly selection in Filters using a Dropdown List"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="control-group" data-bind="if: $root.isStoredProcColumn() == false">
+                                <div class="form-group row">
+                                    <label class="col-md-3 col-sm-3 control-label" for="Foreign_Table" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null, placeholder: 'Ex tblEmployees'}" placeholder="Ex tblEmployees" style="display: none;">Foreign Table</label>
+                                    <div class="col-md-6 col-sm-6">
+                                        <select class="form-control" data-bind="value: JoinTable, visible:ForeignKey(), options: $root.Tables.model, optionsText: 'TableName'" placeholder="Ex tblEmployees" style="display: none;"></select>
+
+                                    </div>
+                                    <div class="col-md-3 col-sm-3">
+                                        <span class="field-validation-valid help-inline indent" data-valmsg-for="ForeignTable" data-valmsg-replace="true"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="control-group" data-bind="if: $root.isStoredProcColumn() == false">
+                                <div class="form-group row">
+                                    <label class="col-md-3 col-sm-3 control-label" for="Foreign_Join" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" style="display: none;">Foreign Join</label>
+                                    <div class="col-md-6 col-sm-6">
+                                        <select class="form-control" id="ForeignJoin_SelectedId" name="ForeignJoin.SelectedId" data-bind="value: ForeignJoin, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" style="display: none;">
+                                            <option selected="selected" value="Inner">Inner</option>
+                                            <option value="Left">Left</option>
+                                            <option value="Right">Right</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3 col-sm-3">
+                                        <span class="field-validation-valid help-inline indent" data-valmsg-for="ForeignJoin" data-valmsg-replace="true"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="control-group" data-bind="if: $root.isStoredProcColumn() == false">
+                                <div class="form-group row">
+                                    <label class="col-md-3 col-sm-3 control-label" for="Foreign_Key_Field" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null, placeholder: 'Ex EmployeeId'}" placeholder="Ex EmployeeId" style="display: none;">Foreign Key Field</label>
+                                    <div class="col-md-6 col-sm-6">
+                                        <select class="form-control" id="ForeignKeyField" name="ForeignKeyField" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignKeyField, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" placeholder="Ex EmployeeId" style="display: none;"></select>
+                                    </div>
+                                    <div class="col-md-3 col-sm-3">
+                                        <span data-bind="visible:ForeignKey()" data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Foreign Key field is a Column from the Foreign table which is used as the Key field"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="control-group" data-bind="if: $root.isStoredProcColumn() == false">
+                                <div class="form-group row">
+                                    <label class="col-md-3 col-sm-3 control-label" for="Foreign_Value_Field" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null, placeholder: 'Ex EmployeeName'}" placeholder="Ex EmployeeName" style="display: none;">Foreign Value Field</label>
+                                    <div class="col-md-6 col-sm-6">
+                                        <select class="form-control" id="ForeignValueField" name="ForeignValueField" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignValueField, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" placeholder="Ex EmployeeName" style="display: none;"></select>
+                                    </div>
+                                    <div class="col-md-3 col-sm-3">
+                                        <span data-bind="visible:ForeignKey()" data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Foreign Value field is a Column from the Foreign table which is used to display the value to the User in the Report Designer"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div data-bind="if: ForeignKey">
+                                <div class="alert alert-info">
+                                    You can setup a cascading filter by setting up a parent for the foreign key below
+                                </div>
+                                <div class="control-group">
+                                    <div class="form-group row">
+                                        <label class="col-md-3 col-sm-3 control-label">Setup Foreign Key Parent?</label>
+                                        <div class="col-md-6 col-sm-6">
+                                            <div class="checkbox">
+                                                <label>
+                                                    <input class="check-box" type="checkbox" data-bind="checked:ForeignParentKey">
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3 col-sm-3">
+                                            <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Foreign keys parent allows cascading dropdown selection in Filters"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="control-group">
+                                    <div class="form-group row">
+                                        <label class="col-md-3 col-sm-3 control-label" data-bind="visible:ForeignParentKey(), attr: {required: ForeignParentKey()?'True':null, placeholder: 'Ex tblEmployees'}" placeholder="Ex tblEmployees" style="display: none;">Parent Table</label>
+                                        <div class="col-md-6 col-sm-6">
+                                            <select class="form-control" data-bind="value: ForeignJoinTable, visible:ForeignParentKey(), options: $root.Tables.model, optionsText: 'TableName'" placeholder="Ex tblEmployees" style="display: none;"></select>
+
+                                        </div>
+                                        <div class="col-md-3 col-sm-3">
+                                            <span class="field-validation-valid help-inline indent" data-valmsg-for="ForeignJoinTable" data-valmsg-replace="true"></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="control-group" data-bind="visible:ForeignParentKey()" style="display: none;">
+                                    <div class="form-group row">
+                                        <label class="col-md-3 col-sm-3 control-label" data-bind="attr: {required: ForeignParentKey()?'True':null, placeholder: 'Ex EmployeeId'}">Parent Key Field</label>
+                                        <div class="col-md-6 col-sm-6">
+                                            <select class="form-control" data-bind="options: ForeignJoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignParentKeyField, attr: {required: ForeignParentKey()?'True':null}" placeholder="Ex EmployeeId"></select>
+                                        </div>
+                                        <div class="col-md-3 col-sm-3">
+                                            <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Parent Key field is a Column from the Parent table which is used as the key in cascading filters"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="control-group" data-bind="visible:ForeignParentKey()" style="display: none;">
+                                    <div class="form-group row">
+                                        <label class="col-md-3 col-sm-3 control-label" data-bind="attr: {required: ForeignParentKey()?'True':null, placeholder: 'Ex EmployeeName'}">Parent Value Field</label>
+                                        <div class="col-md-6 col-sm-6">
+                                            <select class="form-control" data-bind="options: ForeignJoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignParentValueField, attr: {required: ForeignParentKey()?'True':null}" placeholder="Ex EmployeeName"></select>
+                                        </div>
+                                        <div class="col-md-3 col-sm-3">
+                                            <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Parent Value field is a Column from the Parent table which is used to display the value to the User in the Report Designer for cascading filters"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="control-group" data-bind="visible:ForeignParentKey()" style="display: none;">
+                                    <div class="form-group row">
+                                        <label class="col-md-3 col-sm-3 control-label" data-bind="attr: {required: ForeignParentKey()?'True':null, placeholder: 'Ex EmployeeName'}">Foreign Key Filter Field</label>
+                                        <div class="col-md-6 col-sm-6">
+                                            <select class="form-control" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignParentApplyTo, attr: {required: ForeignParentKey()?'True':null}" placeholder="Ex EmployeeName"></select>
+                                        </div>
+                                        <div class="col-md-3 col-sm-3">
+                                            <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Foreign Key Filter Value field is a Column from the Foreign table where the selected parent filter will be applied for cascading filters"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                @*<div class="control-group">
+                                    <div class="form-group row">
+                                        <label class="col-md-3 col-sm-3 control-label">Require Foreign Key Parent?</label>
+                                        <div class="col-md-6 col-sm-6">
+                                            <div class="checkbox">
+                                                <label>
+                                                    <input class="check-box" type="checkbox" data-bind="checked:ForeignParentRequired">
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3 col-sm-3">
+                                            <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Foreign keys parent can be optional or set to required for cascading filters"></span>
+                                        </div>
+                                    </div>
+                                </div>*@
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" title="Manage Role Access" data-toggle="modal" data-target="#role-access-modal" data-bind="visible: $root.isStoredProcColumn() == false, click: $root.selectAllowedRoles">
+                            <i class="fa fa-user"></i>Manage Role Access
+                        </button>
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Done</button>
+                    </div>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" title="Manage Role Access" data-toggle="modal" data-target="#role-access-modal" data-bind="visible: $root.isStoredProcColumn() == false, click: $root.selectAllowedRoles">
-                    <i class="fa fa-user"></i>Manage Role Access
-                </button>
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Done</button>
             </div>
         </div>
     </div>
@@ -702,7 +835,7 @@
 
                 </div>
             </div>
-            <div class="modal-footer">                
+            <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Done</button>
             </div>
         </div>

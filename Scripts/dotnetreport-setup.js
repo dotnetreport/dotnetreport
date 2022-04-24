@@ -428,11 +428,43 @@ var tablesViewModel = function (options) {
 				e.ForeignTable(newValue.TableName());
 			});
 
+			tableMatch = _.filter(self.model(), function (x) { return x.TableName() == e.ForeignTable(); });
+			e.ForeignJoinTable = ko.observable(tableMatch != null && tableMatch.length > 0 ? tableMatch[0] : null);
+			e.ForeignJoinTable.subscribe(function (newValue) {
+				e.ForeignParentTable(newValue.TableName());
+			});
+
+			e.restrictDateRangeFilter = ko.observable(e.RestrictedDateRange() != '' && e.RestrictedDateRange() != null);
+			e.restrictDateRangeNumber = ko.observable(1);
+			e.restrictDateRangeValue = ko.observable();
+
+			if (e.restrictDateRangeFilter()) {
+				var tokens = e.RestrictedDateRange().split(' ');
+				e.restrictDateRangeNumber(tokens[0]);
+				e.restrictDateRangeValue(tokens[1]);
+			}
+
+			e.restrictDateRangeFilter.subscribe(function (newValue) {
+				if (!newValue) {
+					e.RestrictedDateRange('');
+				} else {
+					e.RestrictedDateRange(e.restrictDateRangeNumber() + ' ' + e.restrictDateRangeValue());
+                }
+			});
+
+			e.restrictDateRangeNumber.subscribe(function () {
+				e.RestrictedDateRange(e.restrictDateRangeNumber() + ' ' + e.restrictDateRangeValue());
+			});
+
+			e.restrictDateRangeValue.subscribe(function () {
+				e.RestrictedDateRange(e.restrictDateRangeNumber() + ' ' + e.restrictDateRangeValue());
+			});
+
 		});
 
 		t.saveTable = function (apiKey, dbKey) {
 			var e = ko.mapping.toJS(t, {
-				'ignore': ["saveTable", "JoinTable"]
+				'ignore': ["saveTable", "JoinTable", "ForeignJoinTable"]
 			});
 
 			if (!t.Selected()) {
