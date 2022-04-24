@@ -26,6 +26,7 @@ function ajaxcall(options) {
             $.unblockUI();
         }
         delete options;
+        if (jqxhr.responseJSON && jqxhr.responseJSON.d) jqxhr.responseJSON = jqxhr.responseJSON.d;
         var msg = jqxhr.responseJSON && jqxhr.responseJSON.Message ? "\n" + jqxhr.responseJSON.Message : "";
 
 		if (error == "Conflict") {
