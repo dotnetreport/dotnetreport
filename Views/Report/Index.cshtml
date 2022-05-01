@@ -865,7 +865,7 @@
             </label>
         </div>
         <div data-bind="if: hasSchedule">
-            
+
             <div class="form-inline form-group">
                 <span data-bind="text: selectedOption() != 'once' ? 'Every ' : ''"></span>&nbsp;
                 <select class="form-control" required data-bind="options: options, value: selectedOption"></select>
@@ -914,6 +914,37 @@
                     <label class="col-sm-2 control-label">Email to</label>
                     <div class="col-sm-10">
                         <input type="text" class="form-control" style="width: 100%;" data-bind="value: emailTo" placeholder="Enter Email Addresses separated by comma to send the Report to" required />
+                    </div>
+                </div>
+            </div>
+            <div class="form-horizontal form-group">
+                <div class="form-group row">
+                    <div class="col-sm-2 control-label">
+                        <div class="checkbox">
+                            <label title="Set a date to start sending scheduled report">
+                                <input type="checkbox" data-bind="checked: hasScheduleStart" />
+                                Set Schedule Start Date
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-sm-4" data-bind="if: hasScheduleStart">
+                        <input type="text" class="form-control" data-bind="datepicker: scheduleStart" title="Scheduled Report will not be sent before this date" required />
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-horizontal form-group">
+                <div class="form-group row">
+                    <div class="col-sm-2 control-label">
+                        <div class="checkbox" title="Set a date to stop sending scheduled report">
+                            <label>
+                                <input type="checkbox" data-bind="checked: hasScheduleEnd" />
+                                Set Schedule End Date
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-sm-4" data-bind="if: hasScheduleEnd">
+                        <input type="text" class="form-control" data-bind="datepicker: scheduleEnd" title="Scheduled Report will not be sent after this date" required />
                     </div>
                 </div>
             </div>

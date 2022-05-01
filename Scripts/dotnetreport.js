@@ -219,6 +219,11 @@ function scheduleBuilder(userId) {
 	self.hasSchedule = ko.observable(false);
 	self.emailTo = ko.observable('');
 
+	self.hasScheduleStart = ko.observable(false);
+	self.hasScheduleEnd = ko.observable(false);
+	self.scheduleStart = ko.observable();
+	self.scheduleEnd = ko.observable();
+
 	self.selectedOption.subscribe(function (newValue) {
 		self.selectedDays([]);
 		self.selectedMonths([]);
@@ -258,7 +263,10 @@ function scheduleBuilder(userId) {
 			SelectedMinute: self.selectedMinute(),
 			SelectedAmPm: self.selectedAmPm(),
 			EmailTo: self.emailTo(),
-			UserId: userId
+			UserId: userId,
+			ScheduleStart: self.hasScheduleStart() ? self.scheduleStart() : '',
+			ScheduleEnd: self.hasScheduleEnd() ? self.scheduleEnd() : ''
+
 		} : null;
 	};
 
@@ -287,6 +295,10 @@ function scheduleBuilder(userId) {
 		self.selectedMinute(data.SelectedMinute || '00');
 		self.selectedAmPm(data.SelectedAmPm || 'PM');
 		self.emailTo(data.EmailTo || '');
+		self.scheduleStart(data.ScheduleStart ? new Date(data.ScheduleStart.match(/\d+/)[0] * 1) : '');
+		self.scheduleEnd(data.ScheduleEnd ? new Date(data.ScheduleEnd.match(/\d+/)[0] * 1) : '');
+		self.hasScheduleStart(data.ScheduleStart ? true : false);
+		self.hasScheduleEnd(data.ScheduleEnd ? true : false);
 	}
 
 	self.clear = function () {
