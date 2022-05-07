@@ -1256,6 +1256,7 @@ var reportViewModel = function (options) {
 	self.formulaFields = ko.observableArray([]);
 	self.formulaFieldLabel = ko.observable('');
 	self.formulaDataFormat = ko.observable('')
+	self.formulaDecimalPlaces = ko.observable();
 
 	self.formulaOnlyHasDateFields = ko.computed(function () {
 		var allFields = self.formulaFields();
@@ -1299,6 +1300,7 @@ var reportViewModel = function (options) {
 			tableName: 'Custom',
 			fieldName: self.formulaFieldLabel() || 'Custom',
 			fieldFormat: self.formulaDataFormat() || 'String',
+			decimalPlaces: self.formulaDecimalPlaces(),
 			fieldType: 'Custom',
 			aggregateFunction: '',
 			filterOnFly: false,
@@ -1324,6 +1326,7 @@ var reportViewModel = function (options) {
 		self.formulaFields([]);
 		self.formulaFieldLabel('');
 		self.formulaDataFormat('String');
+		self.formulaDecimalPlaces(null);
 	};
 
 	self.isFormulaField.subscribe(function () {
