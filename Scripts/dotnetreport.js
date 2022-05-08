@@ -538,10 +538,12 @@ function filterGroupViewModel(args) {
 var manageAccess = function (options) {
 	return {
 		clientId: ko.observable(),
-		users: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; }),
-		userRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; }),
-		viewOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; }),
-		viewOnlyUserRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x) }; }),
+		users: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
+		userRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
+		viewOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
+		viewOnlyUserRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
+		deleteOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
+		deleteOnlyUserRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
 		getAsList: function (x) {
 			var list = '';
 			_.forEach(x, function (e) { if (e.selected()) list += (list ? ',' : '') + e.value(); });
@@ -549,7 +551,8 @@ var manageAccess = function (options) {
 		},
 		setupList: function (x, value) {
 			_.forEach(x, function (e) { if (value.indexOf(e.value()) >= 0) e.selected(true); else e.selected(false); });
-		}
+		},
+		isDashboard: ko.observable(options.isDashboard == true ? true : false)
 	};
 };
 
@@ -1683,8 +1686,10 @@ var reportViewModel = function (options) {
 			DrillDownRow: drilldown,
 			UserId: self.manageAccess.getAsList(self.manageAccess.users),
 			ViewOnlyUserId: self.manageAccess.getAsList(self.manageAccess.viewOnlyUsers),
+			DeleteOnlyUserId: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUsers),
 			UserRoles: self.manageAccess.getAsList(self.manageAccess.userRoles),
 			ViewOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.viewOnlyUserRoles),
+			DeleteOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUserRoles),
 			DataFilters: options.dataFilters,
 			SelectedParameters: self.useStoredProc() ? _.map(self.Parameters(), function (x) {
 				return {
@@ -2390,6 +2395,8 @@ var reportViewModel = function (options) {
 		self.manageAccess.setupList(self.manageAccess.userRoles, report.UserRoles || '');
 		self.manageAccess.setupList(self.manageAccess.viewOnlyUserRoles, report.ViewOnlyUserRoles || '');
 		self.manageAccess.setupList(self.manageAccess.viewOnlyUsers, report.ViewOnlyUserId || '');
+		self.manageAccess.setupList(self.manageAccess.deleteOnlyUserRoles, report.DeleteOnlyUserRoles || '');
+		self.manageAccess.setupList(self.manageAccess.deleteOnlyUsers, report.DeleteOnlyUserId || '');
 
 		self.IncludeSubTotal(report.IncludeSubTotals);
 		self.EditFiltersOnReport(report.EditFiltersOnReport);
@@ -2780,6 +2787,7 @@ var reportViewModel = function (options) {
 
 var dashboardViewModel = function (options) {
 	var self = this;
+	options.isDashboard = true;
 
 	self.dashboards = ko.observableArray(options.dashboards || []);
 	self.adminMode = ko.observable(false);
@@ -2816,6 +2824,8 @@ var dashboardViewModel = function (options) {
 		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.userRoles, '');
 		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.viewOnlyUserRoles, '');
 		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.viewOnlyUsers, '');
+		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.deleteOnlyUserRoles, '');
+		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.deleteOnlyUsers, '');
 
 		_.forEach(self.reportsAndFolders(), function (f) {
 			_.forEach(f.reports, function (r) {
@@ -2832,6 +2842,8 @@ var dashboardViewModel = function (options) {
 		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.userRoles, self.currentDashboard().userRoles || '');
 		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.viewOnlyUserRoles, self.currentDashboard().viewOnlyUserRoles || '');
 		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.viewOnlyUsers, self.currentDashboard().viewOnlyUserId || '');
+		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.deleteOnlyUserRoles, self.currentDashboard().deleteOnlyUserRoles || '');
+		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.deleteOnlyUsers, self.currentDashboard().deleteOnlyUserId || '');
 
 		var selectedReports = (self.currentDashboard().selectedReports || '').split(',');
 		_.forEach(self.reportsAndFolders(), function (f) {
@@ -2862,8 +2874,10 @@ var dashboardViewModel = function (options) {
 			selectedReports: list,
 			userIdAccess: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.users),
 			viewOnlyUserId: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.viewOnlyUsers),
+			deleteOnlyUserId: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.deleteOnlyUsers),
 			userRolesAccess: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.userRoles),
 			viewOnlyUserRoles: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.viewOnlyUserRoles),
+			deleteOnlyUserRoles: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.deleteOnlyUserRoles),
 			adminMode: self.adminMode()
 		};
 

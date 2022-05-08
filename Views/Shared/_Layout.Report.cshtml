@@ -279,13 +279,13 @@
             <div class="alert alert-info">
                 <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;User level rights over rule Role level rights. No selection for a rule implies report is available to all.
             </div>
-            <b>Manage by User</b> (allow edit/delete)
+            <b>Manage by User</b> (allow edit)
             <div class="row container-fluid">
                 <!-- ko foreach: manageAccess.users -->
                 <div class="pull-left">
                     <div class="checkbox">
                         <label class="label label-info">
-                            <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: value"></span>&nbsp;
+                            <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
                         </label>
                     </div>
                 </div>
@@ -298,20 +298,35 @@
                 <div class="pull-left">
                     <div class="checkbox">
                         <label class="label label-info">
-                            <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: value"></span>&nbsp;
+                            <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
                         </label>
                     </div>
                 </div>
                 <!-- /ko -->
             </div>
             <br />
-            <b>Manage by User Role</b> (allow edit/delete)
+            <div data-bind="ifnot: manageAccess.isDashboard">
+                <b>Delete by User</b> (allow delete)
+                <div class="row container-fluid">
+                    <!-- ko foreach: manageAccess.deleteOnlyUsers -->
+                    <div class="pull-left">
+                        <div class="checkbox">
+                            <label class="label label-info">
+                                <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
+                            </label>
+                        </div>
+                    </div>
+                    <!-- /ko -->
+                </div>
+                <br />
+            </div>
+            <b>Manage by User Role</b> (allow edit)
             <div class="row container-fluid">
                 <!-- ko foreach: manageAccess.userRoles -->
                 <div class="pull-left">
                     <div class="checkbox">
                         <label class="label label-info">
-                            <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: value"></span>&nbsp;
+                            <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
                         </label>
                     </div>
                 </div>
@@ -324,11 +339,26 @@
                 <div class="pull-left">
                     <div class="checkbox">
                         <label class="label label-info">
-                            <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: value"></span>&nbsp;
+                            <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
                         </label>
                     </div>
                 </div>
                 <!-- /ko -->
+            </div>
+            <div data-bind="ifnot: manageAccess.isDashboard">            
+                <br />
+                <b>Delete by User Role</b> (allow delete)
+                <div class="row container-fluid">
+                    <!-- ko foreach: manageAccess.deleteOnlyUserRoles -->
+                    <div class="pull-left">
+                        <div class="checkbox">
+                            <label class="label label-info">
+                                <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
+                            </label>
+                        </div>
+                    </div>
+                    <!-- /ko -->
+                </div>
             </div>
         </div>
     </script>

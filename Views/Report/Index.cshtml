@@ -211,12 +211,20 @@
                                         <br />
                                         View only by User <span class="badge badge-info" data-bind="text: (viewOnlyUserId ? viewOnlyUserId : (userId ? userId : 'Any User'))"></span>
                                         <br />
+                                        <!-- ko if: deleteOnlyUserId -->
+                                        Delete only by User <span class="badge badge-info" data-bind="text: deleteOnlyUserId"></span>
+                                        <br />
+                                        <!-- /ko -->
                                         <!-- ko if: userRole -->
                                         Manage by Role <span class="badge badge-info" data-bind="text: userRole ? userRole : 'No Role'"></span>
                                         <br />
                                         <!-- /ko -->
                                         <!-- ko if: viewOnlyUserRole -->
                                         View only by Role <span class="badge badge-info" data-bind="text: viewOnlyUserRole ? viewOnlyUserRole : 'Any Role'"></span>
+                                        <br />
+                                        <!-- /ko -->
+                                        <!-- ko if: deleteOnlyUserRole -->
+                                        Delete only by Role <span class="badge badge-info" data-bind="text: deleteOnlyUserRole ? deleteOnlyUserRole : 'Same as Manage'"></span>
                                         <br />
                                         <!-- /ko -->
                                         <!-- ko if: clientId -->
@@ -240,7 +248,7 @@
                                         <button class="btn btn-sm btn-primary" data-bind="click: runReport">
                                             <span class="fa fa-gears" aria-hidden="true"></span>Run
                                         </button>
-                                        <button class="btn btn-sm btn-danger" data-bind="click: deleteReport, visible: canEdit">
+                                        <button class="btn btn-sm btn-danger" data-bind="click: deleteReport, visible: canDelete">
                                             <span class="fa fa-trash" aria-hidden="true"></span>Delete
                                         </button>
                                         <br />
@@ -258,7 +266,7 @@
                                         <button class="btn btn-sm btn-primary" data-bind="click: runReport" title="Run Report">
                                             <span class="fa fa-gears" aria-hidden="true"></span>
                                         </button>
-                                        <button class="btn btn-sm btn-danger" title="Delete Report" data-bind="click: deleteReport, visible: canEdit">
+                                        <button class="btn btn-sm btn-danger" title="Delete Report" data-bind="click: deleteReport, visible: canDelete">
                                             <span class="fa fa-trash" aria-hidden="true"></span>
                                         </button>
                                     </div>
