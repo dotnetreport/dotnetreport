@@ -1308,6 +1308,7 @@ var reportViewModel = function (options) {
 			filterOnFly: false,
 			disabled: false,
 			groupInGraph: false,
+			dontSubTotal: false,
 			hideInDetail: false,
 			linkField: false,
 			linkFieldItem: null,
@@ -1652,6 +1653,7 @@ var reportViewModel = function (options) {
 					FilterOnFly: x.filterOnFly(),
 					Disabled: x.disabled(),
 					GroupInGraph: x.groupInGraph(),
+					DontSubTotal: x.dontSubTotal(),
 					HideInDetail: x.hideInDetail(),
 					IsCustom: x.isFormulaField(),
 					CustomLabel: x.fieldName,
@@ -1898,6 +1900,7 @@ var reportViewModel = function (options) {
 					e.fontColor = col.fontColor;
 					e.backColor = col.backColor;
 					e.groupInGraph = col.groupInGraph;
+					e.dontSubTotal = col.dontSubTotal;
 				});
 			}
 
@@ -2262,6 +2265,7 @@ var reportViewModel = function (options) {
 		e.filterOnFly = ko.observable(e.filterOnFly);
 		e.disabled = ko.observable(e.disabled);
 		e.groupInGraph = ko.observable(e.groupInGraph);
+		e.dontSubTotal = ko.observable(e.dontSubTotal);
 		e.hideInDetail = ko.observable(e.hideInDetail);
 		e.linkField = ko.observable(e.linkField);
 		e.linkFieldItem = new linkFieldViewModel(e.linkFieldItem, options);

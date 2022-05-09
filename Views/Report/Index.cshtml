@@ -529,6 +529,11 @@
                                             <span class="fa fa-line-chart" aria-hidden="true" title="Include in series"></span>
                                         </span>
                                     </div>
+                                    <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $root.IncludeSubTotal()  &&  ['Int', 'Double', 'Money', 'Decimal', 'Currency'].indexOf(fieldType) >= 0">
+                                        <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ dontSubTotal(!dontSubTotal()); }, css: {active: dontSubTotal()==true}">
+                                            <span class="fa fa-plus-circle" aria-hidden="true" title="Don't Sub Total"></span>
+                                        </span>
+                                    </div>
                                     <div class="pull-right" style="padding-right: 15px;">
                                         <span class="button-box no-padding" tabindex="0" data-bind="click: setupLinkField, css: {active: linkField()==true}">
                                             <span class="fa fa-link" aria-hidden="true" title="Link to another Report or Url"></span>
