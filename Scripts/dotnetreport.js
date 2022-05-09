@@ -419,7 +419,7 @@ function filterGroupViewModel(args) {
 					filter.ParentIn.subscribe(function (newValue) {
 						if (newValue && newValue.length > 0) {
 							var df = Object.assign({}, args.options.dataFilters || {});
-							df[newField.foreignTable + '__' + newField.foreignParentApplyTo] = newValue.join();
+							df[newField.foreignParentTable + '__' + newField.foreignParentApplyTo] = newValue.join();
 							loadLookupList(newField.fieldId, df);
 						} else {
 							loadLookupList(newField.fieldId, args.options.dataFilters);
