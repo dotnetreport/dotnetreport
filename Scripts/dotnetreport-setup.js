@@ -428,7 +428,7 @@ var tablesViewModel = function (options) {
 				e.ForeignTable(newValue.TableName());
 			});
 
-			tableMatch = _.filter(self.model(), function (x) { return x.TableName() == e.ForeignTable(); });
+			tableMatch = _.filter(self.model(), function (x) { return x.TableName() == e.ForeignParentTable(); });
 			e.ForeignJoinTable = ko.observable(tableMatch != null && tableMatch.length > 0 ? tableMatch[0] : null);
 			e.ForeignJoinTable.subscribe(function (newValue) {
 				e.ForeignParentTable(newValue.TableName());
