@@ -1083,7 +1083,6 @@ var reportViewModel = function (options) {
 		self.SelectedField(null);
 		self.SelectedProc(null);
 		self.SelectedTable(null);
-		self.useStoredProc(false);
 
 		self.IncludeSubTotal(false);
 		self.EditFiltersOnReport(false);
