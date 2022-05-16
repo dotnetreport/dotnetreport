@@ -1183,17 +1183,46 @@ var reportViewModel = function (options) {
 		self.showParameters(!allHidden);
 	});
 
+	self.FindInFilterGroup = function (fieldId) {
+		var found = false;
+		_.forEach(self.FilterGroups(), function (g) {
+			_.forEach(g.Filters(), function (x) {
+				if (x.Field() && (x.Field().FieldId == fieldId || x.Field().fieldId == fieldId)) {
+					found = true;
+					return false;
+				}
+			});
+		});
+
+		return found;
+	}
+
 	self.SelectedFields.subscribe(function (fields) {
 		var newField = fields.length > 0 ? fields[fields.length - 1] : null;
-		if (newField && newField.forceFilter) {
-
-			var group = self.FilterGroups()[0];
-			var newFilter = group.AddFilter();
-			setTimeout(function () {
-				newField.forced = true;
-				newFilter.Field(newField);
-			}, 500);
+		if (newField && (newField.forceFilter || newField.forceFilterForTable)) {
+			if (!self.FindInFilterGroup(newField.fieldId)) {
+				var group = self.FilterGroups()[0];
+				var newFilter = group.AddFilter();
+				setTimeout(function () {
+					newField.forced = true;
+					newFilter.Field(newField);
+				}, 500);
+			}
 		}
+
+		if (newField) {
+			// go through and see if we need to add forced by Table filters
+			var forcedFiltersByTable = _.filter(self.ChooseFields(), function (x) { return x.forceFilterForTable == true });
+
+			for (var i = 0; i < forcedFiltersByTable.length; i++) {
+				var tblField = forcedFiltersByTable[i];
+				var match = _.find(self.SelectedFields(), function (x) { return x.fieldId == tblField.fieldId;})
+				if (!match) {
+					tblField.disabled(true);
+					self.SelectedFields.push(tblField);
+				}
+            }
+        }
 	});
 
 	self.SelectedTable.subscribe(function (table) {
