@@ -856,7 +856,7 @@ var reportViewModel = function (options) {
 	self.CanEdit = ko.observable(true);
 	self.useReportHeader = ko.observable(false);
 
-	self.fieldFormatTypes = ['Auto', 'Number', 'Decimal', 'Currency', 'Percentage', 'Date', 'Date and Time', 'Time'];
+	self.fieldFormatTypes = ['Auto', 'Number', 'Decimal', 'Currency', 'Percentage', 'Date', 'Date and Time', 'Time', 'String'];
 	self.decimalFormatTypes = ['Number', 'Decimal', 'Currency', 'Percentage'];
 	self.dateFormatTypes = ['Date', 'Date and Time', 'Time'];
 	self.fieldAlignments = ['Auto', 'Left', 'Right', 'Center'];
