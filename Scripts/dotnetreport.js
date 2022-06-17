@@ -2663,6 +2663,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.formatNumber = function (number, decPlaces) {
+		if (decPlaces === null) decPlaces = 2;
 		decPlaces = isNaN(decPlaces = Math.abs(decPlaces)) ? 2 : decPlaces;
 		return parseFloat(number).toFixed(decPlaces).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 	}
