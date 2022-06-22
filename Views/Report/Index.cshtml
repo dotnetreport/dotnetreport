@@ -488,7 +488,7 @@
                     <div class="alert alert-info" data-bind="visible: ReportType()=='Map'">
                         <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For Map Graph, the first field below has to be a Region, like a Country.
                     </div>
-                    <ul class="list-group" data-bind="sortable: { data: SelectedFields, options: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight' } }">
+                    <ul class="list-group" data-bind="sortable: { data: SelectedFields, options: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight' }, strategyMove: true }">
                         <li class="list-group-item">
                             <div class="row">
                                 <div class="col">
