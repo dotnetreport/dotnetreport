@@ -1225,14 +1225,8 @@ var reportViewModel = function (options) {
         }
 	});
 
-	self.SelectedTable.subscribe(function (table) {
-		self.SelectedProc(null);
-		if (table == null) {
-			self.ChooseFields([]);
-			return;
-		}
-		// Get fields for Selected Table
-		ajaxcall({
+	self.loadTableFields = function (table) {
+		return ajaxcall({
 			url: options.apiUrl,
 			data: {
 				method: "/ReportApi/GetFields",
@@ -1256,6 +1250,17 @@ var reportViewModel = function (options) {
 
 			self.ChooseFields(flds);
 		});
+
+    }
+
+	self.SelectedTable.subscribe(function (table) {
+		self.SelectedProc(null);
+		if (table == null) {
+			self.ChooseFields([]);
+			return;
+		}
+		// Get fields for Selected Table
+		return self.loadTableFields(table);
 	});
 
 	self.MoveChosenFields = function () { // Move chosen fields to selected fields
@@ -1552,7 +1557,17 @@ var reportViewModel = function (options) {
 	};
 
 	self.RemoveField = function (field) {
-		self.SelectedFields.remove(field);
+		var selectedTable = self.SelectedTable();
+		var fieldTable = _.find(self.Tables(), { tableName: field.tableName });
+
+		if (selectedTable != null && fieldTable.tableId == selectedTable.tableId)
+			self.SelectedFields.remove(field);
+		else {
+			self.SelectedTable(fieldTable);
+			self.loadTableFields(fieldTable).done(function () {
+				self.SelectedFields.remove(field);
+			});
+        }
 	};
 
 	self.RemoveSeries = function (series) {
