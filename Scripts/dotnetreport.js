@@ -2109,6 +2109,12 @@ var reportViewModel = function (options) {
 						})
 					}).done(function (subtotalResult) {
 						if (subtotalResult.d) { subtotalResult = subtotalResult.d; }
+
+						processCols(subtotalResult.ReportData.Columns);
+						_.forEach(subtotalResult.ReportData.Rows, function (dr) {
+							processRow(dr.Items, subtotalResult.ReportData.Columns);
+						});
+
 						self.ReportResult().SubTotals(subtotalResult.ReportData.Rows);
 					});
 				});
