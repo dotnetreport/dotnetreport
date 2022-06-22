@@ -372,7 +372,7 @@
                 <p>Choose options that will determine how users interact with this column on Reports</p>
                 <div class="form-horizontal">
 
-                    <ul class="nav nav-tabs" role="tablist">
+                    <ul class="nav nav-tabs" role="tablist" data-bind="if: $root.isStoredProcColumn() == false">
                         <li role="presentation" class="nav-item"><a class="nav-link active" href="#column-main" aria-controls="home" role="tab" data-toggle="tab">Main Options</a></li>
                         <li role="presentation" class="nav-item"><a class="nav-link" href="#column-foreign" aria-controls="profile" role="tab" data-toggle="tab">Foreign Key Options</a></li>
                         <li role="presentation" class="nav-item"><a class="nav-link" href="#column-filter" aria-controls="procedure" role="tab" data-toggle="tab">Filter Options</a></li>
@@ -644,7 +644,7 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button class="btn btn-secondary" title="Manage Role Access" data-toggle="modal" data-target="#role-access-modal" data-bind="visible: $root.isStoredProcColumn() == false, click: $root.selectAllowedRoles">
+                        <button class="btn btn-secondary" title="Manage Role Access" data-toggle="modal" data-target="#role-access-modal" data-bind="click: $root.selectAllowedRoles">
                             <i class="fa fa-user"></i>Manage Role Access
                         </button>
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Done</button>
