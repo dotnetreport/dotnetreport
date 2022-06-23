@@ -806,6 +806,7 @@ var reportViewModel = function (options) {
 
 	self.ChooseFields = ko.observableArray([]); // List of fields to show in First List to choose from
 	self.ChosenFields = ko.observableArray([]); // List of fields selected by user in the First List
+	self.selectedTableFields = [];
 
 	self.SelectedFields = ko.observableArray([]); // List of fields selected to show in the Second List
 	self.SelectFields = ko.observableArray([]); // List of fields selected by user in the second list
@@ -1104,6 +1105,7 @@ var reportViewModel = function (options) {
 		}
 		self.ChooseFields([]);
 		self.SelectedFields([]);
+		self.selectedTableFields = [];
 
 		var displayFields = _.filter(proc.Columns, function (x) { return x.DoNotDisplay == false; });
 
@@ -1212,7 +1214,7 @@ var reportViewModel = function (options) {
 
 		if (newField) {
 			// go through and see if we need to add forced by Table filters
-			var forcedFiltersByTable = _.filter(self.ChooseFields(), function (x) { return x.forceFilterForTable == true });
+			var forcedFiltersByTable = _.filter(self.selectedTableFields, function (x) { return x.forceFilterForTable == true });
 
 			for (var i = 0; i < forcedFiltersByTable.length; i++) {
 				var tblField = forcedFiltersByTable[i];
@@ -1249,6 +1251,7 @@ var reportViewModel = function (options) {
 			});
 
 			self.ChooseFields(flds);
+			self.selectedTableFields = flds;
 		});
 
     }
@@ -1257,6 +1260,7 @@ var reportViewModel = function (options) {
 		self.SelectedProc(null);
 		if (table == null) {
 			self.ChooseFields([]);
+			self.selectedTableFields = [];
 			return;
 		}
 		// Get fields for Selected Table
@@ -1563,8 +1567,8 @@ var reportViewModel = function (options) {
 		if (selectedTable != null && fieldTable.tableId == selectedTable.tableId)
 			self.SelectedFields.remove(field);
 		else {
-			self.SelectedTable(fieldTable);
 			self.loadTableFields(fieldTable).done(function () {
+				self.ChooseFields([]);
 				self.SelectedFields.remove(field);
 			});
         }
