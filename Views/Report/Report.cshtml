@@ -124,7 +124,7 @@
             <a href="@Url.Action("Index","Report")?folderId=@Model.SelectedFolder" class="btn btn-primary">
                 Back to Reports
             </a>
-            <a href="@Url.Action("Index","Report")?reportId=@Model.ReportId&folderId =@Model.SelectedFolder" class="btn btn-primary">
+            <a href="@Url.Action("Index","Report")?reportId=@Model.ReportId&folderId =@Model.SelectedFolder" class="btn btn-primary" data-bind="visible: $root.CanEdit()">
                 Edit Report
             </a>
             <button type="button" class="btn btn-secondary" onclick="printReport();">
@@ -236,7 +236,7 @@
     <a href="@Url.Action("Index","Report")?folderId=@Model.SelectedFolder" class="btn btn-primary">
         Back to Reports
     </a>
-    <a href="@Url.Action("Index","Report")?reportId=@Model.ReportId&folderId =@Model.SelectedFolder" class="btn btn-primary">
+    <a href="@Url.Action("Index","Report")?reportId=@Model.ReportId&folderId =@Model.SelectedFolder" class="btn btn-primary" data-bind="visible: $root.CanEdit()">
         Edit Report
     </a>
     <h3>An unexpected error occured while running the Report</h3>
