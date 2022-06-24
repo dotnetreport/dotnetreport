@@ -144,7 +144,7 @@
     </script>
     <script type="text/html" id="report-column">
         <!-- ko foreach: Items -->
-        <td data-bind="style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold ? 'bold' : 'normal', 'text-align': $parents[3].pager && $parents[3].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[3].pager && $parents[3].ReportType()=='Single' ? '64px' : ''}">
+        <td data-bind="style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold ? 'bold' : 'normal', 'text-align': $parents[3].pager && $parents[3].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[3].pager && $parents[3].ReportType()=='Single' ? '64px' : ''}">
             <!-- ko if: LinkTo-->
             <a data-bind="attr: {href: LinkTo}"><span data-bind="html: FormattedValue"></span></a>
             <!-- /ko-->
@@ -250,7 +250,9 @@
                         <!-- /ko -->
                         <!-- ko foreach: Items -->
                         <!-- ko if: Value != 'NA' -->
-                        <td data-bind="html: FormattedValue, css: {'right-align': true}"></td>
+                        <td data-bind="style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold ? 'bold' : 'normal', 'text-align': $parents[3].pager && $parents[3].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[3].pager && $parents[3].ReportType()=='Single' ? '64px' : ''}">
+                            <span data-bind="html: FormattedValue, css: {'right-align': true}"></span>
+                        </td>
                         <!-- /ko -->
                         <!-- /ko -->
                     </tr>
