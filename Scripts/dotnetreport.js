@@ -1215,7 +1215,10 @@ var reportViewModel = function (options) {
 		if (newField) {
 			// go through and see if we need to add forced by Table filters
 			var forcedFiltersByTable = _.filter(self.selectedTableFields, function (x) { return x.forceFilterForTable == true });
+			var otherFieldIds = _.filter(self.selectedTableFields, function (x) { return x.forceFilterForTable == false }).map(function (x) { return x.fieldId });
+			var hasFields = _.find(fields, function (x) { return otherFieldIds.indexOf(x.fieldId) >= 0; });
 
+			if (hasFields == null || forcedFiltersByTable.length == 0) return;
 			for (var i = 0; i < forcedFiltersByTable.length; i++) {
 				var tblField = forcedFiltersByTable[i];
 				var match = _.find(self.SelectedFields(), function (x) { return x.fieldId == tblField.fieldId;})
