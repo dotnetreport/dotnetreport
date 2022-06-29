@@ -96,7 +96,7 @@
             <!-- /ko -->
             <!-- /ko -->
             <!-- ko if: hasForeignKey-->
-            <!-- ko if: !$root.useStoredProc() && hasForeignParentKey -->
+            <!-- ko if: !$root.useStoredProc() && hasForeignParentKey && $parent.showParentFilter() -->
             <select multiple class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.ParentList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ParentIn"></select>
             <!-- /ko -->
             <!-- ko if: $parent.Operator()=='='-->

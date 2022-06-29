@@ -325,6 +325,18 @@ function filterGroupViewModel(args) {
 		self.FilterGroups.remove(group);
 	};
 
+	self.GetValuesInFilterGroupForFieldAndTable = function (tableName, fieldName) {
+		var found = null;
+		_.forEach(self.Filters(), function (x) {
+			if (x.Field() && (x.Field().hasForeignKey && x.Field().foreignTable == tableName && x.Field().foreignKey == fieldName)) {
+				found = x;
+				return false;
+			}
+		});
+		
+		return found;
+	}
+
 	self.AddFilter = function (e, isFilterOnFly) {
 		e = e || {};
 		var lookupList = ko.observableArray([]);
@@ -360,7 +372,8 @@ function filterGroupViewModel(args) {
 			ParentList: parentList,
 			ParentIn: ko.observableArray([]),
 			Apply: ko.observable(e.Apply != null ? e.Apply : true),
-			IsFilterOnFly: isFilterOnFly === true ? true : false
+			IsFilterOnFly: isFilterOnFly === true ? true : false,
+			showParentFilter: ko.observable(true)
 		};
 
 		filter.Operator.subscribe(function () {
@@ -398,36 +411,55 @@ function filterGroupViewModel(args) {
 			if (newField && newField.hasForeignKey) {
 
 				if (newField.hasForeignParentKey) {
-					ajaxcall({
-						url: args.options.apiUrl,
-						data: {
-							method: "/ReportApi/GetLookupList",
-							model: JSON.stringify({ fieldId: newField.fieldId, dataFilters: args.options.dataFilters, parentLookup: true })
-						}
-					}).done(function (result) {
-						if (result.d) { result = result.d; }
-						ajaxcall({
-							type: 'POST',
-							url: args.options.lookupListUrl,
-							data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey })
-						}).done(function (list) {
-							if (list.d) { list = list.d; }
-							parentList(list);
-						});
-					});
 
 					filter.ParentIn.subscribe(function (newValue) {
 						if (newValue && newValue.length > 0) {
 							var df = Object.assign({}, args.options.dataFilters || {});
-							df[newField.foreignParentTable + '__' + newField.foreignParentApplyTo] = newValue.join();
+							df[newField.foreignParentApplyTo] = newValue.join();
 							loadLookupList(newField.fieldId, df);
 						} else {
 							loadLookupList(newField.fieldId, args.options.dataFilters);
-                        }
+						}
 					});
+
+					var existingParentFilter = self.GetValuesInFilterGroupForFieldAndTable(newField.foreignParentTable, newField.foreignParentKeyField);
+					if (!existingParentFilter) {
+						ajaxcall({
+							url: args.options.apiUrl,
+							data: {
+								method: "/ReportApi/GetLookupList",
+								model: JSON.stringify({ fieldId: newField.fieldId, dataFilters: args.options.dataFilters, parentLookup: true })
+							}
+						}).done(function (result) {
+							if (result.d) { result = result.d; }
+							ajaxcall({
+								type: 'POST',
+								url: args.options.lookupListUrl,
+								data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey })
+							}).done(function (list) {
+								if (list.d) { list = list.d; }
+								parentList(list);
+							});
+						});
+
+						loadLookupList(newField.fieldId, args.options.dataFilters);
+					} else {
+						filter.showParentFilter(false);
+						existingParentFilter.Value.subscribe(function (newValue) {
+							filter.ParentIn(newValue ? [newValue] : null);
+						});
+
+						existingParentFilter.ValueIn.subscribe(function (newValue) {
+							filter.ParentIn(newValue);
+						});
+
+						filter.ParentIn(existingParentFilter.Operator() == '=' ? (existingParentFilter.Value() ? [existingParentFilter.Value()] : []) : existingParentFilter.ValueIn())
+                    }
+
                 }
 
-				loadLookupList(newField.fieldId, args.options.dataFilters);
+				else
+					loadLookupList(newField.fieldId, args.options.dataFilters);
 				
 			}
 
