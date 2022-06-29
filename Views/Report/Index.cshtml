@@ -507,7 +507,8 @@
                                         <span class="fa fa-arrows " aria-hidden="true" title="Drag to reorder"></span>
                                     </div>
                                     <div class="pull-right" style="padding-right: 15px;" data-bind="ifnot: $parent.useStoredProc">
-                                        <span class="fa fa-trash" style="cursor: pointer;" aria-hidden="true" title="Delete this Field" data-bind="click: $parent.RemoveField"></span>
+                                        <span class="fa fa-trash-o" title="Cannot Delete Required Filter" data-bind="visible: forceFilterForTable"></span>
+                                        <span class="fa fa-trash" style="cursor: pointer;" aria-hidden="true" title="Delete this Field" data-bind="click: $parent.RemoveField, hidden: forceFilterForTable"></span>
                                     </div>
                                     <div class="pull-right" style="padding-right: 15px;" data-bind="ifnot: $parent.useStoredProc">
                                         <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ filterOnFly(!filterOnFly()); }, css: {active: filterOnFly()==true}">
