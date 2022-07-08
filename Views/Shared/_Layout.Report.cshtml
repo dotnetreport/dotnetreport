@@ -60,7 +60,7 @@
             <!-- ko if: ['range'].indexOf($parent.Operator()) != -1 -->
             <select data-bind="value: $parent.Value" class="form-control" required>
                 <option value=""></option>
-                <option>Today</option>
+                <option>Today</option>                
                 <option>Yesterday</option>
                 <option>This Week</option>
                 <option>Last Week</option>
@@ -71,7 +71,18 @@
                 <option>This Month To Date</option>
                 <option>This Year To Date</option>
                 <option>Last 30 Days</option>
+                <optgroup label="Comparison Options">                   
+                    <option>>= Today</option>
+                    <option><= Today</option>
+                    <option>>= Today +</option>
+                    <option><= Today +</option>
+                    <option>>= Today -</option>
+                    <option><= Today -</option>
+                </optgroup>
             </select>
+            <div data-bind="if: $parent.Value().indexOf('Today +') >= 0 || $parent.Value().indexOf('Today -') >= 0" class="form-group pull-left" style="padding-top: 5px;">
+                <input type="number" class="form-control input-sm pull-left" style="width: 80px;" data-bind="value: $parent.Value2" required /><span style="padding: 5px 5px;" class="pull-left"> days</span> 
+            </div>
             <!-- /ko -->
             <!-- /ko -->
             <!-- ko if: ['Int','Money','Float','Double'].indexOf(fieldType) != -1 -->
