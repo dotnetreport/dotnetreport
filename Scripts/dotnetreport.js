@@ -1390,7 +1390,8 @@ var reportViewModel = function (options) {
 			isFormulaField: true,
 			hasForeignKey: false,
 			fieldFilter: ["=", "<>", ">=", ">", "<", "<="],
-			formulaItems: self.formulaFields()
+			formulaItems: self.formulaFields(),
+			forceFilterForTable: false 
 		};
 	};
 
