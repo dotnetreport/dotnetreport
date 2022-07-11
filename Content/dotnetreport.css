@@ -115,7 +115,8 @@
     border-radius: 0;
     outline: 0;
     max-height: 100%;
-    overflow: scroll;
+    overflow: auto;
+    border: 1px solid;
 }
 
 .modal.fade:not(.in) .modal-dialog {
@@ -280,7 +281,7 @@
 
 @media(max-width: 992px) {
     .report-canvas > .report-container {
-        height: 580px;
+        min-height: 580px;
     }
 
     .report-container > .report-inner {
@@ -290,7 +291,7 @@
 
 @media(min-width: 993px) {
     .report-canvas > .report-container {
-        height: 840px;
+        min-height: 840px;
     }
 
     .report-container > .report-inner {
@@ -448,3 +449,18 @@ input[type="checkbox"].input-validation-error {
 .form-control {
     /*width: auto;*/
 }
+
+.blockUI {
+    z-index: 2200 !important;
+}
+
+.canvas-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+    .canvas-container canvas {
+        /*border: solid 1px;*/
+        width: 100%;
+    }

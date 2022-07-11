@@ -9,6 +9,7 @@ using System.IO;
 using System.Net.Http;
 using System.Net.Mail;
 using System.Threading.Tasks;
+using System.Web.Script.Serialization;
 
 namespace ReportBuilder.Web.Jobs
 {
@@ -20,6 +21,7 @@ namespace ReportBuilder.Web.Jobs
         public string LastRun { get; set; }
         public DateTime? NextRun { get; set; }
         public string UserId { get; set; }
+        public string ClientId { get; set; }
     }
     public class ReportWithSchedule
     {
@@ -95,13 +97,20 @@ namespace ReportBuilder.Web.Jobs
                             if (schedule.NextRun.HasValue && DateTime.Now >= schedule.NextRun && (!String.IsNullOrEmpty(schedule.LastRun) || lastRun <= schedule.NextRun))
                             {
                                 // need to run this report
-                                response = await client.GetAsync($"{apiUrl}/ReportApi/RunScheduledReport?account={accountApiKey}&dataConnect={databaseApiKey}&scheduleId={schedule.Id}&reportId={report.Id}&localRunTime={schedule.NextRun.Value.ToShortDateString()} {schedule.NextRun.Value.ToShortTimeString()}&clientId={clientId}");
+                                var dataFilters = new { }; // you can pass global data filters to apply as needed https://dotnetreport.com/kb/docs/advance-topics/global-filters/
+                                response = await client.GetAsync($"{apiUrl}/ReportApi/RunScheduledReport?account={accountApiKey}&dataConnect={databaseApiKey}&scheduleId={schedule.Id}&reportId={report.Id}&localRunTime={schedule.NextRun.Value.ToShortDateString()} {schedule.NextRun.Value.ToShortTimeString()}&clientId={clientId}&dataFilters={(new JavaScriptSerializer()).Serialize(dataFilters)}");
                                 response.EnsureSuccessStatusCode();
 
                                 content = await response.Content.ReadAsStringAsync();
                                 var reportToRun = JsonConvert.DeserializeObject<DotNetReportModel>(content);
 
-                                var excelFile = DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName);
+                                response = await client.GetAsync($"{apiUrl}/ReportApi/LoadReportColumnDetails?account={accountApiKey}&dataConnect={databaseApiKey}&reportId={report.Id}&clientId={clientId}");
+                                response.EnsureSuccessStatusCode();
+
+                                content = await response.Content.ReadAsStringAsync();
+                                var columnDetails = JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(content);
+
+                                var excelFile = DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: columnDetails);
 
                                 // send email
                                 var mail = new MailMessage

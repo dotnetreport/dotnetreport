@@ -8,7 +8,7 @@
     <title>Asp .Net Ad Hoc Report Builder - @ViewBag.Title </title>
     <meta name="keywords" content="ad-hoc reporting, reporting, asp .net reporting, asp .net report, report builder, ad hoc report builder, ad-hoc report builder, adhoc report, ad hoc reports, .net report viewer, reportviewer, sql reportviewer, report builder mvc, report mvc, report builder web forms, query builder, sql report builder,visual report builder,custom query,query maker" />
     <meta name="description" content="Ad hoc Reporting software that allows programmers to easily add Reporting functionality to their ASP .NET Web Software Solution" />
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
+    <link href="~/Content/bootstrap.min.css" rel="stylesheet" />
     <link href="~/Content/bootstrap-mvc-validation.css" rel="stylesheet" />
     <link href="~/Content/themes/base/datepicker.css" rel="stylesheet" />
     <link href="~/Content/themes/base/theme.css" rel="stylesheet" />
@@ -17,7 +17,7 @@
     <link href="~/Content/css/select2.min.css" rel="stylesheet" />
     <link href="~/Content/dotnetreport.css?v=3.0.0" rel="stylesheet" />
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-    @RenderSection("head", required: false)    
+    @RenderSection("head", required: false)
 </head>
 
 <body>
@@ -48,7 +48,7 @@
         <div class="form-group">
             <!-- ko if: !hasForeignKey-->
             <!-- ko if: fieldType=='DateTime'-->
-            <!-- ko if: ['=','>','<','>=','<='].indexOf($parent.Operator()) != -1 -->
+            <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 -->
             <input class="form-control" data-bind="datepicker: $parent.Value" required />
             <!-- /ko -->
             <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
@@ -58,8 +58,9 @@
             <input data-bind="datepicker: $parent.Value2" class="form-control" required />
             <!-- /ko -->
             <!-- ko if: ['range'].indexOf($parent.Operator()) != -1 -->
-            <select data-bind="value: $parent.Value" class="form-control">
-                <option>Today</option>
+            <select data-bind="value: $parent.Value" class="form-control" required>
+                <option value=""></option>
+                <option>Today</option>                
                 <option>Yesterday</option>
                 <option>This Week</option>
                 <option>Last Week</option>
@@ -70,12 +71,23 @@
                 <option>This Month To Date</option>
                 <option>This Year To Date</option>
                 <option>Last 30 Days</option>
+                <optgroup label="Comparison Options">                   
+                    <option>>= Today</option>
+                    <option><= Today</option>
+                    <option>>= Today +</option>
+                    <option><= Today +</option>
+                    <option>>= Today -</option>
+                    <option><= Today -</option>
+                </optgroup>
             </select>
+            <div data-bind="if: $parent.Value().indexOf('Today +') >= 0 || $parent.Value().indexOf('Today -') >= 0" class="form-group pull-left" style="padding-top: 5px;">
+                <input type="number" class="form-control input-sm pull-left" style="width: 80px;" data-bind="value: $parent.Value2" required /><span style="padding: 5px 5px;" class="pull-left"> days</span> 
+            </div>
             <!-- /ko -->
             <!-- /ko -->
-            <!-- ko if: ['Int','Money','Float'].indexOf(fieldType) != -1 -->
-            <!-- ko if: ['=','>','<','>=','<='].indexOf($parent.Operator()) != -1 -->
-            <input class="form-control" type="number" data-bind="value: $parent.Value" required />
+            <!-- ko if: ['Int','Money','Float','Double'].indexOf(fieldType) != -1 -->
+            <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
+            <input class="form-control" type="number" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default'" required />
             <!-- /ko -->
             <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
             From
@@ -84,17 +96,20 @@
             <input class="form-control" type="number" data-bind="value: $parent.Value2" required />
             <!-- /ko -->
             <!-- /ko -->
-            <!-- ko if: fieldType=='Boolean' -->
-            <select required class="form-control" data-bind="value: $parent.Value">
+            <!-- ko if: fieldType=='Boolean' && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
+            <select required class="form-control" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default'">
                 <option value="1">Yes</option>
                 <option value="0">No</option>
             </select>
             <!-- /ko -->
-            <!-- ko if: ['Int','Money','Float','Date','DateTime','Boolean'].indexOf(fieldType) == -1 && ['is blank', 'is not blank'].indexOf($parent.Operator()) == -1 -->
-            <input class="form-control" type="text" data-bind="value: $parent.Value" required />
+            <!-- ko if: ['Int','Money','Float','Double','Date','DateTime','Boolean'].indexOf(fieldType) == -1 && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
+            <input class="form-control" type="text" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default'" required />
             <!-- /ko -->
             <!-- /ko -->
             <!-- ko if: hasForeignKey-->
+            <!-- ko if: !$root.useStoredProc() && hasForeignParentKey && $parent.showParentFilter() -->
+            <select multiple class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.ParentList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ParentIn"></select>
+            <!-- /ko -->
             <!-- ko if: $parent.Operator()=='='-->
             <select required class="form-control" data-bind="options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', value: $parent.Value, optionsCaption: 'Please Choose'"></select>
             <!-- /ko -->
@@ -108,10 +123,10 @@
         <div class="pager-container">
             <a href="" title="first" data-bind="click: first, enable: !isFirstPage()"><i class="fa fa-backward report-pager-btn" style="font-size: 18px;"></i></a>&nbsp;
             <a href="" title="previous" data-bind="click: previous, enable: !isFirstPage()"><i class="fa fa-caret-left fa-2x report-pager-btn"></i></a>
-            <select class="form-control input-sm" data-bind="options: [30,50,100,150,200,500], value: pageSize"></select>
+            <select class="form-control form-control-sm" data-bind="options: [10,30,50,100,150,200,500], value: pageSize"></select>
             <span class="pager-pageinfo">
                 <span>Page</span>&nbsp;
-                <input type="number" min="1" pattern="[0-9]*" class="text-center" data-bind="
+                <input type="number" min="1" pattern="[0-9]*" class="form-control form-control-sm text-center" data-bind="
                                     value: currentPage,
                                     attr: { max: pages() }" />&nbsp;
                 <span>of</span>&nbsp;
@@ -123,24 +138,45 @@
         </div>
     </script>
 
+    <script type="text/html" id="report-column-header">
+        <!-- ko foreach: Columns -->
+        <th data-bind="attr: { id: fieldId }, css: {'right-align': IsNumeric}, style: {'width': fieldWidth, 'background-color': headerBackColor }" style="border-right: 1px solid;">
+            <!-- ko if: $parents[1].useStoredProc ? $parents[1].useStoredProc() : ($parents[2].useStoredProc ? $parents[2].useStoredProc() : false) -->
+            <span data-bind="text: fieldLabel ? fieldLabel : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold ? 'bold' : 'normal'}"></span>
+            <!-- /ko -->
+            <!-- ko ifnot: $parents[1].useStoredProc ? $parents[1].useStoredProc() : ($parents[2].useStoredProc ? $parents[2].useStoredProc() : false)  -->
+            <a href="" data-bind="click: function(){ $parents[1].pager ? $parents[1].changeSort(SqlField) : $parents[2].changeSort(SqlField); }, style: {'color': headerFontColor, 'font-weight': headerFontBold ? 'bold' : 'normal'}">
+                <span data-bind="text: fieldLabel ? fieldLabel : ColumnName"></span>
+                <span data-bind="text: ($parents[1].pager ? $parents[1].pager.sortColumn() : $parents[2].pager.sortColumn()) === SqlField ? (($parents[1].pager ? $parents[1].pager.sortDescending() : $parents[2].pager.sortDescending()) ? '&#9660;' : '&#9650;') : ''"></span>
+            </a>
+            <!-- /ko -->
+        </th>
+        <!-- /ko -->
+    </script>
+    <script type="text/html" id="report-column">
+        <!-- ko foreach: Items -->
+        <td data-bind="style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold ? 'bold' : 'normal', 'text-align': $parents[3].pager && $parents[3].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[3].pager && $parents[3].ReportType()=='Single' ? '64px' : ''}">
+            <!-- ko if: LinkTo-->
+            <a data-bind="attr: {href: LinkTo}"><span data-bind="html: FormattedValue"></span></a>
+            <!-- /ko-->
+            <!-- ko ifnot: LinkTo-->
+            <span data-bind="html: FormattedValue"></span>
+            <!-- /ko-->
+        </td>
+    </script>
+
     <script type="text/html" id="report-template">
         <div class="report-chart" data-bind="attr: {id: 'chart_div_' + $parent.ReportID()}, visible: $parent.isChart"></div>
-
+        <!-- ko if: !$parent.isChart() || $parent.ShowDataWithGraph() -->
         <div class="table-responsive" data-bind="with: ReportData">
             <table class="table table-hover table-condensed">
-                <thead>
+                <thead data-bind="if: $parents[1].ReportType() != 'Single'">
                     <tr class="no-highlight">
                         <!-- ko if: $parentContext.$parent.canDrilldown() && !IsDrillDown() -->
-                        <th></th>
+                        <th style="width: 30px; border-left: 1px solid;"></th>
                         <!-- /ko -->
-                        <!-- ko foreach: Columns -->
-                        <th data-bind="attr: { id: 'col' + $index() }, css: {'right-align': IsNumeric}">
-                            <a href="" data-bind="click: function(){ $parentContext.$parentContext.$parent.changeSort(SqlField); }">
-                                <span data-bind="text: ColumnName"></span>
-                                <span data-bind="text: $parentContext.$parentContext.$parent.pager.sortColumn() === SqlField ? ($parentContext.$parentContext.$parent.pager.sortDescending() ? '&#9660;' : '&#9650;') : ''"></span>
-                            </a>
-                        </th>
-                        <!-- /ko -->
+                        <!-- ko template: 'report-column-header', data: $data -->
+                        <!-- /ko-->
                     </tr>
                 </thead>
                 <tbody>
@@ -152,35 +188,21 @@
                     <!-- ko foreach: Rows  -->
                     <tr>
                         <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() -->
-                        <td><a href="#" data-bind="click: function(){ toggle(); }"><span class="fa" data-bind="css: {'fa-plus': !isExpanded(), 'fa-minus': isExpanded()}"></span></a></td>
+                        <td style="width: 30px; vertical-align: middle;"><a href="#" data-bind="click: function(){ toggle(); }"><span class="fa" data-bind="css: {'fa-plus': !isExpanded(), 'fa-minus': isExpanded()}"></span></a></td>
                         <!-- /ko -->
-                        <!-- ko foreach: Items -->
-                            <!-- ko if: LinkTo-->
-                            <td data-bind="css: {'right-align': Column.IsNumeric}">
-                                <a data-bind="attr: {href: LinkTo}"><span data-bind="html: FormattedValue"></span></a>
-                            </td>
-                            <!-- /ko-->                        
-                            <!-- ko ifnot: LinkTo-->
-                            <td data-bind="html: FormattedValue, css: {'right-align': Column.IsNumeric}"></td>
+                        <!-- ko template: 'report-column', data: $data -->
                         <!-- /ko-->
-                        <!-- /ko -->
                     </tr>
                     <!-- ko if: isExpanded -->
                     <tr>
-                        <td></td>
-                        <td data-bind="attr:{colspan: $parent.Columns.length }">
+                        <td style="width: 30px;"></td>
+                        <td data-bind="attr:{colspan: $parent.Columns.length }" style="padding-left: 0px;">
                             <!-- ko if: DrillDownData -->
                             <table class="table table-hover table-condensed" data-bind="with: DrillDownData">
                                 <thead>
                                     <tr class="no-highlight">
-                                        <!-- ko foreach: Columns -->
-                                        <th data-bind="css: {'right-align': IsNumeric}">
-                                            <a href="" data-bind="click: function(){ $parents[1].changeSort(SqlField); }">
-                                                <span data-bind="text: ColumnName"></span>
-                                                <span data-bind="text: $parents[1].pager.sortColumn() === SqlField ? ($parents[1].pager.sortDescending() ? '&#9660;' : '&#9650;') : ''"></span>
-                                            </a>
-                                        </th>
-                                        <!-- /ko -->
+                                        <!-- ko template: 'report-column-header', data: $data -->
+                                        <!-- /ko-->
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -191,9 +213,8 @@
                                     </tr>
                                     <!-- ko foreach: Rows  -->
                                     <tr>
-                                        <!-- ko foreach: Items -->
-                                        <td data-bind="html: FormattedValue, css: {'right-align': Column.IsNumeric}"></td>
-                                        <!-- /ko -->
+                                        <!-- ko template: 'report-column', data: $data -->
+                                        <!-- /ko-->
                                     </tr>
                                     <!-- /ko -->
                                 </tbody>
@@ -206,19 +227,19 @@
                                     <div class="pull-left">
                                         @using (Html.BeginForm("DownloadExcel", "Report", FormMethod.Post))
                                         {
-                                        <input type="hidden" id="reportSql" name="reportSql" data-bind="value: $parent.sql" />
-                                        <input type="hidden" id="connectKey" name="connectKey" data-bind="value: $parent.connectKey" />
-                                        <input type="hidden" id="reportName" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parentContext.$parentContext.$parent.ReportName()" />
-                                        <button type="submit" class="btn btn-xs" title="Download Excel"><span class="fa fa-file-excel-o"></span></button>
+                                            <input type="hidden" name="reportSql" data-bind="value: $parent.sql" />
+                                            <input type="hidden" name="connectKey" data-bind="value: $parent.connectKey" />
+                                            <input type="hidden" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parentContext.$parentContext.$parent.ReportName()" />
+                                            <button type="submit" class="btn btn-xs" title="Download Excel"><span class="fa fa-file-excel-o"></span></button>
                                         }
                                     </div>
                                     <div class="pull-left">
                                         @using (Html.BeginForm("DownloadXml", "Report", FormMethod.Post))
                                         {
-                                        <input type="hidden" id="reportSql" name="reportSql" data-bind="value: $parent.sql" />
-                                        <input type="hidden" id="connectKey" name="connectKey" data-bind="value: $parent.connectKey" />
-                                        <input type="hidden" id="reportName" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parentContext.$parentContext.$parent.ReportName()" />
-                                        <button type="submit" class="btn btn-xs" title="Download XML"><span class="fa fa-file-code-o"></span></button>
+                                            <input type="hidden" name="reportSql" data-bind="value: $parent.sql" />
+                                            <input type="hidden" name="connectKey" data-bind="value: $parent.connectKey" />
+                                            <input type="hidden" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parentContext.$parentContext.$parent.ReportName()" />
+                                            <button type="submit" class="btn btn-xs" title="Download XML"><span class="fa fa-file-code-o"></span></button>
                                         }
                                     </div>
                                     <div class="form-group pull-right" data-bind="visible: pages()">
@@ -239,14 +260,18 @@
                         <td></td>
                         <!-- /ko -->
                         <!-- ko foreach: Items -->
-                        <td data-bind="html: FormattedValue, css: {'right-align': Column.IsNumeric}"></td>
+                        <!-- ko if: Value != 'NA' -->
+                        <td data-bind="style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold ? 'bold' : 'normal', 'text-align': $parents[3].pager && $parents[3].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[3].pager && $parents[3].ReportType()=='Single' ? '64px' : ''}">
+                            <span data-bind="html: FormattedValue, css: {'right-align': true}"></span>
+                        </td>
+                        <!-- /ko -->
                         <!-- /ko -->
                     </tr>
                 </tfoot>
                 <!-- /ko -->
             </table>
         </div>
-
+        <!-- /ko -->
     </script>
     <script type="text/html" id="admin-mode-template">
         <div class="row" style="padding: 10px 10px">
@@ -267,13 +292,13 @@
             <div class="alert alert-info">
                 <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;User level rights over rule Role level rights. No selection for a rule implies report is available to all.
             </div>
-            <b>Manage by User</b> (allow edit/delete)
+            <b>Manage by User</b> (allow edit)
             <div class="row container-fluid">
                 <!-- ko foreach: manageAccess.users -->
                 <div class="pull-left">
                     <div class="checkbox">
                         <label class="label label-info">
-                            <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: value"></span>&nbsp;
+                            <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
                         </label>
                     </div>
                 </div>
@@ -286,20 +311,35 @@
                 <div class="pull-left">
                     <div class="checkbox">
                         <label class="label label-info">
-                            <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: value"></span>&nbsp;
+                            <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
                         </label>
                     </div>
                 </div>
                 <!-- /ko -->
             </div>
             <br />
-            <b>Manage by User Role</b> (allow edit/delete)
+            <div data-bind="ifnot: manageAccess.isDashboard">
+                <b>Delete by User</b> (allow delete)
+                <div class="row container-fluid">
+                    <!-- ko foreach: manageAccess.deleteOnlyUsers -->
+                    <div class="pull-left">
+                        <div class="checkbox">
+                            <label class="label label-info">
+                                <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
+                            </label>
+                        </div>
+                    </div>
+                    <!-- /ko -->
+                </div>
+                <br />
+            </div>
+            <b>Manage by User Role</b> (allow edit)
             <div class="row container-fluid">
                 <!-- ko foreach: manageAccess.userRoles -->
                 <div class="pull-left">
                     <div class="checkbox">
                         <label class="label label-info">
-                            <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: value"></span>&nbsp;
+                            <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
                         </label>
                     </div>
                 </div>
@@ -312,14 +352,42 @@
                 <div class="pull-left">
                     <div class="checkbox">
                         <label class="label label-info">
-                            <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: value"></span>&nbsp;
+                            <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
                         </label>
                     </div>
                 </div>
                 <!-- /ko -->
-
             </div>
-
+            <div data-bind="ifnot: manageAccess.isDashboard">            
+                <br />
+                <b>Delete by User Role</b> (allow delete)
+                <div class="row container-fluid">
+                    <!-- ko foreach: manageAccess.deleteOnlyUserRoles -->
+                    <div class="pull-left">
+                        <div class="checkbox">
+                            <label class="label label-info">
+                                <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
+                            </label>
+                        </div>
+                    </div>
+                    <!-- /ko -->
+                </div>
+            </div>
+        </div>
+    </script>
+    <script type="text/html" id="filter-group">
+        <div data-bind="foreach: FilterGroups">
+            <div class="card" style="margin-left: 20px;">
+                <div class="card-body" data-bind="visible: !isRoot">
+                    <select data-bind="value: AndOr" class="form-control form-control-sm pull-left">
+                        <option>And</option>
+                        <option>Or</option>
+                    </select>
+                    <button class="btn btn-sm btn-secondary pull-left" data-bind="click: $parent.RemoveFilterGroup, visible: !isRoot">Remove Group</button>&nbsp;
+                    <hr />
+                </div>
+                <div data-bind="template: {name: 'filter-inner'}"></div>
+            </div>
         </div>
     </script>
     <script type="text/html" id="fly-filter-template">
@@ -363,6 +431,104 @@
         </div>
     </script>
 
+    <script type="text/html" id="filter-inner">
+        <div class="table-responsive">
+            <table class="table  table-hover table-borderless" data-bind="visible: Filters().length>0">
+                <thead>
+                    <tr>
+                        <th style="width: 10%"></th>
+                        <th style="width: 30%">Field</th>
+                        <th style="width: 10%"></th>
+                        <th style="width: 30%">Filter</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody data-bind="foreach: Filters">
+                    <tr>
+                        <td>
+                            <select data-bind="value: AndOr, visible: $index()>0" class="form-control">
+                                <option>And</option>
+                                <option>Or</option>
+                            </select>
+                        </td>
+                        <td>
+                            <div class="form-group">
+                                <select class="form-control" style="width: 100%;" data-bind="options: $root.selectedFieldsCanFilter, optionsText: 'selectedFieldName', optionsCaption: 'Please Choose', value: Field, attr: {required: Field()==null?'required':false}, disable: Field() && Field().forced"></select>
+                            </div>
+                        </td>
+                        <td data-bind="with: Field">
+                            <div class="form-group">
+                                <select class="form-control" style="width: 100%;" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
+                            </div>
+                        </td>
+                        <td data-bind="with: Field">
+                            <div data-bind="template: 'report-filter', data: $data"></div>
+                        </td>
+                        <td>
+                            <span data-bind="visible: Field() && Field().forced" class="badge badge-info">Required Filter</span>
+                            <button class="btn btn-sm btn-secondary" data-bind="click: $parent.RemoveFilter, hidden: Field() && Field().forced">Remove</button>
+                            <!-- ko if: Field() && Field().fieldType == 'DateTime' && Operator() == 'range' && $root.canAddSeries() && $index()==0 -->
+                            <button class="btn btn-sm btn-secondary" data-bind="click: $root.AddSeries.bind($data)">Add Comparison</button>
+                            <!--/ko -->
+                        </td>
+                    </tr>
+                    <!-- ko foreach: compareTo -->
+                    <tr>
+                        <td></td>
+                        <td style="text-align: right"><button class="btn btn-xs" data-bind="click: $root.RemoveSeries"><span class="fa fa-trash-o"></span></button></td>
+                        <td>Compare To</td>
+                        <td>
+                            <div class="form-group">
+                                <select class="form-control" data-bind="options: Range, value: Value" required></select>
+                            </div>
+                        </td>
+                    </tr>
+                    <!-- /ko -->
+                </tbody>
+            </table>
+        </div>
+        <div data-bind="template: {name: 'filter-group'}"></div>
+        <div>
+            <button class="btn btn-sm btn-link" data-bind="click: AddFilterGroup">Add Group</button>&nbsp;
+            <button class="btn btn-sm btn-link" data-bind="click: AddFilter">Add Filter</button>
+        </div>
+    </script>
+
+    <script type="text/html" id="filter-parameters">
+        <div class="table-responsive card" style="margin-left: 20px;">
+            <div class="card-body">
+                <span data-bind="hidden: showParameters">No filters available to choose</span>
+                <table class="table  table-hover table-borderless" data-bind="visible: showParameters">
+                    <thead>
+                        <tr>
+                            <th style="width: 30%">Paramter</th>
+                            <th style="width: 20%"></th>
+                            <th style="width: 30%">Value</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody data-bind="foreach: Parameters">
+                        <tr data-bind="ifnot: Hidden">
+                            <td data-bind="text: DisplayName">
+                            </td>
+                            <td>
+                                <div class="form-group">
+                                    <select class="form-control" style="width: 100%;" data-bind="options: operators, value: Operator" required></select>
+                                </div>
+                            </td>
+                            <td data-bind="with: Field">
+                                <div data-bind="template: 'report-filter', data: $data"></div>
+                            </td>
+                            <td></td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </script>
+
+
     <div class="modal" id="noaccountModal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -383,20 +549,20 @@
     </div>
 
     @* Required Javascript Libraries *@
-    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"></script>
+    <script src="~/Scripts/@Html.Raw(ReportUtil.GetScriptFile("jquery-{0}.min.js"))"></script>
+    <script src="~/Scripts/bootstrap.bundle.min.js"></script>
     <script src="~/Scripts/@Html.Raw(ReportUtil.GetScriptFile("jquery-ui-{0}.min.js"))"></script>
     <script src="~/Scripts/jquery.validate.min.js"></script>
     <script src="~/Scripts/@Html.Raw(ReportUtil.GetScriptFile("knockout-{0}.js"))"></script>
     <script src="~/Scripts/jquery.blockUI.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootbox.js/5.4.0/bootbox.min.js"></script>
+    <script src="~/Scripts/bootbox.min.js"></script>
     <script src="~/Scripts/toastr.min.js"></script>
     <script src="~/Scripts/knockout-sortable.min.js"></script>
     <script src="~/Scripts/select2.min.js"></script>
     <script src="~/Scripts/dotnetreport-helper.js"></script>
     <script src="~/Scripts/dotnetreport.js?v=4.0.0"></script>
     <script src="~/Scripts/lodash.min.js"></script>
+    <script src="~/Scripts/fabric.min.js"></script>
     @RenderSection("scripts", required: false)
     @Html.PageScripts()
 </body>

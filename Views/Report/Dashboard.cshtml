@@ -24,7 +24,7 @@
 
         @foreach (var r in Model.Reports)
         {
-        @:reports.push({ reportSql: "@r.ReportSql", reportId: @r.ReportId, reportFilter: htmlDecode('@HttpUtility.UrlDecode(r.ReportFilter)'), connectKey: "@r.ConnectKey", x: @r.X, y: @r.Y, width: @r.Width, height: @r.Height });
+        @:reports.push({ reportSql: "@r.ReportSql", reportId: @r.ReportId, reportFilter: htmlDecode('@System.Web.HttpUtility.UrlDecode(r.ReportFilter)'), connectKey: "@r.ConnectKey", x: @r.X, y: @r.Y, width: @r.Width, height: @r.Height });
         }
 
         ajaxcall({ url: '@Url.Action("GetUsersAndRoles")' }).done(function (data) {
@@ -41,6 +41,7 @@
                 users: data.users,
                 userRoles: data.userRoles,
                 allowAdmin: data.allowAdminMode,
+                dataFilters: data.dataFilters,
                 dashboardId: @(Request.QueryString["id"] != null ? Request.QueryString["id"] : "0")
             });
 
@@ -52,19 +53,16 @@
                         verticalMargin: 10
                     };
                     $('.grid-stack').gridstack(options);
-                    //$(".list-overflow-auto").each(function () {
-                    //    $(this).css('height', $(this).height() - 10);
-                    //});
-                    $('.grid-stack').on('gsresizestop', function (event, elem) {
-                        var newHeight = $(elem).attr('data-gs-height');
-                        $(elem).closest(".list-overflow-auto").css('height', newHeight - 50);
-                    });
                     $('.grid-stack').on('change', function (event, items) {
                         _.forEach(items, function (x) {
                             vm.updatePosition(x);
                         });
                     });
                 });
+
+                setTimeout(function () {
+                    vm.drawChart();
+                }, 1000);
             });
 
             $(window).resize(function () {
@@ -179,9 +177,12 @@
                 <div class="pull-right">
                     @using (Html.BeginForm("DownloadExcel", "Report", FormMethod.Post))
                     {
-                        <input type="hidden" id="reportSql" name="reportSql" data-bind="value: currentSql" />
-                        <input type="hidden" id="connectKey" name="connectKey" data-bind="value: currentConnectKey" />
-                        <input type="hidden" id="reportName" name="reportName" data-bind="value: ReportName" />
+                        <input type="hidden" name="reportSql" data-bind="value: currentSql" />
+                        <input type="hidden" name="connectKey" data-bind="value: currentConnectKey" />
+                        <input type="hidden" name="reportName" data-bind="value: ReportName" />
+                        <input type="hidden" name="allExpanded" data-bind="value: allExpanded" />
+                        <input type="hidden" name="expandSqls" data-bind="value: getExpandSqls" />
+                        <input type="hidden" name="columnDetails" data-bind="value: getColumnDetails" />
                         <button type="submit" class="btn btn-default btn-xs"><span class="fa fa-file-excel-o"></span></button>
                     }
                 </div>
@@ -201,7 +202,7 @@
                     <div data-bind="template: 'report-template', data: $data"></div>
                 </div>
             </div>
-            <div class="card-footer">
+            <div class="card-footer form-inline">
                 <div class="small" data-bind="with: pager">
                     <div class="form-group pull-left total-records">
                         <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
