@@ -83,7 +83,7 @@
                 </optgroup>
             </select>
             <div data-bind="if: $parent.Value().indexOf('Today +') >= 0 || $parent.Value().indexOf('Today -') >= 0" class="form-group pull-left" style="padding-top: 5px;">
-                <input type="number" class="form-control input-sm pull-left" style="width: 80px;" data-bind="value: $parent.Value2" required /><span style="padding: 5px 5px;" class="pull-left"> days</span> 
+                <input type="number" class="form-control input-sm pull-left" style="width: 80px;" data-bind="value: $parent.Value2" required /><span style="padding: 5px 5px;" class="pull-left"> days</span>
             </div>
             <!-- /ko -->
             <!-- /ko -->
@@ -109,7 +109,7 @@
             <!-- /ko -->
             <!-- /ko -->
             <!-- ko if: hasForeignKey-->
-            <!-- ko if: !$root.useStoredProc() && hasForeignParentKey && $parent.showParentFilter() -->
+            <!-- ko if:  $parentContext.$parent.useStoredProc() && hasForeignParentKey && $parent.showParentFilter() -->
             <select multiple class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.ParentList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ParentIn"></select>
             <!-- /ko -->
             <!-- ko if: $parent.Operator()=='='-->
