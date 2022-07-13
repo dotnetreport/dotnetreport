@@ -60,7 +60,9 @@
             <!-- ko if: ['range'].indexOf($parent.Operator()) != -1 -->
             <select data-bind="value: $parent.Value" class="form-control" required>
                 <option value=""></option>
-                <option>Today</option>                
+                <option>Today</option>
+                <option>Today +</option>
+                <option>Today -</option>
                 <option>Yesterday</option>
                 <option>This Week</option>
                 <option>Last Week</option>
@@ -71,7 +73,7 @@
                 <option>This Month To Date</option>
                 <option>This Year To Date</option>
                 <option>Last 30 Days</option>
-                <optgroup label="Comparison Options">                   
+                <optgroup label="Comparison Options">
                     <option>>= Today</option>
                     <option><= Today</option>
                     <option>>= Today +</option>

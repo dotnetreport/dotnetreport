@@ -1600,7 +1600,7 @@ var reportViewModel = function (options) {
 		var selectedTable = self.SelectedTable();
 		var fieldTable = _.find(self.Tables(), { tableName: field.tableName });
 
-		if (selectedTable != null && fieldTable.tableId == selectedTable.tableId)
+		if (field.isFormulaField() || (selectedTable != null && fieldTable.tableId == selectedTable.tableId))
 			self.SelectedFields.remove(field);
 		else {
 			self.loadTableFields(fieldTable).done(function () {
