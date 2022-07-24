@@ -1809,9 +1809,11 @@ var reportViewModel = function (options) {
 		self.RunReport(false);
 	}
 
-	self.RunReport = function (saveOnly) {
+	self.RunReport = function (saveOnly, skipValidation) {
 
 		saveOnly = saveOnly === true ? true : false;
+		skipValidation = skipValidation === true ? true : false;
+
 		self.TotalSeries(self.AdditionalSeries().length);
 
 		if (self.ReportType() == 'Single') {
@@ -1821,7 +1823,7 @@ var reportViewModel = function (options) {
 			}
 		}
 
-		if (!self.validateReport()) {
+		if (!skipValidation && !self.validateReport()) {
 			toastr.error("Please correct validation issues");
 			return;
 		}
@@ -2648,7 +2650,7 @@ var reportViewModel = function (options) {
 						}
 						else {
 							self.SaveReport(false);
-							self.RunReport();
+							self.RunReport(false, true);
 							e.runMode = false;
 						}
 					});
