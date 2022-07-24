@@ -114,7 +114,7 @@
             <select required class="form-control" data-bind="options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', value: $parent.Value, optionsCaption: 'Please Choose'"></select>
             <!-- /ko -->
             <!-- ko if: $parent.Operator()=='in' || $parent.Operator()=='not in'-->
-            <select multiple class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ValueIn"></select>
+            <select required multiple class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ValueIn"></select>
             <!-- /ko -->
             <!-- /ko -->
         </div>
