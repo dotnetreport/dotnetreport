@@ -1179,7 +1179,8 @@ var reportViewModel = function (options) {
 
 			e.Field = {
 				hasForeignKey: e.ForeignKey,
-				fieldType: e.ParameterDataTypeString
+				fieldType: e.ParameterDataTypeString,
+				hasForeignParentKey: false
 			}
 			e.LookupList = ko.observableArray([]);
 			if (e.Value()) {
