@@ -288,7 +288,7 @@ function scheduleBuilder(userId) {
 		}
 		else if (data.SelectedDates == lastDay) {
 			self.selectedDates([data.SelectedDates]);
-		}else {
+		} else {
 			self.selectedDates(_.map(data.SelectedDates.split(','), function (x) { return parseInt(x); }));
 		}
 		self.selectedHour(data.SelectedHour || '12');
@@ -333,7 +333,7 @@ function filterGroupViewModel(args) {
 				return false;
 			}
 		});
-		
+
 		return found;
 	}
 
@@ -403,7 +403,7 @@ function filterGroupViewModel(args) {
 					}
 				});
 			});
-        }
+		}
 
 		var addingFilter = true;
 		field.subscribe(function (newField) {
@@ -454,13 +454,13 @@ function filterGroupViewModel(args) {
 						});
 
 						filter.ParentIn(existingParentFilter.Operator() == '=' ? (existingParentFilter.Value() ? [existingParentFilter.Value()] : []) : existingParentFilter.ValueIn())
-                    }
+					}
 
-                }
+				}
 
 				else
 					loadLookupList(newField.fieldId, args.options.dataFilters);
-				
+
 			}
 
 			if (newField && newField.restrictedDateRange && newField.fieldType == 'DateTime') {
@@ -470,7 +470,7 @@ function filterGroupViewModel(args) {
 						if (!self.isRangeValid(newValue, newField.restrictedDateRange)) {
 							toastr.error("Filter range is more than " + newField.restrictedDateRange + ". Please choose a shorter date range");
 							filter.Value(null);
-                        }
+						}
 					}
 					if (newValue && filter.Operator() == 'between') {
 						var newValue2 = filter.Value2();
@@ -478,7 +478,7 @@ function filterGroupViewModel(args) {
 							toastr.error("Filter range is more than " + newField.restrictedDateRange + ". Please choose a shorter date range");
 							filter.Value(null);
 						}
-                    }
+					}
 				});
 
 				filter.Value2.subscribe(function (newValue2) {
@@ -488,9 +488,9 @@ function filterGroupViewModel(args) {
 							toastr.error("Filter range is more than " + newField.restrictedDateRange + ". Please choose a shorter date range");
 							filter.Value2(null);
 						}
-                    }
+					}
 				});
-            }
+			}
 		});
 
 		if (e.FieldId) {
@@ -542,7 +542,7 @@ function filterGroupViewModel(args) {
 		}
 
 		return isValid;
-	}	
+	}
 
 	self.isBetweenValid = function (date1, date2, restrictedRange) {
 		var tokens = restrictedRange.split(' ');
@@ -556,10 +556,10 @@ function filterGroupViewModel(args) {
 			case "Days": isValid = diffDays < rangeNumber && diffDays > 0; break;
 			case "Months": isValid = diffDays < (rangeNumber * 30); break;
 			case "Years": isValid = diffDays < (rangeNumber * 365); break;
-        }
+		}
 
 		return isValid;
-    }
+	}
 
 	self.isDate = function (date) {
 		if (!date) return false;
@@ -1254,13 +1254,13 @@ var reportViewModel = function (options) {
 			if (hasFields == null || forcedFiltersByTable.length == 0) return;
 			for (var i = 0; i < forcedFiltersByTable.length; i++) {
 				var tblField = forcedFiltersByTable[i];
-				var match = _.find(self.SelectedFields(), function (x) { return x.fieldId == tblField.fieldId;})
+				var match = _.find(self.SelectedFields(), function (x) { return x.fieldId == tblField.fieldId; })
 				if (!match) {
 					tblField.disabled(true);
 					self.SelectedFields.push(tblField);
 				}
-            }
-        }
+			}
+		}
 	});
 
 	self.loadTableFields = function (table) {
@@ -1290,7 +1290,7 @@ var reportViewModel = function (options) {
 			self.selectedTableFields = flds;
 		});
 
-    }
+	}
 
 	self.SelectedTable.subscribe(function (table) {
 		self.SelectedProc(null);
@@ -1392,7 +1392,7 @@ var reportViewModel = function (options) {
 			hasForeignKey: false,
 			fieldFilter: ["=", "<>", ">=", ">", "<", "<="],
 			formulaItems: self.formulaFields(),
-			forceFilterForTable: false 
+			forceFilterForTable: false
 		};
 	};
 
@@ -1608,7 +1608,7 @@ var reportViewModel = function (options) {
 				self.ChooseFields([]);
 				self.SelectedFields.remove(field);
 			});
-        }
+		}
 	};
 
 	self.RemoveSeries = function (series) {
@@ -1883,23 +1883,32 @@ var reportViewModel = function (options) {
 				if (saveOnly) {
 					return;
 				}
-				redirectToReport(options.runReportUrl, {
-					reportId: _result.reportId,
-					reportName: self.ReportName(),
-					reportDescription: self.ReportDescription(),
-					includeSubTotal: self.IncludeSubTotal(),
-					showUniqueRecords: self.ShowUniqueRecords(),
-					aggregateReport: self.AggregateReport(),
-					showDataWithGraph: self.ShowDataWithGraph(),
-					reportSql: self.AllSqlQuries(),
-					connectKey: _result.connectKey,
-					reportFilter: JSON.stringify(_.map(self.FlyFilters(), function (x) { return ko.toJS(x); })),
-					reportType: self.ReportType(),
-					selectedFolder: self.SelectedFolder() != null ? self.SelectedFolder().Id : 0,
-					reportSeries: _.map(self.AdditionalSeries(), function (e, i) {
-						return e.Value();
-					})
-				});
+
+				if (options.samePageOnRun) {
+					options.reportWizard.modal('hide');
+					self.ReportID(_result.reportId);
+					self.ExecuteReportQuery(_result.sql, _result.connectKey);
+					self.ReportMode("execute");
+				}
+				else {
+					redirectToReport(options.runReportUrl, {
+						reportId: _result.reportId,
+						reportName: self.ReportName(),
+						reportDescription: self.ReportDescription(),
+						includeSubTotal: self.IncludeSubTotal(),
+						showUniqueRecords: self.ShowUniqueRecords(),
+						aggregateReport: self.AggregateReport(),
+						showDataWithGraph: self.ShowDataWithGraph(),
+						reportSql: self.AllSqlQuries(),
+						connectKey: _result.connectKey,
+						reportFilter: JSON.stringify(_.map(self.FlyFilters(), function (x) { return ko.toJS(x); })),
+						reportType: self.ReportType(),
+						selectedFolder: self.SelectedFolder() != null ? self.SelectedFolder().Id : 0,
+						reportSeries: _.map(self.AdditionalSeries(), function (e, i) {
+							return e.Value();
+						})
+					});
+				}
 			}
 		});
 	};
