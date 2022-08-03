@@ -1,4 +1,4 @@
-﻿/// dotnet Report Builder view model v4.2.6
+﻿/// dotnet Report Builder view model v4.3.1
 /// License has to be purchased for use
 /// 2018-2021 (c) www.dotnetreport.com
 function pagerViewModel(args) {
@@ -115,6 +115,7 @@ function linkFieldViewModel(args, options) {
 				}
 			}).done(function (report) {
 				if (report.d) { report = report.d; }
+				if (report.result) { report = report.result; }
 				if (report.UseStoredProc) {
 					self.allFields(_.map(report.SelectedParameters, function (x) {
 						return {
@@ -390,12 +391,14 @@ function filterGroupViewModel(args) {
 				}
 			}).done(function (result) {
 				if (result.d) { result = result.d; }
+				if (result.result) { result = result.result; }
 				ajaxcall({
 					type: 'POST',
 					url: args.options.lookupListUrl,
 					data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey })
 				}).done(function (list) {
 					if (list.d) { list = list.d; }
+					if (list.result) { list = list.result; }
 					lookupList(list);
 					if (valueIn.length > 0) {
 						filter.ValueIn(valueIn);
@@ -432,12 +435,14 @@ function filterGroupViewModel(args) {
 							}
 						}).done(function (result) {
 							if (result.d) { result = result.d; }
+							if (result.result) { result = result.result; }
 							ajaxcall({
 								type: 'POST',
 								url: args.options.lookupListUrl,
 								data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey })
 							}).done(function (list) {
 								if (list.d) { list = list.d; }
+								if (list.result) { list = list.result; }
 								parentList(list);
 							});
 						});
@@ -692,6 +697,7 @@ var headerDesigner = function (options) {
 			})
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
+			if (result.result) { result = result.result; }
 			toastr.success('Report Header changes saved')
 		});
 	}
@@ -706,6 +712,7 @@ var headerDesigner = function (options) {
 			}
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
+			if (result.result) { result = result.result; }
 			self.UseReportHeader(result.useReportHeader);
 			canvas.loadFromJSON(result.headerJson, canvas.renderAll.bind(canvas), function (o, obj) {
 				if (displayOnly === true)
@@ -1049,6 +1056,7 @@ var reportViewModel = function (options) {
 				}
 			}).done(function (result) {
 				if (result.d) { result = result.d; }
+				if (result.result) { result = result.result; }
 				if (self.ManageFolder.IsNew()) {
 					self.Folders.push({
 						Id: result,
@@ -1195,12 +1203,14 @@ var reportViewModel = function (options) {
 					}
 				}).done(function (result) {
 					if (result.d) { result = result.d; }
+					if (result.result) { result = result.result; }
 					ajaxcall({
 						type: 'POST',
 						url: options.lookupListUrl,
 						data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey })
 					}).done(function (list) {
 						if (list.d) { list = list.d; }
+						if (list.result) { list = list.result; }
 						e.LookupList(list);
 					});
 				});
@@ -1275,6 +1285,7 @@ var reportViewModel = function (options) {
 			}
 		}).done(function (fields) {
 			if (fields.d) { fields = fields.d; }
+			if (fields.result) { fields = fields.result; }
 			var flds = _.map(fields, function (e, i) {
 				var match = _.filter(self.SelectedFields(), function (x) { return x.fieldId == e.fieldId; });
 				if (match.length > 0) {
@@ -1853,6 +1864,7 @@ var reportViewModel = function (options) {
 				async: false
 			}).done(function (result) {
 				if (result.d) { result = result.d; }
+				if (result.result) { result = result.result; }
 				_result = result;
 				self.AllSqlQuries(self.AllSqlQuries() + (result.sql + ","));
 
@@ -1933,6 +1945,7 @@ var reportViewModel = function (options) {
 		}).done(function (result) {
 
 			if (result.d) { result = result.d; }
+			if (result.result) { result = result.result; }
 			var reportResult = self.ReportResult();
 			reportResult.HasError(result.HasError);
 			reportResult.Exception(result.Exception);
@@ -2078,6 +2091,7 @@ var reportViewModel = function (options) {
 						})
 					}).done(function (ddData) {
 						if (ddData.d) { ddData = ddData.d; }
+						if (ddData.result) { ddData = ddData.result; }
 						ddData.ReportData.IsDrillDown = ko.observable(true);
 
 						processCols(ddData.ReportData.Columns);
@@ -2105,6 +2119,7 @@ var reportViewModel = function (options) {
 						})
 					}).done(function (ddResult) {
 						if (ddResult.d) { ddResult = ddResult.d; }
+						if (ddResult.result) { ddResult = ddResult.result; }
 						e.sql = ddResult.sql;
 						e.connectKey = ddResult.connectKey;
 						self.expandSqls.push({ index: index, sql: e.sql });
@@ -2161,6 +2176,7 @@ var reportViewModel = function (options) {
 					})
 				}).done(function (subtotalsqlResult) {
 					if (subtotalsqlResult.d) { subtotalsqlResult = subtotalsqlResult.d; }
+					if (subtotalsqlResult.result) { subtotalsqlResult = subtotalsqlResult.result; }
 					ajaxcall({
 						url: options.execReportUrl,
 						type: "POST",
@@ -2176,6 +2192,7 @@ var reportViewModel = function (options) {
 						})
 					}).done(function (subtotalResult) {
 						if (subtotalResult.d) { subtotalResult = subtotalResult.d; }
+						if (subtotalResult.result) { subtotalResult = subtotalResult.result }
 
 						processCols(subtotalResult.ReportData.Columns);
 						_.forEach(subtotalResult.ReportData.Rows, function (dr) {
@@ -2346,6 +2363,7 @@ var reportViewModel = function (options) {
 			}
 		}).done(function (folders) {
 			if (folders.d) { folders = folders.d; }
+			if (folders.result) { folders = folders.result; }
 			self.Folders(folders);
 			self.SelectedFolder(null);
 			if (folderId) {
@@ -2607,6 +2625,7 @@ var reportViewModel = function (options) {
 			}
 		}).done(function (report) {
 			if (report.d) { report = report.d; }
+			if (report.result) { report = report.result; }
 			self.useStoredProc(report.UseStoredProc);
 			self.ReportType(report.ReportType);
 
@@ -2650,6 +2669,7 @@ var reportViewModel = function (options) {
 			}
 		}).done(function (reports) {
 			if (reports.d) { reports = reports.d; }
+			if (reports.result) { reports = reports.result; }
 			_.forEach(reports, function (e) {
 				e.runMode = false;
 				e.openReport = function () {
@@ -2719,6 +2739,7 @@ var reportViewModel = function (options) {
 				}
 			}).done(function (x) {
 				if (x.d) { x = x.d; }
+				if (x.result) { x = x.result; }
 				x = x || {
 					allowUsersToCreateReports: true,
 					allowUsersToManageFolders: true
@@ -2798,6 +2819,7 @@ var reportViewModel = function (options) {
 			}
 		}).done(function (procs) {
 			if (procs.d) { procs = procs.d; }
+			if (procs.result) { procs = procs.result; }
 			self.Procs(procs);
 		});
 	};
@@ -2814,6 +2836,7 @@ var reportViewModel = function (options) {
 			}
 		}).done(function (tables) {
 			if (tables.d) { tables = tables.d; }
+			if (tables.result) { tables = tables.result; }
 			self.Tables(tables);
 		});
 	};
@@ -2995,6 +3018,7 @@ var dashboardViewModel = function (options) {
 			}
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
+			if (result.result) { result = result.result; }
 			toastr.success("Dashboard saved successfully");
 			setTimeout(function () {
 				window.location = window.location.href.split("?")[0] + "?id=" + result.id;
@@ -3118,6 +3142,8 @@ var dashboardViewModel = function (options) {
 			var setup = [];
 			if (allFolders[0].d) { allFolders[0] = allFolders[0].d; }
 			if (allReports[0].d) { allReports[0] = allReports[0].d; }
+			if (allFolders[0].result) { allFolders[0] = allFolders[0].result; }
+			if (allReports[0].result) { allReports[0] = allReports[0].result; }
 
 			_.forEach(allFolders[0], function (x) {
 				var folderReports = _.filter(allReports[0], { folderId: x.Id });
