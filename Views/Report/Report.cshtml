@@ -6,14 +6,14 @@
     Layout = "../shared/_Layout.Report.cshtml";
 }
 
-@*
+<!--
     This razor view renders the Report from the Data Table as a Html Table. You have complete control over this page and you can change the code and style to meet your requirements.
 
     Its Recommended you use it as is, and only change styling as needed to match your application. You will be responsible for managing and maintaining any changes.
 
     Note: To allow bigger file downloads in Excel, Please increase maxRequestLength in web.config. For example, <httpRuntime maxRequestLength="1048576" />
 
-*@
+-->
 
 @section scripts{
     <script type="text/javascript">
@@ -92,167 +92,167 @@
 
 <div data-bind="with: ReportResult">
 
-    <!-- ko ifnot: HasError -->
-    <div class="report-view" data-bind="with: $root">
-        @using (Html.BeginForm("DownloadExcel", "Report", FormMethod.Post, new { id = "downloadExcel" }))
-        {
-            <input type="hidden" name="reportSql" data-bind="value: currentSql" />
-            <input type="hidden" name="connectKey" data-bind="value: currentConnectKey" />
-            <input type="hidden" name="reportName" data-bind="value: ReportName" />
-            <input type="hidden" name="allExpanded" data-bind="value: allExpanded" />
-            <input type="hidden" name="expandSqls" data-bind="value: getExpandSqls" />
-            <input type="hidden" name="columnDetails" data-bind="value: getColumnDetails" />
-        }
+    <div data-bind="ifnot: HasError">
+        <div class="report-view" data-bind="with: $root">
+            @using (Html.BeginForm("DownloadExcel", "Report", FormMethod.Post, new { id = "downloadExcel" }))
+            {
+                <input type="hidden" name="reportSql" data-bind="value: currentSql" />
+                <input type="hidden" name="connectKey" data-bind="value: currentConnectKey" />
+                <input type="hidden" name="reportName" data-bind="value: ReportName" />
+                <input type="hidden" name="allExpanded" data-bind="value: allExpanded" />
+                <input type="hidden" name="expandSqls" data-bind="value: getExpandSqls" />
+                <input type="hidden" name="columnDetails" data-bind="value: getColumnDetails" />
+            }
 
-        @using (Html.BeginForm("DownloadXml", "Report", FormMethod.Post, new { id = "downloadXml" }))
-        {
-            <input type="hidden" name="reportSql" data-bind="value: currentSql" />
-            <input type="hidden" name="connectKey" data-bind="value: currentConnectKey" />
-            <input type="hidden" name="reportName" data-bind="value: ReportName" />
-        }
-        @using (Html.BeginForm("DownloadPdf", "Report", FormMethod.Post, new { id = "downloadPdf" }))
-        {
-            <input type="hidden" name="reportId" data-bind="value: ReportID" />
-            <input type="hidden" name="printUrl" value="@Url.Action("ReportPrint", "Report", null, this.Request.Url.Scheme)" />
-            <input type="hidden" name="reportSql" data-bind="value: currentSql" />
-            <input type="hidden" name="connectKey" data-bind="value: currentConnectKey" />
-            <input type="hidden" name="reportName" data-bind="value: ReportName" />
-            <input type="hidden" name="expandAll" data-bind="value: allExpanded" />
-        }
+            @using (Html.BeginForm("DownloadXml", "Report", FormMethod.Post, new { id = "downloadXml" }))
+            {
+                <input type="hidden" name="reportSql" data-bind="value: currentSql" />
+                <input type="hidden" name="connectKey" data-bind="value: currentConnectKey" />
+                <input type="hidden" name="reportName" data-bind="value: ReportName" />
+            }
+            @using (Html.BeginForm("DownloadPdf", "Report", FormMethod.Post, new { id = "downloadPdf" }))
+            {
+                <input type="hidden" name="reportId" data-bind="value: ReportID" />
+                <input type="hidden" name="printUrl" value="@Url.Action("ReportPrint", "Report", null, this.Request.Url.Scheme)" />
+                <input type="hidden" name="reportSql" data-bind="value: currentSql" />
+                <input type="hidden" name="connectKey" data-bind="value: currentConnectKey" />
+                <input type="hidden" name="reportName" data-bind="value: ReportName" />
+                <input type="hidden" name="expandAll" data-bind="value: allExpanded" />
+            }
 
-        <div class="pull-right">
-            <a href="@Url.Action("Index","Report")?folderId=@Model.SelectedFolder" class="btn btn-primary">
-                Back to Reports
-            </a>
-            <a href="@Url.Action("Index","Report")?reportId=@Model.ReportId&folderId =@Model.SelectedFolder" class="btn btn-primary" data-bind="visible: $root.CanEdit()">
-                Edit Report
-            </a>
-            <button type="button" class="btn btn-secondary" onclick="printReport();">
-                <span class="fa fa-print" aria-hidden="true"></span> Print Report
-            </button>
-
-            <div class="btn-group">
-                <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <span class="fa fa-download"></span> Export <span class="caret"></span>
+            <div class="pull-right">
+                <a href="@Url.Action("Index","Report")?folderId=@Model.SelectedFolder" class="btn btn-primary">
+                    Back to Reports
+                </a>
+                <a href="@Url.Action("Index","Report")?reportId=@Model.ReportId&folderId =@Model.SelectedFolder" class="btn btn-primary" data-bind="visible: $root.CanEdit()">
+                    Edit Report
+                </a>
+                <button type="button" class="btn btn-secondary" onclick="printReport();">
+                    <span class="fa fa-print" aria-hidden="true"></span> Print Report
                 </button>
-                <ul class="dropdown-menu">
-                    <li class="dropdown-item">
-                        <a href="#" onclick="downloadPdf();">
-                            <span class="fa fa-file-pdf-o"></span> Pdf
-                        </a>
-                    </li>
-                    <li class="dropdown-item">
-                        <a href="#" onclick="downloadExcel();">
-                            <span class="fa fa-file-excel-o"></span> Excel
-                        </a>
-                    </li>
-                    <li class="dropdown-item">
-                        <a href="#" onclick="downloadXml();">
-                            <span class="fa fa-file-code-o"></span> Xml
-                        </a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-        <br />
-        <br />
-        <div style="clear: both;"></div>
-        <br />
 
-        <div data-bind="if: EditFiltersOnReport">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title">
-                        <a data-toggle="collapse" data-target="#filter-panel" href="#">
-                            <i class="fa fa-filter"></i>Choose filter options
-                        </a>
-                    </h5>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <span class="fa fa-download"></span> Export <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li class="dropdown-item">
+                            <a href="#" onclick="downloadPdf();">
+                                <span class="fa fa-file-pdf-o"></span> Pdf
+                            </a>
+                        </li>
+                        <li class="dropdown-item">
+                            <a href="#" onclick="downloadExcel();">
+                                <span class="fa fa-file-excel-o"></span> Excel
+                            </a>
+                        </li>
+                        <li class="dropdown-item">
+                            <a href="#" onclick="downloadXml();">
+                                <span class="fa fa-file-code-o"></span> Xml
+                            </a>
+                        </li>
+                    </ul>
                 </div>
-                <div id="filter-panel" class="card-body">
-                    <div>
-                        <div class="row">
-                            <div data-bind="template: {name: 'filter-group'}" class="col"></div>
+            </div>
+            <br />
+            <br />
+            <div style="clear: both;"></div>
+            <br />
+
+            <div data-bind="if: EditFiltersOnReport">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title">
+                            <a data-toggle="collapse" data-target="#filter-panel" href="#">
+                                <i class="fa fa-filter"></i>Choose filter options
+                            </a>
+                        </h5>
+                    </div>
+                    <div id="filter-panel" class="card-body">
+                        <div>
+                            <div class="row">
+                                <div data-bind="template: {name: 'filter-group'}" class="col"></div>
+                            </div>
+
+                            <br />
+                            <button class="btn btn-primary" data-bind="click: SaveFilterAndRunReport">Update Filters</button>
                         </div>
-
-                        <br />
-                        <button class="btn btn-primary" data-bind="click: SaveFilterAndRunReport">Update Filters</button>
+                    </div>
+                </div>
+                <br />
+            </div>
+            <div data-bind="ifnot: EditFiltersOnReport">
+                <div data-bind="template: {name: 'fly-filter-template'}"></div>
+                <br />
+            </div>
+            <div data-bind="if: canDrilldown">
+                <button class="btn btn-secondary btn-xs" data-bind="click: ExpandAll">Expand All</button>
+                <button class="btn btn-secondary btn-xs" data-bind="click: CollapseAll">Collapse All</button>
+                <br />
+                <br />
+            </div>
+            <div class="report-menubar">
+                <div class="col-xs-12 col-centered" data-bind="with: pager">
+                    <div class="form-inline" data-bind="visible: pages()">
+                        <div class="form-group pull-left total-records">
+                            <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
+                        </div>
+                        <div class="pull-left">
+                            <button class="btn btn-secondary btn-sm" onclick="downloadExcel();" data-bind="visible: !$root.isChart() || $root.ShowDataWithGraph()" title="Export to Excel">
+                                <span class="fa fa-file-excel-o"></span>
+                            </button>
+                        </div>
+                        <div class="form-group pull-right">
+                            <div data-bind="template: 'pager-template', data: $data"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="report-canvas">
+                <div class="report-container">
+                    <div class="report-inner">
+                        <div class="canvas-container">
+                            <canvas id="report-header" width="900" height="120" data-bind="visible: useReportHeader"></canvas>
+                        </div>
+                        <h2 data-bind="text: ReportName"></h2>
+                        <p data-bind="html: ReportDescription">
+                        </p>
+                        <div data-bind="with: ReportResult">
+                            <div data-bind="template: 'report-template', data: $data"></div>
+                        </div>
                     </div>
                 </div>
             </div>
             <br />
+            <span>Report ran on: @DateTime.Now.ToShortDateString() @DateTime.Now.ToShortTimeString()</span>
         </div>
-        <div data-bind="ifnot: EditFiltersOnReport">
-            <div data-bind="template: {name: 'fly-filter-template'}"></div>
-            <br />
-        </div>
-        <div data-bind="if: canDrilldown">
-            <button class="btn btn-secondary btn-xs" data-bind="click: ExpandAll">Expand All</button>
-            <button class="btn btn-secondary btn-xs" data-bind="click: CollapseAll">Collapse All</button>
-            <br />
-            <br />
-        </div>
-        <div class="report-menubar">
-            <div class="col-xs-12 col-centered" data-bind="with: pager">
-                <div class="form-inline" data-bind="visible: pages()">
-                    <div class="form-group pull-left total-records">
-                        <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
-                    </div>
-                    <div class="pull-left">
-                        <button class="btn btn-secondary btn-sm" onclick="downloadExcel();" data-bind="visible: !$root.isChart() || $root.ShowDataWithGraph()" title="Export to Excel">
-                            <span class="fa fa-file-excel-o"></span>
-                        </button>
-                    </div>
-                    <div class="form-group pull-right">
-                        <div data-bind="template: 'pager-template', data: $data"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="report-canvas">
-            <div class="report-container">
-                <div class="report-inner">
-                    <div class="canvas-container">
-                        <canvas id="report-header" width="900" height="120" data-bind="visible: useReportHeader"></canvas>
-                    </div>
-                    <h2 data-bind="text: ReportName"></h2>
-                    <p data-bind="html: ReportDescription">
-                    </p>
-                    <div data-bind="with: ReportResult">
-                        <div data-bind="template: 'report-template', data: $data"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <br />
-        <span>Report ran on: @DateTime.Now.ToShortDateString() @DateTime.Now.ToShortTimeString()</span>
     </div>
-    <!-- /ko -->
-    <!-- ko if: HasError -->
-    <h2>@Model.ReportName</h2>
-    <p>
-        @Model.ReportDescription
-    </p>
+    <div data-bind="if: HasError">
+        <h2>@Model.ReportName</h2>
+        <p>
+            @Model.ReportDescription
+        </p>
 
-    <a href="@Url.Action("Index","Report")?folderId=@Model.SelectedFolder" class="btn btn-primary">
-        Back to Reports
-    </a>
-    <a href="@Url.Action("Index","Report")?reportId=@Model.ReportId&folderId =@Model.SelectedFolder" class="btn btn-primary" data-bind="visible: $root.CanEdit()">
-        Edit Report
-    </a>
-    <h3>An unexpected error occured while running the Report</h3>
-    <hr />
-    <b>Error Details</b>
-    <p>
-        <div data-bind="text: Exception"></div>
-    </p>
+        <a href="@Url.Action("Index","Report")?folderId=@Model.SelectedFolder" class="btn btn-primary">
+            Back to Reports
+        </a>
+        <a href="@Url.Action("Index","Report")?reportId=@Model.ReportId&folderId =@Model.SelectedFolder" class="btn btn-primary" data-bind="visible: $root.CanEdit()">
+            Edit Report
+        </a>
+        <h3>An unexpected error occured while running the Report</h3>
+        <hr />
+        <b>Error Details</b>
+        <p>
+            <div data-bind="text: Exception"></div>
+        </p>
 
-    <!-- /ko -->
-    <!-- ko if: ReportDebug() || HasError() -->
-    <br />
-    <br />
-    <hr />
-    <code data-bind="text: ReportSql">
+    </div>
+    <div data-bind="if: ReportDebug() || HasError()">
+        <br />
+        <br />
+        <hr />
+        <code data-bind="text: ReportSql">
 
-    </code>
-    <!-- /ko -->
+        </code>
+    </div>
 </div>

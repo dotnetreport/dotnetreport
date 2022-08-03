@@ -39,55 +39,54 @@
         });
     });
 
-        </script>
-    }
+    </script>
+}
 
-    <h3>Report Builder</h3>
-    <p>
-        Manage your Reports below. You can use the intuitive and user friendly Report Builder to create many types of Ad-hoc Reports.
-    </p>
-    <div class="alert alert-info">
-        To view the Dashboard, please <a href="@Url.Action("Dashboard","Report")">click here</a>.<br />
-        <div data-bind="if: currentUserName">Current User: <span data-bind="text: currentUserName"></span></div>
-        <div data-bind="if: currentUserRole">Current Roles: <span data-bind="text: currentUserRole"></span></div>
-    </div>
-    <div class="alert alert-warning">
-        You can easily integrate the Report Builder in your Application. See how to <a href="https://dotnetreport.com/getting-started-with-dotnet-report/">Get Started here</a>. <br />
-    </div>
+<h3>Report Builder</h3>
+<p>
+    Manage your Reports below. You can use the intuitive and user friendly Report Builder to create many types of Ad-hoc Reports.
+</p>
+<div class="alert alert-info">
+    To view the Dashboard, please <a href="@Url.Action("Dashboard","Report")">click here</a>.<br />
+    <div data-bind="if: currentUserName">Current User: <span data-bind="text: currentUserName"></span></div>
+    <div data-bind="if: currentUserRole">Current Roles: <span data-bind="text: currentUserRole"></span></div>
+</div>
+<div class="alert alert-warning">
+    You can easily integrate the Report Builder in your Application. See how to <a href="https://dotnetreport.com/getting-started-with-dotnet-report/">Get Started here</a>. <br />
+</div>
 
-    <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
+<div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
 
-    <!--
-        The markup code below is related to presentation. You don't have to change it, unless you
-        intentionally want to change something in the Report Builder's behavior in your Application.
-        It's Recommended you use it as is. You will be responsible for managing and maintaining any changes.
-    -->
-    <!-- Folders/Report List -->
-    <div id="report-start">
-        <div class="card folder-panel">
-            <div class="card-header">
-                <nav class="navbar navbar-expand-lg navbar-light bg-light">
-                    <a class="navbar-brand" href="#" data-bind="click: function() {SelectedFolder(null); designingHeader(false); }">Manage Reports</a>
-                    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-                        <span class="navbar-toggler-icon"></span>
-                    </button>
+<!--
+    The markup code below is related to presentation. You don't have to change it, unless you
+    intentionally want to change something in the Report Builder's behavior in your Application.
+    It's Recommended you use it as is. You will be responsible for managing and maintaining any changes.
+-->
+<!-- Folders/Report List -->
+<div id="report-start">
+    <div class="card folder-panel">
+        <div class="card-header">
+            <nav class="navbar navbar-expand-lg navbar-light bg-light">
+                <a class="navbar-brand" href="#" data-bind="click: function() {SelectedFolder(null); designingHeader(false); }">Manage Reports</a>
+                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
 
-                    <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                        <ul class="navbar-nav mr-auto">
-                            <div data-bind="if: CanSaveReports() || adminMode()">
-                            <li class="nav-item active">
-                                <a href="#" class="nav-link" data-bind="click: createNewReport" data-toggle="modal" data-target="#modal-reportbuilder">
-                                    <span class="fa fa-plus"></span> Create a New Report
-                                </a>
-                            </li>
-                    </div>
-                    <div data-bind="if: CanManageFolders() || adminMode()">
-                        <li class="nav-item">
+                <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                    <ul class="navbar-nav mr-auto">
+
+                        <li class="nav-item active" data-bind="visible: CanSaveReports() || adminMode()">
+                            <a href="#" class="nav-link" data-bind="click: createNewReport" data-toggle="modal" data-target="#modal-reportbuilder">
+                                <span class="fa fa-plus"></span> Create a New Report
+                            </a>
+                        </li>
+
+                        <li class="nav-item" data-bind="visible: CanManageFolders() || adminMode()">
                             <a href="#" class="nav-link" data-bind="click: ManageFolder.newFolder">
                                 <span class="fa fa-folder-o"></span> Add a new Folder
                             </a>
                         </li>
-                        <li class="nav-item dropdown" data-bind="visible: SelectedFolder()!=null">
+                        <li class="nav-item dropdown" data-bind="visible: (CanManageFolders() || adminMode()) && SelectedFolder()!=null">
                             <a href="#" class="nav-link dropdown-toggle" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                 <span class="fa fa-folder"></span> Folder Options
                             </a>
@@ -96,14 +95,13 @@
                                 <a class="dropdown-item" href="#" data-bind="click: ManageFolder.deleteFolder">Delete Selected Folder</a>
                             </div>
                         </li>
-                    </div>
-                    <li class="nav-item active">
-                        <a href="#" class="nav-link" data-bind="click: function(){ initHeaderDesigner(); }">
-                            <span class="fa fa-arrow-up"> Report Header</span>
-                        </a>
-                    </li>
+                        <li class="nav-item active">
+                            <a href="#" class="nav-link" data-bind="click: function(){ initHeaderDesigner(); }">
+                                <span class="fa fa-arrow-up"> Report Header</span>
+                            </a>
+                        </li>
                     </ul>
-            </div>
+                </div>
             </nav>
         </div>
         <div class="card-body">
