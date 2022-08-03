@@ -1,4 +1,4 @@
-﻿/// dotnet Report Builder view model v4.2.6
+﻿/// dotnet Report Builder view model v4.3.1
 /// License has to be purchased for use
 /// 2018-2021 (c) www.dotnetreport.com
 function pagerViewModel(args) {
@@ -115,6 +115,7 @@ function linkFieldViewModel(args, options) {
 				}
 			}).done(function (report) {
 				if (report.d) { report = report.d; }
+				if (report.result) { report = report.result; }
 				if (report.UseStoredProc) {
 					self.allFields(_.map(report.SelectedParameters, function (x) {
 						return {
@@ -288,7 +289,7 @@ function scheduleBuilder(userId) {
 		}
 		else if (data.SelectedDates == lastDay) {
 			self.selectedDates([data.SelectedDates]);
-		}else {
+		} else {
 			self.selectedDates(_.map(data.SelectedDates.split(','), function (x) { return parseInt(x); }));
 		}
 		self.selectedHour(data.SelectedHour || '12');
@@ -333,7 +334,7 @@ function filterGroupViewModel(args) {
 				return false;
 			}
 		});
-		
+
 		return found;
 	}
 
@@ -390,12 +391,14 @@ function filterGroupViewModel(args) {
 				}
 			}).done(function (result) {
 				if (result.d) { result = result.d; }
+				if (result.result) { result = result.result; }
 				ajaxcall({
 					type: 'POST',
 					url: args.options.lookupListUrl,
 					data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey })
 				}).done(function (list) {
 					if (list.d) { list = list.d; }
+					if (list.result) { list = list.result; }
 					lookupList(list);
 					if (valueIn.length > 0) {
 						filter.ValueIn(valueIn);
@@ -403,7 +406,7 @@ function filterGroupViewModel(args) {
 					}
 				});
 			});
-        }
+		}
 
 		var addingFilter = true;
 		field.subscribe(function (newField) {
@@ -432,12 +435,14 @@ function filterGroupViewModel(args) {
 							}
 						}).done(function (result) {
 							if (result.d) { result = result.d; }
+							if (result.result) { result = result.result; }
 							ajaxcall({
 								type: 'POST',
 								url: args.options.lookupListUrl,
 								data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey })
 							}).done(function (list) {
 								if (list.d) { list = list.d; }
+								if (list.result) { list = list.result; }
 								parentList(list);
 							});
 						});
@@ -454,13 +459,13 @@ function filterGroupViewModel(args) {
 						});
 
 						filter.ParentIn(existingParentFilter.Operator() == '=' ? (existingParentFilter.Value() ? [existingParentFilter.Value()] : []) : existingParentFilter.ValueIn())
-                    }
+					}
 
-                }
+				}
 
 				else
 					loadLookupList(newField.fieldId, args.options.dataFilters);
-				
+
 			}
 
 			if (newField && newField.restrictedDateRange && newField.fieldType == 'DateTime') {
@@ -470,7 +475,7 @@ function filterGroupViewModel(args) {
 						if (!self.isRangeValid(newValue, newField.restrictedDateRange)) {
 							toastr.error("Filter range is more than " + newField.restrictedDateRange + ". Please choose a shorter date range");
 							filter.Value(null);
-                        }
+						}
 					}
 					if (newValue && filter.Operator() == 'between') {
 						var newValue2 = filter.Value2();
@@ -478,7 +483,7 @@ function filterGroupViewModel(args) {
 							toastr.error("Filter range is more than " + newField.restrictedDateRange + ". Please choose a shorter date range");
 							filter.Value(null);
 						}
-                    }
+					}
 				});
 
 				filter.Value2.subscribe(function (newValue2) {
@@ -488,9 +493,9 @@ function filterGroupViewModel(args) {
 							toastr.error("Filter range is more than " + newField.restrictedDateRange + ". Please choose a shorter date range");
 							filter.Value2(null);
 						}
-                    }
+					}
 				});
-            }
+			}
 		});
 
 		if (e.FieldId) {
@@ -542,7 +547,7 @@ function filterGroupViewModel(args) {
 		}
 
 		return isValid;
-	}	
+	}
 
 	self.isBetweenValid = function (date1, date2, restrictedRange) {
 		var tokens = restrictedRange.split(' ');
@@ -556,10 +561,10 @@ function filterGroupViewModel(args) {
 			case "Days": isValid = diffDays < rangeNumber && diffDays > 0; break;
 			case "Months": isValid = diffDays < (rangeNumber * 30); break;
 			case "Years": isValid = diffDays < (rangeNumber * 365); break;
-        }
+		}
 
 		return isValid;
-    }
+	}
 
 	self.isDate = function (date) {
 		if (!date) return false;
@@ -692,6 +697,7 @@ var headerDesigner = function (options) {
 			})
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
+			if (result.result) { result = result.result; }
 			toastr.success('Report Header changes saved')
 		});
 	}
@@ -706,6 +712,7 @@ var headerDesigner = function (options) {
 			}
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
+			if (result.result) { result = result.result; }
 			self.UseReportHeader(result.useReportHeader);
 			canvas.loadFromJSON(result.headerJson, canvas.renderAll.bind(canvas), function (o, obj) {
 				if (displayOnly === true)
@@ -1049,6 +1056,7 @@ var reportViewModel = function (options) {
 				}
 			}).done(function (result) {
 				if (result.d) { result = result.d; }
+				if (result.result) { result = result.result; }
 				if (self.ManageFolder.IsNew()) {
 					self.Folders.push({
 						Id: result,
@@ -1179,7 +1187,8 @@ var reportViewModel = function (options) {
 
 			e.Field = {
 				hasForeignKey: e.ForeignKey,
-				fieldType: e.ParameterDataTypeString
+				fieldType: e.ParameterDataTypeString,
+				hasForeignParentKey: false
 			}
 			e.LookupList = ko.observableArray([]);
 			if (e.Value()) {
@@ -1194,12 +1203,14 @@ var reportViewModel = function (options) {
 					}
 				}).done(function (result) {
 					if (result.d) { result = result.d; }
+					if (result.result) { result = result.result; }
 					ajaxcall({
 						type: 'POST',
 						url: options.lookupListUrl,
 						data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey })
 					}).done(function (list) {
 						if (list.d) { list = list.d; }
+						if (list.result) { list = list.result; }
 						e.LookupList(list);
 					});
 				});
@@ -1253,13 +1264,13 @@ var reportViewModel = function (options) {
 			if (hasFields == null || forcedFiltersByTable.length == 0) return;
 			for (var i = 0; i < forcedFiltersByTable.length; i++) {
 				var tblField = forcedFiltersByTable[i];
-				var match = _.find(self.SelectedFields(), function (x) { return x.fieldId == tblField.fieldId;})
+				var match = _.find(self.SelectedFields(), function (x) { return x.fieldId == tblField.fieldId; })
 				if (!match) {
 					tblField.disabled(true);
 					self.SelectedFields.push(tblField);
 				}
-            }
-        }
+			}
+		}
 	});
 
 	self.loadTableFields = function (table) {
@@ -1274,6 +1285,7 @@ var reportViewModel = function (options) {
 			}
 		}).done(function (fields) {
 			if (fields.d) { fields = fields.d; }
+			if (fields.result) { fields = fields.result; }
 			var flds = _.map(fields, function (e, i) {
 				var match = _.filter(self.SelectedFields(), function (x) { return x.fieldId == e.fieldId; });
 				if (match.length > 0) {
@@ -1289,7 +1301,7 @@ var reportViewModel = function (options) {
 			self.selectedTableFields = flds;
 		});
 
-    }
+	}
 
 	self.SelectedTable.subscribe(function (table) {
 		self.SelectedProc(null);
@@ -1391,7 +1403,7 @@ var reportViewModel = function (options) {
 			hasForeignKey: false,
 			fieldFilter: ["=", "<>", ">=", ">", "<", "<="],
 			formulaItems: self.formulaFields(),
-			forceFilterForTable: false 
+			forceFilterForTable: false
 		};
 	};
 
@@ -1600,14 +1612,14 @@ var reportViewModel = function (options) {
 		var selectedTable = self.SelectedTable();
 		var fieldTable = _.find(self.Tables(), { tableName: field.tableName });
 
-		if (selectedTable != null && fieldTable.tableId == selectedTable.tableId)
+		if (field.isFormulaField() || (selectedTable != null && fieldTable.tableId == selectedTable.tableId))
 			self.SelectedFields.remove(field);
 		else {
 			self.loadTableFields(fieldTable).done(function () {
 				self.ChooseFields([]);
 				self.SelectedFields.remove(field);
 			});
-        }
+		}
 	};
 
 	self.RemoveSeries = function (series) {
@@ -1852,6 +1864,7 @@ var reportViewModel = function (options) {
 				async: false
 			}).done(function (result) {
 				if (result.d) { result = result.d; }
+				if (result.result) { result = result.result; }
 				_result = result;
 				self.AllSqlQuries(self.AllSqlQuries() + (result.sql + ","));
 
@@ -1882,23 +1895,32 @@ var reportViewModel = function (options) {
 				if (saveOnly) {
 					return;
 				}
-				redirectToReport(options.runReportUrl, {
-					reportId: _result.reportId,
-					reportName: self.ReportName(),
-					reportDescription: self.ReportDescription(),
-					includeSubTotal: self.IncludeSubTotal(),
-					showUniqueRecords: self.ShowUniqueRecords(),
-					aggregateReport: self.AggregateReport(),
-					showDataWithGraph: self.ShowDataWithGraph(),
-					reportSql: self.AllSqlQuries(),
-					connectKey: _result.connectKey,
-					reportFilter: JSON.stringify(_.map(self.FlyFilters(), function (x) { return ko.toJS(x); })),
-					reportType: self.ReportType(),
-					selectedFolder: self.SelectedFolder() != null ? self.SelectedFolder().Id : 0,
-					reportSeries: _.map(self.AdditionalSeries(), function (e, i) {
-						return e.Value();
-					})
-				});
+
+				if (options.samePageOnRun) {
+					options.reportWizard.modal('hide');
+					self.ReportID(_result.reportId);
+					self.ExecuteReportQuery(_result.sql, _result.connectKey);
+					self.ReportMode("execute");
+				}
+				else {
+					redirectToReport(options.runReportUrl, {
+						reportId: _result.reportId,
+						reportName: self.ReportName(),
+						reportDescription: self.ReportDescription(),
+						includeSubTotal: self.IncludeSubTotal(),
+						showUniqueRecords: self.ShowUniqueRecords(),
+						aggregateReport: self.AggregateReport(),
+						showDataWithGraph: self.ShowDataWithGraph(),
+						reportSql: self.AllSqlQuries(),
+						connectKey: _result.connectKey,
+						reportFilter: JSON.stringify(_.map(self.FlyFilters(), function (x) { return ko.toJS(x); })),
+						reportType: self.ReportType(),
+						selectedFolder: self.SelectedFolder() != null ? self.SelectedFolder().Id : 0,
+						reportSeries: _.map(self.AdditionalSeries(), function (e, i) {
+							return e.Value();
+						})
+					});
+				}
 			}
 		});
 	};
@@ -1923,6 +1945,7 @@ var reportViewModel = function (options) {
 		}).done(function (result) {
 
 			if (result.d) { result = result.d; }
+			if (result.result) { result = result.result; }
 			var reportResult = self.ReportResult();
 			reportResult.HasError(result.HasError);
 			reportResult.Exception(result.Exception);
@@ -2068,6 +2091,7 @@ var reportViewModel = function (options) {
 						})
 					}).done(function (ddData) {
 						if (ddData.d) { ddData = ddData.d; }
+						if (ddData.result) { ddData = ddData.result; }
 						ddData.ReportData.IsDrillDown = ko.observable(true);
 
 						processCols(ddData.ReportData.Columns);
@@ -2095,6 +2119,7 @@ var reportViewModel = function (options) {
 						})
 					}).done(function (ddResult) {
 						if (ddResult.d) { ddResult = ddResult.d; }
+						if (ddResult.result) { ddResult = ddResult.result; }
 						e.sql = ddResult.sql;
 						e.connectKey = ddResult.connectKey;
 						self.expandSqls.push({ index: index, sql: e.sql });
@@ -2151,6 +2176,7 @@ var reportViewModel = function (options) {
 					})
 				}).done(function (subtotalsqlResult) {
 					if (subtotalsqlResult.d) { subtotalsqlResult = subtotalsqlResult.d; }
+					if (subtotalsqlResult.result) { subtotalsqlResult = subtotalsqlResult.result; }
 					ajaxcall({
 						url: options.execReportUrl,
 						type: "POST",
@@ -2166,6 +2192,7 @@ var reportViewModel = function (options) {
 						})
 					}).done(function (subtotalResult) {
 						if (subtotalResult.d) { subtotalResult = subtotalResult.d; }
+						if (subtotalResult.result) { subtotalResult = subtotalResult.result }
 
 						processCols(subtotalResult.ReportData.Columns);
 						_.forEach(subtotalResult.ReportData.Rows, function (dr) {
@@ -2336,6 +2363,7 @@ var reportViewModel = function (options) {
 			}
 		}).done(function (folders) {
 			if (folders.d) { folders = folders.d; }
+			if (folders.result) { folders = folders.result; }
 			self.Folders(folders);
 			self.SelectedFolder(null);
 			if (folderId) {
@@ -2597,6 +2625,7 @@ var reportViewModel = function (options) {
 			}
 		}).done(function (report) {
 			if (report.d) { report = report.d; }
+			if (report.result) { report = report.result; }
 			self.useStoredProc(report.UseStoredProc);
 			self.ReportType(report.ReportType);
 
@@ -2640,6 +2669,7 @@ var reportViewModel = function (options) {
 			}
 		}).done(function (reports) {
 			if (reports.d) { reports = reports.d; }
+			if (reports.result) { reports = reports.result; }
 			_.forEach(reports, function (e) {
 				e.runMode = false;
 				e.openReport = function () {
@@ -2709,6 +2739,7 @@ var reportViewModel = function (options) {
 				}
 			}).done(function (x) {
 				if (x.d) { x = x.d; }
+				if (x.result) { x = x.result; }
 				x = x || {
 					allowUsersToCreateReports: true,
 					allowUsersToManageFolders: true
@@ -2788,6 +2819,7 @@ var reportViewModel = function (options) {
 			}
 		}).done(function (procs) {
 			if (procs.d) { procs = procs.d; }
+			if (procs.result) { procs = procs.result; }
 			self.Procs(procs);
 		});
 	};
@@ -2804,6 +2836,7 @@ var reportViewModel = function (options) {
 			}
 		}).done(function (tables) {
 			if (tables.d) { tables = tables.d; }
+			if (tables.result) { tables = tables.result; }
 			self.Tables(tables);
 		});
 	};
@@ -2985,6 +3018,7 @@ var dashboardViewModel = function (options) {
 			}
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
+			if (result.result) { result = result.result; }
 			toastr.success("Dashboard saved successfully");
 			setTimeout(function () {
 				window.location = window.location.href.split("?")[0] + "?id=" + result.id;
@@ -3108,6 +3142,8 @@ var dashboardViewModel = function (options) {
 			var setup = [];
 			if (allFolders[0].d) { allFolders[0] = allFolders[0].d; }
 			if (allReports[0].d) { allReports[0] = allReports[0].d; }
+			if (allFolders[0].result) { allFolders[0] = allFolders[0].result; }
+			if (allReports[0].result) { allReports[0] = allReports[0].result; }
 
 			_.forEach(allFolders[0], function (x) {
 				var folderReports = _.filter(allReports[0], { folderId: x.Id });
