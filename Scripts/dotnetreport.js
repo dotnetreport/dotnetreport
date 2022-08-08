@@ -1614,12 +1614,15 @@ var reportViewModel = function (options) {
 		var selectedTable = self.SelectedTable();
 		var fieldTable = _.find(self.Tables(), { tableName: field.tableName });
 
-		if (field.isFormulaField() || (selectedTable != null && fieldTable.tableId == selectedTable.tableId))
+		if (field.isFormulaField() || (selectedTable != null && fieldTable.tableId == selectedTable.tableId) || fieldTable == null) {
 			self.SelectedFields.remove(field);
+			self.RemoveInvalidFilters(self.FilterGroups());
+		}
 		else {
 			self.loadTableFields(fieldTable).done(function () {
 				self.ChooseFields([]);
 				self.SelectedFields.remove(field);
+				self.RemoveInvalidFilters(self.FilterGroups());
 			});
 		}
 	};
@@ -1635,6 +1638,17 @@ var reportViewModel = function (options) {
 	self.SaveWithoutRun = function () {
 		self.RunReport(true);
 	};
+
+	self.RemoveInvalidFilters = function (filtergroup) {
+		_.forEach(filtergroup, function (g) {
+			_.forEach(g.Filters(), function (x, i) {
+				if (x && !x.Field()) {
+					g.RemoveFilter(x);
+				}
+				if (i == 0) self.RemoveInvalidFilters(g.FilterGroups());
+			});
+		});
+	}
 
 	self.BuildFilterData = function (filtergroup) {
 
