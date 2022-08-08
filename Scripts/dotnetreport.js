@@ -224,6 +224,7 @@ function scheduleBuilder(userId) {
 	self.hasScheduleEnd = ko.observable(false);
 	self.scheduleStart = ko.observable();
 	self.scheduleEnd = ko.observable();
+	self.format = ko.observable('')
 
 	self.selectedOption.subscribe(function (newValue) {
 		self.selectedDays([]);
@@ -266,8 +267,8 @@ function scheduleBuilder(userId) {
 			EmailTo: self.emailTo(),
 			UserId: userId,
 			ScheduleStart: self.hasScheduleStart() ? self.scheduleStart() : '',
-			ScheduleEnd: self.hasScheduleEnd() ? self.scheduleEnd() : ''
-
+			ScheduleEnd: self.hasScheduleEnd() ? self.scheduleEnd() : '',
+			Format: self.format()
 		} : null;
 	};
 
@@ -300,6 +301,7 @@ function scheduleBuilder(userId) {
 		self.scheduleEnd(data.ScheduleEnd ? new Date(data.ScheduleEnd.match(/\d+/)[0] * 1) : '');
 		self.hasScheduleStart(data.ScheduleStart ? true : false);
 		self.hasScheduleEnd(data.ScheduleEnd ? true : false);
+		self.format(data.Format);
 	}
 
 	self.clear = function () {
