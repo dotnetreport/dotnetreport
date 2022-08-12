@@ -262,7 +262,7 @@
                         <td></td>
                         <!-- /ko -->
                         <!-- ko foreach: Items -->
-                        <!-- ko if: Value != 'NA' -->
+                        <!-- ko if: Value != 'NA' && Value != 'NaN' -->
                         <td data-bind="style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold ? 'bold' : 'normal', 'text-align': $parents[3].pager && $parents[3].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[3].pager && $parents[3].ReportType()=='Single' ? '64px' : ''}">
                             <span data-bind="html: FormattedValue, css: {'right-align': true}"></span>
                         </td>

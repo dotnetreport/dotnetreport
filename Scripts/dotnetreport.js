@@ -898,6 +898,13 @@ var reportViewModel = function (options) {
 	self.CanEdit = ko.observable(true);
 	self.useReportHeader = ko.observable(false);
 
+	self.SavedReports.subscribe(function (x) {
+		if (self.ReportID()) {
+			var match = _.find(x, { reportId: self.ReportID() }) || { canEdit: false };
+			self.CanEdit(match.canEdit || self.adminMode());
+		}
+	});
+
 	self.fieldFormatTypes = ['Auto', 'Number', 'Decimal', 'Currency', 'Percentage', 'Date', 'Date and Time', 'Time', 'String'];
 	self.decimalFormatTypes = ['Number', 'Decimal', 'Currency', 'Percentage'];
 	self.dateFormatTypes = ['Date', 'Date and Time', 'Time'];
