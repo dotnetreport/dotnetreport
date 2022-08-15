@@ -1438,7 +1438,7 @@ var reportViewModel = function (options) {
 			return;
 		}
 
-		if (!self.validateReport()) {
+		if (!self.validateReport(true)) {
 			toastr.error("Please correct validation issues");
 			return;
 		}
@@ -2805,9 +2805,9 @@ var reportViewModel = function (options) {
 		return true;
 	};
 
-	self.validateReport = function () {
+	self.validateReport = function (validateCustomOnly) {
 		if (options.reportWizard == null) return;
-		var curInputs = options.reportWizard.find("input,select"),
+		var curInputs = options.reportWizard.find(validateCustomOnly === true ? "#custom-field-design input, #custom-field-design select" : "input, select"),
 			isValid = true;
 
 		$(".needs-validation").removeClass("was-validated");

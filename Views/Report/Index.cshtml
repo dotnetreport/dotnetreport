@@ -358,17 +358,10 @@
                             Check the fields you would like to use in the Report
                         </div>
                         <div class="pull-right btn-toolbar">
-                            <a href="#" class="btn btn-primary btn-sm" title="Save Custom Formula Field" data-bind="click: saveFormulaField, visible: isFormulaField">Save</a>
                             <a href="#" class="btn btn-sm" title="Custom Field using Formula" data-bind="click: function(){isFormulaField(!isFormulaField())}, text: isFormulaField()? 'Cancel': 'Customize', css: {'btn-primary': !isFormulaField(), 'btn-danger': isFormulaField}"></a>
 
                             <a href="#" class="btn btn-secondary btn-sm" data-bind="click: MoveAllFields, visible: !isFormulaField()">Select all</a>
                             <a href="#" class="btn btn-secondary btn-sm" data-bind="click: RemoveSelectedFields, visible: !isFormulaField()">Remove all</a>
-                        </div>
-                    </div>
-                    <div class="col-md-12 padded-div" data-bind="visible: ChooseFields().length>0 && isFormulaField()">
-                        <div class="alert alert-info">
-                            You are now creating a Customized Field. Check Fields you want to use in the calculation below, then choose the operations you want to perform, and click "Save" on the right above to add your Custom field.
-                            Please note that Custom Field must be chosen in within the same Section and their data types must match.
                         </div>
                     </div>
                     <div class="row container-fluid" data-bind="foreach: ChooseFields">
@@ -385,10 +378,24 @@
                     </div>
                 </div>
 
-                <div data-bind="if: isFormulaField">
+                <div data-bind="if: isFormulaField" id="custom-field-design">             
+                    <br />
                     <br />
                     <div class="card">
                         <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-12 pull-right">
+                                    <a href="#" class="btn btn-primary btn-sm" title="Save Custom Formula Field" data-bind="click: saveFormulaField, visible: isFormulaField">Save</a>
+                                    <a href="#" class="btn btn-sm" title="Custom Field using Formula" data-bind="click: function(){isFormulaField(!isFormulaField())}, text: isFormulaField()? 'Cancel': 'Customize', css: {'btn-primary': !isFormulaField(), 'btn-danger': isFormulaField}"></a>
+
+                                </div>
+                                <div class="col-md-12 padded-div" data-bind="visible: ChooseFields().length>0 && isFormulaField()">
+                                    <div class="alert alert-info">
+                                        You are now creating a Customized Field. Check Fields you want to use in the calculation, then choose the operations you want to perform, and click "Save" on the right above to add your Custom field.
+                                        Please note that Custom Field must be chosen in within the same Section and their data types must match.
+                                    </div>
+                                </div>
+                            </div>
                             <div class="row">
                                 <div class="col-sm-6 small">
                                     Setup your Formula for calculating this Field
