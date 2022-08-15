@@ -440,12 +440,14 @@ namespace ReportBuilder.Web.Models
             ws.Cells[rowstart, colstart].LoadFromDataTable(dt, true);
             ws.Cells[rowstart, colstart, rowstart, dt.Columns.Count].Style.Font.Bold = true;
 
-            int i = 1;
+            int i = 1; var isNumeric = false;
             foreach (DataColumn dc in dt.Columns)
             {
                 if (dc.DataType == typeof(decimal))
+                {
                     ws.Column(i).Style.Numberformat.Format = "###,###,##0.00";
-
+                    isNumeric = true;
+                }
                 if (dc.DataType == typeof(DateTime))
                     ws.Column(i).Style.Numberformat.Format = "mm/dd/yyyy";
 
@@ -453,6 +455,12 @@ namespace ReportBuilder.Web.Models
                 if (formatColumn != null && formatColumn.fieldFormat == "Currency")
                 {
                     ws.Column(i).Style.Numberformat.Format = "$###,###,##0.00";
+                    isNumeric = true;
+                }
+
+                if (formatColumn != null)
+                {
+                    ws.Column(i).Style.HorizontalAlignment = formatColumn.fieldAlign == "Right" || (isNumeric && (formatColumn.fieldAlign == "Auto" || string.IsNullOrEmpty(formatColumn.fieldAlign))) ? OfficeOpenXml.Style.ExcelHorizontalAlignment.Right : formatColumn.fieldAlign == "Center" ? OfficeOpenXml.Style.ExcelHorizontalAlignment.Center : OfficeOpenXml.Style.ExcelHorizontalAlignment.Left;
                 }
 
                 i++;
