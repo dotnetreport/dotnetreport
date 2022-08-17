@@ -57,10 +57,13 @@
             addDataConnectionUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/AddDataConnection',
             saveProcUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/SaveProcedure',
             deleteProcUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/DeleteProcedure',
+            reportsApiUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]',
+            getUsersAndRoles: '@Url.Action("GetUsersAndRoles", "Report")'
         };
 
         var vm = new manageViewModel(options);
         vm.LoadJoins();
+        vm.setupManageAccess();
         ko.applyBindings(vm);
         vm.LoadDataConnections();
     });
@@ -109,6 +112,7 @@
             <li role="presentation" class="nav-item"><a class="nav-link active" href="#tablesfields" aria-controls="home" role="tab" data-toggle="tab">Tables and Fields</a></li>
             <li role="presentation" class="nav-item"><a class="nav-link" href="#relations" aria-controls="profile" role="tab" data-toggle="tab">Relations</a></li>
             <li role="presentation" class="nav-item"><a class="nav-link" href="#procedure" aria-controls="procedure" role="tab" data-toggle="tab">Stored Procs</a></li>
+            <li role="presentation" class="nav-item"><a class="nav-link" href="#manageaccess" aria-controls="manageaccess" role="tab" data-toggle="tab">Manage Access</a></li>
         </ul>
     </div>
     <br />
@@ -352,6 +356,29 @@
                     </div>
                 </div>
                 <!-- /ko -->
+            </div>
+        </div>
+        <div id="manageaccess" class="tab-pane">
+            <div data-bind="foreach: reportsAndFolders" class="card" style="margin-left: 20px;">
+                <div class="card-body">
+                    <a class="btn btn-link" role="button" data-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }">
+                        <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: folder"></span>
+                    </a>
+                    <div class="collapse" data-bind="attr: {id: 'folder-' + folderId }">
+                        <ul class="list-group" data-bind="foreach: reports">
+                            <li class="list-group-item">
+                                <div class="checkbox">
+                                    <label class="list-group-item-heading">
+                                        <input type="checkbox" data-bind="checked: selected">
+                                        <span class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map'}" style="font-size: 14pt; color: #808080"></span>
+                                        <span data-bind="text: reportName"></span>
+                                    </label>
+                                </div>
+                                <p class="list-group-item-text small" data-bind="text: reportDescription"></p>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -625,7 +652,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                @*<div class="control-group">
+                                <!--<div class="control-group">
                                     <div class="form-group row">
                                         <label class="col-md-3 col-sm-3 control-label">Require Foreign Key Parent?</label>
                                         <div class="col-md-6 col-sm-6">
@@ -639,7 +666,7 @@
                                             <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Foreign keys parent can be optional or set to required for cascading filters"></span>
                                         </div>
                                     </div>
-                                </div>*@
+                                </div>-->
                             </div>
                         </div>
                     </div>
@@ -835,7 +862,7 @@
                             </div>
                         </div>
                     </div>
-
+                
                 </div>
             </div>
             <div class="modal-footer">
