@@ -57,7 +57,7 @@
 
 	self.editColumn = ko.observable();
 	self.isStoredProcColumn = ko.observable();
-	self.selectColumn = function (isStoredProcColumn, data, e) {		
+	self.selectColumn = function (isStoredProcColumn, data, e) {
 		self.isStoredProcColumn(null);
 		self.editColumn(data);
 		self.isStoredProcColumn(isStoredProcColumn);
@@ -447,23 +447,24 @@
 
 			_.forEach(allFolders[0], function (x) {
 				var folderReports = _.filter(allReports[0], { folderId: x.Id });
+				_.forEach(folderReports, function (r) {
+					r.changeAccess = ko.observable(false);
+					r.clientIdToUpdate = ko.observable(r.clientId);
+					r.saveAccessChanges = function () {
+						toastr.success('Changes Saved Successfully');
+						r.changeAccess(false);
+                    }
+				});
+
 				setup.push({
 					folderId: x.Id,
 					folder: x.FolderName,
-					reports: _.map(folderReports, function (r) {
-						return {
-							reportId: r.reportId,
-							reportName: r.reportName,
-							reportDescription: r.reportDescription,
-							reportType: r.reportType,
-							selected: ko.observable(false)
-						};
-					})
+					reports: folderReports
 				});
 			});
+
 			self.reportsAndFolders(setup);
 		});
-
 	}
 }
 
