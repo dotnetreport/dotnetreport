@@ -140,6 +140,18 @@ ko.bindingHandlers.select2 = {
     }
 };
 
+ko.bindingHandlers.highlightedText = {
+    update: function (element, valueAccessor) {
+        var options = valueAccessor();
+        var value = ko.utils.unwrapObservable(options.text) || '';
+        var search = ko.utils.unwrapObservable(options.highlight) || '';
+        var css = ko.utils.unwrapObservable(options.css) || 'highlight';
+       
+        var replacement = '<span class="' + css + '">' + search + '</span>';
+        element.innerHTML = value.replace(new RegExp(search, 'gim'), replacement);
+    }
+};
+
 function redirectToReport(url, prm, newtab) {
     prm = (typeof prm == 'undefined') ? {} : prm;
     newtab = (typeof newtab == 'undefined') ? false : newtab;
