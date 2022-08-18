@@ -84,18 +84,18 @@ namespace ReportBuilder.Web.Jobs
                 var content = await response.Content.ReadAsStringAsync();
                 var reports = JsonConvert.DeserializeObject<List<ReportWithSchedule>>(content);
 
-                foreach(var report in reports)
+                foreach (var report in reports)
                 {
-                    foreach(var schedule in report.Schedules)
+                    foreach (var schedule in report.Schedules)
                     {
                         try
                         {
                             var chron = new CronExpression(schedule.Schedule);
                             var lastRun = !String.IsNullOrEmpty(schedule.LastRun) ? Convert.ToDateTime(schedule.LastRun) : DateTimeOffset.UtcNow.AddMinutes(-10);
                             var nextRun = chron.GetTimeAfter(lastRun);
-                            
+
                             schedule.NextRun = (nextRun.HasValue ? nextRun.Value.ToLocalTime().DateTime : (DateTime?)null);
-                            
+
                             if (schedule.NextRun.HasValue && DateTime.Now >= schedule.NextRun && (!String.IsNullOrEmpty(schedule.LastRun) || lastRun <= schedule.NextRun))
                             {
                                 // need to run this report
@@ -117,8 +117,19 @@ namespace ReportBuilder.Web.Jobs
                                     fileData = await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/Report/ReportPrint", reportToRun.ReportId, reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, schedule.UserId, clientId, (new JavaScriptSerializer()).Serialize(dataFilters));
                                 else if (schedule.Format == "Excel")
                                     fileData = DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: columnDetails);
+                                else if (schedule.Format == "CSV")
+                                    fileData = DotNetReportHelper.GetCSVFile(reportToRun.ReportSql, reportToRun.ConnectKey);
                                 else // default
                                     fileData = DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: columnDetails);
+
+                                string fileExt = "";
+                                switch (schedule.Format)
+                                {
+                                    case "PDF":     fileExt = ".pdf";  break;
+                                    case "Excel":   fileExt = ".xlsx"; break;
+                                    case "CSV":     fileExt = ".csv";  break;
+                                    default:        fileExt = ".xlsx"; break; 
+                                }
 
                                 // send email
                                 var mail = new MailMessage
@@ -128,9 +139,9 @@ namespace ReportBuilder.Web.Jobs
                                     Body = $"Your scheduled report is attached.<br><br>{report.Description}",
                                     IsBodyHtml = true
                                 };
-                                mail.To.Add(schedule.EmailTo);                                
+                                mail.To.Add(schedule.EmailTo);
 
-                                var attachment = new Attachment(new MemoryStream(fileData), report.Name + ".xlsx");
+                                var attachment = new Attachment(new MemoryStream(fileData), report.Name + fileExt);
                                 mail.Attachments.Add(attachment);
 
                                 using (var smtpServer = new SmtpClient(mailServer))
@@ -142,7 +153,7 @@ namespace ReportBuilder.Web.Jobs
                                 }
                             }
                         }
-                         catch(Exception ex)
+                        catch (Exception ex)
                         {
                             // could not run, ignore error
                         }

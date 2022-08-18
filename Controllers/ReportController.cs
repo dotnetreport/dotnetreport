@@ -509,6 +509,20 @@ namespace ReportBuilder.Web.Controllers
             var pdf = await DotNetReportHelper.GetPdfFile(printUrl, reportId, reportSql, connectKey, reportName, settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), dataFilters, expandAll);
             return File(pdf, "application/pdf", reportName + ".pdf");
         }
+        
+        [HttpPost]
+        public ActionResult DownloadCsv(string reportSql, string connectKey, string reportName)
+        {
+            var excel = DotNetReportHelper.GetCSVFile(reportSql, connectKey);
+
+            Response.ClearContent();
+            Response.AddHeader("content-disposition", "attachment; filename=" + reportName + ".csv");
+            Response.ContentType = "text/csv";
+            Response.BinaryWrite(excel);
+            Response.End();
+
+            return View();
+        }
 
         public JsonResult GetUsersAndRoles()
         {
