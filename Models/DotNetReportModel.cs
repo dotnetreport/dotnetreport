@@ -435,7 +435,8 @@ namespace ReportBuilder.Web.Models
             return "";
         }
 
-        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null)
+        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, 
+                List<ReportHeaderColumn> columns = null, bool includeSubtotal = false)
         {
             ws.Cells[rowstart, colstart].LoadFromDataTable(dt, true);
             ws.Cells[rowstart, colstart, rowstart, dt.Columns.Count].Style.Font.Bold = true;
@@ -463,12 +464,32 @@ namespace ReportBuilder.Web.Models
                     ws.Column(i).Style.HorizontalAlignment = formatColumn.fieldAlign == "Right" || (isNumeric && (formatColumn.fieldAlign == "Auto" || string.IsNullOrEmpty(formatColumn.fieldAlign))) ? OfficeOpenXml.Style.ExcelHorizontalAlignment.Right : formatColumn.fieldAlign == "Center" ? OfficeOpenXml.Style.ExcelHorizontalAlignment.Center : OfficeOpenXml.Style.ExcelHorizontalAlignment.Left;
                 }
 
+                if (includeSubtotal)
+                {
+                    string DataType = dc.DataType.Name.ToUpper();
+                    if (isNumeric && (DataType == "DECIMAL" || DataType == "FLOAT" || DataType == "INT" || DataType == "NUMERIC"))//
+                    {
+                        var TotalValue = dt.Compute("SUM(" + dc.ColumnName.ToString() + ")", "");
+
+                        ws.Cells[dt.Rows.Count + 6, i].Value = TotalValue;
+                        ws.Cells[dt.Rows.Count + 6, i].Style.Font.Bold = true;
+                    }
+                }
+
                 i++;
             }
+
+            if (includeSubtotal)
+            {
+                ws.Cells[dt.Rows.Count + 5, 1].Value = "Total :";
+                ws.Cells[dt.Rows.Count + 5, 1].Style.Font.Bold = true;
+            }
+            
             ws.Cells[ws.Dimension.Address].AutoFitColumns();
         }
 
-        public static byte[] GetExcelFile(string reportSql, string connectKey, string reportName, bool allExpanded = false, List<string> expandSqls = null, List<ReportHeaderColumn> columns = null)
+        public static byte[] GetExcelFile(string reportSql, string connectKey, string reportName, bool allExpanded = false,
+                List<string> expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false)
         {
             var sql = Decrypt(reportSql);
 
@@ -514,7 +535,7 @@ namespace ReportBuilder.Web.Models
                     rowstart += 2;
                     rowend = rowstart + dt.Rows.Count;
 
-                    FormatExcelSheet(dt, ws, rowstart, colstart, columns);
+                    FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeSubtotal);
 
                     if (allExpanded)
                     {
