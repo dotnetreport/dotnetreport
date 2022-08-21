@@ -1,7 +1,7 @@
 ﻿using Newtonsoft.Json;
 using Quartz;
 using Quartz.Impl;
-using ReportBuilder.Web.Models;
+using $rootnamespace$.Models;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
