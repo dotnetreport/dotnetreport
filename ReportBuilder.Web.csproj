@@ -236,7 +236,6 @@
     <Content Include="favicon.ico" />
     <Content Include="fonts\fontawesome-webfont.svg" />
     <Content Include="Global.asax" />
-    <Content Include="gulpfile.js" />
     <Content Include="Scripts\bootbox.all.js" />
     <Content Include="Scripts\bootbox.all.min.js" />
     <Content Include="Scripts\bootbox.js" />
@@ -329,7 +328,6 @@
     <Content Include="Scripts\esm\popper.js.map" />
     <Content Include="Scripts\esm\popper-utils.min.js.map" />
     <Content Include="Scripts\esm\popper-utils.js.map" />
-    <Content Include="package.json" />
     <None Include="Scripts\jquery-3.6.0.intellisense.js" />
     <Content Include="Scripts\jquery-3.6.0.js" />
     <Content Include="Scripts\jquery-3.6.0.min.js" />
@@ -433,16 +431,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="App_Start\RouteConfig.cs" />
-    <None Include="Controllers\DotNetReportController.cs.pp" />
     <Compile Include="Controllers\DotNetReportController.cs" />
-    <None Include="Controllers\DotNetSetupController.cs.pp" />
     <Compile Include="Controllers\DotNetSetupController.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
-    <None Include="Jobs\DotNetReportJob.cs.pp" />
     <Compile Include="Jobs\DotNetReportJob.cs" />
-    <None Include="Models\DotNetReportModel.cs.pp" />
     <Compile Include="Models\DotNetReportModel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
@@ -475,8 +469,6 @@
     <Content Include="Scripts\popper.js.map" />
     <Content Include="Scripts\popper-utils.min.js.map" />
     <Content Include="Scripts\popper-utils.js.map" />
-    <Content Include="web.config.install.xdt" />
-    <Content Include="Views\web.config.transform" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
