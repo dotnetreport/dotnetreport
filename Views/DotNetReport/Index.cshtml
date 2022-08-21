@@ -534,7 +534,7 @@
                                         </div>
                                         <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $root.IncludeSubTotal()  &&  (['Int', 'Double', 'Money', 'Decimal', 'Currency'].indexOf(fieldType) >= 0 || ['Int', 'Double', 'Money', 'Decimal', 'Currency'].indexOf(fieldFormat()) >= 0)">
                                             <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ dontSubTotal(!dontSubTotal()); }, css: {active: dontSubTotal()==true}">
-                                                <span class="fa fa-plus-circle" aria-hidden="true" title="Don't Sub Total"></span>
+                                                <span class="fa fa-plus-circle" aria-hidden="true" title="Don't add to Total row"></span>
                                             </span>
                                         </div>
                                         <div class="pull-right" style="padding-right: 15px;">
@@ -631,7 +631,7 @@
                         <div class="checkbox">
                             <label>
                                 <input type="checkbox" data-bind="checked: IncludeSubTotal" />
-                                Include Subtotals
+                                Include Total Row
                             </label>
                         </div>
                         <div class="checkbox" data-bind="hidden: AggregateReport">

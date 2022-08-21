@@ -197,7 +197,7 @@
 		}
 
 		ajaxcall({
-			url: "/Setup/SearchProcedure",
+			url: "/DotNetSetup/SearchProcedure",
 			type: 'POST',
 			data: JSON.stringify({
 				value: self.searchProcedureTerm(),
