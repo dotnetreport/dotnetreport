@@ -471,11 +471,11 @@ namespace $rootnamespace$.Controllers
 
         
         [HttpPost]
-        public ActionResult DownloadExcel(string reportSql, string connectKey, string reportName, bool allExpanded, string expandSqls, string columnDetails = null)
+        public ActionResult DownloadExcel(string reportSql, string connectKey, string reportName, bool allExpanded, string expandSqls, string columnDetails = null, bool includeSubtotal = false)
         {
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() :  JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(columnDetails);
             
-            var excel = DotNetReportHelper.GetExcelFile(reportSql, connectKey, reportName, allExpanded, expandSqls.Split(',').ToList(), columns);
+            var excel = DotNetReportHelper.GetExcelFile(reportSql, connectKey, reportName, allExpanded, expandSqls.Split(',').ToList(), columns, includeSubtotal);
             Response.ClearContent();
 
             Response.AddHeader("content-disposition", "attachment; filename=" + reportName + ".xlsx");

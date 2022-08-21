@@ -113,22 +113,19 @@ namespace $rootnamespace$.Jobs
                                 var columnDetails = JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(content);
 
                                 byte[] fileData;
-                                if (schedule.Format == "PDF")
+                                if (schedule.Format.ToUpper() == "PDF")
                                     fileData = await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/Report/ReportPrint", reportToRun.ReportId, reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, schedule.UserId, clientId, (new JavaScriptSerializer()).Serialize(dataFilters));
-                                else if (schedule.Format == "Excel")
-                                    fileData = DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: columnDetails);
-                                else if (schedule.Format == "CSV")
+                                else if (schedule.Format.ToUpper() == "CSV")
                                     fileData = DotNetReportHelper.GetCSVFile(reportToRun.ReportSql, reportToRun.ConnectKey);
-                                else // default
+                                else //if (schedule.Format == "Excel") // default
                                     fileData = DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: columnDetails);
 
                                 string fileExt = "";
-                                switch (schedule.Format)
+                                switch (schedule.Format.ToUpper())
                                 {
-                                    case "PDF":     fileExt = ".pdf";  break;
-                                    case "Excel":   fileExt = ".xlsx"; break;
-                                    case "CSV":     fileExt = ".csv";  break;
-                                    default:        fileExt = ".xlsx"; break; 
+                                    case "PDF": fileExt = ".pdf"; break;
+                                    case "CSV": fileExt = ".csv"; break;
+                                    default: fileExt = ".xlsx"; break; //case "Excel":
                                 }
 
                                 // send email
