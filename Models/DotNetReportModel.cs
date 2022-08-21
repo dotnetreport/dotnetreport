@@ -444,7 +444,7 @@ namespace ReportBuilder.Web.Models
             int i = 1; var isNumeric = false;
             foreach (DataColumn dc in dt.Columns)
             {
-                isNumeric = false;
+                isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
                 if (dc.DataType == typeof(decimal))
                 {
                     ws.Column(i).Style.Numberformat.Format = "###,###,##0.00";
@@ -467,10 +467,8 @@ namespace ReportBuilder.Web.Models
 
                 if (includeSubtotal)
                 {
-                    string DataType = dc.DataType.Name.ToUpper();
                     if (isNumeric && !(formatColumn?.dontSubTotal ?? false))
-                    {
-                     
+                    {                     
                         ws.Cells[dt.Rows.Count + rowstart + 1, i].Formula = $"=SUM({ws.Cells[rowstart, i].Address}:{ws.Cells[dt.Rows.Count + rowstart, i].Address})";
                         ws.Cells[dt.Rows.Count + rowstart + 1, i].Style.Font.Bold = true;
                     }
