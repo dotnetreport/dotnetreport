@@ -470,20 +470,13 @@ namespace ReportBuilder.Web.Models
                     string DataType = dc.DataType.Name.ToUpper();
                     if (isNumeric && !(formatColumn?.dontSubTotal ?? false))
                     {
-                        var TotalValue = dt.Compute("SUM(" + dc.ColumnName.ToString() + ")", "");
-
-                        ws.Cells[dt.Rows.Count + 6, i].Value = TotalValue;
-                        ws.Cells[dt.Rows.Count + 6, i].Style.Font.Bold = true;
+                     
+                        ws.Cells[dt.Rows.Count + rowstart + 1, i].Formula = $"=SUM({ws.Cells[rowstart, i].Address}:{ws.Cells[dt.Rows.Count + rowstart, i].Address})";
+                        ws.Cells[dt.Rows.Count + rowstart + 1, i].Style.Font.Bold = true;
                     }
                 }
 
                 i++;
-            }
-
-            if (includeSubtotal)
-            {
-                ws.Cells[dt.Rows.Count + 5, 1].Value = "Total :";
-                ws.Cells[dt.Rows.Count + 5, 1].Style.Font.Bold = true;
             }
             
             ws.Cells[ws.Dimension.Address].AutoFitColumns();
