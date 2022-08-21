@@ -104,7 +104,7 @@
                 <input type="hidden" name="allExpanded" data-bind="value: allExpanded" />
                 <input type="hidden" name="expandSqls" data-bind="value: getExpandSqls" />
                 <input type="hidden" name="columnDetails" data-bind="value: getColumnDetails" />
-                <input type="hidden" name="IncludeSubTotal" data-bind="value: getIncludeSubTotal" />
+                <input type="hidden" name="includeSubTotal" data-bind="value: IncludeSubTotal" />
             }
 
             @using (Html.BeginForm("DownloadXml", "DotNetReport", FormMethod.Post, new { id = "downloadXml" }))

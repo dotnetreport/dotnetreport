@@ -299,6 +299,7 @@ namespace ReportBuilder.Web.Models
         public int? decimalPlaces { get; set; }
         public string fieldAlign { get; set; }
         public string fieldFormat { get; set; }
+        public bool dontSubTotal { get; set; }
     }
 
     public class DotNetReportHelper
@@ -435,8 +436,7 @@ namespace ReportBuilder.Web.Models
             return "";
         }
 
-        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, 
-                List<ReportHeaderColumn> columns = null, bool includeSubtotal = false)
+        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false)
         {
             ws.Cells[rowstart, colstart].LoadFromDataTable(dt, true);
             ws.Cells[rowstart, colstart, rowstart, dt.Columns.Count].Style.Font.Bold = true;
@@ -444,6 +444,7 @@ namespace ReportBuilder.Web.Models
             int i = 1; var isNumeric = false;
             foreach (DataColumn dc in dt.Columns)
             {
+                isNumeric = false;
                 if (dc.DataType == typeof(decimal))
                 {
                     ws.Column(i).Style.Numberformat.Format = "###,###,##0.00";
@@ -467,7 +468,7 @@ namespace ReportBuilder.Web.Models
                 if (includeSubtotal)
                 {
                     string DataType = dc.DataType.Name.ToUpper();
-                    if (isNumeric && (DataType == "DECIMAL" || DataType == "FLOAT" || DataType == "INT" || DataType == "NUMERIC"))//
+                    if (isNumeric && !(formatColumn?.dontSubTotal ?? false))
                     {
                         var TotalValue = dt.Compute("SUM(" + dc.ColumnName.ToString() + ")", "");
 

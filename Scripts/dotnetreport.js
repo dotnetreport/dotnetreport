@@ -948,7 +948,6 @@ var reportViewModel = function (options) {
 	self.height = ko.observable(2);
 
 	self.columnDetails = ko.observableArray([]);
-	self.IncludeSubTotal = ko.observableArray();
 
 	self.useStoredProc.subscribe(function () {
 		self.SelectedTable(null);
@@ -2259,11 +2258,6 @@ var reportViewModel = function (options) {
 
 	self.getColumnDetails = ko.computed(function () {
 		var formatData = JSON.stringify(self.columnDetails());
-		return formatData;
-	});
-
-	self.getIncludeSubTotal = ko.computed(function () {
-		var formatData = JSON.stringify(self.IncludeSubTotal());
 		return formatData;
 	});
 
