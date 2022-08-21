@@ -15,7 +15,7 @@ namespace $rootnamespace$.Controllers
 {
 
     //[Authorize(Roles ="SuperAdmin")] // This Action should not be available to regular users     
-    public class DotNetSetup : Controller
+    public class DotNetSetupController : Controller
     {
         public async Task<ActionResult> Index(string databaseApiKey = "")
         {
