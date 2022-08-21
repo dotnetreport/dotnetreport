@@ -41,49 +41,48 @@
         }, 250);
     }
 
+    function downloadPdf(reportId, currentSql, currentConnectKey, reportName, allExpanded) {
+        if (!currentSql) return;
+        redirectToReport("/DotNetReport/DownloadPdf", {
+            reportId: reportId,
+            reportSql: unescape(currentSql),
+            connectKey: unescape(currentConnectKey),
+            reportName: unescape(reportName),
+            expandAll: unescape(allExpanded),
+            printUrl: "@Url.Action("ReportPrint", "DotNetReport", null, this.Request.Url.Scheme)"
+        }, true, false);
+    }
 
-        function downloadPdf(reportId, currentSql, currentConnectKey, reportName, allExpanded) {
-            if (!currentSql) return;
-            redirectToReport("/DotNetReport/DownloadPdf", {
-                reportId: reportId,
-                reportSql: unescape(currentSql),
-                connectKey: unescape(currentConnectKey),
-                reportName: unescape(reportName),
-                expandAll: unescape(allExpanded),
-                printUrl: "@Url.Action("ReportPrint", "DotNetReport", null, this.Request.Url.Scheme)"
-            }, true, false);
-        }
+    function downloadExcel(currentSql, currentConnectKey, reportName, allExpanded, expandSqls, columnDetails, includeSubTotals) {
+        if (!currentSql) return;
+        redirectToReport("/DotNetReport/DownloadExcel", {
+            reportSql: unescape(currentSql),
+            connectKey: unescape(currentConnectKey),
+            reportName: unescape(reportName),
+            allExpanded: unescape(allExpanded),
+            expandSqls: unescape(expandSqls),
+            columnDetails: unescape(columnDetails),
+            includeSubTotals: unescape(includeSubTotals)
+        }, true, false);
+    }
 
-        function downloadExcel(currentSql, currentConnectKey, reportName, allExpanded, expandSqls, columnDetails, includeSubTotals) {
-            if (!currentSql) return;
-            redirectToReport("/DotNetReport/DownloadExcel", {
-                reportSql: unescape(currentSql),
-                connectKey: unescape(currentConnectKey),
-                reportName: unescape(reportName),
-                allExpanded: unescape(allExpanded),
-                expandSqls: unescape(expandSqls),
-                columnDetails: unescape(columnDetails),
-                includeSubTotals: unescape(includeSubTotals)
-            }, true, false);
-        }
+    function downloadCsv(currentSql, currentConnectKey, reportName) {
+        if (!currentSql) return;
+        redirectToReport("/DotNetReport/DownloadCsv", {
+            reportSql: unescape(currentSql),
+            connectKey: unescape(currentConnectKey),
+            reportName: unescape(reportName)
+        }, true, false);
+    }
 
-        function downloadCsv(currentSql, currentConnectKey, reportName) {
-            if (!currentSql) return;
-            redirectToReport("/DotNetReport/DownloadCsv", {
-                reportSql: unescape(currentSql),
-                connectKey: unescape(currentConnectKey),
-                reportName: unescape(reportName)
-            }, true, false);
-        }
-
-        function downloadXml(currentSql, currentConnectKey, reportName) {
-            if (!currentSql) return;
-            redirectToReport("/DotNetReport/DownloadXml", {
-                reportSql: unescape(currentSql),
-                connectKey: unescape(currentConnectKey),
-                reportName: unescape(reportName)
-            }, true, false);
-        }
+    function downloadXml(currentSql, currentConnectKey, reportName) {
+        if (!currentSql) return;
+        redirectToReport("/DotNetReport/DownloadXml", {
+            reportSql: unescape(currentSql),
+            connectKey: unescape(currentConnectKey),
+            reportName: unescape(reportName)
+        }, true, false);
+    }
 
     $(document).ready(function () {
         ajaxcall({ url: '@Url.Action("GetUsersAndRoles")' }).done(function (data) {
@@ -210,7 +209,7 @@
                             <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
                         </div>
                         <div class="pull-left">
-                            <button class="btn btn-secondary btn-sm" onclick="downloadExcel();" data-bind="visible: !$root.isChart() || $root.ShowDataWithGraph()" title="Export to Excel">
+                            <button class="btn btn-secondary btn-sm" data-bind="visible: !$root.isChart() || $root.ShowDataWithGraph(), click: downloadExcel($root.currentSql(), $root.currentConnectKey(), $root.ReportName(), $root.allExpanded(), $root.getExpandSqls(), $root.getColumnDetails(), $root.IncludeSubTotal());" " title="Export to Excel">
                                 <span class="fa fa-file-excel-o"></span>
                             </button>
                         </div>
