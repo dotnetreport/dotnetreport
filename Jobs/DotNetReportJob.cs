@@ -113,21 +113,27 @@ namespace ReportBuilder.Web.Jobs
                                 var columnDetails = JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(content);
 
                                 byte[] fileData;
-                                if (schedule.Format.ToUpper() == "PDF")
-                                    fileData = await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/Report/ReportPrint", reportToRun.ReportId, reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, schedule.UserId, clientId, (new JavaScriptSerializer()).Serialize(dataFilters));
-                                else if (schedule.Format.ToUpper() == "CSV")
-                                    fileData = DotNetReportHelper.GetCSVFile(reportToRun.ReportSql, reportToRun.ConnectKey);
-                                else //if (schedule.Format == "Excel") // default
-                                    fileData = DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: columnDetails);
-
                                 string fileExt = "";
+
                                 switch (schedule.Format.ToUpper())
                                 {
-                                    case "PDF": fileExt = ".pdf"; break;
-                                    case "CSV": fileExt = ".csv"; break;
-                                    default: fileExt = ".xlsx"; break; //case "Excel":
-                                }
+                                    case "PDF":
+                                        fileData = await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/Report/ReportPrint", reportToRun.ReportId, reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, schedule.UserId, clientId, (new JavaScriptSerializer()).Serialize(dataFilters));
+                                        fileExt = ".pdf"; 
+                                        break;
 
+                                    case "CSV": 
+                                        fileExt = ".csv";
+                                        fileData = DotNetReportHelper.GetCSVFile(reportToRun.ReportSql, reportToRun.ConnectKey);
+                                        break;
+
+                                    case "EXCEL":
+                                    default:
+                                        fileData = DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: columnDetails, reportToRun.IncludeSubTotals);
+                                        fileExt = ".xlsx";
+                                        break;
+                                }
+                                
                                 // send email
                                 var mail = new MailMessage
                                 {
