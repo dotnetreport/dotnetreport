@@ -96,7 +96,7 @@
 
     <div data-bind="ifnot: HasError">
         <div class="report-view" data-bind="with: $root">
-            @using (Html.BeginForm("DownloadExcel", "Report", FormMethod.Post, new { id = "downloadExcel" }))
+            @using (Html.BeginForm("DownloadExcel", "DotNetReport", FormMethod.Post, new { id = "downloadExcel" }))
             {
                 <input type="hidden" name="reportSql" data-bind="value: currentSql" />
                 <input type="hidden" name="connectKey" data-bind="value: currentConnectKey" />
@@ -106,22 +106,22 @@
                 <input type="hidden" name="columnDetails" data-bind="value: getColumnDetails" />
             }
 
-            @using (Html.BeginForm("DownloadXml", "Report", FormMethod.Post, new { id = "downloadXml" }))
+            @using (Html.BeginForm("DownloadXml", "DotNetReport", FormMethod.Post, new { id = "downloadXml" }))
             {
                 <input type="hidden" name="reportSql" data-bind="value: currentSql" />
                 <input type="hidden" name="connectKey" data-bind="value: currentConnectKey" />
                 <input type="hidden" name="reportName" data-bind="value: ReportName" />
             }
-            @using (Html.BeginForm("DownloadPdf", "Report", FormMethod.Post, new { id = "downloadPdf" }))
+            @using (Html.BeginForm("DownloadPdf", "DotNetReport", FormMethod.Post, new { id = "downloadPdf" }))
             {
                 <input type="hidden" name="reportId" data-bind="value: ReportID" />
-                <input type="hidden" name="printUrl" value="@Url.Action("ReportPrint", "Report", null, this.Request.Url.Scheme)" />
+                <input type="hidden" name="printUrl" value="@Url.Action("ReportPrint", "DotNetReport", null, this.Request.Url.Scheme)" />
                 <input type="hidden" name="reportSql" data-bind="value: currentSql" />
                 <input type="hidden" name="connectKey" data-bind="value: currentConnectKey" />
                 <input type="hidden" name="reportName" data-bind="value: ReportName" />
                 <input type="hidden" name="expandAll" data-bind="value: allExpanded" />
             }
-            @using (Html.BeginForm("DownloadCsv", "Report", FormMethod.Post, new { id = "downloadCsv" }))
+            @using (Html.BeginForm("DownloadCsv", "DotNetReport", FormMethod.Post, new { id = "downloadCsv" }))
             {
                 <input type="hidden" name="reportSql" data-bind="value: currentSql" />
                 <input type="hidden" name="connectKey" data-bind="value: currentConnectKey" />
@@ -129,10 +129,10 @@
             }
 
             <div class="pull-right">
-                <a href="@Url.Action("Index","Report")?folderId=@Model.SelectedFolder" class="btn btn-primary">
+                <a href="@Url.Action("Index","DotNetReport")?folderId=@Model.SelectedFolder" class="btn btn-primary">
                     Back to Reports
                 </a>
-                <a href="@Url.Action("Index","Report")?reportId=@Model.ReportId&folderId =@Model.SelectedFolder" class="btn btn-primary" data-bind="visible: $root.CanEdit()">
+                <a href="@Url.Action("Index","DotNetReport")?reportId=@Model.ReportId&folderId =@Model.SelectedFolder" class="btn btn-primary" data-bind="visible: $root.CanEdit()">
                     Edit Report
                 </a>
                 <button type="button" class="btn btn-secondary" onclick="printReport();">
@@ -246,10 +246,10 @@
             @Model.ReportDescription
         </p>
 
-        <a href="@Url.Action("Index","Report")?folderId=@Model.SelectedFolder" class="btn btn-primary">
+        <a href="@Url.Action("Index","DotNetReport")?folderId=@Model.SelectedFolder" class="btn btn-primary">
             Back to Reports
         </a>
-        <a href="@Url.Action("Index","Report")?reportId=@Model.ReportId&folderId =@Model.SelectedFolder" class="btn btn-primary" data-bind="visible: $root.CanEdit()">
+        <a href="@Url.Action("Index","DotNetReport")?reportId=@Model.ReportId&folderId =@Model.SelectedFolder" class="btn btn-primary" data-bind="visible: $root.CanEdit()">
             Edit Report
         </a>
         <h3>An unexpected error occured while running the Report</h3>

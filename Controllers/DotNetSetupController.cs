@@ -13,7 +13,7 @@ using System.Web.Mvc;
 
 namespace ReportBuilder.Web.Controllers
 {
-    public class SetupController : Controller
+    public class DotNetSetup : Controller
     {
         public async Task<ActionResult> Index(string databaseApiKey = "")
         {

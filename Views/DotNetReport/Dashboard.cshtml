@@ -96,7 +96,7 @@
 <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
 
 <div class="alert alert-info">
-    To manage Reports, please <a href="@Url.Action("Index","Report")">click here</a>.
+    To manage Reports, please <a href="@Url.Action("Index","DotNetReport")">click here</a>.
 </div>
 <div class="centered" style="display: none;" data-bind="visible: dashboards().length == 0 ">
     No Dashboards yet. Click below to Start<br />
@@ -175,7 +175,7 @@
             <div class="card-header">
                 <span data-bind="text: ReportName"></span>
                 <div class="pull-right">
-                    @using (Html.BeginForm("DownloadExcel", "Report", FormMethod.Post))
+                    @using (Html.BeginForm("DownloadExcel", "DotNetReport", FormMethod.Post))
                     {
                         <input type="hidden" name="reportSql" data-bind="value: currentSql" />
                         <input type="hidden" name="connectKey" data-bind="value: currentConnectKey" />
@@ -190,7 +190,7 @@
                 <button class="btn btn-default btn-xs pull-right" data-bind="click: toggleFlyFilters"><i class="fa fa-filter" title="Filter Report"></i></button>
                 <!-- /ko -->
 
-                <a data-bind="attr: {href: '@Url.Action("Index","Report")?reportId=' + ReportID()}" class="btn btn-default btn-xs pull-right">
+                <a data-bind="attr: {href: '@Url.Action("Index","DotNetReport")?reportId=' + ReportID()}" class="btn btn-default btn-xs pull-right">
                     <i class="fa fa-pencil-square-o" title="Edit Report"></i>
                 </a>
             </div>

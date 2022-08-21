@@ -17,9 +17,9 @@ using System.Web.Mvc;
 using System.Web.Script.Serialization;
 using System.Web.Security;
 
-namespace ReportBuilder.Web.Controllers
+namespace $rootnamespace$.Controllers
 {
-    public class ReportController : Controller
+    public class DotNetReportController : Controller
     {
         private DotNetReportSettings GetSettings()
         {
@@ -603,7 +603,7 @@ namespace ReportBuilder.Web.Controllers
     }
 }
 
-namespace ReportBuilder.Web
+namespace $rootnamespace$
 {
     public static class ReportUtil
     {

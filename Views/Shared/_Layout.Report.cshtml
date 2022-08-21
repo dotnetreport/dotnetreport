@@ -227,7 +227,7 @@
                                         <span data-bind="text: 'Total Records: ' + totalRecords()"></span>
                                     </div>
                                     <div class="pull-left">
-                                        @using (Html.BeginForm("DownloadExcel", "Report", FormMethod.Post))
+                                        @using (Html.BeginForm("DownloadExcel", "DotNetReport", FormMethod.Post))
                                         {
                                             <input type="hidden" name="reportSql" data-bind="value: $parent.sql" />
                                             <input type="hidden" name="connectKey" data-bind="value: $parent.connectKey" />
@@ -236,7 +236,7 @@
                                         }
                                     </div>
                                     <div class="pull-left">
-                                        @using (Html.BeginForm("DownloadXml", "Report", FormMethod.Post))
+                                        @using (Html.BeginForm("DownloadXml", "DotNetReport", FormMethod.Post))
                                         {
                                             <input type="hidden" name="reportSql" data-bind="value: $parent.sql" />
                                             <input type="hidden" name="connectKey" data-bind="value: $parent.connectKey" />
