@@ -1963,7 +1963,7 @@ var reportViewModel = function (options) {
 				pageSize: self.pager.pageSize(),
 				sortBy: self.pager.sortColumn() || '',
 				desc: self.pager.sortDescending() || false,
-				ReportSeries: reportSeries
+				reportSeries: reportSeries
 			})
 		}).done(function (result) {
 
@@ -2110,7 +2110,7 @@ var reportViewModel = function (options) {
 							pageSize: e.pager.pageSize(),
 							sortBy: e.pager.sortColumn() || '',
 							desc: e.pager.sortDescending() || false,
-							ReportSeries: reportSeries
+							reportSeries: reportSeries
 						})
 					}).done(function (ddData) {
 						if (ddData.d) { ddData = ddData.d; }
@@ -2211,7 +2211,7 @@ var reportViewModel = function (options) {
 							pageSize: 1,
 							sortBy: '',
 							desc: false,
-							ReportSeries: null
+							reportSeries: null
 						})
 					}).done(function (subtotalResult) {
 						if (subtotalResult.d) { subtotalResult = subtotalResult.d; }
