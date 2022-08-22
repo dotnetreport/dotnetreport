@@ -1,6 +1,6 @@
 ﻿/// dotnet Report Builder view model v4.3.4
 /// License has to be purchased for use
-/// 2018-2021 (c) www.dotnetreport.com
+/// 2022 (c) www.dotnetreport.com
 function pagerViewModel(args) {
 	args = args || {};
 	var self = this;
