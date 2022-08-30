@@ -1973,7 +1973,7 @@ var reportViewModel = function (options) {
 				pageSize: self.pager.pageSize(),
 				sortBy: self.pager.sortColumn() || '',
 				desc: self.pager.sortDescending() || false,
-				ReportSeries: reportSeries
+				reportSeries: reportSeries
 			})
 		}).done(function (result) {
 
@@ -1987,8 +1987,10 @@ var reportViewModel = function (options) {
 			reportResult.ReportSql(result.ReportSql);
 			self.ReportSeries = reportSeries;
 
-			function matchColumnName(src, dst) {
+			function matchColumnName(src, dst, dbSrc, dbDst) {
 				if (src == dst) return true;
+				if (dbSrc && dbDst && dbSrc == dbDst) return true;
+
 				if (dst.indexOf('(Count)') < 0 && dst.indexOf("(Avg)") < 0 && dst.indexOf("(Sum)") < 0 && dst.indexOf("(Average)") < 0)
 					return false;
 
@@ -2014,7 +2016,7 @@ var reportViewModel = function (options) {
 						e.hideStoredProcColumn = (col ? col.disabled() : true);
 					}
 					else
-						col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.fieldName, e.ColumnName); });
+						col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.fieldName, e.ColumnName, x.dbField, e.SqlField); });
 					if (col && col.linkField()) {
 						e.linkItem = col.linkFieldItem.toJs();
 						e.linkField = true;
@@ -2120,7 +2122,7 @@ var reportViewModel = function (options) {
 							pageSize: e.pager.pageSize(),
 							sortBy: e.pager.sortColumn() || '',
 							desc: e.pager.sortDescending() || false,
-							ReportSeries: reportSeries
+							reportSeries: reportSeries
 						})
 					}).done(function (ddData) {
 						if (ddData.d) { ddData = ddData.d; }
@@ -2221,7 +2223,7 @@ var reportViewModel = function (options) {
 							pageSize: 1,
 							sortBy: '',
 							desc: false,
-							ReportSeries: null
+							reportSeries: null
 						})
 					}).done(function (subtotalResult) {
 						if (subtotalResult.d) { subtotalResult = subtotalResult.d; }

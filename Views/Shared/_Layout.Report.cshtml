@@ -227,16 +227,20 @@
                                         <span data-bind="text: 'Total Records: ' + totalRecords()"></span>
                                     </div>
                                     <div class="pull-left">
-                                        @using (Html.BeginForm("DownloadExcel", "Report", FormMethod.Post))
+                                        @using (Html.BeginForm("DownloadExcel", "DotNetReport", FormMethod.Post))
                                         {
                                             <input type="hidden" name="reportSql" data-bind="value: $parent.sql" />
                                             <input type="hidden" name="connectKey" data-bind="value: $parent.connectKey" />
                                             <input type="hidden" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parentContext.$parentContext.$parent.ReportName()" />
+                                            <input type="hidden" name="allExpanded" data-bind="value: false" />
+                                            <input type="hidden" name="expandSqls" data-bind="value: ''" />
+                                            <input type="hidden" name="columnDetails" data-bind="value: $parentContext.$parentContext.$parentContext.$parent.getColumnDetails()" />
+                                            <input type="hidden" name="includeSubTotal" data-bind="value: false" />
                                             <button type="submit" class="btn btn-xs" title="Download Excel"><span class="fa fa-file-excel-o"></span></button>
                                         }
                                     </div>
                                     <div class="pull-left">
-                                        @using (Html.BeginForm("DownloadXml", "Report", FormMethod.Post))
+                                        @using (Html.BeginForm("DownloadXml", "DotNetReport", FormMethod.Post))
                                         {
                                             <input type="hidden" name="reportSql" data-bind="value: $parent.sql" />
                                             <input type="hidden" name="connectKey" data-bind="value: $parent.connectKey" />

@@ -19,7 +19,7 @@ using System.Web.Security;
 
 namespace ReportBuilder.Web.Controllers
 {
-    public class ReportController : Controller
+    public class DotNetReportController : Controller
     {
         private DotNetReportSettings GetSettings()
         {
@@ -471,14 +471,14 @@ namespace ReportBuilder.Web.Controllers
 
         
         [HttpPost]
-        public ActionResult DownloadExcel(string reportSql, string connectKey, string reportName, bool allExpanded, string expandSqls, string columnDetails = null)
+        public ActionResult DownloadExcel(string reportSql, string connectKey, string reportName, bool allExpanded, string expandSqls, string columnDetails = null, bool includeSubtotal = false)
         {
-            var columns = columnDetails == null ? new List<ReportHeaderColumn>() :  JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(columnDetails);
+            var columns = columnDetails == null ? new List<ReportHeaderColumn>() :  JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
             
-            var excel = DotNetReportHelper.GetExcelFile(reportSql, connectKey, reportName, allExpanded, expandSqls.Split(',').ToList(), columns);
+            var excel = DotNetReportHelper.GetExcelFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), allExpanded, HttpUtility.UrlDecode(expandSqls).Split(',').ToList(), columns, includeSubtotal);
             Response.ClearContent();
 
-            Response.AddHeader("content-disposition", "attachment; filename=" + reportName + ".xlsx");
+            Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".xlsx");
             Response.ContentType = "application/vnd.ms-excel";
             Response.BinaryWrite(excel);
             Response.End();
@@ -489,10 +489,10 @@ namespace ReportBuilder.Web.Controllers
         [HttpPost]
         public ActionResult DownloadXml(string reportSql, string connectKey, string reportName)
         {
-            var xml = DotNetReportHelper.GetXmlFile(reportSql, connectKey, reportName);
+            var xml = DotNetReportHelper.GetXmlFile(reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName));
             Response.ClearContent();
 
-            Response.AddHeader("content-disposition", "attachment; filename=" + reportName + ".xml");
+            Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".xml");
             Response.ContentType = "application/xml";
             Response.Write(xml);
             Response.End();
@@ -506,8 +506,22 @@ namespace ReportBuilder.Web.Controllers
             reportSql = HttpUtility.HtmlDecode(reportSql);
             var settings = GetSettings();
             var dataFilters = settings.DataFilters != null ? JsonConvert.SerializeObject(settings.DataFilters) : "";
-            var pdf = await DotNetReportHelper.GetPdfFile(printUrl, reportId, reportSql, connectKey, reportName, settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), dataFilters, expandAll);
+            var pdf = await DotNetReportHelper.GetPdfFile(HttpUtility.UrlDecode(printUrl), reportId, reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName), settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), dataFilters, expandAll);
             return File(pdf, "application/pdf", reportName + ".pdf");
+        }
+        
+        [HttpPost]
+        public ActionResult DownloadCsv(string reportSql, string connectKey, string reportName)
+        {
+            var excel = DotNetReportHelper.GetCSVFile(reportSql, HttpUtility.UrlDecode(connectKey));
+
+            Response.ClearContent();
+            Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".csv");
+            Response.ContentType = "text/csv";
+            Response.BinaryWrite(excel);
+            Response.End();
+
+            return View();
         }
 
         public JsonResult GetUsersAndRoles()

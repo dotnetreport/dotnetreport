@@ -299,6 +299,7 @@ namespace ReportBuilder.Web.Models
         public int? decimalPlaces { get; set; }
         public string fieldAlign { get; set; }
         public string fieldFormat { get; set; }
+        public bool dontSubTotal { get; set; }
     }
 
     public class DotNetReportHelper
@@ -435,7 +436,7 @@ namespace ReportBuilder.Web.Models
             return "";
         }
 
-        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null)
+        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false)
         {
             ws.Cells[rowstart, colstart].LoadFromDataTable(dt, true);
             ws.Cells[rowstart, colstart, rowstart, dt.Columns.Count].Style.Font.Bold = true;
@@ -443,6 +444,7 @@ namespace ReportBuilder.Web.Models
             int i = 1; var isNumeric = false;
             foreach (DataColumn dc in dt.Columns)
             {
+                isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
                 if (dc.DataType == typeof(decimal))
                 {
                     ws.Column(i).Style.Numberformat.Format = "###,###,##0.00";
@@ -463,12 +465,23 @@ namespace ReportBuilder.Web.Models
                     ws.Column(i).Style.HorizontalAlignment = formatColumn.fieldAlign == "Right" || (isNumeric && (formatColumn.fieldAlign == "Auto" || string.IsNullOrEmpty(formatColumn.fieldAlign))) ? OfficeOpenXml.Style.ExcelHorizontalAlignment.Right : formatColumn.fieldAlign == "Center" ? OfficeOpenXml.Style.ExcelHorizontalAlignment.Center : OfficeOpenXml.Style.ExcelHorizontalAlignment.Left;
                 }
 
+                if (includeSubtotal)
+                {
+                    if (isNumeric && !(formatColumn?.dontSubTotal ?? false))
+                    {                     
+                        ws.Cells[dt.Rows.Count + rowstart + 1, i].Formula = $"=SUM({ws.Cells[rowstart, i].Address}:{ws.Cells[dt.Rows.Count + rowstart, i].Address})";
+                        ws.Cells[dt.Rows.Count + rowstart + 1, i].Style.Font.Bold = true;
+                    }
+                }
+
                 i++;
             }
+            
             ws.Cells[ws.Dimension.Address].AutoFitColumns();
         }
 
-        public static byte[] GetExcelFile(string reportSql, string connectKey, string reportName, bool allExpanded = false, List<string> expandSqls = null, List<ReportHeaderColumn> columns = null)
+        public static byte[] GetExcelFile(string reportSql, string connectKey, string reportName, bool allExpanded = false,
+                List<string> expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false)
         {
             var sql = Decrypt(reportSql);
 
@@ -514,7 +527,7 @@ namespace ReportBuilder.Web.Models
                     rowstart += 2;
                     rowend = rowstart + dt.Rows.Count;
 
-                    FormatExcelSheet(dt, ws, rowstart, colstart, columns);
+                    FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeSubtotal);
 
                     if (allExpanded)
                     {
@@ -705,6 +718,50 @@ namespace ReportBuilder.Web.Models
                         }
                     }
                 }
+            }
+        }
+        public static byte[] GetCSVFile(string reportSql, string connectKey)
+        {
+            var sql = Decrypt(reportSql);
+
+            // Execute sql
+            var dt = new DataTable();
+            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
+            {
+                conn.Open();
+                var command = new OleDbCommand(sql, conn);
+                var adapter = new OleDbDataAdapter(command);
+
+                adapter.Fill(dt);
+
+
+                //Build the CSV file data as a Comma separated string.
+                string csv = string.Empty;
+
+
+                foreach (DataColumn column in dt.Columns)
+                {
+                    //Add the Header row for CSV file.
+                    csv += column.ColumnName + ',';
+                }
+
+                //Add new line.
+                csv += "\r\n";
+
+                foreach (DataRow row in dt.Rows)
+                {
+                    foreach (DataColumn column in dt.Columns)
+                    {
+                        //Add the Data rows.
+                        csv += row[column.ColumnName].ToString().Replace(",", ";") + ',';
+                    }
+
+                    //Add new line.
+                    csv += "\r\n";
+                }
+
+                return Encoding.ASCII.GetBytes(csv);
+                //return csv;
             }
         }
     }
