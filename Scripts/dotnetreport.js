@@ -2165,6 +2165,18 @@ var reportViewModel = function (options) {
 					if (e.isExpanded()) e.collapse(); else e.expand();
 				};
 
+				e.exportExcel = function () {
+					self.downloadExport("/DotNetReport/DownloadExcel", {
+						reportSql: e.sql,
+						connectKey: self.currentConnectKey(),
+						reportName: 'Sub Report for ' + self.ReportName(),
+						allExpanded: false,
+						expandSqls: '',
+						columnDetails: self.getColumnDetails(),
+						includeSubTotals: false
+					}, 'xlsx');
+                }
+
 				if (self.useStoredProc()) {
 					e.Items = _.filter(e.Items, function (x) { return _.includes(validFieldNames, x.Column.SqlField); });
 				}
@@ -2945,7 +2957,7 @@ var reportViewModel = function (options) {
 
 		$.ajax({
 			type: 'POST',
-			url: options.runExportUrl + url,
+			url: (options.runExportUrl || '') + url,
 			xhrFields: {
 				responseType: 'blob'
 			},
@@ -3000,8 +3012,8 @@ var reportViewModel = function (options) {
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
 			allExpanded: self.allExpanded(),
-			expandSqls: self.getExpandSqls() || "",
-			columnDetails: self.getColumnDetails() || "",
+			expandSqls: self.getExpandSqls() || '',
+			columnDetails: self.getColumnDetails(),
 			includeSubTotals: self.IncludeSubTotal()
 		}, 'xlsx');
 	}

@@ -42,7 +42,8 @@
                 userRoles: data.userRoles,
                 allowAdmin: data.allowAdminMode,
                 dataFilters: data.dataFilters,
-                dashboardId: @(Request.QueryString["id"] != null ? Request.QueryString["id"] : "0")
+                dashboardId: @(Request.QueryString["id"] != null ? Request.QueryString["id"] : "0"),
+                runExportUrl: ""
             });
 
             vm.init().done(function () {
@@ -175,17 +176,7 @@
             <div class="card-header">
                 <span data-bind="text: ReportName"></span>
                 <div class="pull-right">
-                    @using (Html.BeginForm("DownloadExcel", "DotNetReport", FormMethod.Post))
-                    {
-                        <input type="hidden" name="reportSql" data-bind="value: currentSql" />
-                        <input type="hidden" name="connectKey" data-bind="value: currentConnectKey" />
-                        <input type="hidden" name="reportName" data-bind="value: ReportName" />
-                        <input type="hidden" name="allExpanded" data-bind="value: allExpanded" />
-                        <input type="hidden" name="expandSqls" data-bind="value: getExpandSqls" />
-                        <input type="hidden" name="columnDetails" data-bind="value: getColumnDetails" /> 
-                        <input type="hidden" name="includeSubTotal" data-bind="value: IncludeSubTotal" />
-                        <button type="submit" class="btn btn-default btn-xs"><span class="fa fa-file-excel-o"></span></button>
-                    }
+                    <button type="submit" class="btn btn-default btn-xs" data-bind="click: downloadExcel"><span class="fa fa-file-excel-o"></span></button>
                 </div>
                 <!-- ko if: FlyFilters().length> 0-->
                 <button class="btn btn-default btn-xs pull-right" data-bind="click: toggleFlyFilters"><i class="fa fa-filter" title="Filter Report"></i></button>
