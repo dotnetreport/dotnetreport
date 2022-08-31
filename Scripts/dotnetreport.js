@@ -2986,12 +2986,11 @@ var reportViewModel = function (options) {
 
 	self.downloadPdfAlt = function () {
 		self.downloadExport("/DotNetReport/DownloadPdf", {
-			reportId: self.ReportID(),
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
-			expandAll: self.allExpanded(),
-			printUrl: options.printReportUrl
+			chartData: self.ChartData(),
+			columnDetails: self.getColumnDetails()
 		}, 'pdf');
 	}
 
