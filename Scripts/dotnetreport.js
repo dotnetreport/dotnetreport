@@ -1,6 +1,6 @@
 ﻿/// dotnet Report Builder view model v4.3.1
 /// License has to be purchased for use
-/// 2018-2021 (c) www.dotnetreport.com
+/// 2022 (c) www.dotnetreport.com
 function pagerViewModel(args) {
 	args = args || {};
 	var self = this;
@@ -2937,6 +2937,91 @@ var reportViewModel = function (options) {
 			thItem = undefined;
 		});
 	}
+
+	self.downloadExport = function (url, data, ext) {
+		if ($.blockUI) {
+			$.blockUI({ baseZ: 500 });
+		}
+
+		$.ajax({
+			type: 'POST',
+			url: options.runExportUrl + url,
+			xhrFields: {
+				responseType: 'blob'
+			},
+			data: data,
+			success: function (data) {
+				var a = document.createElement('a');
+				var url = window.URL.createObjectURL(data);
+				a.href = url;
+				a.download = self.ReportName() + '.' + ext;
+				document.body.append(a);
+				a.click();
+				a.remove();
+				window.URL.revokeObjectURL(url);
+				if ($.unblockUI) {
+					$.unblockUI();
+				}
+			},
+			error: function () {
+				if ($.unblockUI) {
+					$.unblockUI();
+				}
+				toastr.error("Error downloading file");
+            }
+		});
+    }
+
+	self.downloadPdfAlt = function () {
+		self.downloadExport("/DotNetReport/DownloadPdf", {
+			reportId: self.ReportID(),
+			reportSql: self.currentSql(),
+			connectKey: self.currentConnectKey(),
+			reportName: self.ReportName(),
+			expandAll: self.allExpanded(),
+			printUrl: options.printReportUrl
+		}, 'pdf');
+	}
+
+	self.downloadPdf = function () {
+		self.downloadExport("/DotNetReport/DownloadPdf", {
+			reportId: self.ReportID(),
+			reportSql: self.currentSql(),
+			connectKey: self.currentConnectKey(),
+			reportName: self.ReportName(),
+			expandAll: self.allExpanded(),
+			printUrl: options.printReportUrl
+		}, 'pdf');
+	}
+
+	self.downloadExcel = function () {
+		self.downloadExport("/DotNetReport/DownloadExcel", {
+			reportSql: self.currentSql(),
+			connectKey: self.currentConnectKey(),
+			reportName: self.ReportName(),
+			allExpanded: self.allExpanded(),
+			expandSqls: self.getExpandSqls() || "",
+			columnDetails: self.getColumnDetails() || "",
+			includeSubTotals: self.IncludeSubTotal()
+		}, 'xlsx');
+	}
+
+	self.downloadCsv = function () {
+		self.downloadExport("/DotNetReport/DownloadCsv", {
+			reportSql: self.currentSql(),
+			connectKey: self.currentConnectKey(),
+			reportName: self.ReportName()
+		}, 'csv');
+	}
+
+	self.downloadXml = function () {
+		self.downloadExport("/DotNetReport/DownloadXml", {
+			reportSql: self.currentSql(),
+			connectKey: self.currentConnectKey(),
+			reportName: self.ReportName()
+		}, 'xml');
+	}
+
 };
 
 var dashboardViewModel = function (options) {
