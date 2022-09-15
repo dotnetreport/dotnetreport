@@ -1252,6 +1252,10 @@ var reportViewModel = function (options) {
 	}
 
 	self.SelectedFields.subscribe(function (fields) {
+		setTimeout(function () {
+			self.RemoveInvalidFilters(self.FilterGroups());
+		}, 500);
+
 		var newField = fields.length > 0 ? fields[fields.length - 1] : null;
 		if (newField && (newField.forceFilter || newField.forceFilterForTable)) {
 			if (!self.FindInFilterGroup(newField.fieldId)) {
@@ -1260,7 +1264,7 @@ var reportViewModel = function (options) {
 				setTimeout(function () {
 					newField.forced = true;
 					newFilter.Field(newField);
-				}, 500);
+				}, 250);
 			}
 		}
 
@@ -1646,15 +1650,30 @@ var reportViewModel = function (options) {
 		self.RunReport(true);
 	};
 
-	self.RemoveInvalidFilters = function (filtergroup) {
+	self.RemoveInvalidFilters = function (filtergroup, parent) {
+		if (!parent) parent = self.FilterGroups()[0];
+		var emptyGroups = [];
 		_.forEach(filtergroup, function (g) {
+			var emptyFilters = [];
 			_.forEach(g.Filters(), function (x, i) {
 				if (x && !x.Field()) {
-					g.RemoveFilter(x);
+					emptyFilters.push(x);
 				}
-				if (i == 0) self.RemoveInvalidFilters(g.FilterGroups());
+				if (i == 0) self.RemoveInvalidFilters(g.FilterGroups(), g);
 			});
+
+			_.forEach(emptyFilters, function (x) {
+				g.RemoveFilter(x);
+			});
+
+			if (g.Filters().length == 0 && g.FilterGroups().length == 0 && !g.isRoot) {
+				emptyGroups.push(g);
+            }
 		});
+
+		_.forEach(emptyGroups, function (g) {
+			parent.RemoveFilterGroup(g);
+        })
 	}
 
 	self.BuildFilterData = function (filtergroup) {
