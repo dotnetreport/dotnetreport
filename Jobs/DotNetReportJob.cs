@@ -115,7 +115,7 @@ namespace ReportBuilder.Web.Jobs
                                 byte[] fileData;
                                 string fileExt = "";
 
-                                switch (schedule.Format.ToUpper())
+                                switch ((schedule.Format ?? "Excel").ToUpper())
                                 {
                                     case "PDF":
                                         fileData = await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/Report/ReportPrint", reportToRun.ReportId, reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, schedule.UserId, clientId, (new JavaScriptSerializer()).Serialize(dataFilters));
