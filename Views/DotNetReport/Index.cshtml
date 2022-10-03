@@ -427,6 +427,7 @@
                                         <option>String</option>
                                         <option>Integer</option>
                                         <option>Decimal</option>
+                                        <option>Currency</option>
                                         <!-- /ko -->
                                         <!-- ko if: formulaOnlyHasDateFields -->
                                         <option>Days</option>
@@ -437,7 +438,7 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="form-group row" data-bind="visible: formulaDataFormat() == 'Decimal'">
+                            <div class="form-group row" data-bind="visible: formulaDataFormat() == 'Decimal' || formulaDataFormat() == 'Currency'">
                                 <label class="col-sm-2 control-label">Round to Decimal Places</label>
                                 <div class="col-sm-10">
                                     <input type="number" class="form-control" data-bind="value: formulaDecimalPlaces" placeholder="Choose Decimal places (leave blank to not use rounding)" title="Choose Decimal places (leave blank to not use rounding)" />
@@ -545,6 +546,11 @@
                                         <div class="pull-right" style="padding-right: 15px;">
                                             <span class="button-box no-padding" tabindex="0" data-bind="click: setupFieldOptions">
                                                 <span class="fa fa-gear" aria-hidden="true" title="More Options"></span>
+                                            </span>
+                                        </div>
+                                        <div class="pull-right" style="padding-right: 15px;" data-bind="if: isFormulaField">
+                                            <span class="button-box no-padding" tabindex="0" data-bind="click: editFormulaField">
+                                                <span class="fa fa-pencil" aria-hidden="true" title="Edit Formula Field"></span>
                                             </span>
                                         </div>
                                     </div>

@@ -1,4 +1,4 @@
-﻿/// dotnet Report Builder view model v4.3.1
+﻿/// dotnet Report Builder view model v4.3.4
 /// License has to be purchased for use
 /// 2022 (c) www.dotnetreport.com
 function pagerViewModel(args) {
@@ -62,6 +62,7 @@ function formulaFieldViewModel(args) {
 	args = args || {};
 	var self = this;
 
+	self.tableId = ko.observable(args.tableId);
 	self.fieldId = ko.observable(args.fieldId);
 	self.isParenthesesStart = ko.observable(args.isParenthesesStart);
 	self.isParenthesesEnd = ko.observable(args.isParenthesesEnd);
@@ -1394,6 +1395,28 @@ var reportViewModel = function (options) {
 		return result;
 	});
 
+	self.additionalAggregateOptions = function (field, fieldFormat) {
+		var response = [];
+		switch (fieldFormat) {
+			case "Decimal":
+			case "Currency":
+			case "Double":
+			case "Integer":
+			case "Number":
+			case "Days":
+			case "Hours":
+			case "Minutes":
+			case "Seconds":
+				response.push("Sum");
+				response.push("Average");
+				response.push("Max");
+				response.push("Min");
+				break;
+		}
+
+		field.fieldAggregate = field.fieldAggregate.concat(response);
+		field.fieldAggregateWithDrilldown = field.fieldAggregateWithDrilldown.concat(response);
+	}
 
 	self.getEmptyFormulaField = function () {
 		return {
@@ -1435,6 +1458,37 @@ var reportViewModel = function (options) {
 		self.clearFormulaField();
 	});
 
+	self.editFormulaField = function (field) {
+		self.isFormulaField(true);
+		self.formulaFields([]);
+
+		if (field.formulaItems().length > 0) {
+			var tableId = _.find(field.formulaItems(), function (x) { return x.tableId() > 0 }).tableId();
+			var match = _.find(self.Tables(), { tableId: tableId });
+			if (tableId && match) {
+				self.SelectedTable(match);
+				self.loadTableFields(match).done(function (x) {
+					var formulaItems = field.formulaItems();
+					_.forEach(formulaItems, function (e) {
+						var fieldMatch = _.find(self.ChooseFields(), function (m) { return m.fieldId == e.fieldId() });
+						if (!fieldMatch) {
+							var field = self.getEmptyFormulaField();
+							var fieldMatch = self.setupField(Object.assign({}, field));
+						}
+						fieldMatch.setupFormula = e;
+						self.formulaFields.push(fieldMatch);
+					});
+
+					self.formulaFieldLabel(field.fieldName);
+					self.formulaDataFormat(field.fieldFormat());
+					self.formulaDecimalPlaces(field.decimalPlaces());
+				});
+			}
+		}
+
+		self.SelectedFields.remove(field);
+	}
+
 	self.saveFormulaField = function () {
 
 		if (self.formulaFields().length == 0) {
@@ -1446,6 +1500,10 @@ var reportViewModel = function (options) {
 			toastr.error("Please correct validation issues");
 			return;
 		}
+
+		_.forEach(self.formulaFields(), function (e) {
+			e.tableId = e.tableId || self.SelectedTable().tableId;
+		});
 
 		var field = self.getEmptyFormulaField();
 
@@ -1668,12 +1726,12 @@ var reportViewModel = function (options) {
 
 			if (g.Filters().length == 0 && g.FilterGroups().length == 0 && !g.isRoot) {
 				emptyGroups.push(g);
-            }
+			}
 		});
 
 		_.forEach(emptyGroups, function (g) {
 			parent.RemoveFilterGroup(g);
-        })
+		})
 	}
 
 	self.BuildFilterData = function (filtergroup) {
@@ -2194,7 +2252,7 @@ var reportViewModel = function (options) {
 						columnDetails: self.getColumnDetails(),
 						includeSubTotals: false
 					}, 'xlsx');
-                }
+				}
 
 				if (self.useStoredProc()) {
 					e.Items = _.filter(e.Items, function (x) { return _.includes(validFieldNames, x.Column.SqlField); });
@@ -2475,6 +2533,7 @@ var reportViewModel = function (options) {
 		var formulaItems = [];
 		_.forEach(e.formulaItems || [], function (e) {
 			formulaItems.push(new formulaFieldViewModel({
+				tableId: e.tableId,
 				fieldId: e.fieldId || 0,
 				isParenthesesStart: e.setupFormula ? e.setupFormula.isParenthesesStart() : e.isParenthesesStart,
 				isParenthesesEnd: e.setupFormula ? e.setupFormula.isParenthesesEnd() : e.isParenthesesEnd,
@@ -2485,6 +2544,13 @@ var reportViewModel = function (options) {
 
 		e.formulaItems = ko.observableArray(formulaItems);
 		e.setupFormula = new formulaFieldViewModel();
+
+		if (e.isFormulaField()) {
+			self.additionalAggregateOptions(e, e.fieldFormat());
+			e.editFormulaField = function () {
+				self.editFormulaField(e);
+			}
+		}
 
 		e.setupLinkField = function () {
 			self.editLinkField(e);
@@ -2999,9 +3065,9 @@ var reportViewModel = function (options) {
 					$.unblockUI();
 				}
 				toastr.error("Error downloading file");
-            }
+			}
 		});
-    }
+	}
 
 	self.downloadPdfAlt = function () {
 		self.downloadExport("/DotNetReport/DownloadPdf", {
