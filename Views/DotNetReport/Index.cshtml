@@ -18,17 +18,17 @@
     var toastr = toastr || { error: function (msg) { window.alert(msg); }, success: function (msg) { window.alert(msg); } };
 
         $(document).ready(function () {
-        ajaxcall({ url: '@Url.Action("GetUsersAndRoles")' }).done(function (data) {
+        ajaxcall({ url: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")' }).done(function (data) {
             var vm = new reportViewModel({
-               runReportUrl: '@Url.Action("Report")',
+                runReportUrl: '@Url.Action("Report")',
                 reportWizard: $("#modal-reportbuilder"),
                 linkModal: $("#linkModal"),
                 reportHeader: "report-header",
                 fieldOptionsModal: $("#fieldOptionsModal"),
-                lookupListUrl: '@Url.Action("GetLookupList")',
-                apiUrl: '@Url.Action("CallReportApi")',
-                runReportApiUrl: '@Url.Action("RunReportApi")',
-                getUsersAndRolesUrl: '@Url.Action("GetUsersAndRoles")',
+                lookupListUrl: '@Url.Action("GetLookupList", "DotNetReportApi")',
+                apiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")',
+                runReportApiUrl: '@Url.Action("RunReportApi", "DotNetReportApi")',
+                getUsersAndRolesUrl: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")',
                 reportId: @(Request.QueryString["reportId"] != null ? Request.QueryString["reportId"] : "0"),
                 userSettings: data,
                 dataFilters: data.dataFilters

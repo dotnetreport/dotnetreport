@@ -42,16 +42,16 @@
     }
 
     $(document).ready(function () {
-        ajaxcall({ url: '@Url.Action("GetUsersAndRoles")' }).done(function (data) {
+        ajaxcall({ url: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")' }).done(function (data) {
             var vm = new reportViewModel({
                 runReportUrl: "@Url.Action("Report")",
-                execReportUrl: "@Url.Action("RunReport")",
+                execReportUrl: "@Url.Action("RunReport", "DotNetReportApi")",
                 runLinkReportUrl: "@Url.Action("ReportLink")",
                 reportWizard: $("#filter-panel"),
                 reportHeader: "report-header",
-                lookupListUrl: "@Url.Action("GetLookupList")",
-                apiUrl: '@Url.Action("CallReportApi")',
-                runReportApiUrl: '@Url.Action("RunReportApi")',
+                lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
+                apiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")',
+                runReportApiUrl: '@Url.Action("RunReportApi", "DotNetReportApi")',
                 reportFilter: htmlDecode('@HttpUtility.UrlDecode(Model.ReportFilter)'),
                 reportMode: "execute",
                 reportSql: "@Model.ReportSql",

@@ -27,14 +27,14 @@
         @:reports.push({ reportSql: "@r.ReportSql", reportId: @r.ReportId, reportFilter: htmlDecode('@System.Web.HttpUtility.UrlDecode(r.ReportFilter)'), connectKey: "@r.ConnectKey", x: @r.X, y: @r.Y, width: @r.Width, height: @r.Height });
         }
 
-        ajaxcall({ url: '@Url.Action("GetUsersAndRoles")' }).done(function (data) {
+        ajaxcall({ url: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")' }).done(function (data) {
             var vm = new dashboardViewModel({
                 runReportUrl: "@Url.Action("Report")",
-                execReportUrl: "@Url.Action("RunReport")",
+                execReportUrl: "@Url.Action("RunReport", "DotNetReportApi")",
                 reportWizard: $("#filter-panel"),
-                lookupListUrl: "@Url.Action("GetLookupList")",
-                apiUrl: "@Url.Action("CallReportApi")",
-                runReportApiUrl: "@Url.Action("RunReportApi")",
+                lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
+                apiUrl: "@Url.Action("CallReportApi", "DotNetReportApi")",
+                runReportApiUrl: "@Url.Action("RunReportApi", "DotNetReportApi")",
                 reportMode: "execute",
                 reports: reports,
                 dashboards: dashboards,
