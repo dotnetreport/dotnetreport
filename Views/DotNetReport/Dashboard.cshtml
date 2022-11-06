@@ -13,61 +13,66 @@
     <script type="text/javascript" src='//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.min.js'></script>
     <script type="text/javascript" src='//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.jQueryUI.min.js'></script>
     <script type="text/javascript">
-    $(document).ready(function () {
+$(document).ready(function () {
         var reports = [];
         var dashboards = [];
 
-        @foreach (var d in Model.Dashboards)
-        {
-        @:dashboards.push({ id: @d.Id, name: "@d.Name", description: "@d.Description", selectedReports: "@d.SelectedReports", userId: "@d.UserId", userRoles: "@d.UserRoles", viewOnlyUserId: "@d.ViewOnlyUserId", viewOnlyUserRoles: "@d.ViewOnlyUserRoles"  });
-        }
-
-        @foreach (var r in Model.Reports)
-        {
-        @:reports.push({ reportSql: "@r.ReportSql", reportId: @r.ReportId, reportFilter: htmlDecode('@System.Web.HttpUtility.UrlDecode(r.ReportFilter)'), connectKey: "@r.ConnectKey", x: @r.X, y: @r.Y, width: @r.Width, height: @r.Height });
-        }
-
-        ajaxcall({ url: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")' }).done(function (data) {
-            var vm = new dashboardViewModel({
-                runReportUrl: "@Url.Action("Report")",
-                execReportUrl: "@Url.Action("RunReport", "DotNetReportApi")",
-                reportWizard: $("#filter-panel"),
-                lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
-                apiUrl: "@Url.Action("CallReportApi", "DotNetReportApi")",
-                runReportApiUrl: "@Url.Action("RunReportApi", "DotNetReportApi")",
-                reportMode: "execute",
-                reports: reports,
-                dashboards: dashboards,
-                users: data.users,
-                userRoles: data.userRoles,
-                allowAdmin: data.allowAdminMode,
-                dataFilters: data.dataFilters,
-                dashboardId: @(Request.QueryString["id"] != null ? Request.QueryString["id"] : "0"),
-                runExportUrl: ""
+        ajaxcall({ url: '@Url.Action("GetDashboards", "DotNetReportApi")' + '?adminMode=@Request.QueryString["adminMode"]' }).done(function (dashboardData) {
+            _.forEach(dashboardData, function (d) {
+                dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles });
             });
 
-            vm.init().done(function () {
-                ko.applyBindings(vm);
-                $(function () {
-                    var options = {
-                        cellHeight: 80,
-                        verticalMargin: 10
-                    };
-                    $('.grid-stack').gridstack(options);
-                    $('.grid-stack').on('change', function (event, items) {
-                        _.forEach(items, function (x) {
-                            vm.updatePosition(x);
-                        });
-                    });
+            var dashboardId = @(Request.QueryString["id"]!=null ? Request.QueryString["id"] : "0");
+            if (!dashboardId && dashboards.length > 0) { dashboardId = dashboards[0].id; }
+
+                ajaxcall({ url: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")' + '?id=' + dashboardId + '&adminMode=@Request.QueryString["adminMode"]' }).done(function (reportsData) {
+                _.forEach(reportsData, function(r){
+                    reports.push({ reportSql: r.ReportSql, reportId: r.ReportId, reportFilter: r.ReportFilter, connectKey: r.ConnectKey, x: r.X, y: r.Y, width: r.Width, height: r.Height });
                 });
 
-                setTimeout(function () {
-                    vm.drawChart();
-                }, 1000);
-            });
+                ajaxcall({ url: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")' }).done(function (data) {
+                    var vm = new dashboardViewModel({
+                        runReportUrl: "@Url.Action("Report")",
+                        execReportUrl: "@Url.Action("RunReport", "DotNetReportApi")",
+                        reportWizard: $("#filter-panel"),
+                        lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
+                        apiUrl: "@Url.Action("CallReportApi", "DotNetReportApi")",
+                        runReportApiUrl: "@Url.Action("RunReportApi", "DotNetReportApi")",
+                        reportMode: "execute",
+                        reports: reports,
+                        dashboards: dashboards,
+                        users: data.users,
+                        userRoles: data.userRoles,
+                        allowAdmin: data.allowAdminMode,
+                        dataFilters: data.dataFilters,
+                        dashboardId: dashboardId,
+                        runExportUrl: ""
+                    });
 
-            $(window).resize(function () {
-                vm.drawChart();
+                    vm.init().done(function () {
+                        ko.applyBindings(vm);
+                        $(function () {
+                            var options = {
+                                cellHeight: 80,
+                                verticalMargin: 10
+                            };
+                            $('.grid-stack').gridstack(options);
+                            $('.grid-stack').on('change', function (event, items) {
+                                _.forEach(items, function (x) {
+                                    vm.updatePosition(x);
+                                });
+                            });
+                        });
+
+                        setTimeout(function () {
+                            vm.drawChart();
+                        }, 1000);
+                    });
+
+                    $(window).resize(function () {
+                        vm.drawChart();
+                    });
+                });
             });
         });
     });

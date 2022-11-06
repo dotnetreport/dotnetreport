@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using ReportBuilder.Web.Models;
 using System;
 using System.Collections.Generic;
@@ -61,7 +62,6 @@ namespace ReportBuilder.Web.Controllers
 
             return settings;
         }
-
 
         public JsonResult GetLookupList(string lookupSql, string connectKey)
         {
@@ -319,7 +319,48 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
+        [HttpPost]
         public async Task<JsonResult> GetDashboards(bool adminMode = false)
+        {
+            var model = await GetDashboardsData(adminMode);
+            return Json(model);
+        }
+
+
+        [HttpPost]
+        public async Task<JsonResult> LoadSavedDashboard(int? id = null, bool adminMode = false)
+        {
+            var settings = GetSettings();
+            var model = new List<DotNetDasboardReportModel>();
+            var dashboards = (JArray)(await GetDashboardsData(adminMode));
+            if (!id.HasValue && dashboards.Count > 0)
+            {
+                id = ((dynamic)dashboards.First()).Id;
+            }
+
+            using (var client = new HttpClient())
+            {
+                var content = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("account", settings.AccountApiToken),
+                    new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
+                    new KeyValuePair<string, string>("clientId", settings.ClientId),
+                    new KeyValuePair<string, string>("userId", settings.UserId),
+                    new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
+                    new KeyValuePair<string, string>("id", id.HasValue ? id.Value.ToString() : "0"),
+                    new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
+                });
+
+                var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/LoadSavedDashboard"), content);
+                var stringContent = await response.Content.ReadAsStringAsync();
+
+                model = JsonConvert.DeserializeObject<List<DotNetDasboardReportModel>>(stringContent);
+            }
+
+            return Json(model);
+        }
+
+        private async Task<dynamic> GetDashboardsData(bool adminMode = false)
         {
             var settings = GetSettings();
 
@@ -338,11 +379,10 @@ namespace ReportBuilder.Web.Controllers
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/GetDashboards"), content);
                 var stringContent = await response.Content.ReadAsStringAsync();
 
-                var model = System.Web.Helpers.Json.Decode(stringContent);
-                return Json(model);
+                var model = JsonConvert.DeserializeObject<dynamic>(stringContent);
+                return model;
             }
         }
-
 
         public JsonResult GetUsersAndRoles()
         {
