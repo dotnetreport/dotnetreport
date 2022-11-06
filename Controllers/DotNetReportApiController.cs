@@ -1,10 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using ReportBuilder.Web.Models;
 using System.Data;
 using System.Data.OleDb;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Web;
 
@@ -81,13 +80,13 @@ namespace ReportBuilder.Web.Controllers
         public async Task<IActionResult> PostReportApi(PostReportApiCallMode data)
         {
             string method = data.method;
-            return await CallReportApi(method, JsonConvert.SerializeObject(data));
+            return await CallReportApi(method, JsonSerializer.Serialize(data));
         }
 
         [HttpPost]
         public async Task<IActionResult> RunReportApi(DotNetReportApiCall data)
         {
-            return await CallReportApi(data.Method, JsonConvert.SerializeObject(data));
+            return await CallReportApi(data.Method, JsonSerializer.Serialize(data));
         }
 
         [HttpGet]
@@ -106,10 +105,10 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole))
                 };
 
-                var data = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(model);
+                var data = JsonSerializer.Deserialize<Dictionary<string, dynamic>>(model);
                 foreach (var key in data.Keys)
                 {
-                    if ((key != "adminMode" || (key == "adminMode" && settings.CanUseAdminMode)) && data[key] != null)
+                    if ((key != "adminMode" || (key == "adminMode" && settings.CanUseAdminMode)) && data[key] is not null)
                     {
                         keyvalues.Add(new KeyValuePair<string, string>(key, data[key].ToString()));
                     }
@@ -121,13 +120,13 @@ namespace ReportBuilder.Web.Controllers
 
                 if (stringContent.Contains("\"sql\":"))
                 {
-                    var sqlqeuery = JsonConvert.DeserializeObject<Dictionary<string, object>>(stringContent);
+                    var sqlqeuery = JsonSerializer.Deserialize<Dictionary<string, object>>(stringContent);
                     object value;
                     var keyValuePair = sqlqeuery.TryGetValue("sql", out value);
                     var sql = DotNetReportHelper.Decrypt(value.ToString());
                 }
                 Response.StatusCode = (int)response.StatusCode;
-                var result = JsonConvert.DeserializeObject(stringContent);
+                var result = JsonSerializer.Deserialize<dynamic>(stringContent);
                 if (stringContent == "\"\"") result = new { };
                 return Ok(result);
             }
@@ -318,7 +317,7 @@ namespace ReportBuilder.Web.Controllers
         {
             var settings = GetSettings();
             var model = new List<DotNetDasboardReportModel>();
-            var dashboards = (JArray)(await GetDashboardsData(adminMode));
+            var dashboards = (Newtonsoft.Json.Linq.JArray)(await GetDashboardsData(adminMode));
             if (!id.HasValue && dashboards.Count > 0)
             {
                 id = ((dynamic)dashboards.First()).Id;
@@ -340,7 +339,7 @@ namespace ReportBuilder.Web.Controllers
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/LoadSavedDashboard"), content);
                 var stringContent = await response.Content.ReadAsStringAsync();
 
-                model = JsonConvert.DeserializeObject<List<DotNetDasboardReportModel>>(stringContent);
+                model = JsonSerializer.Deserialize<List<DotNetDasboardReportModel>>(stringContent);
             }
 
             return Ok(model);
@@ -365,7 +364,7 @@ namespace ReportBuilder.Web.Controllers
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/GetDashboards"), content);
                 var stringContent = await response.Content.ReadAsStringAsync();
 
-                var model = JsonConvert.DeserializeObject<dynamic>(stringContent);
+                var model = JsonSerializer.Deserialize<dynamic>(stringContent);
                 return model;
             }
         }
