@@ -29,12 +29,12 @@
                 apiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")',
                 runReportApiUrl: '@Url.Action("RunReportApi", "DotNetReportApi")',
                 getUsersAndRolesUrl: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")',
-                reportId: @(Request.QueryString["reportId"] != null ? Request.QueryString["reportId"] : "0"),
+                reportId: @(Context.Request.Query["reportId"].Any() ? Context.Request.Query["reportId"].First() : "0"),
                 userSettings: data,
                 dataFilters: data.dataFilters
             });
-
-            vm.init(@(Request.QueryString["folderId"]!=null? Request.QueryString["folderId"]: "0"), data.noAccount);
+            
+            vm.init(@(Context.Request.Query["folderId"].Any() ? Context.Request.Query["folderId"].First() : "0"), data.noAccount);
             ko.applyBindings(vm);
         });
     });

@@ -536,21 +536,21 @@
     </div>
 
     @* Required Javascript Libraries *@
-    <script src="~/Scripts/@Html.Raw(ReportUtil.GetScriptFile("jquery-{0}.min.js"))"></script>
-    <script src="~/Scripts/bootstrap.bundle.min.js"></script>
-    <script src="~/Scripts/@Html.Raw(ReportUtil.GetScriptFile("jquery-ui-{0}.min.js"))"></script>
-    <script src="~/Scripts/jquery.validate.min.js"></script>
-    <script src="~/Scripts/@Html.Raw(ReportUtil.GetScriptFile("knockout-{0}.js"))"></script>
-    <script src="~/Scripts/jquery.blockUI.js"></script>
-    <script src="~/Scripts/bootbox.min.js"></script>
-    <script src="~/Scripts/toastr.min.js"></script>
-    <script src="~/Scripts/knockout-sortable.min.js"></script>
-    <script src="~/Scripts/select2.min.js"></script>
-    <script src="~/Scripts/dotnetreport-helper.js"></script>
-    <script src="~/Scripts/dotnetreport.js?v=4.0.0"></script>
-    <script src="~/Scripts/lodash.min.js"></script>
-    <script src="~/Scripts/fabric.min.js"></script>
+    <script src="~/lib/jquery/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="~/lib/jquery-validation/jquery.validate.min.js"></script>
+    <script src="~/lib/knockout/knockout-latest.js"></script>
+    <script src="~/lib/jquery-blockui/jquery.blockUI.js"></script>
+    <script src="~/lib/bootbox/bootbox.min.js"></script>
+    <script src="~/lib/toastr/toastr.min.js"></script>
+    <script src="~/lib/bootstrap-datepicker/js/bootstrap-datepicker.js"></script>
+    <script src="~/lib/jquery-ui-dist/jquery-ui.min.js"></script>
+    <script src="~/lib/knockout-sortable/knockout-sortable.min.js"></script>
+    <script src="~/lib/select2/js/select2.min.js"></script>
+    <script src="~/lib/lodash/lodash.min.js"></script>
+    <script src="~/lib/fabric/fabric.min.js"></script>
+    <script src="~/js/dotnetreport-helper.js"></script>
+    <script src="~/js/dotnetreport.js?v=4.2.0"></script>
     @RenderSection("scripts", required: false)
-    @Html.PageScripts()
 </body>
 </html>

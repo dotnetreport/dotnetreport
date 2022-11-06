@@ -1,5 +1,4 @@
 ﻿@using System.Configuration
-@model DotNetDashboardModel
 @{
     ViewBag.Title = "Dashboard";
     Layout = "~/Views/shared/_Layout.Report.cshtml";
@@ -17,15 +16,15 @@ $(document).ready(function () {
         var reports = [];
         var dashboards = [];
 
-        ajaxcall({ url: '@Url.Action("GetDashboards", "DotNetReportApi")' + '?adminMode=@Request.QueryString["adminMode"]' }).done(function (dashboardData) {
+        ajaxcall({ url: '@Url.Action("GetDashboards", "DotNetReportApi")' + '?adminMode=@Context.Request.Query["adminMode"]' }).done(function (dashboardData) {
             _.forEach(dashboardData, function (d) {
                 dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles });
             });
 
-            var dashboardId = @(Request.QueryString["id"]!=null ? Request.QueryString["id"] : "0");
+            var dashboardId = @(Context.Request.Query["reportId"].Any() ? Context.Request.Query["reportId"].First() : "0");
             if (!dashboardId && dashboards.length > 0) { dashboardId = dashboards[0].id; }
 
-                ajaxcall({ url: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")' + '?id=' + dashboardId + '&adminMode=@Request.QueryString["adminMode"]' }).done(function (reportsData) {
+                ajaxcall({ url: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")' + '?id=' + dashboardId + '&adminMode=@Context.Request.Query["adminMode"]' }).done(function (reportsData) {
                 _.forEach(reportsData, function(r){
                     reports.push({ reportSql: r.ReportSql, reportId: r.ReportId, reportFilter: r.ReportFilter, connectKey: r.ConnectKey, x: r.X, y: r.Y, width: r.Width, height: r.Height });
                 });

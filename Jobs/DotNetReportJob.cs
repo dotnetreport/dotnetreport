@@ -2,14 +2,7 @@
 using Quartz;
 using Quartz.Impl;
 using ReportBuilder.Web.Models;
-using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.IO;
-using System.Net.Http;
 using System.Net.Mail;
-using System.Threading.Tasks;
-using System.Web.Script.Serialization;
 
 namespace ReportBuilder.Web.Jobs
 {
@@ -62,15 +55,15 @@ namespace ReportBuilder.Web.Jobs
     {
         async Task IJob.Execute(IJobExecutionContext context)
         {
-            var apiUrl = ConfigurationManager.AppSettings["dotNetReport.apiUrl"];
-            var accountApiKey = ConfigurationManager.AppSettings["dotNetReport.accountApiToken"];
-            var databaseApiKey = ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"];
+            var apiUrl = Startup.StaticConfig.GetValue<string>("dotNetReport:apiUrl");
+            var accountApiKey = Startup.StaticConfig.GetValue<string>("dotNetReport.accountApiToken");
+            var databaseApiKey = Startup.StaticConfig.GetValue<string>("dotNetReport.dataconnectApiToken");
 
-            var fromEmail = ConfigurationManager.AppSettings["email.fromemail"];
-            var fromName = ConfigurationManager.AppSettings["email.fromname"];
-            var mailServer = ConfigurationManager.AppSettings["email.server"];
-            var mailUserName = ConfigurationManager.AppSettings["email.username"];
-            var mailPassword = ConfigurationManager.AppSettings["email.password"];
+            var fromEmail = Startup.StaticConfig.GetValue<string>("email.fromemail");
+            var fromName = Startup.StaticConfig.GetValue<string>("email.fromname");
+            var mailServer = Startup.StaticConfig.GetValue<string>("email.server");
+            var mailUserName = Startup.StaticConfig.GetValue<string>("email.username");
+            var mailPassword = Startup.StaticConfig.GetValue<string>("email.password");
 
             var clientId = ""; // you can specify client id here if needed
 
@@ -100,7 +93,7 @@ namespace ReportBuilder.Web.Jobs
                             {
                                 // need to run this report
                                 var dataFilters = new { }; // you can pass global data filters to apply as needed https://dotnetreport.com/kb/docs/advance-topics/global-filters/
-                                response = await client.GetAsync($"{apiUrl}/ReportApi/RunScheduledReport?account={accountApiKey}&dataConnect={databaseApiKey}&scheduleId={schedule.Id}&reportId={report.Id}&localRunTime={schedule.NextRun.Value.ToShortDateString()} {schedule.NextRun.Value.ToShortTimeString()}&clientId={clientId}&dataFilters={(new JavaScriptSerializer()).Serialize(dataFilters)}");
+                                response = await client.GetAsync($"{apiUrl}/ReportApi/RunScheduledReport?account={accountApiKey}&dataConnect={databaseApiKey}&scheduleId={schedule.Id}&reportId={report.Id}&localRunTime={schedule.NextRun.Value.ToShortDateString()} {schedule.NextRun.Value.ToShortTimeString()}&clientId={clientId}&dataFilters={JsonConvert.SerializeObject(dataFilters)}");
                                 response.EnsureSuccessStatusCode();
 
                                 content = await response.Content.ReadAsStringAsync();
@@ -118,7 +111,7 @@ namespace ReportBuilder.Web.Jobs
                                 switch ((schedule.Format ?? "Excel").ToUpper())
                                 {
                                     case "PDF":
-                                        fileData = await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/Report/ReportPrint", reportToRun.ReportId, reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, schedule.UserId, clientId, (new JavaScriptSerializer()).Serialize(dataFilters));
+                                        fileData = await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/Report/ReportPrint", reportToRun.ReportId, reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, schedule.UserId, clientId, JsonConvert.SerializeObject(dataFilters));
                                         fileExt = ".pdf"; 
                                         break;
 

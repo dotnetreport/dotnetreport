@@ -1,43 +1,28 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using ReportBuilder.Web.Models;
-using System;
-using System.Collections.Generic;
-using System.Configuration;
 using System.Data;
 using System.Data.OleDb;
-using System.Linq;
-using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using System.Web;
-using System.Web.Mvc;
-using System.Web.Script.Serialization;
-using System.Web.Security;
 
 namespace ReportBuilder.Web.Controllers
 {
-    public class DotNetReportApiController : Controller
+    [Route("api/[controller]/[action]")]
+    [ApiController]
+    public class DotNetReportApiController : ControllerBase
     {
 
         private DotNetReportSettings GetSettings()
         {
             var settings = new DotNetReportSettings
             {
-                ApiUrl = ConfigurationManager.AppSettings["dotNetReport.apiUrl"],
-                AccountApiToken = ConfigurationManager.AppSettings["dotNetReport.accountApiToken"], // Your Account Api Token from your http://dotnetreport.com Account
-                DataConnectApiToken = ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"] // Your Data Connect Api Token from your http://dotnetreport.com Account
+                ApiUrl = Startup.StaticConfig.GetValue<string>("dotNetReport:apiUrl"),
+                AccountApiToken = Startup.StaticConfig.GetValue<string>("dotNetReport:accountApiToken"), // Your Account Api Token from your http://dotnetreport.com Account
+                DataConnectApiToken = Startup.StaticConfig.GetValue<string>("dotNetReport:dataconnectApiToken") // Your Data Connect Api Token from your http://dotnetreport.com Account            };
             };
-
-            if (TempData["reportPrint"] != null && TempData["reportPrint"].ToString() == "true")
-            {
-                if (TempData["clientId"] != null) settings.ClientId = (string)TempData["clientId"];
-                if (TempData["userId"] != null) settings.UserId = (string)TempData["userId"];
-                settings.CurrentUserRole = (TempData["currentUserRole"] != null) ? ((string)TempData["currentUserRole"]).Split(',').ToList() : new List<string>();
-                settings.DataFilters = (TempData["dataFilters"] != null) ? JsonConvert.DeserializeObject<dynamic>((string)TempData["dataFilters"]) : new { };
-                return settings;
-            }
 
             // Populate the values below using your Application Roles/Claims if applicable
             settings.ClientId = "";  // You can pass your multi-tenant client id here to track their reports and folders
@@ -50,21 +35,15 @@ namespace ReportBuilder.Web.Controllers
             settings.CanUseAdminMode = true; // Set to true only if current user can use Admin mode to setup reports and dashboard
             settings.DataFilters = new { }; // add global data filters to apply as needed https://dotnetreport.com/kb/docs/advance-topics/global-filters/
 
-            // An example of populating Roles using MVC web security if available
-            if (Roles.Enabled && User.Identity.IsAuthenticated)
-            {
-                settings.UserId = User.Identity.Name;
-                settings.CurrentUserRole = Roles.GetRolesForUser(User.Identity.Name).ToList();
-
-                settings.Users = Roles.GetAllRoles().SelectMany(x => Roles.GetUsersInRole(x)).ToList();
-                settings.UserRoles = Roles.GetAllRoles().ToList();
-            }
-
             return settings;
         }
 
-        public JsonResult GetLookupList(string lookupSql, string connectKey)
+        [HttpPost]
+        public IActionResult GetLookupList(dynamic model)
         {
+            string lookupSql = model.lookupSql;
+            string connectKey = model.connectKey;
+
             var sql = DotNetReportHelper.Decrypt(lookupSql);
 
             // Uncomment if you want to restrict max records returned
@@ -81,14 +60,13 @@ namespace ReportBuilder.Web.Controllers
                 adapter.Fill(dt);
             }
 
-            int i = 0;
+            var data = new List<object>();
             foreach (DataRow dr in dt.Rows)
             {
-                json.AppendFormat("{{\"id\": \"{0}\", \"text\": \"{1}\"}}{2}", dr[0], dr[1], i != dt.Rows.Count - 1 ? "," : "");
-                i += 1;
+                data.Add(new { id = dr[0], text = dr[1] });
             }
 
-            return Json((new JavaScriptSerializer()).DeserializeObject("[" + json.ToString() + "]"), JsonRequestBehavior.AllowGet);
+            return Ok(data);
         }
 
         public class PostReportApiCallMode
@@ -100,19 +78,20 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpPost]
-        public async Task<JsonResult> PostReportApi(PostReportApiCallMode data)
+        public async Task<IActionResult> PostReportApi(PostReportApiCallMode data)
         {
             string method = data.method;
             return await CallReportApi(method, JsonConvert.SerializeObject(data));
         }
 
         [HttpPost]
-        public async Task<JsonResult> RunReportApi(DotNetReportApiCall data)
+        public async Task<IActionResult> RunReportApi(DotNetReportApiCall data)
         {
-            return await CallReportApi(data.Method, (new JavaScriptSerializer()).Serialize(data));
+            return await CallReportApi(data.Method, JsonConvert.SerializeObject(data));
         }
 
-        public async Task<JsonResult> CallReportApi(string method, string model)
+        [HttpGet]
+        public async Task<IActionResult> CallReportApi(string method, string model)
         {
             using (var client = new HttpClient())
             {
@@ -142,19 +121,31 @@ namespace ReportBuilder.Web.Controllers
 
                 if (stringContent.Contains("\"sql\":"))
                 {
-                    var sqlqeuery = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(stringContent);
+                    var sqlqeuery = JsonConvert.DeserializeObject<Dictionary<string, object>>(stringContent);
                     object value;
                     var keyValuePair = sqlqeuery.TryGetValue("sql", out value);
                     var sql = DotNetReportHelper.Decrypt(value.ToString());
                 }
                 Response.StatusCode = (int)response.StatusCode;
-                return Json((new JavaScriptSerializer()).Deserialize<dynamic>(stringContent), JsonRequestBehavior.AllowGet);
+                var result = JsonConvert.DeserializeObject(stringContent);
+                if (stringContent == "\"\"") result = new { };
+                return Ok(result);
             }
 
         }
 
-        public JsonResult RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, bool desc = false, string reportSeries = null)
+        [HttpPost]
+        public IActionResult RunReport(dynamic data)
         {
+            string reportSql = data.reportSql;
+            string connectKey = data.connectKey;
+            string reportType = data.reportType;
+            int pageNumber = data.pageNumber;
+            int pageSize = data.pageSize;
+            string sortBy = data.sortBy;
+            bool desc = data.desc;
+            string reportSeries = data.ReportSeries;
+
             var sql = "";
             var sqlCount = "";
             int totalRecords = 0;
@@ -286,7 +277,7 @@ namespace ReportBuilder.Web.Controllers
                     ReportData = DataTableToDotNetReportDataModel(dtPaged, fields),
                     Warnings = GetWarnings(sql),
                     ReportSql = sql,
-                    ReportDebug = Request.Url.Host.Contains("localhost"),
+                    ReportDebug = Request.Host.Host.Contains("localhost"),
                     Pager = new DotNetReportPagerModel
                     {
                         CurrentPage = pageNumber,
@@ -296,12 +287,7 @@ namespace ReportBuilder.Web.Controllers
                     }
                 };
 
-                return new JsonResult()
-                {
-                    Data = model,
-                    JsonRequestBehavior = JsonRequestBehavior.AllowGet,
-                    MaxJsonLength = Int32.MaxValue
-                };
+                return Ok(model);
 
             }
 
@@ -315,20 +301,20 @@ namespace ReportBuilder.Web.Controllers
                     Exception = ex.Message
                 };
 
-                return Json(model, JsonRequestBehavior.AllowGet);
+                return Ok(model);
             }
         }
 
         [HttpPost]
-        public async Task<JsonResult> GetDashboards(bool adminMode = false)
+        public async Task<IActionResult> GetDashboards(bool adminMode = false)
         {
             var model = await GetDashboardsData(adminMode);
-            return Json(model);
+            return Ok(model);
         }
 
 
         [HttpPost]
-        public async Task<JsonResult> LoadSavedDashboard(int? id = null, bool adminMode = false)
+        public async Task<IActionResult> LoadSavedDashboard(int? id = null, bool adminMode = false)
         {
             var settings = GetSettings();
             var model = new List<DotNetDasboardReportModel>();
@@ -357,7 +343,7 @@ namespace ReportBuilder.Web.Controllers
                 model = JsonConvert.DeserializeObject<List<DotNetDasboardReportModel>>(stringContent);
             }
 
-            return Json(model);
+            return Ok(model);
         }
 
         private async Task<dynamic> GetDashboardsData(bool adminMode = false)
@@ -384,10 +370,11 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        public JsonResult GetUsersAndRoles()
+        [HttpGet]
+        public IActionResult GetUsersAndRoles()
         {
             var settings = GetSettings();
-            return Json(new
+            return Ok(new
             {
                 noAccount = string.IsNullOrEmpty(settings.AccountApiToken) || settings.AccountApiToken == "Your Public Account Api Token",
                 users = settings.CanUseAdminMode ? settings.Users : new List<string>(),
@@ -398,7 +385,7 @@ namespace ReportBuilder.Web.Controllers
                 allowAdminMode = settings.CanUseAdminMode,
                 userIdForSchedule = settings.UserIdForSchedule,
                 dataFilters = settings.DataFilters
-            }, JsonRequestBehavior.AllowGet);
+            });
         }
 
         private string GetWarnings(string sql)

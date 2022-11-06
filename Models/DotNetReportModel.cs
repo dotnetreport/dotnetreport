@@ -1,16 +1,11 @@
 ﻿using OfficeOpenXml;
 using PuppeteerSharp;
 using PuppeteerSharp.Media;
-using System;
-using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.OleDb;
-using System.IO;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 using System.Web;
 
 namespace ReportBuilder.Web.Models
@@ -306,7 +301,7 @@ namespace ReportBuilder.Web.Models
     {
         public static string GetConnectionString(string key)
         {
-            var connString = ConfigurationManager.ConnectionStrings[key].ConnectionString;
+            var connString = Startup.StaticConfig.GetConnectionString(key);
             connString = connString.Replace("Trusted_Connection=True", "");
 
             if (!connString.ToLower().StartsWith("provider"))
@@ -580,7 +575,7 @@ namespace ReportBuilder.Web.Models
                     string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false)
         {
             var installPath = AppContext.BaseDirectory + "\\App_Data\\local-chromium";
-            await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync(BrowserFetcher.DefaultRevision);
+            await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync(BrowserFetcher.DefaultChromiumRevision);
             var executablePath = $"{Directory.GetDirectories(installPath)[0]}\\chrome-win\\chrome.exe";
             var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = true, ExecutablePath = executablePath });
             var page = await browser.NewPageAsync();
@@ -698,7 +693,7 @@ namespace ReportBuilder.Web.Models
             int keysize = 256;
 
             byte[] cipherTextBytes = Convert.FromBase64String(encryptedText.Replace("%3D", "="));
-            var passPhrase = ConfigurationManager.AppSettings["dotNetReport.privateApiToken"].ToLower();
+            var passPhrase = Startup.StaticConfig.GetValue<string>("dotNetReport:privateApiToken").ToLower();
             using (PasswordDeriveBytes password = new PasswordDeriveBytes(passPhrase, null))
             {
                 byte[] keyBytes = password.GetBytes(keysize / 8);

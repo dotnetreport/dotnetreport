@@ -1,6 +1,6 @@
 ﻿@using System.Configuration
 @using System.Data
-@model DotNetReportModel
+@model ReportBuilder.Web.Models.DotNetReportModel
 @{
     ViewBag.Title = "Report";
     Layout = "../shared/_Layout.Report.cshtml";
@@ -52,7 +52,7 @@
                 lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
                 apiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")',
                 runReportApiUrl: '@Url.Action("RunReportApi", "DotNetReportApi")',
-                reportFilter: htmlDecode('@HttpUtility.UrlDecode(Model.ReportFilter)'),
+                reportFilter: htmlDecode('@System.Web.HttpUtility.UrlDecode(Model.ReportFilter)'),
                 reportMode: "execute",
                 reportSql: "@Model.ReportSql",
                 reportConnect: "@Model.ConnectKey",
@@ -61,7 +61,7 @@
                 userSettings: data,
                 dataFilters: data.dataFilters,
                 runExportUrl: "",
-                printReportUrl:  "@Url.Action("ReportPrint", "DotNetReport", null, this.Request.Url.Scheme)"
+                printReportUrl:  "@Url.Action("ReportPrint", "DotNetReport", null, "")"
             });
 
             vm.loadProcs().done(function () {

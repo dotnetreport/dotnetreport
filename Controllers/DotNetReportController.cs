@@ -1,26 +1,19 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 using ReportBuilder.Web.Models;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
-using System.Threading.Tasks;
 using System.Web;
-using System.Web.Mvc;
-using System.Web.Script.Serialization;
 
 namespace ReportBuilder.Web.Controllers
 {
     public class DotNetReportController : Controller
     {
 
-        public ActionResult Index()
+        public IActionResult Index()
         {
             return View();
         }
 
-        public ActionResult Report(int reportId, string reportName, string reportDescription, bool includeSubTotal, bool showUniqueRecords,
+        public IActionResult Report(int reportId, string reportName, string reportDescription, bool includeSubTotal, bool showUniqueRecords,
             bool aggregateReport, bool showDataWithGraph, string reportSql, string connectKey, string reportFilter, string reportType, int selectedFolder, string reportSeries)
         {            
             var model = new DotNetReportModel
@@ -60,20 +53,20 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("filterId", filterId.HasValue ? filterId.ToString() : ""),
                     new KeyValuePair<string, string>("filterValue", filterValue.ToString()),
                     new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
-                    new KeyValuePair<string, string>("dataFilters", (new JavaScriptSerializer()).Serialize(settings.DataFilters))
+                    new KeyValuePair<string, string>("dataFilters", JsonConvert.SerializeObject(settings.DataFilters))
                 });
 
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/RunLinkedReport"), content);
                 var stringContent = await response.Content.ReadAsStringAsync();
 
-                model = (new JavaScriptSerializer()).Deserialize<DotNetReportModel>(stringContent);
+                model = JsonConvert.DeserializeObject<DotNetReportModel>(stringContent);
                 
             }
 
             return View("Report", model);
         }
 
-        public ActionResult ReportPrint(int reportId, string reportName, string reportDescription, string reportSql, string connectKey, string reportFilter, string reportType,
+        public IActionResult ReportPrint(int reportId, string reportName, string reportDescription, string reportSql, string connectKey, string reportFilter, string reportType,
             int selectedFolder = 0, bool includeSubTotal = true, bool showUniqueRecords = false, bool aggregateReport = false, bool showDataWithGraph = true,
             string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "",
             string reportSeries = "", bool expandAll = false)
@@ -103,44 +96,36 @@ namespace ReportBuilder.Web.Controllers
             return View(model);
         }
 
-        public async Task<ActionResult> Dashboard(int? id = null, bool adminMode = false)
+        public async Task<IActionResult> Dashboard(int? id = null, bool adminMode = false)
         {
             return View(new DotNetDashboardModel());
         }
 
         
         [HttpPost]
-        public ActionResult DownloadExcel(string reportSql, string connectKey, string reportName, bool allExpanded, string expandSqls, string columnDetails = null, bool includeSubtotal = false)
+        public IActionResult DownloadExcel(string reportSql, string connectKey, string reportName, bool allExpanded, string expandSqls, string columnDetails = null, bool includeSubtotal = false)
         {
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() :  JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
             
             var excel = DotNetReportHelper.GetExcelFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), allExpanded, HttpUtility.UrlDecode(expandSqls)?.Split(',').ToList(), columns, includeSubtotal);
-            Response.ClearContent();
-
-            Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".xlsx");
+            Response.Headers.Add("content-disposition", "attachment; filename=" + reportName + ".xlsx");
             Response.ContentType = "application/vnd.ms-excel";
-            Response.BinaryWrite(excel);
-            Response.End();
-            
-            return View();
+
+            return File(excel, "application/vnd.ms-excel", reportName + ".xlsx");
         }
 
         [HttpPost]
-        public ActionResult DownloadXml(string reportSql, string connectKey, string reportName)
+        public IActionResult DownloadXml(string reportSql, string connectKey, string reportName)
         {
             var xml = DotNetReportHelper.GetXmlFile(reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName));
-            Response.ClearContent();
-
-            Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".xml");
+            Response.Headers.Add("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".xml");
             Response.ContentType = "application/xml";
-            Response.Write(xml);
-            Response.End();
 
-            return View();
+            return File(xml, "application/xml", reportName + ".xml");
         }
 
         [HttpPost]
-        public async Task<ActionResult> DownloadPdf(string printUrl, int reportId, string reportSql, string connectKey, string reportName, bool expandAll)
+        public async Task<IActionResult> DownloadPdf(string printUrl, int reportId, string reportSql, string connectKey, string reportName, bool expandAll)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
             var settings = new DotNetReportSettings(); // GetSettings();
@@ -150,95 +135,18 @@ namespace ReportBuilder.Web.Controllers
         }
         
         [HttpPost]
-        public ActionResult DownloadCsv(string reportSql, string connectKey, string reportName)
+        public IActionResult DownloadCsv(string reportSql, string connectKey, string reportName)
         {
-            var excel = DotNetReportHelper.GetCSVFile(reportSql, HttpUtility.UrlDecode(connectKey));
+            var csv = DotNetReportHelper.GetCSVFile(reportSql, HttpUtility.UrlDecode(connectKey));
 
-            Response.ClearContent();
-            Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".csv");
+            Response.Headers.Add("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".csv");
             Response.ContentType = "text/csv";
-            Response.BinaryWrite(excel);
-            Response.End();
 
-            return View();
+            return File(csv, "text/csv", reportName + ".csv");
         }
 
     }
 }
 
-namespace ReportBuilder.Web
-{
-    public static class ReportUtil
-    {
-        /// <summary>
-        /// Get script file name with available version
-        /// </summary>
-        /// <param name="expression"></param>
-        /// <returns></returns>
-        public static string GetScriptFile(string expression)
-        {
-            var path = HttpRuntime.AppDomainAppPath;
-            var files = Directory.GetFiles(path + "Scripts").Select(x => Path.GetFileName(x)).ToList();
-            string script = string.Empty;
-            expression = expression.Replace(".", @"\.").Replace("{0}", "(\\d+\\.?)+");
-            var r = new System.Text.RegularExpressions.Regex(@expression, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-
-            foreach (var f in files)
-            {
-                var m = r.Match(f);
-                while (m.Success)
-                {
-                    script = m.Captures[0].ToString();
-
-                    m = m.NextMatch();
-                }
-            }
-
-            return script;
-        }
-    }
-
-    public static class HtmlExtensions
-    {
-
-        private class ScriptBlock : IDisposable
-        {
-            private const string scriptsKey = "scripts";
-            public static List<string> pageScripts
-            {
-                get
-                {
-                    if (HttpContext.Current.Items[scriptsKey] == null)
-                        HttpContext.Current.Items[scriptsKey] = new List<string>();
-                    return (List<string>)HttpContext.Current.Items[scriptsKey];
-                }
-            }
-
-            WebViewPage webPageBase;
-
-            public ScriptBlock(WebViewPage webPageBase)
-            {
-                this.webPageBase = webPageBase;
-                this.webPageBase.OutputStack.Push(new StringWriter());
-            }
-
-            public void Dispose()
-            {
-                pageScripts.Add(((StringWriter)this.webPageBase.OutputStack.Pop()).ToString());
-            }
-        }
-
-        public static IDisposable BeginScripts(this HtmlHelper helper)
-        {
-            return new ScriptBlock((WebViewPage)helper.ViewDataContainer);
-        }
-
-        public static MvcHtmlString PageScripts(this HtmlHelper helper)
-        {
-            return MvcHtmlString.Create(string.Join(Environment.NewLine, ScriptBlock.pageScripts.Select(s => s.ToString())));
-        }
-
-    }
-}
 
 
