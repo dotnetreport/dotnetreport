@@ -9,8 +9,8 @@ function ajaxcall(options) {
 
     return $.ajax({
         url: options.url,
-        type: options.type || "POST",
-        data: (options.type == "POST") ? options.data : JSON.stringify(options.data),
+        type: options.type || "GET",
+        data: options.data,
         cache: options.cache || false,
         dataType: options.dataType || "json",
         contentType: options.contentType || "application/json; charset=utf-8",
