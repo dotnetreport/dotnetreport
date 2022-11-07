@@ -37,8 +37,14 @@ namespace ReportBuilder.Web.Controllers
             return settings;
         }
 
+        public class GetLookupListParameters
+        {
+            public string lookupSql { get; set; }
+            public string connectKey { get; set; }
+        }
+
         [HttpPost]
-        public IActionResult GetLookupList(dynamic model)
+        public IActionResult GetLookupList(GetLookupListParameters model)
         {
             string lookupSql = model.lookupSql;
             string connectKey = model.connectKey;
@@ -330,7 +336,7 @@ namespace ReportBuilder.Web.Controllers
         {
             var settings = GetSettings();
             var model = new List<DotNetDasboardReportModel>();
-            var dashboards = (Newtonsoft.Json.Linq.JArray)(await GetDashboardsData(adminMode));
+            var dashboards = (await GetDashboardsData(adminMode));
             if (!id.HasValue && dashboards.Count > 0)
             {
                 id = ((dynamic)dashboards.First()).Id;
@@ -355,7 +361,7 @@ namespace ReportBuilder.Web.Controllers
                 model = JsonSerializer.Deserialize<List<DotNetDasboardReportModel>>(stringContent);
             }
 
-            return Ok(model);
+            return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
         }
 
         private async Task<dynamic> GetDashboardsData(bool adminMode = false)

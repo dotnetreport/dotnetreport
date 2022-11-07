@@ -98,7 +98,7 @@ namespace ReportBuilder.Web.Controllers
 
         public async Task<IActionResult> Dashboard(int? id = null, bool adminMode = false)
         {
-            return View(new DotNetDashboardModel());
+            return View();
         }
 
         
