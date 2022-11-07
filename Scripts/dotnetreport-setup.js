@@ -57,7 +57,7 @@
 
 	self.editColumn = ko.observable();
 	self.isStoredProcColumn = ko.observable();
-	self.selectColumn = function (isStoredProcColumn, data, e) {		
+	self.selectColumn = function (isStoredProcColumn, data, e) {
 		self.isStoredProcColumn(null);
 		self.editColumn(data);
 		self.isStoredProcColumn(isStoredProcColumn);
@@ -407,6 +407,65 @@
 	self.importStart = function () {
 		self.importingFile(true);
 	}
+
+	self.manageAccess = {};
+	self.reportsAndFolders = ko.observableArray([]);
+
+	self.setupManageAccess = function () {
+
+		ajaxcall({ url: options.getUsersAndRoles }).done(function (data) {
+			if (data.d) data = data.data.d;
+			self.manageAccess = manageAccess({ userSettings: data });
+		});
+
+		var getReports = function () {
+			return ajaxcall({
+				url: options.reportsApiUrl + "/ReportApi/GetSavedReports",
+				data: {
+					account: self.keys.AccountApiKey,
+					dataConnect: self.keys.DatabaseApiKey,
+					isAdmin: true
+				}
+			});
+		};
+
+		var getFolders = function () {
+			return ajaxcall({
+				url: options.reportsApiUrl + "/ReportApi/GetFolders",
+				data: {
+					account: self.keys.AccountApiKey,
+					dataConnect: self.keys.DatabaseApiKey,
+					isAdmin: true
+				}
+			});
+		};
+
+		return $.when(getReports(), getFolders()).done(function (allReports, allFolders) {
+			var setup = [];
+			if (allFolders[0].d) { allFolders[0] = allFolders[0].d; }
+			if (allReports[0].d) { allReports[0] = allReports[0].d; }
+
+			_.forEach(allFolders[0], function (x) {
+				var folderReports = _.filter(allReports[0], { folderId: x.Id });
+				_.forEach(folderReports, function (r) {
+					r.changeAccess = ko.observable(false);
+					r.clientIdToUpdate = ko.observable(r.clientId);
+					r.saveAccessChanges = function () {
+						toastr.success('Changes Saved Successfully');
+						r.changeAccess(false);
+                    }
+				});
+
+				setup.push({
+					folderId: x.Id,
+					folder: x.FolderName,
+					reports: folderReports
+				});
+			});
+
+			self.reportsAndFolders(setup);
+		});
+	}
 }
 
 var tablesViewModel = function (options) {
@@ -570,6 +629,28 @@ var tablesViewModel = function (options) {
 
 	}
 }
+
+
+var manageAccess = function (options) {
+	return {
+		clientId: ko.observable(),
+		users: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
+		userRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
+		viewOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
+		viewOnlyUserRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
+		deleteOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
+		deleteOnlyUserRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
+		getAsList: function (x) {
+			var list = '';
+			_.forEach(x, function (e) { if (e.selected()) list += (list ? ',' : '') + e.value(); });
+			return list;
+		},
+		setupList: function (x, value) {
+			_.forEach(x, function (e) { if (value.indexOf(e.value()) >= 0) e.selected(true); else e.selected(false); });
+		},
+		isDashboard: ko.observable(options.isDashboard == true ? true : false)
+	};
+};
 
 var proceduresViewModel = function (options) {
 	var self = this;

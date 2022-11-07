@@ -45,7 +45,7 @@ namespace ReportBuilder.Web.Controllers
             settings.UserName = "";
             settings.CurrentUserRole = new List<string>(); // Populate your current authenticated user's roles
 
-            settings.Users = new List<string>(); // Populate all your application's user, ex  { "Jane", "John" }
+            settings.Users = new List<dynamic>(); // Populate all your application's user, ex  { "Jane", "John" }
             settings.UserRoles = new List<string>(); // Populate all your application's user roles, ex  { "Admin", "Normal" }       
             settings.CanUseAdminMode = true; // Set to true only if current user can use Admin mode to setup reports and dashboard
             settings.DataFilters = new { }; // add global data filters to apply as needed https://dotnetreport.com/kb/docs/advance-topics/global-filters/
@@ -56,7 +56,7 @@ namespace ReportBuilder.Web.Controllers
                 settings.UserId = User.Identity.Name;
                 settings.CurrentUserRole = Roles.GetRolesForUser(User.Identity.Name).ToList();
 
-                settings.Users = Roles.GetAllRoles().SelectMany(x => Roles.GetUsersInRole(x)).ToList();
+                settings.Users = Roles.GetAllRoles().SelectMany(x => Roles.GetUsersInRole(x)).Select(x => (dynamic)x).ToList();
                 settings.UserRoles = Roles.GetAllRoles().ToList();
             }
 
@@ -390,7 +390,7 @@ namespace ReportBuilder.Web.Controllers
             return Json(new
             {
                 noAccount = string.IsNullOrEmpty(settings.AccountApiToken) || settings.AccountApiToken == "Your Public Account Api Token",
-                users = settings.CanUseAdminMode ? settings.Users : new List<string>(),
+                users = settings.CanUseAdminMode ? settings.Users : new List<dynamic>(),
                 userRoles = settings.CanUseAdminMode ? settings.UserRoles : new List<string>(),
                 currentUserId = settings.UserId,
                 currentUserRoles = settings.UserRoles,

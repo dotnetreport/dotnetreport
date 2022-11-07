@@ -290,6 +290,9 @@
                     </div>
                 </div>
                 <!-- /ko -->
+                <div data-bind="if: manageAccess.users.length == 0">
+                    Users list not populated or not applicable
+                </div>
             </div>
             <br />
             <b>View only by User</b> (no edit/delete)
@@ -303,6 +306,9 @@
                     </div>
                 </div>
                 <!-- /ko -->
+                <div data-bind="if: manageAccess.users.length == 0">
+                    Users list not populated or not applicable
+                </div>
             </div>
             <br />
             <div data-bind="ifnot: manageAccess.isDashboard">
@@ -317,6 +323,9 @@
                         </div>
                     </div>
                     <!-- /ko -->
+                    <div data-bind="if: manageAccess.users.length == 0">
+                        Users list not populated or not applicable
+                    </div>
                 </div>
                 <br />
             </div>
@@ -331,6 +340,9 @@
                     </div>
                 </div>
                 <!-- /ko -->
+                <div data-bind="if: manageAccess.userRoles.length == 0">
+                    User Roles list not populated or not applicable
+                </div>
             </div>
             <br />
             <b>View only by User Role</b> (no edit/delete)
@@ -344,8 +356,11 @@
                     </div>
                 </div>
                 <!-- /ko -->
+                <div data-bind="if: manageAccess.userRoles.length == 0">
+                    User Roles list not populated or not applicable
+                </div>
             </div>
-            <div data-bind="ifnot: manageAccess.isDashboard">            
+            <div data-bind="ifnot: manageAccess.isDashboard">
                 <br />
                 <b>Delete by User Role</b> (allow delete)
                 <div class="row container-fluid">
@@ -358,6 +373,9 @@
                         </div>
                     </div>
                     <!-- /ko -->
+                    <div data-bind="if: manageAccess.userRoles.length == 0">
+                        User Roles list not populated or not applicable
+                    </div>
                 </div>
             </div>
         </div>

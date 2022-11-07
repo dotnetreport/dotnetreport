@@ -57,10 +57,13 @@
             addDataConnectionUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/AddDataConnection',
             saveProcUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/SaveProcedure',
             deleteProcUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/DeleteProcedure',
+            reportsApiUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]',
+            getUsersAndRoles: '@Url.Action("GetUsersAndRoles", "DotnetReportApi")'
         };
 
         var vm = new manageViewModel(options);
         vm.LoadJoins();
+        vm.setupManageAccess();
         ko.applyBindings(vm);
         vm.LoadDataConnections();
     });
@@ -109,6 +112,7 @@
             <li role="presentation" class="nav-item"><a class="nav-link active" href="#tablesfields" aria-controls="home" role="tab" data-toggle="tab">Tables and Fields</a></li>
             <li role="presentation" class="nav-item"><a class="nav-link" href="#relations" aria-controls="profile" role="tab" data-toggle="tab">Relations</a></li>
             <li role="presentation" class="nav-item"><a class="nav-link" href="#procedure" aria-controls="procedure" role="tab" data-toggle="tab">Stored Procs</a></li>
+            <li role="presentation" class="nav-item"><a class="nav-link" href="#manageaccess" aria-controls="manageaccess" role="tab" data-toggle="tab">Manage Reports Access</a></li>
         </ul>
     </div>
     <br />
@@ -352,6 +356,75 @@
                     </div>
                 </div>
                 <!-- /ko -->
+            </div>
+        </div>
+        <div id="manageaccess" class="tab-pane">
+            <div data-bind="foreach: reportsAndFolders" class="card" style="margin-left: 20px;">
+                <div class="card-body">
+                    <a class="btn btn-link" role="button" data-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }">
+                        <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: folder"></span>
+                    </a>
+                    <div class="collapse" data-bind="attr: {id: 'folder-' + folderId }">
+                        <ul class="list-group" data-bind="foreach: reports">
+                            <li class="list-group-item">
+                                <div>
+                                    <label class="list-group-item-heading">
+                                        <span class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map'}" style="font-size: 14pt; color: #808080"></span>
+                                        <span data-bind="text: reportName"></span>
+                                    </label>
+                                </div>
+                                <p class="list-group-item-text small" data-bind="text: reportDescription"></p>
+
+                                <div class="small" style="padding-top: 10px;">
+                                    <b>Current Report Access</b><br />
+                                    Manage by User <span class="badge badge-info" data-bind="text: userId ? userId : 'No User'"></span>
+                                    <br />
+                                    View only by User <span class="badge badge-info" data-bind="text: (viewOnlyUserId ? viewOnlyUserId : (userId ? userId : 'Any User'))"></span>
+                                    <br />
+                                    <div data-bind="if: deleteOnlyUserId">
+                                        Delete only by User <span class="badge badge-info" data-bind="text: deleteOnlyUserId"></span>
+                                        <br />
+                                    </div>
+                                    <div data-bind="if: userRole">
+                                        Manage by Role <span class="badge badge-info" data-bind="text: userRole ? userRole : 'No Role'"></span>
+                                        <br />
+                                    </div>
+                                    <div data-bind="if: viewOnlyUserRole">
+                                        View only by Role <span class="badge badge-info" data-bind="text: viewOnlyUserRole ? viewOnlyUserRole : 'Any Role'"></span>
+                                        <br />
+                                    </div>
+                                    <div data-bind="if: deleteOnlyUserRole">
+                                        Delete only by Role <span class="badge badge-info" data-bind="text: deleteOnlyUserRole ? deleteOnlyUserRole : 'Same as Manage'"></span>
+                                        <br />
+                                    </div>
+                                    <div>
+                                        For Client <span class="badge badge-info" data-bind="text: clientId ? clientId : 'All Clients'"></span>
+                                        <br />
+                                    </div>
+                                </div>
+                                <br />
+                                <br />
+                                <button class="btn btn-sm btn-primary" data-bind="click: function() { changeAccess(!changeAccess())}, text: !changeAccess() ? 'Change Access': 'Cancel Changing Access'">Change Access</button>
+                                <div data-bind="if: changeAccess">
+                                    <hr />
+                                    <div class="form-group row">
+                                        <label class="col-md-3 col-sm-3 control-label">Client Id to Restrict Report to)</label>
+                                        <div class="col-md-6 col-sm-6">
+                                            <input class="form-control text-box single-line" type="text" data-bind="value: clientIdToUpdate">
+                                        </div>
+                                        <div class="col-md-3 col-sm-3">
+                                            <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Leave blank to give all clients access (Global Reports)"></span>
+                                        </div>
+                                    </div>
+                                    <div data-bind="template: {name: 'manage-access-template', data: $root }"></div>
+                                    <br />
+                                    <br />
+                                    <button class="btn btn-sm btn-primary" data-bind="click: saveAccessChanges">Save Access Changes</button>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -625,7 +698,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                @*<div class="control-group">
+                                <!--<div class="control-group">
                                     <div class="form-group row">
                                         <label class="col-md-3 col-sm-3 control-label">Require Foreign Key Parent?</label>
                                         <div class="col-md-6 col-sm-6">
@@ -639,7 +712,7 @@
                                             <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Foreign keys parent can be optional or set to required for cascading filters"></span>
                                         </div>
                                     </div>
-                                </div>*@
+                                </div>-->
                             </div>
                         </div>
                     </div>
@@ -835,7 +908,7 @@
                             </div>
                         </div>
                     </div>
-
+                
                 </div>
             </div>
             <div class="modal-footer">
