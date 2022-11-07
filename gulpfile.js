@@ -85,6 +85,11 @@ var deps = {
 };
 
 gulp.task("clean", function (cb) {
+	rimraf("wwwroot/js/dotnetreport.js", cb);
+	rimraf("wwwroot/js/dotnetreport-helper.js", cb);
+	rimraf("wwwroot/js/dotnetreport-setup.js", cb);
+	rimraf("wwwroot/css/dotnetreport.css", cb);
+	rimraf("wwwroot/img/report-logo.png", cb);
 	return rimraf("wwwroot/lib/", cb);
 });
 
@@ -99,6 +104,13 @@ gulp.task("scripts", function () {
 				.pipe(gulp.dest("wwwroot/lib/" + prop + "/" + deps[prop][itemProp])));
 		}
 	}
+
+	// move dotnet report files
+	streams.push(gulp.src("Scripts/dotnetreport.js").pipe(gulp.dest("wwwroot/js/")));
+	streams.push(gulp.src("Scripts/dotnetreport-helper.js").pipe(gulp.dest("wwwroot/js/")));
+	streams.push(gulp.src("Scripts/dotnetreport-setup.js").pipe(gulp.dest("wwwroot/js/")));
+	streams.push(gulp.src("Content/dotnetreport.css").pipe(gulp.dest("wwwroot/css/")));
+	streams.push(gulp.src("Content/img/report-logo.png").pipe(gulp.dest("wwwroot/img/")));
 
 	return merge(streams);
 
