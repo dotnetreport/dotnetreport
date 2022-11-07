@@ -708,7 +708,14 @@ namespace ReportBuilder.Web.Models
                             {
                                 byte[] plainTextBytes = new byte[cipherTextBytes.Length];
                                 int decryptedByteCount = cryptoStream.Read(plainTextBytes, 0, plainTextBytes.Length);
-                                return Encoding.UTF8.GetString(plainTextBytes, 0, decryptedByteCount);
+                                var decryptedString = Encoding.UTF8.GetString(plainTextBytes, 0, decryptedByteCount);
+                                while (decryptedByteCount > 0)
+                                {
+                                    decryptedByteCount = cryptoStream.Read(plainTextBytes, 0, plainTextBytes.Length);
+                                    decryptedString += Encoding.UTF8.GetString(plainTextBytes, 0, decryptedByteCount);
+                                }
+
+                                return decryptedString;
                             }
                         }
                     }
