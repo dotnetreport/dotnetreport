@@ -133,8 +133,21 @@ namespace ReportBuilder.Web.Controllers
 
         }
 
+        public class RunReportParameters
+        {
+            public string reportSql { get; set; }
+            public string connectKey { get; set; }
+            public string reportType { get; set; }
+            public int pageNumber { get; set; }
+            public int pageSize { get; set; }
+            public string sortBy { get; set; }
+            public bool desc { get; set; }
+            public string ReportSeries { get; set; }
+        }
+        
+
         [HttpPost]
-        public IActionResult RunReport(dynamic data)
+        public IActionResult RunReport(RunReportParameters data)
         {
             string reportSql = data.reportSql;
             string connectKey = data.connectKey;
@@ -286,7 +299,7 @@ namespace ReportBuilder.Web.Controllers
                     }
                 };
 
-                return Ok(model);
+                return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
 
             }
 
@@ -300,7 +313,7 @@ namespace ReportBuilder.Web.Controllers
                     Exception = ex.Message
                 };
 
-                return Ok(model);
+                return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
             }
         }
 
