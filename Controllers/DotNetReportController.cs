@@ -105,6 +105,7 @@ namespace ReportBuilder.Web.Controllers
         [HttpPost]
         public IActionResult DownloadExcel(string reportSql, string connectKey, string reportName, bool allExpanded, string expandSqls, string columnDetails = null, bool includeSubtotal = false)
         {
+            reportSql = HttpUtility.HtmlDecode(reportSql);
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() :  JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
             
             var excel = DotNetReportHelper.GetExcelFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), allExpanded, HttpUtility.UrlDecode(expandSqls)?.Split(',').ToList(), columns, includeSubtotal);
@@ -117,6 +118,7 @@ namespace ReportBuilder.Web.Controllers
         [HttpPost]
         public IActionResult DownloadXml(string reportSql, string connectKey, string reportName)
         {
+            reportSql = HttpUtility.HtmlDecode(reportSql);
             var xml = DotNetReportHelper.GetXmlFile(reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName));
             Response.Headers.Add("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".xml");
             Response.ContentType = "application/xml";
@@ -137,6 +139,7 @@ namespace ReportBuilder.Web.Controllers
         [HttpPost]
         public IActionResult DownloadCsv(string reportSql, string connectKey, string reportName)
         {
+            reportSql = HttpUtility.HtmlDecode(reportSql);
             var csv = DotNetReportHelper.GetCSVFile(reportSql, HttpUtility.UrlDecode(connectKey));
 
             Response.Headers.Add("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".csv");
