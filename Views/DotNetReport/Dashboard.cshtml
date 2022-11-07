@@ -25,7 +25,7 @@
             if (!dashboardId && dashboards.length > 0) { dashboardId = dashboards[0].id; }
 
                 ajaxcall({ url: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")' + '?id=' + dashboardId + '&adminMode=' + adminMode }).done(function (reportsData) {
-                _.forEach(reportsData, function(r){
+                _.forEach(reportsData, function(r) {
                     reports.push({ reportSql: r.ReportSql, reportId: r.ReportId, reportFilter: r.ReportFilter, connectKey: r.ConnectKey, x: r.X, y: r.Y, width: r.Width, height: r.Height });
                 });
 
