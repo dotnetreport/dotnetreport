@@ -14,14 +14,15 @@
     $(document).ready(function () {
         var reports = [];
         var dashboards = [];
-        var adminMode =  @(Context.Request.Query["adminMode"].Any() ? Context.Request.Query["adminMode"].First() : "false");
+        var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
+        var adminMode = queryParams.adminMode == 'true' ? 'true' : 'false';
 
         ajaxcall({ url: '@Url.Action("GetDashboards", "DotNetReportApi")' + '?adminMode=' + adminMode }).done(function (dashboardData) {
             _.forEach(dashboardData, function (d) {
                 dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles });
             });
 
-            var dashboardId = @(Context.Request.Query["reportId"].Any() ? Context.Request.Query["reportId"].First() : "0");
+            var dashboardId = parseInt(queryParams.id || 0);
             if (!dashboardId && dashboards.length > 0) { dashboardId = dashboards[0].id; }
 
                 ajaxcall({ url: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")' + '?id=' + dashboardId + '&adminMode=' + adminMode }).done(function (reportsData) {
@@ -172,7 +173,7 @@
 
 <div class="clearfix"></div>
 
-<div class="grid-stack">
+<div class="grid-stack" data-bind="visible: reports().length>0" style="display: none;">
     <!-- ko foreach: reports -->
     <div class="grid-stack-item" data-bind="attr: {'data-gs-x': x, 'data-gs-y': y, 'data-gs-width': width, 'data-gs-height': height, 'data-gs-auto-position': true, 'data-gs-id': ReportID}">
 
