@@ -2123,7 +2123,7 @@ var reportViewModel = function (options) {
 						var linkItem = col.linkItem;
 						var link = '';
 						if (linkItem.LinksToReport) {
-							link = options.runLinkReportUrl + '?reportId=' + linkItem.LinkedToReportId;
+							link = options.runReportUrl + '?linkedreport=true&reportId=' + linkItem.LinkedToReportId;
 							if (linkItem.SendAsFilterParameter) {
 								link += '&filterId=' + linkItem.SelectedFilterId + '&filterValue=' + r.Value;
 							}
@@ -2727,8 +2727,29 @@ var reportViewModel = function (options) {
 			})).join(",");
 		}
 
-		if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard") {
-			return self.ExecuteReportQuery(options.reportSql, options.reportConnect, reportSeries);
+		if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard" || self.ReportMode() == "linked") {
+
+			if (self.ReportMode() == "linked") {
+
+				var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
+
+				return ajaxcall({
+					url: options.runLinkReportUrl,
+					data: {
+						reportId: self.ReportID(),
+						adminMode: self.adminMode(),
+						filterId: queryParams.filterId,
+						filterValue: queryParams.filterValue
+					}
+				}).done(function (linkedReport) {
+					if (linkedReport.d) { linkedReport = linkedReport.d; }
+					if (linkedReport.result) { linkedReport = linkedReport.result; }
+					return self.ExecuteReportQuery(linkedReport.reportSql, linkedReport.connectKey, reportSeries);
+				});
+			}
+			else {
+				return self.ExecuteReportQuery(options.reportSql, options.reportConnect, reportSeries);
+			}
 		}
 	}
 
