@@ -4,19 +4,19 @@
     ViewBag.Title = "Report Builder";
     Layout = "../shared/_Layout.Report.cshtml";
 }
-    <!--
-    The html and JavaScript code below is related to presentation for the Report Builder. You don't have to change it, unless you intentionally want to
-    change something in the Report Builder's behavior in your Application.
+<!--
+The html and JavaScript code below is related to presentation for the Report Builder. You don't have to change it, unless you intentionally want to
+change something in the Report Builder's behavior in your Application.
 
-    Its Recommended you use it as is, and only change styling as needed to match your application. You will be responsible for managing and maintaining any changes.
-    -->
+Its Recommended you use it as is, and only change styling as needed to match your application. You will be responsible for managing and maintaining any changes.
+-->
 
 @section scripts{
-    
+
     <script type="text/javascript">
 
-        var toastr = toastr || { error: function (msg) { window.alert(msg); }, success: function (msg) { window.alert(msg); } };
-    
+    var toastr = toastr || { error: function (msg) { window.alert(msg); }, success: function (msg) { window.alert(msg); } };
+
         var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
 
         $(document).ready(function () {
@@ -35,7 +35,7 @@
                 userSettings: data,
                 dataFilters: data.dataFilters
             });
-            
+
             vm.init(queryParams.folderid || 0, data.noAccount);
             ko.applyBindings(vm);
         });
@@ -380,7 +380,7 @@
                     </div>
                 </div>
 
-                <div data-bind="if: isFormulaField" id="custom-field-design">             
+                <div data-bind="if: isFormulaField" id="custom-field-design">
                     <br />
                     <br />
                     <div class="card">

@@ -1,11 +1,16 @@
 ﻿using OfficeOpenXml;
 using PuppeteerSharp;
 using PuppeteerSharp.Media;
+using System;
+using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.OleDb;
+using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Tasks;
 using System.Web;
 
 namespace ReportBuilder.Web.Models
@@ -309,7 +314,7 @@ namespace ReportBuilder.Web.Models
     {
         public static string GetConnectionString(string key)
         {
-            var connString = Startup.StaticConfig.GetConnectionString(key);
+            var connString = ConfigurationManager.ConnectionStrings[key].ConnectionString;
             connString = connString.Replace("Trusted_Connection=True", "");
 
             if (!connString.ToLower().StartsWith("provider"))
@@ -583,15 +588,15 @@ namespace ReportBuilder.Web.Models
                     string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false)
         {
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
-            await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync(BrowserFetcher.DefaultChromiumRevision);
+            await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync(BrowserFetcher.DefaultRevision);
             var executablePath = "";
-            foreach(var d in Directory.GetDirectories(installPath))
+            foreach (var d in Directory.GetDirectories(installPath))
             {
                 executablePath = $"{d}\\chrome-win\\chrome.exe";
                 if (File.Exists(executablePath)) break;
             }
 
-            var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = false, ExecutablePath = executablePath });
+            var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = true, ExecutablePath = executablePath });
             var page = await browser.NewPageAsync();
             await page.SetRequestInterceptionAsync(true);
 
@@ -707,7 +712,7 @@ namespace ReportBuilder.Web.Models
             int keysize = 256;
 
             byte[] cipherTextBytes = Convert.FromBase64String(encryptedText.Replace("%3D", "="));
-            var passPhrase = Startup.StaticConfig.GetValue<string>("dotNetReport:privateApiToken").ToLower();
+            var passPhrase = ConfigurationManager.AppSettings["dotNetReport.privateApiToken"].ToLower();
             using (PasswordDeriveBytes password = new PasswordDeriveBytes(passPhrase, null))
             {
                 byte[] keyBytes = password.GetBytes(keysize / 8);

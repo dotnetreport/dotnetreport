@@ -1,16 +1,21 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using ReportBuilder.Web.Models;
+using System;
+using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.OleDb;
+using System.Linq;
+using System.Net.Http;
+using System.Text;
+using System.Threading.Tasks;
+using System.Web.Mvc;
 
 namespace ReportBuilder.Web.Controllers
 {
-    //[Authorize]
     public class DotNetSetupController : Controller
     {
-        public async Task<IActionResult> Index(string databaseApiKey = "")
+        public async Task<ActionResult> Index(string databaseApiKey = "")
         {
             var connect = GetConnection(databaseApiKey);
             var tables = new List<TableViewModel>();
@@ -36,9 +41,9 @@ namespace ReportBuilder.Web.Controllers
         {
             return new ConnectViewModel
             {
-                ApiUrl = Startup.StaticConfig.GetValue<string>("dotNetReport:apiUrl"),
-                AccountApiKey = Startup.StaticConfig.GetValue<string>("dotNetReport:accountApiToken"),
-                DatabaseApiKey = string.IsNullOrEmpty(databaseApiKey) ? Startup.StaticConfig.GetValue<string>("dotNetReport:dataconnectApiToken") : databaseApiKey
+                ApiUrl = ConfigurationManager.AppSettings["dotNetReport.apiUrl"],
+                AccountApiKey = ConfigurationManager.AppSettings["dotNetReport.accountApiToken"],
+                DatabaseApiKey = string.IsNullOrEmpty(databaseApiKey) ? ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"] : databaseApiKey
             };
         }
        
@@ -122,7 +127,7 @@ namespace ReportBuilder.Web.Controllers
         {
             using (var client = new HttpClient())
             {
-                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetTables?account={1}&dataConnect={2}&clientId=", Startup.StaticConfig.GetValue<string>("dotNetReport:apiUrl"), accountKey, dataConnectKey));
+                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetTables?account={1}&dataConnect={2}&clientId=", ConfigurationManager.AppSettings["dotNetReport.apiUrl"], accountKey, dataConnectKey));
                 response.EnsureSuccessStatusCode();
                 var content = await response.Content.ReadAsStringAsync();
                 dynamic values = JsonConvert.DeserializeObject<dynamic>(content);
@@ -149,7 +154,7 @@ namespace ReportBuilder.Web.Controllers
         {
             using (var client = new HttpClient())
             {
-                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetFields?account={1}&dataConnect={2}&clientId={3}&tableId={4}&includeDoNotDisplay=true", Startup.StaticConfig.GetValue<string>("dotNetReport:apiUrl"), accountKey, dataConnectKey, "", tableId));
+                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetFields?account={1}&dataConnect={2}&clientId={3}&tableId={4}&includeDoNotDisplay=true", ConfigurationManager.AppSettings["dotNetReport.apiUrl"], accountKey, dataConnectKey, "", tableId));
 
                 response.EnsureSuccessStatusCode();
 
@@ -300,7 +305,7 @@ namespace ReportBuilder.Web.Controllers
         {
             using (var client = new HttpClient())
             {
-                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetProcedures?account={1}&dataConnect={2}&clientId=", Startup.StaticConfig.GetValue<string>("dotNetReport:apiUrl"), accountKey, dataConnectKey));
+                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetProcedures?account={1}&dataConnect={2}&clientId=", ConfigurationManager.AppSettings["dotNetReport.apiUrl"], accountKey, dataConnectKey));
                 response.EnsureSuccessStatusCode();
                 var content = await response.Content.ReadAsStringAsync();
                 var tables = JsonConvert.DeserializeObject<List<TableViewModel>>(content);
@@ -335,7 +340,7 @@ namespace ReportBuilder.Web.Controllers
         public async Task<ActionResult> SearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
         {
 
-            return Json(await GetSearchProcedure(value, accountKey, dataConnectKey));
+            return Json(await GetSearchProcedure(value, accountKey, dataConnectKey), JsonRequestBehavior.AllowGet);
         }
 
         private async Task<List<TableViewModel>> GetSearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)

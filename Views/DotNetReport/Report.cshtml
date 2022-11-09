@@ -1,6 +1,6 @@
 ﻿@using System.Configuration
 @using System.Data
-@model ReportBuilder.Web.Models.DotNetReportModel
+@model DotNetReportModel
 @{
     ViewBag.Title = "Report";
     Layout = "../shared/_Layout.Report.cshtml";
@@ -19,7 +19,7 @@
     <script type="text/javascript">
     
     $(document).ready(function () {
-        
+
         var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
 
         ajaxcall({ url: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")' }).done(function (data) {
@@ -32,7 +32,7 @@
                 lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
                 apiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")',
                 runReportApiUrl: '@Url.Action("RunReportApi", "DotNetReportApi")',
-                reportFilter: htmlDecode('@System.Web.HttpUtility.UrlDecode(Model.ReportFilter)'),
+                reportFilter: htmlDecode('@HttpUtility.UrlDecode(Model.ReportFilter)'),
                 reportMode: queryParams.linkedreport == "true" ? "linked" : "execute",
                 reportSql: "@Model.ReportSql",
                 reportConnect: "@Model.ConnectKey",
@@ -41,7 +41,7 @@
                 userSettings: data,
                 dataFilters: data.dataFilters,
                 runExportUrl: "",
-                printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, Context.Request.Scheme)"
+                printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, this.Request.Url.Scheme)"
             });
 
             vm.loadProcs().done(function () {
@@ -75,7 +75,7 @@
                 <a href="@Url.Action("Index","DotNetReport")?reportId=@Model.ReportId&folderId =@Model.SelectedFolder" class="btn btn-primary" data-bind="visible: $root.CanEdit()">
                     Edit Report
                 </a>
-                
+
                 <div class="btn-group">
                     <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                         <span class="fa fa-download"></span> Export <span class="caret"></span>

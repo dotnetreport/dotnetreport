@@ -1,5 +1,6 @@
 ﻿@using System.Configuration
 @{
+    ViewBag.Title = "Dashboard";
     Layout = "~/Views/shared/_Layout.Report.cshtml";
 }
 
@@ -11,7 +12,7 @@
     <script type="text/javascript" src='//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.min.js'></script>
     <script type="text/javascript" src='//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.jQueryUI.min.js'></script>
     <script type="text/javascript">
-    $(document).ready(function () {
+$(document).ready(function () {
         var reports = [];
         var dashboards = [];
         var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
@@ -25,7 +26,7 @@
             var dashboardId = parseInt(queryParams.id || 0);
             if (!dashboardId && dashboards.length > 0) { dashboardId = dashboards[0].id; }
 
-                ajaxcall({ url: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")' + '?id=' + dashboardId + '&adminMode=' + adminMode }).done(function (reportsData) {
+            ajaxcall({ url: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")' + '?id=' + dashboardId + '&adminMode=' + adminMode }).done(function (reportsData) {
                 _.forEach(reportsData, function(r){
                     reports.push({ reportSql: r.ReportSql, reportId: r.ReportId, reportFilter: r.ReportFilter, connectKey: r.ConnectKey, x: r.X, y: r.Y, width: r.Width, height: r.Height });
                 });
