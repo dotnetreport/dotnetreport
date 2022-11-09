@@ -2462,8 +2462,11 @@ var reportViewModel = function (options) {
 			chart = new google.visualization.GeoChart(chartDiv);
 		}
 
+		google.visualization.events.addListener(chart, 'ready', function () {
+			self.ChartData(chart.getImageURI());
+		});
+
 		chart.draw(data, options);
-		self.ChartData(chart.getImageURI());
 	};
 
 	self.loadFolders = function (folderId) {
@@ -3214,6 +3217,29 @@ var dashboardViewModel = function (options) {
 		});
 	};
 
+	self.removeReportFromDashboard = function (reportId) {
+
+		bootbox.confirm("Are you sure you would like to remove this Report from the Dashboard?", function (r) {
+			if (r) {
+
+				var match = false;
+
+				_.forEach(self.reportsAndFolders(), function (f) {
+					_.forEach(f.reports, function (r) {
+						if (r.reportId == reportId && r.selected()) {
+							match = true;
+							r.selected(false);
+						}
+					});
+				});
+
+				if (match) {
+					self.saveDashboard();
+				}
+			}
+		});
+    }
+
 	self.saveDashboard = function () {
 		$(".form-group").removeClass("needs-validation");
 		if (!self.dashboard.Name()) {
@@ -3296,7 +3322,8 @@ var dashboardViewModel = function (options) {
 			reportConnect: x.connectKey,
 			users: options.users,
 			userRoles: options.userRoles,
-			skipDraw: true
+			skipDraw: true,
+			printReportUrl: options.printReportUrl
 		});
 
 		report.x = ko.observable(x.x);
