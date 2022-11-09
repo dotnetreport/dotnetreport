@@ -833,6 +833,7 @@ var reportViewModel = function (options) {
 	self.currentUserName = options.userSettings.currentUserName;
 	self.allowAdmin = ko.observable(options.userSettings.allowAdminMode);
 	self.userIdForSchedule = options.userSettings.userIdForSchedule || self.currentUserId;
+	self.clientId = options.userSettings.clientId;
 
 	self.ChartData = ko.observable();
 	self.ReportName = ko.observable();
@@ -3091,7 +3092,7 @@ var reportViewModel = function (options) {
 	}
 
 	self.downloadPdfAlt = function () {
-		self.downloadExport("/DotNetReport/DownloadPdf", {
+		self.downloadExport("/DotNetReport/DownloadPdfAlt", {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
@@ -3107,7 +3108,11 @@ var reportViewModel = function (options) {
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
 			expandAll: self.allExpanded(),
-			printUrl: options.printReportUrl
+			printUrl: options.printReportUrl,
+			clientId: self.clientid,
+			userId: self.currentUserId,
+			userRoles: self.currentUserRole,
+			dataFilters: options.dataFilters
 		}, 'pdf');
 	}
 

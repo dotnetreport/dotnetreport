@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using ReportBuilder.Web.Models;
 using System.Data;
 using System.Data.OleDb;
@@ -9,6 +10,7 @@ using System.Web;
 
 namespace ReportBuilder.Web.Controllers
 {
+    //[Authorize]
     [Route("api/[controller]/[action]")]
     [ApiController]
     public class DotNetReportApiController : ControllerBase
@@ -82,6 +84,19 @@ namespace ReportBuilder.Web.Controllers
 
         }
 
+        [AllowAnonymous]
+        public async Task<IActionResult> CallReportApiUnAuth(string method, string model)
+        {
+            var settings = new DotNetReportSettings
+            {
+                ApiUrl = Startup.StaticConfig.GetValue<string>("dotNetReport:apiUrl"),
+                AccountApiToken = Startup.StaticConfig.GetValue<string>("dotNetReport:accountApiToken"), // Your Account Api Token from your http://dotnetreport.com Account
+                DataConnectApiToken = Startup.StaticConfig.GetValue<string>("dotNetReport:dataconnectApiToken") // Your Data Connect Api Token from your http://dotnetreport.com Account            };
+            };
+
+            return await ExecuteCallReportApi(method, model, settings);
+        }
+
         [HttpPost]
         public async Task<IActionResult> PostReportApi(PostReportApiCallMode data)
         {
@@ -98,9 +113,14 @@ namespace ReportBuilder.Web.Controllers
         [HttpGet]
         public async Task<IActionResult> CallReportApi(string method, string model)
         {
+            return await ExecuteCallReportApi(method, model);
+        }
+
+        private async Task<IActionResult> ExecuteCallReportApi(string method, string model, DotNetReportSettings settings = null)
+        {
             using (var client = new HttpClient())
             {
-                var settings = GetSettings();
+                settings = settings ?? GetSettings();
                 var keyvalues = new List<KeyValuePair<string, string>>
                 {
                     new KeyValuePair<string, string>("account", settings.AccountApiToken),
@@ -150,7 +170,14 @@ namespace ReportBuilder.Web.Controllers
             public bool desc { get; set; }
             public string ReportSeries { get; set; }
         }
-        
+
+
+        [AllowAnonymous]
+        [HttpPost]
+        public IActionResult RunReportUnAuth(RunReportParameters data)
+        {
+            return RunReport(data);
+        }
 
         [HttpPost]
         public IActionResult RunReport(RunReportParameters data)
@@ -435,7 +462,8 @@ namespace ReportBuilder.Web.Controllers
                 currentUserName = settings.UserName,
                 allowAdminMode = settings.CanUseAdminMode,
                 userIdForSchedule = settings.UserIdForSchedule,
-                dataFilters = settings.DataFilters
+                dataFilters = settings.DataFilters,
+                clientId = settings.ClientId
             });
         }
 

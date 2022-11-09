@@ -41,7 +41,7 @@
                 userSettings: data,
                 dataFilters: data.dataFilters,
                 runExportUrl: "",
-                printReportUrl:  "@Url.Action("ReportPrint", "DotNetReport", null, "")"
+                printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, Context.Request.Scheme)"
             });
 
             vm.loadProcs().done(function () {

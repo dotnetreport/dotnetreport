@@ -36,7 +36,7 @@
                 dataFilters: data.dataFilters
             });
             
-            vm.init(@(Context.Request.Query["folderId"].Any() ? Context.Request.Query["folderId"].First() : "0"), data.noAccount);
+            vm.init(queryParams.folderid || 0, data.noAccount);
             ko.applyBindings(vm);
         });
     });

@@ -5,6 +5,7 @@ using System.Web;
 
 namespace ReportBuilder.Web.Controllers
 {
+    //[Authorize]
     public class DotNetReportController : Controller
     {
 
@@ -71,13 +72,7 @@ namespace ReportBuilder.Web.Controllers
             string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "",
             string reportSeries = "", bool expandAll = false)
         {
-            TempData["reportPrint"] = "true";
-            TempData["userId"] = userId;
-            TempData["clientId"] = clientId;
-            TempData["currentUserRole"] = currentUserRole;
-            TempData["dataFilters"] = dataFilters;
-
-            var model = new DotNetReportModel
+            var model = new DotNetReportPrintModel
             {
                 ReportId = reportId,
                 ReportType = reportType,
@@ -90,7 +85,12 @@ namespace ReportBuilder.Web.Controllers
                 ShowDataWithGraph = showDataWithGraph,
                 SelectedFolder = selectedFolder,
                 ReportFilter = reportFilter, // json data to setup filter correctly again
-                ExpandAll = expandAll
+                ExpandAll = expandAll,
+                
+                ClientId = clientId,    
+                UserId = userId,
+                CurrentUserRoles = currentUserRole,
+                DataFilters = dataFilters
             };
 
             return View(model);
@@ -127,12 +127,13 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> DownloadPdf(string printUrl, int reportId, string reportSql, string connectKey, string reportName, bool expandAll)
+        public async Task<IActionResult> DownloadPdf(string printUrl, int reportId, string reportSql, string connectKey, string reportName, bool expandAll,
+                                                        string clientId = null, string userId = null, string userRoles = null, string dataFilters = "")
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            var settings = new DotNetReportSettings(); // GetSettings();
-            var dataFilters = settings.DataFilters != null ? JsonConvert.SerializeObject(settings.DataFilters) : "";
-            var pdf = await DotNetReportHelper.GetPdfFile(HttpUtility.UrlDecode(printUrl), reportId, reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName), settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), dataFilters, expandAll);
+            var pdf = await DotNetReportHelper.GetPdfFile(HttpUtility.UrlDecode(printUrl), reportId, reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName), 
+                                userId, clientId, userRoles, dataFilters, expandAll);
+
             return File(pdf, "application/pdf", reportName + ".pdf");
         }
         
