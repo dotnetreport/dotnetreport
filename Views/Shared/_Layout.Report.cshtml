@@ -17,30 +17,96 @@
     <link href="~/Content/css/select2.min.css" rel="stylesheet" />
     <link href="~/Content/dotnetreport.css?v=3.0.0" rel="stylesheet" />
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-    @RenderSection("head", required: false)
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-tour/0.12.0/css/bootstrap-tour-standalone.css" integrity="sha512-ORucsD7YODPUurPZ4qD14QH3p1hLaNNtLH1mGvAWvNpAQ3LsotwDXE6er5GwAKW2LzX/Sg1T5Y502DbCwIQQpQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />    @RenderSection("head", required: false)
+    <!-- lucky orange -->
+    <script type='text/javascript'>
+        window.__lo_site_id = 219451;
+
+        (function () {
+            var wa = document.createElement('script'); wa.type = 'text/javascript'; wa.async = true;
+            wa.src = 'https://d10lpsik1i8c69.cloudfront.net/w.js';
+            var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(wa, s);
+        })();
+    </script>
 </head>
 
 <body>
-    <div class="navbar  border-bottom box-shadow ">
-        <div class="">
-            <div class="navbar-brand">
-                <a href="/">
-                    <img src="/content/img/report-logo.png" alt=".Net Report Builder" width="200" />
-                </a>
-            </div>
+    <link type="text/css" rel="stylesheet" media="all" href="~/Content/themes/default.min.css" id="theme-css" />
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow ">
+        <a class="navbar-brand col-md-3 col-lg-2 mr-0 px-3" href="#" id="mainNavImage">
+            <img src="~/Content/img/report-logo.png" width="120" />
+        </a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNavDropdown">
+            <ul class="navbar-nav mr-auto">
+            </ul>
+            <ul class="navbar-nav ">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Resources
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                        <a class="dropdown-item" href="https://dotnetreport.com/schedule-demo">Schedule Demo</a>
+                        <a class="dropdown-item" href="https://dotnetreport.com/app">Free Trial</a>
+                        <a class="dropdown-item" href="https://dotnetreport.com/features">Features</a>
+                        <div class="dropdown-divider"></div>
+
+                        <a class="dropdown-item" href="https://www.nuget.org/packages/dotNetReport/" target="_blank"><i class="fa fa-gift"></i> Nuget</a>
+                        <a class="dropdown-item" href="https://github.com/dotnetreport" target="_blank"><i class="fa fa-github"></i> Github</a>
+                        <a class="dropdown-item" href="https://dotnetreport.com/knowledgebase" target="_blank"><i class="fa fa-book"></i> Knowledgebase</a>
+                    </div>
+                </li>
+            </ul>
         </div>
-    </div>
-    <div class="body-content">
-        @RenderBody()
-        <!-- ########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
 
-        <div style="padding-top: 30px;">Powered by <a href="http://www.dotNetReport.com" target="_blank">dotnetReport.com</a></div>
+        <form class="form-inline">
+            <button class="btn btn-primary" onclick="return showDemoHelp();">Help with Demo</button>
+            <a class="btn btn-primary" href="https://dotnetreport.com/app">Start my Free Trial!</a>
+        </form>
+    </nav>
 
-        <!--########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
-        <hr />
-        <footer>
-            <p>&copy; @DateTime.Now.Year dotnetReport Builder <a href="https://dotnetreport.com">www.dotnetreport.com</a></p>
-        </footer>
+    <div class="container-fluid">
+        <div class="row">
+            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+                <div class="sidebar-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item" id="sidebarMenu">
+                            <a class="nav-link" href="@Url.Action("Dashboard","DotNetReport")"><i class='fa fa-fw fa-dashboard'></i> Dashboard</a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a class="nav-link" href="@Url.Action("Index","DotNetReport")"><i class="fa fa-fw fa-edit"></i> Custom Reports</a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a class="nav-link"><i class="fa fa-fw fa-user-circle"></i> Customers</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link"><i class="fa fa-fw fa-money"></i> Orders</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link"><i class="fa fa-fw fa-product-hunt"></i> Products</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link"><i class="fa fa-fw fa-user"></i> Profile</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link"><i class="fa fa-fw fa-power-off"></i> Log Out</a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <main role="main" class="col-md-9 ml-sm-auto col-lg-10 px-md-4">
+                <div class="pt-3 pb-2 mb-3">
+                    <div id="alertplaceholder"></div>
+
+                    @RenderBody()
+                </div>
+            </main>
+        </div>
     </div>
 
     <!-- Templates -->
@@ -228,7 +294,7 @@
                                     </div>
                                     <div class="pull-left">
                                         <button class="btn btn-xs" title="Download Excel" data-bind="click: $parent.exportExcel"><span class="fa fa-file-excel-o"></span></button>
-                                    </div>                                    
+                                    </div>
                                     <div class="form-group pull-right" data-bind="visible: pages()">
                                         <div data-bind="template: 'pager-template', data: $data"></div>
                                     </div>
@@ -345,7 +411,7 @@
                 </div>
                 <!-- /ko -->
             </div>
-            <div data-bind="ifnot: manageAccess.isDashboard">            
+            <div data-bind="ifnot: manageAccess.isDashboard">
                 <br />
                 <b>Delete by User Role</b> (allow delete)
                 <div class="row container-fluid">
@@ -526,7 +592,29 @@
                 <div class="modal-body">
                     <p class="alert alert-danger">dotnet Report Account Configuration missing!</p>
                     <p>You do not have the neccessary initial configuration completed to use dotnet Report.</p>
-                    <p>Please view the <a href="https://dotnetreport.com/blog/2016/03/getting-started-with-dotnet-report/" target="_blank">Getting Started Guide</a> to correctly configure dotnet Report.</p>
+                    <p>Please view the <a href="https://dotnetreport.com/getting-started-with-dotnet-report/" target="_blank">Getting Started Guide</a> to correctly configure dotnet Report.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="demoinfoModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header" style="display: block; text-align: left;">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Welcome to the Demo Site!</h4>
+                </div>
+                <div class="modal-body">
+                    <p>The purpose of this Demo Site is to demonstrate how <a href="https://dotnetreport.com">dotnet Report</a> runs embedded inside a Web Application and how end users can run and create useful Reports and Dashboards.</p>
+                    <p>The Database this demo site uses has Sales and Products data for a fictional company, with some test Employees, Customers and daily Orders as well. This way, you can run or create test Reports mimicking real world use cases.</p>
+                    <p>Feel free to test the <b>Dashboard</b>, run <b>Reports</b> or create new ones using our friendly and intuitive Report Designer. </p>
+
+                    <p class="alert alert-info">Just a warning that any reports or dashboards you create or modify are for testing only and can be reset at any time.</p>
+
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
@@ -547,10 +635,67 @@
     <script src="~/Scripts/knockout-sortable.min.js"></script>
     <script src="~/Scripts/select2.min.js"></script>
     <script src="~/Scripts/dotnetreport-helper.js"></script>
-    <script src="~/Scripts/dotnetreport.js?v=4.0.0"></script>
+    <script src="~/Scripts/dotnetreport.js?v=4.2.6"></script>
     <script src="~/Scripts/lodash.min.js"></script>
     <script src="~/Scripts/fabric.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-tour/0.12.0/js/bootstrap-tour-standalone.js" integrity="sha512-/wP19kxPz0T+haB/7K1tSMfZcZYEgE5ng90xWcKMICZkbP2Vkx7IDg0IgZX8QmzmLjhQd66cjE1KcAE+Nu3NqQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     @RenderSection("scripts", required: false)
     @Html.PageScripts()
+
+    <script type="text/javascript">
+        function showDemoHelp() {
+            $("#demoinfoModal").modal('show');
+            return false;
+        }
+
+        $(document).ready(function () {
+            $('#demoinfoModal').on('hidden.bs.modal', function (e) {
+                var tour = new Tour({
+                    steps: [
+                        {
+                            element: "#mainNavImage",
+                            title: "Let's start with dotnet Report!",
+                            content: "This demo web application is setup to demonstrate how most developers add dotnet Report to their Enterprise Software, and embed it as part of their main Web Application. We will assume a user has already logged in. In an actual application, dotnet Report supports user authentication, data security and multi-tenancy. "
+                        },
+                        {
+                            element: "#sidebarMenu",
+                            title: "Your Web App's Menu",
+                            content: "dotnet Report is just another option under the Web Application's Menu. The 2 routes here for dotnet Report are the <b>Dashboard</b> and <b>Custom Reports</b>. You can click on these in the demo application to browse. "
+                        },
+                        {
+                            placement: 'left',
+                            element: '#switchThemeDiv',
+                            title: "Try Switching Themes",
+                            content: "dotnet Report easily adapts to match the site's theme and colors as it is embedded as part of the web application. You can try switching themes to change the look of the demo site."
+                        }
+                    ]
+                });
+                tour.init();
+                tour.start(true);
+            });
+
+            var key = 'dotnetreport-show-guide';
+            var showGuide = true;
+            var cookie = localStorage.getItem(key);
+            if (cookie) {
+                var data = JSON.parse(cookie)
+                const now = new Date();
+
+                if (now.getTime() > data.expiry) {
+                    localStorage.removeItem(key)
+                    showGuide = true;
+                } else {
+                    showGuide = false;
+                }
+            }
+
+            if (showGuide) {
+                showDemoHelp();
+                var data = { value: true, expiry: new Date().getTime() + (5 * 60000) }
+                localStorage.setItem(key, JSON.stringify(data));
+            }
+
+        });
+    </script>
 </body>
 </html>
