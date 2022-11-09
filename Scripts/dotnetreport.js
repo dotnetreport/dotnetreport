@@ -2462,8 +2462,11 @@ var reportViewModel = function (options) {
 			chart = new google.visualization.GeoChart(chartDiv);
 		}
 
+		google.visualization.events.addListener(chart, 'ready', function () {
+			self.ChartData(chart.getImageURI());
+		});
+
 		chart.draw(data, options);
-		self.ChartData(chart.getImageURI());
 	};
 
 	self.loadFolders = function (folderId) {
@@ -3296,7 +3299,8 @@ var dashboardViewModel = function (options) {
 			reportConnect: x.connectKey,
 			users: options.users,
 			userRoles: options.userRoles,
-			skipDraw: true
+			skipDraw: true,
+			printReportUrl: options.printReportUrl
 		});
 
 		report.x = ko.observable(x.x);
