@@ -591,7 +591,7 @@ namespace ReportBuilder.Web.Models
                 if (File.Exists(executablePath)) break;
             }
 
-            var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = false, ExecutablePath = executablePath });
+            var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = true, ExecutablePath = executablePath });
             var page = await browser.NewPageAsync();
             await page.SetRequestInterceptionAsync(true);
 
