@@ -3217,6 +3217,29 @@ var dashboardViewModel = function (options) {
 		});
 	};
 
+	self.removeReportFromDashboard = function (reportId) {
+
+		bootbox.confirm("Are you sure you would like to remove this Report from the Dashboard?", function (r) {
+			if (r) {
+
+				var match = false;
+
+				_.forEach(self.reportsAndFolders(), function (f) {
+					_.forEach(f.reports, function (r) {
+						if (r.reportId == reportId && r.selected()) {
+							match = true;
+							r.selected(false);
+						}
+					});
+				});
+
+				if (match) {
+					self.saveDashboard();
+				}
+			}
+		});
+    }
+
 	self.saveDashboard = function () {
 		$(".form-group").removeClass("needs-validation");
 		if (!self.dashboard.Name()) {

@@ -130,7 +130,7 @@
                                 <label class="col-md-3 col-sm-3 control-label">Description</label>
                                 <div class="col-md-6 col-sm-6">
                                     <textarea class="form-control text-box" style="width: 100%;" data-bind="value: Description" placeholder="Optional Description for the Dashboard">
-                                                </textarea>
+                                    </textarea>
                                 </div>
                             </div>
                         </div>
@@ -184,7 +184,7 @@
                         <button type="button" class="btn" data-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
                             <span class="fa fa-ellipsis-v"></span>
                         </button>
-                        <ul class="dropdown-menu" style="z-index: 1001;">
+                        <ul class="dropdown-menu small" style="z-index: 1001;">
                             <!-- ko if: FlyFilters().length> 0-->
                             <li class="dropdown-item">
                                 <a href="#" data-bind="click: toggleFlyFilters">
@@ -205,6 +205,11 @@
                             <li class="dropdown-item">
                                 <a href="#" data-bind="click: downloadPdf">
                                     <span class="fa fa-file-pdf-o"></span> PDF
+                                </a>
+                            </li>
+                            <li class="dropdown-item">
+                                <a href="#" data-bind="click: function() { $parent.removeReportFromDashboard(ReportID()); }">
+                                    <span class="fa fa-close"></span> Remove
                                 </a>
                             </li>
                         </ul>
