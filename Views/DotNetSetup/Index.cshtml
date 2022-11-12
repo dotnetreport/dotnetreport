@@ -126,9 +126,20 @@
                 <button class="btn btn-sm" data-bind="click: unselectAll">Unselect all</button>
                 <button class="btn btn-sm btn-primary" data-bind="click: $root.saveChanges">Save All Changes</button>
             </div>
-            <br />
-            <div class="menu row" data-bind="with: Tables" style="margin-left: 20px;">
-                <!-- ko foreach: filteredTables -->
+            <div class="clearfix"></div>
+            <hr />
+            <div class="row">
+                <div class="form-group form-inline col-md-4" data-bind="with: pager">
+                    <div data-bind="template: 'pager-template', data: $data"></div>
+                </div>
+                <div class="col-md-4">
+                    <div>
+                        <span data-bind="text: Tables.model().length"></span> Tables/Views read from database.
+                    </div>
+                </div>
+            </div>
+            <div class="menu row" data-bind="" style="margin-left: 20px;">
+                <!-- ko foreach: pagedTables -->
 
                 <div class="menu-category card">
 
