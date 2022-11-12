@@ -48,7 +48,7 @@
                             dataFilters: data.dataFilters,
                             dashboardId: dashboardId,
                             runExportUrl: "",
-                            printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, Context.Request.Scheme)"
+                            printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, this.Request.Url.Scheme)"
                         });
 
                         vm.init().done(function() {
