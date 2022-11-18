@@ -33,6 +33,14 @@ namespace ReportBuilder.Web.Models
         public bool ExpandAll { get; set; }
     }
 
+    public class DotNetReportPrintModel : DotNetReportModel
+    {
+        public string ClientId { get; set; }
+        public string UserId { get; set; }
+        public string CurrentUserRoles { get; set; }
+        public string DataFilters { get; set; }
+    }
+
     public class DotNetReportResultModel
     {
         public string ReportSql { get; set; }
@@ -574,9 +582,15 @@ namespace ReportBuilder.Web.Models
         public static async Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
                     string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false)
         {
-            var installPath = AppContext.BaseDirectory + "\\App_Data\\local-chromium";
+            var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
             await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync(BrowserFetcher.DefaultChromiumRevision);
-            var executablePath = $"{Directory.GetDirectories(installPath)[0]}\\chrome-win\\chrome.exe";
+            var executablePath = "";
+            foreach(var d in Directory.GetDirectories(installPath))
+            {
+                executablePath = $"{d}\\chrome-win\\chrome.exe";
+                if (File.Exists(executablePath)) break;
+            }
+
             var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = true, ExecutablePath = executablePath });
             var page = await browser.NewPageAsync();
             await page.SetRequestInterceptionAsync(true);

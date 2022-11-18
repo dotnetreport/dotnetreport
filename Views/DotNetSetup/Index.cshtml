@@ -5,7 +5,7 @@
 }
 
 @section head{
-    <link href="~/Content/bootstrap-editable.css" rel="stylesheet" />
+    <link href="~/lib/x-editable-bs4/css/bootstrap-editable.css" rel="stylesheet" />
     <style type="text/css">
         .glyphicon-ok:before {
             content: "\f00c";
@@ -26,10 +26,10 @@
     </style>
 }
 @section scripts{
-    <script src="~/Scripts/dotnetreport-setup.js"></script>
-    <script src="~/Scripts/knockout.mapping-latest.js"></script>
-    <script src="~/Scripts/bootstrap-editable.min.js"></script>
-    <script src="~/Scripts/knockout.x-editable.min.js"></script>
+    <script src="~/js/dotnetreport-setup.js"></script>
+    <script src="~/lib/knockout-mapping/knockout.mapping.js"></script>
+    <script src="~/lib/x-editable-bs4/js/bootstrap-editable.min.js"></script>
+    <script src="~/lib/knockout-x-editable/knockout.x-editable.min.js"></script>
     <script type="text/javascript">
 
     $.fn.editable.defaults.mode = 'inline';
@@ -41,7 +41,7 @@
     };
 
     function openall() {
-        $('.panel-collapse:not(".in")')
+        $('.panel-collapse.in')
             .collapse('show');
     };
 
@@ -49,14 +49,14 @@
 
         var options = {
             model: @(Html.Raw(JsonConvert.SerializeObject(Model))),
-            saveTableUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/SaveTable',
-            deleteTableUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/DeleteTable',
-            getRelationsUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/GetRelations',
-            getDataConnectionsUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/GetDataConnections',
-            saveRelationsUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/SaveRelations',
-            addDataConnectionUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/AddDataConnection',
-            saveProcUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/SaveProcedure',
-            deleteProcUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/DeleteProcedure',
+            saveTableUrl: '@Model.ApiUrl/ReportApi/SaveTable',
+            deleteTableUrl: '@Model.ApiUrl/ReportApi/DeleteTable',
+            getRelationsUrl: '@Model.ApiUrl/ReportApi/GetRelations',
+            getDataConnectionsUrl: '@Model.ApiUrl/ReportApi/GetDataConnections',
+            saveRelationsUrl: '@Model.ApiUrl/ReportApi/SaveRelations',
+            addDataConnectionUrl: '@Model.ApiUrl/ReportApi/AddDataConnection',
+            saveProcUrl: '@Model.ApiUrl/ReportApi/SaveProcedure',
+            deleteProcUrl: '@Model.ApiUrl/ReportApi/DeleteProcedure',
         };
 
         var vm = new manageViewModel(options);
@@ -126,9 +126,20 @@
                 <button class="btn btn-sm" data-bind="click: unselectAll">Unselect all</button>
                 <button class="btn btn-sm btn-primary" data-bind="click: $root.saveChanges">Save All Changes</button>
             </div>
-            <br />
-            <div class="menu row" data-bind="with: Tables" style="margin-left: 20px;">
-                <!-- ko foreach: filteredTables -->
+            <div class="clearfix"></div>
+            <hr />
+            <div class="row">
+                <div class="form-group form-inline col-md-4" data-bind="with: pager">
+                    <div data-bind="template: 'pager-template', data: $data"></div>
+                </div>
+                <div class="col-md-4">
+                    <div>
+                        <span data-bind="text: Tables.model().length"></span> Tables/Views read from database.
+                    </div>
+                </div>
+            </div>
+            <div class="menu row" data-bind="" style="margin-left: 20px;">
+                <!-- ko foreach: pagedTables -->
 
                 <div class="menu-category card">
 

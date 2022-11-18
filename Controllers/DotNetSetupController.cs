@@ -7,6 +7,7 @@ using System.Data.OleDb;
 
 namespace ReportBuilder.Web.Controllers
 {
+    //[Authorize]
     public class DotNetSetupController : Controller
     {
         public async Task<IActionResult> Index(string databaseApiKey = "")

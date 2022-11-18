@@ -19,18 +19,21 @@
     <script type="text/javascript">
     
     $(document).ready(function () {
+        
+        var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
+
         ajaxcall({ url: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")' }).done(function (data) {
             var vm = new reportViewModel({
                 runReportUrl: "@Url.Action("Report")",
                 execReportUrl: "@Url.Action("RunReport", "DotNetReportApi")",
-                runLinkReportUrl: "@Url.Action("ReportLink")",
+                runLinkReportUrl: "@Url.Action("RunReportLink", "DotNetReportApi")",
                 reportWizard: $("#filter-panel"),
                 reportHeader: "report-header",
                 lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
                 apiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")',
                 runReportApiUrl: '@Url.Action("RunReportApi", "DotNetReportApi")',
                 reportFilter: htmlDecode('@System.Web.HttpUtility.UrlDecode(Model.ReportFilter)'),
-                reportMode: "execute",
+                reportMode: queryParams.linkedreport == "true" ? "linked" : "execute",
                 reportSql: "@Model.ReportSql",
                 reportConnect: "@Model.ConnectKey",
                 ReportSeries: "@Model.ReportSeries",
@@ -38,7 +41,7 @@
                 userSettings: data,
                 dataFilters: data.dataFilters,
                 runExportUrl: "",
-                printReportUrl:  "@Url.Action("ReportPrint", "DotNetReport", null, "")"
+                printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, Context.Request.Scheme)"
             });
 
             vm.loadProcs().done(function () {
@@ -66,6 +69,9 @@
                 <a href="@Url.Action("Index","DotNetReport")?folderId=@Model.SelectedFolder" class="btn btn-primary">
                     Back to Reports
                 </a>
+                <button onclick="history.back()" class="btn btn-primary" data-bind="visible: ReportMode()=='linked'">
+                    Back to Parent Report
+                </button>
                 <a href="@Url.Action("Index","DotNetReport")?reportId=@Model.ReportId&folderId =@Model.SelectedFolder" class="btn btn-primary" data-bind="visible: $root.CanEdit()">
                     Edit Report
                 </a>
