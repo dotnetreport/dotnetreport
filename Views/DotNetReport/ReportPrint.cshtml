@@ -174,10 +174,10 @@
     <script src="~/Scripts/toastr.min.js"></script>
     <script src="~/Scripts/knockout-sortable.min.js"></script>
     <script src="~/Scripts/select2.min.js"></script>
-    <script src="~/Scripts/dotnetreport-helper.js"></script>
-    <script src="~/Scripts/dotnetreport.js?v=4.0.0"></script>
     <script src="~/Scripts/lodash.min.js"></script>
     <script src="~/Scripts/fabric.min.js"></script>
+    <script src="~/Scripts/dotnetreport-helper.js"></script>
+    <script src="~/Scripts/dotnetreport.js?v=4.0.0"></script>
 
     <style type="text/css">
         a[href]:after {
@@ -186,21 +186,30 @@
     </style>
     <script type="text/javascript">
 
-    $(document).ready(function () {
+        $(document).ready(function () {
+        var data = {
+            currentUserId: '@Model.UserId',
+            currentUserRoles: '@Model.CurrentUserRoles',
+            dataFilters: '@Model.DataFilters',
+            clientId: '@Model.ClientId'
+        };
+
         var vm = new reportViewModel({
             runReportUrl: "@Url.Action("Report")",
-            execReportUrl: "@Url.Action("RunReport")",
-            runLinkReportUrl: "@Url.Action("ReportLink")",
+            execReportUrl: "@Url.Action("RunReportUnAuth", "DotNetReportApi")",
+            runLinkReportUrl: "@Url.Action("RunReportLink", "DotNetReportApi")",
             reportWizard: $("#filter-panel"),
             reportHeader: "report-header",
-            lookupListUrl: "@Url.Action("GetLookupList")",
-            apiUrl: '@Url.Action("CallReportApi")',
-            runReportApiUrl: '@Url.Action("RunReportApi")',
+            lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
+            apiUrl: '@Url.Action("CallReportApiUnAuth", "DotNetReportApi")',
+            runReportApiUrl: '@Url.Action("RunReportApi", "DotNetReportApi")',
             reportFilter: htmlDecode('@System.Web.HttpUtility.UrlDecode(Model.ReportFilter)'),
             reportMode: "execute",
             reportSql: "@Model.ReportSql",
             reportConnect: "@Model.ConnectKey",
-            ReportSeries : "@Model.ReportSeries"
+            ReportSeries: "@Model.ReportSeries",
+            userSettings: data,
+            dataFilters: data.dataFilters,
         });
         vm.pager.pageSize(10000);
 

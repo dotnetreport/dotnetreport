@@ -434,6 +434,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="App_Start\RouteConfig.cs" />
+    <None Include="Controllers\DotNetReportApiController.cs.pp" />
+    <Compile Include="Controllers\DotNetReportApiController.cs" />
     <None Include="Controllers\DotNetReportController.cs.pp" />
     <Compile Include="Controllers\DotNetReportController.cs" />
     <None Include="Controllers\DotNetSetupController.cs.pp" />

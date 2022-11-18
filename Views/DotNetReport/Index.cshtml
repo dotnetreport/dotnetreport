@@ -4,37 +4,39 @@
     ViewBag.Title = "Report Builder";
     Layout = "../shared/_Layout.Report.cshtml";
 }
+<!--
+The html and JavaScript code below is related to presentation for the Report Builder. You don't have to change it, unless you intentionally want to
+change something in the Report Builder's behavior in your Application.
+
+Its Recommended you use it as is, and only change styling as needed to match your application. You will be responsible for managing and maintaining any changes.
+-->
 
 @section scripts{
+
     <script type="text/javascript">
-
-@*
-    The Javascript code below is related to presentation for the Report Builder. You don't have to change it, unless you intentionally want to
-    change something in the Report Builder's behavior in your Application.
-
-    Its Recommended you use it as is, and only change styling as needed to match your application. You will be responsible for managing and maintaining any changes.
-*@
 
     var toastr = toastr || { error: function (msg) { window.alert(msg); }, success: function (msg) { window.alert(msg); } };
 
+        var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
+
         $(document).ready(function () {
-        ajaxcall({ url: '@Url.Action("GetUsersAndRoles")' }).done(function (data) {
+        ajaxcall({ url: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")' }).done(function (data) {
             var vm = new reportViewModel({
-               runReportUrl: '@Url.Action("Report")',
+                runReportUrl: '@Url.Action("Report")',
                 reportWizard: $("#modal-reportbuilder"),
                 linkModal: $("#linkModal"),
                 reportHeader: "report-header",
                 fieldOptionsModal: $("#fieldOptionsModal"),
-                lookupListUrl: '@Url.Action("GetLookupList")',
-                apiUrl: '@Url.Action("CallReportApi")',
-                runReportApiUrl: '@Url.Action("RunReportApi")',
-                getUsersAndRolesUrl: '@Url.Action("GetUsersAndRoles")',
-                reportId: @(Request.QueryString["reportId"] != null ? Request.QueryString["reportId"] : "0"),
+                lookupListUrl: '@Url.Action("GetLookupList", "DotNetReportApi")',
+                apiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")',
+                runReportApiUrl: '@Url.Action("RunReportApi", "DotNetReportApi")',
+                getUsersAndRolesUrl: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")',
+                reportId: queryParams.reportId || 0,
                 userSettings: data,
                 dataFilters: data.dataFilters
             });
 
-            vm.init(@(Request.QueryString["folderId"]!=null? Request.QueryString["folderId"]: "0"), data.noAccount);
+            vm.init(queryParams.folderid || 0, data.noAccount);
             ko.applyBindings(vm);
         });
     });
@@ -378,7 +380,7 @@
                     </div>
                 </div>
 
-                <div data-bind="if: isFormulaField" id="custom-field-design">             
+                <div data-bind="if: isFormulaField" id="custom-field-design">
                     <br />
                     <br />
                     <div class="card">

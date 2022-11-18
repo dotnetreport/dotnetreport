@@ -1,62 +1,6 @@
-﻿/// dotnet Report Builder view model v4.3.4
-/// License has to be purchased for use
+﻿/// dotnet Report Builder view model v5.0.0
+/// License must be purchased for commercial use
 /// 2022 (c) www.dotnetreport.com
-function pagerViewModel(args) {
-	args = args || {};
-	var self = this;
-
-	self.pageSize = ko.observable(args.pageSize || 30);
-	self.pages = ko.observable(args.pages || 1);
-	self.currentPage = ko.observable(args.currentPage || 1);
-	self.pauseNavigation = ko.observable(false);
-	self.totalRecords = ko.observable(0);
-
-	self.sortColumn = ko.observable();
-	self.sortDescending = ko.observable();
-
-	self.isFirstPage = ko.computed(function () {
-		var self = this;
-		return self.currentPage() == 1;
-	}, self);
-
-	self.isLastPage = ko.computed(function () {
-		var self = this;
-		return self.currentPage() == self.pages();
-	}, self);
-
-	self.currentPage.subscribe(function (newValue) {
-		if (newValue > self.pages()) self.currentPage(self.pages() == 0 ? 1 : self.pages());
-		if (newValue < 1) self.currentPage(1);
-	});
-
-	self.previous = function () {
-		if (!self.pauseNavigation() && !self.isFirstPage() && !isNaN(self.currentPage())) self.currentPage(Number(self.currentPage()) - 1);
-	};
-
-	self.next = function () {
-		if (!self.pauseNavigation() && !self.isLastPage() && !isNaN(self.currentPage())) self.currentPage(Number(self.currentPage()) + 1);
-	};
-
-	self.first = function () {
-		if (!self.pauseNavigation()) self.currentPage(1);
-	};
-
-	self.last = function () {
-		if (!self.pauseNavigation()) self.currentPage(self.pages());
-	};
-
-	self.changeSort = function (sort) {
-		if (self.sortColumn() == sort) {
-			self.sortDescending(!self.sortDescending());
-		} else {
-			self.sortDescending(false);
-		}
-		self.sortColumn(sort);
-		if (self.currentPage() != 1) {
-			self.currentPage(1);
-		}
-	};
-}
 
 function formulaFieldViewModel(args) {
 	args = args || {};
@@ -833,6 +777,7 @@ var reportViewModel = function (options) {
 	self.currentUserName = options.userSettings.currentUserName;
 	self.allowAdmin = ko.observable(options.userSettings.allowAdminMode);
 	self.userIdForSchedule = options.userSettings.userIdForSchedule || self.currentUserId;
+	self.clientId = options.userSettings.clientId;
 
 	self.ChartData = ko.observable();
 	self.ReportName = ko.observable();
@@ -2123,7 +2068,7 @@ var reportViewModel = function (options) {
 						var linkItem = col.linkItem;
 						var link = '';
 						if (linkItem.LinksToReport) {
-							link = options.runLinkReportUrl + '?reportId=' + linkItem.LinkedToReportId;
+							link = options.runReportUrl + '?linkedreport=true&reportId=' + linkItem.LinkedToReportId;
 							if (linkItem.SendAsFilterParameter) {
 								link += '&filterId=' + linkItem.SelectedFilterId + '&filterValue=' + r.Value;
 							}
@@ -2461,8 +2406,11 @@ var reportViewModel = function (options) {
 			chart = new google.visualization.GeoChart(chartDiv);
 		}
 
+		google.visualization.events.addListener(chart, 'ready', function () {
+			self.ChartData(chart.getImageURI());
+		});
+
 		chart.draw(data, options);
-		self.ChartData(chart.getImageURI());
 	};
 
 	self.loadFolders = function (folderId) {
@@ -2727,8 +2675,29 @@ var reportViewModel = function (options) {
 			})).join(",");
 		}
 
-		if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard") {
-			return self.ExecuteReportQuery(options.reportSql, options.reportConnect, reportSeries);
+		if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard" || self.ReportMode() == "linked") {
+
+			if (self.ReportMode() == "linked") {
+
+				var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
+
+				return ajaxcall({
+					url: options.runLinkReportUrl,
+					data: {
+						reportId: self.ReportID(),
+						adminMode: self.adminMode(),
+						filterId: queryParams.filterId,
+						filterValue: queryParams.filterValue
+					}
+				}).done(function (linkedReport) {
+					if (linkedReport.d) { linkedReport = linkedReport.d; }
+					if (linkedReport.result) { linkedReport = linkedReport.result; }
+					return self.ExecuteReportQuery(linkedReport.reportSql, linkedReport.connectKey, reportSeries);
+				});
+			}
+			else {
+				return self.ExecuteReportQuery(options.reportSql, options.reportConnect, reportSeries);
+			}
 		}
 	}
 
@@ -3070,7 +3039,7 @@ var reportViewModel = function (options) {
 	}
 
 	self.downloadPdfAlt = function () {
-		self.downloadExport("/DotNetReport/DownloadPdf", {
+		self.downloadExport("/DotNetReport/DownloadPdfAlt", {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
@@ -3086,7 +3055,11 @@ var reportViewModel = function (options) {
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
 			expandAll: self.allExpanded(),
-			printUrl: options.printReportUrl
+			printUrl: options.printReportUrl,
+			clientId: self.clientid,
+			userId: self.currentUserId,
+			userRoles: self.currentUserRole,
+			dataFilters: options.dataFilters
 		}, 'pdf');
 	}
 
@@ -3188,6 +3161,29 @@ var dashboardViewModel = function (options) {
 		});
 	};
 
+	self.removeReportFromDashboard = function (reportId) {
+
+		bootbox.confirm("Are you sure you would like to remove this Report from the Dashboard?", function (r) {
+			if (r) {
+
+				var match = false;
+
+				_.forEach(self.reportsAndFolders(), function (f) {
+					_.forEach(f.reports, function (r) {
+						if (r.reportId == reportId && r.selected()) {
+							match = true;
+							r.selected(false);
+						}
+					});
+				});
+
+				if (match) {
+					self.saveDashboard();
+				}
+			}
+		});
+    }
+
 	self.saveDashboard = function () {
 		$(".form-group").removeClass("needs-validation");
 		if (!self.dashboard.Name()) {
@@ -3270,7 +3266,8 @@ var dashboardViewModel = function (options) {
 			reportConnect: x.connectKey,
 			users: options.users,
 			userRoles: options.userRoles,
-			skipDraw: true
+			skipDraw: true,
+			printReportUrl: options.printReportUrl
 		});
 
 		report.x = ko.observable(x.x);
