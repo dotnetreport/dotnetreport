@@ -7,6 +7,12 @@ function ajaxcall(options) {
         $.blockUI({ baseZ: 500 });
     }
 
+    // setup your app auth here optionally
+    var tokenKey = 'token-key';
+    var token = JSON.parse(localStorage.getItem(tokenKey));
+    var headers = new Headers();
+    headers.append('Authorization', 'Bearer ' + token);
+
     return $.ajax({
         url: options.url,
         type: options.type || "GET",
@@ -15,7 +21,12 @@ function ajaxcall(options) {
         dataType: options.dataType || "json",
         contentType: options.contentType || "application/json; charset=utf-8",
         headers: options.headers || {},
-        async: options.async === false ? options.async : true
+        async: options.async === false ? options.async : true,
+        beforeSend: function (x) {
+            if (token && !options.url.startsWith("https://dotnetreport.com")) {
+                x.setRequestHeader("Authorization", "Bearer " + token);
+            }
+        }
     }).done(function (data) {
         if ($.unblockUI) {
             $.unblockUI();
