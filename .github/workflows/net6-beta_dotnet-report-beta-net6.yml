@@ -24,6 +24,12 @@ jobs:
 
       - name: Build with dotnet
         run: dotnet build ReportBuilder.sln --configuration Release
+        
+      - name: Run npm install
+        run: npm install
+        
+      - name: Run gulp file
+        run: gulp -b --color --gulpfile "Gulpfile.js" build
 
       - name: dotnet publish
         run: dotnet publish ReportBuilder.sln -c Release -o ${{env.DOTNET_ROOT}}/myapp
