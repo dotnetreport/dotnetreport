@@ -16,7 +16,7 @@ using System.Web.Mvc;
 using System.Web.Script.Serialization;
 using System.Web.Security;
 
-namespace ReportBuilder.Web.Controllers
+namespace $rootnamespace$.Controllers
 {
     public class DotNetReportApiController : Controller
     {
