@@ -5,7 +5,7 @@
 }
 
 @section head{
-    <link href="~/Content/bootstrap-editable.css" rel="stylesheet" />
+    <link href="~/lib/x-editable-bs4/css/bootstrap-editable.css" rel="stylesheet" />
     <style type="text/css">
         .glyphicon-ok:before {
             content: "\f00c";
@@ -26,10 +26,10 @@
     </style>
 }
 @section scripts{
-    <script src="~/Scripts/dotnetreport-setup.js"></script>
-    <script src="~/Scripts/knockout.mapping-latest.js"></script>
-    <script src="~/Scripts/bootstrap-editable.min.js"></script>
-    <script src="~/Scripts/knockout.x-editable.min.js"></script>
+    <script src="~/js/dotnetreport-setup.js"></script>
+    <script src="~/lib/knockout-mapping/knockout.mapping.js"></script>
+    <script src="~/lib/x-editable-bs4/js/bootstrap-editable.min.js"></script>
+    <script src="~/lib/knockout-x-editable/knockout.x-editable.min.js"></script>
     <script type="text/javascript">
 
     $.fn.editable.defaults.mode = 'inline';
@@ -41,7 +41,7 @@
     };
 
     function openall() {
-        $('.panel-collapse:not(".in")')
+        $('.panel-collapse.in')
             .collapse('show');
     };
 
@@ -49,14 +49,14 @@
 
         var options = {
             model: @(Html.Raw(JsonConvert.SerializeObject(Model))),
-            saveTableUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/SaveTable',
-            deleteTableUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/DeleteTable',
-            getRelationsUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/GetRelations',
-            getDataConnectionsUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/GetDataConnections',
-            saveRelationsUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/SaveRelations',
-            addDataConnectionUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/AddDataConnection',
-            saveProcUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/SaveProcedure',
-            deleteProcUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]/ReportApi/DeleteProcedure',
+            saveTableUrl: '@Model.ApiUrl/ReportApi/SaveTable',
+            deleteTableUrl: '@Model.ApiUrl/ReportApi/DeleteTable',
+            getRelationsUrl: '@Model.ApiUrl/ReportApi/GetRelations',
+            getDataConnectionsUrl: '@Model.ApiUrl/ReportApi/GetDataConnections',
+            saveRelationsUrl: '@Model.ApiUrl/ReportApi/SaveRelations',
+            addDataConnectionUrl: '@Model.ApiUrl/ReportApi/AddDataConnection',
+            saveProcUrl: '@Model.ApiUrl/ReportApi/SaveProcedure',
+            deleteProcUrl: '@Model.ApiUrl/ReportApi/DeleteProcedure',
         };
 
         var vm = new manageViewModel(options);

@@ -1,62 +1,6 @@
-﻿/// dotnet Report Builder view model v4.3.4
-/// License has to be purchased for use
+﻿/// dotnet Report Builder view model v5.0.0
+/// License must be purchased for commercial use
 /// 2022 (c) www.dotnetreport.com
-function pagerViewModel(args) {
-	args = args || {};
-	var self = this;
-
-	self.pageSize = ko.observable(args.pageSize || 30);
-	self.pages = ko.observable(args.pages || 1);
-	self.currentPage = ko.observable(args.currentPage || 1);
-	self.pauseNavigation = ko.observable(false);
-	self.totalRecords = ko.observable(0);
-
-	self.sortColumn = ko.observable();
-	self.sortDescending = ko.observable();
-
-	self.isFirstPage = ko.computed(function () {
-		var self = this;
-		return self.currentPage() == 1;
-	}, self);
-
-	self.isLastPage = ko.computed(function () {
-		var self = this;
-		return self.currentPage() == self.pages();
-	}, self);
-
-	self.currentPage.subscribe(function (newValue) {
-		if (newValue > self.pages()) self.currentPage(self.pages() == 0 ? 1 : self.pages());
-		if (newValue < 1) self.currentPage(1);
-	});
-
-	self.previous = function () {
-		if (!self.pauseNavigation() && !self.isFirstPage() && !isNaN(self.currentPage())) self.currentPage(Number(self.currentPage()) - 1);
-	};
-
-	self.next = function () {
-		if (!self.pauseNavigation() && !self.isLastPage() && !isNaN(self.currentPage())) self.currentPage(Number(self.currentPage()) + 1);
-	};
-
-	self.first = function () {
-		if (!self.pauseNavigation()) self.currentPage(1);
-	};
-
-	self.last = function () {
-		if (!self.pauseNavigation()) self.currentPage(self.pages());
-	};
-
-	self.changeSort = function (sort) {
-		if (self.sortColumn() == sort) {
-			self.sortDescending(!self.sortDescending());
-		} else {
-			self.sortDescending(false);
-		}
-		self.sortColumn(sort);
-		if (self.currentPage() != 1) {
-			self.currentPage(1);
-		}
-	};
-}
 
 function formulaFieldViewModel(args) {
 	args = args || {};
