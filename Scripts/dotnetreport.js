@@ -2686,8 +2686,8 @@ var reportViewModel = function (options) {
 					data: {
 						reportId: self.ReportID(),
 						adminMode: self.adminMode(),
-						filterId: queryParams.filterId,
-						filterValue: queryParams.filterValue
+						filterId: queryParams.filterId || 0,
+						filterValue: queryParams.filterValue || '0'
 					}
 				}).done(function (linkedReport) {
 					if (linkedReport.d) { linkedReport = linkedReport.d; }
