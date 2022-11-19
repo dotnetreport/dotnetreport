@@ -57,8 +57,8 @@
             addDataConnectionUrl: '@Model.ApiUrl/ReportApi/AddDataConnection',
             saveProcUrl: '@Model.ApiUrl/ReportApi/SaveProcedure',
             deleteProcUrl: '@Model.ApiUrl/ReportApi/DeleteProcedure',
-            reportsApiUrl: '@System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]',
-            getUsersAndRoles: '@Url.Action("GetUsersAndRoles", "Report")
+            reportsApiUrl: '@Model.ApiUrl',
+            getUsersAndRoles: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")'
         };
 
         var vm = new manageViewModel(options);
@@ -419,7 +419,7 @@
                                 <div data-bind="if: changeAccess">
                                     <hr />
                                     <div class="form-group row">
-                                        <label class="col-md-3 col-sm-3 control-label">Client Id to Restrict Report to)</label>
+                                        <label class="col-md-3 col-sm-3 control-label">Client Id to Restrict Report to</label>
                                         <div class="col-md-6 col-sm-6">
                                             <input class="form-control text-box single-line" type="text" data-bind="value: clientIdToUpdate">
                                         </div>
