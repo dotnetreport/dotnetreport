@@ -276,7 +276,7 @@ namespace ReportBuilder.Web.Models
         /// <summary>
         /// List of all User Ids in your Application
         /// </summary>
-        public List<string> Users { get; set; } = new List<string>();
+        public List<dynamic> Users { get; set; } = new List<dynamic>();
 
         /// <summary>
         /// List of all User Roles in your Application
