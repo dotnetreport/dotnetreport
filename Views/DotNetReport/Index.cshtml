@@ -44,19 +44,21 @@ Its Recommended you use it as is, and only change styling as needed to match you
     </script>
 }
 
-<h3>Report Builder</h3>
-<p>
-    Manage your Reports below. You can use the intuitive and user friendly Report Builder to create many types of Ad-hoc Reports.
-</p>
-<div class="alert alert-info">
-    To view the Dashboard, please <a href="@Url.Action("Dashboard","DotNetReport")">click here</a>.<br />
-    <div data-bind="if: currentUserName">Current User: <span data-bind="text: currentUserName"></span></div>
-    <div data-bind="if: currentUserRole">Current Roles: <span data-bind="text: currentUserRole"></span></div>
-</div>
-<div class="alert alert-warning">
-    You can easily integrate the Report Builder in your Application. See how to <a href="https://dotnetreport.com/getting-started-with-dotnet-report/">Get Started here</a>. <br />
-</div>
+<div class="row">
+    <div class="col-md-6">
+        <p>
+            Manage your Reports below. You can use the intuitive and user friendly Report Builder to create many types of Ad-hoc Reports.
+        </p>
+    </div>
+    <div class="col-md-6">
+        <div class="alert alert-info">
+            Goto <a href="@Url.Action("Dashboard","DotNetReport")">Dashboard</a> | Learn how to <a href="https://dotnetreport.com/getting-started-with-dotnet-report/">Integrate in your App here</a>.
+            <div data-bind="if: currentUserName">Current User: <span data-bind="text: currentUserName"></span></div>
+            <div data-bind="if: currentUserRole">Current Roles: <span data-bind="text: currentUserRole"></span></div>
+        </div>
+    </div>
 
+</div>
 <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
 
 <!--
@@ -103,6 +105,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             </a>
                         </li>
                     </ul>
+                    <form class="form-inline my-3 my-md-0">
+                        <input class="form-control" type="text" placeholder="Search Reports" aria-label="Search" data-bind="textInput: searchReports">
+                    </form>
                 </div>
             </nav>
         </div>
@@ -168,7 +173,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 <button class="btn btn-primary" data-bind="click: saveCanvas">Save Changes</button>
             </div>
             <div data-bind="ifnot: designingHeader">
-                <div data-bind="visible: SelectedFolder()==null">
+                <div data-bind="visible: !SelectedFolder() && !searchReports()">
                     <p>Please choose Folders below to view Reports</p>
                     <ul class="folder-list" data-bind="foreach: Folders">
                         <li data-bind="click: function(){ $parent.SelectedFolder($data); }">
@@ -177,7 +182,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         </li>
                     </ul>
                 </div>
-                <div data-bind="visible: SelectedFolder()!=null">
+                <div data-bind="visible: SelectedFolder() || searchReports()">
                     <div class="clearfix">
                         <p class="pull-left">Please choose a Report from this Folder</p>
                         <div class="pull-right">
@@ -187,22 +192,25 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         </div>
                     </div>
                     <div class="list-group list-overflow">
-                        <div data-bind="if: SelectedFolder()==null">
-                            Please choose a folder to view Reports
-                        </div>
                         <div data-bind="if: SelectedFolder()!=null && reportsInFolder().length==0">
                             No Reports Saved in this Folder
                         </div>
-                        <div data-bind="foreach: reportsInFolder">
+                        <div data-bind="if: searchReports() && reportsInSearch().length==0">
+                            No Reports found matching your Search
+                        </div>
+                        <div data-bind="foreach: searchReports() ? reportsInSearch() : reportsInFolder()">
                             <div class="list-group-item">
                                 <div class="row">
                                     <div class="col-sm-7">
                                         <div class="fa fa-2x pull-left" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map', 'fa-window-maximize': reportType=='Single'}"></div>
                                         <div class="pull-left">
-                                            <h4><a data-bind="text: reportName, click: runReport" style="cursor: pointer"></a></h4>
+                                            <h4><a data-bind="click: runReport" style="cursor: pointer">
+                                                <span data-bind="highlightedText: { text: reportName, highlight: $parent.searchReports, css: 'highlight' }"></span>
+                                             </a></h4>
                                         </div>
                                         <div class="clearfix"></div>
                                         <p data-bind="text: reportDescription"></p>
+                                        <p data-bind="if: $parent.searchReports()"><span class="fa fa-folder"></span> <span data-bind="text: folderName"></span></p>
                                         <div data-bind="if: $parent.adminMode">
                                             <div class="small">
                                                 <b>Report Access</b><br />

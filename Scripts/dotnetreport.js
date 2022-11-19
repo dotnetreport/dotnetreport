@@ -843,6 +843,7 @@ var reportViewModel = function (options) {
 	self.CanManageFolders = ko.observable(true);
 	self.CanEdit = ko.observable(true);
 	self.useReportHeader = ko.observable(false);
+	self.searchReports = ko.observable();
 
 	self.SavedReports.subscribe(function (x) {
 		if (self.ReportID()) {
@@ -1063,6 +1064,15 @@ var reportViewModel = function (options) {
 
 		return _.filter(self.SavedReports(), function (x) {
 			return x.folderId == self.SelectedFolder().Id;
+		});
+	});
+
+	self.reportsInSearch = ko.computed(function () {
+		var searchReports = self.searchReports();
+		if (!searchReports) return [];
+
+		return _.filter(self.SavedReports(), function (x) {
+			return x.reportName.toLowerCase().indexOf(searchReports.toLowerCase()) >= 0 || x.reportDescription.toLowerCase().indexOf(searchReports.toLowerCase()) >= 0;
 		});
 	});
 
@@ -2808,6 +2818,8 @@ var reportViewModel = function (options) {
 						}
 					});
 				};
+
+				e.folderName = _.find(self.Folders(), { Id: e.folderId }).FolderName;
 
 				if (options.reportId > 0 && e.reportId == options.reportId && skipOpen !== true) {
 					e.openReport();
