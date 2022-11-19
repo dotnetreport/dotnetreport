@@ -42,38 +42,7 @@ namespace ReportBuilder.Web.Controllers
             return View(model);
         }
 
-        public async Task<ActionResult> ReportLink(int reportId, int? filterId = null, string filterValue = "", bool adminMode = false)
-        {
-            var model = new DotNetReportModel();
-            var settings = new DotNetReportSettings(); //GetSettings();
-
-            using (var client = new HttpClient())
-            {
-                var content = new FormUrlEncodedContent(new[]
-                {
-                    new KeyValuePair<string, string>("account", settings.AccountApiToken),
-                    new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
-                    new KeyValuePair<string, string>("clientId", settings.ClientId),
-                    new KeyValuePair<string, string>("userId", settings.UserId),
-                    new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
-                    new KeyValuePair<string, string>("reportId", reportId.ToString()),
-                    new KeyValuePair<string, string>("filterId", filterId.HasValue ? filterId.ToString() : ""),
-                    new KeyValuePair<string, string>("filterValue", filterValue.ToString()),
-                    new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
-                    new KeyValuePair<string, string>("dataFilters", (new JavaScriptSerializer()).Serialize(settings.DataFilters))
-                });
-
-                var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/RunLinkedReport"), content);
-                var stringContent = await response.Content.ReadAsStringAsync();
-
-                model = (new JavaScriptSerializer()).Deserialize<DotNetReportModel>(stringContent);
-                
-            }
-
-            return View("Report", model);
-        }
-
-        public ActionResult ReportPrint(int reportId, string reportName, string reportDescription, string reportSql, string connectKey, string reportFilter, string reportType,
+        public IActionResult ReportPrint(int reportId, string reportName, string reportDescription, string reportSql, string connectKey, string reportFilter, string reportType,
             int selectedFolder = 0, bool includeSubTotal = true, bool showUniqueRecords = false, bool aggregateReport = false, bool showDataWithGraph = true,
             string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "",
             string reportSeries = "", bool expandAll = false)
