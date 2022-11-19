@@ -5,7 +5,7 @@
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
-            StaticConfig = configuration; //<--- Add this line manually
+            StaticConfig = configuration;
         }
 
         public IConfiguration Configuration { get; }
