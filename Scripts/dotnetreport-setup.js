@@ -1,4 +1,8 @@
-﻿var manageViewModel = function (options) {
+﻿/// dotnet Report Builder view model v5.0.0
+/// License must be purchased for commercial use
+/// 2022 (c) www.dotnetreport.com
+
+var manageViewModel = function (options) {
 	var self = this;
 
 	self.keys = {
@@ -9,6 +13,24 @@
 	self.DataConnections = ko.observableArray([]);
 	self.Tables = new tablesViewModel(options);
 	self.Procedures = new proceduresViewModel(options);
+	self.pager = new pagerViewModel({autoPage: true});
+
+	self.pager.totalRecords(self.Tables.model().length);
+
+	self.Tables.filteredTables.subscribe(function (x) {		
+		self.pager.totalRecords(x.length);
+		self.pager.currentPage(1);
+	});
+
+	self.pagedTables = ko.computed(function () {
+		var tables = self.Tables.filteredTables();
+		var pageNumber = self.pager.currentPage();
+		var pageSize = self.pager.pageSize();
+
+		var startIndex = (pageNumber-1) * pageSize;
+		var endIndex = startIndex + pageSize;
+		return tables.slice(startIndex, endIndex < tables.length ? endIndex : tables.length);
+	});
 
 	self.foundProcedures = ko.observableArray([]);
 	self.searchProcedureTerm = ko.observable("");

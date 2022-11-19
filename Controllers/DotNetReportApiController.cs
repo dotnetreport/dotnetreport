@@ -30,35 +30,16 @@ namespace ReportBuilder.Web.Controllers
                 DataConnectApiToken = ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"] // Your Data Connect Api Token from your http://dotnetreport.com Account
             };
 
-            if (TempData["reportPrint"] != null && TempData["reportPrint"].ToString() == "true")
-            {
-                if (TempData["clientId"] != null) settings.ClientId = (string)TempData["clientId"];
-                if (TempData["userId"] != null) settings.UserId = (string)TempData["userId"];
-                settings.CurrentUserRole = (TempData["currentUserRole"] != null) ? ((string)TempData["currentUserRole"]).Split(',').ToList() : new List<string>();
-                settings.DataFilters = (TempData["dataFilters"] != null) ? JsonConvert.DeserializeObject<dynamic>((string)TempData["dataFilters"]) : new { };
-                return settings;
-            }
-
             // Populate the values below using your Application Roles/Claims if applicable
             settings.ClientId = "";  // You can pass your multi-tenant client id here to track their reports and folders
             settings.UserId = ""; // You can pass your current authenticated user id here to track their reports and folders            
             settings.UserName = "";
             settings.CurrentUserRole = new List<string>(); // Populate your current authenticated user's roles
 
-            settings.Users = new List<dynamic>(); // Populate all your application's user, ex  { "Jane", "John" }
+            settings.Users = new List<dynamic>(); // Populate all your application's user, ex  { "Jane", "John" } or { new { id="1", text="Jane" }, new { id="2", text="John" }}
             settings.UserRoles = new List<string>(); // Populate all your application's user roles, ex  { "Admin", "Normal" }       
             settings.CanUseAdminMode = true; // Set to true only if current user can use Admin mode to setup reports and dashboard
             settings.DataFilters = new { }; // add global data filters to apply as needed https://dotnetreport.com/kb/docs/advance-topics/global-filters/
-
-            // An example of populating Roles using MVC web security if available
-            if (Roles.Enabled && User.Identity.IsAuthenticated)
-            {
-                settings.UserId = User.Identity.Name;
-                settings.CurrentUserRole = Roles.GetRolesForUser(User.Identity.Name).ToList();
-
-                settings.Users = Roles.GetAllRoles().SelectMany(x => Roles.GetUsersInRole(x)).Select(x => (dynamic)x).ToList();
-                settings.UserRoles = Roles.GetAllRoles().ToList();
-            }
 
             return settings;
         }
@@ -98,6 +79,19 @@ namespace ReportBuilder.Web.Controllers
             public bool useReportHeader { get; set; }
 
         }
+        [AllowAnonymous]
+        public async Task<JsonResult> CallReportApiUnAuth(string method, string model)
+        {
+            var settings = new DotNetReportSettings
+            {
+                ApiUrl = ConfigurationManager.AppSettings["dotNetReport.apiUrl"],
+                AccountApiToken = ConfigurationManager.AppSettings["dotNetReport.accountApiToken"], // Your Account Api Token from your http://dotnetreport.com Account
+                DataConnectApiToken = ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"] // Your Data Connect Api Token from your http://dotnetreport.com Account
+            };
+
+            return await ExecuteCallReportApi(method, model, settings);
+        }
+
 
         [HttpPost]
         public async Task<JsonResult> PostReportApi(PostReportApiCallMode data)
@@ -114,9 +108,14 @@ namespace ReportBuilder.Web.Controllers
 
         public async Task<JsonResult> CallReportApi(string method, string model)
         {
+            return await ExecuteCallReportApi(method, model);
+        }
+
+        private async Task<JsonResult> ExecuteCallReportApi(string method, string model, DotNetReportSettings settings = null)
+        { 
             using (var client = new HttpClient())
             {
-                var settings = GetSettings();
+                settings = settings ?? GetSettings();
                 var keyvalues = new List<KeyValuePair<string, string>>
                 {
                     new KeyValuePair<string, string>("account", settings.AccountApiToken),
@@ -153,6 +152,12 @@ namespace ReportBuilder.Web.Controllers
 
         }
 
+        [AllowAnonymous]
+        [HttpPost]
+        public JsonResult RunReportUnAuth(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, bool desc = false, string reportSeries = null)
+        {
+            return RunReport(reportSql, connectKey, reportType, pageNumber, pageSize, sortBy, desc, reportSeries);
+        }
         public JsonResult RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, bool desc = false, string reportSeries = null)
         {
             var sql = "";
@@ -319,11 +324,43 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
+        [HttpGet]
+        public async Task<JsonResult> RunReportLink(int reportId, int? filterId = null, string filterValue = "", bool adminMode = false)
+        {
+            var model = new DotNetReportModel();
+            var settings = GetSettings();
+
+            using (var client = new HttpClient())
+            {
+                var content = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("account", settings.AccountApiToken),
+                    new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
+                    new KeyValuePair<string, string>("clientId", settings.ClientId),
+                    new KeyValuePair<string, string>("userId", settings.UserId),
+                    new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
+                    new KeyValuePair<string, string>("reportId", reportId.ToString()),
+                    new KeyValuePair<string, string>("filterId", filterId.HasValue ? filterId.ToString() : ""),
+                    new KeyValuePair<string, string>("filterValue", filterValue.ToString()),
+                    new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
+                    new KeyValuePair<string, string>("dataFilters", JsonConvert.SerializeObject(settings.DataFilters))
+                });
+
+                var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/RunLinkedReport"), content);
+                var stringContent = await response.Content.ReadAsStringAsync();
+
+                model = JsonConvert.DeserializeObject<DotNetReportModel>(stringContent);
+
+            }
+
+            return Json(model, JsonRequestBehavior.AllowGet);
+        }
+
         [HttpPost]
         public async Task<JsonResult> GetDashboards(bool adminMode = false)
         {
             var model = await GetDashboardsData(adminMode);
-            return Json(model);
+            return Json(model, JsonRequestBehavior.AllowGet);
         }
 
 
@@ -332,10 +369,10 @@ namespace ReportBuilder.Web.Controllers
         {
             var settings = GetSettings();
             var model = new List<DotNetDasboardReportModel>();
-            var dashboards = (JArray)(await GetDashboardsData(adminMode));
+            var dashboards = (await GetDashboardsData(adminMode));
             if (!id.HasValue && dashboards.Count > 0)
             {
-                id = ((dynamic)dashboards.First()).Id;
+                id = dashboards.First().Id;
             }
 
             using (var client = new HttpClient())
@@ -360,7 +397,7 @@ namespace ReportBuilder.Web.Controllers
             return Json(model);
         }
 
-        private async Task<dynamic> GetDashboardsData(bool adminMode = false)
+        private async Task<List<dynamic>> GetDashboardsData(bool adminMode = false)
         {
             var settings = GetSettings();
 
@@ -379,7 +416,7 @@ namespace ReportBuilder.Web.Controllers
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/GetDashboards"), content);
                 var stringContent = await response.Content.ReadAsStringAsync();
 
-                var model = JsonConvert.DeserializeObject<dynamic>(stringContent);
+                var model = (new JavaScriptSerializer()).Deserialize<List<dynamic>>(stringContent);
                 return model;
             }
         }

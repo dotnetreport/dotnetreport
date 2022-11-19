@@ -7,6 +7,12 @@ function ajaxcall(options) {
         $.blockUI({ baseZ: 500 });
     }
 
+    // setup your app auth here optionally
+    var tokenKey = 'token-key';
+    var token = JSON.parse(localStorage.getItem(tokenKey));
+    var headers = new Headers();
+    headers.append('Authorization', 'Bearer ' + token);
+
     return $.ajax({
         url: options.url,
         type: options.type || "POST",
@@ -15,7 +21,12 @@ function ajaxcall(options) {
         dataType: options.dataType || "json",
         contentType: options.contentType || "application/json; charset=utf-8",
         headers: options.headers || {},
-        async: options.async === false ? options.async : true
+        async: options.async === false ? options.async : true,
+        beforeSend: function (x) {
+            if (token && !options.url.startsWith("https://dotnetreport.com")) {
+                x.setRequestHeader("Authorization", "Bearer " + token);
+            }
+        }
     }).done(function (data) {
         if ($.unblockUI) {
             $.unblockUI();
@@ -178,4 +189,79 @@ function htmlDecode(input) {
     var e = document.createElement('div');
     e.innerHTML = input;
     return e.childNodes.length === 0 ? "" : e.childNodes[0].nodeValue;
+}
+
+function pagerViewModel(args) {
+    args = args || {};
+    var self = this;
+
+    self.pageSize = ko.observable(args.pageSize || 20);
+    self.pages = ko.observable(args.pages || 1);
+    self.currentPage = ko.observable(args.currentPage || 1);
+    self.pauseNavigation = ko.observable(false);
+    self.totalRecords = ko.observable(0);
+    self.autoPage = ko.observable(args.autoPage === true ? true : false);
+
+    self.sortColumn = ko.observable();
+    self.sortDescending = ko.observable();
+
+    self.isFirstPage = ko.computed(function () {
+        var self = this;
+        return self.currentPage() == 1;
+    }, self);
+
+    self.isLastPage = ko.computed(function () {
+        var self = this;
+        return self.currentPage() == self.pages();
+    }, self);
+
+    self.currentPage.subscribe(function (newValue) {
+        if (newValue > self.pages()) self.currentPage(self.pages() == 0 ? 1 : self.pages());
+        if (newValue < 1) self.currentPage(1);
+    });
+
+    self.previous = function () {
+        if (!self.pauseNavigation() && !self.isFirstPage() && !isNaN(self.currentPage())) self.currentPage(Number(self.currentPage()) - 1);
+    };
+
+    self.next = function () {
+        if (!self.pauseNavigation() && !self.isLastPage() && !isNaN(self.currentPage())) self.currentPage(Number(self.currentPage()) + 1);
+    };
+
+    self.first = function () {
+        if (!self.pauseNavigation()) self.currentPage(1);
+    };
+
+    self.last = function () {
+        if (!self.pauseNavigation()) self.currentPage(self.pages());
+    };
+
+    self.changeSort = function (sort) {
+        if (self.sortColumn() == sort) {
+            self.sortDescending(!self.sortDescending());
+        } else {
+            self.sortDescending(false);
+        }
+        self.sortColumn(sort);
+        if (self.currentPage() != 1) {
+            self.currentPage(1);
+        }
+    };
+
+    self.pageSize.subscribe(function () {
+        self.updatePages();
+        self.currentPage(1);
+    });
+
+    self.totalRecords.subscribe(function () {
+        self.updatePages();
+    });
+
+    self.updatePages = function () {
+        if (self.autoPage()) {
+            var pages = self.totalRecords() == self.pageSize() ? (self.totalRecords() / self.pageSize()) : (self.totalRecords() / self.pageSize()) + 1;
+            self.pages(Math.floor(pages));
+        }
+    };
+
 }
