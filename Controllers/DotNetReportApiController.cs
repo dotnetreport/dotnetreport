@@ -41,16 +41,6 @@ namespace ReportBuilder.Web.Controllers
             settings.CanUseAdminMode = true; // Set to true only if current user can use Admin mode to setup reports and dashboard
             settings.DataFilters = new { }; // add global data filters to apply as needed https://dotnetreport.com/kb/docs/advance-topics/global-filters/
 
-            // An example of populating Roles using MVC web security if available
-            if (Roles.Enabled && User.Identity.IsAuthenticated)
-            {
-                settings.UserId = User.Identity.Name;
-                settings.CurrentUserRole = Roles.GetRolesForUser(User.Identity.Name).ToList();
-
-                settings.Users = Roles.GetAllRoles().SelectMany(x => Roles.GetUsersInRole(x)).ToList();
-                settings.UserRoles = Roles.GetAllRoles().ToList();
-            }
-
             return settings;
         }
 
@@ -370,7 +360,7 @@ namespace ReportBuilder.Web.Controllers
         public async Task<JsonResult> GetDashboards(bool adminMode = false)
         {
             var model = await GetDashboardsData(adminMode);
-            return Json(model);
+            return Json(model, JsonRequestBehavior.AllowGet);
         }
 
 
@@ -379,10 +369,10 @@ namespace ReportBuilder.Web.Controllers
         {
             var settings = GetSettings();
             var model = new List<DotNetDasboardReportModel>();
-            var dashboards = (JArray)(await GetDashboardsData(adminMode));
+            var dashboards = (await GetDashboardsData(adminMode));
             if (!id.HasValue && dashboards.Count > 0)
             {
-                id = ((dynamic)dashboards.First()).Id;
+                id = dashboards.First().Id;
             }
 
             using (var client = new HttpClient())
@@ -407,7 +397,7 @@ namespace ReportBuilder.Web.Controllers
             return Json(model);
         }
 
-        private async Task<dynamic> GetDashboardsData(bool adminMode = false)
+        private async Task<List<dynamic>> GetDashboardsData(bool adminMode = false)
         {
             var settings = GetSettings();
 
@@ -426,7 +416,7 @@ namespace ReportBuilder.Web.Controllers
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/GetDashboards"), content);
                 var stringContent = await response.Content.ReadAsStringAsync();
 
-                var model = JsonConvert.DeserializeObject<dynamic>(stringContent);
+                var model = (new JavaScriptSerializer()).Deserialize<List<dynamic>>(stringContent);
                 return model;
             }
         }
