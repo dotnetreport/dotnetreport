@@ -1,3 +1,4 @@
+using ReportBuilder.Web.Jobs;
 using ReportBuilder.Web.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -9,6 +10,8 @@ builder.Services.AddControllersWithViews();
 var app = builder.Build();
 
 Startup.StaticConfig = builder.Configuration; //<--- Add this line manually
+JobScheduler.Start(); //<--- Add this line manually
+
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
