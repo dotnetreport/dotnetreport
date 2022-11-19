@@ -9,7 +9,7 @@
     <meta name="keywords" content="ad-hoc reporting, reporting, asp .net reporting, asp .net report, report builder, ad hoc report builder, ad-hoc report builder, adhoc report, ad hoc reports, .net report viewer, reportviewer, sql reportviewer, report builder mvc, report mvc, report builder web forms, query builder, sql report builder,visual report builder,custom query,query maker" />
     <meta name="description" content="Ad hoc Reporting software that allows programmers to easily add Reporting functionality to their ASP .NET Web Software Solution" />
     
-    @await Html.PartialAsync("_DotnetReportHeaderPartial")
+    @Html.Partial("_DotnetReportHeaderPartial")
     @RenderSection("head", required: false)
 </head>
 
@@ -36,8 +36,8 @@
         </footer>
     </div>
 
-    @await Html.PartialAsync("_DotnetReportTemplatesPartial")
-    @await Html.PartialAsync("_DotnetReportJsLibrariesPartial")
+    @Html.Partial("_DotnetReportTemplatesPartial")
+    @Html.Partial("_DotnetReportJsLibrariesPartial")
 
     @RenderSection("scripts", required: false)
     @Html.PageScripts()
