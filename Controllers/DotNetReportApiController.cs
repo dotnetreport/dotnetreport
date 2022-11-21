@@ -1,12 +1,20 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using ReportBuilder.Web.Models;
+﻿using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.OleDb;
+using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Web;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
+using ReportBuilder.Web.Core;
+using ReportBuilder.Web.Models;
 
 namespace ReportBuilder.Web.Controllers
 {
@@ -101,13 +109,13 @@ namespace ReportBuilder.Web.Controllers
         public async Task<IActionResult> PostReportApi(PostReportApiCallMode data)
         {
             string method = data.method;
-            return await CallReportApi(method, JsonSerializer.Serialize(data));
+            return await CallReportApi(method, JsonConvert.SerializeObject(data));
         }
 
         [HttpPost]
         public async Task<IActionResult> RunReportApi(DotNetReportApiCall data)
         {
-            return await CallReportApi(data.Method, JsonSerializer.Serialize(data));
+            return await CallReportApi(data.Method, JsonConvert.SerializeObject(data));
         }
 
         [HttpGet]
@@ -131,10 +139,10 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole))
                 };
 
-                var data = JsonSerializer.Deserialize<Dictionary<string, dynamic>>(model);
+                var data = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(model);
                 foreach (var key in data.Keys)
                 {
-                    if ((key != "adminMode" || (key == "adminMode" && settings.CanUseAdminMode)) && data[key] is not null)
+                    if ((key != "adminMode" || (key == "adminMode" && settings.CanUseAdminMode)) && data[key] != null)
                     {
                         keyvalues.Add(new KeyValuePair<string, string>(key, data[key].ToString()));
                     }
@@ -146,13 +154,13 @@ namespace ReportBuilder.Web.Controllers
 
                 if (stringContent.Contains("\"sql\":"))
                 {
-                    var sqlqeuery = JsonSerializer.Deserialize<Dictionary<string, object>>(stringContent);
+                    var sqlqeuery = JsonConvert.DeserializeObject<Dictionary<string, object>>(stringContent);
                     object value;
                     var keyValuePair = sqlqeuery.TryGetValue("sql", out value);
                     var sql = DotNetReportHelper.Decrypt(value.ToString());
                 }
                 Response.StatusCode = (int)response.StatusCode;
-                var result = JsonSerializer.Deserialize<dynamic>(stringContent);
+                var result = JsonConvert.DeserializeObject<dynamic>(stringContent);
                 if (stringContent == "\"\"") result = new { };
                 return Ok(result);
             }
@@ -332,7 +340,7 @@ namespace ReportBuilder.Web.Controllers
                     }
                 };
 
-                return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+                return Ok(model);
 
             }
 
@@ -346,7 +354,7 @@ namespace ReportBuilder.Web.Controllers
                     Exception = ex.Message
                 };
 
-                return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+                return Ok(model);
             }
         }
 
@@ -369,13 +377,13 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("filterId", filterId.HasValue ? filterId.ToString() : ""),
                     new KeyValuePair<string, string>("filterValue", filterValue.ToString()),
                     new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
-                    new KeyValuePair<string, string>("dataFilters", JsonSerializer.Serialize(settings.DataFilters))
+                    new KeyValuePair<string, string>("dataFilters", JsonConvert.SerializeObject(settings.DataFilters))
                 });
 
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/RunLinkedReport"), content);
                 var stringContent = await response.Content.ReadAsStringAsync();
 
-                model = JsonSerializer.Deserialize<DotNetReportModel>(stringContent); 
+                model = JsonConvert.DeserializeObject<DotNetReportModel>(stringContent); 
 
             }
 
@@ -418,10 +426,10 @@ namespace ReportBuilder.Web.Controllers
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/LoadSavedDashboard"), content);
                 var stringContent = await response.Content.ReadAsStringAsync();
 
-                model = JsonSerializer.Deserialize<List<DotNetDasboardReportModel>>(stringContent);
+                model = JsonConvert.DeserializeObject<List<DotNetDasboardReportModel>>(stringContent);
             }
 
-            return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+            return Ok(model);
         }
 
         private async Task<dynamic> GetDashboardsData(bool adminMode = false)
@@ -443,7 +451,7 @@ namespace ReportBuilder.Web.Controllers
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/GetDashboards"), content);
                 var stringContent = await response.Content.ReadAsStringAsync();
 
-                var model = JsonSerializer.Deserialize<dynamic>(stringContent);
+                var model = JsonConvert.DeserializeObject<dynamic>(stringContent);
                 return model;
             }
         }

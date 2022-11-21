@@ -1,11 +1,17 @@
-﻿using OfficeOpenXml;
+﻿using Microsoft.Extensions.Configuration;
+using OfficeOpenXml;
 using PuppeteerSharp;
 using PuppeteerSharp.Media;
-using System.Configuration;
+using ReportBuilder.Web.Core;
+using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.OleDb;
+using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Tasks;
 using System.Web;
 
 namespace ReportBuilder.Web.Models
@@ -583,7 +589,7 @@ namespace ReportBuilder.Web.Models
                     string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false)
         {
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
-            await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync(BrowserFetcher.DefaultChromiumRevision);
+            await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync(BrowserFetcher.DefaultRevision);
             var executablePath = "";
             foreach(var d in Directory.GetDirectories(installPath))
             {

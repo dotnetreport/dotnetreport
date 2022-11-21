@@ -1,8 +1,15 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
 using Quartz;
 using Quartz.Impl;
+using ReportBuilder.Web.Core;
 using ReportBuilder.Web.Models;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Net.Http;
 using System.Net.Mail;
+using System.Threading.Tasks;
 
 namespace ReportBuilder.Web.Jobs
 {
