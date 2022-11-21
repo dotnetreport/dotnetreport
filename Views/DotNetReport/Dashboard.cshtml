@@ -215,7 +215,7 @@
                                 </a>
                             </li>
                             <!-- /ko -->
-                            <li class="dropdown-item">
+                            <li class="dropdown-item" data-bind="visible: CanEdit">
                                 <a data-bind="attr: {href: '@Url.Action("Index","DotNetReport")?reportId=' + ReportID()}">
                                     <span class="fa fa-pencil"></span> Edit
                                 </a>
