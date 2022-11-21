@@ -765,7 +765,7 @@ namespace ReportBuilder.Web.Models
                     string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false)
         {
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
-            await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync(BrowserFetcher.DefaultRevision);
+            await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync(BrowserFetcher.DefaultChromiumRevision);
             var executablePath = "";
             foreach (var d in Directory.GetDirectories(installPath))
             {
