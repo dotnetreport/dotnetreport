@@ -3056,7 +3056,8 @@ var reportViewModel = function (options) {
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
 			chartData: self.ChartData(),
-			columnDetails: self.getColumnDetails()
+			columnDetails: self.getColumnDetails(),
+			includeSubTotal: unescape(includeSubTotals)
 		}, 'pdf');
 	}
 
@@ -3091,7 +3092,9 @@ var reportViewModel = function (options) {
 		self.downloadExport("/DotNetReport/DownloadCsv", {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
-			reportName: self.ReportName()
+			reportName: self.ReportName(),
+			columnDetails: unescape(columnDetails),
+			includeSubTotal: unescape(includeSubTotals)
 		}, 'csv');
 	}
 
