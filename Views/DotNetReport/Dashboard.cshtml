@@ -104,11 +104,12 @@
     </div>
     <div class="clearfix"></div>
 
+    <div class="pull-right">
+        <a href="@Url.Action("Index","DotNetReport")">Manage Reports</a> | Learn how to <a href="https://dotnetreport.com/getting-started-with-dotnet-report/" target="_blank">Integrate in your App here</a>.
+    </div>
+
     <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
 
-    <div class="alert alert-info">
-        To manage Reports, please <a href="@Url.Action("Index","DotNetReport")">click here</a>.
-    </div>
     <div class="centered" style="display: none;" data-bind="visible: dashboards().length == 0 ">
         No Dashboards yet. Click below to Start<br />
         <button class="btn btn-lg btn-primary" data-toggle="modal" data-target="#add-dashboard-modal"><i class="fa fa-dashboard"></i> Create a New Dashboard</button>
