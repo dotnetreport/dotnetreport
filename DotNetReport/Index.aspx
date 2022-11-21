@@ -4,14 +4,17 @@
 </asp:Content>
 
 <asp:Content ID="Content3" ContentPlaceHolderID="scripts" runat="server">
+<!--
+The html and JavaScript code below is related to presentation for the Report Builder. You don't have to change it, unless you intentionally want to
+change something in the Report Builder's behavior in your Application.
+
+Its Recommended you use it as is, and only change styling as needed to match your application. You will be responsible for managing and maintaining any changes.
+-->
     <script type="text/javascript">
 
-        //    The Javascript code below is related to presentation for the Report Builder.You don't have to change it, unless you intentionally want to
-        //change something in the Report Builder's behavior in your Application.
-
-        //Its Recommended you use it as is, and only change styling as needed to match your application.You will be responsible for managing and maintaining any changes.
-
         var toastr = toastr || { error: function (msg) { window.alert(msg); }, success: function (msg) { window.alert(msg); } };
+
+        var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
 
         $(document).ready(function () {
             ajaxcall({ url: '/DotNetReport/ReportService.asmx/GetUsersAndRoles', type: 'POST' }).done(function (data) {
@@ -27,12 +30,12 @@
                     apiUrl: svc + "CallReportApi",
                     runReportApiUrl: svc + "RunReportApi",
                     getUsersAndRolesUrl: svc + "GetUsersAndRoles",
-                    reportId: <%=(Request.QueryString["reportId"] != null ? Request.QueryString["reportId"] : "0")%>,
+                    reportId: queryParams.reportId || 0,
                     userSettings: data,
                     dataFilters: data.dataFilters
-            });
+                });
 
-            vm.init(<%=(Request.QueryString["folderId"]!=null? Request.QueryString["folderId"]: "0")%>);
+                vm.init(queryParams.folderid || 0, data.noAccount);
                 ko.applyBindings(vm);
             });
         });
@@ -41,29 +44,27 @@
 </asp:Content>
 
 <asp:Content ID="Content2" ContentPlaceHolderID="body" runat="server">
-    
-<h3>Report Builder</h3>
-<p>
-    Manage your Reports below. You can use the intuitive and user friendly Report Builder to create many types of Ad-hoc Reports.
-</p>
-<div class="alert alert-info">
-    To view the Dashboard, please <a href="/DotnetReport/Dashboard.aspx">click here</a>.<br />
-    <div data-bind="if: currentUserName">Current User: <span data-bind="text: currentUserName"></span></div>
-    <div data-bind="if: currentUserRole">Current Roles: <span data-bind="text: currentUserRole"></span></div>
-</div>
-<div class="alert alert-warning">
-    You can easily integrate the Report Builder in your Application. See how to <a href="https://dotnetreport.com/getting-started-with-dotnet-report/">Get Started here</a>. <br />
-</div>
 
+<div class="row">
+    <div class="col-md-6">
+        <p>
+            Manage your Reports below. You can use the intuitive and user friendly Report Builder to create many types of Ad-hoc Reports.
+        </p>
+    </div>
+    <div class="col-md-6">
+        <div class="pull-right">
+            <a href="/DotnetReport/Dashboard.aspx")">View Dashboard</a> | Learn how to <a href="https://dotnetreport.com/getting-started-with-dotnet-report/" target="_blank">Integrate in your App here</a>.
+        </div>
+    </div>
+
+</div>
 <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
-
 
 <!--
     The markup code below is related to presentation. You don't have to change it, unless you
     intentionally want to change something in the Report Builder's behavior in your Application.
     It's Recommended you use it as is. You will be responsible for managing and maintaining any changes.
 -->
-
 <!-- Folders/Report List -->
 <div id="report-start">
     <div class="card folder-panel">
@@ -103,6 +104,9 @@
                             </a>
                         </li>
                     </ul>
+                    <div class="form-inline my-3 my-md-0">
+                        <input class="form-control" type="text" placeholder="Search Reports" aria-label="Search" data-bind="textInput: searchReports">
+                    </div>
                 </div>
             </nav>
         </div>
@@ -168,7 +172,7 @@
                 <button class="btn btn-primary" data-bind="click: saveCanvas">Save Changes</button>
             </div>
             <div data-bind="ifnot: designingHeader">
-                <div data-bind="visible: SelectedFolder()==null">
+                <div data-bind="visible: !SelectedFolder() && !searchReports()">
                     <p>Please choose Folders below to view Reports</p>
                     <ul class="folder-list" data-bind="foreach: Folders">
                         <li data-bind="click: function(){ $parent.SelectedFolder($data); }">
@@ -177,7 +181,7 @@
                         </li>
                     </ul>
                 </div>
-                <div data-bind="visible: SelectedFolder()!=null">
+                <div data-bind="visible: SelectedFolder() || searchReports()">
                     <div class="clearfix">
                         <p class="pull-left">Please choose a Report from this Folder</p>
                         <div class="pull-right">
@@ -187,22 +191,25 @@
                         </div>
                     </div>
                     <div class="list-group list-overflow">
-                        <div data-bind="if: SelectedFolder()==null">
-                            Please choose a folder to view Reports
-                        </div>
                         <div data-bind="if: SelectedFolder()!=null && reportsInFolder().length==0">
                             No Reports Saved in this Folder
                         </div>
-                        <div data-bind="foreach: reportsInFolder">
+                        <div data-bind="if: searchReports() && reportsInSearch().length==0">
+                            No Reports found matching your Search
+                        </div>
+                        <div data-bind="foreach: searchReports() ? reportsInSearch() : reportsInFolder()">
                             <div class="list-group-item">
                                 <div class="row">
                                     <div class="col-sm-7">
                                         <div class="fa fa-2x pull-left" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map', 'fa-window-maximize': reportType=='Single'}"></div>
                                         <div class="pull-left">
-                                            <h4><a data-bind="text: reportName, click: runReport" style="cursor: pointer"></a></h4>
+                                            <h4><a data-bind="click: runReport" style="cursor: pointer">
+                                                <span data-bind="highlightedText: { text: reportName, highlight: $parent.searchReports, css: 'highlight' }"></span>
+                                             </a></h4>
                                         </div>
                                         <div class="clearfix"></div>
                                         <p data-bind="text: reportDescription"></p>
+                                        <p data-bind="if: $parent.searchReports()"><span class="fa fa-folder"></span> <span data-bind="text: folderName"></span></p>
                                         <div data-bind="if: $parent.adminMode">
                                             <div class="small">
                                                 <b>Report Access</b><br />
@@ -380,7 +387,7 @@
                     </div>
                 </div>
 
-                <div data-bind="if: isFormulaField" id="custom-field-design">             
+                <div data-bind="if: isFormulaField" id="custom-field-design">
                     <br />
                     <br />
                     <div class="card">
@@ -499,7 +506,7 @@
                                     <div class="col">
                                         <span class="fa fa-columns"></span>
                                         <span data-bind="text: selectedFieldName"></span>
-                                        <span data-bind="text: isFormulaField() ? '(' + fieldFormat() + ')' : ''"></span>                                        
+                                        <span data-bind="text: isFormulaField() ? '(' + fieldFormat() + ')' : ''"></span>
                                         <span data-bind="visible: !$root.isFieldValidForYAxis($index(), fieldType, selectedAggregate())">
                                             <span class="badge badge-danger" data-bind="visible: !groupInGraph()">Will not show in <span data-bind="text: $root.ReportType"></span>Chart</span>
                                         </span>
@@ -537,7 +544,7 @@
                                         </div>
                                         <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $root.IncludeSubTotal()  &&  (['Int', 'Double', 'Money', 'Decimal', 'Currency'].indexOf(fieldType) >= 0 || ['Int', 'Double', 'Money', 'Decimal', 'Currency'].indexOf(fieldFormat()) >= 0)">
                                             <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ dontSubTotal(!dontSubTotal()); }, css: {active: dontSubTotal()==true}">
-                                                <span class="fa fa-plus-circle" aria-hidden="true" title="Don't Sub Total"></span>
+                                                <span class="fa fa-plus-circle" aria-hidden="true" title="Don't add to Total row"></span>
                                             </span>
                                         </div>
                                         <div class="pull-right" style="padding-right: 15px;">
@@ -639,7 +646,7 @@
                         <div class="checkbox">
                             <label>
                                 <input type="checkbox" data-bind="checked: IncludeSubTotal" />
-                                Include Subtotals
+                                Include Total Row
                             </label>
                         </div>
                         <div class="checkbox" data-bind="hidden: AggregateReport">
@@ -992,4 +999,6 @@
         </div>
     </div>
 </script>
+    
+    
 </asp:Content>

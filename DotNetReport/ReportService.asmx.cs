@@ -363,7 +363,7 @@ namespace ReportBuilder.WebForms.DotNetReport
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
         public object GetDashboards(bool adminMode = false)
         {
-            var model = GetDashboardsData(adminMode).Result;
+            var model = GetDashboardsData(adminMode);
             return model;
         }
 
@@ -374,7 +374,7 @@ namespace ReportBuilder.WebForms.DotNetReport
         {
             var settings = GetSettings();
             var model = new List<DotNetDasboardReportModel>();
-            var dashboards = (GetDashboardsData(adminMode)).Result;
+            var dashboards = (GetDashboardsData(adminMode));
             if (!id.HasValue && dashboards.Count > 0)
             {
                 id = dashboards.First().Id;
@@ -402,7 +402,7 @@ namespace ReportBuilder.WebForms.DotNetReport
             return model;
         }
 
-        private async Task<List<dynamic>> GetDashboardsData(bool adminMode = false)
+        private List<dynamic> GetDashboardsData(bool adminMode = false)
         {
             var settings = GetSettings();
 
@@ -418,8 +418,8 @@ namespace ReportBuilder.WebForms.DotNetReport
                     new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
                 });
 
-                var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/GetDashboards"), content);
-                var stringContent = await response.Content.ReadAsStringAsync();
+                var response = client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/GetDashboards"), content).Result;
+                var stringContent = response.Content.ReadAsStringAsync().Result;
 
                 var model = (new JavaScriptSerializer()).Deserialize<List<dynamic>>(stringContent);
                 return model;
