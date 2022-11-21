@@ -233,6 +233,12 @@
     <Content Include="Content\themes\base\tooltip.css" />
     <Content Include="Content\toastr.css" />
     <Content Include="Content\toastr.min.css" />
+    <Content Include="DotNetReport\Dashboard.aspx" />
+    <Content Include="DotNetReport\Index.aspx" />
+    <Content Include="DotNetReport\Report.aspx" />
+    <Content Include="DotNetReport\ReportPrint.aspx" />
+    <Content Include="DotNetReport\ReportService.asmx" />
+    <Content Include="DotNetReport\Setup.aspx" />
     <Content Include="favicon.ico" />
     <Content Include="fonts\fontawesome-webfont.svg" />
     <Content Include="Global.asax" />
@@ -328,6 +334,7 @@
     <Content Include="Scripts\esm\popper.js.map" />
     <Content Include="Scripts\esm\popper-utils.min.js.map" />
     <Content Include="Scripts\esm\popper-utils.js.map" />
+    <Content Include="DotNetReport\ReportLayout.Master" />
     <None Include="Scripts\jquery-3.6.0.intellisense.js" />
     <Content Include="Scripts\jquery-3.6.0.js" />
     <Content Include="Scripts\jquery-3.6.0.min.js" />
@@ -434,6 +441,52 @@
     <Compile Include="Controllers\DotNetReportApiController.cs" />
     <Compile Include="Controllers\DotNetReportController.cs" />
     <Compile Include="Controllers\DotNetSetupController.cs" />
+    <Compile Include="DotNetReport\Dashboard.aspx.cs">
+      <DependentUpon>Dashboard.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="DotNetReport\Dashboard.aspx.designer.cs">
+      <DependentUpon>Dashboard.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="DotNetReport\Index.aspx.cs">
+      <DependentUpon>Index.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="DotNetReport\Index.aspx.designer.cs">
+      <DependentUpon>Index.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="DotNetReport\Report.aspx.cs">
+      <DependentUpon>Report.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="DotNetReport\Report.aspx.designer.cs">
+      <DependentUpon>Report.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="DotNetReport\ReportLayout.Master.cs">
+      <DependentUpon>ReportLayout.Master</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="DotNetReport\ReportLayout.Master.designer.cs">
+      <DependentUpon>ReportLayout.Master</DependentUpon>
+    </Compile>
+    <Compile Include="DotNetReport\ReportPrint.aspx.cs">
+      <DependentUpon>ReportPrint.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="DotNetReport\ReportPrint.aspx.designer.cs">
+      <DependentUpon>ReportPrint.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="DotNetReport\ReportService.asmx.cs">
+      <DependentUpon>ReportService.asmx</DependentUpon>
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="DotNetReport\Setup.aspx.cs">
+      <DependentUpon>Setup.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="DotNetReport\Setup.aspx.designer.cs">
+      <DependentUpon>Setup.aspx</DependentUpon>
+    </Compile>
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
