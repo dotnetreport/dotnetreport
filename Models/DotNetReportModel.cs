@@ -106,6 +106,7 @@ namespace ReportBuilder.Web.Models
         public DataTable dataTable { get; set; }
         public List<ParameterViewModel> Parameters { get; set; }
         public List<string> AllowedRoles { get; set; }
+        public bool? DoNotDisplay { get; set; }
     }
 
     public class ParameterViewModel
@@ -303,6 +304,9 @@ namespace ReportBuilder.Web.Models
         public string fieldAlign { get; set; }
         public string fieldFormat { get; set; }
         public bool dontSubTotal { get; set; }
+
+        public bool isNumeric { get; set; }
+        public bool isCurrency { get; set; }
     }
 
     public class DotNetReportHelper
@@ -553,13 +557,36 @@ namespace ReportBuilder.Web.Models
                 }
             }
         }
-
-        public static void UpdateColumnNames(DataTable dt)
+        public static ReportHeaderColumn GetColumnFormatting(DataColumn dc, List<ReportHeaderColumn> columns, ref string value)
         {
+            var isCurrency = false;
+            var isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
+            var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
 
+            if (dc.DataType == typeof(decimal) || (formatColumn != null && (formatColumn.fieldFormat == "Decimal" || formatColumn.fieldFormat == "Double")))
+            {
+                isNumeric = true;
+                value = Convert.ToDecimal(value).ToString("###,###,##0.00");
+            }
+            if (formatColumn != null && formatColumn.fieldFormat == "Currency")
+            {
+                value = Convert.ToDecimal(value).ToString("C");
+                isCurrency = true;
+            }
+
+            if (formatColumn != null)
+            {
+                formatColumn.isNumeric = isNumeric;
+                formatColumn.isCurrency = isCurrency;
+            }
+
+            return formatColumn ?? new ReportHeaderColumn
+            {
+                isNumeric = isNumeric,
+                isCurrency = isCurrency
+            };
         }
 
-        
 
         /// <summary>
         /// Customize this method with a login for dotnet report so that it can login to print pdf reports
@@ -736,7 +763,7 @@ namespace ReportBuilder.Web.Models
                 }
             }
         }
-        public static byte[] GetCSVFile(string reportSql, string connectKey)
+        public static byte[] GetCSVFile(string reportSql, string connectKey, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false)
         {
             var sql = Decrypt(reportSql);
 
@@ -749,12 +776,10 @@ namespace ReportBuilder.Web.Models
                 var adapter = new OleDbDataAdapter(command);
 
                 adapter.Fill(dt);
-
+                var subTotals = new decimal[dt.Columns.Count];
 
                 //Build the CSV file data as a Comma separated string.
                 string csv = string.Empty;
-
-
                 foreach (DataColumn column in dt.Columns)
                 {
                     //Add the Header row for CSV file.
@@ -766,13 +791,46 @@ namespace ReportBuilder.Web.Models
 
                 foreach (DataRow row in dt.Rows)
                 {
+                    var i = 0;
                     foreach (DataColumn column in dt.Columns)
                     {
+                        var value = row[column.ColumnName].ToString();
+                        var formatColumn = GetColumnFormatting(column, columns, ref value);
+
+                        if (includeSubtotal)
+                        {
+                            if (formatColumn.isNumeric && !(formatColumn?.dontSubTotal ?? false))
+                            {
+                                subTotals[i] += Convert.ToDecimal(row[column.ColumnName]);
+                            }
+                        }
+
                         //Add the Data rows.
-                        csv += row[column.ColumnName].ToString().Replace(",", ";") + ',';
+                        csv += $"{(i == 0 ? "" : ",")}\"{value}\"";
+                        i++;
                     }
 
                     //Add new line.
+                    csv += "\r\n";
+                }
+
+                if (includeSubtotal)
+                {
+                    for (int j = 0; j < dt.Columns.Count; j++)
+                    {
+                        var value = subTotals[j].ToString();
+                        var dc = dt.Columns[j];
+                        var formatColumn = GetColumnFormatting(dc, columns, ref value);
+                        if (formatColumn.isNumeric && !(formatColumn?.dontSubTotal ?? false))
+                        {
+                            csv += $"{(j == 0 ? "" : ",")}\"{value}\"";
+                        }
+                        else
+                        {
+                            csv += $"{(j == 0 ? "" : ",")}\"\"";
+                        }
+                    }
+
                     csv += "\r\n";
                 }
 
