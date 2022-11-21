@@ -37,24 +37,16 @@ namespace ReportBuilder.WebForms.DotNetReport
                 DataConnectApiToken = ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"] // Your Data Connect Api Token from your http://dotnetreport.com Account
             };
 
-            if (Session["reportPrint"] != null && Session["reportPrint"].ToString() == "true")
-            {
-                if (Session["clientId"] != null) settings.ClientId = (string)Session["clientId"];
-                if (Session["userId"] != null) settings.UserId = (string)Session["userId"];
-                settings.CurrentUserRole = (Session["currentUserRole"] != null) ? ((string)Session["currentUserRole"]).Split(',').ToList() : new List<string>();
-                return settings;
-            }
-
             // Populate the values below using your Application Roles/Claims if applicable
             settings.ClientId = "";  // You can pass your multi-tenant client id here to track their reports and folders
             settings.UserId = ""; // You can pass your current authenticated user id here to track their reports and folders            
             settings.UserName = "";
             settings.CurrentUserRole = new List<string>(); // Populate your current authenticated user's roles
 
-            settings.Users = new List<dynamic>(); // Populate all your application's user, ex  { "Jane", "John" }
+            settings.Users = new List<dynamic>(); // Populate all your application's user, ex  { "Jane", "John" } or { new { id="1", text="Jane" }, new { id="2", text="John" }}
             settings.UserRoles = new List<string>(); // Populate all your application's user roles, ex  { "Admin", "Normal" }       
             settings.CanUseAdminMode = true; // Set to true only if current user can use Admin mode to setup reports and dashboard
-            settings.DataFilters = new { }; // add global data filters
+            settings.DataFilters = new { }; // add global data filters to apply as needed https://dotnetreport.com/kb/docs/advance-topics/global-filters/
 
             return settings;
         }
@@ -142,13 +134,14 @@ namespace ReportBuilder.WebForms.DotNetReport
                     new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
                     new KeyValuePair<string, string>("clientId", settings.ClientId),
                     new KeyValuePair<string, string>("userId", settings.UserId),
+                    new KeyValuePair<string, string>("userIdForSchedule", settings.UserIdForSchedule),
                     new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole))
                 };
 
                 var data = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(model);
                 foreach (var key in data.Keys)
                 {
-                    if (key != "adminMode" || (key == "adminMode" && settings.CanUseAdminMode))
+                    if ((key != "adminMode" || (key == "adminMode" && settings.CanUseAdminMode)) && data[key] != null)
                     {
                         keyvalues.Add(new KeyValuePair<string, string>(key, data[key].ToString()));
                     }
@@ -336,7 +329,80 @@ namespace ReportBuilder.WebForms.DotNetReport
 
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public object RunReportLink(int reportId, int? filterId = null, string filterValue = "", bool adminMode = false)
+        {
+            var model = new DotNetReportModel();
+            var settings = GetSettings();
+
+            using (var client = new HttpClient())
+            {
+                var content = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("account", settings.AccountApiToken),
+                    new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
+                    new KeyValuePair<string, string>("clientId", settings.ClientId),
+                    new KeyValuePair<string, string>("userId", settings.UserId),
+                    new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
+                    new KeyValuePair<string, string>("reportId", reportId.ToString()),
+                    new KeyValuePair<string, string>("filterId", filterId.HasValue ? filterId.ToString() : ""),
+                    new KeyValuePair<string, string>("filterValue", filterValue.ToString()),
+                    new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
+                    new KeyValuePair<string, string>("dataFilters", JsonConvert.SerializeObject(settings.DataFilters))
+                });
+
+                var response = client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/RunLinkedReport"), content).Result;
+                var stringContent = response.Content.ReadAsStringAsync().Result;
+                Context.Response.StatusCode = (int)response.StatusCode;
+                return (new JavaScriptSerializer()).Deserialize<DotNetReportModel>(stringContent);
+
+            }
+        }
+
+
+        [WebMethod(EnableSession = true)]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
         public object GetDashboards(bool adminMode = false)
+        {
+            var model = GetDashboardsData(adminMode).Result;
+            return model;
+        }
+
+
+        [WebMethod(EnableSession = true)]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public object LoadSavedDashboard(int? id = null, bool adminMode = false)
+        {
+            var settings = GetSettings();
+            var model = new List<DotNetDasboardReportModel>();
+            var dashboards = (GetDashboardsData(adminMode)).Result;
+            if (!id.HasValue && dashboards.Count > 0)
+            {
+                id = dashboards.First().Id;
+            }
+
+            using (var client = new HttpClient())
+            {
+                var content = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("account", settings.AccountApiToken),
+                    new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
+                    new KeyValuePair<string, string>("clientId", settings.ClientId),
+                    new KeyValuePair<string, string>("userId", settings.UserId),
+                    new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
+                    new KeyValuePair<string, string>("id", id.HasValue ? id.Value.ToString() : "0"),
+                    new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
+                });
+
+                var response = client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/LoadSavedDashboard"), content).Result;
+                var stringContent = response.Content.ReadAsStringAsync().Result;
+
+                model = JsonConvert.DeserializeObject<List<DotNetDasboardReportModel>>(stringContent);
+            }
+
+            return model;
+        }
+
+        private async Task<List<dynamic>> GetDashboardsData(bool adminMode = false)
         {
             var settings = GetSettings();
 
@@ -352,14 +418,13 @@ namespace ReportBuilder.WebForms.DotNetReport
                     new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
                 });
 
-                var response = client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/GetDashboards"), content).Result;
-                var stringContent = response.Content.ReadAsStringAsync().Result;
+                var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/GetDashboards"), content);
+                var stringContent = await response.Content.ReadAsStringAsync();
 
-                Context.Response.StatusCode = (int)response.StatusCode;
-                return (new JavaScriptSerializer()).Deserialize<dynamic>(stringContent);
+                var model = (new JavaScriptSerializer()).Deserialize<List<dynamic>>(stringContent);
+                return model;
             }
         }
-
 
         [WebMethod(EnableSession = true)]
         public void DownloadExcel(string reportSql, string connectKey, string reportName, bool allExpanded, string expandSqls, string columnDetails = null, bool includeSubtotal = false)
@@ -450,126 +515,6 @@ namespace ReportBuilder.WebForms.DotNetReport
             return warning;
         }
 
-        public static bool IsNumericType(Type type)
-        {
-
-            switch (Type.GetTypeCode(type))
-            {
-                case TypeCode.Int16:
-                case TypeCode.UInt16:
-                case TypeCode.Int32:
-                case TypeCode.UInt32:
-                case TypeCode.Int64:
-                case TypeCode.UInt64:
-                case TypeCode.Single:
-                case TypeCode.Double:
-                case TypeCode.Decimal:
-                    return true;
-
-                case TypeCode.Boolean:
-                case TypeCode.DateTime:
-                case TypeCode.String:
-                default:
-                    return false;
-            }
-        }
-
-        public static string GetLabelValue(DataColumn col, DataRow row)
-        {
-            switch (Type.GetTypeCode(col.DataType))
-            {
-                case TypeCode.Int16:
-                case TypeCode.UInt16:
-                case TypeCode.Int32:
-                case TypeCode.UInt32:
-                case TypeCode.Int64:
-                case TypeCode.UInt64:
-                case TypeCode.Single:
-                    return row[col].ToString();
-
-                case TypeCode.Double:
-                case TypeCode.Decimal:
-                    return @row[col].ToString();// "'" + (Convert.ToDouble(@row[col].ToString()).ToString("C")) + "'";
-
-                case TypeCode.Boolean:
-                    return (Convert.ToBoolean(@row[col]) ? "Yes" : "No");
-
-                case TypeCode.DateTime:
-                    try
-                    {
-                        return "'" + @Convert.ToDateTime(@row[col]).ToShortDateString() + "'";
-                    }
-                    catch
-                    {
-                        return "'" + @row[col] + "'";
-                    }
-
-                case TypeCode.String:
-                default:
-                    return "'" + @row[col].ToString().Replace("'", "") + "'";
-            }
-        }
-
-        public static string GetFormattedValue(DataColumn col, DataRow row)
-        {
-            if (row[col] != null && row[col] != DBNull.Value)
-            {
-                switch (Type.GetTypeCode(col.DataType))
-                {
-                    case TypeCode.Int16:
-                    case TypeCode.UInt16:
-                    case TypeCode.Int32:
-                    case TypeCode.UInt32:
-                    case TypeCode.Int64:
-                    case TypeCode.UInt64:
-                    case TypeCode.Single:
-                        return row[col].ToString();
-
-
-                    case TypeCode.Double:
-                    case TypeCode.Decimal:
-                        try
-                        {
-                            return col.ColumnName.Contains("%")
-                                ? (Convert.ToDouble(row[col].ToString()) / 100).ToString("P2")
-                                : Convert.ToDouble(row[col].ToString()).ToString("C");
-                        }
-                        catch
-                        {
-                            return row[col] != null ? row[col].ToString() : null;
-                        }
-
-
-                    case TypeCode.Boolean:
-                        return (Convert.ToBoolean(row[col]) ? "Yes" : "No");
-
-
-                    case TypeCode.DateTime:
-                        try
-                        {
-                            return Convert.ToDateTime(row[col]).ToShortDateString();
-                        }
-                        catch
-                        {
-                            return row[col] != null ? row[col].ToString() : null;
-                        }
-
-                    case TypeCode.String:
-                    default:
-                        if (row[col].ToString() == "System.Byte[]")
-                        {
-
-                            return "<img src=\"data:image/png;base64," + Convert.ToBase64String((byte[])row[col], 0, ((byte[])row[col]).Length) + "\" style=\"max-width: 200px;\" />";
-                        }
-                        else
-                        {
-                            return row[col] != null ? row[col].ToString() : null;
-                        }
-
-                }
-            }
-            return "";
-        }
 
         private DotNetReportDataModel DataTableToDotNetReportDataModel(DataTable dt, List<string> sqlFields)
         {
@@ -588,7 +533,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                     SqlField = sqlField.Substring(0, sqlField.IndexOf("AS")).Trim(),
                     ColumnName = col.ColumnName,
                     DataType = col.DataType.ToString(),
-                    IsNumeric = IsNumericType(col.DataType)
+                    IsNumeric = DotNetReportHelper.IsNumericType(col.DataType)
                 });
 
             }
@@ -605,8 +550,8 @@ namespace ReportBuilder.WebForms.DotNetReport
                     {
                         Column = model.Columns[i],
                         Value = row[col] != null ? row[col].ToString() : null,
-                        FormattedValue = GetFormattedValue(col, row),
-                        LabelValue = GetLabelValue(col, row)
+                        FormattedValue = DotNetReportHelper.GetFormattedValue(col, row),
+                        LabelValue = DotNetReportHelper.GetLabelValue(col, row)
                     });
                     i += 1;
                 }
@@ -717,6 +662,5 @@ namespace ReportBuilder.WebForms.DotNetReport
             }
             return tables;
         }
-
     }
 }

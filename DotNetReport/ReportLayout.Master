@@ -52,8 +52,9 @@
         </footer>
     </div>
         
-    <!-- Templates -->
-   <script type="text/html" id="report-filter">
+
+   <!-- Dotnet Report HTML Templates -->
+    <script type="text/html" id="report-filter">
         <div class="form-group">
             <!-- ko if: !hasForeignKey-->
             <!-- ko if: fieldType=='DateTime'-->
@@ -68,7 +69,10 @@
             <!-- /ko -->
             <!-- ko if: ['range'].indexOf($parent.Operator()) != -1 -->
             <select data-bind="value: $parent.Value" class="form-control" required>
+                <option value=""></option>
                 <option>Today</option>
+                <option>Today +</option>
+                <option>Today -</option>
                 <option>Yesterday</option>
                 <option>This Week</option>
                 <option>Last Week</option>
@@ -79,8 +83,18 @@
                 <option>This Month To Date</option>
                 <option>This Year To Date</option>
                 <option>Last 30 Days</option>
-                <option value=""></option>
+                <optgroup label="Comparison Options">
+                    <option>>= Today</option>
+                    <option><= Today</option>
+                    <option>>= Today +</option>
+                    <option><= Today +</option>
+                    <option>>= Today -</option>
+                    <option><= Today -</option>
+                </optgroup>
             </select>
+            <div data-bind="if: $parent.Value().indexOf('Today +') >= 0 || $parent.Value().indexOf('Today -') >= 0" class="form-group pull-left" style="padding-top: 5px;">
+                <input type="number" class="form-control input-sm pull-left" style="width: 80px;" data-bind="value: $parent.Value2" required /><span style="padding: 5px 5px;" class="pull-left"> days</span>
+            </div>
             <!-- /ko -->
             <!-- /ko -->
             <!-- ko if: ['Int','Money','Float','Double'].indexOf(fieldType) != -1 -->
@@ -105,14 +119,14 @@
             <!-- /ko -->
             <!-- /ko -->
             <!-- ko if: hasForeignKey-->
-            <!-- ko if: hasForeignParentKey-->
+            <!-- ko if: hasForeignParentKey && $parent.showParentFilter() -->
             <select multiple class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.ParentList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ParentIn"></select>
             <!-- /ko -->
             <!-- ko if: $parent.Operator()=='='-->
             <select required class="form-control" data-bind="options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', value: $parent.Value, optionsCaption: 'Please Choose'"></select>
             <!-- /ko -->
             <!-- ko if: $parent.Operator()=='in' || $parent.Operator()=='not in'-->
-            <select multiple class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ValueIn"></select>
+            <select required multiple class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ValueIn"></select>
             <!-- /ko -->
             <!-- /ko -->
         </div>
@@ -153,7 +167,7 @@
     </script>
     <script type="text/html" id="report-column">
         <!-- ko foreach: Items -->
-        <td data-bind="style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold ? 'bold' : 'normal', 'text-align': $parents[3].pager && $parents[3].ReportType()=='Single' ? 'center' : Column.IsNumeric ? 'right' : 'left', 'font-size':$parents[3].pager && $parents[3].ReportType()=='Single' ? '64px' : ''}">
+        <td data-bind="style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold ? 'bold' : 'normal', 'text-align': $parents[3].pager && $parents[3].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[3].pager && $parents[3].ReportType()=='Single' ? '64px' : ''}">
             <!-- ko if: LinkTo-->
             <a data-bind="attr: {href: LinkTo}"><span data-bind="html: FormattedValue"></span></a>
             <!-- /ko-->
@@ -185,7 +199,7 @@
                     </tr>
                     <!-- ko foreach: Rows  -->
                     <tr>
-                        <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() -->
+                        <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() && $parentContext.$parentContext.$parent.ReportType() != 'Single' -->
                         <td style="width: 30px; vertical-align: middle;"><a href="#" data-bind="click: function(){ toggle(); }"><span class="fa" data-bind="css: {'fa-plus': !isExpanded(), 'fa-minus': isExpanded()}"></span></a></td>
                         <!-- /ko -->
                         <!-- ko template: 'report-column', data: $data -->
@@ -223,25 +237,8 @@
                                         <span data-bind="text: 'Total Records: ' + totalRecords()"></span>
                                     </div>
                                     <div class="pull-left">
-                                        <form action="/DotNetReport/ReportService.asmx/DownloadExcel" method="post"> 
-                                            <input type="hidden" name="reportSql" data-bind="value: $parent.sql" />
-                                            <input type="hidden" name="connectKey" data-bind="value: $parent.connectKey" />
-                                            <input type="hidden" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parentContext.$parentContext.$parent.ReportName()" />
-                                            <input type="hidden" name="allExpanded" data-bind="value: false" />
-                                            <input type="hidden" name="expandSqls" data-bind="value: ''" />
-                                            <input type="hidden" name="columnDetails" data-bind="value: $parentContext.$parentContext.$parentContext.$parent.getColumnDetails()" />
-                                            <input type="hidden" name="includeSubTotal" data-bind="value: false" />
-                                            <button type="submit" class="btn btn-xs" title="Download Excel"><span class="fa fa-file-excel-o"></span></button>
-                                        </form>
-                                    </div>
-                                    <div class="pull-left">
-                                        <form action="/DotNetReport/ReportService.asmx/DownloadXml" method="post"> 
-                                            <input type="hidden" name="reportSql" data-bind="value: $parent.sql" />
-                                            <input type="hidden" name="connectKey" data-bind="value: $parent.connectKey" />
-                                            <input type="hidden" name="reportName" data-bind="value: 'Sub Report for ' + $parentContext.$parentContext.$parentContext.$parent.ReportName()" />
-                                        <button type="submit" class="btn btn-xs" title="Download XML"><span class="fa fa-file-code-o"></span></button>
-                                        </form>
-                                    </div>
+                                        <button class="btn btn-xs" title="Download Excel" data-bind="click: $parent.exportExcel"><span class="fa fa-file-excel-o"></span></button>
+                                    </div>                                    
                                     <div class="form-group pull-right" data-bind="visible: pages()">
                                         <div data-bind="template: 'pager-template', data: $data"></div>
                                     </div>
@@ -264,7 +261,7 @@
                         <td data-bind="style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold ? 'bold' : 'normal', 'text-align': $parents[3].pager && $parents[3].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[3].pager && $parents[3].ReportType()=='Single' ? '64px' : ''}">
                             <span data-bind="html: FormattedValue, css: {'right-align': true}"></span>
                         </td>
-                        
+                        <!-- /ko -->
                         <!-- /ko -->
                     </tr>
                 </tfoot>
@@ -292,85 +289,110 @@
             <div class="alert alert-info">
                 <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;User level rights over rule Role level rights. No selection for a rule implies report is available to all.
             </div>
-            <b>Manage by User</b> (allow edit)
-            <div class="row container-fluid">
-                <!-- ko foreach: manageAccess.users -->
-                <div class="pull-left">
-                    <div class="checkbox">
-                        <label class="label label-info">
-                            <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
-                        </label>
-                    </div>
-                </div>
-                <!-- /ko -->
-            </div>
-            <br />
-            <b>View only by User</b> (no edit/delete)
-            <div class="row container-fluid">
-                <!-- ko foreach: manageAccess.viewOnlyUsers -->
-                <div class="pull-left">
-                    <div class="checkbox">
-                        <label class="label label-info">
-                            <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
-                        </label>
-                    </div>
-                </div>
-                <!-- /ko -->
-            </div>
-            <br />
-            <div data-bind="ifnot: manageAccess.isDashboard">
-                <b>Delete by User</b> (allow delete)
-                <div class="row container-fluid">
-                    <!-- ko foreach: manageAccess.deleteOnlyUsers -->
-                    <div class="pull-left">
-                        <div class="checkbox">
-                            <label class="label label-info">
-                                <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
-                            </label>
+
+            <div class="row small">
+                <div class="col-md-6">
+                    <b>Manage by User</b> (allow edit)
+                    <div class="row container-fluid">
+                        <!-- ko foreach: manageAccess.users -->
+                        <div class="pull-left">
+                            <div class="checkbox">
+                                <label class="label label-info">
+                                    <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
+                                </label>
+                            </div>
+                        </div>
+                        <!-- /ko -->
+                        <div data-bind="if: manageAccess.users.length == 0">
+                            Users list not populated or not applicable
                         </div>
                     </div>
-                    <!-- /ko -->
-                </div>
-                <br />
-            </div>
-            <b>Manage by User Role</b> (allow edit)
-            <div class="row container-fluid">
-                <!-- ko foreach: manageAccess.userRoles -->
-                <div class="pull-left">
-                    <div class="checkbox">
-                        <label class="label label-info">
-                            <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
-                        </label>
-                    </div>
-                </div>
-                <!-- /ko -->
-            </div>
-            <br />
-            <b>View only by User Role</b> (no edit/delete)
-            <div class="row container-fluid">
-                <!-- ko foreach: manageAccess.viewOnlyUserRoles -->
-                <div class="pull-left">
-                    <div class="checkbox">
-                        <label class="label label-info">
-                            <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
-                        </label>
-                    </div>
-                </div>
-                <!-- /ko -->
-            </div>
-            <div data-bind="ifnot: manageAccess.isDashboard">            
-                <br />
-                <b>Delete by User Role</b> (allow delete)
-                <div class="row container-fluid">
-                    <!-- ko foreach: manageAccess.deleteOnlyUserRoles -->
-                    <div class="pull-left">
-                        <div class="checkbox">
-                            <label class="label label-info">
-                                <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
-                            </label>
+                    <br />
+                    <b>View only by User</b> (no edit/delete)
+                    <div class="row container-fluid">
+                        <!-- ko foreach: manageAccess.viewOnlyUsers -->
+                        <div class="pull-left">
+                            <div class="checkbox">
+                                <label class="label label-info">
+                                    <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
+                                </label>
+                            </div>
+                        </div>
+                        <!-- /ko -->
+                        <div data-bind="if: manageAccess.users.length == 0">
+                            Users list not populated or not applicable
                         </div>
                     </div>
-                    <!-- /ko -->
+                    <br />
+                    <div data-bind="ifnot: manageAccess.isDashboard">
+                        <b>Delete by User</b> (allow delete)
+                        <div class="row container-fluid">
+                            <!-- ko foreach: manageAccess.deleteOnlyUsers -->
+                            <div class="pull-left">
+                                <div class="checkbox">
+                                    <label class="label label-info">
+                                        <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
+                                    </label>
+                                </div>
+                            </div>
+                            <!-- /ko -->
+                            <div data-bind="if: manageAccess.users.length == 0">
+                                Users list not populated or not applicable
+                            </div>
+                        </div>
+                        <br />
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <b>Manage by User Role</b> (allow edit)
+                    <div class="row container-fluid">
+                        <!-- ko foreach: manageAccess.userRoles -->
+                        <div class="pull-left">
+                            <div class="checkbox">
+                                <label class="label label-info">
+                                    <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
+                                </label>
+                            </div>
+                        </div>
+                        <!-- /ko -->
+                        <div data-bind="if: manageAccess.userRoles.length == 0">
+                            User Roles list not populated or not applicable
+                        </div>
+                    </div>
+                    <br />
+                    <b>View only by User Role</b> (no edit/delete)
+                    <div class="row container-fluid">
+                        <!-- ko foreach: manageAccess.viewOnlyUserRoles -->
+                        <div class="pull-left">
+                            <div class="checkbox">
+                                <label class="label label-info">
+                                    <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
+                                </label>
+                            </div>
+                        </div>
+                        <!-- /ko -->
+                        <div data-bind="if: manageAccess.userRoles.length == 0">
+                            User Roles list not populated or not applicable
+                        </div>
+                    </div>
+                    <div data-bind="ifnot: manageAccess.isDashboard">
+                        <br />
+                        <b>Delete by User Role</b> (allow delete)
+                        <div class="row container-fluid">
+                            <!-- ko foreach: manageAccess.deleteOnlyUserRoles -->
+                            <div class="pull-left">
+                                <div class="checkbox">
+                                    <label class="label label-info">
+                                        <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
+                                    </label>
+                                </div>
+                            </div>
+                            <!-- /ko -->
+                            <div data-bind="if: manageAccess.userRoles.length == 0">
+                                User Roles list not populated or not applicable
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -547,11 +569,12 @@
             </div>
         </div>
     </div>
+
     </form>
     <!-- Required Javascript Libraries  -->
-    <script src="../Scripts/jquery-3.5.1.min.js"></script>
+    <script src="../Scripts/jquery-3.6.0.min.js"></script>
     <script src="../Scripts/bootstrap.bundle.min.js"></script>
-    <script src="../Scripts/jquery-ui-1.12.1.min.js"></script>
+    <script src="../Scripts/jquery-ui-1.12.1.min.js""></script>
     <script src="../Scripts/jquery.validate.min.js"></script>
     <script src="../Scripts/knockout-3.5.1.js"></script>
     <script src="../Scripts/jquery.blockUI.js"></script>
@@ -562,7 +585,7 @@
     <script src="../Scripts/dotnetreport-helper.js"></script>
     <script src="../Scripts/lodash.min.js"></script>
     <script src="../Scripts/fabric.min.js"></script>
-    <script src="../Scripts/dotnetreport.min.js?v=4.3.4"></script>
+    <script src="../Scripts/dotnetreport.js?v=5.0.0"></script>
     <asp:ContentPlaceHolder ID="scripts" runat="server">
     </asp:ContentPlaceHolder>
 </body>
