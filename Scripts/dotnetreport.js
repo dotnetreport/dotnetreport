@@ -3175,13 +3175,15 @@ var dashboardViewModel = function (options) {
 
 	self.removeReportFromDashboard = function (reportId) {
 
-		bootbox.confirm("Are you sure you would like to remove this Report from the Dashboard?", function (r) {
-			if (r) {
+		bootbox.confirm("Are you sure you would like to remove this Report from the Dashboard?", function (result) {
+			if (result) {
 
 				var match = false;
 
+				var selectedReports = (self.currentDashboard().selectedReports || '').split(',');
 				_.forEach(self.reportsAndFolders(), function (f) {
 					_.forEach(f.reports, function (r) {
+						r.selected(selectedReports.indexOf(r.reportId.toString()) >= 0);
 						if (r.reportId == reportId && r.selected()) {
 							match = true;
 							r.selected(false);
