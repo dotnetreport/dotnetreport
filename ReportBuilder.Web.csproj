@@ -484,6 +484,8 @@
     <Content Include="Views\shared\_DotnetReportHeaderPartial.cshtml" />
     <Content Include="Views\shared\_DotnetReportJsLibrariesPartial.cshtml" />
     <Content Include="Views\shared\_DotnetReportTemplatesPartial.cshtml" />
+    <Content Include="Views\web.config.transform" />
+    <Content Include="web.config.install.xdt" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>

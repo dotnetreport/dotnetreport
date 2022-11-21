@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+
+<configuration xmlns:xdt="http://schemas.microsoft.com/XML-Document-Transform">
+
+  <appSettings>
+    <add key="dotNetReport.apiurl" value="https://dotnetreport.com/api" xdt:Transform="Insert" />
+    <add key="dotNetReport.accountApiToken" value="Your Public Account Api Token" xdt:Transform="Insert" />
+    <add key="dotNetReport.dataconnectApiToken" value="Your Data Connect Api Token" xdt:Transform="Insert" />
+    <add key="dotNetReport.privateApiToken" value="Your Private Account Api Token" xdt:Transform="Insert" />
+  </appSettings>
+  
+</configuration>
