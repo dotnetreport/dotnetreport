@@ -2940,6 +2940,8 @@ var reportViewModel = function (options) {
 		}).done(function (tables) {
 			if (tables.d) { tables = tables.d; }
 			if (tables.result) { tables = tables.result; }
+
+			tables = _.sortBy(tables, function (x) { return x.tableName });
 			self.Tables(tables);
 		});
 	};
