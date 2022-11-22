@@ -346,7 +346,11 @@ function filterGroupViewModel(args) {
 				}).done(function (list) {
 					if (list.d) { list = list.d; }
 					if (list.result) { list = list.result; }
+					var value = filter.Value();
 					lookupList(list);
+					if (value && !filter.Value()) {
+						filter.Value(value);
+                    }
 					if (valueIn.length > 0) {
 						filter.ValueIn(valueIn);
 						valueIn = [];
