@@ -56,14 +56,14 @@ namespace ReportBuilder.Web.Jobs
         async Task IJob.Execute(IJobExecutionContext context)
         {
             var apiUrl = Startup.StaticConfig.GetValue<string>("dotNetReport:apiUrl");
-            var accountApiKey = Startup.StaticConfig.GetValue<string>("dotNetReport.accountApiToken");
-            var databaseApiKey = Startup.StaticConfig.GetValue<string>("dotNetReport.dataconnectApiToken");
+            var accountApiKey = Startup.StaticConfig.GetValue<string>("dotNetReport:accountApiToken");
+            var databaseApiKey = Startup.StaticConfig.GetValue<string>("dotNetReport:dataconnectApiToken");
 
-            var fromEmail = Startup.StaticConfig.GetValue<string>("email.fromemail");
-            var fromName = Startup.StaticConfig.GetValue<string>("email.fromname");
-            var mailServer = Startup.StaticConfig.GetValue<string>("email.server");
-            var mailUserName = Startup.StaticConfig.GetValue<string>("email.username");
-            var mailPassword = Startup.StaticConfig.GetValue<string>("email.password");
+            var fromEmail = Startup.StaticConfig.GetValue<string>("email:fromemail");
+            var fromName = Startup.StaticConfig.GetValue<string>("email.:romname");
+            var mailServer = Startup.StaticConfig.GetValue<string>("email:server");
+            var mailUserName = Startup.StaticConfig.GetValue<string>("email:username");
+            var mailPassword = Startup.StaticConfig.GetValue<string>("email:password");
 
             var clientId = ""; // you can specify client id here if needed
 
