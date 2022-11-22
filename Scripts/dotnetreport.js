@@ -2615,7 +2615,7 @@ var reportViewModel = function (options) {
 		self.SortDesc(report.SortDesc);
 		self.pager.sortDescending(report.SortDesc);
 		var match = _.find(self.SavedReports(), { reportId: report.ReportID }) || { canEdit: false };
-		self.CanEdit(match.canEdit || self.adminMode());
+		self.CanEdit(report.canEdit || match.canEdit || self.adminMode());
 		self.FilterGroups([]);
 		self.AdditionalSeries([]);
 		self.SortFields([]);
