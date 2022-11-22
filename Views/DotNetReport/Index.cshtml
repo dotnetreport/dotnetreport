@@ -51,10 +51,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
         </p>
     </div>
     <div class="col-md-6">
-        <div class="alert alert-info">
-            Goto <a href="@Url.Action("Dashboard","DotNetReport")">Dashboard</a> | Learn how to <a href="https://dotnetreport.com/getting-started-with-dotnet-report/">Integrate in your App here</a>.
-            <div data-bind="if: currentUserName">Current User: <span data-bind="text: currentUserName"></span></div>
-            <div data-bind="if: currentUserRole">Current Roles: <span data-bind="text: currentUserRole"></span></div>
+        <div class="pull-right">
+            <a href="@Url.Action("Dashboard","DotNetReport")">View Dashboard</a> | Learn how to <a href="https://dotnetreport.com/getting-started-with-dotnet-report/" target="_blank">Integrate in your App here</a>.
         </div>
     </div>
 

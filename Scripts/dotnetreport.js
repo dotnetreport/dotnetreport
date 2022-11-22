@@ -2940,6 +2940,8 @@ var reportViewModel = function (options) {
 		}).done(function (tables) {
 			if (tables.d) { tables = tables.d; }
 			if (tables.result) { tables = tables.result; }
+
+			tables = _.sortBy(tables, function (x) { return x.tableName });
 			self.Tables(tables);
 		});
 	};
@@ -3056,7 +3058,8 @@ var reportViewModel = function (options) {
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
 			chartData: self.ChartData(),
-			columnDetails: self.getColumnDetails()
+			columnDetails: self.getColumnDetails(),
+			includeSubTotal: unescape(includeSubTotals)
 		}, 'pdf');
 	}
 
@@ -3091,7 +3094,9 @@ var reportViewModel = function (options) {
 		self.downloadExport("/DotNetReport/DownloadCsv", {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
-			reportName: self.ReportName()
+			reportName: self.ReportName(),
+			columnDetails: unescape(columnDetails),
+			includeSubTotal: unescape(includeSubTotals)
 		}, 'csv');
 	}
 
@@ -3175,13 +3180,15 @@ var dashboardViewModel = function (options) {
 
 	self.removeReportFromDashboard = function (reportId) {
 
-		bootbox.confirm("Are you sure you would like to remove this Report from the Dashboard?", function (r) {
-			if (r) {
+		bootbox.confirm("Are you sure you would like to remove this Report from the Dashboard?", function (result) {
+			if (result) {
 
 				var match = false;
 
+				var selectedReports = (self.currentDashboard().selectedReports || '').split(',');
 				_.forEach(self.reportsAndFolders(), function (f) {
 					_.forEach(f.reports, function (r) {
+						r.selected(selectedReports.indexOf(r.reportId.toString()) >= 0);
 						if (r.reportId == reportId && r.selected()) {
 							match = true;
 							r.selected(false);
