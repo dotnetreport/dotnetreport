@@ -216,13 +216,13 @@
                 <!-- /ko -->
             </tbody>
             <!-- ko if: $parentContext.$parent.SubTotals().length == 1 -->
-            <tfoot data-bind="foreach: $parent.SubTotals">
+            <tfoot data-bind="foreach: $parentContext.$parent.SubTotals">
                 <tr>
                     <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() -->
                     <td></td>
                     <!-- /ko -->
                     <!-- ko foreach: Items -->
-                    <!-- ko if: Value != 'NA' && Value != 'NaN' -->
+                    <!-- ko if: Value != 'NA' && Value != 'NaN' && !outerGroup() -->
                     <td data-bind="style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold ? 'bold' : 'normal', 'text-align': $parents[3].pager && $parents[3].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[3].pager && $parents[3].ReportType()=='Single' ? '64px' : ''}">
                         <span data-bind="html: FormattedValue, css: {'right-align': true}"></span>
                     </td>
