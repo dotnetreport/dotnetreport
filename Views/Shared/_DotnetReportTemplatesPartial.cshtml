@@ -238,8 +238,24 @@
 <script type="text/html" id="report-template">
     <div class="report-chart" data-bind="attr: {id: 'chart_div_' + $parent.ReportID()}, visible: $parent.isChart"></div>
     <!-- ko if: !$parent.isChart() || $parent.ShowDataWithGraph() -->    
+    <div class="pull-right" data-bind="if: $parent.OuterGroupColumns().length > 0">
+        <a href="#" data-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
+            Manage Groups <span class="fa fa-ellipsis-v"></span> 
+        </a>
+        <ul class="dropdown-menu" style="z-index: 1001;" data-bind="foreach: $parent.OuterGroupColumns">
+            <li class="dropdown-item small">
+                <a href="#" data-bind="click: remove" title="Remove from Group">
+                    <span class="fa fa-close"></span> <span data-bind="text: fieldName"></span>
+                </a>
+            </li>
+        </ul>
+    </div>
+    <div class="clear-fix"></div>
+    
+
     <div data-bind="foreach: outerGroupData">
-    <div data-bind="html: display"></div>
+        <h6 data-bind="html: display"></h6>
+        <div class="" style="padding-top: 5px;"></div>
         <div data-bind="template: {name: 'report-table', data: $parent.ReportData }"></div> 
     </div>    
     <!-- /ko -->

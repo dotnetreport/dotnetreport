@@ -887,8 +887,9 @@ var reportViewModel = function (options) {
 	self.OuterGroupData = ko.computed(function () {
 		var groupColumns = self.OuterGroupColumns();
 		if (!self.ReportResult().ReportData()) return [];
+		if (groupColumns.length == 0) return [{ display: '', rows: self.ReportResult().ReportData().Rows }];
 
-		var computedGroups = (groupColumns.length == 0) ? [{ display: '', rows: self.ReportResult().ReportData().Rows }] : [];
+		var computedGroups = [];
 		var options = [];
 		_.forEach(groupColumns, function (c) {
 			options.push(_.map(c.rowData, function (x) { return  { fieldId: c.fieldId, fieldIndex: c.fieldIndex, fieldName: c.fieldName, formattedValue: x }; }));
@@ -2120,7 +2121,11 @@ var reportViewModel = function (options) {
 								fieldIndex: e.colIndex,
 								rowData: _.uniq(_.map(result.ReportData.Rows, function (r) {
 									return r.Items[e.colIndex].FormattedValue;
-								})).sort()
+								})).sort(),
+								remove: function () {
+									e.outerGroup(false);
+									self.OuterGroupColumns.remove(this);
+                                }
                             });
 						} else {
 
