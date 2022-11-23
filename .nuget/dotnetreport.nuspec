@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
     <metadata>
         <id>dotNetReport.mvc</id>
-        <version>5.0.0-beta</version>
+        <version>5.0.0</version>
         <authors>dotnetReport Builder</authors>
         <owners>dotnetReport Builder</owners>
         <projectUrl>https://dotnetreport.com/</projectUrl>
@@ -17,7 +17,7 @@
 			<dependency id="EPPlus" version="4.5.1" />
 			<dependency id="FontAwesome" version="4.7.0" />
 			<dependency id="iTextSharp" version="5.5.13.3" />
-			<dependency id="jQuery" version="3.5.1" />
+			<dependency id="jQuery" version="3.6.0" />
 			<dependency id="jQuery.BlockUI" version="2.70.0" />
 			<dependency id="jQuery.UI.Combined" version="1.12.1" />
 			<dependency id="jQuery.Validation" version="1.19.3"/>
@@ -40,6 +40,7 @@
 		<file src="..\Content\bootstrap-editable.css" target="Content\Content\bootstrap-editable.css" />
         <file src="..\Content\bootstrap-mvc-validation.css" target="Content\Content\bootstrap-mvc-validation.css" />
         <file src="..\Content\dotnetreport.css" target="Content\Content\dotnetreport.css" />
+		<file src="..\Controllers\DotNetReportApiController.cs" target="Content\Controllers\DotNetReportApiController.cs" />
         <file src="..\Controllers\DotNetReportController.cs" target="Content\Controllers\DotNetReportController.cs" />
         <file src="..\Controllers\DotNetSetupController.cs" target="Content\Controllers\DotNetSetupController.cs" />      
         <file src="..\Jobs\DotNetReportJob.cs" target="Content\Jobs\DotNetReportJob.cs" />
