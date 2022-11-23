@@ -107,9 +107,31 @@
             <span data-bind="text: ($parents[1].pager ? $parents[1].pager.sortColumn() : $parents[2].pager.sortColumn()) === SqlField ? (($parents[1].pager ? $parents[1].pager.sortDescending() : $parents[2].pager.sortDescending()) ? '&#9660;' : '&#9650;') : ''"></span>
         </a>
         <!-- /ko -->
+
+        <div class="pull-right">
+            <div class="dropup">
+            <button type="button" class="btn btn-sm" data-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
+                <span class="fa fa-ellipsis-v"></span>
+            </button>
+                <ul class="dropdown-menu" style="z-index: 1001;">
+                    <li class="dropdown-item small">
+                        <a href="#" data-bind="click: toggleOuterGroup">
+                            <span class="fa fa-clone"></span> Outer Group
+                        </a>
+                    </li>
+                    <li class="dropdown-item small">
+                        <a href="#" >
+                            <span class="fa fa-exchange"></span> Pivot
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
     </th>
     <!-- /ko -->
 </script>
+
 <script type="text/html" id="report-column">
     <!-- ko foreach: Items -->
     <td data-bind="style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold ? 'bold' : 'normal', 'text-align': $parents[3].pager && $parents[3].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[3].pager && $parents[3].ReportType()=='Single' ? '64px' : ''}">
@@ -122,10 +144,8 @@
     </td>
 </script>
 
-<script type="text/html" id="report-template">
-    <div class="report-chart" data-bind="attr: {id: 'chart_div_' + $parent.ReportID()}, visible: $parent.isChart"></div>
-    <!-- ko if: !$parent.isChart() || $parent.ShowDataWithGraph() -->
-    <div class="table-responsive" data-bind="with: ReportData">
+<script type="text/html" id="report-table">
+        <div class="table-responsive" data-bind="with: ReportData">
         <table class="table table-hover table-condensed">
             <thead data-bind="if: $parents[1].ReportType() != 'Single'">
                 <tr class="no-highlight">
@@ -213,6 +233,18 @@
             <!-- /ko -->
         </table>
     </div>
+</script>
+
+<script type="text/html" id="report-template">
+    <div class="report-chart" data-bind="attr: {id: 'chart_div_' + $parent.ReportID()}, visible: $parent.isChart"></div>
+    <!-- ko if: !$parent.isChart() || $parent.ShowDataWithGraph() -->    
+    <div data-bind="foreach: $parent.OuterGroupData">
+    <div data-bind="html: display"></div>
+
+    </div>
+    
+    <div data-bind="template: 'report-table', data: $data"></div>
+    
     <!-- /ko -->
 </script>
 <script type="text/html" id="admin-mode-template">
