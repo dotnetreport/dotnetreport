@@ -32,12 +32,13 @@ namespace ReportBuilder.Web.Controllers
 
             // Populate the values below using your Application Roles/Claims if applicable
             settings.ClientId = "";  // You can pass your multi-tenant client id here to track their reports and folders
-            settings.UserId = ""; // You can pass your current authenticated user id here to track their reports and folders            
+            settings.UserId = "1"; // You can pass your current authenticated user id here to track their reports and folders            
             settings.UserName = "";
-            settings.CurrentUserRole = new List<string>(); // Populate your current authenticated user's roles
+            settings.CurrentUserRole = new List<string> { "Admin" }; // Populate your current authenticated user's roles
 
-            settings.Users = new List<dynamic>(); // Populate all your application's user, ex  { "Jane", "John" } or { new { id="1", text="Jane" }, new { id="2", text="John" }}
-            settings.UserRoles = new List<string>(); // Populate all your application's user roles, ex  { "Admin", "Normal" }       
+            settings.Users = new List<dynamic> { new { id = "1", text = "Jane" }, new { id = "2", text = "John" } }; // Populate all your application's user, ex  { "Jane", "John" } or { new { id="1", text="Jane" }, new { id="2", text="John" }}
+            settings.UserRoles = new List<string> { "Admin", "Normal" }; // Populate all your application's user roles, ex  { "Admin", "Normal" }       
+
             settings.CanUseAdminMode = true; // Set to true only if current user can use Admin mode to setup reports and dashboard
             settings.DataFilters = new { }; // add global data filters to apply as needed https://dotnetreport.com/kb/docs/advance-topics/global-filters/
 
