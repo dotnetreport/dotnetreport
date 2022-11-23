@@ -851,6 +851,24 @@ var reportViewModel = function (options) {
 		self.designingHeader(true);
 	}
 
+	self.buildCombinations = function(arrays, combine, finalList) {
+		var _this = this;
+		combine = combine || [];
+		finalList = finalList || [];
+
+		if (!arrays.length) {
+			finalList.push(combine);
+		} else {
+			_.forEach(arrays[0], function (x) {
+				var nextArrs = arrays.slice(1);
+				var copy = combine.slice();
+				copy.push(x);
+				self.buildCombinations(nextArrs, copy, finalList);
+			});
+		}
+		return finalList;
+	}
+
 	self.outerGroupData = ko.observableArray();
 	self.ReportResult = ko.observable({
 		HasError: ko.observable(false),
@@ -871,19 +889,30 @@ var reportViewModel = function (options) {
 		if (!self.ReportResult().ReportData()) return [];
 
 		var computedGroups = (groupColumns.length == 0) ? [{ display: '', rows: self.ReportResult().ReportData().Rows }] : [];
-		_.forEach(groupColumns, function (x) {
-			_.forEach(x.rowData, function (r) {
-				computedGroups.push({
-					display: x.fieldName + ' - ' + r,
-					rows: _.filter(self.ReportResult().ReportData().Rows, function (row) {
-						return row.Items[x.fieldIndex].FormattedValue == r;
-                    })
-				})
+		var options = [];
+		_.forEach(groupColumns, function (c) {
+			options.push(_.map(c.rowData, function (x) { return  { fieldId: c.fieldId, fieldIndex: c.fieldIndex, fieldName: c.fieldName, formattedValue: x }; }));
+        })
+
+		var rows = self.buildCombinations(options);
+
+		_.forEach(rows, function (row) {
+			var item = {
+				display: '',
+				rows: self.ReportResult().ReportData().Rows
+			};
+
+			_.forEach(row, function (x) {
+				item.display = item.display + x.fieldName + ' - ' + x.formattedValue + '<br>';
+				item.rows = _.filter(item.rows, function (row) { return row.Items[x.fieldIndex].FormattedValue == x.formattedValue });
 			});
+
+			computedGroups.push(item);
 		});
 
 		return computedGroups;
 	});
+
 	self.OuterGroupData.subscribe(function (x) {
 		self.outerGroupData(x);
 	});
