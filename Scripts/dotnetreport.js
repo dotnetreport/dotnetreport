@@ -2241,7 +2241,7 @@ var reportViewModel = function (options) {
 							pageSize: 1,
 							sortBy: '',
 							desc: false,
-							reportSeries: null
+							reportSeries: ''
 						})
 					}).done(function (subtotalResult) {
 						if (subtotalResult.d) { subtotalResult = subtotalResult.d; }
