@@ -215,7 +215,7 @@
                 <!-- /ko -->
                 <!-- /ko -->
             </tbody>
-            <!-- ko if: $parentContext.$parent.SubTotals().length == 1 -->
+            <!-- ko if: $parentContext.$parent.SubTotals().length == 1 && $parentContext.$parentContext.$parent.OuterGroupColumns().length == 0 -->
             <tfoot data-bind="foreach: $parentContext.$parent.SubTotals">
                 <tr>
                     <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() -->
