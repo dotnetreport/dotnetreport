@@ -851,22 +851,7 @@ var reportViewModel = function (options) {
 		self.designingHeader(true);
 	}
 
-	self.OuterGroupColumns = ko.observableArray([]);
-	self.OuterGroupData = ko.computed(function () {
-		var groupColumns = self.OuterGroupColumns();
-
-		var computedGroups = (groupColumns.length == 0) ? [{ display: '' }] : [];
-		_.forEach(groupColumns, function (x) {
-			_.forEach(x.rowData, function (r) {
-				computedGroups.push({
-					display: x.fieldName + ' - ' + r
-				})
-			});
-		});
-
-		return computedGroups;
-	});
-
+	self.outerGroupData = ko.observableArray();
 	self.ReportResult = ko.observable({
 		HasError: ko.observable(false),
 		ReportDebug: ko.observable(false),
@@ -876,8 +861,31 @@ var reportViewModel = function (options) {
 		ReportData: ko.observable(null),
 		SubTotals: ko.observableArray([]),
 		outerGroupData: ko.computed(function () {
-			return self.OuterGroupData();
-        })
+			return self.outerGroupData();
+		})
+	});
+
+	self.OuterGroupColumns = ko.observableArray([]);
+	self.OuterGroupData = ko.computed(function () {
+		var groupColumns = self.OuterGroupColumns();
+		if (!self.ReportResult().ReportData()) return [];
+
+		var computedGroups = (groupColumns.length == 0) ? [{ display: '', rows: self.ReportResult().ReportData().Rows }] : [];
+		_.forEach(groupColumns, function (x) {
+			_.forEach(x.rowData, function (r) {
+				computedGroups.push({
+					display: x.fieldName + ' - ' + r,
+					rows: _.filter(self.ReportResult().ReportData().Rows, function (row) {
+						return row.Items[x.fieldIndex].FormattedValue == r;
+                    })
+				})
+			});
+		});
+
+		return computedGroups;
+	});
+	self.OuterGroupData.subscribe(function (x) {
+		self.outerGroupData(x);
 	});
 
 	self.useStoredProc = ko.observable(false);
@@ -2080,9 +2088,10 @@ var reportViewModel = function (options) {
 							self.OuterGroupColumns.push({
 								fieldId: col.fieldId,
 								fieldName: col.fieldName,
+								fieldIndex: e.colIndex,
 								rowData: _.uniq(_.map(result.ReportData.Rows, function (r) {
 									return r.Items[e.colIndex].FormattedValue;
-								}))
+								})).sort()
                             });
 						} else {
 
@@ -2117,6 +2126,7 @@ var reportViewModel = function (options) {
 					r.fontBold = col.fontBold;
 					r.fontColor = col.fontColor;
 					r.fieldId = col.fieldId;
+					r.outerGroup = col.outerGroup
 
 					if (self.decimalFormatTypes.indexOf(col.fieldFormat) >= 0) {
 						r.FormattedValue = self.formatNumber(r.Value, col.decimalPlaces);
@@ -2235,8 +2245,6 @@ var reportViewModel = function (options) {
 				}
 				processRow(e.Items, result.ReportData.Columns);
 			});
-
-			result.ReportData.OuterGroups = ko.observableArray(result.ReportData.OuterGroups || []);
 
 			reportResult.ReportData(result.ReportData);
 
