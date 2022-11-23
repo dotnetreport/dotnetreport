@@ -851,16 +851,6 @@ var reportViewModel = function (options) {
 		self.designingHeader(true);
 	}
 
-	self.ReportResult = ko.observable({
-		HasError: ko.observable(false),
-		ReportDebug: ko.observable(false),
-		Exception: ko.observable(),
-		Warnings: ko.observable(),
-		ReportSql: ko.observable(),
-		ReportData: ko.observable(null),
-		SubTotals: ko.observableArray([])
-	});
-
 	self.OuterGroupColumns = ko.observableArray([]);
 	self.OuterGroupData = ko.computed(function () {
 		var groupColumns = self.OuterGroupColumns();
@@ -875,6 +865,19 @@ var reportViewModel = function (options) {
 		});
 
 		return computedGroups;
+	});
+
+	self.ReportResult = ko.observable({
+		HasError: ko.observable(false),
+		ReportDebug: ko.observable(false),
+		Exception: ko.observable(),
+		Warnings: ko.observable(),
+		ReportSql: ko.observable(),
+		ReportData: ko.observable(null),
+		SubTotals: ko.observableArray([]),
+		outerGroupData: ko.computed(function () {
+			return self.OuterGroupData();
+        })
 	});
 
 	self.useStoredProc = ko.observable(false);

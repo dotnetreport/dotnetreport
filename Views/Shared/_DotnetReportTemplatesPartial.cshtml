@@ -98,13 +98,13 @@
 <script type="text/html" id="report-column-header">
     <!-- ko foreach: Columns -->
     <th data-bind="attr: { id: fieldId }, css: {'right-align': IsNumeric}, style: {'width': fieldWidth, 'background-color': headerBackColor }" style="border-right: 1px solid;">
-        <!-- ko if: $parents[1].useStoredProc ? $parents[1].useStoredProc() : ($parents[2].useStoredProc ? $parents[2].useStoredProc() : false) -->
+        <!-- ko if: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[4].useStoredProc ? $parents[4].useStoredProc() : false) -->
         <span data-bind="text: fieldLabel ? fieldLabel : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold ? 'bold' : 'normal'}"></span>
         <!-- /ko -->
-        <!-- ko ifnot: $parents[1].useStoredProc ? $parents[1].useStoredProc() : ($parents[2].useStoredProc ? $parents[2].useStoredProc() : false)  -->
-        <a href="" data-bind="click: function(){ $parents[1].pager ? $parents[1].changeSort(SqlField) : $parents[2].changeSort(SqlField); }, style: {'color': headerFontColor, 'font-weight': headerFontBold ? 'bold' : 'normal'}">
+        <!-- ko ifnot: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[4].useStoredProc ? $parents[4].useStoredProc() : false)  -->
+        <a href="" data-bind="click: function(){ $parents[3].pager ? $parents[3].changeSort(SqlField) : $parents[4].changeSort(SqlField); }, style: {'color': headerFontColor, 'font-weight': headerFontBold ? 'bold' : 'normal'}">
             <span data-bind="text: fieldLabel ? fieldLabel : ColumnName"></span>
-            <span data-bind="text: ($parents[1].pager ? $parents[1].pager.sortColumn() : $parents[2].pager.sortColumn()) === SqlField ? (($parents[1].pager ? $parents[1].pager.sortDescending() : $parents[2].pager.sortDescending()) ? '&#9660;' : '&#9650;') : ''"></span>
+            <span data-bind="text: ($parents[3].pager ? $parents[3].pager.sortColumn() : $parents[4].pager.sortColumn()) === SqlField ? (($parents[3].pager ? $parents[3].pager.sortDescending() : $parents[4].pager.sortDescending()) ? '&#9660;' : '&#9650;') : ''"></span>
         </a>
         <!-- /ko -->
 
@@ -145,11 +145,11 @@
 </script>
 
 <script type="text/html" id="report-table">
-        <div class="table-responsive" data-bind="with: ReportData">
+        <div class="table-responsive" >
         <table class="table table-hover table-condensed">
-            <thead data-bind="if: $parents[1].ReportType() != 'Single'">
+            <thead data-bind="if: $parents[2].ReportType() != 'Single'">
                 <tr class="no-highlight">
-                    <!-- ko if: $parentContext.$parent.canDrilldown() && !IsDrillDown() -->
+                    <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !IsDrillDown() -->
                     <th style="width: 30px; border-left: 1px solid;"></th>
                     <!-- /ko -->
                     <!-- ko template: 'report-column-header', data: $data -->
@@ -164,7 +164,7 @@
                 </tr>
                 <!-- ko foreach: Rows  -->
                 <tr>
-                    <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() && $parentContext.$parentContext.$parent.ReportType() != 'Single' -->
+                    <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() && $parentContext.$parentContext.$parentContext.$parent.ReportType() != 'Single' -->
                     <td style="width: 30px; vertical-align: middle;"><a href="#" data-bind="click: function(){ toggle(); }"><span class="fa" data-bind="css: {'fa-plus': !isExpanded(), 'fa-minus': isExpanded()}"></span></a></td>
                     <!-- /ko -->
                     <!-- ko template: 'report-column', data: $data -->
@@ -215,10 +215,10 @@
                 <!-- /ko -->
                 <!-- /ko -->
             </tbody>
-            <!-- ko if: $parent.SubTotals().length == 1 -->
+            <!-- ko if: $parentContext.$parent.SubTotals().length == 1 -->
             <tfoot data-bind="foreach: $parent.SubTotals">
                 <tr>
-                    <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() -->
+                    <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() -->
                     <td></td>
                     <!-- /ko -->
                     <!-- ko foreach: Items -->
@@ -238,13 +238,10 @@
 <script type="text/html" id="report-template">
     <div class="report-chart" data-bind="attr: {id: 'chart_div_' + $parent.ReportID()}, visible: $parent.isChart"></div>
     <!-- ko if: !$parent.isChart() || $parent.ShowDataWithGraph() -->    
-    <div data-bind="foreach: $parent.OuterGroupData">
+    <div data-bind="foreach: outerGroupData">
     <div data-bind="html: display"></div>
-
-    </div>
-    
-    <div data-bind="template: 'report-table', data: $data"></div>
-    
+        <div data-bind="template: {name: 'report-table', data: $parent.ReportData }"></div> 
+    </div>    
     <!-- /ko -->
 </script>
 <script type="text/html" id="admin-mode-template">
