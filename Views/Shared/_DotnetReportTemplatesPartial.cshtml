@@ -231,6 +231,16 @@
 <script type="text/html" id="manage-access-template">
     <h5><span class="fa fa-key"></span>Manage Access</h5>
     <div class="panel panel-default panel-body" style="margin-left: 20px;">
+
+        <div class="form-group row" data-bind="ifnot: manageAccess.isDashboard">
+            <label class="col-md-3 col-sm-3 control-label">Client Id to Restrict Access</label>
+            <div class="col-md-3 col-sm-3">
+                <input class="form-control text-box single-line" type="text" data-bind="value: manageAccess.clientId">
+            </div>
+            <div class="col-md-1 col-sm-1">
+                <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Leave blank to give all clients access (Global Reports)"></span>
+            </div>
+        </div>
         <div class="alert alert-info">
             <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;User level rights over rule Role level rights. No selection for a rule implies report is available to all.
         </div>
@@ -368,9 +378,9 @@
                 </div>
                 <div class="clearfix"></div>
             </div>
-            
+
             <div class="rules-group-body" data-bind="template: {name: 'filter-inner'}"></div>
-        </div>                
+        </div>
     </div>
 </script>
 <script type="text/html" id="fly-filter-template">
@@ -471,7 +481,7 @@
             </tbody>
         </table>
         </div>
-    
+
         <div class="rule-container" >
             <div data-bind="template: {name: 'filter-group'}"></div>
             <div>
@@ -480,7 +490,7 @@
             </div>
         </div>
     </div>
-    
+
 </script>
 
 <script type="text/html" id="filter-parameters">
