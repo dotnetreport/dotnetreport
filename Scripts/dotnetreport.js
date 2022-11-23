@@ -523,27 +523,6 @@ function filterGroupViewModel(args) {
 	}
 }
 
-var manageAccess = function (options) {
-	return {
-		clientId: ko.observable(),
-		users: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
-		userRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
-		viewOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
-		viewOnlyUserRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
-		deleteOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
-		deleteOnlyUserRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
-		getAsList: function (x) {
-			var list = '';
-			_.forEach(x, function (e) { if (e.selected()) list += (list ? ',' : '') + e.value(); });
-			return list;
-		},
-		setupList: function (x, value) {
-			_.forEach(x, function (e) { if (value.indexOf(e.value()) >= 0) e.selected(true); else e.selected(false); });
-		},
-		isDashboard: ko.observable(options.isDashboard == true ? true : false)
-	};
-};
-
 var headerDesigner = function (options) {
 	var self = this;
 	self.canvas = null;
@@ -1846,6 +1825,7 @@ var reportViewModel = function (options) {
 			UserRoles: self.manageAccess.getAsList(self.manageAccess.userRoles),
 			ViewOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.viewOnlyUserRoles),
 			DeleteOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUserRoles),
+			ClientId: self.manageAccess.clientId(),
 			DataFilters: options.dataFilters,
 			SelectedParameters: self.useStoredProc() ? _.map(self.Parameters(), function (x) {
 				return {
@@ -2598,6 +2578,7 @@ var reportViewModel = function (options) {
 		self.SelectFields([]);
 		self.SelectedField(null);
 
+		self.manageAccess.clientId(report.ClientId);
 		self.manageAccess.setupList(self.manageAccess.users, report.UserId || '');
 		self.manageAccess.setupList(self.manageAccess.userRoles, report.UserRoles || '');
 		self.manageAccess.setupList(self.manageAccess.viewOnlyUserRoles, report.ViewOnlyUserRoles || '');
@@ -2823,7 +2804,9 @@ var reportViewModel = function (options) {
 					});
 				};
 
-				e.folderName = _.find(self.Folders(), { Id: e.folderId }).FolderName;
+				if (self.Folders()) {
+					e.folderName = _.find(self.Folders(), { Id: e.folderId }).FolderName;
+				}
 
 				if (options.reportId > 0 && e.reportId == options.reportId && skipOpen !== true) {
 					e.openReport();

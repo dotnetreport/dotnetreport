@@ -429,16 +429,7 @@
                                         </div>
 
                                         <div data-bind="if: changeAccess" class="col-md-9" >
-                                            <div style="border-left: 1px solid; padding-left: 10px;">
-                                                <div class="form-group row">
-                                                    <label class="col-md-3 col-sm-3 control-label">Client Id to Restrict Report Access by Client</label>
-                                                    <div class="col-md-3 col-sm-3">
-                                                        <input class="form-control text-box single-line" type="text" data-bind="value: clientIdToUpdate">
-                                                    </div>
-                                                    <div class="col-md-1 col-sm-1">
-                                                        <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Leave blank to give all clients access (Global Reports)"></span>
-                                                    </div>
-                                                </div>
+                                            <div style="border-left: 1px solid; padding-left: 10px;">                                                
                                                 <div data-bind="template: {name: 'manage-access-template', data: $root }"></div>
                                                 <br />
                                                 <br />
