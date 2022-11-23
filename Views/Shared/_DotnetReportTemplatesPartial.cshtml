@@ -98,21 +98,21 @@
 <script type="text/html" id="report-column-header">
     <!-- ko foreach: Columns -->
     <th data-bind="attr: { id: fieldId }, css: {'right-align': IsNumeric}, style: {'width': fieldWidth, 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
-        <!-- ko if: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[4].useStoredProc ? $parents[4].useStoredProc() : false) -->
+        <!-- ko if: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false) -->
         <span data-bind="text: fieldLabel ? fieldLabel : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold ? 'bold' : 'normal'}"></span>
         <!-- /ko -->
-        <!-- ko ifnot: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[4].useStoredProc ? $parents[4].useStoredProc() : false)  -->
-        <a href="" data-bind="click: function(){ $parents[3].pager ? $parents[3].changeSort(SqlField) : $parents[4].changeSort(SqlField); }, style: {'color': headerFontColor, 'font-weight': headerFontBold ? 'bold' : 'normal'}">
+        <!-- ko ifnot: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false)  -->
+        <a href="" data-bind="click: function(){ $parents[3].pager ? $parents[3].changeSort(SqlField) : $parents[5].changeSort(SqlField); }, style: {'color': headerFontColor, 'font-weight': headerFontBold ? 'bold' : 'normal'}">
             <span data-bind="text: fieldLabel ? fieldLabel : ColumnName"></span>
-            <span data-bind="text: ($parents[3].pager ? $parents[3].pager.sortColumn() : $parents[4].pager.sortColumn()) === SqlField ? (($parents[3].pager ? $parents[3].pager.sortDescending() : $parents[4].pager.sortDescending()) ? '&#9660;' : '&#9650;') : ''"></span>
+            <span data-bind="text: ($parents[3].pager ? $parents[3].pager.sortColumn() : $parents[5].pager.sortColumn()) === SqlField ? (($parents[3].pager ? $parents[3].pager.sortDescending() : $parents[5].pager.sortDescending()) ? '&#9660;' : '&#9650;') : ''"></span>
         </a>
         <!-- /ko -->
 
-        <div class="pull-right">
+        <div class="pull-right" data-bind="if: !$parent.IsDrillDown() && !IsNumeric">
             <div class="dropup">
-            <button type="button" class="btn btn-sm" data-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
+            <a href="#" data-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
                 <span class="fa fa-ellipsis-v"></span>
-            </button>
+            </a>
                 <ul class="dropdown-menu" style="z-index: 1001;">
                     <li class="dropdown-item small">
                         <a href="#" data-bind="click: toggleOuterGroup">
