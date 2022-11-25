@@ -108,12 +108,28 @@ namespace ReportBuilder.Web.Controllers
 
             return File(pdf, "application/pdf", reportName + ".pdf");
         }
-        
+
+
         [HttpPost]
-        public IActionResult DownloadCsv(string reportSql, string connectKey, string reportName)
+        public async Task<IActionResult> DownloadPdfAlt(string reportSql, string connectKey, string reportName, string chartData = null, string columnDetails = null, bool includeSubtotal = false)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            var csv = DotNetReportHelper.GetCSVFile(reportSql, HttpUtility.UrlDecode(connectKey));
+            chartData = HttpUtility.UrlDecode(chartData);
+            chartData = chartData?.Replace(" ", " +");
+            reportName = HttpUtility.UrlDecode(reportName);
+            var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
+
+            var pdf = DotNetReportHelper.GetPdfFileAlt(reportSql, connectKey, reportName, chartData, columns, includeSubtotal);
+
+            return File(pdf, "application/pdf", reportName + ".pdf");
+        }
+
+        [HttpPost]
+        public IActionResult DownloadCsv(string reportSql, string connectKey, string reportName, string columnDetails = null, bool includeSubtotal = false)
+        {
+            var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
+            reportSql = HttpUtility.HtmlDecode(reportSql);
+            var csv = DotNetReportHelper.GetCSVFile(reportSql, HttpUtility.UrlDecode(connectKey), columns, includeSubtotal);
 
             Response.Headers.Add("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".csv");
             Response.ContentType = "text/csv";
