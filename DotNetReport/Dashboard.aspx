@@ -106,12 +106,13 @@
         </div>
     </div>
     <div class="clearfix"></div>
+    
+    <div class="pull-right">
+        <a href="/DotnetReport/Index.aspx">Manage Reports</a> | Learn how to <a href="https://dotnetreport.com/getting-started-with-dotnet-report/" target="_blank">Integrate in your App here</a>.
+    </div>
 
     <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
 
-    <div class="alert alert-info">
-        To manage Reports, please <a href="/DotnetReport/Index.aspx">click here</a>.
-    </div>
     <div class="centered" style="display: none;" data-bind="visible: dashboards().length == 0 ">
         No Dashboards yet. Click below to Start<br />
         <button onclick="return false;" class="btn btn-lg btn-primary" data-toggle="modal" data-target="#add-dashboard-modal"><i class="fa fa-dashboard"></i> Create a New Dashboard</button>
@@ -210,7 +211,7 @@
                                 </a>
                             </li>
                             <li class="dropdown-item">
-                                <a href="#" data-bind="click: downloadPdf">
+                                <a href="#" data-bind="click: downloadPdfAlt">
                                     <span class="fa fa-file-pdf-o"></span> PDF
                                 </a>
                             </li>
