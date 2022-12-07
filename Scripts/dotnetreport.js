@@ -3012,7 +3012,7 @@ var reportViewModel = function (options) {
 
 		$.ajax({
 			type: 'POST',
-			url: (options.runExportUrl || '') + url,
+			url: (options.runExportUrl || '/DotNetReport/') + url,
 			xhrFields: {
 				responseType: 'blob'
 			},
@@ -3040,55 +3040,55 @@ var reportViewModel = function (options) {
 	}
 
 	self.downloadPdfAlt = function () {
-		self.downloadExport("/DotNetReport/DownloadPdfAlt", {
+		self.downloadExport("DownloadPdfAlt", {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
 			chartData: self.ChartData(),
 			columnDetails: self.getColumnDetails(),
-			includeSubTotal: unescape(includeSubTotals)
+			includeSubTotal: self.IncludeSubTotal()
 		}, 'pdf');
 	}
 
 	self.downloadPdf = function () {
-		self.downloadExport("/DotNetReport/DownloadPdf", {
+		self.downloadExport("DownloadPdf", {
 			reportId: self.ReportID(),
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
 			expandAll: self.allExpanded(),
 			printUrl: options.printReportUrl,
-			clientId: self.clientid,
-			userId: self.currentUserId,
-			userRoles: self.currentUserRole,
-			dataFilters: options.dataFilters
+			clientId: self.clientid || '',
+			userId: self.currentUserId || '',
+			userRoles: self.currentUserRole || '',
+			dataFilters: JSON.stringify(options.dataFilters)
 		}, 'pdf');
 	}
 
 	self.downloadExcel = function () {
-		self.downloadExport("/DotNetReport/DownloadExcel", {
+		self.downloadExport("DownloadExcel", {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
 			allExpanded: self.allExpanded(),
-			expandSqls: self.getExpandSqls() || '',
+			expandSqls: self.getExpandSqls().join(',') || '',
 			columnDetails: self.getColumnDetails(),
-			includeSubTotals: self.IncludeSubTotal()
+			includeSubTotal: self.IncludeSubTotal()
 		}, 'xlsx');
 	}
 
 	self.downloadCsv = function () {
-		self.downloadExport("/DotNetReport/DownloadCsv", {
+		self.downloadExport("DownloadCsv", {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
-			columnDetails: unescape(columnDetails),
-			includeSubTotal: unescape(includeSubTotals)
+			columnDetails: self.getColumnDetails(),
+			includeSubTotal: self.IncludeSubTotal()
 		}, 'csv');
 	}
 
 	self.downloadXml = function () {
-		self.downloadExport("/DotNetReport/DownloadXml", {
+		self.downloadExport("DownloadXml", {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName()
