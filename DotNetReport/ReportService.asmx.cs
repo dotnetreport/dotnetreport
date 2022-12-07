@@ -5,16 +5,13 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.OleDb;
-using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using System.Web;
 using System.Web.Script.Serialization;
 using System.Web.Script.Services;
-using System.Web.Security;
 using System.Web.Services;
 
 namespace ReportBuilder.WebForms.DotNetReport
@@ -431,7 +428,7 @@ namespace ReportBuilder.WebForms.DotNetReport
         {
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
 
-            var excel = DotNetReportHelper.GetExcelFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), allExpanded, HttpUtility.UrlDecode(expandSqls).Split(',').ToList(), columns, includeSubtotal);
+            var excel = DotNetReportHelper.GetExcelFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), allExpanded, expandSqls.Split(',').ToList(), columns, includeSubtotal);
             Context.Response.ClearContent();
 
             Context.Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".xlsx");
@@ -456,7 +453,25 @@ namespace ReportBuilder.WebForms.DotNetReport
         }
 
         [WebMethod(EnableSession = true)]
-        public void DownloadPdf(string reportSql, string connectKey, string reportName, string chartData = null, string columnDetails = null, bool includeSubtotal = false)
+        public void DownloadPdf(string printUrl, int reportId, string reportSql, string connectKey, string reportName, bool expandAll,
+                                                                    string clientId = null, string userId = null, string userRoles = null, string dataFilters = "")
+        {
+            reportSql = HttpUtility.HtmlDecode(reportSql);
+            reportName = HttpUtility.UrlDecode(reportName);
+            connectKey = HttpUtility.UrlDecode(connectKey);
+
+            var pdf = DotNetReportHelper.GetPdfFile(HttpUtility.UrlDecode(printUrl), reportId, reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName),
+                                                userId, clientId, userRoles, dataFilters, expandAll).Result;
+
+            Context.Response.AddHeader("content-disposition", "attachment; filename=" + reportName + ".pdf");
+            Context.Response.ContentType = "application/pdf";
+            Context.Response.BinaryWrite(pdf);
+            Context.Response.End();
+        }
+
+
+        [WebMethod(EnableSession = true)]
+        public void DownloadPdfAlt(string reportSql, string connectKey, string reportName, string chartData = null, string columnDetails = null, bool includeSubtotal = false)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
             chartData = HttpUtility.UrlDecode(chartData);
@@ -464,7 +479,7 @@ namespace ReportBuilder.WebForms.DotNetReport
             reportName = HttpUtility.UrlDecode(reportName);
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
 
-            var pdf = new byte[1]; // DotNetReportHelper.GetPdfFile(reportSql, connectKey, reportName, chartData, columns, includeSubtotal);
+            var pdf = DotNetReportHelper.GetPdfFileAlt(reportSql, connectKey, reportName, chartData, columns, includeSubtotal);
             Context.Response.AddHeader("content-disposition", "attachment; filename=" + reportName + ".pdf");
             Context.Response.ContentType = "application/pdf";
             Context.Response.BinaryWrite(pdf);
