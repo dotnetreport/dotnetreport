@@ -1,4 +1,6 @@
-﻿using OfficeOpenXml;
+﻿using iTextSharp.text;
+using iTextSharp.text.pdf;
+using OfficeOpenXml;
 using PuppeteerSharp;
 using PuppeteerSharp.Media;
 using System;
@@ -568,15 +570,28 @@ namespace ReportBuilder.Web.Models
             var isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
             var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
 
-            if (dc.DataType == typeof(decimal) || (formatColumn != null && (formatColumn.fieldFormat == "Decimal" || formatColumn.fieldFormat == "Double")))
+            try
             {
-                isNumeric = true;
-                value = Convert.ToDecimal(value).ToString("###,###,##0.00");
-            }
-            if (formatColumn != null && formatColumn.fieldFormat == "Currency")
+                if (dc.DataType == typeof(decimal) || (formatColumn != null && (formatColumn.fieldFormat == "Decimal" || formatColumn.fieldFormat == "Double")))
+                {
+                    isNumeric = true;
+                    value = Convert.ToDecimal(value).ToString("###,###,##0.00");
+                }
+                if (formatColumn != null && formatColumn.fieldFormat == "Currency")
+                {
+                    value = Convert.ToDecimal(value).ToString("C");
+                    isCurrency = true;
+                }
+                if (formatColumn != null && (formatColumn.fieldFormat == "Date" || formatColumn.fieldFormat == "Date and Time" || formatColumn.fieldFormat == "Time") && dc.DataType.Name == "DateTime")
+                {
+                    var date = Convert.ToDateTime(value);
+                    value = formatColumn.fieldFormat.StartsWith("Date") ? date.ToShortDateString() + " " : "";
+                    value += formatColumn.fieldFormat.EndsWith("Time") ? date.ToShortTimeString() : "";
+                    value = value.Trim();
+                }
+            } catch (Exception ex)
             {
-                value = Convert.ToDecimal(value).ToString("C");
-                isCurrency = true;
+                // ignore formatting exceptions
             }
 
             if (formatColumn != null)
@@ -611,11 +626,146 @@ namespace ReportBuilder.Web.Models
             await page.ClickAsync("#LoginSubmit"); // Make sure #LoginSubmit is replaced with the login button form input id
         }
 
+
+        public static byte[] GetPdfFileAlt(string reportSql, string connectKey, string reportName, string chartData = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false)
+        {
+            var sql = Decrypt(reportSql);
+            var dt = new DataTable();
+            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
+            {
+                conn.Open();
+                var command = new OleDbCommand(sql, conn);
+                var adapter = new OleDbDataAdapter(command);
+
+                adapter.Fill(dt);
+            }
+
+            var subTotals = new decimal[dt.Columns.Count];
+            Document document = new Document();
+            using (var ms = new MemoryStream())
+            {
+                PdfWriter writer = PdfWriter.GetInstance(document, ms);
+                document.Open();
+                var heading = new Phrase(reportName);
+                heading.Font.Size = 14f;
+                heading.Font.SetStyle("bold");
+                document.Add(heading);
+                PdfPTable table = new PdfPTable(dt.Columns.Count);
+                table.WidthPercentage = 100;
+
+                //Set columns names in the pdf file
+                for (int k = 0; k < dt.Columns.Count; k++)
+                {
+                    var phrase = new Phrase(dt.Columns[k].ColumnName);
+                    var cell = new PdfPCell(phrase);
+                    cell.HorizontalAlignment = PdfPCell.ALIGN_CENTER;
+                    cell.VerticalAlignment = PdfPCell.ALIGN_CENTER;
+                    cell.BorderColor = BaseColor.LIGHT_GRAY;
+                    // cell.BackgroundColor = new iTextSharp.text.BaseColor(51, 102, 102);
+                    table.AddCell(cell);
+
+                    cell.BorderWidth = 0.5f;
+                    phrase.Font.Size = 10f;
+                    phrase.Font.SetStyle("bold");
+                }
+
+                //Add values of DataTable in pdf file
+                for (int i = 0; i < dt.Rows.Count; i++)
+                {
+                    for (int j = 0; j < dt.Columns.Count; j++)
+                    {
+                        var value = dt.Rows[i][j].ToString();
+                        var dc = dt.Columns[j];
+                        var formatColumn = GetColumnFormatting(dc, columns, ref value);
+
+                        var phrase = new Phrase(value);
+                        var cell = new PdfPCell(phrase);
+                        //Align the cell in the center
+                        cell.HorizontalAlignment = formatColumn.isNumeric ? PdfPCell.ALIGN_RIGHT : PdfPCell.ALIGN_LEFT;
+                        cell.VerticalAlignment = PdfPCell.ALIGN_LEFT;
+                        cell.BorderColor = BaseColor.LIGHT_GRAY;
+                        cell.BorderWidth = 0.5f;
+                        phrase.Font.Size = 10f;
+
+                        if (formatColumn != null)
+                        {
+                            cell.HorizontalAlignment = formatColumn.fieldAlign == "Right" || (formatColumn.isNumeric && (formatColumn.fieldAlign == "Auto" || string.IsNullOrEmpty(formatColumn.fieldAlign))) ? PdfPCell.ALIGN_RIGHT : formatColumn.fieldAlign == "Center" ? PdfPCell.ALIGN_MIDDLE : PdfPCell.ALIGN_LEFT;
+                        }
+
+                        if (includeSubtotal)
+                        {
+                            if (formatColumn.isNumeric && !(formatColumn?.dontSubTotal ?? false))
+                            {
+                                subTotals[j] += Convert.ToDecimal(dt.Rows[i][j]);
+                            }
+                        }
+
+                        table.AddCell(cell);
+                    }
+                }
+
+                if (includeSubtotal)
+                {
+                    for (int j = 0; j < dt.Columns.Count; j++)
+                    {
+                        PdfPCell cell = null;
+                        var value = subTotals[j].ToString();
+                        var dc = dt.Columns[j];
+                        var formatColumn = GetColumnFormatting(dc, columns, ref value);
+                        if (formatColumn.isNumeric && !(formatColumn?.dontSubTotal ?? false))
+                        {
+                            cell = new PdfPCell(new Phrase(value));
+                        }
+                        else
+                        {
+                            cell = new PdfPCell(new Phrase(" "));
+                        }
+                        cell.HorizontalAlignment = formatColumn.isNumeric ? PdfPCell.ALIGN_RIGHT : PdfPCell.ALIGN_LEFT;
+                        cell.VerticalAlignment = PdfPCell.ALIGN_LEFT;
+                        cell.BorderColor = BaseColor.BLACK;
+                        cell.BorderWidth = 1f;
+
+                        table.AddCell(cell);
+                    }
+                }
+
+                //Create a PdfReader bound to that byte array
+                if (!string.IsNullOrEmpty(chartData) && chartData != "undefined")
+                {
+                    byte[] sPDFDecoded = Convert.FromBase64String(chartData.Substring(chartData.LastIndexOf(',') + 1));
+                    var image = Image.GetInstance(sPDFDecoded);
+                    if (image.Height > image.Width)
+                    {
+                        //Maximum height is 800 pixels.
+                        float percentage = 0.0f;
+                        percentage = 700 / image.Height;
+                        image.ScalePercent(percentage * 100);
+                    }
+                    else
+                    {
+                        //Maximum width is 600 pixels.
+                        float percentage = 0.0f;
+                        percentage = 540 / image.Width;
+                        image.ScalePercent(percentage * 100);
+                    }
+                    // If need to add boarder
+                    //   image.Border = iTextSharp.text.Rectangle.BOX;
+                    //  image.BorderColor = iTextSharp.text.BaseColor.BLACK;
+                    //  image.BorderWidth = 3f;
+                    document.Add(image);
+                }
+                document.Add(table);
+                document.Close();
+                return ms.ToArray();
+            }
+        }
+
+
         public static async Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
                     string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false)
         {
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
-            await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync(BrowserFetcher.DefaultRevision);
+            await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync(BrowserFetcher.DefaultChromiumRevision);
             var executablePath = "";
             foreach (var d in Directory.GetDirectories(installPath))
             {

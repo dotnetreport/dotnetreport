@@ -67,10 +67,29 @@
                                         vm.updatePosition(x);
                                     });
                                 });
+                                $('.grid-stack').on('resizestop', function(event, item) {
+                                    var e = $(event.target).find('.report-chart');
+                                    var d = $(event.target).find('table');
+                                    if (e.length > 0 && d.length == 0) {
+                                        e.height(item.size.height - e[0].offsetTop - 40);
+                                        vm.drawChart();
+                                    }
+                                });                               
                             });
 
                             setTimeout(function() {
                                 vm.drawChart();
+
+                                var items = $('.grid-stack-item');
+                                _.forEach(items, function(x) {
+                                    var e = $(x).find('.report-chart');
+                                    var d = $(x).find('table');
+                                    if (e.length > 0 && x.clientHeight && d.length == 0) {
+                                        e.height(x.clientHeight - e[0].offsetTop - 40);
+                                    }
+                                });
+
+                                vm.drawChart();                                
                             }, 1000);
                         });
 
@@ -197,7 +216,7 @@
                                 </a>
                             </li>
                             <!-- /ko -->
-                            <li class="dropdown-item">
+                            <li class="dropdown-item" data-bind="visible: CanEdit">
                                 <a data-bind="attr: {href: '@Url.Action("Index","DotNetReport")?reportId=' + ReportID()}">
                                     <span class="fa fa-pencil"></span> Edit
                                 </a>
