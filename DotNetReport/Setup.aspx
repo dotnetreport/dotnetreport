@@ -55,13 +55,14 @@
                 deleteProcUrl: '<%= System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"] + "/ReportApi/DeleteProcedure"%>',
                 reportsApiUrl: '<%= System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]%>',
                 searchProcUrl: '/DotNetReport/ReportService.asmx/SearchProcedure',
-            };
+                getUsersAndRoles: '/DotNetReport/ReportService.asmx/GetUsersAndRoles'
+        };
 
-            var vm = new manageViewModel(options);
-            vm.LoadJoins();
-            vm.setupManageAccess();
-            ko.applyBindings(vm);
-            vm.LoadDataConnections();
+        var vm = new manageViewModel(options);
+        vm.LoadJoins();
+        vm.setupManageAccess();
+        ko.applyBindings(vm);
+        vm.LoadDataConnections();
         });
 
     </script>
@@ -82,7 +83,7 @@
                 <div class="control-group">
                     <select class="form-control" data-bind="options: DataConnections, optionsText: 'DataConnectName', optionsValue: 'DataConnectGuid', value: currentConnectionKey"></select>
                     <button class="btn btn-primary btn-sm" data-bind="click: switchConnection, visible: canSwitchConnection">Switch Connection</button>
-                    <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-connection-modal">Add New Connection</button>
+                    <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-connection-modal" onclick="return false;">Add New Connection</button>
                     <button class="btn btn-primary btn-sm" data-bind="click: exportAll">Export Connection</button>
                     <button class="btn btn-primary btn-sm" data-bind="click: importStart">Import Connection</button>
                 </div>
@@ -136,7 +137,7 @@
                     </div>
                     <div class="col-md-4">
                         <div>
-                            <span data-bind="text: Tables.model().length"></span>Tables/Views read from database.
+                            <span data-bind="text: Tables.model().length"></span> Tables/Views read from database.
                         </div>
                     </div>
                 </div>
@@ -177,13 +178,12 @@
                                 </p>
                                 <div class="checkbox">
                                     <label>
-                                        <input class="check-box" data-val="true" type="checkbox" value="true" data-bind="checked: DoNotDisplay" title="Do not display this table for selecting in reports">
-                                        Do Not Display 
+                                        <input class="check-box" data-val="true" type="checkbox" value="true" data-bind="checked: DoNotDisplay" title="Do not display this table for selecting in reports"> Do Not Display
                                     </label>
                                 </div>
                             </div>
 
-                            <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Columns().length"></span>Columns</label>
+                            <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Columns().length"></span> Columns</label>
                             <button class="btn btn-sm btn-link label-sm" data-bind="click: $parent.unselectAllColumns, visible: Selected">Unselect All</button>
                             <button class="btn btn-sm btn-link label-sm" data-bind="click: $parent.selectAllColumns, visible: Selected">Select All</button>
                             <div class="list-group" data-bind="sortable: { data: Columns, options: { handle: '.sortable', cursor: 'move' }, afterMove: $parent.columnSorted }">
@@ -224,38 +224,43 @@
                     <table class="table">
                         <thead data-bind="with: JoinFilters">
                             <tr>
-                                <th>Primary Table
+                                <th>
+                                    Primary Table
                                     <div class="input-group input-group-sm">
                                         <input type="text" class="form-control input-sm" data-bind="value: primaryTable, valueUpdate: 'afterkeydown'" placeholder="Search...">
                                         <span class="input-group-addon"><i class="fa fa-filter"></i></span>
                                     </div>
                                 </th>
-                                <th>Field
+                                <th>
+                                    Field
                                     <div class="input-group input-group-sm">
 
                                         <input type="text" class="form-control input-sm" data-bind="value: primaryField, valueUpdate: 'afterkeydown'" placeholder="Search...">
                                         <span class="input-group-addon"><i class="fa fa-filter"></i></span>
                                     </div>
                                 </th>
-                                <th>Join Type
+                                <th>
+                                    Join Type
                                     <div class="input-group input-group-sm">
 
                                         <input type="text" class="form-control input-sm" data-bind="value: joinType, valueUpdate: 'afterkeydown'" placeholder="Search...">
                                         <span class="input-group-addon"><i class="fa fa-filter"></i></span>
                                     </div>
                                 </th>
-                                <th>Join Table
+                                <th>
+                                    Join Table
                                     <div class="input-group input-group-sm">
 
                                         <input type="text" class="form-control input-sm" data-bind="value: joinTable, valueUpdate: 'afterkeydown'" placeholder="Search...">
                                         <span class="input-group-addon"><i class="fa fa-filter"></i></span>
                                     </div>
                                 </th>
-                                <th>Field<div class="input-group input-group-sm">
+                                <th>
+                                    Field<div class="input-group input-group-sm">
 
-                                    <input type="text" class="form-control input-sm" data-bind="value: joinField, valueUpdate: 'afterkeydown'" placeholder="Search...">
-                                    <span class="input-group-addon"><i class="fa fa-filter"></i></span>
-                                </div>
+                                        <input type="text" class="form-control input-sm" data-bind="value: joinField, valueUpdate: 'afterkeydown'" placeholder="Search...">
+                                        <span class="input-group-addon"><i class="fa fa-filter"></i></span>
+                                    </div>
                                 </th>
                                 <th></th>
                             </tr>
@@ -290,7 +295,7 @@
 
             </div>
             <div id="procedure" class="tab-pane">
-                <button class="btn btn-primary" data-toggle="modal" data-target="#procedure-modal">Add Stored Procs from database</button>
+                <button class="btn btn-primary" data-toggle="modal" data-target="#procedure-modal" onclick="return false;">Add Stored Procs from database</button>
                 <br />
                 <br />
                 <div class="menu row" data-bind="with: Procedures" style="margin-left: 20px;">
@@ -422,17 +427,8 @@
                                             <button class="btn btn-sm btn-primary" data-bind="click: function() { changeAccess(!changeAccess())}, text: !changeAccess() ? 'Change Access': 'Cancel Changing Access', hidden: changeAccess">Change Access</button>
                                         </div>
 
-                                        <div data-bind="if: changeAccess" class="col-md-9">
-                                            <div style="border-left: 1px solid; padding-left: 10px;">
-                                                <div class="form-group row">
-                                                    <label class="col-md-3 col-sm-3 control-label">Client Id to Restrict Report Access by Client</label>
-                                                    <div class="col-md-3 col-sm-3">
-                                                        <input class="form-control text-box single-line" type="text" data-bind="value: clientIdToUpdate">
-                                                    </div>
-                                                    <div class="col-md-1 col-sm-1">
-                                                        <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Leave blank to give all clients access (Global Reports)"></span>
-                                                    </div>
-                                                </div>
+                                        <div data-bind="if: changeAccess" class="col-md-9" >
+                                            <div style="border-left: 1px solid; padding-left: 10px;">                                                
                                                 <div data-bind="template: {name: 'manage-access-template', data: $root }"></div>
                                                 <br />
                                                 <br />
@@ -456,7 +452,8 @@
         <div class="modal-dialog" role="document">
             <div class="modal-content" data-bind="with: editColumn()">
                 <div class="modal-header">
-                    <h4 class="modal-title" id="myModalLabel">Manage
+                    <h4 class="modal-title" id="myModalLabel">
+                        Manage
                         <label data-bind="text: ColumnName"></label>
                     </h4>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
@@ -805,8 +802,7 @@
                                         <!-- ko foreach: Parameters -->
                                         <div class="list-group-item">
                                             <span data-bind="editable: DisplayName"></span>
-                                            <span class="badge badge-info" data-bind="text: ParameterDataTypeString"></span>
-                                            <br />
+                                            <span class="badge badge-info" data-bind="text: ParameterDataTypeString"></span><br />
                                             Default Value: <span data-bind="editable: ParameterValue"></span>
                                         </div>
                                         <!-- /ko -->
@@ -828,7 +824,8 @@
         <div class="modal-dialog" role="document">
             <div class="modal-content" data-bind="with: editParameter()">
                 <div class="modal-header">
-                    <h4 class="modal-title" id="myModalLabel">Manage
+                    <h4 class="modal-title" id="myModalLabel">
+                        Manage
                         <label data-bind="text: ParameterName"></label>
                     </h4>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
@@ -1021,5 +1018,5 @@
             </div>
         </div>
     </div>
-    <div class="clearfix"></div>
+    <div class="clearfix"></div>    
 </asp:Content>
