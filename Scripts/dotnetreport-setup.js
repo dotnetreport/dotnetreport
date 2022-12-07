@@ -215,7 +215,7 @@ var manageViewModel = function (options) {
 	self.searchStoredProcedure = function () {
 		if (!self.searchProcedureTerm()) {
 			toastr.error('Please enter a term to search stored procs');
-			return;
+			return false;
 		}
 
 		ajaxcall({
@@ -241,6 +241,8 @@ var manageViewModel = function (options) {
 
 			self.foundProcedures(result)
 		});
+
+		return false;
 	}
 
 	self.saveProcedure = function (procName, adding) {
@@ -436,7 +438,7 @@ var manageViewModel = function (options) {
 	self.setupManageAccess = function () {
 
 		ajaxcall({ url: options.getUsersAndRoles }).done(function (data) {
-			if (data.d) data = data.data.d;
+			if (data.d) data = data.d;
 			self.manageAccess = manageAccess(data);
 		});
 
