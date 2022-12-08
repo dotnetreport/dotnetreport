@@ -607,26 +607,6 @@ namespace ReportBuilder.Web.Models
             };
         }
 
-
-        /// <summary>
-        /// Customize this method with a login for dotnet report so that it can login to print pdf reports
-        /// </summary>
-        public static async Task PerformLogin(Page page, string printUrl)
-        {
-            var loginUrl = printUrl.Replace("/DotNetReport/ReportPrint", "/Account/Login"); // link to your login page
-            var loginEmail = "yourloginid@yourcompany.com"; // your login id
-            var loginPassword = "yourPassword"; // your login password
-
-            await page.GoToAsync(loginUrl, new NavigationOptions
-            {
-                WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
-            });
-            await page.TypeAsync("#Email", loginEmail); // Make sure #Email is replaced with the username form input id
-            await page.TypeAsync("#Password", loginPassword); // Make sure #Password is replaced with the password form input id
-            await page.ClickAsync("#LoginSubmit"); // Make sure #LoginSubmit is replaced with the login button form input id
-        }
-
-
         public static byte[] GetPdfFileAlt(string reportSql, string connectKey, string reportName, string chartData = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false)
         {
             var sql = Decrypt(reportSql);
@@ -760,90 +740,6 @@ namespace ReportBuilder.Web.Models
             }
         }
 
-
-        public static async Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
-                    string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false)
-        {
-            var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
-            await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync(BrowserFetcher.DefaultChromiumRevision);
-            var executablePath = "";
-            foreach (var d in Directory.GetDirectories(installPath))
-            {
-                executablePath = $"{d}\\chrome-win\\chrome.exe";
-                if (File.Exists(executablePath)) break;
-            }
-
-            var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = true, ExecutablePath = executablePath });
-            var page = await browser.NewPageAsync();
-            await page.SetRequestInterceptionAsync(true);
-
-            var formPosted = false;
-            var formData = new StringBuilder();
-            formData.AppendLine("<html><body>");
-            formData.AppendLine($"<form action=\"{printUrl}\" method=\"post\">");
-            formData.AppendLine($"<input name=\"reportSql\" value=\"{HttpUtility.HtmlEncode(reportSql)}\" />");
-            formData.AppendLine($"<input name=\"connectKey\" value=\"{HttpUtility.HtmlEncode(connectKey)}\" />");
-            formData.AppendLine($"<input name=\"reportId\" value=\"{reportId}\" />");
-            formData.AppendLine($"<input name=\"pageNumber\" value=\"{1}\" />");
-            formData.AppendLine($"<input name=\"pageSize\" value=\"{99999}\" />");
-            formData.AppendLine($"<input name=\"userId\" value=\"{userId}\" />");
-            formData.AppendLine($"<input name=\"clientId\" value=\"{clientId}\" />");
-            formData.AppendLine($"<input name=\"currentUserRole\" value=\"{currentUserRole}\" />");
-            formData.AppendLine($"<input name=\"expandAll\" value=\"{expandAll}\" />");
-            formData.AppendLine($"<input name=\"dataFilters\" value=\"{HttpUtility.HtmlEncode(dataFilters)}\" />");
-            formData.AppendLine($"</form>");
-            formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");
-            formData.AppendLine("</body></html>");
-
-            page.Request += async (sender, e) =>
-            {
-                if (formPosted)
-                {
-                    await e.Request.ContinueAsync();
-                    return;
-                }
-
-                await e.Request.RespondAsync(new ResponseData
-                {
-                    Status = System.Net.HttpStatusCode.OK,
-                    Body = formData.ToString()
-                });
-
-                formPosted = true;
-            };
-
-            await page.GoToAsync(printUrl, new NavigationOptions
-            {
-                WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
-            });
-
-            await page.WaitForSelectorAsync(".report-inner", new WaitForSelectorOptions { Visible = true });
-
-            int height = await page.EvaluateExpressionAsync<int>("document.body.offsetHeight");
-            int width = await page.EvaluateExpressionAsync<int>("$('table').width()");
-            var pdfFile = Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
-
-            var pdfOptions = new PdfOptions
-            {
-                PreferCSSPageSize = false,
-                MarginOptions = new MarginOptions() { Top = "0.75in", Bottom = "0.75in", Left = "0.1in", Right = "0.1in" }
-            };
-
-            if (width < 900)
-            {
-                pdfOptions.Format = PaperFormat.Letter;
-                pdfOptions.Landscape = false;
-            }
-            else
-            {
-                await page.SetViewportAsync(new ViewPortOptions { Width = width });
-                await page.AddStyleTagAsync(new AddTagOptions { Content = "@page {size: landscape }" });
-                pdfOptions.Width = $"{width}px";
-            }
-
-            await page.PdfAsync(pdfFile, pdfOptions);
-            return File.ReadAllBytes(pdfFile);
-        }
 
         private static byte[] Combine(byte[] a, byte[] b)
         {

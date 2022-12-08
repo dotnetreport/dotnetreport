@@ -118,13 +118,13 @@ namespace ReportBuilder.Web.Jobs
                                 switch ((schedule.Format ?? "Excel").ToUpper())
                                 {
                                     case "PDF":
-                                        fileData = await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/Report/ReportPrint", reportToRun.ReportId, reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, schedule.UserId, clientId, (new JavaScriptSerializer()).Serialize(dataFilters));
+                                        fileData = DotNetReportHelper.GetPdfFileAlt(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, null, columnDetails, reportToRun.IncludeSubTotals);
                                         fileExt = ".pdf"; 
                                         break;
 
                                     case "CSV": 
                                         fileExt = ".csv";
-                                        fileData = DotNetReportHelper.GetCSVFile(reportToRun.ReportSql, reportToRun.ConnectKey);
+                                        fileData = DotNetReportHelper.GetCSVFile(reportToRun.ReportSql, reportToRun.ConnectKey, columnDetails, reportToRun.IncludeSubTotals);
                                         break;
 
                                     case "EXCEL":
