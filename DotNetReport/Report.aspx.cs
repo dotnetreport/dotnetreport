@@ -22,7 +22,7 @@ namespace ReportBuilder.WebForms.DotNetReport
         protected void Page_Load(object sender, EventArgs e)
         {
 
-            int reportId = Convert.ToInt32(Request.Form["reportId"]);
+            int reportId = Convert.ToInt32(!string.IsNullOrEmpty(Request.QueryString["reportId"]) ? Request.QueryString["reportId"] : Request.Form["reportId"]);
             string reportName = Request.Form["reportName"];
             string reportDescription = Request.Form["reportDescription"];
             bool includeSubTotal = Convert.ToBoolean(Request.Form["includeSubTotal"]);
