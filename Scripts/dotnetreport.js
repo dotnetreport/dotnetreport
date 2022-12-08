@@ -350,7 +350,7 @@ function filterGroupViewModel(args) {
 					lookupList(list);
 					if (value && !filter.Value()) {
 						filter.Value(value);
-                    }
+					}
 					if (valueIn.length > 0) {
 						filter.ValueIn(valueIn);
 						valueIn = [];
@@ -1195,7 +1195,7 @@ var reportViewModel = function (options) {
 			self.RemoveInvalidFilters(self.FilterGroups());
 		}, 500);
 
-		var newField = fields.length > 0 ? fields[fields.length - 1] : null;
+		var newField = fields && fields.length > 0 ? fields[fields.length - 1] : null;
 		if (newField && (newField.forceFilter || newField.forceFilterForTable)) {
 			if (!self.FindInFilterGroup(newField.fieldId)) {
 				var group = self.FilterGroups()[0];
@@ -2687,7 +2687,7 @@ var reportViewModel = function (options) {
 				}).done(function (linkedReport) {
 					if (linkedReport.d) { linkedReport = linkedReport.d; }
 					if (linkedReport.result) { linkedReport = linkedReport.result; }
-					return self.ExecuteReportQuery(linkedReport.reportSql, linkedReport.connectKey, reportSeries);
+					return self.ExecuteReportQuery(linkedReport.ReportSql, linkedReport.ConnectKey, reportSeries);
 				});
 			}
 			else {
@@ -3188,7 +3188,7 @@ var dashboardViewModel = function (options) {
 				}
 			}
 		});
-    }
+	}
 
 	self.saveDashboard = function () {
 		$(".form-group").removeClass("needs-validation");
