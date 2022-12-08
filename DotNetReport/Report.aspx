@@ -21,7 +21,7 @@
                 if (data.d) data = data.d;
                 var svc = "/DotNetReport/ReportService.asmx/";
                 var vm = new reportViewModel({
-                    runReportUrl: svc + "Report",
+                    runReportUrl: "/DotnetReport/Report.aspx",
                     execReportUrl: svc + "RunReport",
                     runLinkReportUrl: svc + "RunReportLink",
                     reportWizard: $("#filter-panel"),
@@ -30,7 +30,7 @@
                     apiUrl: svc + "CallReportApi",
                     runReportApiUrl: svc + "RunReportApi",
                     reportFilter: htmlDecode('<%= Model.ReportFilter %>'),
-                    reportMode: "execute",
+                    reportMode: queryParams.linkedreport == "true" ? "linked" : "execute",
                     reportSql: "<%= Model.ReportSql %>",
                     reportConnect: "<%= Model.ConnectKey %>",
                     reportSeries: "<%= Model.ReportSeries %>",
@@ -176,11 +176,10 @@
         </div>
     </div>
     <div data-bind="if: HasError">
-        <h2>@Model.ReportName</h2>
+        <h2><%= Model.ReportName %></h2>
         <p>
-            @Model.ReportDescription
+            <%= Model.ReportDescription %>
         </p>
-
         <a href="/DotNetReport/Index.aspx?folderId=<%=Model.SelectedFolder %>" class="btn btn-primary">
             Back to Reports
         </a>
