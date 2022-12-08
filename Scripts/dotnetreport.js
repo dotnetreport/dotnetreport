@@ -350,7 +350,7 @@ function filterGroupViewModel(args) {
 					lookupList(list);
 					if (value && !filter.Value()) {
 						filter.Value(value);
-                    }
+					}
 					if (valueIn.length > 0) {
 						filter.ValueIn(valueIn);
 						valueIn = [];
@@ -2687,7 +2687,7 @@ var reportViewModel = function (options) {
 				}).done(function (linkedReport) {
 					if (linkedReport.d) { linkedReport = linkedReport.d; }
 					if (linkedReport.result) { linkedReport = linkedReport.result; }
-					return self.ExecuteReportQuery(linkedReport.reportSql, linkedReport.connectKey, reportSeries);
+					return self.ExecuteReportQuery(linkedReport.ReportSql, linkedReport.ConnectKey, reportSeries);
 				});
 			}
 			else {
@@ -3188,7 +3188,7 @@ var dashboardViewModel = function (options) {
 				}
 			}
 		});
-    }
+	}
 
 	self.saveDashboard = function () {
 		$(".form-group").removeClass("needs-validation");
