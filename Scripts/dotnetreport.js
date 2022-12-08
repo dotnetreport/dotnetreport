@@ -350,7 +350,7 @@ function filterGroupViewModel(args) {
 					lookupList(list);
 					if (value && !filter.Value()) {
 						filter.Value(value);
-                    }
+					}
 					if (valueIn.length > 0) {
 						filter.ValueIn(valueIn);
 						valueIn = [];
@@ -765,6 +765,8 @@ var reportViewModel = function (options) {
 	self.ChartData = ko.observable();
 	self.ReportName = ko.observable();
 	self.ReportType = ko.observable("List");
+	self.mapRegion = ko.observable('');
+	self.mapRegions = ['World', 'US States', 'US Metro', 'North America'];
 	self.ReportDescription = ko.observable();
 	self.FolderID = ko.observable();
 	self.ReportID = ko.observable();
@@ -1834,7 +1836,7 @@ var reportViewModel = function (options) {
 					Descending: x.sortDesc()
 				};
 			}),
-			ReportType: self.ReportType(),
+			ReportType: self.ReportType() == 'Map' && self.mapRegion() ? self.ReportType() + '|' + self.mapRegion() : self.ReportType(),
 			UseStoredProc: self.useStoredProc(),
 			StoredProcId: self.useStoredProc() ? self.SelectedProc().Id : null,
 			GroupFunctionList: _.map(self.SelectedFields(), function (x) {
@@ -2479,6 +2481,21 @@ var reportViewModel = function (options) {
 
 		if (self.ReportType() == "Map") {
 			chart = new google.visualization.GeoChart(chartDiv);
+			// Refer to for full list of regions https://developers.google.com/chart/interactive/docs/gallery/geochart#Continent_Hierarchy
+			if (self.mapRegion() == 'US States') {
+				options.displayMode = 'regions';
+				options.region = 'US';
+				options.resolution = 'provinces';
+			}
+			if (self.mapRegion() == 'US Metro') {
+				options.displayMode = 'regions';
+				options.region = 'US';
+				options.resolution = 'metros';
+			}
+			if (self.mapRegion() == 'North America') {
+				options.displayMode = 'regions';
+				options.region = '021';
+			}
 		}
 
 		google.visualization.events.addListener(chart, 'ready', function () {
@@ -2650,7 +2667,17 @@ var reportViewModel = function (options) {
 
 	self.PopulateReport = function (report, filterOnFly, reportSeries) {
 		self.ReportID(report.ReportID);
-		self.ReportType(report.ReportType);
+		self.mapRegion('');
+		if (report.ReportType.indexOf('Map') >= 0) {
+			self.ReportType('Map');
+			var reportTokens = report.ReportType.split('|');
+			if (reportTokens.length > 1) {
+				self.mapRegion(reportTokens[1]);
+			}
+		} else {
+			self.ReportType(report.ReportType);
+		}
+
 		self.ReportName(report.ReportName);
 		self.ReportDescription(report.ReportDescription);
 		self.FolderID(report.FolderID);
@@ -2768,7 +2795,7 @@ var reportViewModel = function (options) {
 				}).done(function (linkedReport) {
 					if (linkedReport.d) { linkedReport = linkedReport.d; }
 					if (linkedReport.result) { linkedReport = linkedReport.result; }
-					return self.ExecuteReportQuery(linkedReport.reportSql, linkedReport.connectKey, reportSeries);
+					return self.ExecuteReportQuery(linkedReport.ReportSql, linkedReport.ConnectKey, reportSeries);
 				});
 			}
 			else {
@@ -2794,8 +2821,7 @@ var reportViewModel = function (options) {
 			if (report.d) { report = report.d; }
 			if (report.result) { report = report.result; }
 			self.useStoredProc(report.UseStoredProc);
-			self.ReportType(report.ReportType);
-
+			
 			if (self.useStoredProc()) {
 				function continueWithProc() {
 					var proc = _.find(self.Procs(), { Id: report.StoredProcId });
@@ -3093,7 +3119,7 @@ var reportViewModel = function (options) {
 
 		$.ajax({
 			type: 'POST',
-			url: (options.runExportUrl || '') + url,
+			url: (options.runExportUrl || '/DotNetReport/') + url,
 			xhrFields: {
 				responseType: 'blob'
 			},
@@ -3121,55 +3147,55 @@ var reportViewModel = function (options) {
 	}
 
 	self.downloadPdfAlt = function () {
-		self.downloadExport("/DotNetReport/DownloadPdfAlt", {
+		self.downloadExport("DownloadPdfAlt", {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
 			chartData: self.ChartData(),
 			columnDetails: self.getColumnDetails(),
-			includeSubTotal: unescape(includeSubTotals)
+			includeSubTotal: self.IncludeSubTotal()
 		}, 'pdf');
 	}
 
 	self.downloadPdf = function () {
-		self.downloadExport("/DotNetReport/DownloadPdf", {
+		self.downloadExport("DownloadPdf", {
 			reportId: self.ReportID(),
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
 			expandAll: self.allExpanded(),
 			printUrl: options.printReportUrl,
-			clientId: self.clientid,
-			userId: self.currentUserId,
-			userRoles: self.currentUserRole,
-			dataFilters: options.dataFilters
+			clientId: self.clientid || '',
+			userId: self.currentUserId || '',
+			userRoles: self.currentUserRole || '',
+			dataFilters: JSON.stringify(options.dataFilters)
 		}, 'pdf');
 	}
 
 	self.downloadExcel = function () {
-		self.downloadExport("/DotNetReport/DownloadExcel", {
+		self.downloadExport("DownloadExcel", {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
 			allExpanded: self.allExpanded(),
-			expandSqls: self.getExpandSqls() || '',
+			expandSqls: self.getExpandSqls().join(',') || '',
 			columnDetails: self.getColumnDetails(),
-			includeSubTotals: self.IncludeSubTotal()
+			includeSubTotal: self.IncludeSubTotal()
 		}, 'xlsx');
 	}
 
 	self.downloadCsv = function () {
-		self.downloadExport("/DotNetReport/DownloadCsv", {
+		self.downloadExport("DownloadCsv", {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
-			columnDetails: unescape(columnDetails),
-			includeSubTotal: unescape(includeSubTotals)
+			columnDetails: self.getColumnDetails(),
+			includeSubTotal: self.IncludeSubTotal()
 		}, 'csv');
 	}
 
 	self.downloadXml = function () {
-		self.downloadExport("/DotNetReport/DownloadXml", {
+		self.downloadExport("DownloadXml", {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName()
@@ -3269,7 +3295,7 @@ var dashboardViewModel = function (options) {
 				}
 			}
 		});
-    }
+	}
 
 	self.saveDashboard = function () {
 		$(".form-group").removeClass("needs-validation");

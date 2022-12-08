@@ -379,7 +379,7 @@ namespace ReportBuilder.Web.Controllers
 
             }
 
-            return Ok(model);
+            return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
         }
 
 
