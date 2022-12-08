@@ -765,6 +765,8 @@ var reportViewModel = function (options) {
 	self.ChartData = ko.observable();
 	self.ReportName = ko.observable();
 	self.ReportType = ko.observable("List");
+	self.mapRegion = ko.observable('');
+	self.mapRegions = ['World', 'US States', 'US Metro', 'North America'];
 	self.ReportDescription = ko.observable();
 	self.FolderID = ko.observable();
 	self.ReportID = ko.observable();
@@ -1777,7 +1779,7 @@ var reportViewModel = function (options) {
 					Descending: x.sortDesc()
 				};
 			}),
-			ReportType: self.ReportType(),
+			ReportType: self.ReportType() == 'Map' && self.mapRegion() ? self.ReportType() + '|' + self.mapRegion() : self.ReportType(),
 			UseStoredProc: self.useStoredProc(),
 			StoredProcId: self.useStoredProc() ? self.SelectedProc().Id : null,
 			GroupFunctionList: _.map(self.SelectedFields(), function (x) {
@@ -2398,6 +2400,21 @@ var reportViewModel = function (options) {
 
 		if (self.ReportType() == "Map") {
 			chart = new google.visualization.GeoChart(chartDiv);
+			// Refer to for full list of regions https://developers.google.com/chart/interactive/docs/gallery/geochart#Continent_Hierarchy
+			if (self.mapRegion() == 'US States') {
+				options.displayMode = 'regions';
+				options.region = 'US';
+				options.resolution = 'provinces';
+			}
+			if (self.mapRegion() == 'US Metro') {
+				options.displayMode = 'regions';
+				options.region = 'US';
+				options.resolution = 'metros';
+			}
+			if (self.mapRegion() == 'North America') {
+				options.displayMode = 'regions';
+				options.region = '021';
+			}
 		}
 
 		google.visualization.events.addListener(chart, 'ready', function () {
@@ -2569,7 +2586,17 @@ var reportViewModel = function (options) {
 
 	self.PopulateReport = function (report, filterOnFly, reportSeries) {
 		self.ReportID(report.ReportID);
-		self.ReportType(report.ReportType);
+		self.mapRegion('');
+		if (report.ReportType.indexOf('Map') >= 0) {
+			self.ReportType('Map');
+			var reportTokens = report.ReportType.split('|');
+			if (reportTokens.length > 1) {
+				self.mapRegion(reportTokens[1]);
+			}
+		} else {
+			self.ReportType(report.ReportType);
+		}
+
 		self.ReportName(report.ReportName);
 		self.ReportDescription(report.ReportDescription);
 		self.FolderID(report.FolderID);
@@ -2713,8 +2740,7 @@ var reportViewModel = function (options) {
 			if (report.d) { report = report.d; }
 			if (report.result) { report = report.result; }
 			self.useStoredProc(report.UseStoredProc);
-			self.ReportType(report.ReportType);
-
+			
 			if (self.useStoredProc()) {
 				function continueWithProc() {
 					var proc = _.find(self.Procs(), { Id: report.StoredProcId });
