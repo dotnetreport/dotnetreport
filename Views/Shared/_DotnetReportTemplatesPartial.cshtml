@@ -236,6 +236,7 @@
 </script>
 
 <script type="text/html" id="report-template">
+    <div class="dx-viewport">
     <div class="report-chart" data-bind="attr: {id: 'chart_div_' + $parent.ReportID()}, visible: $parent.isChart"></div>
     <!-- ko if: !$parent.isChart() || $parent.ShowDataWithGraph() -->    
     <div class="pull-right" data-bind="if: $parent.OuterGroupColumns().length > 0">
@@ -259,6 +260,9 @@
         <div data-bind="template: {name: 'report-table', data: $parent.ReportData }"></div> 
     </div>    
     <!-- /ko -->
+
+    </div>
+
 </script>
 <script type="text/html" id="admin-mode-template">
     <div class="row" style="padding: 10px 10px">

@@ -81,7 +81,10 @@ var deps = {
 	},
 	"fabric": {
 		"dist/fabric.min.js": ""
-	}
+	},
+	"devextreme": {
+		"dist/**/*": ""
+    }
 };
 
 gulp.task("clean", function (cb) {
