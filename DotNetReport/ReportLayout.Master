@@ -238,7 +238,7 @@
                                     </div>
                                     <div class="pull-left">
                                         <button class="btn btn-xs" title="Download Excel" data-bind="click: $parent.exportExcel"><span class="fa fa-file-excel-o"></span></button>
-                                    </div>                                    
+                                    </div>
                                     <div class="form-group pull-right" data-bind="visible: pages()">
                                         <div data-bind="template: 'pager-template', data: $data"></div>
                                     </div>
@@ -286,6 +286,16 @@
     <script type="text/html" id="manage-access-template">
         <h5><span class="fa fa-key"></span>Manage Access</h5>
         <div class="panel panel-default panel-body" style="margin-left: 20px;">
+
+            <div class="form-group row" data-bind="ifnot: manageAccess.isDashboard">
+                <label class="col-md-3 col-sm-3 control-label">Client Id to Restrict Access</label>
+                <div class="col-md-3 col-sm-3">
+                    <input class="form-control text-box single-line" type="text" data-bind="value: manageAccess.clientId">
+                </div>
+                <div class="col-md-1 col-sm-1">
+                    <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Leave blank to give all clients access (Global Reports)"></span>
+                </div>
+            </div>
             <div class="alert alert-info">
                 <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;User level rights over rule Role level rights. No selection for a rule implies report is available to all.
             </div>
@@ -398,17 +408,33 @@
         </div>
     </script>
     <script type="text/html" id="filter-group">
-        <div data-bind="foreach: FilterGroups">
-            <div class="card" style="margin-left: 20px;">
-                <div class="card-body" data-bind="visible: !isRoot">
-                    <select data-bind="value: AndOr" class="form-control form-control-sm pull-left">
-                        <option>And</option>
-                        <option>Or</option>
-                    </select>
-                    <button class="btn btn-sm btn-secondary pull-left" data-bind="click: $parent.RemoveFilterGroup, visible: !isRoot">Remove Group</button>&nbsp;
-                    <hr />
+        <div class="query-builder form-inline" data-bind="foreach: FilterGroups">
+            <div class="rules-group-container">
+                <div class="rules-group-header">
+                    <div data-bind="visible: !isRoot">
+                        <div class="pull-left">
+                            <div class="btn-group btn-group-toggle btn-group-sm" data-toggle="buttons" role="group">
+                            <label class="btn btn-primary active" style="margin-right: 0px;" >
+                                <input type="radio" name="andoroption" data-bind="checked: AndOr, checkedValue: 'And'"> And
+                            </label>
+                            <label class="btn btn-primary">
+                                <input type="radio" name="andoroption" data-bind="checked: AndOr, checkedValue: 'Or'"> Or
+                            </label>
+                            </div>
+                        </div>
+                        <div class="pull-right">
+                            <button class="btn btn-sm btn-secondary" data-bind="click: $parent.RemoveFilterGroup, visible: !isRoot">Remove Group</button>&nbsp;
+                        </div>
+                    </div>
+                    <div data-bind="visible: isRoot">
+                        <div class="btn-group btn-group-sm">
+                            <label class="btn btn-primary">Filter Conditions</label>
+                        </div>
+                    </div>
+                    <div class="clearfix"></div>
                 </div>
-                <div data-bind="template: {name: 'filter-inner'}"></div>
+
+                <div class="rules-group-body" data-bind="template: {name: 'filter-inner'}"></div>
             </div>
         </div>
     </script>
@@ -454,8 +480,9 @@
     </script>
 
     <script type="text/html" id="filter-inner">
-        <div class="table-responsive">
-            <table class="table  table-hover table-borderless" data-bind="visible: Filters().length>0">
+        <div class="rules-list" >
+            <div class="rule-container" data-bind="visible: Filters().length>0">
+            <table class="table table-hover table-borderless">
                 <thead>
                     <tr>
                         <th style="width: 10%"></th>
@@ -466,7 +493,7 @@
                     </tr>
                 </thead>
                 <tbody data-bind="foreach: Filters">
-                    <tr>
+                    <tr class="rule-container">
                         <td>
                             <select data-bind="value: AndOr, visible: $index()>0" class="form-control">
                                 <option>And</option>
@@ -508,12 +535,17 @@
                     <!-- /ko -->
                 </tbody>
             </table>
+            </div>
+
+            <div class="rule-container" >
+                <div data-bind="template: {name: 'filter-group'}"></div>
+                <div>
+                    <button class="btn btn-sm btn-primary" data-bind="click: AddFilterGroup">Add Group</button>
+                    <button class="btn btn-sm btn-primary" data-bind="click: AddFilter">Add Filter</button>
+                </div>
+            </div>
         </div>
-        <div data-bind="template: {name: 'filter-group'}"></div>
-        <div>
-            <button class="btn btn-sm btn-link" data-bind="click: AddFilterGroup">Add Group</button>&nbsp;
-            <button class="btn btn-sm btn-link" data-bind="click: AddFilter">Add Filter</button>
-        </div>
+
     </script>
 
     <script type="text/html" id="filter-parameters">
