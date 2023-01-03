@@ -1557,7 +1557,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.isChart = ko.computed(function () {
-		return ["List", "Summary", "Single"].indexOf(self.ReportType()) < 0;
+		return ["List", "Summary", "Single", "Pivot"].indexOf(self.ReportType()) < 0;
 	});
 
 	self.isFieldValidForSubGroup = function (i, fieldType) {
@@ -1570,7 +1570,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.canDrilldown = ko.computed(function () {
-		return ["List"].indexOf(self.ReportType()) < 0;
+		return ["List", "Pivot"].indexOf(self.ReportType()) < 0;
 	});
 
 	self.dateFields = ko.computed(function () {
@@ -2299,6 +2299,10 @@ var reportViewModel = function (options) {
 				google.charts.setOnLoadCallback(self.DrawChart);
 			}
 
+			if (self.ReportType() == 'Pivot') {
+				self.setupPivotChart();
+            }
+
 			if (self.IncludeSubTotal()) {
 				ajaxcall({
 					url: options.runReportApiUrl,
@@ -2381,9 +2385,6 @@ var reportViewModel = function (options) {
 		var reportData = self.ReportResult().ReportData();
 		var data = new google.visualization.DataTable();
 
-		var dsFields = [];
-		var dsRows = [];
-
 		var subGroups = [];
 		var valColumns = [];
 		_.forEach(reportData.Columns, function (e, i) {
@@ -2405,38 +2406,14 @@ var reportViewModel = function (options) {
 			});
 		}
 
-		_.forEach(reportData.Columns, function (e, i) {
-			var c = {
-				caption: e.fieldLabel || e.ColumnName,
-				dataField: e.ColumnName.replace(' ', ''),
-				dataType: e.DataType == 'System.DateTime' ? 'date' : (e.IsNumeric ? 'number' : 'string'),
-				area: e.DataType == 'System.DateTime' ? 'column' : (e.IsNumeric ? 'data' : 'row')
-			};
-
-			if (e.IsNumeric) {
-				var isCurrency = (e.DataType == 'System.Decimal' && !e.fieldFormat) || e.fieldFormat == 'Currency';
-				var isDecimal = e.fieldFormat == 'Decimal';
-				c.summaryType = 'sum';
-				c.format = {
-					precision: (isCurrency || isDecimal) ? (e.decimalPlaces || 2) : undefined,
-					style: isCurrency ? 'currency' : undefined,
-					currency: isCurrency ? 'USD' : undefined
-				};
-            }
-
-			dsFields.push(c);
-		});
-
 		var rowArray = [];
 		var dataColumns = [];
 
 		_.forEach(reportData.Rows, function (e) {
 			var itemArray = [];
-			var item = {};
 
 			_.forEach(e.Items, function (r, n) {
 				var column = reportData.Columns[n];
-				item[column.ColumnName.replace(' ', '')] = r.Column.IsNumeric ? parseInt(r.Value) : r.Value;
 
 				if (n == 0) {
 					if (subGroups.length > 0) {
@@ -2470,7 +2447,6 @@ var reportViewModel = function (options) {
 			});
 
 			rowArray.push(itemArray);
-			dsRows.push(item);
 		});
 
 		_.forEach(rowArray, function (x) {
@@ -2532,21 +2508,56 @@ var reportViewModel = function (options) {
 		});
 
 		chart.draw(data, options);
-		self.setupPivotChart(dsFields, dsRows);
 	};
 
+	self.setupPivotChart = function () {
+		var dsFields = [];
+		var dsRows = [];
 
-	self.setupPivotChart = function (dsFields, dsRows) {
+		var reportData = self.ReportResult().ReportData();
+		_.forEach(reportData.Columns, function (e, i) {
+			var hasColumn = _.find(dsFields, { area: 'column' });
+			var c = {
+				caption: e.fieldLabel || e.ColumnName,
+				dataField: e.ColumnName.replace(' ', ''),
+				dataType: e.DataType == 'System.DateTime' ? 'date' : (e.IsNumeric ? 'number' : 'string'),
+				area: e.DataType == 'System.DateTime' ? 'column' : (e.IsNumeric ? 'data' : (i == 0 || !hasColumn) ? 'column' : 'row')
+			};
+
+			if (e.IsNumeric) {
+				var isCurrency = (e.DataType == 'System.Decimal' && !e.fieldFormat) || e.fieldFormat == 'Currency';
+				var isDecimal = e.fieldFormat == 'Decimal';
+				c.summaryType = 'sum';
+				c.format = {
+					precision: (isCurrency || isDecimal) ? (e.decimalPlaces || 2) : undefined,
+					style: isCurrency ? 'currency' : undefined,
+					currency: isCurrency ? 'USD' : undefined
+				};
+			}
+
+			dsFields.push(c);
+		});
+
+		_.forEach(reportData.Rows, function (e) {
+			var item = {};
+
+			_.forEach(e.Items, function (r, n) {
+				var column = reportData.Columns[n];
+				item[column.ColumnName.replace(' ', '')] = r.Column.IsNumeric ? parseInt(r.Value) : r.Value;
+			});
+
+			dsRows.push(item);
+		});
+
 		var pivotGridChart = $('#pivotgrid-chart').dxChart({
 			commonSeriesSettings: {
 				type: 'bar',
 			},   
 			tooltip: {
 				enabled: true,
-				format: 'currency',
 				customizeTooltip(args) {
 					return {
-						html: `${args.seriesName} | Total<div class='currency'>${args.valueText}</div>`,
+						html: `${args.seriesName} | ${args.valueText}</div>`,
 					};
 				},
 			},
@@ -2575,7 +2586,7 @@ var reportViewModel = function (options) {
 
 		pivotGrid.bindChart(pivotGridChart, {
 			dataFieldsDisplayMode: 'splitPanes',
-			alternateDataFields: false,
+			alternateDataFields: true,
 		});
 
     }
@@ -2987,7 +2998,8 @@ var reportViewModel = function (options) {
 				};
 
 				if (self.Folders()) {
-					e.folderName = _.find(self.Folders(), { Id: e.folderId }).FolderName;
+					var f = _.find(self.Folders(), { Id: e.folderId });
+					e.folderName = f ? f.FolderName : '';
 				}
 
 				if (options.reportId > 0 && e.reportId == options.reportId && skipOpen !== true) {
