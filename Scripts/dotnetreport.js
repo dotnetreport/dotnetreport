@@ -2914,7 +2914,8 @@ var reportViewModel = function (options) {
 				};
 
 				if (self.Folders()) {
-					e.folderName = _.find(self.Folders(), { Id: e.folderId }).FolderName;
+					var f = _.find(self.Folders(), { Id: e.folderId });
+					e.folderName = f ? f.FolderName : '';
 				}
 
 				if (options.reportId > 0 && e.reportId == options.reportId && skipOpen !== true) {
