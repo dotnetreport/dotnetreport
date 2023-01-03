@@ -2129,10 +2129,12 @@ var reportViewModel = function (options) {
 									self.OuterGroupColumns.remove(this);
                                 }
                             });
-						} else {
+						} 
+					}
 
-                        }
-                    }
+					if (col.selectedAggregate == 'Outer Group' && !_.find(self.OuterGroupColumns(), {fieldId: e.fieldId})) {
+						e.toggleOuterGroup()
+					}
 				});
 			}
 
