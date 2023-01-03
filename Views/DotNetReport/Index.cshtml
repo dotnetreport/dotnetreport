@@ -606,12 +606,14 @@
                     </div>
                 </div>
                 <hr />
+                <div data-bind="if: ReportType() != 'Pivot'">
                 <h5><span class="fa fa-hourglass"></span>&nbsp;Choose Schedule</h5>
 
                 <div style="padding: 10px 10px">
                     <div data-bind="template: {name: 'report-schedule'}"></div>
                 </div>
                 <hr />
+                </div>
 
                 <div>
                     <div class="form-group row">

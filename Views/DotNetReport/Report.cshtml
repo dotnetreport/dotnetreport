@@ -75,7 +75,7 @@
                         Edit Report
                     </a>
 
-                    <div class="btn-group">
+                    <div class="btn-group" data-bind="if: ReportType() != 'Pivot'">
                         <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                             <span class="fa fa-download"></span> Export <span class="caret"></span>
                         </button>

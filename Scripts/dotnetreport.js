@@ -2572,10 +2572,13 @@ var reportViewModel = function (options) {
 			allowSortingBySummary: true,
 			allowFiltering: true,
 			showBorders: true,
-			showColumnGrandTotals: false,
-			showRowGrandTotals: false,
+			showColumnGrandTotals: self.IncludeSubTotal(),
+			showRowGrandTotals: self.IncludeSubTotal(),
 			showRowTotals: false,
 			showColumnTotals: false,
+			export: {
+				enabled: true,
+			},
 			fieldChooser: {
 				enabled: true,
 				height: 400,
@@ -2587,7 +2590,7 @@ var reportViewModel = function (options) {
 		}).dxPivotGrid('instance');
 
 		pivotGrid.bindChart(pivotGridChart, {
-			dataFieldsDisplayMode: 'splitPanes',
+			dataFieldsDisplayMode: 'splitAxes',
 			alternateDataFields: true,
 		});
 
