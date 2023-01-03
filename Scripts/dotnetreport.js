@@ -2381,6 +2381,9 @@ var reportViewModel = function (options) {
 		var reportData = self.ReportResult().ReportData();
 		var data = new google.visualization.DataTable();
 
+		var dsFields = [];
+		var dsRows = [];
+
 		var subGroups = [];
 		var valColumns = [];
 		_.forEach(reportData.Columns, function (e, i) {
@@ -2402,14 +2405,39 @@ var reportViewModel = function (options) {
 			});
 		}
 
+		_.forEach(reportData.Columns, function (e, i) {
+			var c = {
+				caption: e.fieldLabel || e.ColumnName,
+				dataField: e.ColumnName.replace(' ', ''),
+				dataType: e.DataType == 'System.DateTime' ? 'date' : (e.IsNumeric ? 'number' : 'string'),
+				area: e.DataType == 'System.DateTime' ? 'column' : (e.IsNumeric ? 'data' : 'row')
+			};
+
+			if (e.IsNumeric) {
+				var isCurrency = (e.DataType == 'System.Decimal' && !e.fieldFormat) || e.fieldFormat == 'Currency';
+				var isDecimal = e.fieldFormat == 'Decimal';
+				c.summaryType = 'sum';
+				c.format = {
+					precision: (isCurrency || isDecimal) ? (e.decimalPlaces || 2) : undefined,
+					style: isCurrency ? 'currency' : undefined,
+					currency: isCurrency ? 'USD' : undefined
+				};
+            }
+
+			dsFields.push(c);
+		});
+
 		var rowArray = [];
 		var dataColumns = [];
 
 		_.forEach(reportData.Rows, function (e) {
 			var itemArray = [];
+			var item = {};
 
 			_.forEach(e.Items, function (r, n) {
 				var column = reportData.Columns[n];
+				item[column.ColumnName.replace(' ', '')] = r.Column.IsNumeric ? parseInt(r.Value) : r.Value;
+
 				if (n == 0) {
 					if (subGroups.length > 0) {
 						itemArray = _.filter(rowArray, function (x) { return x[0] == r.Value; });
@@ -2442,6 +2470,7 @@ var reportViewModel = function (options) {
 			});
 
 			rowArray.push(itemArray);
+			dsRows.push(item);
 		});
 
 		_.forEach(rowArray, function (x) {
@@ -2503,7 +2532,53 @@ var reportViewModel = function (options) {
 		});
 
 		chart.draw(data, options);
+		self.setupPivotChart(dsFields, dsRows);
 	};
+
+
+	self.setupPivotChart = function (dsFields, dsRows) {
+		var pivotGridChart = $('#pivotgrid-chart').dxChart({
+			commonSeriesSettings: {
+				type: 'bar',
+			},   
+			tooltip: {
+				enabled: true,
+				format: 'currency',
+				customizeTooltip(args) {
+					return {
+						html: `${args.seriesName} | Total<div class='currency'>${args.valueText}</div>`,
+					};
+				},
+			},
+			adaptiveLayout: {
+				width: 450,
+			},
+		}).dxChart('instance');
+
+		var pivotGrid = $('#pivotgrid').dxPivotGrid({
+			allowSortingBySummary: true,
+			allowFiltering: true,
+			showBorders: true,
+			showColumnGrandTotals: false,
+			showRowGrandTotals: false,
+			showRowTotals: false,
+			showColumnTotals: false,
+			fieldChooser: {
+				enabled: true,
+				height: 400,
+			},
+			dataSource: {
+				fields: dsFields,
+				store: dsRows,
+			},
+		}).dxPivotGrid('instance');
+
+		pivotGrid.bindChart(pivotGridChart, {
+			dataFieldsDisplayMode: 'splitPanes',
+			alternateDataFields: false,
+		});
+
+    }
 
 	self.loadFolders = function (folderId) {
 		// Load folders
