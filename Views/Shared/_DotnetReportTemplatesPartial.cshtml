@@ -119,11 +119,6 @@
                             <span class="fa fa-clone"></span> Outer Group
                         </a>
                     </li>
-                    <li class="dropdown-item small">
-                        <a href="#" >
-                            <span class="fa fa-exchange"></span> Pivot
-                        </a>
-                    </li>
                 </ul>
             </div>
         </div>
@@ -254,9 +249,11 @@
     
 
     <div data-bind="foreach: outerGroupData">
+        <!-- ko if: rows.length > 0 -->
         <h6 data-bind="html: display"></h6>
         <div class="" style="padding-top: 5px;"></div>
         <div data-bind="template: {name: 'report-table', data: $parent.ReportData }"></div> 
+        <!-- /ko -->
     </div>    
     <!-- /ko -->
 </script>
