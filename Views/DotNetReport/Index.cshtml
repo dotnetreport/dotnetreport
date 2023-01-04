@@ -342,6 +342,12 @@
                             <span class="fa fa-2x fa-window-maximize"></span>
                             <p>Single Value</p>
                         </div>
+                    </div>                    
+                    <div class="col-md-3 col-sm-3 col-xs-6">
+                        <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Pivot'); }, css: {active: ReportType()=='Pivot'}">
+                            <span class="fa fa-2x fa-random"></span>
+                            <p>Pivot</p>
+                        </div>
                     </div>
                 </div>
                 <hr />
@@ -534,12 +540,12 @@
                                                 <span class="fa fa-filter" aria-hidden="true" title="Filter by this field on the Report"></span>
                                             </span>
                                         </div>
-                                        <div class="pull-right" style="padding-right: 15px;" data-bind="">
+                                        <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $root.ReportType()!='Pivot'">
                                             <span class="button-box no-padding" tabindex="0" data-bind="click: toggleDisable, css: {active: disabled()==true}">
                                                 <span class="fa fa-close" aria-hidden="true" title="Do not include in Report"></span>
                                             </span>
                                         </div>
-                                        <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $root.ReportType()!='List' && !$parent.useStoredProc()">
+                                        <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $root.ReportType()!='Pivot' && $root.ReportType()!='List' && !$parent.useStoredProc()">
                                             <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ hideInDetail(!hideInDetail()); }, css: {active: hideInDetail()==true}">
                                                 <span class="fa fa-eye-slash" aria-hidden="true" title="Hide in Details"></span>
                                             </span>
@@ -554,7 +560,7 @@
                                                 <span class="fa fa-plus-circle" aria-hidden="true" title="Don't add to Total row"></span>
                                             </span>
                                         </div>
-                                        <div class="pull-right" style="padding-right: 15px;">
+                                        <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $root.ReportType()!='Pivot'">
                                             <span class="button-box no-padding" tabindex="0" data-bind="click: setupLinkField, css: {active: linkField()==true}">
                                                 <span class="fa fa-link" aria-hidden="true" title="Link to another Report or Url"></span>
                                             </span>
