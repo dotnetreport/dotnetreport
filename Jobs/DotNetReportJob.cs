@@ -122,7 +122,7 @@ namespace ReportBuilder.Web.Jobs
 
                                     case "EXCEL":
                                     default:
-                                        fileData = DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: columnDetails, includeSubtotal: reportToRun.IncludeSubTotals);
+                                        fileData = DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: columnDetails, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot");
                                         fileExt = ".xlsx";
                                         break;
                                 }
