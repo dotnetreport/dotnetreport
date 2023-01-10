@@ -853,6 +853,25 @@ var reportViewModel = function (options) {
 		self.designingHeader(true);
 	}
 
+	self.buildCombinations = function(arrays, combine, finalList) {
+		var _this = this;
+		combine = combine || [];
+		finalList = finalList || [];
+
+		if (!arrays.length) {
+			finalList.push(combine);
+		} else {
+			_.forEach(arrays[0], function (x) {
+				var nextArrs = arrays.slice(1);
+				var copy = combine.slice();
+				copy.push(x);
+				self.buildCombinations(nextArrs, copy, finalList);
+			});
+		}
+		return finalList;
+	}
+
+	self.outerGroupData = ko.observableArray();
 	self.ReportResult = ko.observable({
 		HasError: ko.observable(false),
 		ReportDebug: ko.observable(false),
@@ -860,7 +879,45 @@ var reportViewModel = function (options) {
 		Warnings: ko.observable(),
 		ReportSql: ko.observable(),
 		ReportData: ko.observable(null),
-		SubTotals: ko.observableArray([])
+		SubTotals: ko.observableArray([]),
+		outerGroupData: ko.computed(function () {
+			return self.outerGroupData();
+		})
+	});
+
+	self.OuterGroupColumns = ko.observableArray([]);
+	self.OuterGroupData = ko.computed(function () {
+		var groupColumns = self.OuterGroupColumns();
+		if (!self.ReportResult().ReportData()) return [];
+		if (groupColumns.length == 0) return [{ display: '', rows: self.ReportResult().ReportData().Rows }];
+
+		var computedGroups = [];
+		var options = [];
+		_.forEach(groupColumns, function (c) {
+			options.push(_.map(c.rowData, function (x) { return  { fieldId: c.fieldId, fieldIndex: c.fieldIndex, fieldName: c.fieldName, formattedValue: x }; }));
+        })
+
+		var rows = self.buildCombinations(options);
+
+		_.forEach(rows, function (row) {
+			var item = {
+				display: '',
+				rows: self.ReportResult().ReportData().Rows
+			};
+
+			_.forEach(row, function (x) {
+				item.display = item.display + x.fieldName + ' - ' + x.formattedValue + '<br>';
+				item.rows = _.filter(item.rows, function (row) { return row.Items[x.fieldIndex].FormattedValue == x.formattedValue });
+			});
+
+			computedGroups.push(item);
+		});
+
+		return computedGroups;
+	});
+
+	self.OuterGroupData.subscribe(function (x) {
+		self.outerGroupData(x);
 	});
 
 	self.useStoredProc = ko.observable(false);
@@ -1500,7 +1557,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.isChart = ko.computed(function () {
-		return ["List", "Summary", "Single"].indexOf(self.ReportType()) < 0;
+		return ["List", "Summary", "Single", "Pivot"].indexOf(self.ReportType()) < 0;
 	});
 
 	self.isFieldValidForSubGroup = function (i, fieldType) {
@@ -1513,7 +1570,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.canDrilldown = ko.computed(function () {
-		return ["List"].indexOf(self.ReportType()) < 0;
+		return ["List", "Pivot"].indexOf(self.ReportType()) < 0;
 	});
 
 	self.dateFields = ko.computed(function () {
@@ -2053,6 +2110,31 @@ var reportViewModel = function (options) {
 					e.backColor = col.backColor;
 					e.groupInGraph = col.groupInGraph;
 					e.dontSubTotal = col.dontSubTotal;
+					e.outerGroup = ko.observable(false);
+					e.colIndex = i;
+
+					e.toggleOuterGroup = function () {
+						e.outerGroup(!e.outerGroup());
+
+						if (e.outerGroup()) {
+							self.OuterGroupColumns.push({
+								fieldId: col.fieldId,
+								fieldName: col.fieldName,
+								fieldIndex: e.colIndex,
+								rowData: _.uniq(_.map(result.ReportData.Rows, function (r) {
+									return r.Items[e.colIndex].FormattedValue;
+								})).sort(),
+								remove: function () {
+									e.outerGroup(false);
+									self.OuterGroupColumns.remove(this);
+                                }
+                            });
+						} 
+					}
+
+					if (col.selectedAggregate == 'Outer Group' && !_.find(self.OuterGroupColumns(), {fieldId: e.fieldId})) {
+						e.toggleOuterGroup()
+					}
 				});
 			}
 
@@ -2082,6 +2164,7 @@ var reportViewModel = function (options) {
 					r.fontBold = col.fontBold;
 					r.fontColor = col.fontColor;
 					r.fieldId = col.fieldId;
+					r.outerGroup = col.outerGroup
 
 					if (self.decimalFormatTypes.indexOf(col.fieldFormat) >= 0) {
 						r.FormattedValue = self.formatNumber(r.Value, col.decimalPlaces);
@@ -2329,6 +2412,7 @@ var reportViewModel = function (options) {
 
 			_.forEach(e.Items, function (r, n) {
 				var column = reportData.Columns[n];
+
 				if (n == 0) {
 					if (subGroups.length > 0) {
 						itemArray = _.filter(rowArray, function (x) { return x[0] == r.Value; });
@@ -2831,7 +2915,8 @@ var reportViewModel = function (options) {
 				};
 
 				if (self.Folders()) {
-					e.folderName = _.find(self.Folders(), { Id: e.folderId }).FolderName;
+					var f = _.find(self.Folders(), { Id: e.folderId });
+					e.folderName = f ? f.FolderName : '';
 				}
 
 				if (options.reportId > 0 && e.reportId == options.reportId && skipOpen !== true) {
@@ -3072,7 +3157,8 @@ var reportViewModel = function (options) {
 			reportName: self.ReportName(),
 			chartData: self.ChartData(),
 			columnDetails: self.getColumnDetails(),
-			includeSubTotal: self.IncludeSubTotal()
+			includeSubTotal: self.IncludeSubTotal(),
+			pivot: self.ReportType() == 'Pivot'
 		}, 'pdf');
 	}
 
@@ -3099,7 +3185,8 @@ var reportViewModel = function (options) {
 			allExpanded: self.allExpanded(),
 			expandSqls: self.getExpandSqls().join(',') || '',
 			columnDetails: self.getColumnDetails(),
-			includeSubTotal: self.IncludeSubTotal()
+			includeSubTotal: self.IncludeSubTotal(),
+			pivot: self.ReportType() == 'Pivot'
 		}, 'xlsx');
 	}
 
