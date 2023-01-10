@@ -659,7 +659,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="checkbox">
+                        <div class="checkbox" data-bind="visible: $root.ReportType()!='Pivot'">
                             <label>
                                 <input type="checkbox" data-bind="checked: IncludeSubTotal" />
                                 Include Total Row

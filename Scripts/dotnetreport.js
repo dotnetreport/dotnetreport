@@ -3157,7 +3157,8 @@ var reportViewModel = function (options) {
 			reportName: self.ReportName(),
 			chartData: self.ChartData(),
 			columnDetails: self.getColumnDetails(),
-			includeSubTotal: self.IncludeSubTotal()
+			includeSubTotal: self.IncludeSubTotal(),
+			pivot: self.ReportType() == 'Pivot'
 		}, 'pdf');
 	}
 
@@ -3184,7 +3185,8 @@ var reportViewModel = function (options) {
 			allExpanded: self.allExpanded(),
 			expandSqls: self.getExpandSqls().join(',') || '',
 			columnDetails: self.getColumnDetails(),
-			includeSubTotal: self.IncludeSubTotal()
+			includeSubTotal: self.IncludeSubTotal(),
+			pivot: self.ReportType() == 'Pivot'
 		}, 'xlsx');
 	}
 
