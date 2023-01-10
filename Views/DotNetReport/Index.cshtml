@@ -200,7 +200,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             <div class="list-group-item">
                                 <div class="row">
                                     <div class="col-sm-7">
-                                        <div class="fa fa-2x pull-left" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map', 'fa-window-maximize': reportType=='Single'}"></div>
+                                        <div class="fa fa-2x pull-left" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map', 'fa-window-maximize': reportType=='Single', 'fa-random': reportType=='Pivot'}"></div>
                                         <div class="pull-left">
                                             <h4><a data-bind="click: runReport" style="cursor: pointer">
                                                 <span data-bind="highlightedText: { text: reportName, highlight: $parent.searchReports, css: 'highlight' }"></span>
@@ -341,6 +341,12 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Single'); }, css: {active: ReportType()=='Single'}">
                             <span class="fa fa-2x fa-window-maximize"></span>
                             <p>Single Value</p>
+                        </div>
+                    </div>                    
+                    <div class="col-md-3 col-sm-3 col-xs-6">
+                        <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Pivot'); }, css: {active: ReportType()=='Pivot'}">
+                            <span class="fa fa-2x fa-random"></span>
+                            <p>Pivot</p>
                         </div>
                     </div>
                 </div>
@@ -496,8 +502,19 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         <div class="alert alert-info" data-bind="visible: ReportType()=='Line'">
                             <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For Line Graph, the first field below will show on the x-axis and it needs to be numeric.
                         </div>
-                        <div class="alert alert-info" data-bind="visible: ReportType()=='Map'">
-                            <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For Map Graph, the first field below has to be a Region, like a Country.
+                        <div class="alert alert-info" data-bind="visible: ReportType()=='Pivot'">
+                            <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For Pivot report, the first field below will be used to Pivot/Transpose the rows as columns, and it must be grouped.
+                        </div>
+                        <div data-bind="visible: ReportType()=='Map'">
+                            <div class="alert alert-info" >
+                                <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For Map Graph, the first field below has to be a Region, like a Country.
+                            </div> 
+                            <div class="form-group row">
+                                <label class="col-sm-2 control-label">Map Display</label>
+                                <div class="col-sm-4">
+                                    <select class="form-control form-control-sm" data-bind="options: $root.mapRegions, value: mapRegion"></select>
+                                </div>
+                            </div>
                         </div>
                         <ul class="list-group" data-bind="sortable: { data: SelectedFields, options: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight' }, strategyMove: true }">
                             <li class="list-group-item">
@@ -526,12 +543,12 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 <span class="fa fa-filter" aria-hidden="true" title="Filter by this field on the Report"></span>
                                             </span>
                                         </div>
-                                        <div class="pull-right" style="padding-right: 15px;" data-bind="">
+                                        <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $root.ReportType()!='Pivot'">
                                             <span class="button-box no-padding" tabindex="0" data-bind="click: toggleDisable, css: {active: disabled()==true}">
                                                 <span class="fa fa-close" aria-hidden="true" title="Do not include in Report"></span>
                                             </span>
                                         </div>
-                                        <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $root.ReportType()!='List' && !$parent.useStoredProc()">
+                                        <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $root.ReportType()!='Pivot' && $root.ReportType()!='List' && !$parent.useStoredProc()">
                                             <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ hideInDetail(!hideInDetail()); }, css: {active: hideInDetail()==true}">
                                                 <span class="fa fa-eye-slash" aria-hidden="true" title="Hide in Details"></span>
                                             </span>
@@ -546,7 +563,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 <span class="fa fa-plus-circle" aria-hidden="true" title="Don't add to Total row"></span>
                                             </span>
                                         </div>
-                                        <div class="pull-right" style="padding-right: 15px;">
+                                        <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $root.ReportType()!='Pivot'">
                                             <span class="button-box no-padding" tabindex="0" data-bind="click: setupLinkField, css: {active: linkField()==true}">
                                                 <span class="fa fa-link" aria-hidden="true" title="Link to another Report or Url"></span>
                                             </span>
@@ -642,7 +659,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 </div>
                             </div>
                         </div>
-                        <div class="checkbox">
+                        <div class="checkbox" data-bind="visible: $root.ReportType()!='Pivot'">
                             <label>
                                 <input type="checkbox" data-bind="checked: IncludeSubTotal" />
                                 Include Total Row
