@@ -584,6 +584,18 @@ var tablesViewModel = function (options) {
 
 		});
 
+		t.selectAllColumns = function (e) {
+			_.forEach(t.Columns(), function (c) {
+				c.Selected(true);
+			});
+		}
+
+		t.unselectAllColumns = function (e) {
+			_.forEach(t.Columns(), function (c) {
+				c.Selected(false);
+			});
+		}
+
 		t.saveTable = function (apiKey, dbKey) {
 			var e = ko.mapping.toJS(t, {
 				'ignore': ["saveTable", "JoinTable", "ForeignJoinTable"]
@@ -671,19 +683,7 @@ var tablesViewModel = function (options) {
 				c.Selected(false);
 			});
 		});
-	}
-
-	self.selectAllColumns = function (e) {
-		_.forEach(e.Columns(), function (c) {
-			c.Selected(true);
-		});
-	}
-
-	self.unselectAllColumns = function (e) {
-		_.forEach(e.Columns(), function (c) {
-			c.Selected(false);
-		});
-	}
+	}	
 
 	self.columnSorted = function (args) {
 		_.forEach(args.targetParent(), function (e) {
