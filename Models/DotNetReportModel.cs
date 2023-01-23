@@ -495,8 +495,36 @@ namespace ReportBuilder.Web.Models
             ws.Cells[ws.Dimension.Address].AutoFitColumns();
         }
 
+        public static DataTable Transpose(DataTable dt)
+        {
+            DataTable dtNew = new DataTable();
+
+            for (int i = 0; i <= dt.Rows.Count; i++)
+            {
+                dtNew.Columns.Add(i.ToString());
+            }
+
+            dtNew.Columns[0].ColumnName = " ";
+
+            for (int i = 0; i < dt.Rows.Count; i++)
+            {
+                dtNew.Columns[i + 1].ColumnName = dt.Rows[i].ItemArray[0].ToString();
+            }
+
+            for (int k = 1; k < dt.Columns.Count; k++)
+            {
+                DataRow r = dtNew.NewRow();
+                r[0] = dt.Columns[k].ToString();
+                for (int j = 1; j <= dt.Rows.Count; j++)
+                    r[j] = dt.Rows[j - 1][k];
+                dtNew.Rows.Add(r);
+            }
+
+            return dtNew;
+        }
+
         public static byte[] GetExcelFile(string reportSql, string connectKey, string reportName, bool allExpanded = false,
-                List<string> expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false)
+                List<string> expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
         {
             var sql = Decrypt(reportSql);
 
@@ -509,6 +537,8 @@ namespace ReportBuilder.Web.Models
                 var adapter = new OleDbDataAdapter(command);
 
                 adapter.Fill(dt);
+
+                if (pivot) dt = Transpose(dt);
 
                 if (columns?.Count > 0)
                 {
@@ -628,7 +658,8 @@ namespace ReportBuilder.Web.Models
         }
 
 
-        public static byte[] GetPdfFileAlt(string reportSql, string connectKey, string reportName, string chartData = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false)
+        public static byte[] GetPdfFileAlt(string reportSql, string connectKey, string reportName, string chartData = null, 
+                    List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
         {
             var sql = Decrypt(reportSql);
             var dt = new DataTable();
@@ -641,8 +672,16 @@ namespace ReportBuilder.Web.Models
                 adapter.Fill(dt);
             }
 
-            var subTotals = new decimal[dt.Columns.Count];
             Document document = new Document();
+
+            if (pivot)
+            {
+                dt = Transpose(dt);
+                document.SetPageSize(PageSize.LETTER.Rotate());
+            }
+
+            var subTotals = new decimal[dt.Columns.Count];
+
             using (var ms = new MemoryStream())
             {
                 PdfWriter writer = PdfWriter.GetInstance(document, ms);
@@ -651,6 +690,7 @@ namespace ReportBuilder.Web.Models
                 heading.Font.Size = 14f;
                 heading.Font.SetStyle("bold");
                 document.Add(heading);
+
                 PdfPTable table = new PdfPTable(dt.Columns.Count);
                 table.WidthPercentage = 100;
 
@@ -666,6 +706,7 @@ namespace ReportBuilder.Web.Models
                     table.AddCell(cell);
 
                     cell.BorderWidth = 0.5f;
+                    
                     phrase.Font.Size = 10f;
                     phrase.Font.SetStyle("bold");
                 }

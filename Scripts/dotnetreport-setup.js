@@ -215,7 +215,7 @@ var manageViewModel = function (options) {
 	self.searchStoredProcedure = function () {
 		if (!self.searchProcedureTerm()) {
 			toastr.error('Please enter a term to search stored procs');
-			return;
+			return false;
 		}
 
 		ajaxcall({
@@ -241,6 +241,8 @@ var manageViewModel = function (options) {
 
 			self.foundProcedures(result)
 		});
+
+		return false;
 	}
 
 	self.saveProcedure = function (procName, adding) {
@@ -436,7 +438,7 @@ var manageViewModel = function (options) {
 	self.setupManageAccess = function () {
 
 		ajaxcall({ url: options.getUsersAndRoles }).done(function (data) {
-			if (data.d) data = data.data.d;
+			if (data.d) data = data.d;
 			self.manageAccess = manageAccess(data);
 		});
 
@@ -582,6 +584,18 @@ var tablesViewModel = function (options) {
 
 		});
 
+		t.selectAllColumns = function (e) {
+			_.forEach(t.Columns(), function (c) {
+				c.Selected(true);
+			});
+		}
+
+		t.unselectAllColumns = function (e) {
+			_.forEach(t.Columns(), function (c) {
+				c.Selected(false);
+			});
+		}
+
 		t.saveTable = function (apiKey, dbKey) {
 			var e = ko.mapping.toJS(t, {
 				'ignore': ["saveTable", "JoinTable", "ForeignJoinTable"]
@@ -669,19 +683,7 @@ var tablesViewModel = function (options) {
 				c.Selected(false);
 			});
 		});
-	}
-
-	self.selectAllColumns = function (e) {
-		_.forEach(e.Columns(), function (c) {
-			c.Selected(true);
-		});
-	}
-
-	self.unselectAllColumns = function (e) {
-		_.forEach(e.Columns(), function (c) {
-			c.Selected(false);
-		});
-	}
+	}	
 
 	self.columnSorted = function (args) {
 		_.forEach(args.targetParent(), function (e) {

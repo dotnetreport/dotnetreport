@@ -224,6 +224,7 @@ namespace ReportBuilder.Web.Controllers
                         var sqlSplit = sql.Substring(0, sql.IndexOf("FROM")).Replace("SELECT", "").Trim();
                         sqlFields = Regex.Split(sqlSplit, "], (?![^\\(]*?\\))").Where(x => x != "CONVERT(VARCHAR(3)")
                             .Select(x => x.EndsWith("]") ? x : x + "]")
+                            .Select(x => x.StartsWith("DISTINCT ") ? x.Replace("DISTINCT ", "") : x)
                             .ToList();
 
                         var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(sql.IndexOf("FROM"))}";
@@ -387,7 +388,7 @@ namespace ReportBuilder.Web.Controllers
 
             }
 
-            return Ok(model);
+            return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
         }
 
 
