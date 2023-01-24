@@ -1159,6 +1159,7 @@ var reportViewModel = function (options) {
 		var selectedFields = _.map(displayFields, function (e) {
 			var match = ko.toJS(proc.SelectedFields && proc.SelectedFields.length ? _.find(proc.SelectedFields, { fieldName: e.DisplayName }) : null);
 			var field = match || self.getEmptyFormulaField();
+			field.isFormulaField = false;
 			field.fieldName = e.DisplayName;
 			field.tableName = proc.DisplayName;
 			field.procColumnId = e.Id;
@@ -2572,6 +2573,12 @@ var reportViewModel = function (options) {
 			if (!e.disabled() && self.enabledFields().length < 2) return;
 			e.disabled(!e.disabled());
 		}
+
+		e.checkOuterGroup = ko.observable(e.aggregateFunction == 'Outer Group');
+		e.checkOuterGroup.subscribe(function (newValue) {
+			e.selectedAggregate(newValue ? 'Outer Group' : null);
+			self.AggregateReport(true);
+		});
 
 		var formulaItems = [];
 		_.forEach(e.formulaItems || [], function (e) {
