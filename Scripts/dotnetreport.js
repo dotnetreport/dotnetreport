@@ -760,6 +760,8 @@ var reportViewModel = function (options) {
 	self.currentUserName = options.userSettings.currentUserName;
 	self.allowAdmin = ko.observable(options.userSettings.allowAdminMode);
 	self.userIdForSchedule = options.userSettings.userIdForSchedule || self.currentUserId;
+	self.userIdForFilter = options.userSettings.userIdForFilter || '';
+
 	self.clientId = options.userSettings.clientId;
 
 	self.ChartData = ko.observable();
@@ -1066,6 +1068,7 @@ var reportViewModel = function (options) {
 					self.Folders.remove(self.SelectedFolder());
 					folderToUpdate.FolderName = self.ManageFolder.FolderName();
 					self.Folders.push(folderToUpdate);
+					self.SelectedFolder(null);
 				}
 				$("#folderModal").modal("hide");
 			});
@@ -1914,9 +1917,13 @@ var reportViewModel = function (options) {
 				SaveReport: false,
 				ReportJson: JSON.stringify(self.BuildReportData()),
 				adminMode: self.adminMode(),
+				userIdForFilter: self.userIdForFilter,
 				SubTotalMode: false
 			})
-		})
+		}).done(function () {
+			self.RunReport(false);
+		});
+
 		self.RunReport(false);
 	}
 
@@ -1958,6 +1965,7 @@ var reportViewModel = function (options) {
 					SaveReport: self.CanSaveReports() ? self.SaveReport() : false,
 					ReportJson: JSON.stringify(self.BuildReportData([], isComparison, i - 1)),
 					adminMode: self.adminMode(),
+					userIdForFilter: self.userIdForFilter,
 					SubTotalMode: false
 				}),
 				async: false
@@ -2353,10 +2361,13 @@ var reportViewModel = function (options) {
 	self.ExpandAll = function () {
 		self.expandSqls([]);
 		var i = 0;
+		var promises = [];
 		_.forEach(self.ReportResult().ReportData().Rows, function (e) {
-			e.expand(i++);
+			promises.push(e.expand(i++));
 		});
 		self.allExpanded(true);
+
+		return promises;
 	};
 
 	self.CollapseAll = function () {
@@ -2421,10 +2432,10 @@ var reportViewModel = function (options) {
 							rowArray = rowArray.filter(function (x) { return x[0] != r.Value; });
 							itemArray = itemArray[0];
 						} else {
-							itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.Value) || (r.Column.IsNumeric ? 0 : ''));
+							itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.FormattedValue) || (r.Column.IsNumeric ? 0 : ''));
 						}
 					} else {
-						itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.Value) || (r.Column.IsNumeric ? 0 : ''));
+						itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.FormattedValue) || (r.Column.IsNumeric ? 0 : ''));
 					}
 				} else if (subGroups.length > 0) {
 					var subgroup = _.filter(subGroups, function (x) { return x.index == n; });
@@ -2438,10 +2449,10 @@ var reportViewModel = function (options) {
 
 						}
 					} else if (r.Column.IsNumeric) {
-						itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.Value) || (r.Column.IsNumeric ? 0 : ''));
+						itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.FormattedValue) || (r.Column.IsNumeric ? 0 : ''));
 					}
 				} else if (r.Column.IsNumeric && !column.groupInGraph) {
-					itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.Value) || (r.Column.IsNumeric ? 0 : ''));
+					itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.FormattedValue) || (r.Column.IsNumeric ? 0 : ''));
 				}
 			});
 
