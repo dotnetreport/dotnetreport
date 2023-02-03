@@ -2842,7 +2842,8 @@ var reportViewModel = function (options) {
 			if (report.d) { report = report.d; }
 			if (report.result) { report = report.result; }
 			self.useStoredProc(report.UseStoredProc);
-			
+			self.ReportType(report.ReportType.indexOf('Map') >= 0 ? 'Map' : report.ReportType);
+
 			if (self.useStoredProc()) {
 				function continueWithProc() {
 					var proc = _.find(self.Procs(), { Id: report.StoredProcId });
@@ -3404,7 +3405,8 @@ var dashboardViewModel = function (options) {
 			users: options.users,
 			userRoles: options.userRoles,
 			skipDraw: true,
-			printReportUrl: options.printReportUrl
+			printReportUrl: options.printReportUrl,
+			dataFilters: options.dataFilters
 		});
 
 		report.x = ko.observable(x.x);
