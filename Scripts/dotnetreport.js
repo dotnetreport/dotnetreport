@@ -3409,6 +3409,10 @@ var dashboardViewModel = function (options) {
 			dataFilters: options.dataFilters
 		});
 
+		report.isExpanded = ko.observable(false);
+		report.toggleExpand = function () {
+			report.isExpanded(!report.isExpanded());
+		}
 		report.x = ko.observable(x.x);
 		report.y = ko.observable(x.y);
 		report.width = ko.observable(x.width);
