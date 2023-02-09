@@ -186,6 +186,7 @@ namespace ReportBuilder.Web.Controllers
                         var sqlSplit = sql.Substring(0, sql.IndexOf("FROM")).Replace("SELECT", "").Trim();
                         sqlFields = Regex.Split(sqlSplit, "], (?![^\\(]*?\\))").Where(x => x != "CONVERT(VARCHAR(3)")
                             .Select(x => x.EndsWith("]") ? x : x + "]")
+                            .Select(x => x.StartsWith("DISTINCT ") ? x.Replace("DISTINCT ", "") : x)
                             .ToList();
 
                         var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(sql.IndexOf("FROM"))}";
@@ -387,6 +388,7 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
                     new KeyValuePair<string, string>("id", id.HasValue ? id.Value.ToString() : "0"),
                     new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
+                    new KeyValuePair<string, string>("dataFilters", JsonConvert.SerializeObject(settings.DataFilters))
                 });
 
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/LoadSavedDashboard"), content);
