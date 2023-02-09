@@ -530,8 +530,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         </span>
                                     </div>
                                     <div class="col">
-                                        <div class="pull-right" style="margin-top: -5px;">
-                                            <select class="form-control form-control-sm" data-bind="options: $root.canDrilldown() && $index()>0 ? fieldAggregateWithDrilldown : fieldAggregate, value: selectedAggregate, visible: $parent.AggregateReport() && !$parent.useStoredProc()"></select>
+                                        <div class="pull-right" style="margin-top: -5px;" data-bind="if: $parent.AggregateReport() && !$parent.useStoredProc()">
+                                            <select class="form-control form-control-sm" data-bind="options: $root.canDrilldown() && $index()>0 ? fieldAggregateWithDrilldown : fieldAggregate, value: selectedAggregate"></select>
                                         </div>
                                         <div class="sortable pull-right" style="padding-right: 15px;" data-bind="ifnot: $parent.useStoredProc">
                                             <span class="fa fa-arrows " aria-hidden="true" title="Drag to reorder"></span>
@@ -901,6 +901,16 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         <button class="btn btn-sm pull-left" title="Apply to all columns" data-bind="click: function(){applyAllBold(!applyAllBold()); }">
                             <span class="fa" data-bind="css: applyAllBold() ? 'fa-check' : 'fa-paste'"></span>
                         </button>
+                    </div>
+                </div>
+                <div class="form-group row" data-bind="if: procColumnId">
+                    <div class="col-sm-12">
+                        <div class="checkbox pull-left" style="padding-top: 5px;">
+                            <label>
+                                <input type="checkbox" data-bind="checked: checkOuterGroup" />
+                                Outer Group
+                            </label>
+                        </div>
                     </div>
                 </div>
             </div>

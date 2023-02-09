@@ -53,7 +53,7 @@
     </div>
         
 
-    <!-- Dotnet Report HTML Templates -->
+   <!-- Dotnet Report HTML Templates -->
 <script type="text/html" id="report-filter">
     <div class="form-group">
         <!-- ko if: !hasForeignKey-->
@@ -184,7 +184,7 @@
 
 <script type="text/html" id="report-column">
     <!-- ko foreach: Items -->
-    <td data-bind="hidden: outerGroup, style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold ? 'bold' : 'normal', 'text-align': $parents[3].pager && $parents[3].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[3].pager && $parents[3].ReportType()=='Single' ? '64px' : ''}">
+    <td data-bind="hidden: outerGroup, style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '64px' : ''}">
         <!-- ko if: LinkTo-->
         <a data-bind="attr: {href: LinkTo}"><span data-bind="html: FormattedValue"></span></a>
         <!-- /ko-->
@@ -306,7 +306,7 @@
                     <!-- /ko -->
                     <!-- ko foreach: Items -->
                     <!-- ko if: Value != 'NA' && Value != 'NaN' && !outerGroup() -->
-                    <td data-bind="style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold ? 'bold' : 'normal', 'text-align': $parents[3].pager && $parents[3].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[3].pager && $parents[3].ReportType()=='Single' ? '64px' : ''}">
+                    <td data-bind="style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '64px' : ''}">
                         <span data-bind="html: FormattedValue, css: {'right-align': true}"></span>
                     </td>
                     <!-- /ko -->

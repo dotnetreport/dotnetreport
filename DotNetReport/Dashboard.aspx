@@ -4,6 +4,16 @@
     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.min.css" />
     <style type="text/css">
         .report-chart { min-height: auto !important; }
+        .expanded {
+            position: fixed !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            z-index: 99993 !important;
+        }
     </style>
 
 </asp:Content>
@@ -68,9 +78,28 @@
                                         vm.updatePosition(x);
                                     });
                                 });
+                                $('.grid-stack').on('resizestop', function (event, item) {
+                                    var e = $(event.target).find('.report-chart');
+                                    var d = $(event.target).find('table');
+                                    if (e.length > 0 && d.length == 0) {
+                                        e.height(item.size.height - e[0].offsetTop - 40);
+                                        vm.drawChart();
+                                    }
+                                });
                             });
 
                             setTimeout(function () {
+                                vm.drawChart();
+
+                                var items = $('.grid-stack-item');
+                                _.forEach(items, function (x) {
+                                    var e = $(x).find('.report-chart');
+                                    var d = $(x).find('table');
+                                    if (e.length > 0 && x.clientHeight && d.length == 0) {
+                                        e.height(x.clientHeight - e[0].offsetTop - 40);
+                                    }
+                                });
+
                                 vm.drawChart();
                             }, 1000);
                         });
@@ -224,6 +253,9 @@
                     </div>
 
                     <h2 class="pull-left" data-bind="text: ReportName"></h2>
+                    <div class="pull-right">
+                        <a class="btn btn-link" data-bind="click: toggleExpand"><span class="fa" data-bind="css: {'fa-expand': !isExpanded(), 'fa-minus': isExpanded() }, visible: ReportType() != 'Single'"></span></a>
+                    </div>
                 </div>
                 <div class="card-body list-overflow-auto">
                     <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
