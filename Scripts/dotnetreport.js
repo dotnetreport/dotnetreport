@@ -780,6 +780,29 @@ var textQuery = function (options) {
 		{ value: 'Pie', key: '<span class="fa fa-pie-chart"></span> as Pie Chart', type: 'ReportType' },
 	];
 
+	self.getAggregate = function (columnId) {
+		var func = 'Group';
+		_.forEach(self.queryItems, function (x, i) {
+			if (x.value == columnId) {
+				if (i > 0 && self.queryItems[i - 1].type == 'Function') {
+					func = self.queryItems[i - 1].value;
+                }
+				return false;
+            }
+		});
+
+		return func;
+    }
+
+	self.getReportType = function () {
+		var reportType = _.find(self.queryItems, { type: 'ReportType' });
+		if (reportType) {
+			return reportType.value;
+		}
+
+		return (_.find(self.textQuery.queryItems, { type: 'Function' })) ? 'Summary' : 'List';
+    }
+
 	self.resetQuery = function () {
 		self.queryItems = [];
 		document.getElementById("query-input").innerHTML = "Show me&nbsp;";
@@ -1035,7 +1058,13 @@ var reportViewModel = function (options) {
 			}
 		}).done(function (result) {
 			if (result.d) result = result.d;
+
+			self.ReportType(self.textQuery.getReportType());
+
 			_.forEach(result, function (e) {
+				if (self.ReportType() != 'List') {
+					e.aggregateFunction = self.textQuery.getAggregate(e.fieldId);
+				}
 				e = self.setupField(e);
 			});
 
