@@ -746,6 +746,89 @@ var headerDesigner = function (options) {
 	};
 }
 
+
+var textQuery = function (options) {
+	var self = this;
+	self.queryItems = [];
+
+	self.ParseQuery = function (token, text) {
+		return ajaxcall({
+			noBlocking: true,
+			url: options.apiUrl,
+			data: {
+				method: "/ReportApi/ParseQuery",
+				model: JSON.stringify({
+					token: token,
+					text: text
+				})
+			}
+		});
+	}
+
+	self.QueryMethods = [
+		{ value: 'Sum', key: '<span class="fa fa-flash"></span> Sum of', type: 'Function' },
+		{ value: 'Avg', key: '<span class="fa fa-flash"></span> Average of', type: 'Function' },
+		{ value: 'Sum', key: '<span class="fa fa-flash"></span> Total of', type: 'Function' },
+		{ value: 'Count', key: '<span class="fa fa-flash"></span> Count of', type: 'Function' },
+		{ value: 'Percent', key: '<span class="fa fa-flash"></span> Percentage of', type: 'Function' },
+		{ value: 'OrderBy', key: '<span class="fa fa-gear"></span> Order by', type: 'Order' },
+		{ value: 'Today', key: '<span class="fa fa-filter"></span> for Today', type: 'DateFilter' },
+		{ value: 'Yesterday', key: '<span class="fa fa-filter"></span> for Yesterday', type: 'DateFilter' },
+		{ value: 'This Month', key: '<span class="fa fa-filter"></span> for This Month', type: 'DateFilter' },
+		{ value: 'Last Month', key: '<span class="fa fa-filter"></span> for Last Month', type: 'DateFilter' },
+		{ value: 'Bar', key: '<span class="fa fa-bar-chart"></span> as Bar Chart', type: 'ReportType' },
+		{ value: 'Pie', key: '<span class="fa fa-pie-chart"></span> as Pie Chart', type: 'ReportType' },
+	];
+
+	self.resetQuery = function () {
+		self.queryItems = [];
+		document.getElementById("query-input").innerHTML = "Show me&nbsp;";
+	}
+
+	self.setupQuery = function () {
+		var tributeAttributes = {
+			allowSpaces: true,
+			autocompleteMode: true,
+			noMatchTemplate: "",
+			values: function (token, callback) {
+				self.ParseQuery(token, "").done(function (results) {
+					if (results.d) results = results.d;
+					var items = _.map(results, function (x) {
+						return { value: x.fieldId, key: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field' };
+					});
+
+					items = items.concat(self.QueryMethods)
+
+					callback(items);
+				});
+			},
+			selectTemplate: function (item) {
+				if (typeof item === "undefined") return null;
+				if (this.range.isContentEditable(this.current.element)) {
+					return (
+						'<span contenteditable="false"><a>' +
+						item.original.key +
+						"</a></span>"
+					);
+				}
+
+				return item.original.value;
+			},
+			menuItemTemplate: function (item) {
+				return item.string;
+			}
+		};
+
+		var tribute = new Tribute(tributeAttributes);
+		tribute.attach(document.getElementById("query-input"));
+
+		document.getElementById("query-input")
+			.addEventListener("tribute-replaced", function (e) {
+				self.queryItems.push(e.detail.item.original);
+			});
+	}
+}
+
 var reportViewModel = function (options) {
 	var self = this;
 
@@ -937,6 +1020,38 @@ var reportViewModel = function (options) {
 	self.y = ko.observable(0);
 	self.width = ko.observable(3);
 	self.height = ko.observable(2);
+
+	self.textQuery = new textQuery(options);
+	self.runQuery = function () {
+		self.SelectedFields([]);
+		var fieldIds = _.filter(self.textQuery.queryItems, { type: 'Field' }).map(function (x) { return x.value });
+		ajaxcall({
+			url: options.apiUrl,
+			data: {
+				method: "/ReportApi/GetFieldsByIds",
+				model: JSON.stringify({
+					fieldIds: fieldIds.join(",")
+				})
+			}
+		}).done(function (result) {
+			if (result.d) result = result.d;
+			_.forEach(result, function (e) {
+				e = self.setupField(e);
+			});
+
+			self.ReportMode('execute');
+			self.SortByField(fieldIds[0]);
+			self.SelectedFields(result);
+			self.SaveReport(false);
+			self.RunReport(false);
+		});
+	}
+
+	self.resetQuery = function () {
+		self.textQuery.resetQuery();
+		self.ReportResult().ReportData(null);
+		self.ReportResult().HasError(false);
+	}
 
 	self.columnDetails = ko.observableArray([]);
 

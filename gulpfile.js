@@ -81,6 +81,10 @@ var deps = {
 	},
 	"fabric": {
 		"dist/fabric.min.js": ""
+	},
+	"tributejs": {
+		"dist/tribute.min.js": "",
+		"dist/tribute.css": ""
 	}
 };
 
