@@ -750,6 +750,7 @@ var headerDesigner = function (options) {
 var textQuery = function (options) {
 	var self = this;
 	self.queryItems = [];
+	self.filterItems = [];
 
 	self.ParseQuery = function (token, text) {
 		return ajaxcall({
@@ -771,13 +772,16 @@ var textQuery = function (options) {
 		{ value: 'Sum', key: '<span class="fa fa-flash"></span> Total of', type: 'Function' },
 		{ value: 'Count', key: '<span class="fa fa-flash"></span> Count of', type: 'Function' },
 		{ value: 'Percent', key: '<span class="fa fa-flash"></span> Percentage of', type: 'Function' },
-		{ value: 'OrderBy', key: '<span class="fa fa-gear"></span> Order by', type: 'Order' },
+		{ value: 'OrderBy', key: '<span class="fa fa-gear"></span> Order by', type: 'Order' },		
+		{ value: 'Bar', key: '<span class="fa fa-bar-chart"></span> as Bar Chart', type: 'ReportType' },
+		{ value: 'Pie', key: '<span class="fa fa-pie-chart"></span> as Pie Chart', type: 'ReportType' },
+	];
+
+	self.FilterMethods = [
 		{ value: 'Today', key: '<span class="fa fa-filter"></span> for Today', type: 'DateFilter' },
 		{ value: 'Yesterday', key: '<span class="fa fa-filter"></span> for Yesterday', type: 'DateFilter' },
 		{ value: 'This Month', key: '<span class="fa fa-filter"></span> for This Month', type: 'DateFilter' },
 		{ value: 'Last Month', key: '<span class="fa fa-filter"></span> for Last Month', type: 'DateFilter' },
-		{ value: 'Bar', key: '<span class="fa fa-bar-chart"></span> as Bar Chart', type: 'ReportType' },
-		{ value: 'Pie', key: '<span class="fa fa-pie-chart"></span> as Pie Chart', type: 'ReportType' },
 	];
 
 	self.getAggregate = function (columnId) {
@@ -800,13 +804,39 @@ var textQuery = function (options) {
 			return reportType.value;
 		}
 
-		return (_.find(self.textQuery.queryItems, { type: 'Function' })) ? 'Summary' : 'List';
+		return (_.find(self.queryItems, { type: 'Function' })) ? 'Summary' : 'List';
     }
 
 	self.resetQuery = function () {
 		self.queryItems = [];
+		self.filterItems = [];
 		document.getElementById("query-input").innerHTML = "Show me&nbsp;";
+		document.getElementById("filter-input").innerHTML = "Filter by&nbsp;";
 	}
+
+	self.searchFields = {
+		selectedOption: ko.observable(),
+		url: options.apiUrl,
+		query: function (params) {
+			return params.term ? {
+				method: "/ReportApi/ParseQuery",
+				model: JSON.stringify({
+					token: params.term,
+					text: ''
+				})
+			} : null;
+		},
+		processResults: function (data) {
+			if (data.d) results = data.d;
+			var items = _.map(data, function (x) {
+				return { id: x.fieldId, text: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey };
+			});
+
+			return {
+				results: items
+			};
+        }
+    }
 
 	self.setupQuery = function () {
 		var tributeAttributes = {
@@ -814,10 +844,11 @@ var textQuery = function (options) {
 			autocompleteMode: true,
 			noMatchTemplate: "",
 			values: function (token, callback) {
+				if (token == "=" || token == ">" || token == "<") return;
 				self.ParseQuery(token, "").done(function (results) {
 					if (results.d) results = results.d;
 					var items = _.map(results, function (x) {
-						return { value: x.fieldId, key: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field' };
+						return { value: x.fieldId, key: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey };
 					});
 
 					items = items.concat(self.QueryMethods)
@@ -849,6 +880,55 @@ var textQuery = function (options) {
 			.addEventListener("tribute-replaced", function (e) {
 				self.queryItems.push(e.detail.item.original);
 			});
+
+		document.getElementById("query-input")
+			.addEventListener("menuItemRemoved", function (e) {
+				self.queryItems.remove(e.detail.item.original);
+			});
+
+		var tributeFilterAttributes = {
+			allowSpaces: true,
+			autocompleteMode: true,
+			noMatchTemplate: "",
+			values: function (token, callback) {
+				if (token == "=" || token == ">" || token == "<") return;
+				self.ParseQuery(token, "").done(function (results) {
+					if (results.d) results = results.d;
+					var items = _.map(results, function (x) {
+						return { value: x.fieldId, key: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field' };
+					});
+
+					items = items.concat(self.QueryMethods)
+					 
+					callback(items);
+				});
+			},
+			selectTemplate: function (item) {
+				if (typeof item === "undefined") return null;
+				if (this.range.isContentEditable(this.current.element)) {
+					return (
+						'<span contenteditable="false"><a>' +
+						item.original.key +
+						"</a></span>"
+					);
+				}
+
+				return item.original.value;
+			},
+			menuItemTemplate: function (item) {
+				return item.string;
+			}
+		};
+
+		var filterTribute = new Tribute(tributeFilterAttributes);
+		filterTribute.attach(document.getElementById("filter-input"));
+
+
+		document.getElementById("filter-input")
+			.addEventListener("tribute-replaced", function (e) {
+				self.queryItems.push(e.detail.item.original);
+			});
+
 	}
 }
 
@@ -1045,7 +1125,8 @@ var reportViewModel = function (options) {
 	self.height = ko.observable(2);
 
 	self.textQuery = new textQuery(options);
-	self.runQuery = function () {
+
+	self.runQuery = function (useAi) {
 		self.SelectedFields([]);
 		var fieldIds = _.filter(self.textQuery.queryItems, { type: 'Field' }).map(function (x) { return x.value });
 		ajaxcall({
@@ -1072,7 +1153,26 @@ var reportViewModel = function (options) {
 			self.SortByField(fieldIds[0]);
 			self.SelectedFields(result);
 			self.SaveReport(false);
-			self.RunReport(false);
+
+			if (useAi === true) {
+				var queryText = document.getElementById("query-input").innerText;
+				ajaxcall({
+					url: options.apiUrl,
+					data: {
+						method: "/ReportApi/RunQueryAi",
+						model: JSON.stringify({
+							query: queryText,
+							fieldIds: fieldIds.join(",")
+						})
+					}
+				}).done(function (result) {
+					if (result.d) result = result.d;
+					self.ExecuteReportQuery(result.sql, result.connectKey);
+				});
+			}
+			else {
+				self.RunReport(false);
+			}
 		});
 	}
 
@@ -1081,6 +1181,26 @@ var reportViewModel = function (options) {
 		self.ReportResult().ReportData(null);
 		self.ReportResult().HasError(false);
 	}
+
+	self.textQuery.searchFields.selectedOption.subscribe(function (newValue) {
+		if (newValue) {
+			if (!_.find(self.SelectedFields(), function (x) { return x.fieldId == parseInt(newValue); })) {
+				ajaxcall({
+					url: options.apiUrl,
+					data: {
+						method: "/ReportApi/GetFieldsByIds",
+						model: JSON.stringify({
+							fieldIds: newValue
+						})
+					}
+				}).done(function (result) {
+					if (result.d) result = result.d;
+					self.SelectedFields.push(self.setupField(result[0]));
+					self.textQuery.searchFields.selectedOption(null);
+				});
+			}
+		}
+	});
 
 	self.columnDetails = ko.observableArray([]);
 
@@ -2191,7 +2311,7 @@ var reportViewModel = function (options) {
 				pageSize: self.pager.pageSize(),
 				sortBy: self.pager.sortColumn() || '',
 				desc: self.pager.sortDescending() || false,
-				reportSeries: reportSeries
+				reportSeries: reportSeries ||''
 			})
 		}).done(function (result) {
 
@@ -2366,7 +2486,7 @@ var reportViewModel = function (options) {
 							pageSize: e.pager.pageSize(),
 							sortBy: e.pager.sortColumn() || '',
 							desc: e.pager.sortDescending() || false,
-							reportSeries: reportSeries
+							reportSeries: reportSeries || ''
 						})
 					}).done(function (ddData) {
 						if (ddData.d) { ddData = ddData.d; }
