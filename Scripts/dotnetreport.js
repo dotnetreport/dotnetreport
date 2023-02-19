@@ -889,19 +889,14 @@ var textQuery = function (options) {
 		var tributeFilterAttributes = {
 			allowSpaces: true,
 			autocompleteMode: true,
-			noMatchTemplate: "",
+			noMatchTemplate: function () { return self.queryItems.length == 0 ? "Select some data to show above first" : "no match" },
 			values: function (token, callback) {
-				if (token == "=" || token == ">" || token == "<") return;
-				self.ParseQuery(token, "").done(function (results) {
-					if (results.d) results = results.d;
-					var items = _.map(results, function (x) {
-						return { value: x.fieldId, key: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field' };
-					});
-
-					items = items.concat(self.QueryMethods)
-					 
+				if (token == "=" || token == ">" || token == "<") {
+				}
+				else {
+					var items = self.queryItems;
 					callback(items);
-				});
+				}
 			},
 			selectTemplate: function (item) {
 				if (typeof item === "undefined") return null;
@@ -926,7 +921,7 @@ var textQuery = function (options) {
 
 		document.getElementById("filter-input")
 			.addEventListener("tribute-replaced", function (e) {
-				self.queryItems.push(e.detail.item.original);
+				
 			});
 
 	}
@@ -2324,6 +2319,8 @@ var reportViewModel = function (options) {
 			reportResult.ReportDebug(result.ReportDebug);
 			reportResult.ReportSql(result.ReportSql);
 			self.ReportSeries = reportSeries;
+
+			if (result.HasError) return;
 
 			function matchColumnName(src, dst, dbSrc, dbDst) {
 				if (src == dst) return true;
