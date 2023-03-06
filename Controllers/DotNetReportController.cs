@@ -93,11 +93,10 @@ namespace ReportBuilder.Web.Controllers
         public IActionResult DownloadXml(string reportSql, string connectKey, string reportName)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            var xml = DotNetReportHelper.GetXmlFile(reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName));
-            Response.Headers.Add("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".xml");
-            Response.ContentType = "application/xml";
-
-            return File(xml, "application/xml", reportName + ".xml");
+            string xml = DotNetReportHelper.GetXmlFile(reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName));           
+            var data = System.Text.Encoding.UTF8.GetBytes(xml);
+            Response.ContentType = "text/txt";
+            return File(data, "text/txt", reportName + ".xml");
         }
 
         [HttpPost]
