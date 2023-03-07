@@ -323,11 +323,6 @@ namespace ReportBuilder.Web.Models
             var connString = ConfigurationManager.ConnectionStrings[key].ConnectionString;
             connString = connString.Replace("Trusted_Connection=True", "");
 
-            if (!connString.ToLower().StartsWith("provider"))
-            {
-                connString = "Provider=sqloledb;" + connString;
-            }
-
             return connString;
         }
 
