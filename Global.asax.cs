@@ -15,5 +15,14 @@ namespace ReportBuilder.Web
             RouteConfig.RegisterRoutes(RouteTable.Routes);
             JobScheduler.Start();
         }
+
+        protected void Application_BeginRequest(object sender, EventArgs e)
+        {
+            if (JobScheduler.WebAppRootUrl == "")
+            {
+                string uri = HttpContext.Current.Request.Url.AbsoluteUri;
+                JobScheduler.WebAppRootUrl = uri.Substring(0, uri.IndexOf("/", 8) + 1);
+            }
+        }
     }
 }

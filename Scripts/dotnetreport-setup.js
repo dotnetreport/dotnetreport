@@ -1,4 +1,8 @@
-﻿var manageViewModel = function (options) {
+﻿/// dotnet Report Builder view model v5.0.0
+/// License must be purchased for commercial use
+/// 2022 (c) www.dotnetreport.com
+
+var manageViewModel = function (options) {
 	var self = this;
 
 	self.keys = {
@@ -9,6 +13,24 @@
 	self.DataConnections = ko.observableArray([]);
 	self.Tables = new tablesViewModel(options);
 	self.Procedures = new proceduresViewModel(options);
+	self.pager = new pagerViewModel({autoPage: true});
+
+	self.pager.totalRecords(self.Tables.model().length);
+
+	self.Tables.filteredTables.subscribe(function (x) {		
+		self.pager.totalRecords(x.length);
+		self.pager.currentPage(1);
+	});
+
+	self.pagedTables = ko.computed(function () {
+		var tables = self.Tables.filteredTables();
+		var pageNumber = self.pager.currentPage();
+		var pageSize = self.pager.pageSize();
+
+		var startIndex = (pageNumber-1) * pageSize;
+		var endIndex = startIndex + pageSize;
+		return tables.slice(startIndex, endIndex < tables.length ? endIndex : tables.length);
+	});
 
 	self.foundProcedures = ko.observableArray([]);
 	self.searchProcedureTerm = ko.observable("");
@@ -57,7 +79,7 @@
 
 	self.editColumn = ko.observable();
 	self.isStoredProcColumn = ko.observable();
-	self.selectColumn = function (isStoredProcColumn, data, e) {		
+	self.selectColumn = function (isStoredProcColumn, data, e) {
 		self.isStoredProcColumn(null);
 		self.editColumn(data);
 		self.isStoredProcColumn(isStoredProcColumn);
@@ -193,11 +215,11 @@
 	self.searchStoredProcedure = function () {
 		if (!self.searchProcedureTerm()) {
 			toastr.error('Please enter a term to search stored procs');
-			return;
+			return false;
 		}
 
 		ajaxcall({
-			url: "/Setup/SearchProcedure",
+			url: "/DotNetSetup/SearchProcedure",
 			type: 'POST',
 			data: JSON.stringify({
 				value: self.searchProcedureTerm(),
@@ -219,6 +241,8 @@
 
 			self.foundProcedures(result)
 		});
+
+		return false;
 	}
 
 	self.saveProcedure = function (procName, adding) {
@@ -407,6 +431,104 @@
 	self.importStart = function () {
 		self.importingFile(true);
 	}
+
+	self.manageAccess = {};
+	self.reportsAndFolders = ko.observableArray([]);
+
+	self.setupManageAccess = function () {
+
+		ajaxcall({ url: options.getUsersAndRoles }).done(function (data) {
+			if (data.d) data = data.d;
+			self.manageAccess = manageAccess(data);
+		});
+
+		
+		self.loadReportsAndFolder();
+	}
+
+	self.loadReportsAndFolder = function () {
+
+		var getReports = function () {
+			return ajaxcall({
+				url: options.reportsApiUrl + "/ReportApi/GetSavedReports",
+				data: {
+					account: self.keys.AccountApiKey,
+					dataConnect: self.keys.DatabaseApiKey,
+					adminMode: true
+				}
+			});
+		};
+
+		var getFolders = function () {
+			return ajaxcall({
+				url: options.reportsApiUrl + "/ReportApi/GetFolders",
+				data: {
+					account: self.keys.AccountApiKey,
+					dataConnect: self.keys.DatabaseApiKey,
+					adminMode: true
+				}
+			});
+		};
+
+		return $.when(getReports(), getFolders()).done(function (allReports, allFolders) {
+			var setup = [];
+			if (allFolders[0].d) { allFolders[0] = allFolders[0].d; }
+			if (allReports[0].d) { allReports[0] = allReports[0].d; }
+
+			_.forEach(allFolders[0], function (x) {
+				var folderReports = _.filter(allReports[0], { folderId: x.Id });
+				_.forEach(folderReports, function (r) {
+					r.changeAccess = ko.observable(false);
+					r.changeAccess.subscribe(function (x) {
+						if (x) {
+							self.manageAccess.clientId(r.clientId);
+							self.manageAccess.setupList(self.manageAccess.users, r.userId || '');
+							self.manageAccess.setupList(self.manageAccess.userRoles, r.userRole || '');
+							self.manageAccess.setupList(self.manageAccess.viewOnlyUserRoles, r.viewOnlyUserRole || '');
+							self.manageAccess.setupList(self.manageAccess.viewOnlyUsers, r.viewOnlyUserId || '');
+							self.manageAccess.setupList(self.manageAccess.deleteOnlyUserRoles, r.deleteOnlyUserRole || '');
+							self.manageAccess.setupList(self.manageAccess.deleteOnlyUsers, r.deleteOnlyUserId || '');
+						}
+					});
+
+					r.saveAccessChanges = function () {
+						return ajaxcall({
+							url: options.reportsApiUrl + "/ReportApi/SaveReportAccess",
+							type: "POST",
+							data: JSON.stringify({
+								account: self.keys.AccountApiKey,
+								dataConnect: self.keys.DatabaseApiKey,
+								reportJson: JSON.stringify({
+									Id: r.reportId,
+									ClientId: self.manageAccess.clientId(),
+									UserId: self.manageAccess.getAsList(self.manageAccess.users),
+									ViewOnlyUserId: self.manageAccess.getAsList(self.manageAccess.viewOnlyUsers),
+									DeleteOnlyUserId: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUsers),
+									UserRoles: self.manageAccess.getAsList(self.manageAccess.userRoles),
+									ViewOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.viewOnlyUserRoles),
+									DeleteOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUserRoles)
+								})
+							})
+						}).done(function (d) {
+							if (d.d) d = d.d;
+							toastr.success('Changes Saved Successfully');							
+							r.changeAccess(false);
+							self.loadReportsAndFolder();
+						});
+
+					}
+				});
+
+				setup.push({
+					folderId: x.Id,
+					folder: x.FolderName,
+					reports: folderReports
+				});
+			});
+
+			self.reportsAndFolders(setup);
+		});
+    }
 }
 
 var tablesViewModel = function (options) {
@@ -461,6 +583,18 @@ var tablesViewModel = function (options) {
 			});
 
 		});
+
+		t.selectAllColumns = function (e) {
+			_.forEach(t.Columns(), function (c) {
+				c.Selected(true);
+			});
+		}
+
+		t.unselectAllColumns = function (e) {
+			_.forEach(t.Columns(), function (c) {
+				c.Selected(false);
+			});
+		}
 
 		t.saveTable = function (apiKey, dbKey) {
 			var e = ko.mapping.toJS(t, {
@@ -549,19 +683,7 @@ var tablesViewModel = function (options) {
 				c.Selected(false);
 			});
 		});
-	}
-
-	self.selectAllColumns = function (e) {
-		_.forEach(e.Columns(), function (c) {
-			c.Selected(true);
-		});
-	}
-
-	self.unselectAllColumns = function (e) {
-		_.forEach(e.Columns(), function (c) {
-			c.Selected(false);
-		});
-	}
+	}	
 
 	self.columnSorted = function (args) {
 		_.forEach(args.targetParent(), function (e) {

@@ -14,7 +14,7 @@ using System.Web.Mvc;
 
 namespace ReportBuilder.Web.Controllers
 {
-    public class SetupController : Controller
+    public class DotNetSetupController : Controller
     {
         public async Task<ActionResult> Index(string databaseApiKey = "")
         {
@@ -276,7 +276,8 @@ namespace ReportBuilder.Web.Controllers
                         IsView = type == "VIEW",
                         Selected = matchTable != null,
                         Columns = new List<ColumnViewModel>(),
-                        AllowedRoles = matchTable != null ? matchTable.AllowedRoles : new List<string>()
+                        AllowedRoles = matchTable != null ? matchTable.AllowedRoles : new List<string>(),
+                        AccountIdField = matchTable != null ? matchTable.AccountIdField : ""
                     };
 
                     var dtField = conn.GetSchema("Columns");
@@ -394,7 +395,8 @@ namespace ReportBuilder.Web.Controllers
                 int count = 1;
                 foreach (DataRow dr in dtProcedures.Rows)
                 {
-                    string procName = dr["ROUTINE_NAME"].ToString();
+                    var procName = dr["ROUTINE_NAME"].ToString();
+                    var procSchema = dr["ROUTINE_SCHEMA"].ToString();
                     cmd = new OleDbCommand(procName, conn);
                     cmd.CommandType = CommandType.StoredProcedure;
                     // Get the parameters.
@@ -418,7 +420,7 @@ namespace ReportBuilder.Web.Controllers
                         }
                     }
                     DataTable dt = new DataTable(); 
-                    cmd = new OleDbCommand($"[{procName}]", conn);
+                    cmd = new OleDbCommand($"[{procSchema}].[{procName}]", conn);
                     cmd.CommandType = CommandType.StoredProcedure;
                     foreach (var data in parameterViewModels)
                     {

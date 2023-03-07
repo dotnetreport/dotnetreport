@@ -189,3 +189,6 @@ _Pvt_Extensions/
 ModelManifest.xml
 /.vs
 /App_Data
+/wwwroot
+/package-lock.json
+/.vscode

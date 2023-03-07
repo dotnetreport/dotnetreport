@@ -1,4 +1,6 @@
-﻿using OfficeOpenXml;
+﻿using iTextSharp.text;
+using iTextSharp.text.pdf;
+using OfficeOpenXml;
 using PuppeteerSharp;
 using PuppeteerSharp.Media;
 using System;
@@ -36,6 +38,14 @@ namespace ReportBuilder.Web.Models
 
         public string ReportSeries { get; set; }
         public bool ExpandAll { get; set; }
+    }
+
+    public class DotNetReportPrintModel : DotNetReportModel
+    {
+        public string ClientId { get; set; }
+        public string UserId { get; set; }
+        public string CurrentUserRoles { get; set; }
+        public string DataFilters { get; set; }
     }
 
     public class DotNetReportResultModel
@@ -103,6 +113,7 @@ namespace ReportBuilder.Web.Models
         public DataTable dataTable { get; set; }
         public List<ParameterViewModel> Parameters { get; set; }
         public List<string> AllowedRoles { get; set; }
+        public bool? DoNotDisplay { get; set; }
     }
 
     public class ParameterViewModel
@@ -273,7 +284,7 @@ namespace ReportBuilder.Web.Models
         /// <summary>
         /// List of all User Ids in your Application
         /// </summary>
-        public List<string> Users { get; set; } = new List<string>();
+        public List<dynamic> Users { get; set; } = new List<dynamic>();
 
         /// <summary>
         /// List of all User Roles in your Application
@@ -299,6 +310,10 @@ namespace ReportBuilder.Web.Models
         public int? decimalPlaces { get; set; }
         public string fieldAlign { get; set; }
         public string fieldFormat { get; set; }
+        public bool dontSubTotal { get; set; }
+
+        public bool isNumeric { get; set; }
+        public bool isCurrency { get; set; }
     }
 
     public class DotNetReportHelper
@@ -435,17 +450,20 @@ namespace ReportBuilder.Web.Models
             return "";
         }
 
-        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null)
+        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false)
         {
             ws.Cells[rowstart, colstart].LoadFromDataTable(dt, true);
             ws.Cells[rowstart, colstart, rowstart, dt.Columns.Count].Style.Font.Bold = true;
 
-            int i = 1;
+            int i = 1; var isNumeric = false;
             foreach (DataColumn dc in dt.Columns)
             {
+                isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
                 if (dc.DataType == typeof(decimal))
+                {
                     ws.Column(i).Style.Numberformat.Format = "###,###,##0.00";
-
+                    isNumeric = true;
+                }
                 if (dc.DataType == typeof(DateTime))
                     ws.Column(i).Style.Numberformat.Format = "mm/dd/yyyy";
 
@@ -453,14 +471,59 @@ namespace ReportBuilder.Web.Models
                 if (formatColumn != null && formatColumn.fieldFormat == "Currency")
                 {
                     ws.Column(i).Style.Numberformat.Format = "$###,###,##0.00";
+                    isNumeric = true;
+                }
+
+                if (formatColumn != null)
+                {
+                    ws.Column(i).Style.HorizontalAlignment = formatColumn.fieldAlign == "Right" || (isNumeric && (formatColumn.fieldAlign == "Auto" || string.IsNullOrEmpty(formatColumn.fieldAlign))) ? OfficeOpenXml.Style.ExcelHorizontalAlignment.Right : formatColumn.fieldAlign == "Center" ? OfficeOpenXml.Style.ExcelHorizontalAlignment.Center : OfficeOpenXml.Style.ExcelHorizontalAlignment.Left;
+                }
+
+                if (includeSubtotal)
+                {
+                    if (isNumeric && !(formatColumn?.dontSubTotal ?? false))
+                    {                     
+                        ws.Cells[dt.Rows.Count + rowstart + 1, i].Formula = $"=SUM({ws.Cells[rowstart, i].Address}:{ws.Cells[dt.Rows.Count + rowstart, i].Address})";
+                        ws.Cells[dt.Rows.Count + rowstart + 1, i].Style.Font.Bold = true;
+                    }
                 }
 
                 i++;
             }
+            
             ws.Cells[ws.Dimension.Address].AutoFitColumns();
         }
 
-        public static byte[] GetExcelFile(string reportSql, string connectKey, string reportName, bool allExpanded = false, List<string> expandSqls = null, List<ReportHeaderColumn> columns = null)
+        public static DataTable Transpose(DataTable dt)
+        {
+            DataTable dtNew = new DataTable();
+
+            for (int i = 0; i <= dt.Rows.Count; i++)
+            {
+                dtNew.Columns.Add(i.ToString());
+            }
+
+            dtNew.Columns[0].ColumnName = " ";
+
+            for (int i = 0; i < dt.Rows.Count; i++)
+            {
+                dtNew.Columns[i + 1].ColumnName = dt.Rows[i].ItemArray[0].ToString();
+            }
+
+            for (int k = 1; k < dt.Columns.Count; k++)
+            {
+                DataRow r = dtNew.NewRow();
+                r[0] = dt.Columns[k].ToString();
+                for (int j = 1; j <= dt.Rows.Count; j++)
+                    r[j] = dt.Rows[j - 1][k];
+                dtNew.Rows.Add(r);
+            }
+
+            return dtNew;
+        }
+
+        public static byte[] GetExcelFile(string reportSql, string connectKey, string reportName, bool allExpanded = false,
+                List<string> expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
         {
             var sql = Decrypt(reportSql);
 
@@ -473,6 +536,8 @@ namespace ReportBuilder.Web.Models
                 var adapter = new OleDbDataAdapter(command);
 
                 adapter.Fill(dt);
+
+                if (pivot) dt = Transpose(dt);
 
                 if (columns?.Count > 0)
                 {
@@ -506,7 +571,7 @@ namespace ReportBuilder.Web.Models
                     rowstart += 2;
                     rowend = rowstart + dt.Rows.Count;
 
-                    FormatExcelSheet(dt, ws, rowstart, colstart, columns);
+                    FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeSubtotal);
 
                     if (allExpanded)
                     {
@@ -529,13 +594,49 @@ namespace ReportBuilder.Web.Models
                 }
             }
         }
-
-        public static void UpdateColumnNames(DataTable dt)
+        public static ReportHeaderColumn GetColumnFormatting(DataColumn dc, List<ReportHeaderColumn> columns, ref string value)
         {
+            var isCurrency = false;
+            var isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
+            var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
 
+            try
+            {
+                if (dc.DataType == typeof(decimal) || (formatColumn != null && (formatColumn.fieldFormat == "Decimal" || formatColumn.fieldFormat == "Double")))
+                {
+                    isNumeric = true;
+                    value = Convert.ToDecimal(value).ToString("###,###,##0.00");
+                }
+                if (formatColumn != null && formatColumn.fieldFormat == "Currency")
+                {
+                    value = Convert.ToDecimal(value).ToString("C");
+                    isCurrency = true;
+                }
+                if (formatColumn != null && (formatColumn.fieldFormat == "Date" || formatColumn.fieldFormat == "Date and Time" || formatColumn.fieldFormat == "Time") && dc.DataType.Name == "DateTime")
+                {
+                    var date = Convert.ToDateTime(value);
+                    value = formatColumn.fieldFormat.StartsWith("Date") ? date.ToShortDateString() + " " : "";
+                    value += formatColumn.fieldFormat.EndsWith("Time") ? date.ToShortTimeString() : "";
+                    value = value.Trim();
+                }
+            } catch (Exception ex)
+            {
+                // ignore formatting exceptions
+            }
+
+            if (formatColumn != null)
+            {
+                formatColumn.isNumeric = isNumeric;
+                formatColumn.isCurrency = isCurrency;
+            }
+
+            return formatColumn ?? new ReportHeaderColumn
+            {
+                isNumeric = isNumeric,
+                isCurrency = isCurrency
+            };
         }
 
-        
 
         /// <summary>
         /// Customize this method with a login for dotnet report so that it can login to print pdf reports
@@ -555,12 +656,164 @@ namespace ReportBuilder.Web.Models
             await page.ClickAsync("#LoginSubmit"); // Make sure #LoginSubmit is replaced with the login button form input id
         }
 
+
+        public static byte[] GetPdfFileAlt(string reportSql, string connectKey, string reportName, string chartData = null, 
+                    List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
+        {
+            var sql = Decrypt(reportSql);
+            var dt = new DataTable();
+            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
+            {
+                conn.Open();
+                var command = new OleDbCommand(sql, conn);
+                var adapter = new OleDbDataAdapter(command);
+
+                adapter.Fill(dt);
+            }
+
+            Document document = new Document();
+
+            if (pivot)
+            {
+                dt = Transpose(dt);
+                document.SetPageSize(PageSize.LETTER.Rotate());
+            }
+
+            var subTotals = new decimal[dt.Columns.Count];
+
+            using (var ms = new MemoryStream())
+            {
+                PdfWriter writer = PdfWriter.GetInstance(document, ms);
+                document.Open();
+                var heading = new Phrase(reportName);
+                heading.Font.Size = 14f;
+                heading.Font.SetStyle("bold");
+                document.Add(heading);
+
+                PdfPTable table = new PdfPTable(dt.Columns.Count);
+                table.WidthPercentage = 100;
+
+                //Set columns names in the pdf file
+                for (int k = 0; k < dt.Columns.Count; k++)
+                {
+                    var phrase = new Phrase(dt.Columns[k].ColumnName);
+                    var cell = new PdfPCell(phrase);
+                    cell.HorizontalAlignment = PdfPCell.ALIGN_CENTER;
+                    cell.VerticalAlignment = PdfPCell.ALIGN_CENTER;
+                    cell.BorderColor = BaseColor.LIGHT_GRAY;
+                    // cell.BackgroundColor = new iTextSharp.text.BaseColor(51, 102, 102);
+                    table.AddCell(cell);
+
+                    cell.BorderWidth = 0.5f;
+                    
+                    phrase.Font.Size = 10f;
+                    phrase.Font.SetStyle("bold");
+                }
+
+                //Add values of DataTable in pdf file
+                for (int i = 0; i < dt.Rows.Count; i++)
+                {
+                    for (int j = 0; j < dt.Columns.Count; j++)
+                    {
+                        var value = dt.Rows[i][j].ToString();
+                        var dc = dt.Columns[j];
+                        var formatColumn = GetColumnFormatting(dc, columns, ref value);
+
+                        var phrase = new Phrase(value);
+                        var cell = new PdfPCell(phrase);
+                        //Align the cell in the center
+                        cell.HorizontalAlignment = formatColumn.isNumeric ? PdfPCell.ALIGN_RIGHT : PdfPCell.ALIGN_LEFT;
+                        cell.VerticalAlignment = PdfPCell.ALIGN_LEFT;
+                        cell.BorderColor = BaseColor.LIGHT_GRAY;
+                        cell.BorderWidth = 0.5f;
+                        phrase.Font.Size = 10f;
+
+                        if (formatColumn != null)
+                        {
+                            cell.HorizontalAlignment = formatColumn.fieldAlign == "Right" || (formatColumn.isNumeric && (formatColumn.fieldAlign == "Auto" || string.IsNullOrEmpty(formatColumn.fieldAlign))) ? PdfPCell.ALIGN_RIGHT : formatColumn.fieldAlign == "Center" ? PdfPCell.ALIGN_MIDDLE : PdfPCell.ALIGN_LEFT;
+                        }
+
+                        if (includeSubtotal)
+                        {
+                            if (formatColumn.isNumeric && !(formatColumn?.dontSubTotal ?? false))
+                            {
+                                subTotals[j] += Convert.ToDecimal(dt.Rows[i][j]);
+                            }
+                        }
+
+                        table.AddCell(cell);
+                    }
+                }
+
+                if (includeSubtotal)
+                {
+                    for (int j = 0; j < dt.Columns.Count; j++)
+                    {
+                        PdfPCell cell = null;
+                        var value = subTotals[j].ToString();
+                        var dc = dt.Columns[j];
+                        var formatColumn = GetColumnFormatting(dc, columns, ref value);
+                        if (formatColumn.isNumeric && !(formatColumn?.dontSubTotal ?? false))
+                        {
+                            cell = new PdfPCell(new Phrase(value));
+                        }
+                        else
+                        {
+                            cell = new PdfPCell(new Phrase(" "));
+                        }
+                        cell.HorizontalAlignment = formatColumn.isNumeric ? PdfPCell.ALIGN_RIGHT : PdfPCell.ALIGN_LEFT;
+                        cell.VerticalAlignment = PdfPCell.ALIGN_LEFT;
+                        cell.BorderColor = BaseColor.BLACK;
+                        cell.BorderWidth = 1f;
+
+                        table.AddCell(cell);
+                    }
+                }
+
+                //Create a PdfReader bound to that byte array
+                if (!string.IsNullOrEmpty(chartData) && chartData != "undefined")
+                {
+                    byte[] sPDFDecoded = Convert.FromBase64String(chartData.Substring(chartData.LastIndexOf(',') + 1));
+                    var image = Image.GetInstance(sPDFDecoded);
+                    if (image.Height > image.Width)
+                    {
+                        //Maximum height is 800 pixels.
+                        float percentage = 0.0f;
+                        percentage = 700 / image.Height;
+                        image.ScalePercent(percentage * 100);
+                    }
+                    else
+                    {
+                        //Maximum width is 600 pixels.
+                        float percentage = 0.0f;
+                        percentage = 540 / image.Width;
+                        image.ScalePercent(percentage * 100);
+                    }
+                    // If need to add boarder
+                    //   image.Border = iTextSharp.text.Rectangle.BOX;
+                    //  image.BorderColor = iTextSharp.text.BaseColor.BLACK;
+                    //  image.BorderWidth = 3f;
+                    document.Add(image);
+                }
+                document.Add(table);
+                document.Close();
+                return ms.ToArray();
+            }
+        }
+
+
         public static async Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
                     string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false)
         {
-            var installPath = AppContext.BaseDirectory + "\\App_Data\\local-chromium";
-            await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync(BrowserFetcher.DefaultRevision);
-            var executablePath = $"{Directory.GetDirectories(installPath)[0]}\\chrome-win\\chrome.exe";
+            var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
+            await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync(BrowserFetcher.DefaultChromiumRevision);
+            var executablePath = "";
+            foreach (var d in Directory.GetDirectories(installPath))
+            {
+                executablePath = $"{d}\\chrome-win\\chrome.exe";
+                if (File.Exists(executablePath)) break;
+            }
+
             var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = true, ExecutablePath = executablePath });
             var page = await browser.NewPageAsync();
             await page.SetRequestInterceptionAsync(true);
@@ -692,11 +945,93 @@ namespace ReportBuilder.Web.Models
                             {
                                 byte[] plainTextBytes = new byte[cipherTextBytes.Length];
                                 int decryptedByteCount = cryptoStream.Read(plainTextBytes, 0, plainTextBytes.Length);
-                                return Encoding.UTF8.GetString(plainTextBytes, 0, decryptedByteCount);
+                                var decryptedString = Encoding.UTF8.GetString(plainTextBytes, 0, decryptedByteCount);
+                                while (decryptedByteCount > 0)
+                                {
+                                    decryptedByteCount = cryptoStream.Read(plainTextBytes, 0, plainTextBytes.Length);
+                                    decryptedString += Encoding.UTF8.GetString(plainTextBytes, 0, decryptedByteCount);
+                                }
+
+                                return decryptedString;
                             }
                         }
                     }
                 }
+            }
+        }
+        public static byte[] GetCSVFile(string reportSql, string connectKey, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false)
+        {
+            var sql = Decrypt(reportSql);
+
+            // Execute sql
+            var dt = new DataTable();
+            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
+            {
+                conn.Open();
+                var command = new OleDbCommand(sql, conn);
+                var adapter = new OleDbDataAdapter(command);
+
+                adapter.Fill(dt);
+                var subTotals = new decimal[dt.Columns.Count];
+
+                //Build the CSV file data as a Comma separated string.
+                string csv = string.Empty;
+                foreach (DataColumn column in dt.Columns)
+                {
+                    //Add the Header row for CSV file.
+                    csv += column.ColumnName + ',';
+                }
+
+                //Add new line.
+                csv += "\r\n";
+
+                foreach (DataRow row in dt.Rows)
+                {
+                    var i = 0;
+                    foreach (DataColumn column in dt.Columns)
+                    {
+                        var value = row[column.ColumnName].ToString();
+                        var formatColumn = GetColumnFormatting(column, columns, ref value);
+
+                        if (includeSubtotal)
+                        {
+                            if (formatColumn.isNumeric && !(formatColumn?.dontSubTotal ?? false))
+                            {
+                                subTotals[i] += Convert.ToDecimal(row[column.ColumnName]);
+                            }
+                        }
+
+                        //Add the Data rows.
+                        csv += $"{(i == 0 ? "" : ",")}\"{value}\"";
+                        i++;
+                    }
+
+                    //Add new line.
+                    csv += "\r\n";
+                }
+
+                if (includeSubtotal)
+                {
+                    for (int j = 0; j < dt.Columns.Count; j++)
+                    {
+                        var value = subTotals[j].ToString();
+                        var dc = dt.Columns[j];
+                        var formatColumn = GetColumnFormatting(dc, columns, ref value);
+                        if (formatColumn.isNumeric && !(formatColumn?.dontSubTotal ?? false))
+                        {
+                            csv += $"{(j == 0 ? "" : ",")}\"{value}\"";
+                        }
+                        else
+                        {
+                            csv += $"{(j == 0 ? "" : ",")}\"\"";
+                        }
+                    }
+
+                    csv += "\r\n";
+                }
+
+                return Encoding.ASCII.GetBytes(csv);
+                //return csv;
             }
         }
     }
