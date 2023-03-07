@@ -246,7 +246,7 @@ namespace ReportBuilder.Web.Controllers
                     {
 
                     var sqlSplit = sql.Substring(0, sql.IndexOf("FROM")).Replace("SELECT", "").Trim();
-                    var sqlFields = Regex.Split(sqlSplit, "`, (?!`^\\(`*?\\))").Where(x => x != "CONVERT(VARCHAR(3)")
+                    sqlFields = Regex.Split(sqlSplit, "`, (?!`^\\(`*?\\))").Where(x => x != "CONVERT(VARCHAR(3)")
                         .Select(x => x.EndsWith("`") ? x : x + "`")
                         .ToList();
 
@@ -283,8 +283,8 @@ namespace ReportBuilder.Web.Controllers
                         conn.Open();
                         var command = new MySqlCommand(sql, conn);
                         var adapter = new MySqlDataAdapter(command);
-                        adapter.Fill(dtRun);
-                        dtPagedRun = (dtRun.Rows.Count > 0) ? dtPagedRun = dtRun.AsEnumerable().Skip((pageNumber - 1) * pageSize).Take(pageSize).CopyToDataTable() : dtRun;
+                        adapter.Fill(dtPagedRun);
+                        dtPagedRun = (dtPagedRun.Rows.Count > 0) ? dtPagedRun.AsEnumerable().Skip((pageNumber - 1) * pageSize).Take(pageSize).CopyToDataTable() : dtPagedRun;
 
                         string[] series = { };
                         if (i == 0)
