@@ -70,7 +70,12 @@ namespace ReportBuilder.Web.Controllers
             return View();
         }
 
-        
+        public IActionResult Query()
+        {
+            return View();
+        }
+
+
         [HttpPost]
         public IActionResult DownloadExcel(string reportSql, string connectKey, string reportName, bool allExpanded, string expandSqls, string columnDetails = null, bool includeSubtotal = false, bool pivot = false)
         {
