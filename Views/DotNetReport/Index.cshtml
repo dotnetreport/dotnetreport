@@ -287,7 +287,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
 </div>
 
 <!-- Report Builder -->
-<div class="modal modal-fullscreen" id="modal-reportbuilder" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="padding-right: 0px !important;">
+<div class="modal modal-fullscreen" id="modal-reportbuilder" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="padding-right: 0px !important;">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -362,9 +362,15 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 </div>
                 <div class="clearfix"></div>
                 <div class="row">
-                    <div class="col-md-12">
+                    <div class="col-md-6">
                         <select class="form-control" data-bind="options: Procs, optionsCaption: 'Choose Section...', optionsText: 'DisplayName', value: SelectedProc, disable: isFormulaField, visible: useStoredProc"></select>
                         <select class="form-control" data-bind="options: Tables, optionsCaption: 'Choose Section...', optionsText: 'tableName', value: SelectedTable, disable: isFormulaField, hidden: useStoredProc"></select>
+                    </div>
+                                        
+                    <div class="col-md-6" data-bind="disable: isFormulaField, hidden: useStoredProc">
+                        <div data-bind="with: textQuery.searchFields">
+                            <select id="search-field" class="form-control" data-bind="select2: {placeholder: 'Or Search for a Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults }, minimumInputLength: 2, allowClear: true }, value: selectedOption"></select>
+                        </div>
                     </div>
 
                     <div class="col-md-12 padded-div" data-bind="visible: ChooseFields().length>0">
