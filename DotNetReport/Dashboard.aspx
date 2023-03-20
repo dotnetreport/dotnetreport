@@ -215,7 +215,7 @@
         <!-- ko foreach: reports -->
         <div class="grid-stack-item" data-bind="attr: {'data-gs-x': x, 'data-gs-y': y, 'data-gs-width': width, 'data-gs-height': height, 'data-gs-auto-position': true, 'data-gs-id': ReportID}">
 
-            <div class="card" data-bind="attr: {class: 'card ' + panelStyle + ' grid-stack-item-content'}" style="overflow-y: hidden;">
+            <div class="card" data-bind="attr: {class: 'card ' + panelStyle + ' grid-stack-item-content'}, css: { expanded: isExpanded }" style="overflow-y: hidden;">
                 <div class="padded-div">
                     <div class="pull-left">
                         <button type="button" class="btn" data-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
