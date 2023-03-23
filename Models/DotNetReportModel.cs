@@ -1,5 +1,7 @@
 ﻿using iTextSharp.text;
 using iTextSharp.text.pdf;
+using Npgsql;
+using NpgsqlTypes;
 using OfficeOpenXml;
 using PuppeteerSharp;
 using PuppeteerSharp.Media;
@@ -119,7 +121,7 @@ namespace ReportBuilder.Web.Models
         public string ParameterValue { get; set; }
         public string ParameterDataTypeString { get; set; }
         public Type ParameterDataTypeCLR { get; set; }
-        public OleDbType ParamterDataTypeOleDbType { get; set; }
+        public NpgsqlDbType ParamterDataTypeOleDbType { get; set; }
         public int ParamterDataTypeOleDbTypeInteger { get; set; }
         public bool Required { get; set; }
         public bool ForeignKey { get; set; }
@@ -316,12 +318,6 @@ namespace ReportBuilder.Web.Models
         public static string GetConnectionString(string key)
         {
             var connString = Startup.StaticConfig.GetConnectionString(key);
-            connString = connString.Replace("Trusted_Connection=True", "");
-
-            if (!connString.ToLower().StartsWith("provider"))
-            {
-                connString = "Provider=sqloledb;" + connString;
-            }
 
             return connString;
         }
@@ -524,11 +520,11 @@ namespace ReportBuilder.Web.Models
 
             // Execute sql
             var dt = new DataTable();
-            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
+            using (var conn = new NpgsqlConnection(GetConnectionString(connectKey)))
             {
                 conn.Open();
-                var command = new OleDbCommand(sql, conn);
-                var adapter = new OleDbDataAdapter(command);
+                var command = new NpgsqlCommand(sql, conn);
+                var adapter = new NpgsqlDataAdapter(command);
 
                 adapter.Fill(dt);
 
@@ -657,11 +653,11 @@ namespace ReportBuilder.Web.Models
         {
             var sql = Decrypt(reportSql);
             var dt = new DataTable();
-            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
+            using (var conn = new NpgsqlConnection(GetConnectionString(connectKey)))
             {
                 conn.Open();
-                var command = new OleDbCommand(sql, conn);
-                var adapter = new OleDbDataAdapter(command);
+                var command = new NpgsqlCommand(sql, conn);
+                var adapter = new NpgsqlDataAdapter(command);
 
                 adapter.Fill(dt);
             }
@@ -895,11 +891,11 @@ namespace ReportBuilder.Web.Models
             // Execute sql
             var dt = new DataTable();
             var ds = new DataSet();
-            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
+            using (var conn = new NpgsqlConnection(GetConnectionString(connectKey)))
             {
                 conn.Open();
-                var command = new OleDbCommand(sql, conn);
-                var adapter = new OleDbDataAdapter(command);
+                var command = new NpgsqlCommand(sql, conn);
+                var adapter = new NpgsqlDataAdapter(command);
 
                 adapter.Fill(dt);
             }
@@ -960,11 +956,11 @@ namespace ReportBuilder.Web.Models
 
             // Execute sql
             var dt = new DataTable();
-            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
+            using (var conn = new NpgsqlConnection(GetConnectionString(connectKey)))
             {
                 conn.Open();
-                var command = new OleDbCommand(sql, conn);
-                var adapter = new OleDbDataAdapter(command);
+                var command = new NpgsqlCommand(sql, conn);
+                var adapter = new NpgsqlDataAdapter(command);
 
                 adapter.Fill(dt);
                 var subTotals = new decimal[dt.Columns.Count];

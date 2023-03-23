@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Npgsql;
 using ReportBuilder.Web.Models;
 using System.Data;
 using System.Data.OleDb;
@@ -58,11 +59,11 @@ namespace ReportBuilder.Web.Controllers
 
             var json = new StringBuilder();
             var dt = new DataTable();
-            using (var conn = new OleDbConnection(DotNetReportHelper.GetConnectionString(connectKey)))
+            using (var conn = new NpgsqlConnection(DotNetReportHelper.GetConnectionString(connectKey)))
             {
                 conn.Open();
-                var command = new OleDbCommand(sql, conn);
-                var adapter = new OleDbDataAdapter(command);
+                var command = new NpgsqlCommand(sql, conn);
+                var adapter = new NpgsqlDataAdapter(command);
 
                 adapter.Fill(dt);
             }
@@ -179,6 +180,15 @@ namespace ReportBuilder.Web.Controllers
             return RunReport(data);
         }
 
+        private string ConvertToPostGre(string sql)
+        {
+            sql = sql.Replace("[", "\"");  
+            sql = sql.Replace("]", "\"");
+            sql = sql.Replace("WITH (READUNCOMMITTED)", "");
+            sql = sql.Replace("ISNULL", "COALESCE");
+            return sql;
+        }
+
         [HttpPost]
         public IActionResult RunReport(RunReportParameters data)
         {
@@ -217,8 +227,11 @@ namespace ReportBuilder.Web.Controllers
                         sqlFields = Regex.Split(sqlSplit, "], (?![^\\(]*?\\))").Where(x => x != "CONVERT(VARCHAR(3)")
                             .Select(x => x.EndsWith("]") ? x : x + "]")
                             .Select(x => x.StartsWith("DISTINCT ") ? x.Replace("DISTINCT ", "") : x)
+                            .Select(x => x.Replace("[", "\""))
+                            .Select(x => x.Replace("]", "\""))
                             .ToList();
 
+                        sql = ConvertToPostGre(sql);
                         var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(sql.LastIndexOf("FROM"))}";
                         sqlCount = $"SELECT COUNT(*) FROM ({(sqlFrom.Contains("ORDER BY") ? sqlFrom.Substring(0, sqlFrom.IndexOf("ORDER BY")) : sqlFrom)}) as countQry";
 
@@ -247,14 +260,14 @@ namespace ReportBuilder.Web.Controllers
                     }
                     // Execute sql
                     var dtPagedRun = new DataTable();
-                    using (var conn = new OleDbConnection(DotNetReportHelper.GetConnectionString(connectKey)))
+                    using (var conn = new NpgsqlConnection(DotNetReportHelper.GetConnectionString(connectKey)))
                     {
                         conn.Open();
-                        var command = new OleDbCommand(sqlCount, conn);
-                        if (!sql.StartsWith("EXEC")) totalRecords = (int)command.ExecuteScalar();
-
-                        command = new OleDbCommand(sql, conn);
-                        var adapter = new OleDbDataAdapter(command);
+                        var command = new NpgsqlCommand(sqlCount, conn);
+                        if (!sql.StartsWith("EXEC")) totalRecords = Convert.ToInt32(command.ExecuteScalar());
+                        
+                        command = new NpgsqlCommand(sql, conn);
+                        var adapter = new NpgsqlDataAdapter(command);
                         adapter.Fill(dtPagedRun);
                         if (sql.StartsWith("EXEC"))
                         {
