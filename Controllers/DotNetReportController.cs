@@ -76,7 +76,7 @@ namespace ReportBuilder.Web.Controllers
             return View(new DotNetDashboardModel());
         }
 
-        public IActionResult Query()
+        public ActionResult Query()
         {
             return View();
         }
