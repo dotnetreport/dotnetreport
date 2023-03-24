@@ -14,8 +14,8 @@ namespace ReportBuilder.Web.Controllers
             return View();
         }
 
-        public IActionResult Report(int reportId, string reportName, string reportDescription, bool includeSubTotal, bool showUniqueRecords,
-            bool aggregateReport, bool showDataWithGraph, string reportSql, string connectKey, string reportFilter, string reportType, int selectedFolder, string reportSeries)
+        public IActionResult Report(int reportId, string reportName, string reportDescription, bool includeSubTotal = false, bool showUniqueRecords = false,
+            bool aggregateReport = false, bool showDataWithGraph = false, string reportSql = "", string connectKey = "", string reportFilter = "", string reportType = "", int selectedFolder = 0, string reportSeries = "")
         {            
             var model = new DotNetReportModel
             {
@@ -72,12 +72,12 @@ namespace ReportBuilder.Web.Controllers
 
         
         [HttpPost]
-        public IActionResult DownloadExcel(string reportSql, string connectKey, string reportName, bool allExpanded, string expandSqls, string columnDetails = null, bool includeSubtotal = false)
+        public IActionResult DownloadExcel(string reportSql, string connectKey, string reportName, bool allExpanded, string expandSqls, string columnDetails = null, bool includeSubtotal = false, bool pivot = false)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() :  JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
             
-            var excel = DotNetReportHelper.GetExcelFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), allExpanded, HttpUtility.UrlDecode(expandSqls)?.Split(',').ToList(), columns, includeSubtotal);
+            var excel = DotNetReportHelper.GetExcelFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), allExpanded, expandSqls?.Split(',').ToList(), columns, includeSubtotal, pivot);
             Response.Headers.Add("content-disposition", "attachment; filename=" + reportName + ".xlsx");
             Response.ContentType = "application/vnd.ms-excel";
 
@@ -105,12 +105,28 @@ namespace ReportBuilder.Web.Controllers
 
             return File(pdf, "application/pdf", reportName + ".pdf");
         }
-        
+
+
         [HttpPost]
-        public IActionResult DownloadCsv(string reportSql, string connectKey, string reportName)
+        public async Task<IActionResult> DownloadPdfAlt(string reportSql, string connectKey, string reportName, string chartData = null, string columnDetails = null, bool includeSubtotal = false, bool pivot = false)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            var csv = DotNetReportHelper.GetCSVFile(reportSql, HttpUtility.UrlDecode(connectKey));
+            chartData = HttpUtility.UrlDecode(chartData);
+            chartData = chartData?.Replace(" ", " +");
+            reportName = HttpUtility.UrlDecode(reportName);
+            var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
+
+            var pdf = DotNetReportHelper.GetPdfFileAlt(reportSql, connectKey, reportName, chartData, columns, includeSubtotal, pivot);
+
+            return File(pdf, "application/pdf", reportName + ".pdf");
+        }
+
+        [HttpPost]
+        public IActionResult DownloadCsv(string reportSql, string connectKey, string reportName, string columnDetails = null, bool includeSubtotal = false)
+        {
+            var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
+            reportSql = HttpUtility.HtmlDecode(reportSql);
+            var csv = DotNetReportHelper.GetCSVFile(reportSql, HttpUtility.UrlDecode(connectKey), columns, includeSubtotal);
 
             Response.Headers.Add("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".csv");
             Response.ContentType = "text/csv";

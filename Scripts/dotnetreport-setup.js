@@ -215,7 +215,7 @@ var manageViewModel = function (options) {
 	self.searchStoredProcedure = function () {
 		if (!self.searchProcedureTerm()) {
 			toastr.error('Please enter a term to search stored procs');
-			return;
+			return false;
 		}
 
 		ajaxcall({
@@ -241,6 +241,8 @@ var manageViewModel = function (options) {
 
 			self.foundProcedures(result)
 		});
+
+		return false;
 	}
 
 	self.saveProcedure = function (procName, adding) {
@@ -436,9 +438,15 @@ var manageViewModel = function (options) {
 	self.setupManageAccess = function () {
 
 		ajaxcall({ url: options.getUsersAndRoles }).done(function (data) {
-			if (data.d) data = data.data.d;
-			self.manageAccess = manageAccess({ userSettings: data });
+			if (data.d) data = data.d;
+			self.manageAccess = manageAccess(data);
 		});
+
+		
+		self.loadReportsAndFolder();
+	}
+
+	self.loadReportsAndFolder = function () {
 
 		var getReports = function () {
 			return ajaxcall({
@@ -446,7 +454,7 @@ var manageViewModel = function (options) {
 				data: {
 					account: self.keys.AccountApiKey,
 					dataConnect: self.keys.DatabaseApiKey,
-					isAdmin: true
+					adminMode: true
 				}
 			});
 		};
@@ -457,7 +465,7 @@ var manageViewModel = function (options) {
 				data: {
 					account: self.keys.AccountApiKey,
 					dataConnect: self.keys.DatabaseApiKey,
-					isAdmin: true
+					adminMode: true
 				}
 			});
 		};
@@ -471,11 +479,44 @@ var manageViewModel = function (options) {
 				var folderReports = _.filter(allReports[0], { folderId: x.Id });
 				_.forEach(folderReports, function (r) {
 					r.changeAccess = ko.observable(false);
-					r.clientIdToUpdate = ko.observable(r.clientId);
+					r.changeAccess.subscribe(function (x) {
+						if (x) {
+							self.manageAccess.clientId(r.clientId);
+							self.manageAccess.setupList(self.manageAccess.users, r.userId || '');
+							self.manageAccess.setupList(self.manageAccess.userRoles, r.userRole || '');
+							self.manageAccess.setupList(self.manageAccess.viewOnlyUserRoles, r.viewOnlyUserRole || '');
+							self.manageAccess.setupList(self.manageAccess.viewOnlyUsers, r.viewOnlyUserId || '');
+							self.manageAccess.setupList(self.manageAccess.deleteOnlyUserRoles, r.deleteOnlyUserRole || '');
+							self.manageAccess.setupList(self.manageAccess.deleteOnlyUsers, r.deleteOnlyUserId || '');
+						}
+					});
+
 					r.saveAccessChanges = function () {
-						toastr.success('Changes Saved Successfully');
-						r.changeAccess(false);
-                    }
+						return ajaxcall({
+							url: options.reportsApiUrl + "/ReportApi/SaveReportAccess",
+							type: "POST",
+							data: JSON.stringify({
+								account: self.keys.AccountApiKey,
+								dataConnect: self.keys.DatabaseApiKey,
+								reportJson: JSON.stringify({
+									Id: r.reportId,
+									ClientId: self.manageAccess.clientId(),
+									UserId: self.manageAccess.getAsList(self.manageAccess.users),
+									ViewOnlyUserId: self.manageAccess.getAsList(self.manageAccess.viewOnlyUsers),
+									DeleteOnlyUserId: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUsers),
+									UserRoles: self.manageAccess.getAsList(self.manageAccess.userRoles),
+									ViewOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.viewOnlyUserRoles),
+									DeleteOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUserRoles)
+								})
+							})
+						}).done(function (d) {
+							if (d.d) d = d.d;
+							toastr.success('Changes Saved Successfully');							
+							r.changeAccess(false);
+							self.loadReportsAndFolder();
+						});
+
+					}
 				});
 
 				setup.push({
@@ -487,7 +528,7 @@ var manageViewModel = function (options) {
 
 			self.reportsAndFolders(setup);
 		});
-	}
+    }
 }
 
 var tablesViewModel = function (options) {
@@ -542,6 +583,18 @@ var tablesViewModel = function (options) {
 			});
 
 		});
+
+		t.selectAllColumns = function (e) {
+			_.forEach(t.Columns(), function (c) {
+				c.Selected(true);
+			});
+		}
+
+		t.unselectAllColumns = function (e) {
+			_.forEach(t.Columns(), function (c) {
+				c.Selected(false);
+			});
+		}
 
 		t.saveTable = function (apiKey, dbKey) {
 			var e = ko.mapping.toJS(t, {
@@ -630,19 +683,7 @@ var tablesViewModel = function (options) {
 				c.Selected(false);
 			});
 		});
-	}
-
-	self.selectAllColumns = function (e) {
-		_.forEach(e.Columns(), function (c) {
-			c.Selected(true);
-		});
-	}
-
-	self.unselectAllColumns = function (e) {
-		_.forEach(e.Columns(), function (c) {
-			c.Selected(false);
-		});
-	}
+	}	
 
 	self.columnSorted = function (args) {
 		_.forEach(args.targetParent(), function (e) {
@@ -651,28 +692,6 @@ var tablesViewModel = function (options) {
 
 	}
 }
-
-
-var manageAccess = function (options) {
-	return {
-		clientId: ko.observable(),
-		users: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
-		userRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
-		viewOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
-		viewOnlyUserRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
-		deleteOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
-		deleteOnlyUserRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
-		getAsList: function (x) {
-			var list = '';
-			_.forEach(x, function (e) { if (e.selected()) list += (list ? ',' : '') + e.value(); });
-			return list;
-		},
-		setupList: function (x, value) {
-			_.forEach(x, function (e) { if (value.indexOf(e.value()) >= 0) e.selected(true); else e.selected(false); });
-		},
-		isDashboard: ko.observable(options.isDashboard == true ? true : false)
-	};
-};
 
 var proceduresViewModel = function (options) {
 	var self = this;
