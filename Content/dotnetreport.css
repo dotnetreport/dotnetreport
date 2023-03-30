@@ -553,3 +553,12 @@ select.is-invalid ~ span .select2-selection {
     .query-builder .rules-list > :last-child::after {
         display: none
     }
+
+.select2-container {
+    width: 100% !important;
+}
+
+.select2-selection {
+    height: 36px !important;
+    padding-top: 3px;
+}

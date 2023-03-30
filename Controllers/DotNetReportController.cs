@@ -76,7 +76,12 @@ namespace ReportBuilder.Web.Controllers
             return View(new DotNetDashboardModel());
         }
 
-        
+        public ActionResult Query()
+        {
+            return View();
+        }
+
+
         [HttpPost]
         public ActionResult DownloadExcel(string reportSql, string connectKey, string reportName, bool allExpanded, string expandSqls, string columnDetails = null, bool includeSubtotal = false, bool pivot = false)
         {
