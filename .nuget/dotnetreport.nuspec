@@ -2,13 +2,13 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
     <metadata>
         <id>dotNetReport.mvc</id>
-        <version>5.0.2</version>
+        <version>5.0.3</version>
         <authors>dotnetReport Builder</authors>
         <owners>dotnetReport Builder</owners>
         <projectUrl>https://dotnetreport.com/</projectUrl>
         <requireLicenseAcceptance>false</requireLicenseAcceptance>
         <description>.Net Ad Hoc Report Builder and Embedded Analytics for MVC that allows programmers to easily add Report building functionality to their ASP .NET Web Application</description>
-        <releaseNotes>Added new Features, Forced and Cascading Filters</releaseNotes>
+        <releaseNotes>Added new Features, bug fixes</releaseNotes>
         <copyright>(c) dotnet Report Builder</copyright>
         <tags>embedded analytics, report generator, sql reporting tools, visual studio report designer, ad-hoc reporting, asp .net mvc report, report builder, ad hoc adhoc reports, viewer, reportviewer, sql builder mvc, web forms, query builder,mvc reporting,custom query,query maker, dotnetreport</tags>
         <dependencies>
