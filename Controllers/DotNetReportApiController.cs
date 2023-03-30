@@ -422,7 +422,7 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
                     new KeyValuePair<string, string>("id", id.HasValue ? id.Value.ToString() : "0"),
                     new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
-                    new KeyValuePair<string, string>("dataFilters", JsonSerializer.Serialize(settings.DataFilters))
+                    new KeyValuePair<string, string>("dataFilters", JsonConvert.SerializeObject(settings.DataFilters))
                 });
 
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/LoadSavedDashboard"), content);
