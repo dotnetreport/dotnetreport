@@ -494,6 +494,8 @@
     <Content Include="Views\shared\_DotnetReportHeaderPartial.cshtml" />
     <Content Include="Views\shared\_DotnetReportJsLibrariesPartial.cshtml" />
     <Content Include="Views\shared\_DotnetReportTemplatesPartial.cshtml" />
+    <Content Include="Views\Report\Index.cshtml" />
+    <Content Include="Views\Report\Dashboard.cshtml" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
@@ -503,7 +505,6 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
-    <Folder Include="Views\Report\" />
   </ItemGroup>
   <ItemGroup>
     <Service Include="{4A0DDDB5-7A95-4FBF-97CC-616D07737A77}" />

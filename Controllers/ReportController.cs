@@ -11,12 +11,12 @@ namespace ReportBuilder.Web.Controllers
         // GET: Report
         public ActionResult Index()
         {
-            return RedirectToAction("Index", "DotNetReport");
+            return View();
         }
 
         public ActionResult Dashboard()
         {
-            return RedirectToAction("Dashboard", "DotNetReport");
+            return View();
         }
     }
 }
