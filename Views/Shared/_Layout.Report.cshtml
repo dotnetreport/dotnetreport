@@ -27,6 +27,11 @@
             wa.src = 'https://d10lpsik1i8c69.cloudfront.net/w.js';
             var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(wa, s);
         })();
+
+        function showDemoHelp() {
+            $("#demoinfoModal").modal('show');
+            return false;
+        }
     </script>
     
     @Html.Partial("_DotnetReportHeaderPartial")
@@ -109,6 +114,28 @@
                     @RenderBody()
                 </div>
             </main>
+        </div>
+    </div>
+
+    <div class="modal" id="demoinfoModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header" style="display: block; text-align: left;">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Welcome to the Demo Site!</h4>
+                </div>
+                <div class="modal-body">
+                    <p>The purpose of this Demo Site is to demonstrate how <a href="https://dotnetreport.com">dotnet Report</a> runs embedded inside a Web Application and how end users can run and create useful Reports and Dashboards.</p>
+                    <p>The Database this demo site uses has Sales and Products data for a fictional company, with some test Employees, Customers and daily Orders as well. This way, you can run or create test Reports mimicking real world use cases.</p>
+                    <p>Feel free to test the <b>Dashboard</b>, run <b>Reports</b> or create new ones using our friendly and intuitive Report Designer. </p>
+
+                    <p class="alert alert-info">Just a warning that any reports or dashboards you create or modify are for testing only and can be reset at any time.</p>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                </div>
+            </div>
         </div>
     </div>
 

@@ -341,27 +341,27 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
 }
 
 h1, .h1 {
-    font-size: 4rem
-}
-
-h2, .h2 {
     font-size: 3rem
 }
 
-h3, .h3 {
+h2, .h2 {
     font-size: 2.5rem
 }
 
-h4, .h4 {
+h3, .h3 {
     font-size: 2rem
 }
 
+h4, .h4 {
+    font-size: 1.40625rem
+}
+
 h5, .h5 {
-    font-size: 1.5rem
+    font-size: 1.171875rem
 }
 
 h6, .h6 {
-    font-size: 0.875rem
+    font-size: 0.9375rem
 }
 
 .lead {
@@ -1988,7 +1988,7 @@ pre {
 .table {
     width: 100%;
     margin-bottom: 1rem;
-    color: #fff
+    /*color: #fff*/
 }
 
     .table th, .table td {
@@ -2031,7 +2031,7 @@ pre {
 }
 
 .table-hover tbody tr:hover {
-    color: #fff;
+    /*color: #fff;*/
     background-color: rgba(255,255,255,0.075)
 }
 
