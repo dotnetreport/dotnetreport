@@ -432,7 +432,7 @@ namespace ReportBuilder.Web.Controllers
                 users = settings.CanUseAdminMode ? settings.Users : new List<dynamic>(),
                 userRoles = settings.CanUseAdminMode ? settings.UserRoles : new List<string>(),
                 currentUserId = settings.UserId,
-                currentUserRoles = settings.UserRoles,
+                currentUserRoles = settings.CurrentUserRole,
                 currentUserName = settings.UserName,
                 allowAdminMode = settings.CanUseAdminMode,
                 userIdForSchedule = settings.UserIdForSchedule,
