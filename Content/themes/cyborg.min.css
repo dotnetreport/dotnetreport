@@ -11194,8 +11194,8 @@ legend {
 body {
     margin-bottom: 60px;
     font-family: Arial,Helvetica,sans-serif;
-    background-color: #1B1C1E;
-    color: #808080;
+    background-color: #1B1C1E !important;
+    color: #808080 !important;
 }
 
 .modal-header,
@@ -11240,5 +11240,11 @@ a, a.active {
 }
 
 .card-dashboard {
-    background-color: #fff !important;
+    background-color: #808080 !important;
+    color: #000 !important;
+}
+
+.card-body {
+    background-color: #808080 !important;
+    color: #000 !important;
 }
