@@ -1,0 +1,125 @@
+﻿@using System.Configuration
+@{
+    Layout = "~/Views/shared/_Layout.Report.cshtml";
+}
+
+@*
+    This razor view renders the Report from the Data Table as a Html Table. You have complete control over this page and you can change the code and style to meet your requirements.
+
+    Its Recommended you use it as is, and only change styling as needed to match your application. You will be responsible for managing and maintaining any changes.
+
+    Note: To allow bigger file downloads in Excel, Please increase maxRequestLength in web.config. For example, <httpRuntime maxRequestLength="1048576" />
+
+*@
+
+@section head {
+    <link href="~/lib/tributejs/tribute.css" rel="stylesheet" />
+    <style>
+        #test-autocomplete-container {
+            position: relative;
+        }
+
+        .query-input {
+            outline: none;
+            border: 1px solid #eee;
+            padding: 3px 5px;
+            border-radius: 2px;
+            font-size: 15px;
+            min-height: 32px;
+            cursor: text;
+        }
+
+            .query-input a {
+                background-color: transparent;
+                color: #2ba6cb !important;
+                text-decoration: none;
+                cursor: pointer;
+            }
+    </style>
+}
+
+@section scripts{
+
+    <script src="~/lib/tributejs/tribute.min.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            ajaxcall({ url: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")' }).done(function (data) {
+                var vm = new reportViewModel({
+                    runReportUrl: '@Url.Action("Report")',
+                    execReportUrl: "@Url.Action("RunReport", "DotNetReportApi")",
+                    runLinkReportUrl: "@Url.Action("RunReportLink", "DotNetReportApi")",
+                    reportWizard: $("#modal-reportbuilder"),
+                    linkModal: $("#linkModal"),
+                    fieldOptionsModal: $("#fieldOptionsModal"),
+                    lookupListUrl: '@Url.Action("GetLookupList", "DotNetReportApi")',
+                    apiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")',
+                    runReportApiUrl: '@Url.Action("RunReportApi", "DotNetReportApi")',
+                    getUsersAndRolesUrl: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")',
+                    reportId: @(Context.Request.Query["reportId"].Any() ? Context.Request.Query["reportId"].First() : "0"),
+                    userSettings: data,
+                    dataFilters: data.dataFilters,
+                });
+
+                vm.init(0, data.noAccount);
+                ko.applyBindings(vm);
+
+                $(window).resize(function () {
+                    vm.DrawChart();
+                });
+
+                vm.textQuery.setupQuery();
+            });
+        });
+
+    </script>
+}
+
+<div>
+    <br />
+    <p>
+        What would you like to know? Try typing in below to search your data
+    </p>
+    <p id="query-input" class="query-input">
+        Show me&nbsp;
+    </p>
+    <p>
+        <button data-bind="click: runQuery" class="btn btn-primary">Process your Query</button>&nbsp;
+        <button data-bind="click: resetQuery" class="btn btn-primary">Start over</button>
+    </p>
+</div>
+
+<div data-bind="with: ReportResult">
+    <!-- ko ifnot: HasError -->
+    <div class="report-canvas" data-bind="with: $root">
+        <div class="report-container">
+            <div class="report-inner">
+                <h2 data-bind="text: ReportName"></h2>
+                <p data-bind="html: ReportDescription">
+                </p>
+                <div data-bind="with: ReportResult">
+                    <div data-bind="template: 'report-template', data: $data"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- /ko -->
+
+    <!-- ko if: HasError -->
+    <h3>An unexpected error occured while running the Report</h3>
+    <hr />
+    <b>Error Details</b>
+    <p>
+        <div data-bind="text: Exception"></div>
+    </p>
+    <!-- /ko -->
+
+    <div data-bind="if: ReportDebug()">
+        <br />
+        <br />
+        <hr />
+        <code data-bind="text: ReportSql">
+
+        </code>
+    </div>
+
+</div>

@@ -473,3 +473,92 @@ select.is-invalid ~ span .select2-selection {
     background-position: right calc(0.375em + 0.1875rem) center;
     background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
 }
+
+.highlight {
+    background-color: yellow;
+}
+
+.query-builder .rule-container, .query-builder .rule-placeholder, .query-builder .rules-group-container {
+    position: relative;
+    margin: 4px 0;
+    border-radius: 5px;
+    padding: 5px;
+    border: 1px solid #eee;
+    width: 100%;
+}
+
+
+.query-builder .rules-group-container {
+    padding: 10px;
+    padding-bottom: 6px;
+    border: 1px solid #dcc896;
+}
+
+.query-builder .rules-group-header {
+    margin-bottom: 10px
+}
+
+    .query-builder .rules-group-header .group-conditions .btn.readonly:not(.active), .query-builder .rules-group-header .group-conditions input[name$='_cond'] {
+        border: 0;
+        clip: rect(0 0 0 0);
+        height: 1px;
+        margin: -1px;
+        overflow: hidden;
+        padding: 0;
+        position: absolute;
+        width: 1px;
+        white-space: nowrap
+    }
+
+    .query-builder .rules-group-header .group-conditions .btn.readonly {
+        border-radius: 3px
+    }
+
+.query-builder .rules-list {
+    list-style: none;
+    padding: 0 0 0 15px;
+    margin: 0;
+    background-color: #fff;
+}
+
+    .query-builder .rules-list > ::after, .query-builder .rules-list > ::before {
+        content: '';
+        position: absolute;
+        left: -10px;
+        width: 10px;
+        height: calc(50% + 4px);
+        border-color: #ccc;
+        border-style: solid
+    }
+
+    .query-builder .rules-list > ::before {
+        top: -4px;
+        border-width: 0 0 2px 2px;
+    }
+
+    .query-builder .rules-list > ::after {
+        top: 50%;
+        border-width: 0 0 0 2px
+    }
+
+    .query-builder .rules-list > :first-child::before {
+        top: -12px;
+        height: calc(50% + 14px)
+    }
+
+    .query-builder .rules-list > :last-child::before {
+        border-radius: 0 0 0 4px
+    }
+
+    .query-builder .rules-list > :last-child::after {
+        display: none
+    }
+
+.select2-container {
+    width: 100% !important;
+}
+
+.select2-selection {
+    height: 36px !important;
+    padding-top: 3px;
+}

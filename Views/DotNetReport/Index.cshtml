@@ -87,18 +87,19 @@ Its Recommended you use it as is, and only change styling as needed to match you
     </div>
 </div>
 <h3>Dotnet Report Builder</h3>
-<p>
-    Manage your Reports below. You can use the intuitive and user friendly Report Builder to create many types of Ad-hoc Reports.
-</p>
-<div class="alert alert-info">
-    To view the Dashboard, please <a href="@Url.Action("Dashboard","DotNetReport")">click here</a>.<br />
-    <div data-bind="if: currentUserName">Current User: <span data-bind="text: currentUserName"></span></div>
-    <div data-bind="if: currentUserRole">Current Roles: <span data-bind="text: currentUserRole"></span></div>
-</div>
-<div class="alert alert-warning">
-    You can easily integrate the Report Builder in your Application. See how to <a href="https://dotnetreport.com/getting-started-with-dotnet-report/">Get Started here</a>. <br />
-</div>
+<div class="row">
+    <div class="col-md-6">
+        <p>
+            Manage your Reports below. You can use the intuitive and user friendly Report Builder to create many types of Ad-hoc Reports.
+        </p>
+    </div>
+    <div class="col-md-6">
+        <div class="pull-right">
+            <a href="@Url.Action("Dashboard","DotNetReport")">View Dashboard</a> | Learn how to <a href="https://dotnetreport.com/getting-started-with-dotnet-report/" target="_blank">Integrate in your App here</a>.
+        </div>
+    </div>
 
+</div>
 <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
 
 <!--
@@ -145,6 +146,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             </a>
                         </li>
                     </ul>
+                    <form class="form-inline my-3 my-md-0">
+                        <input class="form-control" type="text" placeholder="Search Reports" aria-label="Search" data-bind="textInput: searchReports">
+                    </form>
                 </div>
             </nav>
         </div>
@@ -210,7 +214,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 <button class="btn btn-primary" data-bind="click: saveCanvas">Save Changes</button>
             </div>
             <div data-bind="ifnot: designingHeader">
-                <div data-bind="visible: SelectedFolder()==null">
+                <div data-bind="visible: !SelectedFolder() && !searchReports()">
                     <p>Please choose Folders below to view Reports</p>
                     <ul class="folder-list" data-bind="foreach: Folders">
                         <li data-bind="click: function(){ $parent.SelectedFolder($data); }">
@@ -219,7 +223,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         </li>
                     </ul>
                 </div>
-                <div data-bind="visible: SelectedFolder()!=null">
+                <div data-bind="visible: SelectedFolder() || searchReports()">
                     <div class="clearfix">
                         <p class="pull-left">Please choose a Report from this Folder</p>
                         <div class="pull-right">
@@ -229,22 +233,25 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         </div>
                     </div>
                     <div class="list-group list-overflow">
-                        <div data-bind="if: SelectedFolder()==null">
-                            Please choose a folder to view Reports
-                        </div>
                         <div data-bind="if: SelectedFolder()!=null && reportsInFolder().length==0">
                             No Reports Saved in this Folder
                         </div>
-                        <div data-bind="foreach: reportsInFolder">
+                        <div data-bind="if: searchReports() && reportsInSearch().length==0">
+                            No Reports found matching your Search
+                        </div>
+                        <div data-bind="foreach: searchReports() ? reportsInSearch() : reportsInFolder()">
                             <div class="list-group-item">
                                 <div class="row">
                                     <div class="col-sm-7">
-                                        <div class="fa fa-2x pull-left" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map', 'fa-window-maximize': reportType=='Single'}"></div>
+                                        <div class="fa fa-2x pull-left" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map', 'fa-window-maximize': reportType=='Single', 'fa-random': reportType=='Pivot'}"></div>
                                         <div class="pull-left">
-                                            <h4><a data-bind="text: reportName, click: runReport" style="cursor: pointer"></a></h4>
+                                            <h4><a data-bind="click: runReport" style="cursor: pointer">
+                                                <span data-bind="highlightedText: { text: reportName, highlight: $parent.searchReports, css: 'highlight' }"></span>
+                                             </a></h4>
                                         </div>
                                         <div class="clearfix"></div>
                                         <p data-bind="text: reportDescription"></p>
+                                        <p data-bind="if: $parent.searchReports()"><span class="fa fa-folder"></span> <span data-bind="text: folderName"></span></p>
                                         <div data-bind="if: $parent.adminMode">
                                             <div class="small">
                                                 <b>Report Access</b><br />
@@ -323,7 +330,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
 </div>
 
 <!-- Report Builder -->
-<div class="modal modal-fullscreen" id="modal-reportbuilder" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="padding-right: 0px !important;">
+<div class="modal modal-fullscreen" id="modal-reportbuilder" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="padding-right: 0px !important;">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -378,6 +385,12 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             <span class="fa fa-2x fa-window-maximize"></span>
                             <p>Single Value</p>
                         </div>
+                    </div>                    
+                    <div class="col-md-3 col-sm-3 col-xs-6">
+                        <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Pivot'); }, css: {active: ReportType()=='Pivot'}">
+                            <span class="fa fa-2x fa-random"></span>
+                            <p>Pivot</p>
+                        </div>
                     </div>
                 </div>
                 <hr />
@@ -392,9 +405,15 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 </div>
                 <div class="clearfix"></div>
                 <div class="row">
-                    <div class="col-md-12">
+                    <div class="col-md-6">
                         <select class="form-control" data-bind="options: Procs, optionsCaption: 'Choose Section...', optionsText: 'DisplayName', value: SelectedProc, disable: isFormulaField, visible: useStoredProc"></select>
                         <select class="form-control" data-bind="options: Tables, optionsCaption: 'Choose Section...', optionsText: 'tableName', value: SelectedTable, disable: isFormulaField, hidden: useStoredProc"></select>
+                    </div>
+                                        
+                    <div class="col-md-6" data-bind="disable: isFormulaField, hidden: useStoredProc">
+                        <div data-bind="with: textQuery.searchFields">
+                            <select id="search-field" class="form-control" data-bind="select2: {placeholder: 'Or Search for a Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults }, minimumInputLength: 2, allowClear: true }, value: selectedOption"></select>
+                        </div>
                     </div>
 
                     <div class="col-md-12 padded-div" data-bind="visible: ChooseFields().length>0">
@@ -532,8 +551,19 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         <div class="alert alert-info" data-bind="visible: ReportType()=='Line'">
                             <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For Line Graph, the first field below will show on the x-axis and it needs to be numeric.
                         </div>
-                        <div class="alert alert-info" data-bind="visible: ReportType()=='Map'">
-                            <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For Map Graph, the first field below has to be a Region, like a Country.
+                        <div class="alert alert-info" data-bind="visible: ReportType()=='Pivot'">
+                            <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For Pivot report, the first field below will be used to Pivot/Transpose the rows as columns, and it must be grouped.
+                        </div>
+                        <div data-bind="visible: ReportType()=='Map'">
+                            <div class="alert alert-info" >
+                                <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For Map Graph, the first field below has to be a Region, like a Country.
+                            </div> 
+                            <div class="form-group row">
+                                <label class="col-sm-2 control-label">Map Display</label>
+                                <div class="col-sm-4">
+                                    <select class="form-control form-control-sm" data-bind="options: $root.mapRegions, value: mapRegion"></select>
+                                </div>
+                            </div>
                         </div>
                         <ul class="list-group" data-bind="sortable: { data: SelectedFields, options: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight' }, strategyMove: true }">
                             <li class="list-group-item">
@@ -547,8 +577,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         </span>
                                     </div>
                                     <div class="col">
-                                        <div class="pull-right" style="margin-top: -5px;">
-                                            <select class="form-control form-control-sm" data-bind="options: $root.canDrilldown() && $index()>0 ? fieldAggregateWithDrilldown : fieldAggregate, value: selectedAggregate, visible: $parent.AggregateReport() && !$parent.useStoredProc()"></select>
+                                        <div class="pull-right" style="margin-top: -5px;" data-bind="if: $parent.AggregateReport() && !$parent.useStoredProc()">
+                                            <select class="form-control form-control-sm" data-bind="options: $root.canDrilldown() && $index()>0 ? fieldAggregateWithDrilldown : fieldAggregate, value: selectedAggregate"></select>
                                         </div>
                                         <div class="sortable pull-right" style="padding-right: 15px;" data-bind="ifnot: $parent.useStoredProc">
                                             <span class="fa fa-arrows " aria-hidden="true" title="Drag to reorder"></span>
@@ -562,12 +592,12 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 <span class="fa fa-filter" aria-hidden="true" title="Filter by this field on the Report"></span>
                                             </span>
                                         </div>
-                                        <div class="pull-right" style="padding-right: 15px;" data-bind="">
+                                        <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $root.ReportType()!='Pivot'">
                                             <span class="button-box no-padding" tabindex="0" data-bind="click: toggleDisable, css: {active: disabled()==true}">
                                                 <span class="fa fa-close" aria-hidden="true" title="Do not include in Report"></span>
                                             </span>
                                         </div>
-                                        <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $root.ReportType()!='List' && !$parent.useStoredProc()">
+                                        <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $root.ReportType()!='Pivot' && $root.ReportType()!='List' && !$parent.useStoredProc()">
                                             <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ hideInDetail(!hideInDetail()); }, css: {active: hideInDetail()==true}">
                                                 <span class="fa fa-eye-slash" aria-hidden="true" title="Hide in Details"></span>
                                             </span>
@@ -582,7 +612,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 <span class="fa fa-plus-circle" aria-hidden="true" title="Don't add to Total row"></span>
                                             </span>
                                         </div>
-                                        <div class="pull-right" style="padding-right: 15px;">
+                                        <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $root.ReportType()!='Pivot'">
                                             <span class="button-box no-padding" tabindex="0" data-bind="click: setupLinkField, css: {active: linkField()==true}">
                                                 <span class="fa fa-link" aria-hidden="true" title="Link to another Report or Url"></span>
                                             </span>
@@ -678,7 +708,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 </div>
                             </div>
                         </div>
-                        <div class="checkbox">
+                        <div class="checkbox" data-bind="visible: $root.ReportType()!='Pivot'">
                             <label>
                                 <input type="checkbox" data-bind="checked: IncludeSubTotal" />
                                 Include Total Row
@@ -918,6 +948,16 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         <button class="btn btn-sm pull-left" title="Apply to all columns" data-bind="click: function(){applyAllBold(!applyAllBold()); }">
                             <span class="fa" data-bind="css: applyAllBold() ? 'fa-check' : 'fa-paste'"></span>
                         </button>
+                    </div>
+                </div>
+                <div class="form-group row" data-bind="if: $parent.useStoredProc()">
+                    <div class="col-sm-12">
+                        <div class="checkbox pull-left" style="padding-top: 5px;">
+                            <label>
+                                <input type="checkbox" data-bind="checked: checkOuterGroup" />
+                                Outer Group
+                            </label>
+                        </div>
                     </div>
                 </div>
             </div>

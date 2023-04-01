@@ -36,20 +36,10 @@ namespace ReportBuilder.Web.Controllers
             settings.UserName = "";
             settings.CurrentUserRole = new List<string>(); // Populate your current authenticated user's roles
 
-            settings.Users = new List<string>(); // Populate all your application's user, ex  { "Jane", "John" }
+            settings.Users = new List<dynamic>(); // Populate all your application's user, ex  { "Jane", "John" } or { new { id="1", text="Jane" }, new { id="2", text="John" }}
             settings.UserRoles = new List<string>(); // Populate all your application's user roles, ex  { "Admin", "Normal" }       
             settings.CanUseAdminMode = true; // Set to true only if current user can use Admin mode to setup reports and dashboard
             settings.DataFilters = new { }; // add global data filters to apply as needed https://dotnetreport.com/kb/docs/advance-topics/global-filters/
-
-            // An example of populating Roles using MVC web security if available
-            if (Roles.Enabled && User.Identity.IsAuthenticated)
-            {
-                settings.UserId = User.Identity.Name;
-                settings.CurrentUserRole = Roles.GetRolesForUser(User.Identity.Name).ToList();
-
-                settings.Users = Roles.GetAllRoles().SelectMany(x => Roles.GetUsersInRole(x)).ToList();
-                settings.UserRoles = Roles.GetAllRoles().ToList();
-            }
 
             return settings;
         }
@@ -192,12 +182,13 @@ namespace ReportBuilder.Web.Controllers
                     if (!sql.StartsWith("EXEC"))
                     {
 
-                        var sqlSplit = sql.Substring(0, sql.IndexOf("FROM")).Replace("SELECT", "").Trim();
+                        var sqlSplit = sql.Substring(0, sql.LastIndexOf("FROM")).Replace("SELECT", "").Trim();
                         sqlFields = Regex.Split(sqlSplit, "], (?![^\\(]*?\\))").Where(x => x != "CONVERT(VARCHAR(3)")
                             .Select(x => x.EndsWith("]") ? x : x + "]")
+                            .Select(x => x.StartsWith("DISTINCT ") ? x.Replace("DISTINCT ", "") : x)
                             .ToList();
 
-                        var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(sql.IndexOf("FROM"))}";
+                        var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(sql.LastIndexOf("FROM"))}";
                         sqlCount = $"SELECT COUNT(*) FROM ({(sqlFrom.Contains("ORDER BY") ? sqlFrom.Substring(0, sqlFrom.IndexOf("ORDER BY")) : sqlFrom)}) as countQry";
 
                         if (!String.IsNullOrEmpty(sortBy))
@@ -370,7 +361,7 @@ namespace ReportBuilder.Web.Controllers
         public async Task<JsonResult> GetDashboards(bool adminMode = false)
         {
             var model = await GetDashboardsData(adminMode);
-            return Json(model);
+            return Json(model, JsonRequestBehavior.AllowGet);
         }
 
 
@@ -379,10 +370,10 @@ namespace ReportBuilder.Web.Controllers
         {
             var settings = GetSettings();
             var model = new List<DotNetDasboardReportModel>();
-            var dashboards = (JArray)(await GetDashboardsData(adminMode));
+            var dashboards = (await GetDashboardsData(adminMode));
             if (!id.HasValue && dashboards.Count > 0)
             {
-                id = ((dynamic)dashboards.First()).Id;
+                id = dashboards.First().Id;
             }
 
             using (var client = new HttpClient())
@@ -396,6 +387,7 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
                     new KeyValuePair<string, string>("id", id.HasValue ? id.Value.ToString() : "0"),
                     new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
+                    new KeyValuePair<string, string>("dataFilters", JsonConvert.SerializeObject(settings.DataFilters))
                 });
 
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/LoadSavedDashboard"), content);
@@ -407,7 +399,7 @@ namespace ReportBuilder.Web.Controllers
             return Json(model);
         }
 
-        private async Task<dynamic> GetDashboardsData(bool adminMode = false)
+        private async Task<List<dynamic>> GetDashboardsData(bool adminMode = false)
         {
             var settings = GetSettings();
 
@@ -426,7 +418,7 @@ namespace ReportBuilder.Web.Controllers
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/GetDashboards"), content);
                 var stringContent = await response.Content.ReadAsStringAsync();
 
-                var model = JsonConvert.DeserializeObject<dynamic>(stringContent);
+                var model = (new JavaScriptSerializer()).Deserialize<List<dynamic>>(stringContent);
                 return model;
             }
         }
@@ -437,7 +429,7 @@ namespace ReportBuilder.Web.Controllers
             return Json(new
             {
                 noAccount = string.IsNullOrEmpty(settings.AccountApiToken) || settings.AccountApiToken == "Your Public Account Api Token",
-                users = settings.CanUseAdminMode ? settings.Users : new List<string>(),
+                users = settings.CanUseAdminMode ? settings.Users : new List<dynamic>(),
                 userRoles = settings.CanUseAdminMode ? settings.UserRoles : new List<string>(),
                 currentUserId = settings.UserId,
                 currentUserRoles = settings.UserRoles,
