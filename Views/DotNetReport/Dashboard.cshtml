@@ -144,35 +144,26 @@
     </script>
 }
 
-<div class="row ">
-    <div class="col-md-12">
-        <div class="form-inline pull-right" data-bind="with: switchVm">
-            @*<div class="form-group">
-                    <label>Switch Database:&nbsp;</label>
-                    <select class="form-control" data-bind="options: databases, optionsText: 'name', optionsValue: 'key', value: selectedDb"></select>
-                </div>*@
-            <div class="form-group" style="padding-left: 10px;" id="switchThemeDiv">
-                <label>Switch Theme:&nbsp;</label>
-                <select class="form-control" data-bind="options: themes, value: selectedTheme"></select>
-            </div>
-        </div>
-    </div>
-</div>
-
 <div class="row">
-    <div class="col-8" data-bind="with: currentDashboard">
+    <div class="col-6" data-bind="with: currentDashboard">
         <h2 data-bind="text: name ? name : 'Dashboard'">Dashboard</h2>
         <p data-bind="text: description"></p>
     </div>
 
-    <div class="col-4 right-align" style="display: none;" data-bind="visible: dashboards().length > 0 ">
+    <div class="col-6 right-align" style="display: none;" data-bind="visible: dashboards().length > 0 ">
         <div class="row">
 
-            <label class="col">Switch Dashboard</label>
-            <select class="col form-control" data-bind="options: dashboards, optionsText: 'name', optionsValue: 'id', value: selectDashboard"></select>
-            <div class="col">
-                <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Edit Dashboard Settings" data-bind="click: editDashboard">Edit</button>
-                <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Add a New Dashboard" data-bind="click: newDashboard">Add</button>
+            <div class="form-group col-md-8">
+                <label class="col">Switch Dashboard</label>
+                <select class="col form-control" data-bind="options: dashboards, optionsText: 'name', optionsValue: 'id', value: selectDashboard"></select>
+                <div class="col">
+                    <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Edit Dashboard Settings" data-bind="click: editDashboard">Edit</button>
+                    <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Add a New Dashboard" data-bind="click: newDashboard">Add</button>
+                </div>
+            </div>
+            <div class="form-group col-md-4" style="padding-left: 10px;" id="switchThemeDiv" data-bind="with: switchVm">
+                <label>Switch Theme:&nbsp;</label>
+                <select class="form-control" data-bind="options: themes, value: selectedTheme"></select>
             </div>
         </div>
     </div>
