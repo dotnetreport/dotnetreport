@@ -274,17 +274,25 @@ namespace ReportBuilder.Web.Controllers
                         }
 
                         if (sql.Contains("ORDER BY"))
-                            sql = sql + $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
+                            sql = sql + $" LIMIT {pageSize} OFFSET {(pageNumber - 1) * pageSize}";
                     }
                     // Execute sql
                     var dtPagedRun = new DataTable();
                     using (var conn = new MySqlConnection(ConfigurationManager.ConnectionStrings[connectKey].ConnectionString))
                     {
                         conn.Open();
-                        var command = new MySqlCommand(sql, conn);
+                        var command = new MySqlCommand(sqlCount, conn);
+                        if (!sql.StartsWith("EXEC")) totalRecords = Convert.ToInt32(command.ExecuteScalar());
+
+                        command = new MySqlCommand(sql, conn);
                         var adapter = new MySqlDataAdapter(command);
                         adapter.Fill(dtPagedRun);
-                        dtPagedRun = (dtPagedRun.Rows.Count > 0) ? dtPagedRun.AsEnumerable().Skip((pageNumber - 1) * pageSize).Take(pageSize).CopyToDataTable() : dtPagedRun;
+                        if (sql.StartsWith("EXEC"))
+                        {
+                            totalRecords = dtPagedRun.Rows.Count;
+                            if (dtPagedRun.Rows.Count > 0)
+                                dtPagedRun = dtPagedRun.AsEnumerable().Skip((pageNumber - 1) * pageSize).Take(pageSize).CopyToDataTable();
+                        }
 
                         string[] series = { };
                         if (i == 0)
