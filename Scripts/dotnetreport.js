@@ -751,6 +751,7 @@ var textQuery = function (options) {
 	var self = this;
 	self.queryItems = [];
 	self.filterItems = [];
+	self.filterField = null;
 
 	self.ParseQuery = function (token, text) {
 		return ajaxcall({
@@ -811,7 +812,6 @@ var textQuery = function (options) {
 		self.queryItems = [];
 		self.filterItems = [];
 		document.getElementById("query-input").innerHTML = "Show me&nbsp;";
-		document.getElementById("filter-input").innerHTML = "Filter by&nbsp;";
 	}
 
 	self.searchFields = {
@@ -836,6 +836,38 @@ var textQuery = function (options) {
 				results: items
 			};
         }
+	}
+
+	self.addQueryItem = function (newItem) {
+		if (self.usingFilter() && !self.filterField) {
+			self.filterField = newItem;
+			return;
+		}
+
+		if (self.usingFilter() && self.filterField) {
+			// add to filters
+			return;
+        }
+
+		// add to columns
+		var match = _.find(self.queryItems, { 'value': newItem.value });
+		if (!match) {		
+			self.queryItems.push(newItem);
+		}
+    }
+
+	self.usingFilter = function () {
+		// Check if the user has typed "where" or "for" and add filter methods
+		var textInput = document.getElementById("query-input");
+		var inputText = textInput.textContent.toLowerCase().trim();
+		var filterTexts = ['where ', 'when ', 'for ']
+		var containsFilter = false;
+
+		var containsFilter = _.some(filterTexts, function (filter) {
+			return _.includes(inputText, filter);
+		});
+
+		return containsFilter;
     }
 
 	self.setupQuery = function () {
@@ -851,8 +883,11 @@ var textQuery = function (options) {
 						return { value: x.fieldId, key: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey };
 					});
 
-					items = items.concat(self.QueryMethods)
-
+					if (self.usingFilter() && self.filterField != null) {
+						items = items.concat(self.FilterMethods);
+					} else {
+						items = items.concat(self.QueryMethods);
+					}
 					callback(items);
 				});
 			},
@@ -878,53 +913,15 @@ var textQuery = function (options) {
 
 		document.getElementById("query-input")
 			.addEventListener("tribute-replaced", function (e) {
-				self.queryItems.push(e.detail.item.original);
+				self.addQueryItem(e.detail.item.original);
 			});
 
 		document.getElementById("query-input")
 			.addEventListener("menuItemRemoved", function (e) {
 				self.queryItems.remove(e.detail.item.original);
 			});
-
-		var tributeFilterAttributes = {
-			allowSpaces: true,
-			autocompleteMode: true,
-			noMatchTemplate: function () { return self.queryItems.length == 0 ? "Select some data to show above first" : "no match" },
-			values: function (token, callback) {
-				if (token == "=" || token == ">" || token == "<") {
-				}
-				else {
-					var items = self.queryItems;
-					callback(items);
-				}
-			},
-			selectTemplate: function (item) {
-				if (typeof item === "undefined") return null;
-				if (this.range.isContentEditable(this.current.element)) {
-					return (
-						'<span contenteditable="false"><a>' +
-						item.original.key +
-						"</a></span>"
-					);
-				}
-
-				return item.original.value;
-			},
-			menuItemTemplate: function (item) {
-				return item.string;
-			}
-		};
-
-		var filterTribute = new Tribute(tributeFilterAttributes);
-		filterTribute.attach(document.getElementById("filter-input"));
-
-
-		document.getElementById("filter-input")
-			.addEventListener("tribute-replaced", function (e) {
-				
-			});
-
 	}
+
 }
 
 var reportViewModel = function (options) {
