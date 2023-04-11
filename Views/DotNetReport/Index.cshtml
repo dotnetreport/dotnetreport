@@ -103,8 +103,10 @@
                             </a>
                         </li>
                     </ul>
-                    <form class="form-inline my-3 my-md-0">
-                        <input class="form-control" type="text" placeholder="Search Reports" aria-label="Search" data-bind="textInput: searchReports">
+                    <form class="form-inline my-5 my-md-0">
+                        <div data-bind="with: searchFieldsInReport">
+                        <select id="search-report" class="form-control" data-bind="select2: {placeholder: 'Search Report by Name, Description or Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults }, minimumInputLength: 2, language: language, allowClear: true }, value: selectedOption"></select>
+                        </div>
                     </form>
                 </div>
             </nav>

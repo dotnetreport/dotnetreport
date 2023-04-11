@@ -154,7 +154,7 @@ namespace ReportBuilder.Web.Controllers
                 Response.StatusCode = (int)response.StatusCode;
                 var result = JsonSerializer.Deserialize<dynamic>(stringContent);
                 if (stringContent == "\"\"") result = new { };
-                return Ok(result);
+                return Response.StatusCode == 200 ? Ok(result) : BadRequest(result);
             }
 
         }

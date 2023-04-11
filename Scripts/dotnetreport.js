@@ -1376,13 +1376,80 @@ var reportViewModel = function (options) {
 		});
 	});
 
-	self.reportsInSearch = ko.computed(function () {
-		var searchReports = self.searchReports();
-		if (!searchReports) return [];
+	self.searchFieldsInReport = {
+		language: {
+			noResults: function () {
+				return 'Search for text or select a field';
+			},
+			searching: function () {
+				return 'Search for text or select a field';
+			},
+			errorLoading: function () {
+				return 'Search for text or select a field';
+			}
+		},
+		selectedOption: ko.observable(),
+		url: options.apiUrl,
+		query: function (params) {
+			self.searchReports(params.term);
+			return params.term ? {
+				method: "/ReportApi/ParseQuery",
+				model: JSON.stringify({
+					token: params.term,
+					text: ''
+				})
+			} : null;
+		},
+		processResults: function (data) {
+			if (data.d) results = data.d;
+			var items = _.map(data, function (x) {
+				return { id: x.fieldId, text: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey };
+			});
 
-		return _.filter(self.SavedReports(), function (x) {
-			return x.reportName.toLowerCase().indexOf(searchReports.toLowerCase()) >= 0 || x.reportDescription.toLowerCase().indexOf(searchReports.toLowerCase()) >= 0;
-		});
+			return {
+				results: items
+			};
+		}
+	}
+
+	self.reportsInSearch = ko.observableArray([]);
+	self.reportsInSearchCompute = ko.computed(function () {
+		var searchReports = self.searchReports();
+		var searchFieldId = self.searchFieldsInReport.selectedOption();
+
+		if (!searchReports && !searchFieldId) {
+			self.reportsInSearch([]);
+			return;
+		}
+
+		if (searchFieldId) {
+			ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/FindReportsByFieldId",
+					model: JSON.stringify({
+						fieldId: parseInt(searchFieldId),
+					})
+				}
+			}).done(function (reports) {
+				if (reports.d) { reports = reports.d; }
+				if (reports.length == 0) {
+					self.reportsInSearch([]);
+				}
+				else {
+					var foundReportIds = _.map(reports, function (x) { return x.reportId });
+					self.reportsInSearch(_.filter(self.SavedReports(), function (x) {
+						return foundReportIds.indexOf(x.reportId) >= 0;
+					}));
+				}
+			});
+
+		}
+		else {
+			self.reportsInSearch(_.filter(self.SavedReports(), function (x) {
+				return x.reportName.toLowerCase().indexOf(searchReports.toLowerCase()) >= 0 || x.reportDescription.toLowerCase().indexOf(searchReports.toLowerCase()) >= 0;
+			}));
+		}
 	});
 
 	self.clearReport = function () {
