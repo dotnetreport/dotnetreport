@@ -3404,12 +3404,13 @@ var reportViewModel = function (options) {
 			$.blockUI({ baseZ: 500 });
 		}
 
-		$.ajax({
+		ajaxcall({
 			type: 'POST',
 			url: (options.runExportUrl || '/DotNetReport/') + url,
 			xhrFields: {
 				responseType: 'blob'
 			},
+			contentType: "application/x-www-form-urlencoded; charset=UTF-8",
 			data: data,
 			success: function (data) {
 				var a = document.createElement('a');
@@ -3656,6 +3657,7 @@ var dashboardViewModel = function (options) {
 	_.forEach(options.reports, function (x) {
 		var report = new reportViewModel({
 			runReportUrl: options.runReportUrl,
+			runExportUrl: options.runExportUrl,
 			execReportUrl: options.execReportUrl,
 			reportWizard: options.reportWizard,
 			lookupListUrl: options.lookupListUrl,

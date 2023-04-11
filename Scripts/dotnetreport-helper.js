@@ -13,6 +13,15 @@ function ajaxcall(options) {
     var headers = new Headers();
     headers.append('Authorization', 'Bearer ' + token);
 
+    if (options.success) {
+        options.beforeSend = function (x) {
+            if (token && !options.url.startsWith("https://dotnetreport.com")) {
+                x.setRequestHeader("Authorization", "Bearer " + token);
+            }
+        }
+        return $.ajax(options);
+    }
+
     return $.ajax({
         url: options.url,
         type: options.type || "GET",
