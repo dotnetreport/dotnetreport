@@ -494,7 +494,7 @@ namespace ReportBuilder.Web.Controllers
                 var sqlField = sqlFields[i++];
                 model.Columns.Add(new DotNetReportDataColumnModel
                 {
-                    SqlField = sqlField.Substring(0, sqlField.IndexOf("AS")).Trim(),
+                    SqlField = sqlField.Substring(0, sqlField.IndexOf(" AS ")).Trim(),
                     ColumnName = col.ColumnName,
                     DataType = col.DataType.ToString(),
                     IsNumeric = DotNetReportHelper.IsNumericType(col.DataType)
