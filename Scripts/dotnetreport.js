@@ -307,7 +307,7 @@ function filterGroupViewModel(args) {
 			lookupList.push({ id: e.Value2, text: e.Value2 });
 		}
 
-		var field = ko.observable();
+		var field = ko.observable();	
 		var valueIn = e.Operator == 'in' || e.Operator == 'not in' ? (e.Value1 || '').split(',') : [];
 		var filter = {
 			AndOr: ko.observable(isFilterOnFly ? ' AND ' : e.AndOr),
@@ -1584,12 +1584,14 @@ var reportViewModel = function (options) {
 		return found;
 	}
 
+	self.lastPickedField = ko.observable();
 	self.SelectedFields.subscribe(function (fields) {
 		setTimeout(function () {
 			self.RemoveInvalidFilters(self.FilterGroups());
 		}, 500);
 
 		var newField = fields.length > 0 ? fields[fields.length - 1] : null;
+		if (newField && newField.isJsonColumn === true) return;
 		if (newField && (newField.forceFilter || newField.forceFilterForTable)) {
 			if (!self.FindInFilterGroup(newField.fieldId)) {
 				var group = self.FilterGroups()[0];
@@ -1602,6 +1604,8 @@ var reportViewModel = function (options) {
 		}
 
 		if (newField) {
+			self.lastPickedField(newField);
+
 			// go through and see if we need to add forced by Table filters
 			var forcedFiltersByTable = _.filter(self.selectedTableFields, function (x) { return x.forceFilterForTable == true });
 			var otherFieldIds = _.filter(self.selectedTableFields, function (x) { return x.forceFilterForTable == false }).map(function (x) { return x.fieldId });
@@ -1617,6 +1621,25 @@ var reportViewModel = function (options) {
 				}
 			}
 		}
+	});
+
+	self.jsonFields = ko.observableArray([]);
+	self.lastPickedField.subscribe(function (newValue) {
+		self.jsonFields([]);
+		if (newValue) {
+			if (newValue.fieldType == 'Json' && newValue.jsonStructure) {
+				var jsonData = JSON.parse(newValue.jsonStructure);
+				var jsonFields = _.map(Object.keys(jsonData), function (key) {
+					var x = _.clone(newValue);
+					x.isJsonColumn = true;
+					x.jsonColumnName = key;
+					x.selectedFieldName += (" > " + key);
+					return x;
+				});
+
+				self.jsonFields(jsonFields);
+            }
+        }
 	});
 
 	self.loadTableFields = function (table) {
@@ -1651,6 +1674,7 @@ var reportViewModel = function (options) {
 
 	self.SelectedTable.subscribe(function (table) {
 		self.SelectedProc(null);
+		self.jsonFields([]);
 		if (table == null) {
 			self.ChooseFields([]);
 			self.selectedTableFields = [];
