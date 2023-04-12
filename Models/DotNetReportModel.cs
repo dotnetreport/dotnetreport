@@ -185,6 +185,7 @@ namespace ReportBuilder.Web.Models
         public string ForeignParentKeyField { get; set; }
         public string ForeignParentValueField { get; set; }
         public bool ForeignParentRequired { get; set; }
+        public string JsonStructure { get; set; }
     }
 
     public class ConnectViewModel

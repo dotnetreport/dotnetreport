@@ -472,7 +472,6 @@
                         <div class="tab-content">
                             <br />
                             <div role="tabpanel" class="tab-pane active" id="column-main">
-
                                 <div class="control-group">
                                     <div class="form-group row">
                                         <label class="col-md-3 col-sm-3 control-label" for="Display_Name" data-bind="attr:{placeholder:'Ex First Name'}" placeholder="Ex First Name">Display Name</label>
@@ -495,6 +494,7 @@
                                                 <option value="Money">Money</option>
                                                 <option value="Int">Int</option>
                                                 <option value="Double">Double</option>
+                                                <option value="Json">Json</option>
                                             </select>
                                         </div>
                                         <div class="col-md-3 col-sm-3">
@@ -529,6 +529,18 @@
                                         </div>
                                         <div class="col-md-3 col-sm-3">
                                             <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="If this is checked, the column will not be displayed on Report Designer, but can still be used on Global Data Filters"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="control-group" data-bind="if: FieldType() == 'Json'">
+                                    <div class="form-group row">
+                                        <label class="col-md-3 col-sm-3 control-label">JSON Data Structure</label>
+                                        <div class="col-md-6 col-sm-6">
+                                            <textarea class="form-control text-box single-line" data-val="true" data-val-required="The DisplayName field is required." data-bind="value: JsonStructure, attr:{placeholder:'Please paste in Sample Json with all columns for this JSON data field'}" rows="5" ></textarea>
+                                        </div>
+                                        <div class="col-md-3 col-sm-3">
+                                            <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="You can paste in a sample Json blob with all the columns you want to use in this field"></span>
                                         </div>
                                     </div>
                                 </div>

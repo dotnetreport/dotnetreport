@@ -582,6 +582,22 @@ var tablesViewModel = function (options) {
 				e.RestrictedDateRange(e.restrictDateRangeNumber() + ' ' + e.restrictDateRangeValue());
 			});
 
+			e.JsonStructure.subscribe(function (newValue) {
+				if (newValue) {
+					try {
+						var data = JSON.parse(newValue);
+						if (typeof data !== 'object' || Array.isArray(data)) {
+							toastr.error('Invalid JSON data. Please enter a valid JSON object (Arrays are not allowed)');
+							e.JsonStructure('');
+						
+						}
+					} catch (ex) {
+						toastr.error('Invalid JSON format. Please enter a valid JSON object (Arrays are not allowed)');
+						e.JsonStructure('')
+					}
+                }
+            })
+
 		});
 
 		t.selectAllColumns = function (e) {

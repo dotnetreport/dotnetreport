@@ -187,6 +187,8 @@ namespace ReportBuilder.Web.Controllers
                         ForeignParentValueField = item.foreignParentValue,
                         ForeignParentTable = item.foreignParentTable,
                         ForeignParentRequired = item.foreignParentRequired,
+
+                        JsonStructure = item.jsonStructure
                     };
 
                     columns.Add(column);
@@ -278,6 +280,7 @@ namespace ReportBuilder.Web.Controllers
                             column.ForeignParentKeyField = matchColumn.ForeignParentKeyField;
                             column.ForeignParentValueField = matchColumn.ForeignParentValueField;
                             column.ForeignParentRequired = matchColumn.ForeignParentRequired;
+                            column.JsonStructure = matchColumn.JsonStructure;
 
                             column.Selected = true;
                         }
