@@ -336,8 +336,10 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
+        public class SearchProcCall { public string value { get; set; } public string accountKey { get; set; } public string dataConnectKey { get; set; } }
+
         [HttpPost]
-        public async Task<ActionResult> SearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
+        public async Task<IActionResult> SearchProcedure([FromBody] SearchProcCall data)
         {
 
             return Json(await GetSearchProcedure(value, accountKey, dataConnectKey), JsonRequestBehavior.AllowGet);
@@ -392,6 +394,8 @@ namespace ReportBuilder.Web.Controllers
                     }
                     OleDbDataReader reader = cmd.ExecuteReader();
                     dt = reader.GetSchemaTable();
+
+                    if (dt == null) continue;
 
                     // Store the table names in the class scoped array list of table names
                     List<ColumnViewModel> columnViewModels = new List<ColumnViewModel>();
