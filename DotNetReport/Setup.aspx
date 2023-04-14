@@ -184,6 +184,7 @@
                             </div>
 
                             <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Columns().length"></span> Columns</label>
+                            <button class="btn btn-sm btn-link label-sm" data-bind="click: autoFormat, visible: Selected">Auto Format</button>
                             <button class="btn btn-sm btn-link label-sm" data-bind="click: unselectAllColumns, visible: Selected">Unselect All</button>
                             <button class="btn btn-sm btn-link label-sm" data-bind="click: selectAllColumns, visible: Selected">Select All</button>
                             <div class="list-group" data-bind="sortable: { data: Columns, options: { handle: '.sortable', cursor: 'move' }, afterMove: $parent.columnSorted }">
@@ -1018,5 +1019,5 @@
             </div>
         </div>
     </div>
-    <div class="clearfix"></div>    
+    <div class="clearfix"></div>
 </asp:Content>

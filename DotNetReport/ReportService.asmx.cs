@@ -187,13 +187,13 @@ namespace ReportBuilder.WebForms.DotNetReport
                     if (!sql.StartsWith("EXEC"))
                     {
 
-                        var sqlSplit = sql.Substring(0, sql.IndexOf("FROM")).Replace("SELECT", "").Trim();
+                        var sqlSplit = sql.Substring(0, sql.LastIndexOf("FROM")).Replace("SELECT", "").Trim();
                         sqlFields = Regex.Split(sqlSplit, "], (?![^\\(]*?\\))").Where(x => x != "CONVERT(VARCHAR(3)")
                             .Select(x => x.EndsWith("]") ? x : x + "]")
                             .Select(x => x.StartsWith("DISTINCT ") ? x.Replace("DISTINCT ", "") : x)
                             .ToList();
 
-                        var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(sql.IndexOf("FROM"))}";
+                        var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(sql.LastIndexOf("FROM"))}";
                         sqlCount = $"SELECT COUNT(*) FROM ({(sqlFrom.Contains("ORDER BY") ? sqlFrom.Substring(0, sqlFrom.IndexOf("ORDER BY")) : sqlFrom)}) as countQry";
 
                         if (!String.IsNullOrEmpty(sortBy))
@@ -216,7 +216,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                             }
                         }
 
-                        if (sql.Contains("ORDER BY"))
+                        if (sql.Contains("ORDER BY") && !sql.Contains(" TOP "))
                             sql = sql + $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
                     }
                     // Execute sql
@@ -528,7 +528,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                 var sqlField = sqlFields[i++];
                 model.Columns.Add(new DotNetReportDataColumnModel
                 {
-                    SqlField = sqlField.Substring(0, sqlField.IndexOf("AS")).Trim(),
+                    SqlField = sqlField.Substring(0, sqlField.IndexOf(" AS ")).Trim(),
                     ColumnName = col.ColumnName,
                     DataType = col.DataType.ToString(),
                     IsNumeric = DotNetReportHelper.IsNumericType(col.DataType)
