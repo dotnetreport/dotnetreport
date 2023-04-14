@@ -291,7 +291,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
 </div>
 
 <!-- Report Builder -->
-<div class="modal modal-fullscreen" id="modal-reportbuilder" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="padding-right: 0px !important;">
+<div class="modal modal-fullscreen" id="modal-reportbuilder" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="padding-right: 0px !important;">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -373,7 +373,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         
                     <div class="col-md-6" data-bind="disable: isFormulaField, hidden: useStoredProc">
                         <div data-bind="with: textQuery.searchFields">
-                            <select id="search-field" class="form-control" data-bind="select2: {placeholder: 'Or Search for a Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults }, minimumInputLength: 2, allowClear: true }, value: selectedOption"></select>
+                            <select id="search-field" class="form-control" data-bind="select2: {placeholder: 'Or Search for a Data Field...', ajax: { url: url, dataType: 'json', contentType: 'application/json; charset=utf-8', data: query, processResults: processResults, type: 'POST' }, minimumInputLength: 2, allowClear: true }, value: selectedOption"></select>
                         </div>
                     </div>
 
