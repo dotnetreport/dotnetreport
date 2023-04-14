@@ -983,6 +983,8 @@ var reportViewModel = function (options) {
 	self.EditFiltersOnReport = ko.observable(false);
 	self.UseReportHeader = ko.observable(false);
 	self.HideReportHeader = ko.observable(false);
+	self.maxRecords = ko.observable(false);
+	self.OnlyTop = ko.observable();
 
 	self.FilterGroups = ko.observableArray();
 	self.FilterGroups.subscribe(function (newArray) {
@@ -1376,13 +1378,80 @@ var reportViewModel = function (options) {
 		});
 	});
 
-	self.reportsInSearch = ko.computed(function () {
-		var searchReports = self.searchReports();
-		if (!searchReports) return [];
+	self.searchFieldsInReport = {
+		language: {
+			noResults: function () {
+				return 'Search for text or select a field';
+			},
+			searching: function () {
+				return 'Search for text or select a field';
+			},
+			errorLoading: function () {
+				return 'Search for text or select a field';
+			}
+		},
+		selectedOption: ko.observable(),
+		url: options.apiUrl,
+		query: function (params) {
+			self.searchReports(params.term);
+			return params.term ? {
+				method: "/ReportApi/ParseQuery",
+				model: JSON.stringify({
+					token: params.term,
+					text: ''
+				})
+			} : null;
+		},
+		processResults: function (data) {
+			if (data.d) results = data.d;
+			var items = _.map(data, function (x) {
+				return { id: x.fieldId, text: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey };
+			});
 
-		return _.filter(self.SavedReports(), function (x) {
-			return x.reportName.toLowerCase().indexOf(searchReports.toLowerCase()) >= 0 || x.reportDescription.toLowerCase().indexOf(searchReports.toLowerCase()) >= 0;
-		});
+			return {
+				results: items
+			};
+		}
+	}
+
+	self.reportsInSearch = ko.observableArray([]);
+	self.reportsInSearchCompute = ko.computed(function () {
+		var searchReports = self.searchReports();
+		var searchFieldId = self.searchFieldsInReport.selectedOption();
+
+		if (!searchReports && !searchFieldId) {
+			self.reportsInSearch([]);
+			return;
+		}
+
+		if (searchFieldId) {
+			ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/FindReportsByFieldId",
+					model: JSON.stringify({
+						fieldId: parseInt(searchFieldId),
+					})
+				}
+			}).done(function (reports) {
+				if (reports.d) { reports = reports.d; }
+				if (reports.length == 0) {
+					self.reportsInSearch([]);
+				}
+				else {
+					var foundReportIds = _.map(reports, function (x) { return x.reportId });
+					self.reportsInSearch(_.filter(self.SavedReports(), function (x) {
+						return foundReportIds.indexOf(x.reportId) >= 0;
+					}));
+				}
+			});
+
+		}
+		else {
+			self.reportsInSearch(_.filter(self.SavedReports(), function (x) {
+				return x.reportName.toLowerCase().indexOf(searchReports.toLowerCase()) >= 0 || x.reportDescription.toLowerCase().indexOf(searchReports.toLowerCase()) >= 0;
+			}));
+		}
 	});
 
 	self.clearReport = function () {
@@ -1411,6 +1480,8 @@ var reportViewModel = function (options) {
 		self.scheduleBuilder.clear();
 		self.SortFields([]);
 		self.isFormulaField(false);
+		self.maxRecords(false);
+		self.OnlyTop(null);
 	};
 
 	self.SelectedProc.subscribe(function (proc) {
@@ -2093,6 +2164,7 @@ var reportViewModel = function (options) {
 			IncludeSubTotals: self.IncludeSubTotal(),
 			EditFiltersOnReport: self.EditFiltersOnReport(),
 			ShowUniqueRecords: self.ShowUniqueRecords(),
+			OnlyTop: self.maxRecords() ? self.OnlyTop() : null,
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : self.AggregateReport(),
 			ShowDataWithGraph: self.ShowDataWithGraph(),
 			ShowOnDashboard: self.ShowOnDashboard(),
@@ -2982,6 +3054,8 @@ var reportViewModel = function (options) {
 		self.IncludeSubTotal(report.IncludeSubTotals);
 		self.EditFiltersOnReport(report.EditFiltersOnReport);
 		self.ShowUniqueRecords(report.ShowUniqueRecords);
+		self.OnlyTop(report.OnlyTop);
+		self.maxRecords(report.OnlyTop != null);
 		self.AggregateReport(report.IsAggregateReport);
 		self.ShowDataWithGraph(report.ShowDataWithGraph);
 		self.ShowOnDashboard(report.ShowOnDashboard);
@@ -3404,12 +3478,13 @@ var reportViewModel = function (options) {
 			$.blockUI({ baseZ: 500 });
 		}
 
-		$.ajax({
+		ajaxcall({
 			type: 'POST',
 			url: (options.runExportUrl || '/DotNetReport/') + url,
 			xhrFields: {
 				responseType: 'blob'
 			},
+			contentType: "application/x-www-form-urlencoded; charset=UTF-8",
 			data: data,
 			success: function (data) {
 				var a = document.createElement('a');
@@ -3656,6 +3731,7 @@ var dashboardViewModel = function (options) {
 	_.forEach(options.reports, function (x) {
 		var report = new reportViewModel({
 			runReportUrl: options.runReportUrl,
+			runExportUrl: options.runExportUrl,
 			execReportUrl: options.execReportUrl,
 			reportWizard: options.reportWizard,
 			lookupListUrl: options.lookupListUrl,

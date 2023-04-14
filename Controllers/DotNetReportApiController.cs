@@ -212,7 +212,7 @@ namespace ReportBuilder.Web.Controllers
                             }
                         }
 
-                        if (sql.Contains("ORDER BY"))
+                        if (sql.Contains("ORDER BY") && !sql.Contains(" TOP "))
                             sql = sql + $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
                     }
                     // Execute sql
@@ -466,7 +466,7 @@ namespace ReportBuilder.Web.Controllers
                 var sqlField = sqlFields[i++];
                 model.Columns.Add(new DotNetReportDataColumnModel
                 {
-                    SqlField = sqlField.Substring(0, sqlField.IndexOf("AS")).Trim(),
+                    SqlField = sqlField.Substring(0, sqlField.IndexOf(" AS ")).Trim(),
                     ColumnName = col.ColumnName,
                     DataType = col.DataType.ToString(),
                     IsNumeric = DotNetReportHelper.IsNumericType(col.DataType)
