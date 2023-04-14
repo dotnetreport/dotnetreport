@@ -824,7 +824,7 @@ var textQuery = function (options) {
 					token: params.term,
 					text: ''
 				})
-			} : null;
+			} : {};
 		},
 		processResults: function (data) {
 			if (data.d) results = data.d;
@@ -1394,16 +1394,16 @@ var reportViewModel = function (options) {
 		url: options.apiUrl,
 		query: function (params) {
 			self.searchReports(params.term);
-			return params.term ? {
+			return JSON.stringify(params.term ? {
 				method: "/ReportApi/ParseQuery",
 				model: JSON.stringify({
 					token: params.term,
 					text: ''
 				})
-			} : null;
+			} : {});
 		},
 		processResults: function (data) {
-			if (data.d) results = data.d;
+			if (data.d) data = data.d;
 			var items = _.map(data, function (x) {
 				return { id: x.fieldId, text: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey };
 			});
