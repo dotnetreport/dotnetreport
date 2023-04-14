@@ -624,80 +624,91 @@
                 </div>
                 <hr />
 
-                <div>
-                    <div class="form-group row">
-                        <label class="col-sm-2 control-label">Report Name</label>
-                        <div class="col-sm-10">
-                            <input type="text" style="width: 100%;" class="form-control" required placeholder="Report Name" data-bind="value: ReportName">
-                        </div>
-                    </div>
-                    <div class="form-group row">
-                        <label class="col-sm-2 control-label">Report Description</label>
-                        <div class="col-sm-10">
-                            <textarea class="form-control" style="width: 100%;" rows="3" placeholder="Optional Report Description" data-bind="value: ReportDescription"></textarea>
-                        </div>
-                    </div>
-                    <div data-bind="ifnot: useStoredProc">
+                    <div>
                         <div class="form-group row">
-                            <label class="col-sm-2 control-label">Sort By</label>
-                            <div class="col-sm-6">
-                                <select class="form-control" required data-bind="options: SelectedFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: SortByField"></select>
-                            </div>
-                            <div class="col-sm-2">
-                                <button class="btn btn-sm btn-secondary" data-bind="text: !SortDesc() ? '▲ Sort Ascending' : 'Sort Descending ▼', click: function() { SortDesc(!SortDesc()); return false; }"></button>
-                            </div>
-                            <div class="col-sm-2">
-                                <button class="btn btn-sm btn-secondary" data-bind="click: addSortField">Add Sort Field</button>
+                            <label class="col-sm-2 control-label">Report Name</label>
+                            <div class="col-sm-10">
+                                <input type="text" style="width: 100%;" class="form-control" required placeholder="Report Name" data-bind="value: ReportName">
                             </div>
                         </div>
-                        <div data-bind="foreach: SortFields">
+                        <div class="form-group row">
+                            <label class="col-sm-2 control-label">Report Description</label>
+                            <div class="col-sm-10">
+                                <textarea class="form-control" style="width: 100%;" rows="3" placeholder="Optional Report Description" data-bind="value: ReportDescription"></textarea>
+                            </div>
+                        </div>
+                        <div data-bind="ifnot: useStoredProc">
                             <div class="form-group row">
-                                <label class="col-sm-2 control-label">&nbsp;&nbsp;Then Sort By</label>
-                                <div class="col-sm-4">
-                                    <select class="form-control" required data-bind="options: $parent.SelectedFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: sortByFieldId"></select>
+                                <label class="col-sm-2 control-label">Sort By</label>
+                                <div class="col-sm-6">
+                                    <select class="form-control" required data-bind="options: SelectedFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: SortByField"></select>
                                 </div>
                                 <div class="col-sm-2">
-                                    <button class="btn btn-sm btn-secondary" data-bind="click: remove">Remove Sort Field</button>
+                                    <button class="btn btn-sm btn-secondary" data-bind="text: !SortDesc() ? '▲ Sort Ascending' : 'Sort Descending ▼', click: function() { SortDesc(!SortDesc()); return false; }"></button>
                                 </div>
                                 <div class="col-sm-2">
-                                    <button class="btn btn-sm btn-secondary" data-bind="text: !sortDesc() ? '▲ Sort Ascending' : 'Sort Descending ▼', click: function() { sortDesc(!sortDesc()); return false; }"></button>
+                                    <button class="btn btn-sm btn-secondary" data-bind="click: addSortField">Add Sort Field</button>
                                 </div>
-                                <div class="col-sm-2">
-                                    <button class="btn btn-sm btn-secondary" data-bind="click: $parent.addSortField">Add Sort Field</button>
+                            </div>
+                            <div data-bind="foreach: SortFields">
+                                <div class="form-group row">
+                                    <label class="col-sm-2 control-label">&nbsp;&nbsp;Then Sort By</label>
+                                    <div class="col-sm-4">
+                                        <select class="form-control" required data-bind="options: $parent.SelectedFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: sortByFieldId"></select>
+                                    </div>
+                                    <div class="col-sm-2">
+                                        <button class="btn btn-sm btn-secondary" data-bind="click: remove">Remove Sort Field</button>
+                                    </div>
+                                    <div class="col-sm-2">
+                                        <button class="btn btn-sm btn-secondary" data-bind="text: !sortDesc() ? '▲ Sort Ascending' : 'Sort Descending ▼', click: function() { sortDesc(!sortDesc()); return false; }"></button>
+                                    </div>
+                                    <div class="col-sm-2">
+                                        <button class="btn btn-sm btn-secondary" data-bind="click: $parent.addSortField">Add Sort Field</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="checkbox" data-bind="visible: $root.ReportType()!='Pivot'">
+                                <label>
+                                    <input type="checkbox" data-bind="checked: IncludeSubTotal" />
+                                    Include Total Row
+                                </label>
+                            </div>
+                            <div class="checkbox" data-bind="hidden: AggregateReport">
+                                <label>
+                                    <input type="checkbox" data-bind="checked: ShowUniqueRecords" />
+                                    Show only Unique Records
+                                </label>
+                            </div>
+                            <div class="form-group row">
+                                <div class="checkbox col-md-2">
+                                    <label >
+                                        <input type="checkbox" data-bind="checked: maxRecords" />
+                                        Max Records
+                                    </label>
+                                </div>
+                                <div class="col-sm-10" data-bind="if: maxRecords">
+                                    <input type="number" style="width: 150px;" class="form-control" required placeholder="Only top n..." data-bind="value: OnlyTop, visible: maxRecords">
                                 </div>
                             </div>
                         </div>
-                        <div class="checkbox" data-bind="visible: $root.ReportType()!='Pivot'">
+                        <div class="checkbox" data-bind="visible: isChart">
                             <label>
-                                <input type="checkbox" data-bind="checked: IncludeSubTotal" />
-                                Include Total Row
+                                <input type="checkbox" data-bind="checked: ShowDataWithGraph" />
+                                Show Data along with Graph
                             </label>
                         </div>
-                        <div class="checkbox" data-bind="hidden: AggregateReport">
+                        <div class="checkbox" data-bind="visible: CanSaveReports() && ReportID()>0">
                             <label>
-                                <input type="checkbox" data-bind="checked: ShowUniqueRecords" />
-                                Show only Unique Records
+                                <input type="checkbox" data-bind="checked: SaveReport">
+                                Save Report
                             </label>
                         </div>
-                    </div>
-                    <div class="checkbox" data-bind="visible: isChart">
-                        <label>
-                            <input type="checkbox" data-bind="checked: ShowDataWithGraph" />
-                            Show Data along with Graph
-                        </label>
-                    </div>
-                    <div class="checkbox" data-bind="visible: CanSaveReports() && ReportID()>0">
-                        <label>
-                            <input type="checkbox" data-bind="checked: SaveReport">
-                            Save Report
-                        </label>
-                    </div>
-                    <div class="form-group row" data-bind="visible: SaveReport">
-                        <label class="col-sm-2 control-label">Choose Folder</label>
-                        <div class="col-sm-10">
-                            <select class="form-control" style="width: 100%;" data-bind="options: Folders, optionsText: 'FolderName', optionsValue: 'Id', value: FolderID"></select>
+                        <div class="form-group row" data-bind="visible: SaveReport">
+                            <label class="col-sm-2 control-label">Choose Folder</label>
+                            <div class="col-sm-10">
+                                <select class="form-control" style="width: 100%;" data-bind="options: Folders, optionsText: 'FolderName', optionsValue: 'Id', value: FolderID"></select>
+                            </div>
                         </div>
-                    </div>
 
                     <div data-bind="if: adminMode">
                         <hr />
