@@ -393,6 +393,8 @@ namespace ReportBuilder.Web.Controllers
                     OleDbDataReader reader = cmd.ExecuteReader();
                     dt = reader.GetSchemaTable();
 
+                    if (dt == null) continue;
+
                     // Store the table names in the class scoped array list of table names
                     List<ColumnViewModel> columnViewModels = new List<ColumnViewModel>();
                     for (int i = 0; i < dt.Rows.Count; i++)

@@ -596,6 +596,23 @@ var tablesViewModel = function (options) {
 			});
 		}
 
+		t.autoFormat = function (e) {
+			_.forEach(t.Columns(), function (c) {
+				var displayName = c.DisplayName();
+				displayName = displayName.replace(/_/g, ' ');
+
+				// Split PascalCase into two separate words
+				displayName = displayName.replace(/([a-z])([A-Z])/g, '$1 $2');
+
+				// Capitalize the first letter of each word
+				displayName = displayName.split(' ').map(function (word) {
+					return word.charAt(0).toUpperCase() + word.slice(1);
+				}).join(' ');
+
+				c.DisplayName(displayName);
+			});
+		}
+
 		t.saveTable = function (apiKey, dbKey) {
 			var e = ko.mapping.toJS(t, {
 				'ignore': ["saveTable", "JoinTable", "ForeignJoinTable"]
