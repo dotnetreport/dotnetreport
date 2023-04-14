@@ -336,10 +336,8 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        public class SearchProcCall { public string value { get; set; } public string accountKey { get; set; } public string dataConnectKey { get; set; } }
-
         [HttpPost]
-        public async Task<IActionResult> SearchProcedure([FromBody] SearchProcCall data)
+        public async Task<ActionResult> SearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
         {
 
             return Json(await GetSearchProcedure(value, accountKey, dataConnectKey), JsonRequestBehavior.AllowGet);
