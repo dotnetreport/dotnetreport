@@ -4,6 +4,7 @@ using ReportBuilder.Web.Models;
 using System.Configuration;
 using System.Data;
 using System.Data.OleDb;
+using System.Text.Json;
 
 namespace ReportBuilder.Web.Controllers
 {
@@ -331,11 +332,13 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        [HttpPost]
-        public async Task<ActionResult> SearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
-        {
+        public class SearchProcCall { public string value { get; set; } public string accountKey { get; set; } public string dataConnectKey { get; set; } }
 
-            return Json(await GetSearchProcedure(value, accountKey, dataConnectKey));
+        [HttpPost]
+        public async Task<IActionResult> SearchProcedure([FromBody] SearchProcCall data)
+        {
+            string value = data.value; string accountKey = data.accountKey; string dataConnectKey = data.dataConnectKey;
+            return new JsonResult(await GetSearchProcedure(value, accountKey, dataConnectKey), new JsonSerializerOptions() { PropertyNamingPolicy = null });
         }
 
         private async Task<List<TableViewModel>> GetSearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
@@ -387,6 +390,8 @@ namespace ReportBuilder.Web.Controllers
                     }
                     OleDbDataReader reader = cmd.ExecuteReader();
                     dt = reader.GetSchemaTable();
+
+                    if (dt == null) continue;
 
                     // Store the table names in the class scoped array list of table names
                     List<ColumnViewModel> columnViewModels = new List<ColumnViewModel>();
