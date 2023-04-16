@@ -61,8 +61,8 @@
                             allowAdmin: data.allowAdminMode,
                             dataFilters: data.dataFilters,
                             dashboardId: dashboardId,
-                            runExportUrl: "",
-                            printReportUrl: ""
+                            runExportUrl: svc,
+                            printReportUrl: window.location.protocol + "//" + window.location.host + "/DotnetReport/ReportPrint.aspx"
                         });
 
                         vm.init().done(function () {
