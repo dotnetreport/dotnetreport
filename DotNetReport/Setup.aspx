@@ -56,13 +56,13 @@
                 reportsApiUrl: '<%= System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]%>',
                 searchProcUrl: '/DotNetReport/ReportService.asmx/SearchProcedure',
                 getUsersAndRoles: '/DotNetReport/ReportService.asmx/GetUsersAndRoles'
-        };
+            };
 
-        var vm = new manageViewModel(options);
-        vm.LoadJoins();
-        vm.setupManageAccess();
-        ko.applyBindings(vm);
-        vm.LoadDataConnections();
+            var vm = new manageViewModel(options);
+            vm.LoadJoins();
+            vm.setupManageAccess();
+            ko.applyBindings(vm);
+            vm.LoadDataConnections();
         });
 
     </script>
@@ -762,7 +762,7 @@
                             <input type="text" class="form-control" data-bind="value: searchProcedureTerm" placeholder="Search stored procedures by name" />
                         </div>
                         <div class="col-md-2">
-                            <button class="btn btn-primary" data-bind="click: searchStoredProcedure">Search</button>
+                            <button class="btn btn-primary" onclick="return false;" data-bind="click: searchStoredProcedure">Search</button>
                         </div>
                     </div>
                     <br />

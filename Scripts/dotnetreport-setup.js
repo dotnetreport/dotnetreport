@@ -218,8 +218,8 @@ var manageViewModel = function (options) {
 			return false;
 		}
 
-		ajaxcall({
-			url: "/DotNetSetup/SearchProcedure",
+		return ajaxcall({
+			url: options.searchProcUrl,
 			type: 'POST',
 			data: JSON.stringify({
 				value: self.searchProcedureTerm(),
@@ -227,6 +227,7 @@ var manageViewModel = function (options) {
 				dataConnectKey: self.keys.DatabaseApiKey
 			})
 		}).done(function (result) {
+			if (result.d) result = result.d;
 			_.forEach(result, function (s) {
 				_.forEach(s.Columns, function (c) {
 					c.DisplayName = ko.observable(c.DisplayName);
