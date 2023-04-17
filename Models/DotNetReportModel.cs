@@ -1,5 +1,7 @@
 ﻿using iTextSharp.text;
 using iTextSharp.text.pdf;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using OfficeOpenXml;
 using PuppeteerSharp;
 using PuppeteerSharp.Media;
@@ -70,6 +72,7 @@ namespace ReportBuilder.Web.Models
         public string ColumnName { get; set; }
         public string DataType { get; set; }
         public bool IsNumeric { get; set; }
+        public string FormatType { get; set; }
     }
 
     public class DotNetReportDataRowItemModel
@@ -392,10 +395,88 @@ namespace ReportBuilder.Web.Models
             return "";
         }
 
-        public static string GetFormattedValue(DataColumn col, DataRow row)
+
+        static string ParseJsonValue(JObject json, string columnToExtract)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("<table>");
+            sb.AppendLine("<tbody>");
+
+            var columnValue = "";
+            ParseJson(json, sb, "", columnToExtract, ref columnValue);
+
+            sb.AppendLine("</tbody>");
+            sb.AppendLine("</table>");
+
+            return !string.IsNullOrEmpty(columnToExtract) ? columnValue : sb.ToString();
+        }
+
+        static void ParseJson(JToken token, StringBuilder sb, string prefix, string columnToExtract, ref string columnValue)
+        {
+            if (token.Type == JTokenType.Object)
+            {
+                foreach (JProperty prop in token.Children<JProperty>())
+                {
+                    string propName = prop.Name;
+                    if (!string.IsNullOrEmpty(prefix))
+                    {
+                        propName = prefix + "." + propName;
+                    }
+
+                    ParseJson(prop.Value, sb, propName, columnToExtract, ref columnValue);
+                }
+            }
+            else if (token.Type == JTokenType.Array)
+            {
+                int index = 0;
+                foreach (JToken child in token.Children())
+                {
+                    ParseJson(child, sb, prefix + "[" + index + "]", columnToExtract, ref columnValue);
+                    index++;
+                }
+            }
+            else
+            {
+                string value = token.ToString();
+                if (!string.IsNullOrEmpty(prefix))
+                {
+                    if (columnToExtract == prefix) columnValue = value;
+                    sb.AppendFormat("<tr><td>{0}</td><td>{1}</td></tr>", prefix, value);
+                    sb.AppendLine();
+                }
+            }
+        }
+
+        static bool IsValidJson(string json)
+        {
+            try
+            {
+                JsonConvert.DeserializeObject(json);
+                return true;
+            }
+            catch (JsonException)
+            {
+                return false;
+            }
+        }
+        public static bool IsNumeric(string value)
+        {
+            double result;
+            return double.TryParse(value, out result);
+        }
+
+
+        public static string GetFormattedValue(DataColumn col, DataRow row, string formatType)
         {
             if (@row[col] != null && row[col] != DBNull.Value)
             {
+                var val = row[col].ToString();
+                if (IsValidJson(val) && !IsNumeric(val))
+                {
+                    JObject json = JObject.Parse(val);
+                    return ParseJsonValue(json, formatType == "Json"  ? col.ColumnName : "");
+                }
+
                 switch (Type.GetTypeCode(col.DataType))
                 {
                     case TypeCode.Int16:

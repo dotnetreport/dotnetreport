@@ -212,7 +212,6 @@ namespace ReportBuilder.Web.Controllers
                     sql = DotNetReportHelper.Decrypt(HttpUtility.HtmlDecode(allSqls[i]));
                     if (!sql.StartsWith("EXEC"))
                     {
-
                         var sqlSplit = sql.Substring(0, sql.LastIndexOf("FROM")).Replace("SELECT", "").Trim();
                         sqlFields = Regex.Split(sqlSplit, "], (?![^\\(]*?\\))").Where(x => x != "CONVERT(VARCHAR(3)")
                             .Select(x => x.EndsWith("]") ? x : x + "]")
@@ -244,6 +243,9 @@ namespace ReportBuilder.Web.Controllers
 
                         if (sql.Contains("ORDER BY") && !sql.Contains(" TOP "))
                             sql = sql + $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
+
+                        if (sql.Contains("__jsonc__"))
+                            sql = sql.Replace("__jsonc__", "");
                     }
                     // Execute sql
                     var dtPagedRun = new DataTable();
@@ -494,10 +496,11 @@ namespace ReportBuilder.Web.Controllers
                 var sqlField = sqlFields[i++];
                 model.Columns.Add(new DotNetReportDataColumnModel
                 {
-                    SqlField = sqlField.Substring(0, sqlField.IndexOf(" AS ")).Trim(),
+                    SqlField = sqlField.Substring(0, sqlField.IndexOf(" AS ")).Trim().Replace("__jsonc__", ""),
                     ColumnName = col.ColumnName,
                     DataType = col.DataType.ToString(),
-                    IsNumeric = DotNetReportHelper.IsNumericType(col.DataType)
+                    IsNumeric = DotNetReportHelper.IsNumericType(col.DataType),
+                    FormatType = sqlField.Contains("__jsonc__") ? "Json" : ""
                 });
 
             }
@@ -514,7 +517,7 @@ namespace ReportBuilder.Web.Controllers
                     {
                         Column = model.Columns[i],
                         Value = row[col] != null ? row[col].ToString() : null,
-                        FormattedValue = DotNetReportHelper.GetFormattedValue(col, row),
+                        FormattedValue = DotNetReportHelper.GetFormattedValue(col, row, model.Columns[i].FormatType),
                         LabelValue = DotNetReportHelper.GetLabelValue(col, row)
                     });
                     i += 1;
