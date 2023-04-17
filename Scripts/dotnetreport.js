@@ -2482,8 +2482,9 @@ var reportViewModel = function (options) {
 					e.backColor = col.backColor;
 					e.groupInGraph = col.groupInGraph;
 					e.dontSubTotal = col.dontSubTotal;
+					e.fieldType = col.fieldType;
 					e.jsonColumnName = col.jsonColumnName;
-					e.isJsonColumn = col.jsonColumnName ? true : false;
+					e.isJsonColumn = col.fieldType == 'Json';
 					e.outerGroup = ko.observable(false);
 					e.colIndex = i;
 
@@ -2939,6 +2940,7 @@ var reportViewModel = function (options) {
 		e.fieldWidth = ko.observable(e.fieldWidth);
 		e.fieldConditionOp = ko.observable(e.fieldConditionOp);
 		e.fieldConditionVal = ko.observable(e.fieldConditionVal);
+		e.jsonColumnName = e.jsonColumnName;
 		e.isJsonColumn = e.jsonColumnName ? true : false;
 
 		e.applyAllHeaderFontColor = ko.observable(false);
