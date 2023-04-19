@@ -3,9 +3,7 @@ using Newtonsoft.Json;
 using Npgsql;
 using NpgsqlTypes;
 using ReportBuilder.Web.Models;
-using System.Configuration;
 using System.Data;
-using System.Data.OleDb;
 using System.Text.Json;
 
 namespace ReportBuilder.Web.Controllers
