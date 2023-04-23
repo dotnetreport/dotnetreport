@@ -112,6 +112,9 @@ namespace ReportBuilder.Web.Models
         public List<ParameterViewModel> Parameters { get; set; }
         public List<string> AllowedRoles { get; set; }
         public bool? DoNotDisplay { get; set; }
+
+        public bool CustomTable { get; set; }
+        public string CustomTableSql { get; set; }
     }
 
     public class ParameterViewModel

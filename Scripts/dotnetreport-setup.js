@@ -22,8 +22,16 @@ var manageViewModel = function (options) {
 		self.pager.currentPage(1);
 	});
 
+	self.customSql = new customSqlModel(options, self.keys);
+	self.customTableMode = ko.observable(false);
+
 	self.pagedTables = ko.computed(function () {
 		var tables = self.Tables.filteredTables();
+
+		if (self.customTableMode()) {
+			tables = _.filter(tables, { CustomTable: true });
+        }
+
 		var pageNumber = self.pager.currentPage();
 		var pageSize = self.pager.pageSize();
 
@@ -219,7 +227,7 @@ var manageViewModel = function (options) {
 		}
 
 		ajaxcall({
-			url: "/DotNetSetup/SearchProcedure",
+			url: options.searchProcUrl,
 			type: 'POST',
 			data: JSON.stringify({
 				value: self.searchProcedureTerm(),
@@ -227,6 +235,7 @@ var manageViewModel = function (options) {
 				dataConnectKey: self.keys.DatabaseApiKey
 			})
 		}).done(function (result) {
+			if (result.d) result = result.d;
 			_.forEach(result, function (s) {
 				_.forEach(s.Columns, function (c) {
 					c.DisplayName = ko.observable(c.DisplayName);
@@ -528,7 +537,8 @@ var manageViewModel = function (options) {
 
 			self.reportsAndFolders(setup);
 		});
-    }
+	}
+
 }
 
 var tablesViewModel = function (options) {
@@ -776,4 +786,88 @@ var proceduresViewModel = function (options) {
 		self.setupProcedure(p);
 	});
 
+}
+
+var customSqlModel = function (options, keys) {
+	var self = this;
+	self.currentTable = ko.observable(null);
+
+	self.addNewCustomSqlTable = function () {		
+		$('#custom-sql-modal').modal('show');
+	}
+
+	// ui-validation
+	self.isInputValid = function (ctl) {
+		// first check for custom validation
+		if ($(ctl).attr("data-notempty") != null) {
+			if ($(ctl).children("option").length == 0)
+				return false;
+		}
+
+		// next try html5 validation if availble
+		if (ctl.validity) {
+			return ctl.validity.valid;
+		}
+
+		// finally just check for required attr
+		if ($(ctl).attr("required") != null && $(ctl).val() == "")
+			return false;
+
+		return true;
+	};
+
+
+	self.validateForm = function (validateCustomOnly) {
+		var curInputs = $('#custom-sql-modal').find("input, select, textarea"),
+			isValid = true;
+
+		$(".needs-validation").removeClass("was-validated");
+		for (var i = 0; i < curInputs.length; i++) {
+			$(curInputs[i]).removeClass("is-invalid");
+			if (!self.isInputValid(curInputs[i])) {
+				isValid = false;
+				$(".needs-validation").addClass("was-validated");
+				$(curInputs[i]).addClass("is-invalid");
+			}
+		}
+
+		return isValid;
+	};
+
+	self.customTableName = ko.observable();
+	self.customSql = ko.observable();
+
+	self.executeSql = function () {
+		var valid = self.validateForm();
+		
+		if (!self.customTableName()) {
+			toastr.error("Custom Table Name is required");
+			valid = false;
+		}
+
+		if (!self.customSql() || self.customSql().toLowerCase().indexOf('select') != 0) {
+			toastr.error("Custom SELECT SQL is required, and it must start with SELECT");
+			valid = false;
+		}
+
+		if (!valid) {
+			return false;
+        }
+
+		ajaxcall({
+			url: options.getSchemaFromSql,
+			type: 'POST',
+			data: JSON.stringify({
+				value: self.customSql(),
+				accountKey: keys.AccountApiKey,
+				dataConnectKey: keys.DatabaseApiKey,
+				currentTable: self.currentTable()
+			})
+		}).done(function (result) {
+			if (result.d) result = result.d;
+
+		});
+
+		return false;
+    }
 }
