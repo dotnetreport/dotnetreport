@@ -220,7 +220,7 @@ namespace ReportBuilder.Web.Controllers
                 var schemaTable = conn.GetOleDbSchemaTable(OleDbSchemaGuid.Tables, new Object[] { null, null, null, type });
 
                 // Store the table names in the class scoped array list of table names
-                for (int i = 0; i < 5; i++)
+                for (int i = 0; i < schemaTable.Rows.Count; i++)
                 {
                     var tableName = schemaTable.Rows[i].ItemArray[2].ToString();
 
