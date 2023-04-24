@@ -295,3 +295,47 @@ var manageAccess = function (options) {
         isDashboard: ko.observable(options.isDashboard == true ? true : false)
     };
 };
+
+function beautifySql(sql) {
+    const keywords = [
+        'SELECT', 'FROM', 'WHERE', 'AND', 'OR', 'ORDER BY',
+        'GROUP BY', 'HAVING', 'LIMIT', 'OFFSET', 'ON',
+        'LEFT JOIN', 'RIGHT JOIN', 'INNER JOIN', 'OUTER JOIN',
+        'FULL OUTER JOIN', 'AS', 'DISTINCT', 'COUNT', 'SUM',
+        'AVG', 'MAX', 'MIN', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END'
+    ];
+
+    // Add spaces around keywords
+    keywords.forEach(keyword => {
+        sql = sql.replace(new RegExp('\\b' + keyword + '\\b', 'gi'), '<span class="keyword">' + keyword + '</span> ');
+    });
+
+    // Add line breaks after some keywords
+    sql = sql.replace(/(SELECT|FROM|WHERE|GROUP BY|ORDER BY|HAVING)/gi, '<br>$1');
+
+    // Indent nested queries
+    let indentation = 0;
+    sql = sql.replace(/\b(SELECT|FROM)\b/gi, (match, keyword) => {
+        if (keyword === 'SELECT') {
+            indentation++;
+        }
+        const indent = '&nbsp;'.repeat(indentation * 4);
+        return '<br>' + indent + '<span class="keyword">' + match + '</span>';
+    });
+    sql = sql.replace(/\b((LEFT|RIGHT|INNER|OUTER|FULL OUTER) JOIN|ON)\b/gi, (match, keyword) => {
+        if (keyword === 'ON') {
+            indentation--;
+        }
+        const indent = '&nbsp;'.repeat(indentation * 4);
+        return '<br>' + indent + '<span class="keyword">' + match + '</span>';
+    });
+
+    // Put each field in SELECT on a separate line
+    sql = sql.replace(/SELECT([\s\S]*?)FROM/gi, (match, fields) => {
+        fields = fields.split(',').map(field => field.trim());
+        const indent = '&nbsp;'.repeat(indentation * 4 + 4);
+        return 'SELECT ' + fields.join(',<br>' + indent) + indent + 'FROM';
+    });
+
+    return sql.trim();
+}
