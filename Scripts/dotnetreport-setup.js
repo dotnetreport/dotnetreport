@@ -22,14 +22,14 @@ var manageViewModel = function (options) {
 		self.pager.currentPage(1);
 	});
 
-	self.customSql = new customSqlModel(options, self.keys);
+	self.customSql = new customSqlModel(options, self.keys, self.Tables);
 	self.customTableMode = ko.observable(false);
 
 	self.pagedTables = ko.computed(function () {
 		var tables = self.Tables.filteredTables();
 
 		if (self.customTableMode()) {
-			tables = _.filter(tables, { CustomTable: true });
+			tables = _.filter(tables, function(x) { return x.CustomTable(); });
         }
 
 		var pageNumber = self.pager.currentPage();
@@ -545,8 +545,7 @@ var tablesViewModel = function (options) {
 	var self = this;
 	self.model = ko.mapping.fromJS(options.model.Tables);
 
-	_.forEach(self.model(), function (t) {
-
+	self.processTable = function (t) {
 		t.availableColumns = ko.computed(function () {
 			return _.filter(t.Columns(), function (e) {
 				return e.Id() > 0 && e.Selected();
@@ -581,7 +580,7 @@ var tablesViewModel = function (options) {
 					e.RestrictedDateRange('');
 				} else {
 					e.RestrictedDateRange(e.restrictDateRangeNumber() + ' ' + e.restrictDateRangeValue());
-                }
+				}
 			});
 
 			e.restrictDateRangeNumber.subscribe(function () {
@@ -599,14 +598,14 @@ var tablesViewModel = function (options) {
 						if (typeof data !== 'object' || Array.isArray(data)) {
 							toastr.error('Invalid JSON data. Please enter a valid JSON object (Arrays are not allowed)');
 							e.JsonStructure('');
-						
+
 						}
 					} catch (ex) {
 						toastr.error('Invalid JSON format. Please enter a valid JSON object (Arrays are not allowed)');
 						e.JsonStructure('')
 					}
-                }
-            })
+				}
+			})
 
 		});
 
@@ -678,11 +677,21 @@ var tablesViewModel = function (options) {
 					dataConnect: dbKey,
 					table: e
 				})
-			}).done(function () {
-				toastr.success("Saved table " + e.DisplayName);
+			}).done(function (x) {
+				if (x.success && x.tableId) {
+					t.Id(x.tableId)
+					toastr.success("Saved table " + e.DisplayName);
+				} else {
+					toastr.error("Error saving table " + e.DisplayName);
+                }
 			});
 		}
 
+		return t;
+    }
+
+	_.forEach(self.model(), function (t) {
+		self.processTable(t);
 	});
 
 	self.availableTables = ko.computed(function () {
@@ -788,7 +797,7 @@ var proceduresViewModel = function (options) {
 
 }
 
-var customSqlModel = function (options, keys) {
+var customSqlModel = function (options, keys, tables) {
 	var self = this;
 	self.currentTable = ko.observable(null);
 
@@ -850,6 +859,15 @@ var customSqlModel = function (options, keys) {
 			valid = false;
 		}
 
+		var matchTable = _.find(tables.model(), function (x) {
+			return x.TableName() == self.customTableName();
+		});
+
+		if (matchTable) {
+			toastr.error("Table " + self.customTableName() + " already exists, please choose a different name.");
+			valid = false;
+        }
+
 		if (!valid) {
 			return false;
         }
@@ -866,6 +884,19 @@ var customSqlModel = function (options, keys) {
 		}).done(function (result) {
 			if (result.d) result = result.d;
 
+			if (result.errorMessage) {
+				toastr.error("Could not execute Query. Please check your query and try again. Error: " + result.errorMessage);
+				return;
+            }
+
+			result.TableName = self.customTableName();
+			result.DisplayName = self.customTableName();
+			var t = ko.mapping.fromJS(result);
+			
+			tables.model.push(tables.processTable(t));
+			toastr.info("Query loaded successfully, please configure and then Save to add this custom table to dotnet report");
+
+			$('#custom-sql-modal').modal('hide');
 		});
 
 		return false;

@@ -474,79 +474,86 @@ namespace ReportBuilder.Web.Controllers
         [HttpPost]
         public async Task<IActionResult> GetSchemaFromSql([FromBody] SchemaFromSqlCall data)
         {
-            var table = data.currentTable ?? new TableViewModel
+            try
             {
-                AllowedRoles = new List<string>(),
-                Columns = new List<ColumnViewModel>(),
-                CustomTable = true
-            };
-
-            table.CustomTableSql = data.value;
-
-            var connString = await DotNetSetupController.GetConnectionString(DotNetSetupController.GetConnection(data.dataConnectKey));
-            using (OleDbConnection conn = new OleDbConnection(connString))
-            {
-                // open the connection to the database 
-                conn.Open();
-                OleDbCommand cmd = new OleDbCommand(data.value, conn);
-                cmd.CommandType = CommandType.Text;
-                using (OleDbDataReader reader = cmd.ExecuteReader())
+                var table = data.currentTable ?? new TableViewModel
                 {
-                    // Get the column metadata using schema.ini file
-                    DataTable schemaTable = new DataTable();
-                    schemaTable = reader.GetSchemaTable();
-                    var idx = 0;
-                   
-                    foreach (DataRow dr in schemaTable.Rows)
+                    AllowedRoles = new List<string>(),
+                    Columns = new List<ColumnViewModel>(),
+                    CustomTable = true
+                };
+
+                table.CustomTableSql = data.value;
+
+                var connString = await DotNetSetupController.GetConnectionString(DotNetSetupController.GetConnection(data.dataConnectKey));
+                using (OleDbConnection conn = new OleDbConnection(connString))
+                {
+                    // open the connection to the database 
+                    conn.Open();
+                    OleDbCommand cmd = new OleDbCommand(data.value, conn);
+                    cmd.CommandType = CommandType.Text;
+                    using (OleDbDataReader reader = cmd.ExecuteReader())
                     {
-                        ColumnViewModel matchColumn = data.currentTable != null ? data.currentTable.Columns.FirstOrDefault(x => x.ColumnName.ToLower() == dr["COLUMN_NAME"].ToString().ToLower()) : null;
-                        var column = new ColumnViewModel
-                        {
-                            ColumnName = matchColumn != null ? matchColumn.ColumnName : dr["ColumnName"].ToString(),
-                            DisplayName = matchColumn != null ? matchColumn.DisplayName : dr["ColumnName"].ToString(),
-                            PrimaryKey = matchColumn != null ? matchColumn.PrimaryKey : dr["ColumnName"].ToString().ToLower().EndsWith("id") && idx == 0,
-                            DisplayOrder = matchColumn != null ? matchColumn.DisplayOrder : idx,
-                            FieldType = matchColumn != null ? matchColumn.FieldType : DotNetSetupController.ConvertToJetDataType((int)dr["ProviderType"]).ToString(),
-                            AllowedRoles = matchColumn != null ? matchColumn.AllowedRoles : new List<string>()
-                        };
+                        // Get the column metadata using schema.ini file
+                        DataTable schemaTable = new DataTable();
+                        schemaTable = reader.GetSchemaTable();
+                        var idx = 0;
 
-                        if (matchColumn != null)
+                        foreach (DataRow dr in schemaTable.Rows)
                         {
-                            column.ForeignKey = matchColumn.ForeignKey;
-                            column.ForeignJoin = matchColumn.ForeignJoin;
-                            column.ForeignTable = matchColumn.ForeignTable;
-                            column.ForeignKeyField = matchColumn.ForeignKeyField;
-                            column.ForeignValueField = matchColumn.ForeignValueField;
-                            column.Id = matchColumn.Id;
-                            column.DoNotDisplay = matchColumn.DoNotDisplay;
-                            column.DisplayOrder = matchColumn.DisplayOrder;
-                            column.ForceFilter = matchColumn.ForceFilter;
-                            column.ForceFilterForTable = matchColumn.ForceFilterForTable;
-                            column.RestrictedDateRange = matchColumn.RestrictedDateRange;
-                            column.RestrictedStartDate = matchColumn.RestrictedStartDate;
-                            column.RestrictedEndDate = matchColumn.RestrictedEndDate;
-                            column.ForeignParentKey = matchColumn.ForeignParentKey;
-                            column.ForeignParentApplyTo = matchColumn.ForeignParentApplyTo;
-                            column.ForeignParentTable = matchColumn.ForeignParentTable;
-                            column.ForeignParentKeyField = matchColumn.ForeignParentKeyField;
-                            column.ForeignParentValueField = matchColumn.ForeignParentValueField;
-                            column.ForeignParentRequired = matchColumn.ForeignParentRequired;
-                            column.JsonStructure = matchColumn.JsonStructure;
+                            ColumnViewModel matchColumn = data.currentTable != null ? data.currentTable.Columns.FirstOrDefault(x => x.ColumnName.ToLower() == dr["COLUMN_NAME"].ToString().ToLower()) : null;
+                            var column = new ColumnViewModel
+                            {
+                                ColumnName = matchColumn != null ? matchColumn.ColumnName : dr["ColumnName"].ToString(),
+                                DisplayName = matchColumn != null ? matchColumn.DisplayName : dr["ColumnName"].ToString(),
+                                PrimaryKey = matchColumn != null ? matchColumn.PrimaryKey : dr["ColumnName"].ToString().ToLower().EndsWith("id") && idx == 0,
+                                DisplayOrder = matchColumn != null ? matchColumn.DisplayOrder : idx,
+                                FieldType = matchColumn != null ? matchColumn.FieldType : DotNetSetupController.ConvertToJetDataType((int)dr["ProviderType"]).ToString(),
+                                AllowedRoles = matchColumn != null ? matchColumn.AllowedRoles : new List<string>()
+                            };
 
-                            column.Selected = true;
+                            if (matchColumn != null)
+                            {
+                                column.ForeignKey = matchColumn.ForeignKey;
+                                column.ForeignJoin = matchColumn.ForeignJoin;
+                                column.ForeignTable = matchColumn.ForeignTable;
+                                column.ForeignKeyField = matchColumn.ForeignKeyField;
+                                column.ForeignValueField = matchColumn.ForeignValueField;
+                                column.Id = matchColumn.Id;
+                                column.DoNotDisplay = matchColumn.DoNotDisplay;
+                                column.DisplayOrder = matchColumn.DisplayOrder;
+                                column.ForceFilter = matchColumn.ForceFilter;
+                                column.ForceFilterForTable = matchColumn.ForceFilterForTable;
+                                column.RestrictedDateRange = matchColumn.RestrictedDateRange;
+                                column.RestrictedStartDate = matchColumn.RestrictedStartDate;
+                                column.RestrictedEndDate = matchColumn.RestrictedEndDate;
+                                column.ForeignParentKey = matchColumn.ForeignParentKey;
+                                column.ForeignParentApplyTo = matchColumn.ForeignParentApplyTo;
+                                column.ForeignParentTable = matchColumn.ForeignParentTable;
+                                column.ForeignParentKeyField = matchColumn.ForeignParentKeyField;
+                                column.ForeignParentValueField = matchColumn.ForeignParentValueField;
+                                column.ForeignParentRequired = matchColumn.ForeignParentRequired;
+                                column.JsonStructure = matchColumn.JsonStructure;
+
+                                column.Selected = true;
+                            }
+
+                            idx++;
+                            table.Columns.Add(column);
                         }
+                        table.Columns = table.Columns.OrderBy(x => x.DisplayOrder).ToList();
 
-                        idx++;
-                        table.Columns.Add(column);
                     }
-                    table.Columns = table.Columns.OrderBy(x => x.DisplayOrder).ToList();
-
                 }
+
+                return new JsonResult(table, new JsonSerializerOptions() { PropertyNamingPolicy = null });
             }
-
-            return new JsonResult(table, new JsonSerializerOptions() { PropertyNamingPolicy = null });
-
+            catch(Exception ex)
+            {
+                return new JsonResult(new { errorMessage = ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+            }
         }
+
         private string GetWarnings(string sql)
         {
             var warning = "";
