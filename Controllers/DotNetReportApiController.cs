@@ -443,25 +443,25 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> GetSchemaFromSql([FromBody] SchemaFromSqlCall data)
+        public async Task<ActionResult> GetSchemaFromSql(string value = null, string accountKey = null, string dataConnectKey = null, TableViewModel currentTable = null)
         {
             try
             {
-                var table = data.currentTable ?? new TableViewModel
+                var table = currentTable ?? new TableViewModel
                 {
                     AllowedRoles = new List<string>(),
                     Columns = new List<ColumnViewModel>(),
                     CustomTable = true
                 };
 
-                table.CustomTableSql = data.value;
+                table.CustomTableSql = value;
 
-                var connString = await DotNetSetupController.GetConnectionString(DotNetSetupController.GetConnection(data.dataConnectKey));
+                var connString = await DotNetSetupController.GetConnectionString(DotNetSetupController.GetConnection(dataConnectKey));
                 using (OleDbConnection conn = new OleDbConnection(connString))
                 {
                     // open the connection to the database 
                     conn.Open();
-                    OleDbCommand cmd = new OleDbCommand(data.value, conn);
+                    OleDbCommand cmd = new OleDbCommand(value, conn);
                     cmd.CommandType = CommandType.Text;
                     using (OleDbDataReader reader = cmd.ExecuteReader())
                     {
@@ -472,7 +472,7 @@ namespace ReportBuilder.Web.Controllers
 
                         foreach (DataRow dr in schemaTable.Rows)
                         {
-                            ColumnViewModel matchColumn = data.currentTable != null ? data.currentTable.Columns.FirstOrDefault(x => x.ColumnName.ToLower() == dr["COLUMN_NAME"].ToString().ToLower()) : null;
+                            ColumnViewModel matchColumn = currentTable != null ? currentTable.Columns.FirstOrDefault(x => x.ColumnName.ToLower() == dr["COLUMN_NAME"].ToString().ToLower()) : null;
                             var column = new ColumnViewModel
                             {
                                 ColumnName = matchColumn != null ? matchColumn.ColumnName : dr["ColumnName"].ToString(),
@@ -517,11 +517,11 @@ namespace ReportBuilder.Web.Controllers
                     }
                 }
 
-                return new JsonResult(table, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+                return Json(table, JsonRequestBehavior.AllowGet);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                return new JsonResult(new { errorMessage = ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+                return Json(new { errorMessage = ex.Message }, JsonRequestBehavior.AllowGet);
             }
         }
 
@@ -594,14 +594,13 @@ namespace ReportBuilder.Web.Controllers
 
         public class SchemaFromSqlCall : SearchProcCall
         {
-            public TableViewModel? currentTable { get; set; } = null;
+            public TableViewModel currentTable { get; set; } = null;
         }
 
         [HttpPost]
-        public async Task<IActionResult> SearchProcedure([FromBody] SearchProcCall data)
+        public async Task<ActionResult> SearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
         {
-            string value = data.value; string accountKey = data.accountKey; string dataConnectKey = data.dataConnectKey;
-            return new JsonResult(await GetSearchProcedure(value, accountKey, dataConnectKey), new JsonSerializerOptions() { PropertyNamingPolicy = null });
+            return Json(await GetSearchProcedure(value, accountKey, dataConnectKey), JsonRequestBehavior.AllowGet);
         }
 
         private async Task<List<TableViewModel>> GetSearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
