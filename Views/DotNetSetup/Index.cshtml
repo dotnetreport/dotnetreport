@@ -185,6 +185,9 @@
                                         <input class="check-box" data-val="true" type="checkbox" value="true" data-bind="checked: DoNotDisplay" title="Do not display this table for selecting in reports"> Do Not Display
                                     </label>
                                 </div>
+                                <div data-bind="if: CustomTable">
+                                    <button data-bind="click: $root.customSql.viewCustomSql.bind($data)" class="btn btn-sm btn-secondary">View Custom Sql</button>
+                                </div>
                             </div>
 
                             <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Columns().length"></span> Columns</label>
@@ -1049,18 +1052,18 @@
                 <div class="modal-body">
                     <div class="form-group" data-bind="validationElement: customTableName">
                         <label for="custom-table-name">Custom Table Name</label>
-                        <input type="text" class="form-control" name="customTableName" placeholder="Enter table name" data-bind="textInput: customTableName" required>
+                        <input type="text" class="form-control" name="customTableName" placeholder="Enter table name" data-bind="textInput: customTableName, disable: viewOnly" required>
                         <div class="invalid-feedback">Custom Table Name is required.</div>
                     </div>
                     <div class="form-group" data-bind="validationElement: customSql">
                         <label for="custom-sql">Custom SQL</label>
-                        <textarea class="form-control" style="height: 300px;" name="customSql" data-bind="textInput: customSql" required></textarea>
+                        <textarea class="form-control" style="height: 300px;" name="customSql" data-bind="textInput: customSql, disable: viewOnly" required></textarea>
                         <div class="invalid-feedback">Custom SQL is required.</div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary" data-bind="click: executeSql">Save changes</button>
+                    <button type="button" class="btn btn-primary" data-bind="click: executeSql, hidden: viewOnly">Save changes</button>
                 </div>
             </div>
         </div>

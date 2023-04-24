@@ -800,10 +800,25 @@ var proceduresViewModel = function (options) {
 var customSqlModel = function (options, keys, tables) {
 	var self = this;
 	self.currentTable = ko.observable(null);
+	self.customTableName = ko.observable();
+	self.customSql = ko.observable();
+	self.viewOnly = ko.observable(false);
 
-	self.addNewCustomSqlTable = function () {		
+	self.addNewCustomSqlTable = function () {	
+		self.clearForm();
+		self.customTableName('');
+		self.customSql('');
+		self.viewOnly(false);
 		$('#custom-sql-modal').modal('show');
 	}
+
+	self.viewCustomSql = function (e) {
+		self.clearForm();
+		self.customTableName(e.TableName());
+		self.customSql(e.CustomTableSql());
+		self.viewOnly(true);
+		$('#custom-sql-modal').modal('show');
+    }
 
 	// ui-validation
 	self.isInputValid = function (ctl) {
@@ -826,7 +841,18 @@ var customSqlModel = function (options, keys, tables) {
 	};
 
 
-	self.validateForm = function (validateCustomOnly) {
+	self.clearForm = function () {
+		var curInputs = $('#custom-sql-modal').find("input, select, textarea"),
+			isValid = true;
+
+		$(".needs-validation").removeClass("was-validated");
+		for (var i = 0; i < curInputs.length; i++) {
+			$(curInputs[i]).removeClass("is-invalid");
+		}
+
+	};
+
+	self.validateForm = function () {
 		var curInputs = $('#custom-sql-modal').find("input, select, textarea"),
 			isValid = true;
 
@@ -842,9 +868,6 @@ var customSqlModel = function (options, keys, tables) {
 
 		return isValid;
 	};
-
-	self.customTableName = ko.observable();
-	self.customSql = ko.observable();
 
 	self.executeSql = function () {
 		var valid = self.validateForm();

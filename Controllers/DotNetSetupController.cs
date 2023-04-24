@@ -139,7 +139,7 @@ namespace ReportBuilder.Web.Controllers
                         DisplayName = item.tableName,
                         AllowedRoles = item.tableRoles.ToObject<List<string>>(),
                         CustomTable = item.customTable,
-                        CustomTableSql = Convert.ToBoolean(item.customTable) == true ? DotNetReportHelper.Decrypt(item.customTableSql) : ""
+                        CustomTableSql = Convert.ToBoolean(item.customTable) == true ? DotNetReportHelper.Decrypt(Convert.ToString(item.customTableSql)) : ""
                     });
 
                 }
@@ -291,10 +291,27 @@ namespace ReportBuilder.Web.Controllers
                         idx++;
                         table.Columns.Add(column);
                     }
+
+                    // add columns not in db, but in dotnet report
+                    if (matchTable != null) {
+                        table.Columns.AddRange(matchTable.Columns.Where(x => !table.Columns.Select(c => c.Id).Contains(x.Id)).ToList());
+                    }
+
                     table.Columns = table.Columns.OrderBy(x => x.DisplayOrder).ToList();
                     tables.Add(table);
                 }
 
+                // add tables not in db, but in dotnet report
+                var notMatchedTables = currentTables.Where(x => !tables.Select(c => c.Id).Contains(x.Id) && ((type=="TABLE") ? !x.IsView : x.IsView)).ToList();
+                if (notMatchedTables.Any())
+                {
+                    foreach(var notMatchedTable in notMatchedTables)
+                    {
+                        notMatchedTable.Selected = true;
+                        notMatchedTable.Columns = await GetApiFields(accountKey, dataConnectKey, notMatchedTable.Id);
+                    }
+                    tables.AddRange(notMatchedTables);
+                }
                 conn.Close();
                 conn.Dispose();
             }
