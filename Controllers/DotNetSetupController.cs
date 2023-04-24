@@ -309,6 +309,7 @@ namespace ReportBuilder.Web.Controllers
                     {
                         notMatchedTable.Selected = true;
                         notMatchedTable.Columns = await GetApiFields(accountKey, dataConnectKey, notMatchedTable.Id);
+                        notMatchedTable.Columns.ForEach(x => x.Selected = true);
                     }
                     tables.AddRange(notMatchedTables);
                 }
