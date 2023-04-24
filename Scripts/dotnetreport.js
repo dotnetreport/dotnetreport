@@ -920,15 +920,6 @@ var textQuery = function (options) {
 			}
 		};
 
-		var filterTribute = new Tribute(tributeFilterAttributes);
-		filterTribute.attach(document.getElementById("filter-input"));
-
-
-		document.getElementById("filter-input")
-			.addEventListener("tribute-replaced", function (e) {
-				self.queryItems.push(e.detail.item.original);
-			});
-
 	}
 }
 
