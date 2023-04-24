@@ -3,9 +3,8 @@ using iTextSharp.text.pdf;
 using OfficeOpenXml;
 using PuppeteerSharp;
 using PuppeteerSharp.Media;
-using System.Configuration;
 using System.Data;
-using System.Data.OleDb;
+using System.Data.SqlClient;
 using System.Security.Cryptography;
 using System.Text;
 using System.Web;
@@ -119,7 +118,7 @@ namespace ReportBuilder.Web.Models
         public string ParameterValue { get; set; }
         public string ParameterDataTypeString { get; set; }
         public Type ParameterDataTypeCLR { get; set; }
-        public OleDbType ParamterDataTypeOleDbType { get; set; }
+        public SqlDbType ParamterDataTypeOleDbType { get; set; }
         public int ParamterDataTypeOleDbTypeInteger { get; set; }
         public bool Required { get; set; }
         public bool ForeignKey { get; set; }
@@ -316,12 +315,6 @@ namespace ReportBuilder.Web.Models
         public static string GetConnectionString(string key)
         {
             var connString = Startup.StaticConfig.GetConnectionString(key);
-            connString = connString.Replace("Trusted_Connection=True", "");
-
-            if (!connString.ToLower().StartsWith("provider"))
-            {
-                connString = "Provider=sqloledb;" + connString;
-            }
 
             return connString;
         }
@@ -524,11 +517,11 @@ namespace ReportBuilder.Web.Models
 
             // Execute sql
             var dt = new DataTable();
-            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
+            using (var conn = new SqlConnection(GetConnectionString(connectKey)))
             {
                 conn.Open();
-                var command = new OleDbCommand(sql, conn);
-                var adapter = new OleDbDataAdapter(command);
+                var command = new SqlCommand(sql, conn);
+                var adapter = new SqlDataAdapter(command);
 
                 adapter.Fill(dt);
 
@@ -657,11 +650,11 @@ namespace ReportBuilder.Web.Models
         {
             var sql = Decrypt(reportSql);
             var dt = new DataTable();
-            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
+            using (var conn = new SqlConnection(GetConnectionString(connectKey)))
             {
                 conn.Open();
-                var command = new OleDbCommand(sql, conn);
-                var adapter = new OleDbDataAdapter(command);
+                var command = new SqlCommand(sql, conn);
+                var adapter = new SqlDataAdapter(command);
 
                 adapter.Fill(dt);
             }
@@ -895,11 +888,11 @@ namespace ReportBuilder.Web.Models
             // Execute sql
             var dt = new DataTable();
             var ds = new DataSet();
-            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
+            using (var conn = new SqlConnection(GetConnectionString(connectKey)))
             {
                 conn.Open();
-                var command = new OleDbCommand(sql, conn);
-                var adapter = new OleDbDataAdapter(command);
+                var command = new SqlCommand(sql, conn);
+                var adapter = new SqlDataAdapter(command);
 
                 adapter.Fill(dt);
             }
@@ -960,11 +953,11 @@ namespace ReportBuilder.Web.Models
 
             // Execute sql
             var dt = new DataTable();
-            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
+            using (var conn = new SqlConnection(GetConnectionString(connectKey)))
             {
                 conn.Open();
-                var command = new OleDbCommand(sql, conn);
-                var adapter = new OleDbDataAdapter(command);
+                var command = new SqlCommand(sql, conn);
+                var adapter = new SqlDataAdapter(command);
 
                 adapter.Fill(dt);
                 var subTotals = new decimal[dt.Columns.Count];

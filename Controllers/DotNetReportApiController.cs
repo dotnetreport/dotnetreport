@@ -2,7 +2,8 @@
 using Microsoft.AspNetCore.Mvc;
 using ReportBuilder.Web.Models;
 using System.Data;
-using System.Data.OleDb;
+using System.Data.Sql;
+using System.Data.SqlClient;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -58,11 +59,11 @@ namespace ReportBuilder.Web.Controllers
 
             var json = new StringBuilder();
             var dt = new DataTable();
-            using (var conn = new OleDbConnection(DotNetReportHelper.GetConnectionString(connectKey)))
+            using (var conn = new SqlConnection(DotNetReportHelper.GetConnectionString(connectKey)))
             {
                 conn.Open();
-                var command = new OleDbCommand(sql, conn);
-                var adapter = new OleDbDataAdapter(command);
+                var command = new SqlCommand(sql, conn);
+                var adapter = new SqlDataAdapter(command);
 
                 adapter.Fill(dt);
             }
@@ -247,14 +248,14 @@ namespace ReportBuilder.Web.Controllers
                     }
                     // Execute sql
                     var dtPagedRun = new DataTable();
-                    using (var conn = new OleDbConnection(DotNetReportHelper.GetConnectionString(connectKey)))
+                    using (var conn = new SqlConnection(DotNetReportHelper.GetConnectionString(connectKey)))
                     {
                         conn.Open();
-                        var command = new OleDbCommand(sqlCount, conn);
+                        var command = new SqlCommand(sqlCount, conn);
                         if (!sql.StartsWith("EXEC")) totalRecords = (int)command.ExecuteScalar();
 
-                        command = new OleDbCommand(sql, conn);
-                        var adapter = new OleDbDataAdapter(command);
+                        command = new SqlCommand(sql, conn);
+                        var adapter = new SqlDataAdapter(command);
                         adapter.Fill(dtPagedRun);
                         if (sql.StartsWith("EXEC"))
                         {

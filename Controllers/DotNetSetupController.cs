@@ -1,9 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using ReportBuilder.Web.Models;
-using System.Configuration;
 using System.Data;
-using System.Data.OleDb;
+using System.Data.SqlClient;
 using System.Text.Json;
 
 namespace ReportBuilder.Web.Controllers
@@ -57,65 +56,46 @@ namespace ReportBuilder.Web.Controllers
             
         }
 
-        private FieldTypes ConvertToJetDataType(int oleDbDataType)
+        private FieldTypes ConvertToJetDataType(string dbType)
         {
-            switch (((OleDbType)oleDbDataType))
+            SqlDbType sqlDbDataType;
+
+            if (!Enum.TryParse(dbType, true, out sqlDbDataType))
             {
-                case OleDbType.LongVarChar:
+                sqlDbDataType = SqlDbType.Text; // default to text
+            }
+
+            switch (((SqlDbType)sqlDbDataType))
+            {
+                case SqlDbType.VarChar:
                     return FieldTypes.Varchar; // "varchar";
-                case OleDbType.BigInt:
+                case SqlDbType.BigInt:
                     return FieldTypes.Int; // "int";       // In Jet this is 32 bit while bigint is 64 bits
-                case OleDbType.Binary:
-                case OleDbType.LongVarBinary:
+                case SqlDbType.Binary:
+                case SqlDbType.VarBinary:
                     return FieldTypes.Varchar; // "binary";
-                case OleDbType.Boolean:
+                case SqlDbType.Bit:
                     return FieldTypes.Boolean; // "bit";
-                case OleDbType.Char:
+                case SqlDbType.Char:
                     return FieldTypes.Varchar; // "char";
-                case OleDbType.Currency:
+                case SqlDbType.Money:
                     return FieldTypes.Money; // "decimal";
-                case OleDbType.DBDate:
-                case OleDbType.Date:
-                case OleDbType.DBTimeStamp:
+                case SqlDbType.DateTime:
+                case SqlDbType.Date:
                     return FieldTypes.DateTime; // "datetime";
-                case OleDbType.Decimal:
-                case OleDbType.Numeric:
+                case SqlDbType.Decimal:
+                case SqlDbType.Float:
                     return FieldTypes.Double; // "decimal";
-                case OleDbType.Double:
-                    return FieldTypes.Double; // "double";
-                case OleDbType.Integer:
+                case SqlDbType.Int:
                     return FieldTypes.Int; // "int";
-                case OleDbType.Single:
+                case SqlDbType.SmallInt:
                     return FieldTypes.Int; // "single";
-                case OleDbType.SmallInt:
-                    return FieldTypes.Int; // "smallint";
-                case OleDbType.TinyInt:
+                case SqlDbType.TinyInt:
                     return FieldTypes.Int; // "smallint";  // Signed byte not handled by jet so we need 16 bits
-                case OleDbType.UnsignedTinyInt:
-                    return FieldTypes.Int; // "byte";
-                case OleDbType.VarBinary:
-                    return FieldTypes.Varchar; // "varbinary";
-                case OleDbType.VarChar:
-                    return FieldTypes.Varchar; // "varchar";
-                case OleDbType.BSTR:
-                case OleDbType.Variant:
-                case OleDbType.VarWChar:
-                case OleDbType.VarNumeric:
-                case OleDbType.Error:
-                case OleDbType.WChar:
-                case OleDbType.DBTime:
-                case OleDbType.Empty:
-                case OleDbType.Filetime:
-                case OleDbType.Guid:
-                case OleDbType.IDispatch:
-                case OleDbType.IUnknown:
-                case OleDbType.UnsignedBigInt:
-                case OleDbType.UnsignedInt:
-                case OleDbType.UnsignedSmallInt:
-                case OleDbType.PropVariant:
+                case SqlDbType.UniqueIdentifier:
                 default:
                     return FieldTypes.Varchar; // 
-                    //throw new ArgumentException(string.Format("The data type {0} is not handled by Jet. Did you retrieve this from Jet?", ((OleDbType)oleDbDataType)));
+                    //throw new ArgumentException(string.Format("The data type {0} is not handled by Jet. Did you retrieve this from Jet?", ((SqlDbType)SqlDataType)));
             }
         }
 
@@ -209,13 +189,13 @@ namespace ReportBuilder.Web.Controllers
             }
 
             var connString = await GetConnectionString(GetConnection(dataConnectKey));
-            using (OleDbConnection conn = new OleDbConnection(connString))
+            using (SqlConnection conn = new SqlConnection(connString))
             {
                 // open the connection to the database 
                 conn.Open();
 
                 // Get the Tables
-                var schemaTable = conn.GetOleDbSchemaTable(OleDbSchemaGuid.Tables, new Object[] { null, null, null, type });
+                var schemaTable = conn.GetSchema("Tables", new string[] { null, null, null, type == "TABLE" ? "BASE TABLE" : "VIEW" });
 
                 // Store the table names in the class scoped array list of table names
                 for (int i = 0; i < schemaTable.Rows.Count; i++)
@@ -242,7 +222,7 @@ namespace ReportBuilder.Web.Controllers
                         AccountIdField = matchTable != null ? matchTable.AccountIdField : ""
                     };
 
-                    var dtField = conn.GetOleDbSchemaTable(OleDbSchemaGuid.Columns, new object[] { null, null, tableName });
+                    var dtField = conn.GetSchema("Columns", new string[] { null, null, tableName });
                     var idx = 0;
 
                     foreach (DataRow dr in dtField.Rows)
@@ -254,7 +234,7 @@ namespace ReportBuilder.Web.Controllers
                             DisplayName = matchColumn != null ? matchColumn.DisplayName : dr["COLUMN_NAME"].ToString(),
                             PrimaryKey = matchColumn != null ? matchColumn.PrimaryKey : dr["COLUMN_NAME"].ToString().ToLower().EndsWith("id") && idx == 0,
                             DisplayOrder = matchColumn != null ? matchColumn.DisplayOrder : idx++,
-                            FieldType = matchColumn != null ? matchColumn.FieldType : ConvertToJetDataType((int)dr["DATA_TYPE"]).ToString(),
+                            FieldType = matchColumn != null ? matchColumn.FieldType : ConvertToJetDataType(dr["DATA_TYPE"].ToString()).ToString(),
                             AllowedRoles = matchColumn != null ? matchColumn.AllowedRoles : new List<string>()
                         };
 
@@ -345,12 +325,12 @@ namespace ReportBuilder.Web.Controllers
         {
             var tables = new List<TableViewModel>();
             var connString = await GetConnectionString(GetConnection(dataConnectKey));
-            using (OleDbConnection conn = new OleDbConnection(connString))
+            using (SqlConnection conn = new SqlConnection(connString))
             {
                 // open the connection to the database 
                 conn.Open();
                 string spQuery = "SELECT ROUTINE_NAME, ROUTINE_DEFINITION, ROUTINE_SCHEMA FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_DEFINITION LIKE '%" + value + "%' AND ROUTINE_TYPE = 'PROCEDURE'";
-                OleDbCommand cmd = new OleDbCommand(spQuery, conn);
+                SqlCommand cmd = new SqlCommand(spQuery, conn);
                 cmd.CommandType = CommandType.Text;
                 DataTable dtProcedures = new DataTable();
                 dtProcedures.Load(cmd.ExecuteReader());
@@ -359,61 +339,65 @@ namespace ReportBuilder.Web.Controllers
                 {
                     var procName = dr["ROUTINE_NAME"].ToString();
                     var procSchema = dr["ROUTINE_SCHEMA"].ToString();
-                    cmd = new OleDbCommand(procName, conn);
-                    cmd.CommandType = CommandType.StoredProcedure;
-                    // Get the parameters.
-                    OleDbCommandBuilder.DeriveParameters(cmd);
-                    List<ParameterViewModel> parameterViewModels = new List<ParameterViewModel>();
-                    foreach (OleDbParameter param in cmd.Parameters)
+                    using (cmd = new SqlCommand(procName, conn))
                     {
-                        if (param.Direction == ParameterDirection.Input)
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        // Get the parameters.
+                        SqlCommandBuilder.DeriveParameters(cmd);
+                        List<ParameterViewModel> parameterViewModels = new List<ParameterViewModel>();
+                        foreach (SqlParameter param in cmd.Parameters)
                         {
-                            var parameter = new ParameterViewModel
+                            if (param.Direction == ParameterDirection.Input)
                             {
-                                ParameterName = param.ParameterName,
-                                DisplayName = param.ParameterName,
-                                ParameterValue = param.Value != null ? param.Value.ToString() : "",
-                                ParamterDataTypeOleDbTypeInteger = Convert.ToInt32(param.OleDbType),
-                                ParamterDataTypeOleDbType = param.OleDbType,
-                                ParameterDataTypeString = GetType(ConvertToJetDataType(Convert.ToInt32(param.OleDbType))).Name
-                            };
-                            if (parameter.ParameterDataTypeString.StartsWith("Int")) parameter.ParameterDataTypeString = "Int";
-                            parameterViewModels.Add(parameter);
+                                var parameter = new ParameterViewModel
+                                {
+                                    ParameterName = param.ParameterName,
+                                    DisplayName = param.ParameterName,
+                                    ParameterValue = param.Value != null ? param.Value.ToString() : "",
+                                    ParamterDataTypeOleDbTypeInteger = Convert.ToInt32(param.SqlDbType),
+                                    ParamterDataTypeOleDbType = param.SqlDbType,
+                                    ParameterDataTypeString = GetType(ConvertToJetDataType(param.SqlDbType.ToString())).Name
+                                };
+                                if (parameter.ParameterDataTypeString.StartsWith("Int")) parameter.ParameterDataTypeString = "Int";
+                                parameterViewModels.Add(parameter);
+                            }
                         }
-                    }
-                    DataTable dt = new DataTable(); 
-                    cmd = new OleDbCommand($"[{procSchema}].[{procName}]", conn);
-                    cmd.CommandType = CommandType.StoredProcedure;
-                    foreach (var data in parameterViewModels)
-                    {
-                        cmd.Parameters.Add(new OleDbParameter { Value = DBNull.Value, ParameterName = data.ParameterName, Direction = ParameterDirection.Input, IsNullable = true });
-                    }
-                    OleDbDataReader reader = cmd.ExecuteReader();
-                    dt = reader.GetSchemaTable();
-
-                    if (dt == null) continue;
-
-                    // Store the table names in the class scoped array list of table names
-                    List<ColumnViewModel> columnViewModels = new List<ColumnViewModel>();
-                    for (int i = 0; i < dt.Rows.Count; i++)
-                    {
-                        var column = new ColumnViewModel
+                        DataTable dt = new DataTable();
+                        cmd = new SqlCommand($"[{procSchema}].[{procName}]", conn);
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        foreach (var data in parameterViewModels)
                         {
-                            ColumnName = dt.Rows[i].ItemArray[0].ToString(),
-                            DisplayName = dt.Rows[i].ItemArray[0].ToString(),
-                            FieldType = ConvertToJetDataType((int)dt.Rows[i]["ProviderType"]).ToString()
-                        };
-                        columnViewModels.Add(column);
+                            cmd.Parameters.Add(new SqlParameter { Value = DBNull.Value, ParameterName = data.ParameterName, Direction = ParameterDirection.Input, IsNullable = true });
+                        }
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            dt = reader.GetSchemaTable();
+                        }
+
+                        if (dt == null) continue;
+
+                        // Store the table names in the class scoped array list of table names
+                        List<ColumnViewModel> columnViewModels = new List<ColumnViewModel>();
+                        for (int i = 0; i < dt.Rows.Count; i++)
+                        {
+                            var column = new ColumnViewModel
+                            {
+                                ColumnName = dt.Rows[i].ItemArray[0].ToString(),
+                                DisplayName = dt.Rows[i].ItemArray[0].ToString(),
+                                FieldType = ConvertToJetDataType(dt.Rows[i]["ProviderType"].ToString()).ToString()
+                            };
+                            columnViewModels.Add(column);
+                        }
+                        tables.Add(new TableViewModel
+                        {
+                            TableName = procName,
+                            SchemaName = dr["ROUTINE_SCHEMA"].ToString(),
+                            DisplayName = procName,
+                            Parameters = parameterViewModels,
+                            Columns = columnViewModels
+                        });
+                        count++;
                     }
-                    tables.Add(new TableViewModel
-                    {
-                        TableName = procName,
-                        SchemaName = dr["ROUTINE_SCHEMA"].ToString(),
-                        DisplayName = procName,
-                        Parameters = parameterViewModels,
-                        Columns = columnViewModels
-                    });
-                    count++;
                 }
                 conn.Close();
                 conn.Dispose();
@@ -425,23 +409,23 @@ namespace ReportBuilder.Web.Controllers
         {
             DataTable dt = new DataTable();
             var connString = await GetConnectionString(GetConnection(dataConnectKey));
-            using (OleDbConnection conn = new OleDbConnection(connString))
+            using (SqlConnection conn = new SqlConnection(connString))
             {
                 // open the connection to the database 
                 conn.Open();
-                OleDbCommand cmd = new OleDbCommand(model.TableName, conn);
+                SqlCommand cmd = new SqlCommand(model.TableName, conn);
                 cmd.CommandType = CommandType.StoredProcedure;
                 foreach (var para in model.Parameters)
                 {
                     if (string.IsNullOrEmpty(para.ParameterValue))
                     {
-                        if (para.ParamterDataTypeOleDbType == OleDbType.DBTimeStamp || para.ParamterDataTypeOleDbType == OleDbType.DBDate)
+                        if (para.ParamterDataTypeOleDbType == SqlDbType.Timestamp || para.ParamterDataTypeOleDbType == SqlDbType.DateTime)
                         {
                             para.ParameterValue = DateTime.Now.ToShortDateString();
                         }
                     }
                     cmd.Parameters.AddWithValue("@" + para.ParameterName, para.ParameterValue);
-                    //cmd.Parameters.Add(new OleDbParameter { 
+                    //cmd.Parameters.Add(new SqlParameter { 
                     //    Value =  string.IsNullOrEmpty(para.ParameterValue) ? DBNull.Value : (object)para.ParameterValue , 
                     //    ParameterName = para.ParameterName, 
                     //    Direction = ParameterDirection.Input, 
