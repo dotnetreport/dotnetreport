@@ -2421,8 +2421,9 @@ var reportViewModel = function (options) {
 			reportResult.Exception(result.Exception);
 			reportResult.Warnings(result.Warnings);
 			reportResult.ReportDebug(result.ReportDebug);
-			reportResult.ReportSql(result.ReportSql);
+			reportResult.ReportSql(beautifySql(result.ReportSql));
 			self.ReportSeries = reportSeries;
+			if (result.HasError) return;
 
 			function matchColumnName(src, dst, dbSrc, dbDst) {
 				if (src == dst) return true;
