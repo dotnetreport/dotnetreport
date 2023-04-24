@@ -182,7 +182,6 @@ namespace ReportBuilder.Web.Controllers
                     sql = DotNetReportHelper.Decrypt(HttpUtility.HtmlDecode(allSqls[i]));
                     if (!sql.StartsWith("EXEC"))
                     {
-
                         var sqlSplit = sql.Substring(0, sql.LastIndexOf("FROM")).Replace("SELECT", "").Trim();
                         sqlFields = Regex.Split(sqlSplit, "], (?![^\\(]*?\\))").Where(x => x != "CONVERT(VARCHAR(3)")
                             .Select(x => x.EndsWith("]") ? x : x + "]")
@@ -214,6 +213,9 @@ namespace ReportBuilder.Web.Controllers
 
                         if (sql.Contains("ORDER BY") && !sql.Contains(" TOP "))
                             sql = sql + $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
+
+                        if (sql.Contains("__jsonc__"))
+                            sql = sql.Replace("__jsonc__", "");
                     }
                     // Execute sql
                     var dtPagedRun = new DataTable();
@@ -441,6 +443,89 @@ namespace ReportBuilder.Web.Controllers
             }, JsonRequestBehavior.AllowGet);
         }
 
+        [HttpPost]
+        public async Task<ActionResult> GetSchemaFromSql(string value = null, string accountKey = null, string dataConnectKey = null, TableViewModel currentTable = null)
+        {
+            try
+            {
+                var table = currentTable ?? new TableViewModel
+                {
+                    AllowedRoles = new List<string>(),
+                    Columns = new List<ColumnViewModel>(),
+                    CustomTable = true
+                };
+
+                table.CustomTableSql = value;
+
+                var connString = await DotNetSetupController.GetConnectionString(DotNetSetupController.GetConnection(dataConnectKey));
+                using (OleDbConnection conn = new OleDbConnection(connString))
+                {
+                    // open the connection to the database 
+                    conn.Open();
+                    OleDbCommand cmd = new OleDbCommand(value, conn);
+                    cmd.CommandType = CommandType.Text;
+                    using (OleDbDataReader reader = cmd.ExecuteReader())
+                    {
+                        // Get the column metadata using schema.ini file
+                        DataTable schemaTable = new DataTable();
+                        schemaTable = reader.GetSchemaTable();
+                        var idx = 0;
+
+                        foreach (DataRow dr in schemaTable.Rows)
+                        {
+                            ColumnViewModel matchColumn = currentTable != null ? currentTable.Columns.FirstOrDefault(x => x.ColumnName.ToLower() == dr["COLUMN_NAME"].ToString().ToLower()) : null;
+                            var column = new ColumnViewModel
+                            {
+                                ColumnName = matchColumn != null ? matchColumn.ColumnName : dr["ColumnName"].ToString(),
+                                DisplayName = matchColumn != null ? matchColumn.DisplayName : dr["ColumnName"].ToString(),
+                                PrimaryKey = matchColumn != null ? matchColumn.PrimaryKey : dr["ColumnName"].ToString().ToLower().EndsWith("id") && idx == 0,
+                                DisplayOrder = matchColumn != null ? matchColumn.DisplayOrder : idx,
+                                FieldType = matchColumn != null ? matchColumn.FieldType : DotNetSetupController.ConvertToJetDataType((int)dr["ProviderType"]).ToString(),
+                                AllowedRoles = matchColumn != null ? matchColumn.AllowedRoles : new List<string>()
+                            };
+
+                            if (matchColumn != null)
+                            {
+                                column.ForeignKey = matchColumn.ForeignKey;
+                                column.ForeignJoin = matchColumn.ForeignJoin;
+                                column.ForeignTable = matchColumn.ForeignTable;
+                                column.ForeignKeyField = matchColumn.ForeignKeyField;
+                                column.ForeignValueField = matchColumn.ForeignValueField;
+                                column.Id = matchColumn.Id;
+                                column.DoNotDisplay = matchColumn.DoNotDisplay;
+                                column.DisplayOrder = matchColumn.DisplayOrder;
+                                column.ForceFilter = matchColumn.ForceFilter;
+                                column.ForceFilterForTable = matchColumn.ForceFilterForTable;
+                                column.RestrictedDateRange = matchColumn.RestrictedDateRange;
+                                column.RestrictedStartDate = matchColumn.RestrictedStartDate;
+                                column.RestrictedEndDate = matchColumn.RestrictedEndDate;
+                                column.ForeignParentKey = matchColumn.ForeignParentKey;
+                                column.ForeignParentApplyTo = matchColumn.ForeignParentApplyTo;
+                                column.ForeignParentTable = matchColumn.ForeignParentTable;
+                                column.ForeignParentKeyField = matchColumn.ForeignParentKeyField;
+                                column.ForeignParentValueField = matchColumn.ForeignParentValueField;
+                                column.ForeignParentRequired = matchColumn.ForeignParentRequired;
+                                column.JsonStructure = matchColumn.JsonStructure;
+
+                                column.Selected = true;
+                            }
+
+                            idx++;
+                            table.Columns.Add(column);
+                        }
+                        table.Columns = table.Columns.OrderBy(x => x.DisplayOrder).ToList();
+
+                    }
+                }
+
+                return Json(table, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { errorMessage = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
         private string GetWarnings(string sql)
         {
             var warning = "";
@@ -466,10 +551,11 @@ namespace ReportBuilder.Web.Controllers
                 var sqlField = sqlFields[i++];
                 model.Columns.Add(new DotNetReportDataColumnModel
                 {
-                    SqlField = sqlField.Substring(0, sqlField.IndexOf(" AS ")).Trim(),
+                    SqlField = sqlField.Substring(0, sqlField.IndexOf(" AS ")).Trim().Replace("__jsonc__", ""),
                     ColumnName = col.ColumnName,
                     DataType = col.DataType.ToString(),
-                    IsNumeric = DotNetReportHelper.IsNumericType(col.DataType)
+                    IsNumeric = DotNetReportHelper.IsNumericType(col.DataType),
+                    FormatType = sqlField.Contains("__jsonc__") ? "Json" : ""
                 });
 
             }
@@ -486,7 +572,7 @@ namespace ReportBuilder.Web.Controllers
                     {
                         Column = model.Columns[i],
                         Value = row[col] != null ? row[col].ToString() : null,
-                        FormattedValue = DotNetReportHelper.GetFormattedValue(col, row),
+                        FormattedValue = DotNetReportHelper.GetFormattedValue(col, row, model.Columns[i].FormatType),
                         LabelValue = DotNetReportHelper.GetLabelValue(col, row)
                     });
                     i += 1;
@@ -500,6 +586,137 @@ namespace ReportBuilder.Web.Controllers
 
             return model;
         }
+
+        public class SearchProcCall { 
+            public string value { get; set; } 
+            public string accountKey { get; set; } 
+            public string dataConnectKey { get; set; } 
+        }
+
+        public class SchemaFromSqlCall : SearchProcCall
+        {
+            public TableViewModel currentTable { get; set; } = null;
+        }
+
+        [HttpPost]
+        public async Task<ActionResult> SearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
+        {
+            return Json(await GetSearchProcedure(value, accountKey, dataConnectKey), JsonRequestBehavior.AllowGet);
+        }
+
+        private async Task<List<TableViewModel>> GetSearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
+        {
+            var tables = new List<TableViewModel>();
+            var connString = await DotNetSetupController.GetConnectionString(DotNetSetupController.GetConnection(dataConnectKey));
+            using (OleDbConnection conn = new OleDbConnection(connString))
+            {
+                // open the connection to the database 
+                conn.Open();
+                string spQuery = "SELECT ROUTINE_NAME, ROUTINE_DEFINITION, ROUTINE_SCHEMA FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_DEFINITION LIKE '%" + value + "%' AND ROUTINE_TYPE = 'PROCEDURE'";
+                OleDbCommand cmd = new OleDbCommand(spQuery, conn);
+                cmd.CommandType = CommandType.Text;
+                DataTable dtProcedures = new DataTable();
+                dtProcedures.Load(cmd.ExecuteReader());
+                int count = 1;
+                foreach (DataRow dr in dtProcedures.Rows)
+                {
+                    var procName = dr["ROUTINE_NAME"].ToString();
+                    var procSchema = dr["ROUTINE_SCHEMA"].ToString();
+                    cmd = new OleDbCommand(procName, conn);
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    // Get the parameters.
+                    OleDbCommandBuilder.DeriveParameters(cmd);
+                    List<ParameterViewModel> parameterViewModels = new List<ParameterViewModel>();
+                    foreach (OleDbParameter param in cmd.Parameters)
+                    {
+                        if (param.Direction == ParameterDirection.Input)
+                        {
+                            var parameter = new ParameterViewModel
+                            {
+                                ParameterName = param.ParameterName,
+                                DisplayName = param.ParameterName,
+                                ParameterValue = param.Value != null ? param.Value.ToString() : "",
+                                ParamterDataTypeOleDbTypeInteger = Convert.ToInt32(param.OleDbType),
+                                ParamterDataTypeOleDbType = param.OleDbType,
+                                ParameterDataTypeString = DotNetSetupController.GetType(DotNetSetupController.ConvertToJetDataType(Convert.ToInt32(param.OleDbType))).Name
+                            };
+                            if (parameter.ParameterDataTypeString.StartsWith("Int")) parameter.ParameterDataTypeString = "Int";
+                            parameterViewModels.Add(parameter);
+                        }
+                    }
+                    DataTable dt = new DataTable();
+                    cmd = new OleDbCommand($"[{procSchema}].[{procName}]", conn);
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    foreach (var data in parameterViewModels)
+                    {
+                        cmd.Parameters.Add(new OleDbParameter { Value = DBNull.Value, ParameterName = data.ParameterName, Direction = ParameterDirection.Input, IsNullable = true });
+                    }
+                    OleDbDataReader reader = cmd.ExecuteReader();
+                    dt = reader.GetSchemaTable();
+
+                    if (dt == null) continue;
+
+                    // Store the table names in the class scoped array list of table names
+                    List<ColumnViewModel> columnViewModels = new List<ColumnViewModel>();
+                    for (int i = 0; i < dt.Rows.Count; i++)
+                    {
+                        var column = new ColumnViewModel
+                        {
+                            ColumnName = dt.Rows[i].ItemArray[0].ToString(),
+                            DisplayName = dt.Rows[i].ItemArray[0].ToString(),
+                            FieldType = DotNetSetupController.ConvertToJetDataType((int)dt.Rows[i]["ProviderType"]).ToString()
+                        };
+                        columnViewModels.Add(column);
+                    }
+                    tables.Add(new TableViewModel
+                    {
+                        TableName = procName,
+                        SchemaName = dr["ROUTINE_SCHEMA"].ToString(),
+                        DisplayName = procName,
+                        Parameters = parameterViewModels,
+                        Columns = columnViewModels
+                    });
+                    count++;
+                }
+                conn.Close();
+                conn.Dispose();
+            }
+            return tables;
+        }
+
+        private async Task<DataTable> GetStoreProcedureResult(TableViewModel model, string accountKey = null, string dataConnectKey = null)
+        {
+            DataTable dt = new DataTable();
+            var connString = await DotNetSetupController.GetConnectionString(DotNetSetupController.GetConnection(dataConnectKey));
+            using (OleDbConnection conn = new OleDbConnection(connString))
+            {
+                // open the connection to the database 
+                conn.Open();
+                OleDbCommand cmd = new OleDbCommand(model.TableName, conn);
+                cmd.CommandType = CommandType.StoredProcedure;
+                foreach (var para in model.Parameters)
+                {
+                    if (string.IsNullOrEmpty(para.ParameterValue))
+                    {
+                        if (para.ParamterDataTypeOleDbType == OleDbType.DBTimeStamp || para.ParamterDataTypeOleDbType == OleDbType.DBDate)
+                        {
+                            para.ParameterValue = DateTime.Now.ToShortDateString();
+                        }
+                    }
+                    cmd.Parameters.AddWithValue("@" + para.ParameterName, para.ParameterValue);
+                    //cmd.Parameters.Add(new OleDbParameter { 
+                    //    Value =  string.IsNullOrEmpty(para.ParameterValue) ? DBNull.Value : (object)para.ParameterValue , 
+                    //    ParameterName = para.ParameterName, 
+                    //    Direction = ParameterDirection.Input, 
+                    //    IsNullable = true });
+                }
+                dt.Load(cmd.ExecuteReader());
+                conn.Close();
+                conn.Dispose();
+            }
+            return dt;
+        }
+
     }
 
 }

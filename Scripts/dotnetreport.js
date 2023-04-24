@@ -307,7 +307,7 @@ function filterGroupViewModel(args) {
 			lookupList.push({ id: e.Value2, text: e.Value2 });
 		}
 
-		var field = ko.observable();
+		var field = ko.observable();	
 		var valueIn = e.Operator == 'in' || e.Operator == 'not in' ? (e.Value1 || '').split(',') : [];
 		var filter = {
 			AndOr: ko.observable(isFilterOnFly ? ' AND ' : e.AndOr),
@@ -1482,6 +1482,7 @@ var reportViewModel = function (options) {
 		self.isFormulaField(false);
 		self.maxRecords(false);
 		self.OnlyTop(null);
+		self.lastPickedField(null);
 	};
 
 	self.SelectedProc.subscribe(function (proc) {
@@ -1588,12 +1589,14 @@ var reportViewModel = function (options) {
 		return found;
 	}
 
+	self.lastPickedField = ko.observable();
 	self.SelectedFields.subscribe(function (fields) {
 		setTimeout(function () {
 			self.RemoveInvalidFilters(self.FilterGroups());
 		}, 500);
 
-		var newField = fields && fields.length > 0 ? fields[fields.length - 1] : null;
+		var newField = fields.length > 0 ? fields[fields.length - 1] : null;
+		if (newField && newField.isJsonColumn === true) return;
 		if (newField && (newField.forceFilter || newField.forceFilterForTable)) {
 			if (!self.FindInFilterGroup(newField.fieldId)) {
 				var group = self.FilterGroups()[0];
@@ -1606,6 +1609,8 @@ var reportViewModel = function (options) {
 		}
 
 		if (newField) {
+			self.lastPickedField(newField);
+
 			// go through and see if we need to add forced by Table filters
 			var forcedFiltersByTable = _.filter(self.selectedTableFields, function (x) { return x.forceFilterForTable == true });
 			var otherFieldIds = _.filter(self.selectedTableFields, function (x) { return x.forceFilterForTable == false }).map(function (x) { return x.fieldId });
@@ -1621,6 +1626,25 @@ var reportViewModel = function (options) {
 				}
 			}
 		}
+	});
+
+	self.jsonFields = ko.observableArray([]);
+	self.lastPickedField.subscribe(function (newValue) {
+		self.jsonFields([]);
+		if (newValue) {
+			if (newValue.fieldType == 'Json' && newValue.jsonStructure) {
+				var jsonData = JSON.parse(newValue.jsonStructure);
+				var jsonFields = _.map(Object.keys(jsonData), function (key) {
+					var x = _.clone(newValue);
+					x.isJsonColumn = true;
+					x.jsonColumnName = key;
+					x.selectedFieldName += (" > " + key);
+					return x;
+				});
+
+				self.jsonFields(jsonFields);
+            }
+        }
 	});
 
 	self.loadTableFields = function (table) {
@@ -1655,6 +1679,8 @@ var reportViewModel = function (options) {
 
 	self.SelectedTable.subscribe(function (table) {
 		self.SelectedProc(null);
+		self.lastPickedField(null);
+		self.jsonFields([]);
 		if (table == null) {
 			self.ChooseFields([]);
 			self.selectedTableFields = [];
@@ -2213,7 +2239,8 @@ var reportViewModel = function (options) {
 					HeaderFontBold: x.headerFontBold(),
 					FieldWidth: x.fieldWidth(),
 					FieldConditionOp: x.fieldConditionOp(),
-					FieldConditionVal: x.fieldConditionVal()
+					FieldConditionVal: x.fieldConditionVal(),
+					JsonColumnName: x.isJsonColumn && x.jsonColumnName ? x.jsonColumnName : ''
 				};
 			}),
 			Schedule: self.scheduleBuilder.toJs(),
@@ -2394,8 +2421,9 @@ var reportViewModel = function (options) {
 			reportResult.Exception(result.Exception);
 			reportResult.Warnings(result.Warnings);
 			reportResult.ReportDebug(result.ReportDebug);
-			reportResult.ReportSql(result.ReportSql);
+			reportResult.ReportSql(beautifySql(result.ReportSql));
 			self.ReportSeries = reportSeries;
+			if (result.HasError) return;
 
 			function matchColumnName(src, dst, dbSrc, dbDst) {
 				if (src == dst) return true;
@@ -2455,6 +2483,9 @@ var reportViewModel = function (options) {
 					e.backColor = col.backColor;
 					e.groupInGraph = col.groupInGraph;
 					e.dontSubTotal = col.dontSubTotal;
+					e.fieldType = col.fieldType;
+					e.jsonColumnName = col.jsonColumnName;
+					e.isJsonColumn = col.fieldType == 'Json';
 					e.outerGroup = ko.observable(false);
 					e.colIndex = i;
 
@@ -2509,7 +2540,9 @@ var reportViewModel = function (options) {
 					r.fontBold = col.fontBold;
 					r.fontColor = col.fontColor;
 					r.fieldId = col.fieldId;
-					r.outerGroup = col.outerGroup
+					r.outerGroup = col.outerGroup;
+					r.jsonColumnName = col.jsonColumnName;
+					r.isJsonColumn = col.isJsonColumn;
 
 					if (self.decimalFormatTypes.indexOf(col.fieldFormat) >= 0) {
 						r.FormattedValue = self.formatNumber(r.Value, col.decimalPlaces);
@@ -2884,7 +2917,7 @@ var reportViewModel = function (options) {
 	self.editFieldOptions = ko.observable();
 
 	self.setupField = function (e) {
-		e.selectedFieldName = e.tableName + " > " + e.fieldName;
+		e.selectedFieldName = e.tableName + " > " + e.fieldName + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
 		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail').concat('Group in Detail').concat('Csv');
 		e.selectedAggregate = ko.observable(e.aggregateFunction);
 		e.filterOnFly = ko.observable(e.filterOnFly);
@@ -2908,6 +2941,8 @@ var reportViewModel = function (options) {
 		e.fieldWidth = ko.observable(e.fieldWidth);
 		e.fieldConditionOp = ko.observable(e.fieldConditionOp);
 		e.fieldConditionVal = ko.observable(e.fieldConditionVal);
+		e.jsonColumnName = e.jsonColumnName;
+		e.isJsonColumn = e.jsonColumnName ? true : false;
 
 		e.applyAllHeaderFontColor = ko.observable(false);
 		e.applyAllHeaderBackColor = ko.observable(false);
@@ -3206,6 +3241,7 @@ var reportViewModel = function (options) {
 				});
 
 				self.SelectedFields(report.SelectedFields);
+				self.lastPickedField(null);
 				return self.PopulateReport(report, filterOnFly, reportSeries);
 			}
 		});
