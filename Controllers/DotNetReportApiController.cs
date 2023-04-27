@@ -346,7 +346,8 @@ namespace ReportBuilder.Web.Controllers
                     ReportData = new DotNetReportDataModel(),
                     ReportSql = sql,
                     HasError = true,
-                    Exception = ex.Message
+                    Exception = ex.Message,
+                    ReportDebug = Request.Host.Host.Contains("localhost"),
                 };
 
                 return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
