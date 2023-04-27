@@ -470,11 +470,12 @@ namespace ReportBuilder.Web.Controllers
         {
             try
             {
-                var table = data.currentTable ?? new TableViewModel
+                var table = new TableViewModel
                 {
                     AllowedRoles = new List<string>(),
                     Columns = new List<ColumnViewModel>(),
-                    CustomTable = true
+                    CustomTable = true,
+                    Selected = true
                 };
 
                 table.CustomTableSql = data.value;
@@ -495,54 +496,27 @@ namespace ReportBuilder.Web.Controllers
 
                         foreach (DataRow dr in schemaTable.Rows)
                         {
-                            ColumnViewModel matchColumn = data.currentTable != null ? data.currentTable.Columns.FirstOrDefault(x => x.ColumnName.ToLower() == dr["COLUMN_NAME"].ToString().ToLower()) : null;
                             var column = new ColumnViewModel
                             {
-                                ColumnName = matchColumn != null ? matchColumn.ColumnName : dr["ColumnName"].ToString(),
-                                DisplayName = matchColumn != null ? matchColumn.DisplayName : dr["ColumnName"].ToString(),
-                                PrimaryKey = matchColumn != null ? matchColumn.PrimaryKey : dr["ColumnName"].ToString().ToLower().EndsWith("id") && idx == 0,
-                                DisplayOrder = matchColumn != null ? matchColumn.DisplayOrder : idx,
-                                FieldType = matchColumn != null ? matchColumn.FieldType : DotNetSetupController.ConvertToJetDataType((int)dr["ProviderType"]).ToString(),
-                                AllowedRoles = matchColumn != null ? matchColumn.AllowedRoles : new List<string>()
+                                ColumnName = dr["ColumnName"].ToString(),
+                                DisplayName = dr["ColumnName"].ToString(),
+                                PrimaryKey = dr["ColumnName"].ToString().ToLower().EndsWith("id") && idx == 0,
+                                DisplayOrder = idx,
+                                FieldType = DotNetSetupController.ConvertToJetDataType((int)dr["ProviderType"]).ToString(),
+                                AllowedRoles = new List<string>(),
+                                Selected = true
                             };
-
-                            if (matchColumn != null)
-                            {
-                                column.ForeignKey = matchColumn.ForeignKey;
-                                column.ForeignJoin = matchColumn.ForeignJoin;
-                                column.ForeignTable = matchColumn.ForeignTable;
-                                column.ForeignKeyField = matchColumn.ForeignKeyField;
-                                column.ForeignValueField = matchColumn.ForeignValueField;
-                                column.Id = matchColumn.Id;
-                                column.DoNotDisplay = matchColumn.DoNotDisplay;
-                                column.DisplayOrder = matchColumn.DisplayOrder;
-                                column.ForceFilter = matchColumn.ForceFilter;
-                                column.ForceFilterForTable = matchColumn.ForceFilterForTable;
-                                column.RestrictedDateRange = matchColumn.RestrictedDateRange;
-                                column.RestrictedStartDate = matchColumn.RestrictedStartDate;
-                                column.RestrictedEndDate = matchColumn.RestrictedEndDate;
-                                column.ForeignParentKey = matchColumn.ForeignParentKey;
-                                column.ForeignParentApplyTo = matchColumn.ForeignParentApplyTo;
-                                column.ForeignParentTable = matchColumn.ForeignParentTable;
-                                column.ForeignParentKeyField = matchColumn.ForeignParentKeyField;
-                                column.ForeignParentValueField = matchColumn.ForeignParentValueField;
-                                column.ForeignParentRequired = matchColumn.ForeignParentRequired;
-                                column.JsonStructure = matchColumn.JsonStructure;
-
-                                column.Selected = true;
-                            }
 
                             idx++;
                             table.Columns.Add(column);
                         }
                         table.Columns = table.Columns.OrderBy(x => x.DisplayOrder).ToList();
-
                     }
-                }
 
-                return new JsonResult(table, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+                    return new JsonResult(table, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+                }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 return new JsonResult(new { errorMessage = ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
             }
@@ -617,7 +591,6 @@ namespace ReportBuilder.Web.Controllers
 
         public class SchemaFromSqlCall : SearchProcCall
         {
-            public TableViewModel? currentTable { get; set; } = null;
         }
 
         [HttpPost]

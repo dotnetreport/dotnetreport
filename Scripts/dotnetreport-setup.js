@@ -799,13 +799,14 @@ var proceduresViewModel = function (options) {
 
 var customSqlModel = function (options, keys, tables) {
 	var self = this;
-	self.currentTable = ko.observable(null);
 	self.customTableName = ko.observable();
 	self.customSql = ko.observable();
 	self.useAi = ko.observable(false);
 	self.textQuery = new textQuery(options);
+	self.selectedTable = null;
 
 	self.addNewCustomSqlTable = function () {	
+		self.selectedTable = null;
 		self.clearForm();
 		self.customTableName('');
 		self.customSql('');
@@ -813,6 +814,7 @@ var customSqlModel = function (options, keys, tables) {
 	}
 
 	self.viewCustomSql = function (e) {
+		self.selectedTable = ko.mapping.toJS(e);
 		self.clearForm();
 		self.customTableName(e.TableName());
 		self.customSql(e.CustomTableSql());
@@ -841,6 +843,7 @@ var customSqlModel = function (options, keys, tables) {
 
 
 	self.clearForm = function () {
+		self.textQuery.resetQuery();
 		var curInputs = $('#custom-sql-modal').find("input, select, textarea"),
 			isValid = true;
 
@@ -923,7 +926,7 @@ var customSqlModel = function (options, keys, tables) {
 		}
 
 		var matchTable = _.find(tables.model(), function (x) {
-			return x.TableName() == self.customTableName();
+			return x.TableName() == self.customTableName() && (!self.selectedTable || self.selectedTable.Id != x.Id());
 		});
 
 		if (matchTable) {
@@ -941,8 +944,7 @@ var customSqlModel = function (options, keys, tables) {
 			data: JSON.stringify({
 				value: self.customSql(),
 				accountKey: keys.AccountApiKey,
-				dataConnectKey: keys.DatabaseApiKey,
-				currentTable: self.currentTable()
+				dataConnectKey: keys.DatabaseApiKey
 			})
 		}).done(function (result) {
 			if (result.d) result = result.d;
@@ -950,15 +952,48 @@ var customSqlModel = function (options, keys, tables) {
 			if (result.errorMessage) {
 				toastr.error("Could not execute Query. Please check your query and try again. Error: " + result.errorMessage);
 				return;
-            }
-
-			result.TableName = self.customTableName();
-			result.DisplayName = self.customTableName();
-			var t = ko.mapping.fromJS(result);
+			}
 			
-			tables.model.push(tables.processTable(t));
-			toastr.info("Query loaded successfully, please configure and then Save to add this custom table to dotnet report");
+			if (!self.selectedTable) {
+				result.TableName = self.customTableName();
+				result.DisplayName = self.customTableName();
+				var t = ko.mapping.fromJS(result);
 
+				tables.model.push(tables.processTable(t));
+
+			} else {
+				var table = _.find(tables.model(), function (x) { return x.Id() == self.selectedTable.Id; });
+				table.TableName(self.customTableName());
+				table.DisplayName(self.customTableName());
+				table.CustomTableSql(self.customSql());
+
+				_.forEach(result.Columns, function (c) {
+					// if column id matches, update display name and data type, otherwise add it
+					var column = _.find(table.Columns(), function (x) {
+						return c.ColumnName.toLowerCase() == x.ColumnName().toLowerCase();
+					});
+
+					if (column) {
+						column.DisplayName(c.DisplayName);
+						column.FieldType(c.FieldType);
+					} else {
+						table.Columns.push(ko.mapping.fromJS(c));
+					}
+				});
+
+				// remove all columns not in list
+				const keep = _.map(result.Columns, function (c) {
+					return c.ColumnName.toLowerCase();
+				});
+
+				table.Columns.remove(function (x) {
+					return !_.includes(keep, x.ColumnName().toLowerCase());
+				});
+			}
+
+			toastr.info("Query loaded successfully, please configure and then Save to add or update the custom table to commit changes");
+
+			self.selectedTable = null;
 			$('#custom-sql-modal').modal('hide');
 		});
 
