@@ -746,183 +746,6 @@ var headerDesigner = function (options) {
 	};
 }
 
-
-var textQuery = function (options) {
-	var self = this;
-	self.queryItems = [];
-	self.filterItems = [];
-	self.filterField = null;
-
-	self.ParseQuery = function (token, text) {
-		return ajaxcall({
-			noBlocking: true,
-			url: options.apiUrl,
-			data: {
-				method: "/ReportApi/ParseQuery",
-				model: JSON.stringify({
-					token: token,
-					text: text
-				})
-			}
-		});
-	}
-
-	self.QueryMethods = [
-		{ value: 'Sum', key: '<span class="fa fa-flash"></span> Sum of', type: 'Function' },
-		{ value: 'Avg', key: '<span class="fa fa-flash"></span> Average of', type: 'Function' },
-		{ value: 'Sum', key: '<span class="fa fa-flash"></span> Total of', type: 'Function' },
-		{ value: 'Count', key: '<span class="fa fa-flash"></span> Count of', type: 'Function' },
-		{ value: 'Percent', key: '<span class="fa fa-flash"></span> Percentage of', type: 'Function' },
-		{ value: 'OrderBy', key: '<span class="fa fa-gear"></span> Order by', type: 'Order' },		
-		{ value: 'Bar', key: '<span class="fa fa-bar-chart"></span> as Bar Chart', type: 'ReportType' },
-		{ value: 'Pie', key: '<span class="fa fa-pie-chart"></span> as Pie Chart', type: 'ReportType' },
-	];
-
-	self.FilterMethods = [
-		{ value: 'Today', key: '<span class="fa fa-filter"></span> for Today', type: 'DateFilter' },
-		{ value: 'Yesterday', key: '<span class="fa fa-filter"></span> for Yesterday', type: 'DateFilter' },
-		{ value: 'This Month', key: '<span class="fa fa-filter"></span> for This Month', type: 'DateFilter' },
-		{ value: 'Last Month', key: '<span class="fa fa-filter"></span> for Last Month', type: 'DateFilter' },
-	];
-
-	self.getAggregate = function (columnId) {
-		var func = 'Group';
-		_.forEach(self.queryItems, function (x, i) {
-			if (x.value == columnId) {
-				if (i > 0 && self.queryItems[i - 1].type == 'Function') {
-					func = self.queryItems[i - 1].value;
-                }
-				return false;
-            }
-		});
-
-		return func;
-    }
-
-	self.getReportType = function () {
-		var reportType = _.find(self.queryItems, { type: 'ReportType' });
-		if (reportType) {
-			return reportType.value;
-		}
-
-		return (_.find(self.queryItems, { type: 'Function' })) ? 'Summary' : 'List';
-    }
-
-	self.resetQuery = function () {
-		self.queryItems = [];
-		self.filterItems = [];
-		document.getElementById("query-input").innerHTML = "Show me&nbsp;";
-	}
-
-	self.searchFields = {
-		selectedOption: ko.observable(),
-		url: options.apiUrl,
-		query: function (params) {
-			return params.term ? {
-				method: "/ReportApi/ParseQuery",
-				model: JSON.stringify({
-					token: params.term,
-					text: ''
-				})
-			} : null;
-		},
-		processResults: function (data) {
-			if (data.d) results = data.d;
-			var items = _.map(data, function (x) {
-				return { id: x.fieldId, text: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey };
-			});
-
-			return {
-				results: items
-			};
-        }
-	}
-
-	self.addQueryItem = function (newItem) {
-		if (self.usingFilter() && !self.filterField) {
-			self.filterField = newItem;
-			return;
-		}
-
-		if (self.usingFilter() && self.filterField) {
-			// add to filters
-			return;
-        }
-
-		// add to columns
-		var match = _.find(self.queryItems, { 'value': newItem.value });
-		if (!match) {		
-			self.queryItems.push(newItem);
-		}
-    }
-
-	self.usingFilter = function () {
-		// Check if the user has typed "where" or "for" and add filter methods
-		var textInput = document.getElementById("query-input");
-		var inputText = textInput.textContent.toLowerCase().trim();
-		var filterTexts = ['where ', 'when ', 'for ']
-		var containsFilter = false;
-
-		var containsFilter = _.some(filterTexts, function (filter) {
-			return _.includes(inputText, filter);
-		});
-
-		return containsFilter;
-    }
-
-	self.setupQuery = function () {
-		var tributeAttributes = {
-			allowSpaces: true,
-			autocompleteMode: true,
-			noMatchTemplate: "",
-			values: function (token, callback) {
-				if (token == "=" || token == ">" || token == "<") return;
-				self.ParseQuery(token, "").done(function (results) {
-					if (results.d) results = results.d;
-					var items = _.map(results, function (x) {
-						return { value: x.fieldId, key: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey };
-					});
-
-					if (self.usingFilter() && self.filterField != null) {
-						items = items.concat(self.FilterMethods);
-					} else {
-						items = items.concat(self.QueryMethods);
-					}
-					callback(items);
-				});
-			},
-			selectTemplate: function (item) {
-				if (typeof item === "undefined") return null;
-				if (this.range.isContentEditable(this.current.element)) {
-					return (
-						'<span contenteditable="false"><a>' +
-						item.original.key +
-						"</a></span>"
-					);
-				}
-
-				return item.original.value;
-			},
-			menuItemTemplate: function (item) {
-				return item.string;
-			}
-		};
-
-		var tribute = new Tribute(tributeAttributes);
-		tribute.attach(document.getElementById("query-input"));
-
-		document.getElementById("query-input")
-			.addEventListener("tribute-replaced", function (e) {
-				self.addQueryItem(e.detail.item.original);
-			});
-
-		document.getElementById("query-input")
-			.addEventListener("menuItemRemoved", function (e) {
-				self.queryItems.remove(e.detail.item.original);
-			});
-	}
-}
-
 var reportViewModel = function (options) {
 	var self = this;
 
@@ -1121,8 +944,7 @@ var reportViewModel = function (options) {
 
 	self.runQuery = function (useAi) {
 		self.SelectedFields([]);
-		self.ReportResult().ReportData(null);
-		self.ReportResult().HasError(false);
+		self.resetQuery(false);
 
 		var fieldIds = _.filter(self.textQuery.queryItems, { type: 'Field' }).map(function (x) { return x.value });
 		if (fieldIds.length == 0) fieldIds.push(0);
@@ -1177,10 +999,13 @@ var reportViewModel = function (options) {
 		});
 	}
 
-	self.resetQuery = function () {
-		self.textQuery.resetQuery();
+	self.resetQuery = function (resetText = true) {
+		if (resetText !== false) {
+			self.textQuery.resetQuery();
+		}
 		self.ReportResult().ReportData(null);
 		self.ReportResult().HasError(false);
+		self.ReportResult().ReportSql(null);
 	}
 
 	self.openDesigner = function () {

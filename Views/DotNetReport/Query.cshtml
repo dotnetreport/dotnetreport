@@ -3,25 +3,18 @@
 Layout = "~/Views/shared/_Layout.Report.cshtml";
 }
 
-@*
+<!--
 This razor view renders the Report from the Data Table as a Html Table. You have complete control over this page and you can change the code and style to meet your requirements.
 
 Its Recommended you use it as is, and only change styling as needed to match your application. You will be responsible for managing and maintaining any changes.
 
-Note: To allow bigger file downloads in Excel, Please increase maxRequestLength in web.config. For example, <httpRuntime maxRequestLength="1048576" />
-
-*@
+-->
 
 @section head {
 <link href="~/lib/tributejs/tribute.css" rel="stylesheet" />
-<style>
-    #test-autocomplete-container {
-        position: relative;
-    }
-</style>
 }
 
-@section scripts{
+@section scripts {
 
 <script src="~/lib/tributejs/tribute.min.js"></script>
 <script type="text/javascript">
