@@ -802,13 +802,13 @@ var customSqlModel = function (options, keys, tables) {
 	self.currentTable = ko.observable(null);
 	self.customTableName = ko.observable();
 	self.customSql = ko.observable();
-	self.viewOnly = ko.observable(false);
+	self.useAi = ko.observable(false);
+	self.textQuery = new textQuery(options);
 
 	self.addNewCustomSqlTable = function () {	
 		self.clearForm();
 		self.customTableName('');
 		self.customSql('');
-		self.viewOnly(false);
 		$('#custom-sql-modal').modal('show');
 	}
 
@@ -816,7 +816,6 @@ var customSqlModel = function (options, keys, tables) {
 		self.clearForm();
 		self.customTableName(e.TableName());
 		self.customSql(e.CustomTableSql());
-		self.viewOnly(true);
 		$('#custom-sql-modal').modal('show');
     }
 
@@ -869,6 +868,47 @@ var customSqlModel = function (options, keys, tables) {
 		return isValid;
 	};
 
+	self.buildSqlUsingAi = function () {
+		var queryText = document.getElementById("query-input").innerText;
+
+		var fieldIds = _.filter(self.textQuery.queryItems, { type: 'Field' }).map(function (x) { return x.value });
+		if (fieldIds.length == 0) fieldIds.push(0);
+		ajaxcall({
+			url: options.apiUrl,
+			data: {
+				method: "/ReportApi/GetFieldsByIds",
+				model: JSON.stringify({
+					fieldIds: fieldIds.join(",")
+				})
+			}
+		}).done(function (result) {
+			if (result.d) result = result.d;
+			ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/RunQueryAi",
+					model: JSON.stringify({
+						query: queryText,
+						fieldIds: fieldIds.join(","),
+						dontEncrypt: true
+					})
+				}
+			}).done(function (result) {
+				if (result.d) result = result.d;
+				if (result.success === false) {
+					toastr.error(result.message || 'Could not process this correctly, please try again');
+					return;
+				}
+
+				self.customSql(beautifySql(result.sql, false));
+			});
+		});
+	}
+
+	self.beautifySql = function () {
+		self.customSql(beautifySql(self.customSql(), false));
+    }
+
 	self.executeSql = function () {
 		var valid = self.validateForm();
 		
@@ -895,7 +935,7 @@ var customSqlModel = function (options, keys, tables) {
 			return false;
         }
 
-		ajaxcall({
+		return ajaxcall({
 			url: options.getSchemaFromSql,
 			type: 'POST',
 			data: JSON.stringify({
