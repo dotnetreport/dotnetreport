@@ -1121,7 +1121,11 @@ var reportViewModel = function (options) {
 
 	self.runQuery = function (useAi) {
 		self.SelectedFields([]);
+		self.ReportResult().ReportData(null);
+		self.ReportResult().HasError(false);
+
 		var fieldIds = _.filter(self.textQuery.queryItems, { type: 'Field' }).map(function (x) { return x.value });
+		if (fieldIds.length == 0) fieldIds.push(0);
 		ajaxcall({
 			url: options.apiUrl,
 			data: {
@@ -1160,6 +1164,10 @@ var reportViewModel = function (options) {
 					}
 				}).done(function (result) {
 					if (result.d) result = result.d;
+					if (result.success === false) {
+						toastr.error(result.message || 'Could not process this correctly, please try again');
+						return;
+                    }
 					self.ExecuteReportQuery(result.sql, result.connectKey);
 				});
 			}
@@ -2356,13 +2364,14 @@ var reportViewModel = function (options) {
 		}
 		while (i < seriesCount + 1);
 		$.when.apply($, promises).done(function () {
+			options.reportWizard.modal('hide');
+
 			if (isExecuteReportQuery === false) {
 				if (saveOnly) {
 					return;
 				}
 
 				if (options.samePageOnRun) {
-					options.reportWizard.modal('hide');
 					self.ReportID(_result.reportId);
 					self.ExecuteReportQuery(_result.sql, _result.connectKey);
 					self.ReportMode("execute");
