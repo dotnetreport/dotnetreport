@@ -283,10 +283,9 @@
         </ul>
     </div>
     <div class="clear-fix"></div>
-    
 
     <div data-bind="foreach: outerGroupData">
-        <!-- ko if: rows.length > 0 -->
+        <!-- ko if: rows.length > 0 || $parent.outerGroupData().length == 1 -->
         <h6 data-bind="html: display"></h6>
         <div class="" style="padding-top: 5px;"></div>
         <div data-bind="template: {name: 'report-table', data: $parent.ReportData }"></div> 

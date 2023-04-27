@@ -307,7 +307,7 @@ function filterGroupViewModel(args) {
 			lookupList.push({ id: e.Value2, text: e.Value2 });
 		}
 
-		var field = ko.observable();
+		var field = ko.observable();	
 		var valueIn = e.Operator == 'in' || e.Operator == 'not in' ? (e.Value1 || '').split(',') : [];
 		var filter = {
 			AndOr: ko.observable(isFilterOnFly ? ' AND ' : e.AndOr),
@@ -921,7 +921,6 @@ var textQuery = function (options) {
 				self.queryItems.remove(e.detail.item.original);
 			});
 	}
-
 }
 
 var reportViewModel = function (options) {
@@ -975,6 +974,8 @@ var reportViewModel = function (options) {
 	self.EditFiltersOnReport = ko.observable(false);
 	self.UseReportHeader = ko.observable(false);
 	self.HideReportHeader = ko.observable(false);
+	self.maxRecords = ko.observable(false);
+	self.OnlyTop = ko.observable();
 
 	self.FilterGroups = ko.observableArray();
 	self.FilterGroups.subscribe(function (newArray) {
@@ -1368,13 +1369,80 @@ var reportViewModel = function (options) {
 		});
 	});
 
-	self.reportsInSearch = ko.computed(function () {
-		var searchReports = self.searchReports();
-		if (!searchReports) return [];
+	self.searchFieldsInReport = {
+		language: {
+			noResults: function () {
+				return 'Search for text or select a field';
+			},
+			searching: function () {
+				return 'Search for text or select a field';
+			},
+			errorLoading: function () {
+				return 'Search for text or select a field';
+			}
+		},
+		selectedOption: ko.observable(),
+		url: options.apiUrl,
+		query: function (params) {
+			self.searchReports(params.term);
+			return params.term ? {
+				method: "/ReportApi/ParseQuery",
+				model: JSON.stringify({
+					token: params.term,
+					text: ''
+				})
+			} : null;
+		},
+		processResults: function (data) {
+			if (data.d) results = data.d;
+			var items = _.map(data, function (x) {
+				return { id: x.fieldId, text: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey };
+			});
 
-		return _.filter(self.SavedReports(), function (x) {
-			return x.reportName.toLowerCase().indexOf(searchReports.toLowerCase()) >= 0 || x.reportDescription.toLowerCase().indexOf(searchReports.toLowerCase()) >= 0;
-		});
+			return {
+				results: items
+			};
+		}
+	}
+
+	self.reportsInSearch = ko.observableArray([]);
+	self.reportsInSearchCompute = ko.computed(function () {
+		var searchReports = self.searchReports();
+		var searchFieldId = self.searchFieldsInReport.selectedOption();
+
+		if (!searchReports && !searchFieldId) {
+			self.reportsInSearch([]);
+			return;
+		}
+
+		if (searchFieldId) {
+			ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/FindReportsByFieldId",
+					model: JSON.stringify({
+						fieldId: parseInt(searchFieldId),
+					})
+				}
+			}).done(function (reports) {
+				if (reports.d) { reports = reports.d; }
+				if (reports.length == 0) {
+					self.reportsInSearch([]);
+				}
+				else {
+					var foundReportIds = _.map(reports, function (x) { return x.reportId });
+					self.reportsInSearch(_.filter(self.SavedReports(), function (x) {
+						return foundReportIds.indexOf(x.reportId) >= 0;
+					}));
+				}
+			});
+
+		}
+		else {
+			self.reportsInSearch(_.filter(self.SavedReports(), function (x) {
+				return x.reportName.toLowerCase().indexOf(searchReports.toLowerCase()) >= 0 || x.reportDescription.toLowerCase().indexOf(searchReports.toLowerCase()) >= 0;
+			}));
+		}
 	});
 
 	self.clearReport = function () {
@@ -1403,6 +1471,9 @@ var reportViewModel = function (options) {
 		self.scheduleBuilder.clear();
 		self.SortFields([]);
 		self.isFormulaField(false);
+		self.maxRecords(false);
+		self.OnlyTop(null);
+		self.lastPickedField(null);
 	};
 
 	self.SelectedProc.subscribe(function (proc) {
@@ -1509,12 +1580,14 @@ var reportViewModel = function (options) {
 		return found;
 	}
 
+	self.lastPickedField = ko.observable();
 	self.SelectedFields.subscribe(function (fields) {
 		setTimeout(function () {
 			self.RemoveInvalidFilters(self.FilterGroups());
 		}, 500);
 
 		var newField = fields.length > 0 ? fields[fields.length - 1] : null;
+		if (newField && newField.isJsonColumn === true) return;
 		if (newField && (newField.forceFilter || newField.forceFilterForTable)) {
 			if (!self.FindInFilterGroup(newField.fieldId)) {
 				var group = self.FilterGroups()[0];
@@ -1527,6 +1600,8 @@ var reportViewModel = function (options) {
 		}
 
 		if (newField) {
+			self.lastPickedField(newField);
+
 			// go through and see if we need to add forced by Table filters
 			var forcedFiltersByTable = _.filter(self.selectedTableFields, function (x) { return x.forceFilterForTable == true });
 			var otherFieldIds = _.filter(self.selectedTableFields, function (x) { return x.forceFilterForTable == false }).map(function (x) { return x.fieldId });
@@ -1542,6 +1617,25 @@ var reportViewModel = function (options) {
 				}
 			}
 		}
+	});
+
+	self.jsonFields = ko.observableArray([]);
+	self.lastPickedField.subscribe(function (newValue) {
+		self.jsonFields([]);
+		if (newValue) {
+			if (newValue.fieldType == 'Json' && newValue.jsonStructure) {
+				var jsonData = JSON.parse(newValue.jsonStructure);
+				var jsonFields = _.map(Object.keys(jsonData), function (key) {
+					var x = _.clone(newValue);
+					x.isJsonColumn = true;
+					x.jsonColumnName = key;
+					x.selectedFieldName += (" > " + key);
+					return x;
+				});
+
+				self.jsonFields(jsonFields);
+            }
+        }
 	});
 
 	self.loadTableFields = function (table) {
@@ -1576,6 +1670,8 @@ var reportViewModel = function (options) {
 
 	self.SelectedTable.subscribe(function (table) {
 		self.SelectedProc(null);
+		self.lastPickedField(null);
+		self.jsonFields([]);
 		if (table == null) {
 			self.ChooseFields([]);
 			self.selectedTableFields = [];
@@ -2085,6 +2181,7 @@ var reportViewModel = function (options) {
 			IncludeSubTotals: self.IncludeSubTotal(),
 			EditFiltersOnReport: self.EditFiltersOnReport(),
 			ShowUniqueRecords: self.ShowUniqueRecords(),
+			OnlyTop: self.maxRecords() ? self.OnlyTop() : null,
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : self.AggregateReport(),
 			ShowDataWithGraph: self.ShowDataWithGraph(),
 			ShowOnDashboard: self.ShowOnDashboard(),
@@ -2133,7 +2230,8 @@ var reportViewModel = function (options) {
 					HeaderFontBold: x.headerFontBold(),
 					FieldWidth: x.fieldWidth(),
 					FieldConditionOp: x.fieldConditionOp(),
-					FieldConditionVal: x.fieldConditionVal()
+					FieldConditionVal: x.fieldConditionVal(),
+					JsonColumnName: x.isJsonColumn && x.jsonColumnName ? x.jsonColumnName : ''
 				};
 			}),
 			Schedule: self.scheduleBuilder.toJs(),
@@ -2314,8 +2412,9 @@ var reportViewModel = function (options) {
 			reportResult.Exception(result.Exception);
 			reportResult.Warnings(result.Warnings);
 			reportResult.ReportDebug(result.ReportDebug);
-			reportResult.ReportSql(result.ReportSql);
+			reportResult.ReportSql(beautifySql(result.ReportSql));
 			self.ReportSeries = reportSeries;
+			if (result.HasError) return;
 
 			if (result.HasError) return;
 
@@ -2377,6 +2476,9 @@ var reportViewModel = function (options) {
 					e.backColor = col.backColor;
 					e.groupInGraph = col.groupInGraph;
 					e.dontSubTotal = col.dontSubTotal;
+					e.fieldType = col.fieldType;
+					e.jsonColumnName = col.jsonColumnName;
+					e.isJsonColumn = col.fieldType == 'Json';
 					e.outerGroup = ko.observable(false);
 					e.colIndex = i;
 
@@ -2431,7 +2533,9 @@ var reportViewModel = function (options) {
 					r.fontBold = col.fontBold;
 					r.fontColor = col.fontColor;
 					r.fieldId = col.fieldId;
-					r.outerGroup = col.outerGroup
+					r.outerGroup = col.outerGroup;
+					r.jsonColumnName = col.jsonColumnName;
+					r.isJsonColumn = col.isJsonColumn;
 
 					if (self.decimalFormatTypes.indexOf(col.fieldFormat) >= 0) {
 						r.FormattedValue = self.formatNumber(r.Value, col.decimalPlaces);
@@ -2806,7 +2910,7 @@ var reportViewModel = function (options) {
 	self.editFieldOptions = ko.observable();
 
 	self.setupField = function (e) {
-		e.selectedFieldName = e.tableName + " > " + e.fieldName;
+		e.selectedFieldName = e.tableName + " > " + e.fieldName + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
 		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail').concat('Group in Detail').concat('Csv');
 		e.selectedAggregate = ko.observable(e.aggregateFunction);
 		e.filterOnFly = ko.observable(e.filterOnFly);
@@ -2830,6 +2934,8 @@ var reportViewModel = function (options) {
 		e.fieldWidth = ko.observable(e.fieldWidth);
 		e.fieldConditionOp = ko.observable(e.fieldConditionOp);
 		e.fieldConditionVal = ko.observable(e.fieldConditionVal);
+		e.jsonColumnName = e.jsonColumnName;
+		e.isJsonColumn = e.jsonColumnName ? true : false;
 
 		e.applyAllHeaderFontColor = ko.observable(false);
 		e.applyAllHeaderBackColor = ko.observable(false);
@@ -2976,6 +3082,8 @@ var reportViewModel = function (options) {
 		self.IncludeSubTotal(report.IncludeSubTotals);
 		self.EditFiltersOnReport(report.EditFiltersOnReport);
 		self.ShowUniqueRecords(report.ShowUniqueRecords);
+		self.OnlyTop(report.OnlyTop);
+		self.maxRecords(report.OnlyTop != null);
 		self.AggregateReport(report.IsAggregateReport);
 		self.ShowDataWithGraph(report.ShowDataWithGraph);
 		self.ShowOnDashboard(report.ShowOnDashboard);
@@ -3126,6 +3234,7 @@ var reportViewModel = function (options) {
 				});
 
 				self.SelectedFields(report.SelectedFields);
+				self.lastPickedField(null);
 				return self.PopulateReport(report, filterOnFly, reportSeries);
 			}
 		});
@@ -3398,12 +3507,13 @@ var reportViewModel = function (options) {
 			$.blockUI({ baseZ: 500 });
 		}
 
-		$.ajax({
+		ajaxcall({
 			type: 'POST',
 			url: (options.runExportUrl || '/DotNetReport/') + url,
 			xhrFields: {
 				responseType: 'blob'
 			},
+			contentType: "application/x-www-form-urlencoded; charset=UTF-8",
 			data: data,
 			success: function (data) {
 				var a = document.createElement('a');
@@ -3650,6 +3760,7 @@ var dashboardViewModel = function (options) {
 	_.forEach(options.reports, function (x) {
 		var report = new reportViewModel({
 			runReportUrl: options.runReportUrl,
+			runExportUrl: options.runExportUrl,
 			execReportUrl: options.execReportUrl,
 			reportWizard: options.reportWizard,
 			lookupListUrl: options.lookupListUrl,
