@@ -18,23 +18,6 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
     #test-autocomplete-container {
         position: relative;
     }
-
-    .query-input {
-        outline: none;
-        border: 1px solid #eee;
-        padding: 3px 5px;
-        border-radius: 2px;
-        font-size: 15px;
-        min-height: 64px;
-        cursor: text;
-    }
-
-        .query-input a {
-            background-color: transparent;
-            color: #2ba6cb !important;
-            text-decoration: none;
-            cursor: pointer;
-        }
 </style>
 }
 
@@ -84,10 +67,10 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
         Show me&nbsp;
     </p>
     <p>
-        <button data-bind="click: function() {runQuery(false);}" class="btn btn-primary">Process your Query</button>&nbsp;
-        <button data-bind="click: function() {runQuery(true);}" class="btn btn-primary">Process with ChatGPT</button>&nbsp;
-        <button data-bind="click: resetQuery" class="btn btn-primary">Start over</button>
-        <button data-bind="click: openDesigner" class="btn btn-primary">Design/Save Report</button>
+        <button data-bind="click: function() {runQuery(false);}" class="btn btn-primary btn-sm">Process your Query</button>&nbsp;
+        <button data-bind="click: function() {runQuery(true);}" class="btn btn-primary btn-sm">Process with ChatGPT</button>&nbsp;
+        <button data-bind="click: resetQuery" class="btn btn-secondary btn-sm">Start over</button>
+        <button data-bind="click: openDesigner" class="btn btn-secondary btn-sm">Design/Save Report</button>
     </p>
 </div>
 
