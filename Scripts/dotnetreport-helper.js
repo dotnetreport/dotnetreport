@@ -296,7 +296,7 @@ var manageAccess = function (options) {
     };
 };
 
-function beautifySql(sql) {
+function beautifySql(sql, htmlMode=true) {
     var _sql = sql;
     try {
         const keywords = [
@@ -307,13 +307,15 @@ function beautifySql(sql) {
             'AVG', 'MAX', 'MIN', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END'
         ];
 
-        // Add spaces around keywords
-        keywords.forEach(keyword => {
-            sql = sql.replace(new RegExp('\\b' + keyword + '\\b', 'gi'), '<span class="keyword">' + keyword + '</span> ');
-        });
+        if (htmlMode) {
+            // Add spaces around keywords
+            keywords.forEach(keyword => {
+                sql = sql.replace(new RegExp('\\b' + keyword + '\\b', 'gi'), '<span class="keyword">' + keyword + '</span> ');
+            });
+        }
 
         // Add line breaks after some keywords
-        sql = sql.replace(/(SELECT|FROM|WHERE|GROUP BY|ORDER BY|HAVING)/gi, '<br>$1');
+        sql = sql.replace(/(SELECT|FROM|WHERE|GROUP BY|ORDER BY|HAVING)/gi, (htmlMode ? '<br>$1' : '\n$1'));
 
         // Indent nested queries
         let indentation = 0;
@@ -321,22 +323,22 @@ function beautifySql(sql) {
             if (keyword === 'SELECT') {
                 indentation++;
             }
-            const indent = '&nbsp;'.repeat(indentation * 4);
-            return '<br>' + indent + '<span class="keyword">' + match + '</span>';
+            const indent = (htmlMode ? '&nbsp;' : ' ').repeat(indentation * 4);
+            return htmlMode ? '<br>' + indent + '<span class="keyword">' + match + '</span>' : '\n' + indent + match;
         });
         sql = sql.replace(/\b((LEFT|RIGHT|INNER|OUTER|FULL OUTER) JOIN|ON)\b/gi, (match, keyword) => {
             if (keyword === 'ON') {
                 if (indentation > 1) indentation--;
             }
-            const indent = '&nbsp;'.repeat(indentation * 4);
-            return '<br>' + indent + '<span class="keyword">' + match + '</span>';
+            const indent = (htmlMode ? '&nbsp;' : ' ').repeat(indentation * 4);
+            return htmlMode ? '<br>' + indent + '<span class="keyword">' + match + '</span>' : '\n' + indent + match;
         });
 
         // Put each field in SELECT on a separate line
         sql = sql.replace(/SELECT([\s\S]*?)FROM/gi, (match, fields) => {
             fields = fields.split(',').map(field => field.trim());
-            const indent = '&nbsp;'.repeat(indentation * 4 + 4);
-            return 'SELECT ' + fields.join(',<br>' + indent) + indent + 'FROM';
+            const indent = (htmlMode ? '&nbsp;' : ' ').repeat(indentation * 4 + 4);
+            return 'SELECT ' + fields.join((htmlMode ? ',<br>' : ',\n') + indent) + indent + (htmlMode ? '' : '\n') + 'FROM';
         });
 
         return sql.trim();
