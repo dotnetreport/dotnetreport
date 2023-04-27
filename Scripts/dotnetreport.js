@@ -1164,7 +1164,7 @@ var reportViewModel = function (options) {
 				});
 			}
 			else {
-				self.RunReport(false);
+				self.RunReport(false, true);
 			}
 		});
 	}
@@ -1174,6 +1174,10 @@ var reportViewModel = function (options) {
 		self.ReportResult().ReportData(null);
 		self.ReportResult().HasError(false);
 	}
+
+	self.openDesigner = function () {
+		options.reportWizard.modal('show');
+    }
 
 	self.textQuery.searchFields.selectedOption.subscribe(function (newValue) {
 		if (newValue) {
