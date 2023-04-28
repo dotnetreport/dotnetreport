@@ -562,3 +562,20 @@ select.is-invalid ~ span .select2-selection {
     height: 36px !important;
     padding-top: 3px;
 }
+
+.query-input {
+    outline: none;
+    border: 1px solid #eee;
+    padding: 3px 5px;
+    border-radius: 2px;
+    font-size: 15px;
+    min-height: 64px;
+    cursor: text;
+}
+
+    .query-input a {
+        background-color: transparent;
+        color: #2ba6cb !important;
+        text-decoration: none;
+        cursor: pointer;
+    }

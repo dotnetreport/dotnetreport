@@ -6,6 +6,8 @@
 
 @section head{
     <link href="~/lib/x-editable-bs4/css/bootstrap-editable.css" rel="stylesheet" />
+    <link href="~/lib/tributejs/tribute.css" rel="stylesheet" />
+
     <style type="text/css">
         .glyphicon-ok:before {
             content: "\f00c";
@@ -60,7 +62,8 @@
                 reportsApiUrl: '@Model.ApiUrl',
                 getUsersAndRoles: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")',                
                 searchProcUrl: '@Url.Action("SearchProcedure", "DotNetReportApi")',                
-                getSchemaFromSql: '@Url.Action("GetSchemaFromSql", "DotNetReportApi")'
+                getSchemaFromSql: '@Url.Action("GetSchemaFromSql", "DotNetReportApi")',                
+                apiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")',
             };
 
             var vm = new manageViewModel(options);
@@ -68,6 +71,8 @@
             vm.setupManageAccess();
             ko.applyBindings(vm);
             vm.LoadDataConnections();
+            
+            vm.customSql.textQuery.setupQuery();
         });
 
     </script>
@@ -1052,18 +1057,32 @@
                 <div class="modal-body">
                     <div class="form-group" data-bind="validationElement: customTableName">
                         <label for="custom-table-name">Custom Table Name</label>
-                        <input type="text" class="form-control" name="customTableName" placeholder="Enter table name" data-bind="textInput: customTableName, disable: viewOnly" required>
+                        <input type="text" class="form-control" name="customTableName" placeholder="Enter table name" data-bind="textInput: customTableName" required>
                         <div class="invalid-feedback">Custom Table Name is required.</div>
                     </div>
+                    <div class="checkbox">
+                        <label>
+                            <input class="check-box" type="checkbox" data-bind="checked: useAi"> Use ChatGPT to build the query?
+                        </label>
+                    </div>
+                    <div data-bind="visible: useAi">
+                        <p id="query-input" class="query-input">
+                            Show me&nbsp;
+                        </p>                        
+                        <button data-bind="click: buildSqlUsingAi" class="btn btn-primary btn-sm">Process with ChatGPT</button>
+                        <button data-bind="click: textQuery.resetQuery" class="btn btn-secondary btn-sm">Start over</button>
+                        <hr />
+                    </div>
+
                     <div class="form-group" data-bind="validationElement: customSql">
-                        <label for="custom-sql">Custom SQL</label>
-                        <textarea class="form-control" style="height: 300px;" name="customSql" data-bind="textInput: customSql, disable: viewOnly" required></textarea>
+                        <label for="custom-sql">Custom SQL</label> | <a href="#" data-bind="click: beautifySql">Beautify Sql</a>
+                        <textarea class="form-control" style="height: 240px;" name="customSql" data-bind="textInput: customSql" required></textarea>
                         <div class="invalid-feedback">Custom SQL is required.</div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary" data-bind="click: executeSql, hidden: viewOnly">Save changes</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" data-bind="click: executeSql">Save changes</button>
                 </div>
             </div>
         </div>

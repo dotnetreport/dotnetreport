@@ -139,13 +139,6 @@ namespace ReportBuilder.Web.Controllers
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + method), content);
                 var stringContent = await response.Content.ReadAsStringAsync();
 
-                if (stringContent.Contains("\"sql\":"))
-                {
-                    var sqlqeuery = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(stringContent);
-                    object value;
-                    var keyValuePair = sqlqeuery.TryGetValue("sql", out value);
-                    var sql = DotNetReportHelper.Decrypt(value.ToString());
-                }
                 Response.StatusCode = (int)response.StatusCode;
                 return Json((new JavaScriptSerializer()).Deserialize<dynamic>(stringContent), JsonRequestBehavior.AllowGet);
             }
@@ -187,7 +180,7 @@ namespace ReportBuilder.Web.Controllers
                             .Select(x => x.StartsWith("DISTINCT ") ? x.Replace("DISTINCT ", "") : x)
                             .ToList();
 
-                        var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(sql.LastIndexOf("FROM"))}";
+                        var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(sql.IndexOf("FROM"))}";
                         sqlCount = $"SELECT COUNT(*) FROM ({(sqlFrom.Contains("ORDER BY") ? sqlFrom.Substring(0, sqlFrom.IndexOf("ORDER BY")) : sqlFrom)}) as countQry";
 
                         if (!String.IsNullOrEmpty(sortBy))
@@ -320,7 +313,8 @@ namespace ReportBuilder.Web.Controllers
                     ReportData = new DotNetReportDataModel(),
                     ReportSql = sql,
                     HasError = true,
-                    Exception = ex.Message
+                    Exception = ex.Message,
+                    ReportDebug = Request.Host.Host.Contains("localhost"),
                 };
 
                 return Json(model, JsonRequestBehavior.AllowGet);
@@ -443,15 +437,16 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult> GetSchemaFromSql(string value = null, string accountKey = null, string dataConnectKey = null, TableViewModel currentTable = null)
+        public async Task<ActionResult> GetSchemaFromSql(string value = null, string accountKey = null, string dataConnectKey = null)
         {
             try
             {
-                var table = currentTable ?? new TableViewModel
+                var table = new TableViewModel
                 {
                     AllowedRoles = new List<string>(),
                     Columns = new List<ColumnViewModel>(),
-                    CustomTable = true
+                    CustomTable = true,
+                    Selected = true
                 };
 
                 table.CustomTableSql = value;
@@ -472,50 +467,22 @@ namespace ReportBuilder.Web.Controllers
 
                         foreach (DataRow dr in schemaTable.Rows)
                         {
-                            ColumnViewModel matchColumn = currentTable != null ? currentTable.Columns.FirstOrDefault(x => x.ColumnName.ToLower() == dr["COLUMN_NAME"].ToString().ToLower()) : null;
                             var column = new ColumnViewModel
                             {
-                                ColumnName = matchColumn != null ? matchColumn.ColumnName : dr["ColumnName"].ToString(),
-                                DisplayName = matchColumn != null ? matchColumn.DisplayName : dr["ColumnName"].ToString(),
-                                PrimaryKey = matchColumn != null ? matchColumn.PrimaryKey : dr["ColumnName"].ToString().ToLower().EndsWith("id") && idx == 0,
-                                DisplayOrder = matchColumn != null ? matchColumn.DisplayOrder : idx,
-                                FieldType = matchColumn != null ? matchColumn.FieldType : DotNetSetupController.ConvertToJetDataType((int)dr["ProviderType"]).ToString(),
-                                AllowedRoles = matchColumn != null ? matchColumn.AllowedRoles : new List<string>()
+                                ColumnName = dr["ColumnName"].ToString(),
+                                DisplayName = dr["ColumnName"].ToString(),
+                                PrimaryKey = dr["ColumnName"].ToString().ToLower().EndsWith("id") && idx == 0,
+                                DisplayOrder = idx,
+                                FieldType = DotNetSetupController.ConvertToJetDataType((int)dr["ProviderType"]).ToString(),
+                                AllowedRoles = new List<string>(),
+                                Selected = true
                             };
-
-                            if (matchColumn != null)
-                            {
-                                column.ForeignKey = matchColumn.ForeignKey;
-                                column.ForeignJoin = matchColumn.ForeignJoin;
-                                column.ForeignTable = matchColumn.ForeignTable;
-                                column.ForeignKeyField = matchColumn.ForeignKeyField;
-                                column.ForeignValueField = matchColumn.ForeignValueField;
-                                column.Id = matchColumn.Id;
-                                column.DoNotDisplay = matchColumn.DoNotDisplay;
-                                column.DisplayOrder = matchColumn.DisplayOrder;
-                                column.ForceFilter = matchColumn.ForceFilter;
-                                column.ForceFilterForTable = matchColumn.ForceFilterForTable;
-                                column.RestrictedDateRange = matchColumn.RestrictedDateRange;
-                                column.RestrictedStartDate = matchColumn.RestrictedStartDate;
-                                column.RestrictedEndDate = matchColumn.RestrictedEndDate;
-                                column.ForeignParentKey = matchColumn.ForeignParentKey;
-                                column.ForeignParentApplyTo = matchColumn.ForeignParentApplyTo;
-                                column.ForeignParentTable = matchColumn.ForeignParentTable;
-                                column.ForeignParentKeyField = matchColumn.ForeignParentKeyField;
-                                column.ForeignParentValueField = matchColumn.ForeignParentValueField;
-                                column.ForeignParentRequired = matchColumn.ForeignParentRequired;
-                                column.JsonStructure = matchColumn.JsonStructure;
-
-                                column.Selected = true;
-                            }
 
                             idx++;
                             table.Columns.Add(column);
                         }
                         table.Columns = table.Columns.OrderBy(x => x.DisplayOrder).ToList();
-
                     }
-                }
 
                 return Json(table, JsonRequestBehavior.AllowGet);
             }
@@ -594,7 +561,6 @@ namespace ReportBuilder.Web.Controllers
 
         public class SchemaFromSqlCall : SearchProcCall
         {
-            public TableViewModel currentTable { get; set; } = null;
         }
 
         [HttpPost]
