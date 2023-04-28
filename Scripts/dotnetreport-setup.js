@@ -920,6 +920,11 @@ var customSqlModel = function (options, keys, tables) {
 			valid = false;
 		}
 
+		if (self.customTableName().indexOf(' ') > -1) {
+			toastr.error("Custom Table Name cannot have spaces");
+			valid = false;
+		}
+
 		if (!self.customSql() || self.customSql().toLowerCase().indexOf('select') != 0) {
 			toastr.error("Custom SELECT SQL is required, and it must start with SELECT");
 			valid = false;
