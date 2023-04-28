@@ -5,7 +5,7 @@
 }
 
 .list-overflow {
-    height: 300px;
+    min-height: 300px;
     overflow-y: auto;
     overflow-x: hidden;
 }
