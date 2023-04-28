@@ -1341,6 +1341,8 @@ var reportViewModel = function (options) {
 		var parameters = _.map(proc.Parameters, function (e) {
 			var match = ko.toJS(proc.SelectedParameters && proc.SelectedParameters.length ? _.find(proc.SelectedParameters, { ParameterName: e.ParameterName }) : null);
 			e.operators = ['='];
+			if (e.ForeignKey) e.operators.push('in');
+
 			if (e.ParameterValue) e.operators.push('is default');
 			if (!e.Required) e.operators.push('is blank');
 			if (!e.Required) e.operators.push('is null');
@@ -1463,7 +1465,7 @@ var reportViewModel = function (options) {
 			if (newValue.fieldType == 'Json' && newValue.jsonStructure) {
 				var jsonData = JSON.parse(newValue.jsonStructure);
 				var jsonFields = _.map(Object.keys(jsonData), function (key) {
-					var x = _.clone(newValue);
+					var x = self.setupField(ko.toJS(newValue));
 					x.isJsonColumn = true;
 					x.jsonColumnName = key;
 					x.selectedFieldName += (" > " + key);
@@ -1996,7 +1998,7 @@ var reportViewModel = function (options) {
 	};
 	self.BuildReportData = function (drilldown, isComparison, index) {
 
-		drilldown = drilldown || [];
+		drilldown = drilldown || [];	
 		var hasGroupInDetail = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Group in Detail' }) != null;
 		var filters = isComparison ? self.SeriesDataIntoFilter(self.FilterGroups(), index) : self.BuildFilterData(self.FilterGroups());
 
@@ -2086,7 +2088,7 @@ var reportViewModel = function (options) {
 					UseDefault: x.Operator() == 'is default',
 					ParameterId: x.Id,
 					ParameterName: x.ParameterName,
-					Value: x.Value(),
+					Value: x.Operator() == 'in' ? x.ValueIn.join(",") : x.Value(),
 					Operator: x.Operator()
 				}
 			}) : []
