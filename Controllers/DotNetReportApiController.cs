@@ -314,7 +314,7 @@ namespace ReportBuilder.Web.Controllers
                     ReportSql = sql,
                     HasError = true,
                     Exception = ex.Message,
-                    ReportDebug = Request.Host.Host.Contains("localhost"),
+                    ReportDebug = Request.Url.Host.Contains("localhost"),
                 };
 
                 return Json(model, JsonRequestBehavior.AllowGet);
@@ -484,7 +484,8 @@ namespace ReportBuilder.Web.Controllers
                         table.Columns = table.Columns.OrderBy(x => x.DisplayOrder).ToList();
                     }
 
-                return Json(table, JsonRequestBehavior.AllowGet);
+                    return Json(table, JsonRequestBehavior.AllowGet);
+                }
             }
             catch (Exception ex)
             {

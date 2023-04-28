@@ -771,7 +771,7 @@ namespace ReportBuilder.Web.Models
 
             using (var ms = new MemoryStream())
             {
-                Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+                //Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
                 var fontNormal = new XFont("Arial", 12, XFontStyle.Regular);
                 var fontBold = new XFont("Arial", 12, XFontStyle.Bold);
 
