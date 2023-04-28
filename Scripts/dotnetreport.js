@@ -1998,7 +1998,10 @@ var reportViewModel = function (options) {
 	};
 	self.BuildReportData = function (drilldown, isComparison, index) {
 
-		drilldown = drilldown || [];	
+		drilldown = _.map(drilldown || [], function (x) {
+			if (x.isJsonColumn) x.FormattedValue = '';
+			return x;
+		});		
 		var hasGroupInDetail = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Group in Detail' }) != null;
 		var filters = isComparison ? self.SeriesDataIntoFilter(self.FilterGroups(), index) : self.BuildFilterData(self.FilterGroups());
 
