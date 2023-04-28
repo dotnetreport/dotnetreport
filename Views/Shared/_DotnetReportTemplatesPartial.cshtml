@@ -99,11 +99,11 @@
     <!-- ko foreach: Columns -->
     <th data-bind="attr: { id: fieldId }, css: {'right-align': IsNumeric}, style: {'width': fieldWidth, 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
         <!-- ko if: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false) -->
-        <span data-bind="text: fieldLabel ? fieldLabel : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold ? 'bold' : 'normal'}"></span>
+        <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor(), 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
         <!-- /ko -->
         <!-- ko ifnot: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false)  -->
-        <a href="" data-bind="click: function(){ $parents[3].pager ? $parents[3].changeSort(SqlField) : $parents[5].changeSort(SqlField); }, style: {'color': headerFontColor, 'font-weight': headerFontBold ? 'bold' : 'normal'}">
-            <span data-bind="text: fieldLabel ? fieldLabel : ColumnName"></span>
+        <a href="" data-bind="click: function(){ $parents[3].pager ? $parents[3].changeSort(SqlField) : $parents[5].changeSort(SqlField); }, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}">
+            <span data-bind="text: fieldLabel() ? fieldLabel() : ColumnName"></span>
             <span data-bind="text: ($parents[3].pager ? $parents[3].pager.sortColumn() : $parents[5].pager.sortColumn()) === SqlField ? (($parents[3].pager ? $parents[3].pager.sortDescending() : $parents[5].pager.sortDescending()) ? '&#9660;' : '&#9650;') : ''"></span>
         </a>
         <!-- /ko -->
@@ -119,6 +119,11 @@
                             <span class="fa fa-clone"></span> Outer Group
                         </a>
                     </li>
+                    <li class="dropdown-item small">
+                        <a href="#" data-bind="click: setupFieldOptions">
+                            <span class="fa fa-gear"></span> Field Settings
+                        </a>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -129,7 +134,7 @@
 
 <script type="text/html" id="report-column">
     <!-- ko foreach: Items -->
-    <td data-bind="hidden: outerGroup, style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '64px' : ''}">
+    <td data-bind="hidden: outerGroup, style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign() ? fieldAlign() : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '64px' : ''}">
         <!-- ko if: LinkTo-->
         <a data-bind="attr: {href: LinkTo}"><span data-bind="html: FormattedValue"></span></a>
         <!-- /ko-->
@@ -715,7 +720,7 @@
     <div class="modal-dialog" style="max-width: 750px;">
         <div class="modal-content" data-bind="with: editFieldOptions">
             <div class="modal-header">
-                <h5 class="modal-title">Setup Additional Field Options</h5>
+                <h5 class="modal-title"><span data-bind="text: fieldName"></span> - Setup Additional Field Options</h5>
             </div>
             <div class="modal-body needs-validation">
                 <div class="form-group row">

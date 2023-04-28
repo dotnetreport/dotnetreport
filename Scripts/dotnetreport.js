@@ -1287,6 +1287,8 @@ var reportViewModel = function (options) {
 		self.ReportDescription("");
 		self.ReportType("List");
 		self.FolderID(self.SelectedFolder() == null ? 0 : self.SelectedFolder().Id);
+		self.pager.sortColumn('');
+		self.pager.currentPage(1);
 
 		self.ChosenFields([]);
 
@@ -2293,7 +2295,7 @@ var reportViewModel = function (options) {
 						e.linkItem = {};
 						e.linkField = false;
 					}
-					col = ko.toJS(col || { fieldName: e.ColumnName });
+					//col = ko.toJS(col || { fieldName: e.ColumnName });
 
 					self.columnDetails.push(col);
 
@@ -2338,6 +2340,10 @@ var reportViewModel = function (options) {
                             });
 						} 
 					}
+
+					e.setupFieldOptions = function () {
+						col.setupFieldOptions();
+                    }
 
 					if (col.selectedAggregate == 'Outer Group' && !_.find(self.OuterGroupColumns(), {fieldId: e.fieldId})) {
 						e.toggleOuterGroup()
@@ -2600,18 +2606,18 @@ var reportViewModel = function (options) {
 		_.forEach(reportData.Columns, function (e, i) {
 			var field = self.SelectedFields()[i];
 			if (i == 0) {
-				data.addColumn(e.IsNumeric ? 'number' : 'string', e.fieldLabel || e.ColumnName);
+				data.addColumn(e.IsNumeric ? 'number' : 'string', e.fieldLabel() || e.ColumnName);
 				//} else if (typeof field !== "undefined" && field.groupInGraph()) {
 				//	subGroups.push({ index: i, column: e.fieldLabel || e.ColumnName });
-			} else if (e.IsNumeric && !e.groupInGraph) {
-				valColumns.push({ index: i, column: e.fieldLabel || e.ColumnName });
+			} else if (e.IsNumeric && !e.groupInGraph()) {
+				valColumns.push({ index: i, column: e.fieldLabel() || e.ColumnName });
 			}
 		});
 
 		if (subGroups.length == 0) {
 			_.forEach(reportData.Columns, function (e, i) {
-				if (i > 0 && e.IsNumeric && !e.groupInGraph) {
-					data.addColumn(e.IsNumeric ? 'number' : 'string', e.fieldLabel || e.ColumnName);
+				if (i > 0 && e.IsNumeric && !e.groupInGraph()) {
+					data.addColumn(e.IsNumeric ? 'number' : 'string', e.fieldLabel() || e.ColumnName);
 				}
 			});
 		}
@@ -2646,12 +2652,11 @@ var reportViewModel = function (options) {
 							_.forEach(valColumns, function (j) {
 								data.addColumn('number', r.Value + (j == 0 ? '' : '-' + j));
 							});
-
 						}
 					} else if (r.Column.IsNumeric) {
 						itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.FormattedValue) || (r.Column.IsNumeric ? 0 : ''));
 					}
-				} else if (r.Column.IsNumeric && !column.groupInGraph) {
+				} else if (r.Column.IsNumeric && !column.groupInGraph()) {
 					itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.FormattedValue) || (r.Column.IsNumeric ? 0 : ''));
 				}
 			});
@@ -2927,6 +2932,7 @@ var reportViewModel = function (options) {
 		self.ShowOnDashboard(report.ShowOnDashboard);
 		self.SortByField(report.SortBy);
 		self.SortDesc(report.SortDesc);
+		self.pager.sortColumn('');
 		self.pager.sortDescending(report.SortDesc);
 		var match = _.find(self.SavedReports(), { reportId: report.ReportID }) || { canEdit: false };
 		self.CanEdit(report.canEdit || match.canEdit || self.adminMode());
@@ -3099,7 +3105,7 @@ var reportViewModel = function (options) {
 							self.ReportMode("generate");
 						}
 						else {
-							self.SaveReport(false);
+							//self.SaveReport(false);
 							self.RunReport(false, true);
 							e.runMode = false;
 						}
