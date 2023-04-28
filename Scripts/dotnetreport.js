@@ -3474,10 +3474,30 @@ var dashboardViewModel = function (options) {
 
 	self.currentDashboard = ko.observable(currentDash);
 	self.selectDashboard = ko.observable(currentDash.id);
+	self.loadDashboard = function (dashboardId) {
+		ajaxcall({
+			url: options.loadSavedDashbordUrl + '?id=' + dashboardId + '&adminMode=' + self.adminMode()
+		}).done(function (reportsData) {
+			var reports = [];
+			_.forEach(reportsData, function (r) {
+				reports.push({ reportSql: r.ReportSql, reportId: r.ReportId, reportFilter: r.ReportFilter, connectKey: r.ConnectKey, x: r.X, y: r.Y, width: r.Width, height: r.Height });
+			});
+
+			var currentDash = dashboardId > 0
+				? (_.find(self.dashboards(), { id: dashboardId }) || { name: '', description: '' })
+				: (self.dashboards().length > 0 ? self.dashboards()[0] : { name: '', description: '' });
+
+			self.dashboard.Id(currentDash.id);
+			self.dashboard.Name(currentDash.name);
+			self.dashboard.Description(currentDash.description);			
+			self.currentDashboard(currentDash);
+			self.loadDashboardReports(reports);
+		});
+    }
 
 	self.selectDashboard.subscribe(function (newValue) {
 		if (newValue != self.currentDashboard().id) {
-			window.location = window.location.href.split("?")[0] + "?id=" + newValue;
+			self.loadDashboard(newValue);
 		}
 	});
 
@@ -3582,7 +3602,7 @@ var dashboardViewModel = function (options) {
 			if (result.result) { result = result.result; }
 			toastr.success("Dashboard saved successfully");
 			setTimeout(function () {
-				window.location = window.location.href.split("?")[0] + "?id=" + result.id;
+				self.loadDashboardReports(result.id);
 			}, 500);
 		});
 
@@ -3601,7 +3621,7 @@ var dashboardViewModel = function (options) {
 				}).done(function (result) {
 					toastr.success("Dashboard deleted successfully");
 					setTimeout(function () {
-						window.location = window.location.href.split("?")[0];
+						self.loadDashboardReports(0);
 					}, 500);
 				});
 			}
@@ -3609,46 +3629,6 @@ var dashboardViewModel = function (options) {
 	};
 
 	self.reports = ko.observableArray([]);
-	var i = 0;
-	_.forEach(options.reports, function (x) {
-		var report = new reportViewModel({
-			runReportUrl: options.runReportUrl,
-			runExportUrl: options.runExportUrl,
-			execReportUrl: options.execReportUrl,
-			reportWizard: options.reportWizard,
-			lookupListUrl: options.lookupListUrl,
-			runReportApiUrl: options.runReportApiUrl,
-			apiUrl: options.apiUrl,
-			reportFilter: x.reportFilter,
-			reportMode: "dashboard",
-			reportSql: x.reportSql,
-			reportId: x.reportId,
-			reportConnect: x.connectKey,
-			users: options.users,
-			userRoles: options.userRoles,
-			skipDraw: true,
-			printReportUrl: options.printReportUrl,
-			dataFilters: options.dataFilters
-		});
-
-		report.isExpanded = ko.observable(false);
-		report.toggleExpand = function () {
-			report.isExpanded(!report.isExpanded());
-		}
-		report.x = ko.observable(x.x);
-		report.y = ko.observable(x.y);
-		report.width = ko.observable(x.width);
-		report.height = ko.observable(x.height);
-		report.panelStyle = 'panel-' + (i == 0 ? 'default' : (i == 1 ? 'info' : (i == 2 ? 'warning' : 'danger')));
-		i = i == 3 ? 0 : i + 1;
-		self.reports.push(report);
-		report.LoadReport(x.reportId, true, '');
-
-		report.showFlyFilters = ko.observable(false);
-		report.toggleFlyFilters = function () {
-			report.showFlyFilters(!report.showFlyFilters());
-		};
-	});
 
 	self.drawChart = function () {
 		_.forEach(self.reports(), function (x) {
@@ -3656,6 +3636,60 @@ var dashboardViewModel = function (options) {
 			x.DrawChart();
 		});
 	};
+
+	self.loadDashboardReports = function (reports) {
+		self.reports([]);
+		var allreports = [];
+		var promises = [];
+		var i = 0;
+		_.forEach(reports, function (x) {
+			var report = new reportViewModel({
+				runReportUrl: options.runReportUrl,
+				runExportUrl: options.runExportUrl,
+				execReportUrl: options.execReportUrl,
+				reportWizard: options.reportWizard,
+				lookupListUrl: options.lookupListUrl,
+				runReportApiUrl: options.runReportApiUrl,
+				apiUrl: options.apiUrl,
+				reportFilter: x.reportFilter,
+				reportMode: "dashboard",
+				reportSql: x.reportSql,
+				reportId: x.reportId,
+				reportConnect: x.connectKey,
+				users: options.users,
+				userRoles: options.userRoles,
+				skipDraw: true,
+				printReportUrl: options.printReportUrl,
+				dataFilters: options.dataFilters
+			});
+
+			report.isExpanded = ko.observable(false);
+			report.toggleExpand = function () {
+				report.isExpanded(!report.isExpanded());
+			}
+			report.x = ko.observable(x.x);
+			report.y = ko.observable(x.y);
+			report.width = ko.observable(x.width);
+			report.height = ko.observable(x.height);
+			report.panelStyle = 'panel-' + (i == 0 ? 'default' : (i == 1 ? 'info' : (i == 2 ? 'warning' : 'danger')));
+			i = i == 3 ? 0 : i + 1;
+
+			report.showFlyFilters = ko.observable(false);
+			report.toggleFlyFilters = function () {
+				report.showFlyFilters(!report.showFlyFilters());
+			};
+
+			allreports.push(report);
+			promises.push(report.LoadReport(x.reportId, true, ''));
+		});
+
+		self.reports(allreports);
+		$.when(promises).done(function () {
+			self.drawChart();
+		});		
+	}
+
+	self.loadDashboardReports(options.reports);
 
 	self.updatePosition = function (item) {
 		if (!item || !item.id) return;

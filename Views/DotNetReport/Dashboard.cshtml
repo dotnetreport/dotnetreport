@@ -60,7 +60,8 @@
                             dataFilters: data.dataFilters,
                             dashboardId: dashboardId,
                             runExportUrl: "",
-                            printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, Context.Request.Scheme)"
+                            printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, Context.Request.Scheme)",
+                            loadSavedDashbordUrl: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")'
                         });
 
                         vm.init().done(function() {
@@ -233,7 +234,7 @@
                                 </a>
                             </li>
                             <li class="dropdown-item">
-                                <a href="#" data-bind="click: downloadPdf">
+                                <a href="#" data-bind="click: downloadPdfAlt">
                                     <span class="fa fa-file-pdf-o"></span> PDF
                                 </a>
                             </li>
