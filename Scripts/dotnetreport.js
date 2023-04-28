@@ -2593,6 +2593,7 @@ var reportViewModel = function (options) {
 		if (!self.isChart() || self.skipDraw === true) return;
 		// Create the data table.
 		var reportData = self.ReportResult().ReportData();
+		if (!reportData) return;
 		var data = new google.visualization.DataTable();
 
 		var subGroups = [];
