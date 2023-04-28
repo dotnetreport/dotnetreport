@@ -2289,6 +2289,9 @@ var reportViewModel = function (options) {
 						col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.procColumnName, e.ColumnName); });
 						e.hideStoredProcColumn = (col ? col.disabled() : true);
 					}
+					else if (e.FormatType == 'Json') {
+						col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.jsonColumnName, e.ColumnName); });
+                    }
 					else
 						col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.fieldName, e.ColumnName, x.dbField, e.SqlField); });
 					if (col && col.linkField()) {
