@@ -47,8 +47,9 @@
             $('.panel-collapse.in')
                 .collapse('show');
         };
-
-        ajaxcall({ url: '@Url.Action("LoadSetupSchema", "DotNetReportApi")' + '?databaseApiKey=' }).done(function(model) {
+    $(document).ready(function() {
+        var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
+        ajaxcall({ url: '@Url.Action("LoadSetupSchema", "DotNetReportApi")' + '?databaseApiKey=' + (queryParams.databaseApiKey || '') }).done(function(model) {
             var options = {
                 model: model,
                 saveTableUrl: model.ApiUrl + 'ReportApi/SaveTable',
@@ -74,6 +75,7 @@
 
             vm.customSql.textQuery.setupQuery();
         });
+    });
 
     </script>
 }
