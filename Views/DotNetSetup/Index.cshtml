@@ -48,22 +48,21 @@
                 .collapse('show');
         };
 
-        $(function() {
-
+        ajaxcall({ url: '@Url.Action("LoadSetupSchema", "DotNetReportApi")' + '?databaseApiKey=' }).done(function(model) {
             var options = {
-                model: @(Html.Raw(JsonConvert.SerializeObject(Model))),
-                saveTableUrl: '@Model.ApiUrl/ReportApi/SaveTable',
-                deleteTableUrl: '@Model.ApiUrl/ReportApi/DeleteTable',
-                getRelationsUrl: '@Model.ApiUrl/ReportApi/GetRelations',
-                getDataConnectionsUrl: '@Model.ApiUrl/ReportApi/GetDataConnections',
-                saveRelationsUrl: '@Model.ApiUrl/ReportApi/SaveRelations',
-                addDataConnectionUrl: '@Model.ApiUrl/ReportApi/AddDataConnection',
-                saveProcUrl: '@Model.ApiUrl/ReportApi/SaveProcedure',
-                deleteProcUrl: '@Model.ApiUrl/ReportApi/DeleteProcedure',
-                reportsApiUrl: '@Model.ApiUrl',
-                getUsersAndRoles: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")',                
-                searchProcUrl: '@Url.Action("SearchProcedure", "DotNetReportApi")',                
-                getSchemaFromSql: '@Url.Action("GetSchemaFromSql", "DotNetReportApi")',                
+                model: model,
+                saveTableUrl: model.ApiUrl + 'ReportApi/SaveTable',
+                deleteTableUrl: model.ApiUrl + 'ReportApi/DeleteTable',
+                getRelationsUrl: model.ApiUrl + 'ReportApi/GetRelations',
+                getDataConnectionsUrl: model.ApiUrl + 'ReportApi/GetDataConnections',
+                saveRelationsUrl: model.ApiUrl + 'ReportApi/SaveRelations',
+                addDataConnectionUrl: model.ApiUrl + 'ReportApi/AddDataConnection',
+                saveProcUrl: model.ApiUrl + 'ReportApi/SaveProcedure',
+                deleteProcUrl: model.ApiUrl + 'ReportApi/DeleteProcedure',
+                reportsApiUrl: model.ApiUrl,
+                getUsersAndRoles: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")',
+                searchProcUrl: '@Url.Action("SearchProcedure", "DotNetReportApi")',
+                getSchemaFromSql: '@Url.Action("GetSchemaFromSql", "DotNetReportApi")',
                 apiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")',
             };
 
@@ -72,7 +71,7 @@
             vm.setupManageAccess();
             ko.applyBindings(vm);
             vm.LoadDataConnections();
-            
+
             vm.customSql.textQuery.setupQuery();
         });
 
