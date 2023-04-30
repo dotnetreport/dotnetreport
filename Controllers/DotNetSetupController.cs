@@ -5,35 +5,21 @@ using NpgsqlTypes;
 using ReportBuilder.Web.Models;
 using System.Data;
 using System.Text.Json;
+using System.Data.OleDb;
 
 namespace ReportBuilder.Web.Controllers
 {
-    //[Authorize]
+    //[Authorize(Roles="Administrator")]
     public class DotNetSetupController : Controller
     {
         public async Task<IActionResult> Index(string databaseApiKey = "")
-        {
-            var connect = GetConnection(databaseApiKey);
-            var tables = new List<TableViewModel>();
-            var procedures = new List<TableViewModel>();
-            tables.AddRange(await GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
-            tables.AddRange(await GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
-            procedures.AddRange(await GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
-            var model = new ManageViewModel
-            {
-                ApiUrl = connect.ApiUrl,
-                AccountApiKey = connect.AccountApiKey,
-                DatabaseApiKey = connect.DatabaseApiKey,
-                Tables = tables,
-                Procedures = procedures
-            };
-
-            return View(model);
+        {           
+            return View();
         }
 
         #region "Private Methods"
 
-        private ConnectViewModel GetConnection(string databaseApiKey)
+        public static ConnectViewModel GetConnection(string databaseApiKey)
         {
             return new ConnectViewModel
             {
@@ -43,7 +29,7 @@ namespace ReportBuilder.Web.Controllers
             };
         }
        
-        private async Task<string> GetConnectionString(ConnectViewModel connect)
+        public static async Task<string> GetConnectionString(ConnectViewModel connect)
         {
             using (var client = new HttpClient())
             {
@@ -57,7 +43,7 @@ namespace ReportBuilder.Web.Controllers
             
         }
 
-        private FieldTypes ConvertToJetDataType(string dbType)
+        public static FieldTypes ConvertToJetDataType(string dbType)
         {
             NpgsqlDbType npgDbDataType;
 
@@ -93,7 +79,7 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        private async Task<List<TableViewModel>> GetApiTables(string accountKey, string dataConnectKey)
+        public static async Task<List<TableViewModel>> GetApiTables(string accountKey, string dataConnectKey)
         {
             using (var client = new HttpClient())
             {
@@ -111,7 +97,9 @@ namespace ReportBuilder.Web.Controllers
                         AccountIdField = item.accountIdField,
                         TableName = item.tableDbName,
                         DisplayName = item.tableName,
-                        AllowedRoles = item.tableRoles.ToObject<List<string>>()
+                        AllowedRoles = item.tableRoles.ToObject<List<string>>(),
+                        CustomTable = item.customTable,
+                        CustomTableSql = Convert.ToBoolean(item.customTable) == true ? DotNetReportHelper.Decrypt(Convert.ToString(item.customTableSql)) : ""
                     });
 
                 }
@@ -120,7 +108,7 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        private async Task<List<ColumnViewModel>> GetApiFields(string accountKey, string dataConnectKey, int tableId)
+        public static async Task<List<ColumnViewModel>> GetApiFields(string accountKey, string dataConnectKey, int tableId)
         {
             using (var client = new HttpClient())
             {
@@ -162,6 +150,8 @@ namespace ReportBuilder.Web.Controllers
                         ForeignParentValueField = item.foreignParentValue,
                         ForeignParentTable = item.foreignParentTable,
                         ForeignParentRequired = item.foreignParentRequired,
+
+                        JsonStructure = item.jsonStructure
                     };
 
                     columns.Add(column);
@@ -171,7 +161,7 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        private async Task<List<TableViewModel>> GetTables(string type = "TABLE", string accountKey = null, string dataConnectKey = null)
+        public static async Task<List<TableViewModel>> GetTables(string type = "TABLE", string accountKey = null, string dataConnectKey = null)
         {
             var tables = new List<TableViewModel>();
 
@@ -229,6 +219,8 @@ namespace ReportBuilder.Web.Controllers
                             PrimaryKey = matchColumn != null ? matchColumn.PrimaryKey : dr["COLUMN_NAME"].ToString().ToLower().EndsWith("id") && idx == 0,
                             DisplayOrder = matchColumn != null ? matchColumn.DisplayOrder : idx++,
                             FieldType = matchColumn != null ? matchColumn.FieldType : ConvertToJetDataType(dr["DATA_TYPE"].ToString()).ToString(),
+                            DisplayOrder = matchColumn != null ? matchColumn.DisplayOrder : idx,
+                            FieldType = matchColumn != null ? matchColumn.FieldType : ConvertToJetDataType((int)dr["DATA_TYPE"]).ToString(),
                             AllowedRoles = matchColumn != null ? matchColumn.AllowedRoles : new List<string>()
                         };
 
@@ -253,16 +245,36 @@ namespace ReportBuilder.Web.Controllers
                             column.ForeignParentKeyField = matchColumn.ForeignParentKeyField;
                             column.ForeignParentValueField = matchColumn.ForeignParentValueField;
                             column.ForeignParentRequired = matchColumn.ForeignParentRequired;
+                            column.JsonStructure = matchColumn.JsonStructure;
 
                             column.Selected = true;
                         }
 
+                        idx++;
                         table.Columns.Add(column);
                     }
+
+                    // add columns not in db, but in dotnet report
+                    if (matchTable != null) {
+                        table.Columns.AddRange(matchTable.Columns.Where(x => !table.Columns.Select(c => c.Id).Contains(x.Id)).ToList());
+                    }
+
                     table.Columns = table.Columns.OrderBy(x => x.DisplayOrder).ToList();
                     tables.Add(table);
                 }
 
+                // add tables not in db, but in dotnet report
+                var notMatchedTables = currentTables.Where(x => !tables.Select(c => c.Id).Contains(x.Id) && ((type=="TABLE") ? !x.IsView : x.IsView)).ToList();
+                if (notMatchedTables.Any())
+                {
+                    foreach(var notMatchedTable in notMatchedTables)
+                    {
+                        notMatchedTable.Selected = true;
+                        notMatchedTable.Columns = await GetApiFields(accountKey, dataConnectKey, notMatchedTable.Id);
+                        notMatchedTable.Columns.ForEach(x => x.Selected = true);
+                    }
+                    tables.AddRange(notMatchedTables);
+                }
                 conn.Close();
                 conn.Dispose();
             }
@@ -271,7 +283,7 @@ namespace ReportBuilder.Web.Controllers
             return tables;
         }
 
-        private async Task<List<TableViewModel>> GetApiProcs(string accountKey, string dataConnectKey)
+        public static async Task<List<TableViewModel>> GetApiProcs(string accountKey, string dataConnectKey)
         {
             using (var client = new HttpClient())
             {
@@ -284,7 +296,7 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        private Type GetType(FieldTypes type)
+        public static Type GetType(FieldTypes type)
         {
             switch (type)
             {
@@ -305,129 +317,7 @@ namespace ReportBuilder.Web.Controllers
 
             }
         }
-
-        public class SearchProcCall { public string value { get; set; } public string accountKey { get; set; } public string dataConnectKey { get; set; } }
-
-        [HttpPost]
-        public async Task<IActionResult> SearchProcedure([FromBody] SearchProcCall data)
-        {
-            string value = data.value; string accountKey = data.accountKey; string dataConnectKey = data.dataConnectKey;
-            return new JsonResult(await GetSearchProcedure(value, accountKey, dataConnectKey), new JsonSerializerOptions() { PropertyNamingPolicy = null });
-        }
-
-        private async Task<List<TableViewModel>> GetSearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
-        {
-            var tables = new List<TableViewModel>();
-            var connString = await GetConnectionString(GetConnection(dataConnectKey));
-            using (NpgsqlConnection conn = new NpgsqlConnection(connString))
-            {
-                // open the connection to the database 
-                conn.Open();
-                string spQuery = "SELECT ROUTINE_NAME, ROUTINE_DEFINITION, ROUTINE_SCHEMA FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_DEFINITION LIKE '%" + value + "%' AND ROUTINE_TYPE = 'PROCEDURE'";
-                NpgsqlCommand cmd = new NpgsqlCommand(spQuery, conn);
-                cmd.CommandType = CommandType.Text;
-                DataTable dtProcedures = new DataTable();
-                dtProcedures.Load(cmd.ExecuteReader());
-                int count = 1;
-                foreach (DataRow dr in dtProcedures.Rows)
-                {
-                    var procName = dr["ROUTINE_NAME"].ToString();
-                    var procSchema = dr["ROUTINE_SCHEMA"].ToString();
-                    cmd = new NpgsqlCommand(procName, conn);
-                    cmd.CommandType = CommandType.StoredProcedure;
-                    // Get the parameters.
-                    //NpgsqlCommandBuilder.DeriveParameters(cmd);
-                    List<ParameterViewModel> parameterViewModels = new List<ParameterViewModel>();
-                    foreach (NpgsqlParameter param in cmd.Parameters)
-                    {
-                        if (param.Direction == ParameterDirection.Input)
-                        {
-                            var parameter = new ParameterViewModel
-                            {
-                                ParameterName = param.ParameterName,
-                                DisplayName = param.ParameterName,
-                                ParameterValue = param.Value != null ? param.Value.ToString() : "",
-                                ParamterDataTypeOleDbTypeInteger = Convert.ToInt32(param.DbType),
-                                ParamterDataTypeOleDbType = param.NpgsqlDbType,
-                                ParameterDataTypeString = GetType(ConvertToJetDataType(param.NpgsqlDbType.ToString())).Name
-                            };
-                            if (parameter.ParameterDataTypeString.StartsWith("Int")) parameter.ParameterDataTypeString = "Int";
-                            parameterViewModels.Add(parameter);
-                        }
-                    }
-                    DataTable dt = new DataTable(); 
-                    cmd = new NpgsqlCommand($"[{procSchema}].[{procName}]", conn);
-                    cmd.CommandType = CommandType.StoredProcedure;
-                    foreach (var data in parameterViewModels)
-                    {
-                        cmd.Parameters.Add(new NpgsqlParameter { Value = DBNull.Value, ParameterName = data.ParameterName, Direction = ParameterDirection.Input, IsNullable = true });
-                    }
-                    NpgsqlDataReader reader = cmd.ExecuteReader();
-                    dt = reader.GetSchemaTable();
-
-                    if (dt == null) continue;
-
-                    // Store the table names in the class scoped array list of table names
-                    List<ColumnViewModel> columnViewModels = new List<ColumnViewModel>();
-                    for (int i = 0; i < dt.Rows.Count; i++)
-                    {
-                        var column = new ColumnViewModel
-                        {
-                            ColumnName = dt.Rows[i].ItemArray[0].ToString(),
-                            DisplayName = dt.Rows[i].ItemArray[0].ToString(),
-                            FieldType = ConvertToJetDataType(dt.Rows[i]["ProviderType"].ToString()).ToString()
-                        };
-                        columnViewModels.Add(column);
-                    }
-                    tables.Add(new TableViewModel
-                    {
-                        TableName = procName,
-                        SchemaName = dr["ROUTINE_SCHEMA"].ToString(),
-                        DisplayName = procName,
-                        Parameters = parameterViewModels,
-                        Columns = columnViewModels
-                    });
-                    count++;
-                }
-                conn.Close();
-                conn.Dispose();
-            }
-            return tables;
-        }
-
-        private async Task<DataTable> GetStoreProcedureResult(TableViewModel model, string accountKey = null, string dataConnectKey = null)
-        {
-            DataTable dt = new DataTable();
-            var connString = await GetConnectionString(GetConnection(dataConnectKey));
-            using (NpgsqlConnection conn = new NpgsqlConnection(connString))
-            {
-                // open the connection to the database 
-                conn.Open();
-                NpgsqlCommand cmd = new NpgsqlCommand(model.TableName, conn);
-                cmd.CommandType = CommandType.StoredProcedure;
-                foreach (var para in model.Parameters)
-                {
-                    if (string.IsNullOrEmpty(para.ParameterValue))
-                    {
-                        if (para.ParamterDataTypeOleDbType == NpgsqlDbType.Timestamp || para.ParamterDataTypeOleDbType == NpgsqlDbType.Date)
-                        {
-                            para.ParameterValue = DateTime.Now.ToShortDateString();
-                        }
-                    }
-                    cmd.Parameters.AddWithValue("@" + para.ParameterName, para.ParameterValue);
-                    //cmd.Parameters.Add(new NpgsqlParameter { 
-                    //    Value =  string.IsNullOrEmpty(para.ParameterValue) ? DBNull.Value : (object)para.ParameterValue , 
-                    //    ParameterName = para.ParameterName, 
-                    //    Direction = ParameterDirection.Input, 
-                    //    IsNullable = true });
-                }
-                dt.Load(cmd.ExecuteReader());
-                conn.Close();
-                conn.Dispose();
-            }
-            return dt;
-        }
-
+       
         #endregion
     }
 }

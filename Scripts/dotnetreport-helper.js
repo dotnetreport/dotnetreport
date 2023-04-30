@@ -295,3 +295,231 @@ var manageAccess = function (options) {
         isDashboard: ko.observable(options.isDashboard == true ? true : false)
     };
 };
+
+function beautifySql(sql, htmlMode=true) {
+    var _sql = sql;
+    try {
+        const keywords = [
+            'SELECT', 'FROM', 'WHERE', 'AND', 'OR', 'ORDER BY',
+            'GROUP BY', 'HAVING', 'LIMIT', 'OFFSET', 'ON',
+            'LEFT JOIN', 'RIGHT JOIN', 'INNER JOIN', 'OUTER JOIN',
+            'FULL OUTER JOIN', 'AS', 'DISTINCT', 'COUNT', 'SUM',
+            'AVG', 'MAX', 'MIN', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END'
+        ];
+
+        if (htmlMode) {
+            // Add spaces around keywords
+            keywords.forEach(keyword => {
+                sql = sql.replace(new RegExp('\\b' + keyword + '\\b', 'gi'), '<span class="keyword">' + keyword + '</span> ');
+            });
+        }
+
+        // Add line breaks after some keywords
+        sql = sql.replace(/(SELECT|FROM|WHERE|GROUP BY|ORDER BY|HAVING)/gi, (htmlMode ? '<br>$1' : '\n$1'));
+
+        // Indent nested queries
+        let indentation = 0;
+        sql = sql.replace(/\b(SELECT|FROM)\b/gi, (match, keyword) => {
+            if (keyword === 'SELECT') {
+                indentation++;
+            }
+            const indent = (htmlMode ? '&nbsp;' : ' ').repeat(indentation * 4);
+            return htmlMode ? '<br>' + indent + '<span class="keyword">' + match + '</span>' : '\n' + indent + match;
+        });
+        sql = sql.replace(/\b((LEFT|RIGHT|INNER|OUTER|FULL OUTER) JOIN|ON)\b/gi, (match, keyword) => {
+            if (keyword === 'ON') {
+                if (indentation > 1) indentation--;
+            }
+            const indent = (htmlMode ? '&nbsp;' : ' ').repeat(indentation * 4);
+            return htmlMode ? '<br>' + indent + '<span class="keyword">' + match + '</span>' : '\n' + indent + match;
+        });
+
+        // Put each field in SELECT on a separate line
+        sql = sql.replace(/SELECT([\s\S]*?)FROM/gi, (match, fields) => {
+            fields = fields.split(',').map(field => field.trim());
+            const indent = (htmlMode ? '&nbsp;' : ' ').repeat(indentation * 4 + 4);
+            return 'SELECT ' + fields.join((htmlMode ? ',<br>' : ',\n') + indent) + indent + (htmlMode ? '' : '\n') + 'FROM';
+        });
+
+        return sql.trim();
+    }
+    catch {
+        return _sql;
+    }
+}
+
+var textQuery = function (options) {
+    var self = this;
+    self.queryItems = [];
+    self.filterItems = [];
+    self.filterField = null;
+
+    self.ParseQuery = function (token, text) {
+        return ajaxcall({
+            noBlocking: true,
+            url: options.apiUrl,
+            data: {
+                method: "/ReportApi/ParseQuery",
+                model: JSON.stringify({
+                    token: token,
+                    text: text
+                })
+            }
+        });
+    }
+
+    self.QueryMethods = [
+        { value: 'Sum', key: '<span class="fa fa-flash"></span> Sum of', type: 'Function' },
+        { value: 'Avg', key: '<span class="fa fa-flash"></span> Average of', type: 'Function' },
+        { value: 'Sum', key: '<span class="fa fa-flash"></span> Total of', type: 'Function' },
+        { value: 'Count', key: '<span class="fa fa-flash"></span> Count of', type: 'Function' },
+        { value: 'Percent', key: '<span class="fa fa-flash"></span> Percentage of', type: 'Function' },
+        { value: 'OrderBy', key: '<span class="fa fa-gear"></span> Order by', type: 'Order' },
+        { value: 'Bar', key: '<span class="fa fa-bar-chart"></span> as Bar Chart', type: 'ReportType' },
+        { value: 'Pie', key: '<span class="fa fa-pie-chart"></span> as Pie Chart', type: 'ReportType' },
+    ];
+
+    self.FilterMethods = [
+        { value: 'Today', key: '<span class="fa fa-filter"></span> for Today', type: 'DateFilter' },
+        { value: 'Yesterday', key: '<span class="fa fa-filter"></span> for Yesterday', type: 'DateFilter' },
+        { value: 'This Month', key: '<span class="fa fa-filter"></span> for This Month', type: 'DateFilter' },
+        { value: 'Last Month', key: '<span class="fa fa-filter"></span> for Last Month', type: 'DateFilter' },
+    ];
+
+    self.getAggregate = function (columnId) {
+        var func = 'Group';
+        _.forEach(self.queryItems, function (x, i) {
+            if (x.value == columnId) {
+                if (i > 0 && self.queryItems[i - 1].type == 'Function') {
+                    func = self.queryItems[i - 1].value;
+                }
+                return false;
+            }
+        });
+
+        return func;
+    }
+
+    self.getReportType = function () {
+        var reportType = _.find(self.queryItems, { type: 'ReportType' });
+        if (reportType) {
+            return reportType.value;
+        }
+
+        return (_.find(self.queryItems, { type: 'Function' })) ? 'Summary' : 'List';
+    }
+
+    self.resetQuery = function () {
+        self.queryItems = [];
+        self.filterItems = [];
+        document.getElementById("query-input").innerHTML = "Show me&nbsp;";
+    }
+
+    self.searchFields = {
+        selectedOption: ko.observable(),
+        url: options.apiUrl,
+        query: function (params) {
+            return params.term ? {
+                method: "/ReportApi/ParseQuery",
+                model: JSON.stringify({
+                    token: params.term,
+                    text: ''
+                })
+            } : null;
+        },
+        processResults: function (data) {
+            if (data.d) results = data.d;
+            var items = _.map(data, function (x) {
+                return { id: x.fieldId, text: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey };
+            });
+
+            return {
+                results: items
+            };
+        }
+    }
+
+    self.addQueryItem = function (newItem) {
+        if (self.usingFilter() && !self.filterField) {
+            self.filterField = newItem;
+            return;
+        }
+
+        if (self.usingFilter() && self.filterField) {
+            // add to filters
+            return;
+        }
+
+        // add to columns
+        var match = _.find(self.queryItems, { 'value': newItem.value });
+        if (!match) {
+            self.queryItems.push(newItem);
+        }
+    }
+
+    self.usingFilter = function () {
+        // Check if the user has typed "where" or "for" and add filter methods
+        var textInput = document.getElementById("query-input");
+        var inputText = textInput.textContent.toLowerCase().trim();
+        var filterTexts = ['where ', 'when ', 'for ']
+        var containsFilter = false;
+
+        var containsFilter = _.some(filterTexts, function (filter) {
+            return _.includes(inputText, filter);
+        });
+
+        return containsFilter;
+    }
+
+    self.setupQuery = function () {
+        var tributeAttributes = {
+            allowSpaces: true,
+            autocompleteMode: true,
+            noMatchTemplate: "",
+            values: function (token, callback) {
+                if (token == "=" || token == ">" || token == "<") return;
+                self.ParseQuery(token, "").done(function (results) {
+                    if (results.d) results = results.d;
+                    var items = _.map(results, function (x) {
+                        return { value: x.fieldId, key: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey };
+                    });
+
+                    if (self.usingFilter() && self.filterField != null) {
+                        items = items.concat(self.FilterMethods);
+                    } else {
+                        items = items.concat(self.QueryMethods);
+                    }
+                    callback(items);
+                });
+            },
+            selectTemplate: function (item) {
+                if (typeof item === "undefined") return null;
+                if (this.range.isContentEditable(this.current.element)) {
+                    return (
+                        '<span contenteditable="false"><a>' +
+                        item.original.key +
+                        "</a></span>"
+                    );
+                }
+
+                return item.original.value;
+            },
+            menuItemTemplate: function (item) {
+                return item.string;
+            }
+        };
+
+        var tribute = new Tribute(tributeAttributes);
+        tribute.attach(document.getElementById("query-input"));
+
+        document.getElementById("query-input")
+            .addEventListener("tribute-replaced", function (e) {
+                self.addQueryItem(e.detail.item.original);
+            });
+
+        document.getElementById("query-input")
+            .addEventListener("menuItemRemoved", function (e) {
+                self.queryItems.remove(e.detail.item.original);
+            });
+    }
+}
