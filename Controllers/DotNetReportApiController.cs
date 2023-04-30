@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
+using NpgsqlTypes;
 using ReportBuilder.Web.Models;
 using System.Data;
 using System.Text;
@@ -493,13 +494,13 @@ namespace ReportBuilder.Web.Controllers
                 table.CustomTableSql = data.value;
 
                 var connString = await DotNetSetupController.GetConnectionString(DotNetSetupController.GetConnection(data.dataConnectKey));
-                using (OleDbConnection conn = new OleDbConnection(connString))
+                using (var conn = new NpgsqlConnection(connString))
                 {
                     // open the connection to the database 
                     conn.Open();
-                    OleDbCommand cmd = new OleDbCommand(data.value, conn);
+                    var cmd = new NpgsqlCommand(data.value, conn);
                     cmd.CommandType = CommandType.Text;
-                    using (OleDbDataReader reader = cmd.ExecuteReader())
+                    using (var reader = cmd.ExecuteReader())
                     {
                         // Get the column metadata using schema.ini file
                         DataTable schemaTable = new DataTable();
@@ -514,7 +515,7 @@ namespace ReportBuilder.Web.Controllers
                                 DisplayName = dr["ColumnName"].ToString(),
                                 PrimaryKey = dr["ColumnName"].ToString().ToLower().EndsWith("id") && idx == 0,
                                 DisplayOrder = idx,
-                                FieldType = DotNetSetupController.ConvertToJetDataType((int)dr["ProviderType"]).ToString(),
+                                FieldType = DotNetSetupController.ConvertToJetDataType(dr["ProviderType"].ToString()).ToString(),
                                 AllowedRoles = new List<string>(),
                                 Selected = true
                             };
@@ -644,12 +645,12 @@ namespace ReportBuilder.Web.Controllers
         {
             var tables = new List<TableViewModel>();
             var connString = await DotNetSetupController.GetConnectionString(DotNetSetupController.GetConnection(dataConnectKey));
-            using (OleDbConnection conn = new OleDbConnection(connString))
+            using (NpgsqlConnection conn = new NpgsqlConnection(connString))
             {
                 // open the connection to the database 
                 conn.Open();
                 string spQuery = "SELECT ROUTINE_NAME, ROUTINE_DEFINITION, ROUTINE_SCHEMA FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_DEFINITION LIKE '%" + value + "%' AND ROUTINE_TYPE = 'PROCEDURE'";
-                OleDbCommand cmd = new OleDbCommand(spQuery, conn);
+                NpgsqlCommand cmd = new NpgsqlCommand(spQuery, conn);
                 cmd.CommandType = CommandType.Text;
                 DataTable dtProcedures = new DataTable();
                 dtProcedures.Load(cmd.ExecuteReader());
@@ -658,12 +659,12 @@ namespace ReportBuilder.Web.Controllers
                 {
                     var procName = dr["ROUTINE_NAME"].ToString();
                     var procSchema = dr["ROUTINE_SCHEMA"].ToString();
-                    cmd = new OleDbCommand(procName, conn);
+                    cmd = new NpgsqlCommand(procName, conn);
                     cmd.CommandType = CommandType.StoredProcedure;
                     // Get the parameters.
-                    OleDbCommandBuilder.DeriveParameters(cmd);
+                    //OleDbCommandBuilder.DeriveParameters(cmd);
                     List<ParameterViewModel> parameterViewModels = new List<ParameterViewModel>();
-                    foreach (OleDbParameter param in cmd.Parameters)
+                    foreach (NpgsqlParameter param in cmd.Parameters)
                     {
                         if (param.Direction == ParameterDirection.Input)
                         {
@@ -672,22 +673,22 @@ namespace ReportBuilder.Web.Controllers
                                 ParameterName = param.ParameterName,
                                 DisplayName = param.ParameterName,
                                 ParameterValue = param.Value != null ? param.Value.ToString() : "",
-                                ParamterDataTypeOleDbTypeInteger = Convert.ToInt32(param.OleDbType),
-                                ParamterDataTypeOleDbType = param.OleDbType,
-                                ParameterDataTypeString = DotNetSetupController.GetType(DotNetSetupController.ConvertToJetDataType(Convert.ToInt32(param.OleDbType))).Name
+                                ParamterDataTypeOleDbTypeInteger = Convert.ToInt32(param.DbType),
+                                ParamterDataTypeOleDbType = param.NpgsqlDbType,
+                                ParameterDataTypeString = DotNetSetupController.GetType(DotNetSetupController.ConvertToJetDataType(param.NpgsqlDbType.ToString())).Name
                             };
                             if (parameter.ParameterDataTypeString.StartsWith("Int")) parameter.ParameterDataTypeString = "Int";
                             parameterViewModels.Add(parameter);
                         }
                     }
                     DataTable dt = new DataTable();
-                    cmd = new OleDbCommand($"[{procSchema}].[{procName}]", conn);
+                    cmd = new NpgsqlCommand($"[{procSchema}].[{procName}]", conn);
                     cmd.CommandType = CommandType.StoredProcedure;
                     foreach (var data in parameterViewModels)
                     {
-                        cmd.Parameters.Add(new OleDbParameter { Value = DBNull.Value, ParameterName = data.ParameterName, Direction = ParameterDirection.Input, IsNullable = true });
+                        cmd.Parameters.Add(new NpgsqlParameter { Value = DBNull.Value, ParameterName = data.ParameterName, Direction = ParameterDirection.Input, IsNullable = true });
                     }
-                    OleDbDataReader reader = cmd.ExecuteReader();
+                    NpgsqlDataReader reader = cmd.ExecuteReader();
                     dt = reader.GetSchemaTable();
 
                     if (dt == null) continue;
@@ -700,7 +701,7 @@ namespace ReportBuilder.Web.Controllers
                         {
                             ColumnName = dt.Rows[i].ItemArray[0].ToString(),
                             DisplayName = dt.Rows[i].ItemArray[0].ToString(),
-                            FieldType = DotNetSetupController.ConvertToJetDataType((int)dt.Rows[i]["ProviderType"]).ToString()
+                            FieldType = DotNetSetupController.ConvertToJetDataType(dt.Rows[i]["ProviderType"].ToString()).ToString()
                         };
                         columnViewModels.Add(column);
                     }
@@ -724,17 +725,17 @@ namespace ReportBuilder.Web.Controllers
         {
             DataTable dt = new DataTable();
             var connString = await DotNetSetupController.GetConnectionString(DotNetSetupController.GetConnection(dataConnectKey));
-            using (OleDbConnection conn = new OleDbConnection(connString))
+            using (NpgsqlConnection conn = new NpgsqlConnection(connString))
             {
                 // open the connection to the database 
                 conn.Open();
-                OleDbCommand cmd = new OleDbCommand(model.TableName, conn);
+                var cmd = new NpgsqlCommand(model.TableName, conn);
                 cmd.CommandType = CommandType.StoredProcedure;
                 foreach (var para in model.Parameters)
                 {
                     if (string.IsNullOrEmpty(para.ParameterValue))
                     {
-                        if (para.ParamterDataTypeOleDbType == OleDbType.DBTimeStamp || para.ParamterDataTypeOleDbType == OleDbType.DBDate)
+                        if (para.ParamterDataTypeOleDbType == NpgsqlDbType.Timestamp || para.ParamterDataTypeOleDbType == NpgsqlDbType.Date)
                         {
                             para.ParameterValue = DateTime.Now.ToShortDateString();
                         }
