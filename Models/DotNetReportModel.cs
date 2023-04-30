@@ -472,7 +472,7 @@ namespace ReportBuilder.Web.Models
 
         public static string GetFormattedValue(DataColumn col, DataRow row, string formatType)
         {
-            if (@row[col] != null && row[col] != DBNull.Value)
+            if (row[col] != null && row[col] != DBNull.Value && !string.IsNullOrEmpty(row[col].ToString()))
             {
                 var val = row[col].ToString();
                 if (IsValidJson(val) && !IsNumeric(val))
