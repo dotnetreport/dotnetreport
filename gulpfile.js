@@ -97,6 +97,24 @@ gulp.task("clean", function (cb) {
 	return rimraf("wwwroot/lib/", cb);
 });
 
+gulp.task("npm-pack", function () {
+
+	var streams = [];
+
+	// move dotnet report files
+	streams.push(gulp.src("Scripts/dotnetreport.js").pipe(gulp.dest("src/")));
+	streams.push(gulp.src("Scripts/dotnetreport-helper.js").pipe(gulp.dest("src/")));
+	streams.push(gulp.src("Scripts/dotnetreport-setup.js").pipe(gulp.dest("src/")));
+	streams.push(gulp.src("Content/dotnetreport.css").pipe(gulp.dest("src/")));
+	streams.push(gulp.src("Content/img/report-logo.png").pipe(gulp.dest("src/")));
+	streams.push(gulp.src("Scripts/gridstack.jQueryUi.min.js").pipe(gulp.dest("src/lib/")));
+	streams.push(gulp.src("Scripts/gridstack.min.js").pipe(gulp.dest("src/lib/")));
+	streams.push(gulp.src("Scripts/gridstack.min.css").pipe(gulp.dest("src/lib/")));
+
+	return merge(streams);
+
+});
+
 gulp.task("scripts", function () {
 
 	var streams = [];

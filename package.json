@@ -1,7 +1,9 @@
 {
-  "version": "1.0.0",
-  "name": "asp.net",
-  "private": true,
+  "name": "dotnetreport",
+  "version": "5.1.0-beta.2",
+  "description": "module that contains all scripts needed for dotnetreport",
+  "main": "dotnetreport.min.js",
+  "author": "dotnetreport",
   "dependencies": {
     "jquery": "^3.4.1",
     "jquery-ui-dist": "1.12.1",
@@ -24,11 +26,30 @@
     "fabric": "4.3.1"
   },
   "devDependencies": {
+    "@babel/cli": "^7.18.9",
+    "@babel/core": "^7.18.9",
+    "@babel/preset-env": "^7.18.9",
+    "babel-preset-minify": "^0.5.2",
     "gulp": "^4.0.2",
     "gulp-concat": "2.6.1",
     "gulp-htmlclean": "^2.7.22",
     "gulp-uglify": "^3.0.2",
     "merge-stream": "^1.0.1",
     "rimraf": "^2.7.1"
-  }
+  },
+  "peerDependencies": {
+    "jquery": "^3.4.1",
+    "knockout": "3.5.0",
+    "knockout-mapping": "2.6.0",
+    "knockout-sortable": "1.1.0"
+  },
+  "files": [
+    "src/dotnetreport.js",
+    "src/dotnetreport-helper.js",
+    "src/dotnetreport-setup.js",
+    "src/dotnetreport.css",
+    "src/lib/gridstack.min.js",
+    "src/lib/gridstack.jQueryUI.min.js",
+    "src/lib/gridstack.min.css"
+  ]
 }
