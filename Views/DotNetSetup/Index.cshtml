@@ -88,8 +88,11 @@
         <div class="alert alert-danger">
             Do not expose this Setup Tool to end users who should not have access to it. Ideally, only Developers should be given access to this utility.
         </div>
-        <div class="form-row">
-            <div class="form-group">
+        <div data-bind="visible: false;">
+            Loading...
+        </div>
+        <div class="form-row" style="display: none;" data-bind="visible: true">
+        <div class="form-group">
                 <div class="control-group">
                     <select class="form-control" data-bind="options: DataConnections, optionsText: 'DataConnectName', optionsValue: 'DataConnectGuid', value: currentConnectionKey"></select>
                     <button class="btn btn-primary btn-sm" data-bind="click: switchConnection, visible: canSwitchConnection">Switch Connection</button>
@@ -128,7 +131,7 @@
         <br />
     </div>
     <!-- Tab panes -->
-    <div class="fix-content">
+    <div class="fix-content" style="display: none;" data-bind="visible: true">
         <div class="tab-content">
             <div role="tabpanel" class="tab-pane active" id="tablesfields">
                 <div data-bind="with: Tables">
@@ -153,8 +156,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="menu row" data-bind="" style="margin-left: 20px;">
-                    <!-- ko foreach: pagedTables -->
+                <div class="menu row" style="margin-left: 20px;" data-bind="foreach: pagedTables">
                     <div class="menu-category card">
 
                         <div class="card-header clearfix" style="">
@@ -202,7 +204,6 @@
                             <button class="btn btn-sm btn-link label-sm" data-bind="click: unselectAllColumns, visible: Selected">Unselect All</button>
                             <button class="btn btn-sm btn-link label-sm" data-bind="click: selectAllColumns, visible: Selected">Select All</button>
                             <div class="list-group" data-bind="sortable: { data: Columns, options: { handle: '.sortable', cursor: 'move' }, afterMove: $parent.columnSorted }">
-                                <!-- ko foreach: Columns -->
                                 <div class="list-group-item">
                                     <div class="checkbox">
                                         <label>
@@ -217,13 +218,10 @@
                                             <span class="fa fa-arrows" aria-hidden="true" title="Drag to reorder"></span>
                                         </div>
                                     </div>
-
                                 </div>
-                                <!-- /ko -->
                             </div>
                         </div>
                     </div>
-                    <!-- /ko -->
                 </div>
             </div>
             <div role="tabpanel" class="tab-pane" id="relations">
@@ -313,12 +311,10 @@
                 <button class="btn btn-primary" data-toggle="modal" data-target="#procedure-modal">Add Stored Procs from database</button>
                 <br />
                 <br />
-                <div class="menu row" data-bind="with: Procedures" style="margin-left: 20px;">
-                    <div data-bind="if: savedProcedures().length == 0">
-                        No Stored Procedures have been setup yet.
-                    </div>
-                    <!-- ko foreach: savedProcedures -->
-
+                <div data-bind="if: Procedures.savedProcedures().length == 0">
+                    No Stored Procedures have been setup yet.
+                </div>                    
+                <div class="menu row" data-bind="foreach: Procedures.savedProcedures" style="margin-left: 20px;">
                     <div class="menu-category card">
 
                         <div class="card-header clearfix" style="">
@@ -355,8 +351,7 @@
                                 </p>
                                 <label class="small">Columns</label>
 
-                                <div class="list-group">
-                                    <!-- ko foreach: Columns -->
+                                <div class="list-group" data-bind="foreach: Columns">
                                     <div class="list-group-item">
                                         <label>
                                             <span data-bind="editable: DisplayName, attr: {title: 'DB field is ' + ColumnName()}"></span>
@@ -365,12 +360,10 @@
                                         <button class="btn btn-sm pull-right" data-toggle="modal" data-target="#column-modal" title="All column options" data-bind="click: $root.selectColumn.bind($data, true)">...</button>
 
                                     </div>
-                                    <!-- /ko -->
                                 </div>
                                 <label class="small">Parameters</label>
 
-                                <div class="list-group">
-                                    <!-- ko foreach: Parameters -->
+                                <div class="list-group" data-bind="foreach: Parameters">
                                     <div class="list-group-item">
                                         <label>
                                             <span data-bind="editable: DisplayName, attr: {title: 'DB field is ' + ParameterName()}"></span>
@@ -380,12 +373,10 @@
                                             <button class="btn btn-sm btn-primary pull-right" data-toggle="modal" data-target="#parameter-modal" title="All Parameter options" data-bind="click: $root.editParameter">...</button>
                                         </label>
                                     </div>
-                                    <!-- /ko -->
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <!-- /ko -->
                 </div>
             </div>
             <div id="manageaccess" class="tab-pane">
@@ -792,8 +783,7 @@
                         </div>
                     </div>
                     <br />
-                    <div class="menu row" style="margin-left: 20px;">
-                        <!-- ko foreach: foundProcedures -->
+                    <div class="menu row" style="margin-left: 20px;" data-bind="foreach: foundProcedures">                        
                         <div class="menu-category card">
                             <div class="card-header clearfix" style="">
                                 <div class="pull-left">
@@ -815,29 +805,24 @@
                                     <span data-bind="editable: DisplayName"></span>
                                     <label class="small">Columns</label>
 
-                                    <div class="list-group">
-                                        <!-- ko foreach: Columns -->
+                                    <div class="list-group" data-bind="foreach: Columns">
                                         <div class="list-group-item">
                                             <span data-bind="editable: DisplayName"></span>
                                             <span class="badge badge-info" data-bind="text: FieldType"></span>
                                         </div>
-                                        <!-- /ko -->
                                     </div>
                                     <label class="small">Paramters</label>
 
-                                    <div class="list-group">
-                                        <!-- ko foreach: Parameters -->
+                                    <div class="list-group" data-bind="foreach: Parameters">
                                         <div class="list-group-item">
                                             <span data-bind="editable: DisplayName"></span>
                                             <span class="badge badge-info" data-bind="text: ParameterDataTypeString"></span><br />
                                             Default Value: <span data-bind="editable: ParameterValue"></span>
                                         </div>
-                                        <!-- /ko -->
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <!-- /ko -->
                     </div>
                 </div>
                 <div class="modal-footer">
