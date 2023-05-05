@@ -6,9 +6,9 @@ using PdfSharp.Drawing;
 using PdfSharp.Pdf;
 using PuppeteerSharp;
 using PuppeteerSharp.Media;
-using System.Configuration;
 using System.Data;
 using System.Data.OleDb;
+using System.Drawing;
 using System.Security.Cryptography;
 using System.Text;
 using System.Web;
@@ -478,7 +478,7 @@ namespace ReportBuilder.Web.Models
                 if (IsValidJson(val) && !IsNumeric(val))
                 {
                     JObject json = JObject.Parse(val);
-                    return ParseJsonValue(json, formatType == "Json"  ? col.ColumnName : "");
+                    return ParseJsonValue(json, formatType == "Json" ? col.ColumnName : "");
                 }
 
                 switch (Type.GetTypeCode(col.DataType))
@@ -737,6 +737,35 @@ namespace ReportBuilder.Web.Models
             await page.ClickAsync("#LoginSubmit"); // Make sure #LoginSubmit is replaced with the login button form input id
         }
 
+        private static XSolidBrush GetBrushWithColor(string htmlColor = "")
+        {
+            var color = ColorTranslator.FromHtml(!string.IsNullOrEmpty(htmlColor) ? htmlColor : "#007bff");
+            var xColor = XColor.FromArgb(color.R, color.G, color.B);
+            return new XSolidBrush(xColor);
+        }
+
+        private static List<string> WrapText(XGraphics gfx, string value, XRect rect, XFont font, XStringFormat format)
+        {
+            // Manually wrap the text if it's too long
+            List<string> lines = new List<string>();
+            string line = "";
+            foreach (char c in value)
+            {
+                XSize size = gfx.MeasureString(line + c, font);
+                if (size.Width > rect.Width)
+                {
+                    lines.Add(line);
+                    line = c.ToString();
+                }
+                else
+                {
+                    line += c;
+                }
+            }
+            lines.Add(line);
+
+            return lines;
+        }
 
         public static byte[] GetPdfFileAlt(string reportSql, string connectKey, string reportName, string chartData = null,
                     List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
@@ -762,6 +791,9 @@ namespace ReportBuilder.Web.Models
                 page.Orientation = PageOrientation.Landscape;
             }
 
+            // Calculate the height of the page
+            double pageHeight = page.Height.Point - 50;
+
             var subTotals = new decimal[dt.Columns.Count];
 
             using (var ms = new MemoryStream())
@@ -773,6 +805,7 @@ namespace ReportBuilder.Web.Models
                 var tableWidth = page.Width - 100;
                 var columnWidth = tableWidth / dt.Columns.Count;
                 var currentYPosition = 30;
+                double cellPadding = 3; // set the padding value
                 XRect rect = new XRect();
 
                 // Report header
@@ -819,10 +852,13 @@ namespace ReportBuilder.Web.Models
                 for (int k = 0; k < dt.Columns.Count; k++)
                 {
                     // Draw column headers
+                    var columnFormatting = columns[k];
                     var columnName = dt.Columns[k].ColumnName;
                     rect = new XRect(50 + k * columnWidth, currentYPosition, columnWidth, 20);
+
                     gfx.DrawRectangle(XPens.LightGray, rect);
-                    gfx.DrawString(columnName, fontBold, XBrushes.Black, rect, XStringFormats.Center);
+                    rect.Inflate(-cellPadding, -cellPadding);
+                    gfx.DrawString(columnName, fontBold, GetBrushWithColor(), rect, XStringFormats.Center);
                 }
 
                 currentYPosition += 20;
@@ -830,26 +866,57 @@ namespace ReportBuilder.Web.Models
                 // Draw table rows
                 for (int i = 0; i < dt.Rows.Count; i++)
                 {
-                    for (int j = 0; j < dt.Columns.Count; j++)
+                    
+                    // Check if we need to add a new page
+                    if (currentYPosition > pageHeight)
                     {
+                        // Add a new page to the document
+                        page = document.AddPage();
+                        gfx = XGraphics.FromPdfPage(page);
+                        currentYPosition = 20;
+
+                        for (int k = 0; k < dt.Columns.Count; k++)
+                        {
+                            // Draw column headers
+                            var columnName = dt.Columns[k].ColumnName;
+                            rect = new XRect(50 + k * columnWidth, currentYPosition, columnWidth, 20);
+                            gfx.DrawRectangle(XPens.LightGray, rect);
+                            gfx.DrawString(columnName, fontBold, GetBrushWithColor(), rect, XStringFormats.Center);
+                        }
+
+                        currentYPosition += 20;
+                    }
+
+                    var maxLines = 1;
+
+                    for (int j = 0; j < dt.Columns.Count; j++)
+                    {   
                         var value = dt.Rows[i][j].ToString();
                         var dc = dt.Columns[j];
                         var formatColumn = GetColumnFormatting(dc, columns, ref value);
 
-                        rect = new XRect(50 + j * columnWidth, currentYPosition, columnWidth, 20);
+                        var lines = WrapText(gfx, value, rect, fontNormal, XStringFormats.Center);
+                        maxLines = Math.Max(maxLines, lines.Count);
+
+                        rect = new XRect(50 + j * columnWidth, currentYPosition, columnWidth, 20 * maxLines);
                         gfx.DrawRectangle(XPens.WhiteSmoke, rect);
-                        
+
+                        var horizontalAlignment = XStringFormat.Center;
                         if (formatColumn != null)
+                            horizontalAlignment = formatColumn.fieldAlign == "Right" || (formatColumn.isNumeric && (formatColumn.fieldAlign == "Auto" || string.IsNullOrEmpty(formatColumn.fieldAlign))) ? XStringFormats.CenterRight : formatColumn.fieldAlign == "Center" ? XStringFormats.Center : XStringFormats.CenterLeft;
+
+                        var yPosition = currentYPosition + 1;
+                        foreach (string l in lines)
                         {
-                            var horizontalAlignment = formatColumn.fieldAlign == "Right" || (formatColumn.isNumeric && (formatColumn.fieldAlign == "Auto" || string.IsNullOrEmpty(formatColumn.fieldAlign))) ? XStringFormats.CenterRight : formatColumn.fieldAlign == "Center" ? XStringFormats.Center : XStringFormats.CenterLeft;
-                            gfx.DrawString(value, fontNormal, XBrushes.Black, rect, horizontalAlignment);
-                        } else
-                        {
-                            gfx.DrawString(value, fontNormal, XBrushes.Black, rect, XStringFormats.Center);
+                            XRect lineRect = new XRect(rect.Left, yPosition, rect.Width, fontNormal.Height);
+                            lineRect.Inflate(-cellPadding, -cellPadding);
+                            gfx.DrawString(l, fontNormal, XBrushes.Black, lineRect, horizontalAlignment);
+                            yPosition += fontNormal.Height;
                         }
+
                     }
 
-                    currentYPosition += 20;
+                    currentYPosition += (20 * maxLines);
                 }
 
                 if (includeSubtotal)
