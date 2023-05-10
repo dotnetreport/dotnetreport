@@ -191,10 +191,10 @@
                             </div>
                         </div>
                     </div>
-                    <!-- ko if: $parent.adminMode -->
+                    <div data-bind="if: $parent.adminMode">
                     <hr />
                     <div data-bind="template: {name: 'manage-access-template'}"></div>
-                    <!-- /ko -->
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-danger" data-bind="click: $root.deleteDashboard, visible: Id">Delete Dashboard</button>
@@ -207,8 +207,7 @@
 
     <div class="clearfix"></div>
 
-    <div class="grid-stack" data-bind="visible: reports().length>0" style="display: none;">
-        <!-- ko foreach: reports -->
+    <div class="grid-stack" data-bind="visible: reports().length>0, foreach: reports" style="display: none;">
         <div class="grid-stack-item" data-bind="attr: {'data-gs-x': x, 'data-gs-y': y, 'data-gs-width': width, 'data-gs-height': height, 'data-gs-auto-position': true, 'data-gs-id': ReportID}">
 
             <div class="card" data-bind="attr: {class: 'card ' + panelStyle + ' grid-stack-item-content'}, css: { expanded: isExpanded }" style="overflow-y: hidden;">
@@ -218,13 +217,11 @@
                             <span class="fa fa-ellipsis-v"></span>
                         </button>
                         <ul class="dropdown-menu small" style="z-index: 1001;">
-                            <!-- ko if: FlyFilters().length> 0-->
-                            <li class="dropdown-item">
+                            <li class="dropdown-item" data-bind="visible: FlyFilters().length> 0">
                                 <a href="#" data-bind="click: toggleFlyFilters">
                                     <span class="fa fa-filter"></span> Filter
                                 </a>
                             </li>
-                            <!-- /ko -->
                             <li class="dropdown-item" data-bind="visible: CanEdit">
                                 <a data-bind="attr: {href: '@Url.Action("Index","DotNetReport")?reportId=' + ReportID()}">
                                     <span class="fa fa-pencil"></span> Edit
@@ -274,5 +271,4 @@
             </div>
 
         </div>
-        <!-- /ko -->
     </div>
