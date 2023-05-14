@@ -33,7 +33,7 @@ namespace ReportBuilder.Web.Controllers
 
             settings.Users = new List<dynamic>(); // Populate all your application's user, ex  { "Jane", "John" } or { new { id="1", text="Jane" }, new { id="2", text="John" }}
             settings.UserRoles = new List<string>(); // Populate all your application's user roles, ex  { "Admin", "Normal" }       
-            settings.CanUseAdminMode = true; // Set to true only if current user can use Admin mode to setup reports and dashboard
+            settings.CanUseAdminMode = true; // Set to true only if current user can use Admin mode to setup reports, dashboard and schema
             settings.DataFilters = new { }; // add global data filters to apply as needed https://dotnetreport.com/kb/docs/advance-topics/global-filters/
 
             return settings;
@@ -581,6 +581,34 @@ namespace ReportBuilder.Web.Controllers
             }
 
             return model;
+        }
+
+        //[Authorize(Roles="Administrator")]
+        [HttpGet]
+        public async Task<IActionResult> LoadSetupSchema(string? databaseApiKey = "")
+        {
+            var settings = GetSettings();
+            if (!settings.CanUseAdminMode)
+            {
+                throw new Exception("Not Authorized to access this Resource");
+            }
+
+            var connect = DotNetSetupController.GetConnection(databaseApiKey);
+            var tables = new List<TableViewModel>();
+            var procedures = new List<TableViewModel>();
+            tables.AddRange(await DotNetSetupController.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
+            tables.AddRange(await DotNetSetupController.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
+            procedures.AddRange(await DotNetSetupController.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
+            var model = new ManageViewModel
+            {
+                ApiUrl = connect.ApiUrl,
+                AccountApiKey = connect.AccountApiKey,
+                DatabaseApiKey = connect.DatabaseApiKey,
+                Tables = tables,
+                Procedures = procedures
+            };
+
+            return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
         }
 
         public class SearchProcCall { 
