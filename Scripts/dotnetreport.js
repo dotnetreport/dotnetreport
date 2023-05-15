@@ -2495,7 +2495,7 @@ var reportViewModel = function (options) {
 				};
 
 				e.exportExcel = function () {
-					self.downloadExport("/DotNetReport/DownloadExcel", {
+					self.downloadExport("DownloadExcel", {
 						reportSql: e.sql,
 						connectKey: self.currentConnectKey(),
 						reportName: 'Sub Report for ' + self.ReportName(),
