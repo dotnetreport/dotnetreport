@@ -784,11 +784,18 @@ namespace ReportBuilder.Web.Models
             var document = new PdfDocument();
             var page = document.AddPage();
             var gfx = XGraphics.FromPdfPage(page);
+            int maxColumnsPerPage = 10;
+            int leftMargin = 40;
 
             if (pivot)
             {
                 dt = Transpose(dt);
                 page.Orientation = PageOrientation.Landscape;
+            }
+
+            if (dt.Columns.Count > maxColumnsPerPage)
+            {
+                page.Orientation = PdfSharp.PageOrientation.Landscape;
             }
 
             // Calculate the height of the page
@@ -799,12 +806,12 @@ namespace ReportBuilder.Web.Models
             using (var ms = new MemoryStream())
             {
                 Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
-                var fontNormal = new XFont("Arial", 12, XFontStyle.Regular);
+                var fontNormal = new XFont("Arial", 11, XFontStyle.Regular);
                 var fontBold = new XFont("Arial", 12, XFontStyle.Bold);
-
                 var tableWidth = page.Width - 100;
-                var columnWidth = tableWidth / dt.Columns.Count;
+                var columnWidth = Math.Max(tableWidth / dt.Columns.Count, 100f);
                 var currentYPosition = 30;
+                var currentXPosition = leftMargin;
                 double cellPadding = 3; // set the padding value
                 XRect rect = new XRect();
 
@@ -849,16 +856,28 @@ namespace ReportBuilder.Web.Models
                     currentYPosition += (int)rect.Height + 20;
                 }
 
+                var usingMultipleRows = false;
+                currentXPosition = leftMargin;
                 for (int k = 0; k < dt.Columns.Count; k++)
                 {
                     // Draw column headers
                     var columnFormatting = columns[k];
                     var columnName = dt.Columns[k].ColumnName;
-                    rect = new XRect(50 + k * columnWidth, currentYPosition, columnWidth, 20);
+                    
+                    rect = new XRect(currentXPosition, currentYPosition, columnWidth, 20);
 
                     gfx.DrawRectangle(XPens.LightGray, rect);
                     rect.Inflate(-cellPadding, -cellPadding);
                     gfx.DrawString(columnName, fontBold, GetBrushWithColor(), rect, XStringFormats.Center);
+
+                    currentXPosition += (int)columnWidth;
+                    if (currentXPosition + columnWidth > page.Width && k != dt.Columns.Count - 1)
+                    {
+                        // Move to the next row
+                        currentYPosition += 20;
+                        currentXPosition = leftMargin;
+                        usingMultipleRows = true;
+                    }
                 }
 
                 currentYPosition += 20;
@@ -875,19 +894,34 @@ namespace ReportBuilder.Web.Models
                         gfx = XGraphics.FromPdfPage(page);
                         currentYPosition = 20;
 
+                        if (dt.Columns.Count > maxColumnsPerPage)
+                        {
+                            page.Orientation = PdfSharp.PageOrientation.Landscape;
+                        }
+
+                        currentXPosition = leftMargin;
                         for (int k = 0; k < dt.Columns.Count; k++)
                         {
                             // Draw column headers
                             var columnName = dt.Columns[k].ColumnName;
-                            rect = new XRect(50 + k * columnWidth, currentYPosition, columnWidth, 20);
+                            rect = new XRect(currentXPosition, currentYPosition, columnWidth, 20);
                             gfx.DrawRectangle(XPens.LightGray, rect);
                             gfx.DrawString(columnName, fontBold, GetBrushWithColor(), rect, XStringFormats.Center);
+                            currentXPosition += (int)columnWidth;
+                            if (currentXPosition + columnWidth > page.Width && k != dt.Columns.Count - 1)
+                            {
+                                // Move to the next row
+                                currentYPosition += 20;
+                                currentXPosition = leftMargin;
+                            }
+
                         }
 
                         currentYPosition += 20;
                     }
 
                     var maxLines = 1;
+                    currentXPosition = leftMargin;
 
                     for (int j = 0; j < dt.Columns.Count; j++)
                     {   
@@ -897,8 +931,8 @@ namespace ReportBuilder.Web.Models
 
                         var lines = WrapText(gfx, value, rect, fontNormal, XStringFormats.Center);
                         maxLines = Math.Max(maxLines, lines.Count);
-
-                        rect = new XRect(50 + j * columnWidth, currentYPosition, columnWidth, 20 * maxLines);
+                        
+                        rect = new XRect(currentXPosition, currentYPosition, columnWidth, 20 * maxLines);
                         gfx.DrawRectangle(XPens.WhiteSmoke, rect);
 
                         var horizontalAlignment = XStringFormat.Center;
@@ -914,15 +948,27 @@ namespace ReportBuilder.Web.Models
                             yPosition += fontNormal.Height;
                         }
 
+                        currentXPosition += (int)columnWidth;
+                        if (currentXPosition + columnWidth > page.Width && j != dt.Columns.Count - 1)
+                        {
+                            // Move to the next row
+                            currentYPosition += (20 * maxLines);
+                            currentXPosition = leftMargin;
+                        }
                     }
 
                     currentYPosition += (20 * maxLines);
+                    if (usingMultipleRows) // add extra spacing
+                    {
+                        currentYPosition += 10;
+                    }
                 }
 
                 if (includeSubtotal)
                 {
                     // Draw subtotals
                     currentYPosition += 10;
+                    currentXPosition = leftMargin;
 
                     for (int j = 0; j < dt.Columns.Count; j++)
                     {
@@ -930,8 +976,8 @@ namespace ReportBuilder.Web.Models
                         var dc = dt.Columns[j];
                         var formatColumn = GetColumnFormatting(dc, columns, ref value);
 
-                        rect = new XRect(50 + j * columnWidth, currentYPosition, columnWidth, 20);
-                        gfx.DrawRectangle(XBrushes.LightGray, rect);
+                        rect = new XRect(currentXPosition, currentYPosition, columnWidth, 20);
+                        gfx.DrawRectangle(XPens.LightGray, rect);
 
                         if (formatColumn.isNumeric && !(formatColumn?.dontSubTotal ?? false))
                         {
@@ -940,6 +986,14 @@ namespace ReportBuilder.Web.Models
                         else
                         {
                             gfx.DrawString(" ", fontNormal, XBrushes.Black, rect, XStringFormats.Center);
+                        }
+
+                        currentXPosition += (int)columnWidth;
+                        if (currentXPosition + columnWidth > page.Width && j != dt.Columns.Count - 1)
+                        {
+                            // Move to the next row
+                            currentYPosition += 20;
+                            currentXPosition = leftMargin;
                         }
                     }
                 }
