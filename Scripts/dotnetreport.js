@@ -2207,6 +2207,11 @@ var reportViewModel = function (options) {
 					self.ReportID(_result.reportId);
 					self.ExecuteReportQuery(_result.sql, _result.connectKey);
 					self.ReportMode("execute");
+
+					if (self.useReportHeader()) {
+						self.headerDesigner.init(true);
+						self.headerDesigner.loadCanvas(true);
+					}
 				}
 				else {
 					redirectToReport(options.runReportUrl, {
