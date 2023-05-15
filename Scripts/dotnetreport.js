@@ -3642,6 +3642,8 @@ var dashboardViewModel = function (options) {
 		});
 	};
 
+	self.selectedReport = ko.observable(null);
+
 	self.loadDashboardReports = function (reports) {
 		self.reports([]);
 		var allreports = [];
@@ -3653,6 +3655,8 @@ var dashboardViewModel = function (options) {
 				runExportUrl: options.runExportUrl,
 				execReportUrl: options.execReportUrl,
 				reportWizard: options.reportWizard,
+				fieldOptionsModal: options.fieldOptionsModal,
+				linkModal: options.linkModal,
 				lookupListUrl: options.lookupListUrl,
 				runReportApiUrl: options.runReportApiUrl,
 				apiUrl: options.apiUrl,
@@ -3683,7 +3687,13 @@ var dashboardViewModel = function (options) {
 			report.toggleFlyFilters = function () {
 				report.showFlyFilters(!report.showFlyFilters());
 			};
-
+			report.openReport = function () {
+				// Load report
+				return report.LoadReport(x.reportId).done(function () {
+					self.selectedReport(report);
+					options.reportWizard.modal('show');
+				});
+			};
 			allreports.push(report);
 			promises.push(report.LoadReport(x.reportId, true, ''));
 		});
