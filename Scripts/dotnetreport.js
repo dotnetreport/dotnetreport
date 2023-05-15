@@ -531,7 +531,7 @@ var headerDesigner = function (options) {
 	self.UseReportHeader = ko.observable(options.useReportHeader === true ? true : false)
 
 	self.init = function (displayOnly) {
-		if (self.initiated) return;
+		if (self.initiated && !displayOnly) return;
 		self.initiated = true;
 		self.canvas = new fabric.Canvas(options.canvasId);
 		if (displayOnly === true) return;
@@ -2237,9 +2237,14 @@ var reportViewModel = function (options) {
 	};
 
 	self.ExecuteReportQuery = function (reportSql, connectKey, reportSeries) {
-
 		if (!reportSql || !connectKey) return;
-
+		self.ChartData('');
+		self.ReportResult().ReportData(null);
+		setTimeout(function () {
+			if ($.blockUI) {
+				$.blockUI({ baseZ: 500 });
+			}
+		}, 500);
 		return ajaxcall({
 			url: options.execReportUrl,
 			type: "POST",
@@ -2254,7 +2259,6 @@ var reportViewModel = function (options) {
 				reportSeries: reportSeries ||''
 			})
 		}).done(function (result) {
-
 			if (result.d) { result = result.d; }
 			if (result.result) { result = result.result; }
 			var reportResult = self.ReportResult();
@@ -2264,8 +2268,6 @@ var reportViewModel = function (options) {
 			reportResult.ReportDebug(result.ReportDebug);
 			reportResult.ReportSql(beautifySql(result.ReportSql));
 			self.ReportSeries = reportSeries;
-			if (result.HasError) return;
-
 			if (result.HasError) return;
 
 			function matchColumnName(src, dst, dbSrc, dbDst) {
