@@ -452,24 +452,28 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <br />
                                 <br />
                             </div>
-                            <div class="report-menubar">
-                                <div class="col-xs-12 col-centered" data-bind="with: pager">
-                                    <div class="form-inline" data-bind="visible: pages()">
-                                        <div class="form-group pull-left total-records">
-                                            <span data-bind="text: ' Total Records: ' + totalRecords()"></span><br />
-                                        </div>
-                                        <div class="pull-left">
-                                            <button class="btn btn-secondary btn-sm" data-bind="visible: !$root.isChart() || $root.ShowDataWithGraph(), click: $root.downloadExcel" title="Export to Excel">
-                                                <span class="fa fa-file-excel-o"></span>
-                                            </button>
-                                        </div>
-                                        <div class="form-group pull-right">
-                                            <div data-bind="template: 'pager-template', data: $data"></div>
+                            <div class="report-render" data-bind="css: { 'report-expanded': isExpanded }">
+                                <div class="report-menubar">
+                                    <div class="col-xs-12 col-centered" data-bind="with: pager">
+                                        <div class="form-inline" data-bind="visible: pages()">
+                                            <div class="form-group pull-left total-records">
+                                                <span data-bind="text: ' Total Records: ' + totalRecords()"></span><br />
+                                            </div>
+                                            <div class="pull-left">
+                                                <button class="btn btn-secondary btn-sm" data-bind="visible: !$root.isChart() || $root.ShowDataWithGraph(), click: $root.downloadExcel" title="Export to Excel">
+                                                    <span class="fa fa-file-excel-o"></span>
+                                                </button>
+                                                <button class="btn btn-secondary btn-sm" data-bind="click: $parent.toggleExpand">
+                                                    <span class="fa" data-bind="css: {'fa-expand': !$parent.isExpanded(), 'fa-minus': $parent.isExpanded() }"></span>
+                                                </button>
+                                            </div>
+                                            <div class="form-group pull-right">
+                                                <div data-bind="template: 'pager-template', data: $data"></div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="report-canvas">
+                                <div class="report-canvas">
                                 <div class="report-container">
                                     <div class="report-inner">
                                         <div class="canvas-container">
@@ -478,10 +482,11 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         <h2 data-bind="text: ReportName"></h2>
                                         <p data-bind="html: ReportDescription">
                                         </p>
-                                        <div data-bind="with: ReportResult">
+                                        <div data-bind="with: ReportResult" class="report-expanded-scroll">
                                             <div data-bind="template: 'report-template', data: $data"></div>
                                         </div>
                                     </div>
+                                </div>
                                 </div>
                             </div>
                             <br />

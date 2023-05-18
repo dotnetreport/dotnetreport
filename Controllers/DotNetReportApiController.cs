@@ -172,6 +172,30 @@ namespace ReportBuilder.Web.Controllers
             return RunReport(data);
         }
 
+        public static int FindFromIndex(string sql)
+        {
+            int parenthesesCount = 0;
+
+            for (int i = 0; i < sql.Length - 4; i++)  // -4 because "FROM" has 4 characters
+            {
+                if (sql[i] == '(')
+                {
+                    parenthesesCount++;
+                }
+                else if (sql[i] == ')')
+                {
+                    parenthesesCount--;
+                }
+                else if (parenthesesCount == 0 && sql.Substring(i, 4).Equals("FROM", StringComparison.OrdinalIgnoreCase))
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+
         [HttpPost]
         public IActionResult RunReport(RunReportParameters data)
         {
@@ -205,13 +229,15 @@ namespace ReportBuilder.Web.Controllers
                     sql = DotNetReportHelper.Decrypt(HttpUtility.HtmlDecode(allSqls[i]));
                     if (!sql.StartsWith("EXEC"))
                     {
-                        var sqlSplit = sql.Substring(0, sql.LastIndexOf("FROM")).Replace("SELECT", "").Trim();
+                        var fromIndex = FindFromIndex(sql);
+                        var sqlSplit = sql.Substring(0, fromIndex).Replace("SELECT", "").Trim();
                         sqlFields = Regex.Split(sqlSplit, "], (?![^\\(]*?\\))").Where(x => x != "CONVERT(VARCHAR(3)")
                             .Select(x => x.EndsWith("]") ? x : x + "]")
                             .Select(x => x.StartsWith("DISTINCT ") ? x.Replace("DISTINCT ", "") : x)
+                            .Where(x => x.Contains(" AS "))
                             .ToList();
 
-                        var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(sql.IndexOf("FROM"))}";
+                        var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(fromIndex)}";
                         sqlCount = $"SELECT COUNT(*) FROM ({(sqlFrom.Contains("ORDER BY") ? sqlFrom.Substring(0, sqlFrom.IndexOf("ORDER BY")) : sqlFrom)}) as countQry";
 
                         if (!String.IsNullOrEmpty(sortBy))

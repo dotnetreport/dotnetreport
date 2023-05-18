@@ -137,7 +137,7 @@ function linkFieldViewModel(args, options) {
 function scheduleBuilder(userId) {
 	var self = this;
 
-	self.options = ['day', 'week', 'month', 'year', 'once'];
+	self.options = ['day', 'week', 'month', 'year', 'once', 'hour'];
 	self.showAtTime = ko.observable(true);
 	self.showDays = ko.observable(false);
 	self.showMonths = ko.observable(false);
@@ -197,6 +197,11 @@ function scheduleBuilder(userId) {
 				self.showDates(true);
 				self.showMonths(true);
 				break;
+			case 'hour':
+				self.showDays(false);
+				self.showDates(false);
+				self.showMonths(false);
+				self.showAtTime(false);
 		}
 	});
 
@@ -587,6 +592,12 @@ var headerDesigner = function (options) {
 	}
 
 	self.resizeCanvas = function (width) {
+		if (options.isExpanded()) {
+			var windowHeight = $(window).height();
+			var scrollContainerHeight = windowHeight - $('.report-expanded-scroll').offset().top;
+			$('.report-expanded-scroll').css('height', scrollContainerHeight + 'px');
+		}
+
 		var canvas = self.canvas;
 		if (canvas == null) return;
 		width = isNaN(width) ? $("#" + options.canvasId).parent().parent().width() : width;
@@ -840,6 +851,16 @@ var reportViewModel = function (options) {
 			self.CanEdit(match.canEdit || self.adminMode());
 		}
 	});
+	self.isExpanded = ko.observable(false);
+	self.toggleExpand = function () {
+		self.isExpanded(!self.isExpanded());
+
+		if (self.isExpanded()) {
+			self.headerDesigner.resizeCanvas();
+		} else {
+			$('.report-expanded-scroll').css('height', 'auto');
+		}
+	}
 
 	self.fieldFormatTypes = ['Auto', 'Number', 'Decimal', 'Currency', 'Percentage', 'Date', 'Date and Time', 'Time', 'String'];
 	self.decimalFormatTypes = ['Number', 'Decimal', 'Currency', 'Percentage'];
@@ -848,7 +869,8 @@ var reportViewModel = function (options) {
 	self.designingHeader = ko.observable(false);
 	self.headerDesigner = new headerDesigner({
 		canvasId: options.reportHeader,
-		apiUrl: options.apiUrl
+		apiUrl: options.apiUrl,
+		isExpanded: self.isExpanded
 	});
 
 	self.initHeaderDesigner = function () {
@@ -939,6 +961,8 @@ var reportViewModel = function (options) {
 	self.y = ko.observable(0);
 	self.width = ko.observable(3);
 	self.height = ko.observable(2);
+	var tokenKey = '';
+	var token = JSON.parse(localStorage.getItem(tokenKey));
 
 	self.textQuery = new textQuery(options);
 
@@ -1042,7 +1066,13 @@ var reportViewModel = function (options) {
 	});
 
 	self.adminMode.subscribe(function (newValue) {
-		self.LoadAllSavedReports();
+
+		if (self.ReportMode() != "dashboard") {
+			self.loadFolders().done(function () {
+				self.LoadAllSavedReports();
+			});
+		}
+
 		if (newValue) {
 			self._cansavereports = self.CanSaveReports();
 			self.SaveReport(true);
@@ -1206,6 +1236,8 @@ var reportViewModel = function (options) {
 		});
 	});
 
+	var tokenKey = '';
+	var token = JSON.parse(localStorage.getItem(tokenKey));
 	self.searchFieldsInReport = {
 		language: {
 			noResults: function () {
@@ -1218,6 +1250,7 @@ var reportViewModel = function (options) {
 				return 'Search for text or select a field';
 			}
 		},
+		headers: { "Authorization": "Bearer " + token },
 		selectedOption: ko.observable(),
 		url: options.apiUrl,
 		query: function (params) {
@@ -2290,8 +2323,8 @@ var reportViewModel = function (options) {
 				return src == dst;
 			}
 
-			function processCols(cols) {
-				self.columnDetails([]);
+			function processCols(cols, skipColDetails = false) {
+				if (skipColDetails !== true) self.columnDetails([]);
 				_.forEach(cols, function (e, i) {
 					var col;
 					if (self.useStoredProc()) {
@@ -2312,7 +2345,7 @@ var reportViewModel = function (options) {
 					}
 					//col = ko.toJS(col || { fieldName: e.ColumnName });
 
-					self.columnDetails.push(col);
+					if (skipColDetails !== true) self.columnDetails.push(col);
 
 					e.decimalPlaces = col.decimalPlaces;
 					e.fieldAlign = col.fieldAlign;
@@ -2358,7 +2391,7 @@ var reportViewModel = function (options) {
 
 					e.setupFieldOptions = function () {
 						col.setupFieldOptions();
-                    }
+					}
 
 					if (col.selectedAggregate == 'Outer Group' && !_.find(self.OuterGroupColumns(), {fieldId: e.fieldId})) {
 						e.toggleOuterGroup()
@@ -2450,7 +2483,7 @@ var reportViewModel = function (options) {
 						if (ddData.result) { ddData = ddData.result; }
 						ddData.ReportData.IsDrillDown = ko.observable(true);
 
-						processCols(ddData.ReportData.Columns);
+						processCols(ddData.ReportData.Columns, true);
 						_.forEach(ddData.ReportData.Rows, function (dr) {
 							processRow(dr.Items, ddData.ReportData.Columns);
 						});
@@ -2562,7 +2595,7 @@ var reportViewModel = function (options) {
 						if (subtotalResult.d) { subtotalResult = subtotalResult.d; }
 						if (subtotalResult.result) { subtotalResult = subtotalResult.result }
 
-						processCols(subtotalResult.ReportData.Columns);
+						processCols(subtotalResult.ReportData.Columns, true);
 						_.forEach(subtotalResult.ReportData.Rows, function (dr) {
 							processRow(dr.Items, subtotalResult.ReportData.Columns);
 						});
@@ -3173,29 +3206,7 @@ var reportViewModel = function (options) {
 
 			self.SavedReports(reports);
 		});
-	};
-
-	if (self.ReportMode() != "dashboard") {
-		self.loadFolders().done(function () {
-			self.LoadAllSavedReports();
-			ajaxcall({
-				url: options.apiUrl,
-				data: {
-					method: "/ReportApi/CanSaveReports",
-					model: "{}"
-				}
-			}).done(function (x) {
-				if (x.d) { x = x.d; }
-				if (x.result) { x = x.result; }
-				x = x || {
-					allowUsersToCreateReports: true,
-					allowUsersToManageFolders: true
-				};
-				self.CanSaveReports(x.allowUsersToCreateReports);
-				self.CanManageFolders(x.allowUsersToManageFolders);
-			});
-		});
-	}
+	};	
 
 	self.changeSort = function (sort) {
 		self.pager.changeSort(sort);
@@ -3296,15 +3307,36 @@ var reportViewModel = function (options) {
 			return;
 		}
 
-		self.loadFolders(folderId);
-		self.loadTables();
-		self.loadProcs();
-
 		var adminMode = false;
 		if (localStorage) adminMode = localStorage.getItem('reportAdminMode');
 
-		if (adminMode === 'true') {
+		if (adminMode === 'true' && self.allowAdmin()) {
 			self.adminMode(true);
+		}
+		
+		self.loadTables();
+		self.loadProcs();	
+
+		if (self.ReportMode() != "dashboard") {
+			self.loadFolders().done(function () {
+				self.LoadAllSavedReports();
+				ajaxcall({
+					url: options.apiUrl,
+					data: {
+						method: "/ReportApi/CanSaveReports",
+						model: "{}"
+					}
+				}).done(function (x) {
+					if (x.d) { x = x.d; }
+					if (x.result) { x = x.result; }
+					x = x || {
+						allowUsersToCreateReports: true,
+						allowUsersToManageFolders: true
+					};
+					self.CanSaveReports(x.allowUsersToCreateReports);
+					self.CanManageFolders(x.allowUsersToManageFolders);
+				});
+			});
 		}
 	};
 
@@ -3430,7 +3462,7 @@ var reportViewModel = function (options) {
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
 			allExpanded: self.allExpanded(),
-			expandSqls: self.getExpandSqls().join(',') || '',
+			expandSqls: self.allExpanded() ? JSON.stringify(self.BuildReportData()) : '',
 			columnDetails: self.getColumnDetails(),
 			includeSubTotal: self.IncludeSubTotal(),
 			pivot: self.ReportType() == 'Pivot'
@@ -3496,11 +3528,11 @@ var dashboardViewModel = function (options) {
 
 			self.dashboard.Id(currentDash.id);
 			self.dashboard.Name(currentDash.name);
-			self.dashboard.Description(currentDash.description);			
+			self.dashboard.Description(currentDash.description);
 			self.currentDashboard(currentDash);
 			self.loadDashboardReports(reports);
 		});
-    }
+	}
 
 	self.selectDashboard.subscribe(function (newValue) {
 		if (newValue != self.currentDashboard().id) {
@@ -3628,7 +3660,7 @@ var dashboardViewModel = function (options) {
 				}).done(function (result) {
 					toastr.success("Dashboard deleted successfully");
 					setTimeout(function () {
-						self.loadDashboardReports(0);
+						window.location = window.location.href.split("?")[0];
 					}, 500);
 				});
 			}
@@ -3674,10 +3706,6 @@ var dashboardViewModel = function (options) {
 				dataFilters: options.dataFilters
 			});
 
-			report.isExpanded = ko.observable(false);
-			report.toggleExpand = function () {
-				report.isExpanded(!report.isExpanded());
-			}
 			report.x = ko.observable(x.x);
 			report.y = ko.observable(x.y);
 			report.width = ko.observable(x.width);
