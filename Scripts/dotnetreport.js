@@ -2033,10 +2033,10 @@ var reportViewModel = function (options) {
 	};
 	self.BuildReportData = function (drilldown, isComparison, index) {
 
-		drilldown = _.map(drilldown || [], function (x) {
-			if (x.isJsonColumn) x.FormattedValue = '';
+		drilldown = _.compact(_.map(drilldown || [], function (x) {
+			if (x.isJsonColumn || x.isRuleSet || x.Column.FormatType == 'Csv' || x.Column.FormatType == 'Json') return;
 			return x;
-		});		
+		}));		
 		var hasGroupInDetail = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Group in Detail' }) != null;
 		var filters = isComparison ? self.SeriesDataIntoFilter(self.FilterGroups(), index) : self.BuildFilterData(self.FilterGroups());
 
@@ -2482,6 +2482,12 @@ var reportViewModel = function (options) {
 						if (ddData.d) { ddData = ddData.d; }
 						if (ddData.result) { ddData = ddData.result; }
 						ddData.ReportData.IsDrillDown = ko.observable(true);
+
+						if (ddData.HasError) {
+							toastr.error(ddData.Exception || 'Error occured in drill down');
+							e.isExpanded(false);
+							return;
+						}
 
 						processCols(ddData.ReportData.Columns, true);
 						_.forEach(ddData.ReportData.Rows, function (dr) {
