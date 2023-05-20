@@ -592,7 +592,7 @@ var headerDesigner = function (options) {
 	}
 
 	self.resizeCanvas = function (width) {
-		if (options.isExpanded()) {
+		if (options.isExpanded() && $('.report-expanded-scroll').offset()) {
 			document.body.scrollTop = document.documentElement.scrollTop = 0;
 			var windowHeight = $(window).height();
 			var scrollContainerHeight = windowHeight - $('.report-expanded-scroll').offset().top;
@@ -3648,7 +3648,7 @@ var dashboardViewModel = function (options) {
 			if (result.result) { result = result.result; }
 			toastr.success("Dashboard saved successfully");
 			setTimeout(function () {
-				self.loadDashboardReports(result.id);
+				self.loadDashboard(result.id);
 			}, 500);
 		});
 
@@ -3685,7 +3685,7 @@ var dashboardViewModel = function (options) {
 
 	self.selectedReport = ko.observable(null);
 
-	self.loadDashboardReports = function (reports) {
+	self.loadDashboardReports = function (reports, skipGridRefresh) {
 		self.reports([]);
 		var allreports = [];
 		var promises = [];
@@ -3737,11 +3737,36 @@ var dashboardViewModel = function (options) {
 
 		self.reports(allreports);
 		$.when(promises).done(function () {
+			setTimeout(function () {
+				if ($.unblockUI) {
+					$.unblockUI();
+				}
+
+				if (skipGridRefresh === true) return;
+				
+				var grid = $('.grid-stack').data("gridstack");
+				grid.removeAll();
+
+				// Reload the grid items from the screen
+				var gridItems = $('.grid-stack-item');
+				gridItems.each(function () {
+					var item = $(this);
+					var x = parseInt(item.attr('data-gs-x'));
+					var y = parseInt(item.attr('data-gs-y'));
+					var width = parseInt(item.attr('data-gs-width'));
+					var height = parseInt(item.attr('data-gs-height'));
+
+					// Add the grid item to the GridStack
+					grid.addWidget(item, x, y, width, height);
+				});
+
+			}, 1000);
+
 			self.drawChart();
 		});		
 	}
 
-	self.loadDashboardReports(options.reports);
+	self.loadDashboardReports(options.reports, true);
 
 	self.updatePosition = function (item) {
 		if (!item || !item.id) return;
