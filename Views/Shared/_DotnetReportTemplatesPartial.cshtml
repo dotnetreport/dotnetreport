@@ -135,12 +135,14 @@
 <script type="text/html" id="report-column">
     <!-- ko foreach: Items -->
     <td data-bind="hidden: outerGroup, style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign() ? fieldAlign() : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '64px' : ''}">
+        <div data-bind="style: {'width': fieldWidth }">
         <!-- ko if: LinkTo-->
         <a data-bind="attr: {href: LinkTo}"><span data-bind="html: FormattedValue"></span></a>
         <!-- /ko-->
         <!-- ko ifnot: LinkTo-->
         <span data-bind="html: FormattedValue"></span>
         <!-- /ko-->
+        </div>
     </td>
 </script>
 

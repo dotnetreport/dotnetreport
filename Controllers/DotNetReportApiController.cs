@@ -5,7 +5,6 @@ using System.Data;
 using System.Data.OleDb;
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using System.Web;
 
 namespace ReportBuilder.Web.Controllers
@@ -164,38 +163,6 @@ namespace ReportBuilder.Web.Controllers
             public string ReportSeries { get; set; }
         }
 
-
-        [AllowAnonymous]
-        [HttpPost]
-        public IActionResult RunReportUnAuth(RunReportParameters data)
-        {
-            return RunReport(data);
-        }
-
-        public static int FindFromIndex(string sql)
-        {
-            int parenthesesCount = 0;
-
-            for (int i = 0; i < sql.Length - 4; i++)  // -4 because "FROM" has 4 characters
-            {
-                if (sql[i] == '(')
-                {
-                    parenthesesCount++;
-                }
-                else if (sql[i] == ')')
-                {
-                    parenthesesCount--;
-                }
-                else if (parenthesesCount == 0 && sql.Substring(i, 4).Equals("FROM", StringComparison.OrdinalIgnoreCase))
-                {
-                    return i;
-                }
-            }
-
-            return -1;
-        }
-
-
         [HttpPost]
         public IActionResult RunReport(RunReportParameters data)
         {
@@ -229,13 +196,8 @@ namespace ReportBuilder.Web.Controllers
                     sql = DotNetReportHelper.Decrypt(HttpUtility.HtmlDecode(allSqls[i]));
                     if (!sql.StartsWith("EXEC"))
                     {
-                        var fromIndex = FindFromIndex(sql);
-                        var sqlSplit = sql.Substring(0, fromIndex).Replace("SELECT", "").Trim();
-                        sqlFields = Regex.Split(sqlSplit, "], (?![^\\(]*?\\))").Where(x => x != "CONVERT(VARCHAR(3)")
-                            .Select(x => x.EndsWith("]") ? x : x + "]")
-                            .Select(x => x.StartsWith("DISTINCT ") ? x.Replace("DISTINCT ", "") : x)
-                            .Where(x => x.Contains(" AS "))
-                            .ToList();
+                        var fromIndex = DotNetReportHelper.FindFromIndex(sql);
+                        sqlFields = DotNetReportHelper.SplitSqlColumns(sql);
 
                         var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(fromIndex)}";
                         sqlCount = $"SELECT COUNT(*) FROM ({(sqlFrom.Contains("ORDER BY") ? sqlFrom.Substring(0, sqlFrom.IndexOf("ORDER BY")) : sqlFrom)}) as countQry";
@@ -341,7 +303,7 @@ namespace ReportBuilder.Web.Controllers
                 sql = DotNetReportHelper.Decrypt(HttpUtility.HtmlDecode(allSqls[0]));
                 var model = new DotNetReportResultModel
                 {
-                    ReportData = DataTableToDotNetReportDataModel(dtPaged, fields),
+                    ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dtPaged, fields),
                     Warnings = GetWarnings(sql),
                     ReportSql = sql,
                     ReportDebug = Request.Host.Host.Contains("localhost"),
@@ -557,56 +519,6 @@ namespace ReportBuilder.Web.Controllers
             }
 
             return warning;
-        }
-
-        private DotNetReportDataModel DataTableToDotNetReportDataModel(DataTable dt, List<string> sqlFields)
-        {
-            var model = new DotNetReportDataModel
-            {
-                Columns = new List<DotNetReportDataColumnModel>(),
-                Rows = new List<DotNetReportDataRowModel>()
-            };
-
-            int i = 0;
-            foreach (DataColumn col in dt.Columns)
-            {
-                var sqlField = sqlFields[i++];
-                model.Columns.Add(new DotNetReportDataColumnModel
-                {
-                    SqlField = sqlField.Substring(0, sqlField.IndexOf(" AS ")).Trim().Replace("__jsonc__", ""),
-                    ColumnName = col.ColumnName,
-                    DataType = col.DataType.ToString(),
-                    IsNumeric = DotNetReportHelper.IsNumericType(col.DataType),
-                    FormatType = sqlField.Contains("__jsonc__") ? "Json" : ""
-                });
-
-            }
-
-            foreach (DataRow row in dt.Rows)
-            {
-                i = 0;
-                var items = new List<DotNetReportDataRowItemModel>();
-
-                foreach (DataColumn col in dt.Columns)
-                {
-
-                    items.Add(new DotNetReportDataRowItemModel
-                    {
-                        Column = model.Columns[i],
-                        Value = row[col] != null ? row[col].ToString() : null,
-                        FormattedValue = DotNetReportHelper.GetFormattedValue(col, row, model.Columns[i].FormatType),
-                        LabelValue = DotNetReportHelper.GetLabelValue(col, row)
-                    });
-                    i += 1;
-                }
-
-                model.Rows.Add(new DotNetReportDataRowModel
-                {
-                    Items = items.ToArray()
-                });
-            }
-
-            return model;
         }
 
         //[Authorize(Roles="Administrator")]
