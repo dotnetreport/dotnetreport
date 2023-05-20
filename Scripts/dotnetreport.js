@@ -593,6 +593,7 @@ var headerDesigner = function (options) {
 
 	self.resizeCanvas = function (width) {
 		if (options.isExpanded()) {
+			document.body.scrollTop = document.documentElement.scrollTop = 0;
 			var windowHeight = $(window).height();
 			var scrollContainerHeight = windowHeight - $('.report-expanded-scroll').offset().top;
 			$('.report-expanded-scroll').css('height', scrollContainerHeight + 'px');
@@ -602,7 +603,7 @@ var headerDesigner = function (options) {
 		if (canvas == null) return;
 		width = isNaN(width) ? $("#" + options.canvasId).parent().parent().width() : width;
 		if (width > 100) canvas.setWidth(width);
-		canvas.renderAll();
+		canvas.renderAll();	
 	}
 
 	self.dispose = function () {
