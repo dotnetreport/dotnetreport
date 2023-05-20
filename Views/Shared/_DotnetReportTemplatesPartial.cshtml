@@ -99,12 +99,12 @@
     <!-- ko foreach: Columns -->
     <th data-bind="attr: { id: fieldId }, css: {'right-align': IsNumeric}, style: {'width': fieldWidth, 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
         <!-- ko if: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false) -->
-        <span data-bind="text: fieldLabel ? fieldLabel : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold ? 'bold' : 'normal'}"></span>
+        <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor(), 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
         <!-- /ko -->
         <!-- ko ifnot: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false)  -->
-        <a href="" data-bind="click: function(){ $parents[3].pager ? $parents[3].changeSort(SqlField) : $parents[5].changeSort(SqlField); }, style: {'color': headerFontColor, 'font-weight': headerFontBold ? 'bold' : 'normal'}">
-            <span data-bind="text: fieldLabel ? fieldLabel : ColumnName"></span>
-            <span data-bind="text: ($parents[3].pager ? $parents[3].pager.sortColumn() : $parents[5].pager.sortColumn()) === SqlField ? (($parents[3].pager ? $parents[3].pager.sortDescending() : $parents[5].pager.sortDescending()) ? '&#9660;' : '&#9650;') : ''"></span>
+        <a href="" data-bind="click: function(){ !$parent.IsDrillDown() ? $parents[3].changeSort(SqlField) : $parents[1].changeSort(SqlField); }, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}">
+            <span data-bind="text: fieldLabel() ? fieldLabel() : ColumnName"></span>
+            <span data-bind="text: (!$parent.IsDrillDown() ? $parents[3].pager.sortColumn() : $parents[1].pager.sortColumn()) === SqlField ? ((!$parent.IsDrillDown() ? $parents[3].pager.sortDescending() : $parents[1].pager.sortDescending()) ? '&#9660;' : '&#9650;') : ''"></span>
         </a>
         <!-- /ko -->
 
@@ -119,6 +119,11 @@
                             <span class="fa fa-clone"></span> Outer Group
                         </a>
                     </li>
+                    <li class="dropdown-item small">
+                        <a href="#" data-bind="click: setupFieldOptions">
+                            <span class="fa fa-gear"></span> Field Settings
+                        </a>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -129,13 +134,15 @@
 
 <script type="text/html" id="report-column">
     <!-- ko foreach: Items -->
-    <td data-bind="hidden: outerGroup, style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '64px' : ''}">
+    <td data-bind="hidden: outerGroup, style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign() ? fieldAlign() : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '64px' : ''}">
+        <div data-bind="style: {'width': fieldWidth }">
         <!-- ko if: LinkTo-->
         <a data-bind="attr: {href: LinkTo}"><span data-bind="html: FormattedValue"></span></a>
         <!-- /ko-->
         <!-- ko ifnot: LinkTo-->
         <span data-bind="html: FormattedValue"></span>
         <!-- /ko-->
+        </div>
     </td>
 </script>
 
@@ -525,7 +532,7 @@
                     </td>
                     <td>
                         <div class="form-group">
-                            <select class="form-control" style="width: 100%;" data-bind="options: $root.selectedFieldsCanFilter, optionsText: 'selectedFieldName', optionsCaption: 'Please Choose', value: Field, attr: {required: Field()==null?'required':false}, disable: Field() && Field().forced"></select>
+                            <select class="form-control" style="width: 100%;" data-bind="options: $parentContext.$parent.selectedFieldsCanFilter, optionsText: 'selectedFieldName', optionsCaption: 'Please Choose', value: Field, attr: {required: Field()==null?'required':false}, disable: Field() && Field().forced"></select>
                         </div>
                     </td>
                     <td data-bind="with: Field">
@@ -539,15 +546,15 @@
                     <td>
                         <span data-bind="visible: Field() && Field().forced" class="badge badge-info">Required Filter</span>
                         <button class="btn btn-sm btn-secondary" data-bind="click: $parent.RemoveFilter, hidden: Field() && Field().forced">Remove</button>
-                        <!-- ko if: Field() && Field().fieldType == 'DateTime' && Operator() == 'range' && $root.canAddSeries() && $index()==0 -->
-                        <button class="btn btn-sm btn-secondary" data-bind="click: $root.AddSeries.bind($data)">Add Comparison</button>
+                        <!-- ko if: Field() && Field().fieldType == 'DateTime' && Operator() == 'range' && $parentContext.$parent.canAddSeries() && $index()==0 -->
+                        <button class="btn btn-sm btn-secondary" data-bind="click: $parentContext.$parent.AddSeries.bind($data)">Add Comparison</button>
                         <!--/ko -->
                     </td>
                 </tr>
                 <!-- ko foreach: compareTo -->
                 <tr>
                     <td></td>
-                    <td style="text-align: right"><button class="btn btn-xs" data-bind="click: $root.RemoveSeries"><span class="fa fa-trash-o"></span></button></td>
+                    <td style="text-align: right"><button class="btn btn-xs" data-bind="click: $parents[2].RemoveSeries"><span class="fa fa-trash-o"></span></button></td>
                     <td>Compare To</td>
                     <td>
                         <div class="form-group">
@@ -715,16 +722,16 @@
     <div class="modal-dialog" style="max-width: 750px;">
         <div class="modal-content" data-bind="with: editFieldOptions">
             <div class="modal-header">
-                <h5 class="modal-title">Setup Additional Field Options</h5>
+                <h5 class="modal-title"><span data-bind="text: fieldName"></span> - Setup Additional Field Options</h5>
             </div>
             <div class="modal-body needs-validation">
                 <div class="form-group row">
                     <label class="col-sm-5 col-md-5 control-label">Pick Data Format</label>
                     <div class="col-sm-7 col-md-7">
-                        <select class="form-control" required data-bind="options: $root.fieldFormatTypes, value: fieldFormat"></select>
+                        <select class="form-control" required data-bind="options: $parent.fieldFormatTypes, value: fieldFormat"></select>
                     </div>
                 </div>
-                <div class="form-group row" data-bind="visible: $root.decimalFormatTypes.indexOf($data.fieldFormat())>=0">
+                <div class="form-group row" data-bind="visible: $parent.decimalFormatTypes.indexOf($data.fieldFormat())>=0">
                     <label class="col-sm-5 col-md-5 control-label">Pick Decimal Places</label>
                     <div class="col-sm-7 col-md-7">
                         <input type="number" class="form-control" data-bind="value: decimalPlaces" placeholder="" />
@@ -739,7 +746,7 @@
                 <div class="form-group row">
                     <label class="col-sm-5 col-md-5 control-label">Choose Text Alignment</label>
                     <div class="col-sm-7 col-md-7">
-                        <select class="form-control" required data-bind="options: $root.fieldAlignments, value: fieldAlign"></select>
+                        <select class="form-control" required data-bind="options: $parent.fieldAlignments, value: fieldAlign"></select>
                     </div>
                 </div>
                 <div class="form-group row">
@@ -850,7 +857,7 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-md-5 control-label">Link to this Report</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-control" required data-bind="options: $root.SavedReports, optionsText: 'reportName', optionsValue: 'reportId', value: LinkedToReportId, optionsCaption: 'Choose the Report to link to'"></select>
+                            <select class="form-control" required data-bind="options: $parentContext.$parent.SavedReports, optionsText: 'reportName', optionsValue: 'reportId', value: LinkedToReportId, optionsCaption: 'Choose the Report to link to'"></select>
                         </div>
                     </div>
                     <div class="checkbox" data-bind="if: LinkedToReportId">
@@ -1113,7 +1120,7 @@
                                         <h3 class="pull-left" data-bind="visible: setupFormula.isParenthesesEnd" style="margin-top: 0;">)</h3>
                                         <div class="pull-left" style="margin-left: 15px;" data-bind="visible: $parent.showFormulaOperation($index())">
                                             <select class="form-control form-control-sm" style="max-width: 50px;" data-bind="value: setupFormula.formulaOperation">
-                                                <!-- ko if: !$root.formulaOnlyHasDateFields() || ($root.formulaOnlyHasDateFields() && $root.isConstantOperation($index())) -->
+                                                <!-- ko if: !$parent.formulaOnlyHasDateFields() || ($parent.formulaOnlyHasDateFields() && $parent.isConstantOperation($index())) -->
                                                 <option>+</option>
                                                 <!-- /ko -->
                                                 <option>-</option>
@@ -1150,7 +1157,7 @@
                             <div class="form-group row">
                                 <label class="col-sm-2 control-label">Map Display</label>
                                 <div class="col-sm-4">
-                                    <select class="form-control form-control-sm" data-bind="options: $root.mapRegions, value: mapRegion"></select>
+                                    <select class="form-control form-control-sm" data-bind="options: $parent.mapRegions, value: mapRegion"></select>
                                 </div>
                             </div>
                         </div>
@@ -1161,13 +1168,13 @@
                                         <span class="fa fa-columns"></span>
                                         <span data-bind="text: selectedFieldName"></span>
                                         <span data-bind="text: isFormulaField() ? '(' + fieldFormat() + ')' : ''"></span>
-                                        <span data-bind="visible: !$root.isFieldValidForYAxis($index(), fieldType, selectedAggregate())">
-                                            <span class="badge badge-danger" data-bind="visible: !groupInGraph()">Will not show in <span data-bind="text: $root.ReportType"></span>Chart</span>
+                                        <span data-bind="visible: !$parent.isFieldValidForYAxis($index(), fieldType, selectedAggregate())">
+                                            <span class="badge badge-danger" data-bind="visible: !groupInGraph()">Will not show in <span data-bind="text: $parent.ReportType"></span>Chart</span>
                                         </span>
                                     </div>
                                     <div class="col">
                                         <div class="pull-right" style="margin-top: -5px;" data-bind="if: $parent.AggregateReport() && !$parent.useStoredProc()">
-                                            <select class="form-control form-control-sm" data-bind="options: $root.canDrilldown() && $index()>0 ? fieldAggregateWithDrilldown : fieldAggregate, value: selectedAggregate"></select>
+                                            <select class="form-control form-control-sm" data-bind="options: $parent.canDrilldown() && $index()>0 ? fieldAggregateWithDrilldown : fieldAggregate, value: selectedAggregate"></select>
                                         </div>
                                         <div class="sortable pull-right" style="padding-right: 15px;" data-bind="ifnot: $parent.useStoredProc">
                                             <span class="fa fa-arrows " aria-hidden="true" title="Drag to reorder"></span>
@@ -1181,27 +1188,27 @@
                                                 <span class="fa fa-filter" aria-hidden="true" title="Filter by this field on the Report"></span>
                                             </span>
                                         </div>
-                                        <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $root.ReportType()!='Pivot'">
+                                        <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $parent.ReportType()!='Pivot'">
                                             <span class="button-box no-padding" tabindex="0" data-bind="click: toggleDisable, css: {active: disabled()==true}">
                                                 <span class="fa fa-close" aria-hidden="true" title="Do not include in Report"></span>
                                             </span>
                                         </div>
-                                        <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $root.ReportType()!='Pivot' && $root.ReportType()!='List' && !$parent.useStoredProc()">
+                                        <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $parent.ReportType()!='Pivot' && $parent.ReportType()!='List' && !$parent.useStoredProc()">
                                             <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ hideInDetail(!hideInDetail()); }, css: {active: hideInDetail()==true}">
                                                 <span class="fa fa-eye-slash" aria-hidden="true" title="Hide in Details"></span>
                                             </span>
                                         </div>
-                                        <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $root.isFieldValidForYAxis($index(), fieldType, selectedAggregate())  && $root.isChart() && $index()>0">
+                                        <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $parent.isFieldValidForYAxis($index(), fieldType, selectedAggregate())  && $parent.isChart() && $index()>0">
                                             <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ groupInGraph(!groupInGraph()); }, css: {active: groupInGraph()==false}">
                                                 <span class="fa fa-line-chart" aria-hidden="true" title="Include in series"></span>
                                             </span>
                                         </div>
-                                        <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $root.IncludeSubTotal()  &&  (['Int', 'Double', 'Money', 'Decimal', 'Currency'].indexOf(fieldType) >= 0 || ['Int', 'Double', 'Money', 'Decimal', 'Currency'].indexOf(fieldFormat()) >= 0)">
+                                        <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $parent.IncludeSubTotal()  &&  (['Int', 'Double', 'Money', 'Decimal', 'Currency'].indexOf(fieldType) >= 0 || ['Int', 'Double', 'Money', 'Decimal', 'Currency'].indexOf(fieldFormat()) >= 0)">
                                             <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ dontSubTotal(!dontSubTotal()); }, css: {active: dontSubTotal()==true}">
                                                 <span class="fa fa-plus-circle" aria-hidden="true" title="Don't add to Total row"></span>
                                             </span>
                                         </div>
-                                        <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $root.ReportType()!='Pivot'">
+                                        <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $parent.ReportType()!='Pivot'">
                                             <span class="button-box no-padding" tabindex="0" data-bind="click: setupLinkField, css: {active: linkField()==true}">
                                                 <span class="fa fa-link" aria-hidden="true" title="Link to another Report or Url"></span>
                                             </span>
@@ -1298,7 +1305,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="checkbox" data-bind="visible: $root.ReportType()!='Pivot'">
+                        <div class="checkbox" data-bind="visible: ReportType()!='Pivot'">
                             <label>
                                 <input type="checkbox" data-bind="checked: IncludeSubTotal" />
                                 Include Total Row
