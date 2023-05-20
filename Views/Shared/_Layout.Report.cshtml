@@ -8,13 +8,13 @@
     <title>Asp .Net Ad Hoc Report Builder - @ViewBag.Title </title>
     <meta name="keywords" content="ad-hoc reporting, reporting, asp .net reporting, asp .net report, report builder, ad hoc report builder, ad-hoc report builder, adhoc report, ad hoc reports, .net report viewer, reportviewer, sql reportviewer, report builder mvc, report mvc, report builder web forms, query builder, sql report builder,visual report builder,custom query,query maker" />
     <meta name="description" content="Ad hoc Reporting software that allows programmers to easily add Reporting functionality to their ASP .NET Web Software Solution" />
-    
+
     @await Html.PartialAsync("_DotnetReportHeaderPartial")
     @RenderSection("head", required: false)
 </head>
 
 <body>
-    <div class="navbar  border-bottom box-shadow ">
+    <div class="navbar border-bottom box-shadow navbar-inverse bg-dark">
         <div class="">
             <div class="navbar-brand">
                 <a href="/">
@@ -23,19 +23,15 @@
             </div>
         </div>
     </div>
-    <div class="body-content">
+    <div class="body-content container-fluid" style="padding-bottom: 60px;">
         @RenderBody()
-        <!-- ########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
-
-        <div style="padding-top: 30px;">Powered by <a href="http://www.dotNetReport.com" target="_blank">dotnetReport.com</a></div>
-
-        <!--########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
-        <hr />
-        <footer>
-            <p>&copy; @DateTime.Now.Year dotnetReport Builder <a href="https://dotnetreport.com">www.dotnetreport.com</a></p>
-        </footer>
     </div>
-
+    <div class="report-layout-footer">
+        <!-- ########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
+        <p>Ad Hoc Reporting and Dashboard powered by <a href="http://www.dotNetReport.com" target="_blank">dotnetReport.com</a></p>
+        <!--########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
+    </div>
+    
     @await Html.PartialAsync("_DotnetReportTemplatesPartial")
     @await Html.PartialAsync("_DotnetReportJsLibrariesPartial")
 
