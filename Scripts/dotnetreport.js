@@ -592,7 +592,7 @@ var headerDesigner = function (options) {
 	}
 
 	self.resizeCanvas = function (width) {
-		if (options.isExpanded()) {
+		if (options.isExpanded() && $('.report-expanded-scroll').offset()) {
 			document.body.scrollTop = document.documentElement.scrollTop = 0;
 			var windowHeight = $(window).height();
 			var scrollContainerHeight = windowHeight - $('.report-expanded-scroll').offset().top;
