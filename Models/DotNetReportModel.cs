@@ -743,12 +743,21 @@ namespace ReportBuilder.Web.Models
 
             return model;
         }
+        public static string ConvertToPostGre(string sql)
+        {
+            sql = sql.Replace("[", "\"");
+            sql = sql.Replace("]", "\"");
+            sql = sql.Replace("WITH (READUNCOMMITTED)", "");
+            sql = sql.Replace("ISNULL", "COALESCE");
+            return sql;
+        }
 
         public static byte[] GetExcelFile(string reportSql, string connectKey, string reportName, bool allExpanded = false,
                 string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
         {
             var sql = Decrypt(reportSql);
             var sqlFields = SplitSqlColumns(sql);
+            sql = ConvertToPostGre(sql);
 
             // Execute sql
             var dt = new DataTable();
@@ -943,6 +952,7 @@ namespace ReportBuilder.Web.Models
         {
             var sql = Decrypt(reportSql); 
             var sqlFields = SplitSqlColumns(sql);
+            sql = ConvertToPostGre(sql);
 
             var dt = new DataTable();
             using (var conn = new NpgsqlConnection(GetConnectionString(connectKey)))
