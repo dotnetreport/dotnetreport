@@ -137,7 +137,7 @@
     <td data-bind="hidden: outerGroup, style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign() ? fieldAlign() : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '64px' : ''}">
         <div data-bind="style: {'width': fieldWidth }">
         <!-- ko if: LinkTo-->
-        <a data-bind="attr: {href: LinkTo}"><span data-bind="html: FormattedValue"></span></a>
+        <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: FormattedValue"></span></a>
         <!-- /ko-->
         <!-- ko ifnot: LinkTo-->
         <span data-bind="html: FormattedValue"></span>
@@ -194,7 +194,14 @@
             <tbody>
                 <tr style="display: none;" data-bind="visible: Rows.length < 1">
                     <td class="text-info" data-bind="attr:{colspan: Columns.length}">
+                        <!-- ko if: $parents[4].ReportType()=='Single' -->
+                        <div style="text-align: center; width: 100%">
+                        <span style="font-size: 64px" title="No data found">/</span>
+                        </div>
+                        <!-- /ko -->
+                        <!-- ko if: $parents[4].ReportType()!='Single' -->
                         No records found
+                        <!-- /ko -->
                     </td>
                 </tr>
                 <!-- ko foreach: $parent.rows  -->

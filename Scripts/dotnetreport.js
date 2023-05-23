@@ -1811,7 +1811,7 @@ var reportViewModel = function (options) {
 	self.AllSqlQuries = ko.observable("");
 
 	self.canAddSeries = ko.computed(function () {
-		var c1 = self.dateFields().length > 0 && ['Group', 'Bar', 'Line'].indexOf(self.ReportType()) >= 0 && self.SelectedFields()[0].fieldType == 'DateTime';
+		var c1 = self.dateFields().length > 0 && ['Group', 'Bar', 'Line', 'Single'].indexOf(self.ReportType()) >= 0 && self.SelectedFields()[0].fieldType == 'DateTime';
 		var c2 = _.filter(self.FilterGroups(), function (g) { return _.filter(g.Filters(), function (x) { return x.Operator() == 'range' && x.Value() && x.Value().indexOf('This') == 0; }).length > 0; }).length > 0;
 		return c1 && c2;
 	});
@@ -2409,12 +2409,12 @@ var reportViewModel = function (options) {
 						var link = '';
 						if (linkItem.LinksToReport) {
 							link = options.runReportUrl + '?linkedreport=true&reportId=' + linkItem.LinkedToReportId;
-							if (linkItem.SendAsFilterParameter) {
-								link += '&filterId=' + linkItem.SelectedFilterId + '&filterValue=' + r.Value;
+							if (linkItem.SendAsFilterParameter && r.Value) {
+								link += '&filterId=' + linkItem.SelectedFilterId + '&filterValue=' + r.Value.replace(/['"]+/g, '');
 							}
 						}
 						else {
-							link = linkItem.LinkToUrl + (linkItem.SendAsQueryParameter ? ('?' + linkItem.QueryParameterName + '=' + r.LabelValue) : '');
+							link = linkItem.LinkToUrl + (linkItem.SendAsQueryParameter ? ('?' + linkItem.QueryParameterName + '=' + (r.LabelValue ? r.LabelValue.replace(/['"]+/g, '') : '')) : '');
 						}
 						r.LinkTo = link;
 					}
@@ -3729,6 +3729,11 @@ var dashboardViewModel = function (options) {
 				return report.LoadReport(x.reportId).done(function () {
 					self.selectedReport(report);
 					options.reportWizard.modal('show');
+					setTimeout(function () {
+						if ($.unblockUI) {
+							$.unblockUI();
+						}
+					}, 1000);
 				});
 			};
 			allreports.push(report);

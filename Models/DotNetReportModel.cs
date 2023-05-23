@@ -679,6 +679,7 @@ namespace ReportBuilder.Web.Models
             var sqlFields = Regex.Split(sqlSplit, "], (?![^\\(]*?\\))").Where(x => x != "CONVERT(VARCHAR(3)")
                 .Select(x => x.EndsWith("]") ? x : x + "]")
                 .Select(x => x.StartsWith("DISTINCT ") ? x.Replace("DISTINCT ", "") : x)
+                .Select(x => x.StartsWith("TOP ") ? Regex.Replace(x, @"TOP\s+\d+", "") : x)
                 .Where(x => x.Contains(" AS "))
                 .ToList();
 
