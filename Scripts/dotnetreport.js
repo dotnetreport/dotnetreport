@@ -2742,6 +2742,7 @@ var reportViewModel = function (options) {
 
 		var chartDiv = document.getElementById('chart_div_' + self.ReportID());
 		var chart = null;
+		if (!chartDiv) return;
 
 		if (self.ReportType() == "Pie") {
 			chart = new google.visualization.PieChart(chartDiv);
@@ -3557,6 +3558,7 @@ var dashboardViewModel = function (options) {
 		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.viewOnlyUsers, '');
 		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.deleteOnlyUserRoles, '');
 		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.deleteOnlyUsers, '');
+		self.dashboard.manageAccess.clientId('');
 
 		_.forEach(self.reportsAndFolders(), function (f) {
 			_.forEach(f.reports, function (r) {
@@ -3575,6 +3577,7 @@ var dashboardViewModel = function (options) {
 		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.viewOnlyUsers, self.currentDashboard().viewOnlyUserId || '');
 		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.deleteOnlyUserRoles, self.currentDashboard().deleteOnlyUserRoles || '');
 		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.deleteOnlyUsers, self.currentDashboard().deleteOnlyUserId || '');
+		self.dashboard.manageAccess.clientId(self.currentDashboard().clientId || '');
 
 		var selectedReports = (self.currentDashboard().selectedReports || '').split(',');
 		_.forEach(self.reportsAndFolders(), function (f) {
@@ -3634,6 +3637,7 @@ var dashboardViewModel = function (options) {
 			userRolesAccess: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.userRoles),
 			viewOnlyUserRoles: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.viewOnlyUserRoles),
 			deleteOnlyUserRoles: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.deleteOnlyUserRoles),
+			clientIdToUpdate: self.dashboard.manageAccess.clientId(),
 			adminMode: self.adminMode()
 		};
 
@@ -3684,12 +3688,15 @@ var dashboardViewModel = function (options) {
 	};
 
 	self.selectedReport = ko.observable(null);
+	self.skipGridRefresh = false;
 
 	self.loadDashboardReports = function (reports, skipGridRefresh) {
 		self.reports([]);
 		var allreports = [];
 		var promises = [];
 		var i = 0;
+		self.skipGridRefresh = true;
+
 		_.forEach(reports, function (x) {
 			var report = new reportViewModel({
 				runReportUrl: options.runReportUrl,
@@ -3754,16 +3761,21 @@ var dashboardViewModel = function (options) {
 
 				// Reload the grid items from the screen
 				var gridItems = $('.grid-stack-item');
+				i = 0;
 				gridItems.each(function () {
 					var item = $(this);
 					var x = parseInt(item.attr('data-gs-x'));
 					var y = parseInt(item.attr('data-gs-y'));
 					var width = parseInt(item.attr('data-gs-width'));
 					var height = parseInt(item.attr('data-gs-height'));
+					var id = reports[i++].reportId;
+					item.attr('data-gs-id', id);
 
 					// Add the grid item to the GridStack
 					grid.addWidget(item, x, y, width, height);
 				});
+
+				self.skipGridRefresh = false;
 
 			}, 1000);
 
@@ -3774,7 +3786,7 @@ var dashboardViewModel = function (options) {
 	self.loadDashboardReports(options.reports, true);
 
 	self.updatePosition = function (item) {
-		if (!item || !item.id) return;
+		if (!item || !item.id || self.skipGridRefresh) return;
 		ajaxcall({
 			url: options.apiUrl,
 			noBlocking: true,
