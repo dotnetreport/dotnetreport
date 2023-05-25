@@ -352,7 +352,7 @@ function filterGroupViewModel(args) {
 					if (list.d) { list = list.d; }
 					if (list.result) { list = list.result; }
 					var value = filter.Value();
-					lookupList(list);
+					lookupList(_.sortBy(list, 'text'));
 					if (value && !filter.Value()) {
 						filter.Value(value);
 					}
@@ -399,7 +399,7 @@ function filterGroupViewModel(args) {
 							}).done(function (list) {
 								if (list.d) { list = list.d; }
 								if (list.result) { list = list.result; }
-								parentList(list);
+								parentList(_.sortBy(list, 'text'));
 							});
 						});
 
@@ -1975,7 +1975,7 @@ var reportViewModel = function (options) {
 					FieldId: e.Field().fieldId,
 					AndOr: i == 0 ? g.AndOr() : e.AndOr(),
 					Operator: e.Operator(),
-					Value1: e.Operator() == "in" || e.Operator() == "not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 ? "blank" : e.Value()),
+					Value1: e.Operator() == "in" || e.Operator() == "not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' ? "blank" : e.Value()),
 					Value2: e.Value2(),
 					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
 				} : null;
