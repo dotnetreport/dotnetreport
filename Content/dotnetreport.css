@@ -614,6 +614,3 @@ select.is-invalid ~ span .select2-selection {
         max-height: calc(100% - var(--offset-top, 0));
     }
 
-.table thead th {
-    border: 1px solid #dee2e6;
-}
