@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
     <metadata>
         <id>dotNetReport.mvc</id>
-        <version>5.0.4</version>
+        <version>5.1.0</version>
         <authors>dotnetReport Builder</authors>
         <owners>dotnetReport Builder</owners>
         <projectUrl>https://dotnetreport.com/</projectUrl>
@@ -16,7 +16,7 @@
 			<dependency id="bootstrap" version="4.6.0" />
 			<dependency id="EPPlus" version="4.5.1" />
 			<dependency id="FontAwesome" version="4.7.0" />
-			<dependency id="iTextSharp" version="5.5.13.3" />
+			<dependency id="PDFsharp" version="1.50.5147" />
 			<dependency id="jQuery" version="3.6.0" />
 			<dependency id="jQuery.BlockUI" version="2.70.0" />
 			<dependency id="jQuery.UI.Combined" version="1.12.1" />
@@ -39,6 +39,7 @@
         <file src="..\Content\img\report-logo.png" target="Content\Content\img\report-logo.png" />
 		<file src="..\Content\bootstrap-editable.css" target="Content\Content\bootstrap-editable.css" />
         <file src="..\Content\bootstrap-mvc-validation.css" target="Content\Content\bootstrap-mvc-validation.css" />
+		<file src="..\Content\tribute.css" target="Content\Content\tribute.css" />
         <file src="..\Content\dotnetreport.css" target="Content\Content\dotnetreport.css" />
 		<file src="..\Controllers\DotNetReportApiController.cs" target="Content\Controllers\DotNetReportApiController.cs" />
         <file src="..\Controllers\DotNetReportController.cs" target="Content\Controllers\DotNetReportController.cs" />
@@ -49,6 +50,7 @@
         <file src="..\Scripts\dotnetreport-setup.js" target="Content\Scripts\dotnetreport-setup.js" />
         <file src="..\Scripts\dotnetreport.js" target="Content\Scripts\dotnetreport.js" />
 		<file src="..\Scripts\fabric.min.js" target="Content\Scripts\fabric.min.js" />
+		<file src="..\Scripts\tribute.min.js" target="Content\Scripts\tribute.min.js" />
         <file src="..\Scripts\bootstrap-editable.min.js" target="Content\Scripts\bootstrap-editable.min.js" />
         <file src="..\Scripts\knockout.x-editable.min.js" target="Content\Scripts\knockout.x-editable.min.js" />
         <file src="..\Views\DotNetReport\Index.cshtml" target="Content\Views\DotNetReport\Index.cshtml" />
