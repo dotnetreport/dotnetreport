@@ -294,7 +294,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                 sql = DotNetReportHelper.Decrypt(HttpUtility.HtmlDecode(allSqls[0]));
                 var model = new DotNetReportResultModel
                 {
-                    ReportData = DataTableToDotNetReportDataModel(dtPaged, fields),
+                    ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dtPaged, fields),
                     Warnings = GetWarnings(sql),
                     ReportSql = sql,
                     ReportDebug = Context.Request.Url.Host.Contains("localhost"),
@@ -429,7 +429,7 @@ namespace ReportBuilder.WebForms.DotNetReport
         {
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
 
-            var excel = DotNetReportHelper.GetExcelFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), allExpanded, expandSqls.Split(',').ToList(), columns, includeSubtotal);
+            var excel = DotNetReportHelper.GetExcelFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal);
             Context.Response.ClearContent();
 
             Context.Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".xlsx");
@@ -512,57 +512,6 @@ namespace ReportBuilder.WebForms.DotNetReport
 
             return warning;
         }
-
-
-        private DotNetReportDataModel DataTableToDotNetReportDataModel(DataTable dt, List<string> sqlFields)
-        {
-            var model = new DotNetReportDataModel
-            {
-                Columns = new List<DotNetReportDataColumnModel>(),
-                Rows = new List<DotNetReportDataRowModel>()
-            };
-
-            int i = 0;
-            foreach (DataColumn col in dt.Columns)
-            {
-                var sqlField = sqlFields[i++];
-                model.Columns.Add(new DotNetReportDataColumnModel
-                {
-                    SqlField = sqlField.Substring(0, sqlField.IndexOf(" AS ")).Trim(),
-                    ColumnName = col.ColumnName,
-                    DataType = col.DataType.ToString(),
-                    IsNumeric = DotNetReportHelper.IsNumericType(col.DataType)
-                });
-
-            }
-
-            foreach (DataRow row in dt.Rows)
-            {
-                i = 0;
-                var items = new List<DotNetReportDataRowItemModel>();
-
-                foreach (DataColumn col in dt.Columns)
-                {
-
-                    items.Add(new DotNetReportDataRowItemModel
-                    {
-                        Column = model.Columns[i],
-                        Value = row[col] != null ? row[col].ToString() : null,
-                        FormattedValue = DotNetReportHelper.GetFormattedValue(col, row),
-                        LabelValue = DotNetReportHelper.GetLabelValue(col, row)
-                    });
-                    i += 1;
-                }
-
-                model.Rows.Add(new DotNetReportDataRowModel
-                {
-                    Items = items.ToArray()
-                });
-            }
-
-            return model;
-        }
-
 
 
         [WebMethod(EnableSession = true)]

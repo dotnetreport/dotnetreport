@@ -14,7 +14,7 @@
 </head>
 
 <body>
-    <div class="navbar  border-bottom box-shadow ">
+    <div class="navbar border-bottom box-shadow navbar-inverse bg-dark">
         <div class="">
             <div class="navbar-brand">
                 <a href="/">
@@ -23,17 +23,13 @@
             </div>
         </div>
     </div>
-    <div class="body-content">
+    <div class="body-content container-fluid" style="padding-bottom: 60px;">
         @RenderBody()
+    </div>
+    <div class="report-layout-footer">
         <!-- ########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
-
-        <div style="padding-top: 30px;">Powered by <a href="http://www.dotNetReport.com" target="_blank">dotnetReport.com</a></div>
-
+        <p>Ad Hoc Reporting and Dashboard powered by <a href="http://www.dotNetReport.com" target="_blank">dotnetReport.com</a></p>
         <!--########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
-        <hr />
-        <footer>
-            <p>&copy; @DateTime.Now.Year dotnetReport Builder <a href="https://dotnetreport.com">www.dotnetreport.com</a></p>
-        </footer>
     </div>
 
     @Html.Partial("_DotnetReportTemplatesPartial")

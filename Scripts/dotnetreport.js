@@ -137,7 +137,7 @@ function linkFieldViewModel(args, options) {
 function scheduleBuilder(userId) {
 	var self = this;
 
-	self.options = ['day', 'week', 'month', 'year', 'once'];
+	self.options = ['day', 'week', 'month', 'year', 'once', 'hour'];
 	self.showAtTime = ko.observable(true);
 	self.showDays = ko.observable(false);
 	self.showMonths = ko.observable(false);
@@ -197,6 +197,11 @@ function scheduleBuilder(userId) {
 				self.showDates(true);
 				self.showMonths(true);
 				break;
+			case 'hour':
+				self.showDays(false);
+				self.showDates(false);
+				self.showMonths(false);
+				self.showAtTime(false);
 		}
 	});
 
@@ -307,7 +312,7 @@ function filterGroupViewModel(args) {
 			lookupList.push({ id: e.Value2, text: e.Value2 });
 		}
 
-		var field = ko.observable();
+		var field = ko.observable();	
 		var valueIn = e.Operator == 'in' || e.Operator == 'not in' ? (e.Value1 || '').split(',') : [];
 		var filter = {
 			AndOr: ko.observable(isFilterOnFly ? ' AND ' : e.AndOr),
@@ -347,7 +352,7 @@ function filterGroupViewModel(args) {
 					if (list.d) { list = list.d; }
 					if (list.result) { list = list.result; }
 					var value = filter.Value();
-					lookupList(list);
+					lookupList(_.sortBy(list, 'text'));
 					if (value && !filter.Value()) {
 						filter.Value(value);
 					}
@@ -394,7 +399,7 @@ function filterGroupViewModel(args) {
 							}).done(function (list) {
 								if (list.d) { list = list.d; }
 								if (list.result) { list = list.result; }
-								parentList(list);
+								parentList(_.sortBy(list, 'text'));
 							});
 						});
 
@@ -531,7 +536,7 @@ var headerDesigner = function (options) {
 	self.UseReportHeader = ko.observable(options.useReportHeader === true ? true : false)
 
 	self.init = function (displayOnly) {
-		if (self.initiated) return;
+		if (self.initiated && !displayOnly) return;
 		self.initiated = true;
 		self.canvas = new fabric.Canvas(options.canvasId);
 		if (displayOnly === true) return;
@@ -587,11 +592,18 @@ var headerDesigner = function (options) {
 	}
 
 	self.resizeCanvas = function (width) {
+		if (options.isExpanded() && $('.report-expanded-scroll').offset()) {
+			document.body.scrollTop = document.documentElement.scrollTop = 0;
+			var windowHeight = $(window).height();
+			var scrollContainerHeight = windowHeight - $('.report-expanded-scroll').offset().top;
+			$('.report-expanded-scroll').css('height', scrollContainerHeight + 'px');
+		}
+
 		var canvas = self.canvas;
 		if (canvas == null) return;
 		width = isNaN(width) ? $("#" + options.canvasId).parent().parent().width() : width;
 		if (width > 100) canvas.setWidth(width);
-		canvas.renderAll();
+		canvas.renderAll();	
 	}
 
 	self.dispose = function () {
@@ -746,192 +758,6 @@ var headerDesigner = function (options) {
 	};
 }
 
-
-var textQuery = function (options) {
-	var self = this;
-	self.queryItems = [];
-	self.filterItems = [];
-
-	self.ParseQuery = function (token, text) {
-		return ajaxcall({
-			noBlocking: true,
-			url: options.apiUrl,
-			data: {
-				method: "/ReportApi/ParseQuery",
-				model: JSON.stringify({
-					token: token,
-					text: text
-				})
-			}
-		});
-	}
-
-	self.QueryMethods = [
-		{ value: 'Sum', key: '<span class="fa fa-flash"></span> Sum of', type: 'Function' },
-		{ value: 'Avg', key: '<span class="fa fa-flash"></span> Average of', type: 'Function' },
-		{ value: 'Sum', key: '<span class="fa fa-flash"></span> Total of', type: 'Function' },
-		{ value: 'Count', key: '<span class="fa fa-flash"></span> Count of', type: 'Function' },
-		{ value: 'Percent', key: '<span class="fa fa-flash"></span> Percentage of', type: 'Function' },
-		{ value: 'OrderBy', key: '<span class="fa fa-gear"></span> Order by', type: 'Order' },		
-		{ value: 'Bar', key: '<span class="fa fa-bar-chart"></span> as Bar Chart', type: 'ReportType' },
-		{ value: 'Pie', key: '<span class="fa fa-pie-chart"></span> as Pie Chart', type: 'ReportType' },
-	];
-
-	self.FilterMethods = [
-		{ value: 'Today', key: '<span class="fa fa-filter"></span> for Today', type: 'DateFilter' },
-		{ value: 'Yesterday', key: '<span class="fa fa-filter"></span> for Yesterday', type: 'DateFilter' },
-		{ value: 'This Month', key: '<span class="fa fa-filter"></span> for This Month', type: 'DateFilter' },
-		{ value: 'Last Month', key: '<span class="fa fa-filter"></span> for Last Month', type: 'DateFilter' },
-	];
-
-	self.getAggregate = function (columnId) {
-		var func = 'Group';
-		_.forEach(self.queryItems, function (x, i) {
-			if (x.value == columnId) {
-				if (i > 0 && self.queryItems[i - 1].type == 'Function') {
-					func = self.queryItems[i - 1].value;
-                }
-				return false;
-            }
-		});
-
-		return func;
-    }
-
-	self.getReportType = function () {
-		var reportType = _.find(self.queryItems, { type: 'ReportType' });
-		if (reportType) {
-			return reportType.value;
-		}
-
-		return (_.find(self.queryItems, { type: 'Function' })) ? 'Summary' : 'List';
-    }
-
-	self.resetQuery = function () {
-		self.queryItems = [];
-		self.filterItems = [];
-		document.getElementById("query-input").innerHTML = "Show me&nbsp;";
-		document.getElementById("filter-input").innerHTML = "Filter by&nbsp;";
-	}
-
-	self.searchFields = {
-		selectedOption: ko.observable(),
-		url: options.apiUrl,
-		query: function (params) {
-			return JSON.stringify(params.term ? {
-				method: "/ReportApi/ParseQuery",
-				model: JSON.stringify({
-					token: params.term,
-					text: ''
-				})
-			} : {});
-		},
-		processResults: function (data) {
-			if (data.d) data = data.d;
-			var items = _.map(data, function (x) {
-				return { id: x.fieldId, text: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey };
-			});
-
-			return {
-				results: items
-			};
-        }
-    }
-
-	self.setupQuery = function () {
-		var tributeAttributes = {
-			allowSpaces: true,
-			autocompleteMode: true,
-			noMatchTemplate: "",
-			values: function (token, callback) {
-				if (token == "=" || token == ">" || token == "<") return;
-				self.ParseQuery(token, "").done(function (results) {
-					if (results.d) results = results.d;
-					var items = _.map(results, function (x) {
-						return { value: x.fieldId, key: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey };
-					});
-
-					items = items.concat(self.QueryMethods)
-
-					callback(items);
-				});
-			},
-			selectTemplate: function (item) {
-				if (typeof item === "undefined") return null;
-				if (this.range.isContentEditable(this.current.element)) {
-					return (
-						'<span contenteditable="false"><a>' +
-						item.original.key +
-						"</a></span>"
-					);
-				}
-
-				return item.original.value;
-			},
-			menuItemTemplate: function (item) {
-				return item.string;
-			}
-		};
-
-		var tribute = new Tribute(tributeAttributes);
-		tribute.attach(document.getElementById("query-input"));
-
-		document.getElementById("query-input")
-			.addEventListener("tribute-replaced", function (e) {
-				self.queryItems.push(e.detail.item.original);
-			});
-
-		document.getElementById("query-input")
-			.addEventListener("menuItemRemoved", function (e) {
-				self.queryItems.remove(e.detail.item.original);
-			});
-
-		var tributeFilterAttributes = {
-			allowSpaces: true,
-			autocompleteMode: true,
-			noMatchTemplate: "",
-			values: function (token, callback) {
-				if (token == "=" || token == ">" || token == "<") return;
-				self.ParseQuery(token, "").done(function (results) {
-					if (results.d) results = results.d;
-					var items = _.map(results, function (x) {
-						return { value: x.fieldId, key: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field' };
-					});
-
-					items = items.concat(self.QueryMethods)
-					 
-					callback(items);
-				});
-			},
-			selectTemplate: function (item) {
-				if (typeof item === "undefined") return null;
-				if (this.range.isContentEditable(this.current.element)) {
-					return (
-						'<span contenteditable="false"><a>' +
-						item.original.key +
-						"</a></span>"
-					);
-				}
-
-				return item.original.value;
-			},
-			menuItemTemplate: function (item) {
-				return item.string;
-			}
-		};
-
-		var filterTribute = new Tribute(tributeFilterAttributes);
-		filterTribute.attach(document.getElementById("filter-input"));
-
-
-		document.getElementById("filter-input")
-			.addEventListener("tribute-replaced", function (e) {
-				self.queryItems.push(e.detail.item.original);
-			});
-
-	}
-}
-
 var reportViewModel = function (options) {
 	var self = this;
 
@@ -1026,6 +852,16 @@ var reportViewModel = function (options) {
 			self.CanEdit(match.canEdit || self.adminMode());
 		}
 	});
+	self.isExpanded = ko.observable(false);
+	self.toggleExpand = function () {
+		self.isExpanded(!self.isExpanded());
+
+		if (self.isExpanded()) {
+			self.headerDesigner.resizeCanvas();
+		} else {
+			$('.report-expanded-scroll').css('height', 'auto');
+		}
+	}
 
 	self.fieldFormatTypes = ['Auto', 'Number', 'Decimal', 'Currency', 'Percentage', 'Date', 'Date and Time', 'Time', 'String'];
 	self.decimalFormatTypes = ['Number', 'Decimal', 'Currency', 'Percentage'];
@@ -1034,7 +870,8 @@ var reportViewModel = function (options) {
 	self.designingHeader = ko.observable(false);
 	self.headerDesigner = new headerDesigner({
 		canvasId: options.reportHeader,
-		apiUrl: options.apiUrl
+		apiUrl: options.apiUrl,
+		isExpanded: self.isExpanded
 	});
 
 	self.initHeaderDesigner = function () {
@@ -1125,12 +962,17 @@ var reportViewModel = function (options) {
 	self.y = ko.observable(0);
 	self.width = ko.observable(3);
 	self.height = ko.observable(2);
+	var tokenKey = '';
+	var token = JSON.parse(localStorage.getItem(tokenKey));
 
 	self.textQuery = new textQuery(options);
 
 	self.runQuery = function (useAi) {
 		self.SelectedFields([]);
+		self.resetQuery(false);
+
 		var fieldIds = _.filter(self.textQuery.queryItems, { type: 'Field' }).map(function (x) { return x.value });
+		if (fieldIds.length == 0) fieldIds.push(0);
 		ajaxcall({
 			url: options.apiUrl,
 			data: {
@@ -1169,20 +1011,31 @@ var reportViewModel = function (options) {
 					}
 				}).done(function (result) {
 					if (result.d) result = result.d;
+					if (result.success === false) {
+						toastr.error(result.message || 'Could not process this correctly, please try again');
+						return;
+                    }
 					self.ExecuteReportQuery(result.sql, result.connectKey);
 				});
 			}
 			else {
-				self.RunReport(false);
+				self.RunReport(false, true);
 			}
 		});
 	}
 
-	self.resetQuery = function () {
-		self.textQuery.resetQuery();
+	self.resetQuery = function (resetText = true) {
+		if (resetText !== false) {
+			self.textQuery.resetQuery();
+		}
 		self.ReportResult().ReportData(null);
 		self.ReportResult().HasError(false);
+		self.ReportResult().ReportSql(null);
 	}
+
+	self.openDesigner = function () {
+		options.reportWizard.modal('show');
+    }
 
 	self.textQuery.searchFields.selectedOption.subscribe(function (newValue) {
 		if (newValue) {
@@ -1214,7 +1067,13 @@ var reportViewModel = function (options) {
 	});
 
 	self.adminMode.subscribe(function (newValue) {
-		self.LoadAllSavedReports();
+
+		if (self.ReportMode() != "dashboard") {
+			self.loadFolders().done(function () {
+				self.LoadAllSavedReports();
+			});
+		}
+
 		if (newValue) {
 			self._cansavereports = self.CanSaveReports();
 			self.SaveReport(true);
@@ -1378,6 +1237,8 @@ var reportViewModel = function (options) {
 		});
 	});
 
+	var tokenKey = '';
+	var token = JSON.parse(localStorage.getItem(tokenKey));
 	self.searchFieldsInReport = {
 		language: {
 			noResults: function () {
@@ -1390,6 +1251,7 @@ var reportViewModel = function (options) {
 				return 'Search for text or select a field';
 			}
 		},
+		headers: { "Authorization": "Bearer " + token },
 		selectedOption: ko.observable(),
 		url: options.apiUrl,
 		query: function (params) {
@@ -1459,6 +1321,8 @@ var reportViewModel = function (options) {
 		self.ReportDescription("");
 		self.ReportType("List");
 		self.FolderID(self.SelectedFolder() == null ? 0 : self.SelectedFolder().Id);
+		self.pager.sortColumn('');
+		self.pager.currentPage(1);
 
 		self.ChosenFields([]);
 
@@ -1482,6 +1346,7 @@ var reportViewModel = function (options) {
 		self.isFormulaField(false);
 		self.maxRecords(false);
 		self.OnlyTop(null);
+		self.lastPickedField(null);
 	};
 
 	self.SelectedProc.subscribe(function (proc) {
@@ -1512,6 +1377,8 @@ var reportViewModel = function (options) {
 		var parameters = _.map(proc.Parameters, function (e) {
 			var match = ko.toJS(proc.SelectedParameters && proc.SelectedParameters.length ? _.find(proc.SelectedParameters, { ParameterName: e.ParameterName }) : null);
 			e.operators = ['='];
+			if (e.ForeignKey) e.operators.push('in');
+
 			if (e.ParameterValue) e.operators.push('is default');
 			if (!e.Required) e.operators.push('is blank');
 			if (!e.Required) e.operators.push('is null');
@@ -1588,12 +1455,14 @@ var reportViewModel = function (options) {
 		return found;
 	}
 
+	self.lastPickedField = ko.observable();
 	self.SelectedFields.subscribe(function (fields) {
 		setTimeout(function () {
 			self.RemoveInvalidFilters(self.FilterGroups());
 		}, 500);
 
-		var newField = fields && fields.length > 0 ? fields[fields.length - 1] : null;
+		var newField = fields.length > 0 ? fields[fields.length - 1] : null;
+		if (newField && newField.isJsonColumn === true) return;
 		if (newField && (newField.forceFilter || newField.forceFilterForTable)) {
 			if (!self.FindInFilterGroup(newField.fieldId)) {
 				var group = self.FilterGroups()[0];
@@ -1606,6 +1475,8 @@ var reportViewModel = function (options) {
 		}
 
 		if (newField) {
+			self.lastPickedField(newField);
+
 			// go through and see if we need to add forced by Table filters
 			var forcedFiltersByTable = _.filter(self.selectedTableFields, function (x) { return x.forceFilterForTable == true });
 			var otherFieldIds = _.filter(self.selectedTableFields, function (x) { return x.forceFilterForTable == false }).map(function (x) { return x.fieldId });
@@ -1621,6 +1492,25 @@ var reportViewModel = function (options) {
 				}
 			}
 		}
+	});
+
+	self.jsonFields = ko.observableArray([]);
+	self.lastPickedField.subscribe(function (newValue) {
+		self.jsonFields([]);
+		if (newValue) {
+			if (newValue.fieldType == 'Json' && newValue.jsonStructure) {
+				var jsonData = JSON.parse(newValue.jsonStructure);
+				var jsonFields = _.map(Object.keys(jsonData), function (key) {
+					var x = self.setupField(ko.toJS(newValue));
+					x.isJsonColumn = true;
+					x.jsonColumnName = key;
+					x.selectedFieldName += (" > " + key);
+					return x;
+				});
+
+				self.jsonFields(jsonFields);
+            }
+        }
 	});
 
 	self.loadTableFields = function (table) {
@@ -1655,6 +1545,8 @@ var reportViewModel = function (options) {
 
 	self.SelectedTable.subscribe(function (table) {
 		self.SelectedProc(null);
+		self.lastPickedField(null);
+		self.jsonFields([]);
 		if (table == null) {
 			self.ChooseFields([]);
 			self.selectedTableFields = [];
@@ -1919,7 +1811,7 @@ var reportViewModel = function (options) {
 	self.AllSqlQuries = ko.observable("");
 
 	self.canAddSeries = ko.computed(function () {
-		var c1 = self.dateFields().length > 0 && ['Group', 'Bar', 'Line'].indexOf(self.ReportType()) >= 0 && self.SelectedFields()[0].fieldType == 'DateTime';
+		var c1 = self.dateFields().length > 0 && ['Group', 'Bar', 'Line', 'Single'].indexOf(self.ReportType()) >= 0 && self.SelectedFields()[0].fieldType == 'DateTime';
 		var c2 = _.filter(self.FilterGroups(), function (g) { return _.filter(g.Filters(), function (x) { return x.Operator() == 'range' && x.Value() && x.Value().indexOf('This') == 0; }).length > 0; }).length > 0;
 		return c1 && c2;
 	});
@@ -2083,7 +1975,7 @@ var reportViewModel = function (options) {
 					FieldId: e.Field().fieldId,
 					AndOr: i == 0 ? g.AndOr() : e.AndOr(),
 					Operator: e.Operator(),
-					Value1: e.Operator() == "in" || e.Operator() == "not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 ? "blank" : e.Value()),
+					Value1: e.Operator() == "in" || e.Operator() == "not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' ? "blank" : e.Value()),
 					Value2: e.Value2(),
 					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
 				} : null;
@@ -2142,7 +2034,10 @@ var reportViewModel = function (options) {
 	};
 	self.BuildReportData = function (drilldown, isComparison, index) {
 
-		drilldown = drilldown || [];
+		drilldown = _.compact(_.map(drilldown || [], function (x) {
+			if (x.isJsonColumn || x.isRuleSet || x.Column.FormatType == 'Csv' || x.Column.FormatType == 'Json') return;
+			return x;
+		}));		
 		var hasGroupInDetail = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Group in Detail' }) != null;
 		var filters = isComparison ? self.SeriesDataIntoFilter(self.FilterGroups(), index) : self.BuildFilterData(self.FilterGroups());
 
@@ -2213,7 +2108,8 @@ var reportViewModel = function (options) {
 					HeaderFontBold: x.headerFontBold(),
 					FieldWidth: x.fieldWidth(),
 					FieldConditionOp: x.fieldConditionOp(),
-					FieldConditionVal: x.fieldConditionVal()
+					FieldConditionVal: x.fieldConditionVal(),
+					JsonColumnName: x.isJsonColumn && x.jsonColumnName ? x.jsonColumnName : ''
 				};
 			}),
 			Schedule: self.scheduleBuilder.toJs(),
@@ -2231,7 +2127,7 @@ var reportViewModel = function (options) {
 					UseDefault: x.Operator() == 'is default',
 					ParameterId: x.Id,
 					ParameterName: x.ParameterName,
-					Value: x.Value(),
+					Value: x.Operator() == 'in' ? x.ValueIn.join(",") : x.Value(),
 					Operator: x.Operator()
 				}
 			}) : []
@@ -2334,16 +2230,22 @@ var reportViewModel = function (options) {
 		}
 		while (i < seriesCount + 1);
 		$.when.apply($, promises).done(function () {
+			options.reportWizard.modal('hide');
+
 			if (isExecuteReportQuery === false) {
 				if (saveOnly) {
 					return;
 				}
 
 				if (options.samePageOnRun) {
-					options.reportWizard.modal('hide');
 					self.ReportID(_result.reportId);
 					self.ExecuteReportQuery(_result.sql, _result.connectKey);
 					self.ReportMode("execute");
+
+					if (self.useReportHeader()) {
+						self.headerDesigner.init(true);
+						self.headerDesigner.loadCanvas(true);
+					}
 				}
 				else {
 					redirectToReport(options.runReportUrl, {
@@ -2369,9 +2271,14 @@ var reportViewModel = function (options) {
 	};
 
 	self.ExecuteReportQuery = function (reportSql, connectKey, reportSeries) {
-
 		if (!reportSql || !connectKey) return;
-
+		self.ChartData('');
+		self.ReportResult().ReportData(null);
+		setTimeout(function () {
+			if ($.blockUI) {
+				$.blockUI({ baseZ: 500 });
+			}
+		}, 500);
 		return ajaxcall({
 			url: options.execReportUrl,
 			type: "POST",
@@ -2386,7 +2293,6 @@ var reportViewModel = function (options) {
 				reportSeries: reportSeries ||''
 			})
 		}).done(function (result) {
-
 			if (result.d) { result = result.d; }
 			if (result.result) { result = result.result; }
 			var reportResult = self.ReportResult();
@@ -2394,8 +2300,9 @@ var reportViewModel = function (options) {
 			reportResult.Exception(result.Exception);
 			reportResult.Warnings(result.Warnings);
 			reportResult.ReportDebug(result.ReportDebug);
-			reportResult.ReportSql(result.ReportSql);
+			reportResult.ReportSql(beautifySql(result.ReportSql));
 			self.ReportSeries = reportSeries;
+			if (result.HasError) return;
 
 			function matchColumnName(src, dst, dbSrc, dbDst) {
 				if (src == dst) return true;
@@ -2417,14 +2324,17 @@ var reportViewModel = function (options) {
 				return src == dst;
 			}
 
-			function processCols(cols) {
-				self.columnDetails([]);
+			function processCols(cols, skipColDetails = false) {
+				if (skipColDetails !== true) self.columnDetails([]);
 				_.forEach(cols, function (e, i) {
 					var col;
 					if (self.useStoredProc()) {
 						col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.procColumnName, e.ColumnName); });
 						e.hideStoredProcColumn = (col ? col.disabled() : true);
 					}
+					else if (e.FormatType == 'Json') {
+						col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.jsonColumnName, e.ColumnName); });
+                    }
 					else
 						col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.fieldName, e.ColumnName, x.dbField, e.SqlField); });
 					if (col && col.linkField()) {
@@ -2434,9 +2344,9 @@ var reportViewModel = function (options) {
 						e.linkItem = {};
 						e.linkField = false;
 					}
-					col = ko.toJS(col || { fieldName: e.ColumnName });
+					//col = ko.toJS(col || { fieldName: e.ColumnName });
 
-					self.columnDetails.push(col);
+					if (skipColDetails !== true) self.columnDetails.push(col);
 
 					e.decimalPlaces = col.decimalPlaces;
 					e.fieldAlign = col.fieldAlign;
@@ -2455,6 +2365,9 @@ var reportViewModel = function (options) {
 					e.backColor = col.backColor;
 					e.groupInGraph = col.groupInGraph;
 					e.dontSubTotal = col.dontSubTotal;
+					e.fieldType = col.fieldType;
+					e.jsonColumnName = col.jsonColumnName;
+					e.isJsonColumn = col.fieldType == 'Json';
 					e.outerGroup = ko.observable(false);
 					e.colIndex = i;
 
@@ -2477,6 +2390,10 @@ var reportViewModel = function (options) {
 						} 
 					}
 
+					e.setupFieldOptions = function () {
+						col.setupFieldOptions();
+					}
+
 					if (col.selectedAggregate == 'Outer Group' && !_.find(self.OuterGroupColumns(), {fieldId: e.fieldId})) {
 						e.toggleOuterGroup()
 					}
@@ -2492,12 +2409,12 @@ var reportViewModel = function (options) {
 						var link = '';
 						if (linkItem.LinksToReport) {
 							link = options.runReportUrl + '?linkedreport=true&reportId=' + linkItem.LinkedToReportId;
-							if (linkItem.SendAsFilterParameter) {
-								link += '&filterId=' + linkItem.SelectedFilterId + '&filterValue=' + r.Value;
+							if (linkItem.SendAsFilterParameter && r.Value) {
+								link += '&filterId=' + linkItem.SelectedFilterId + '&filterValue=' + r.Value.replace(/['"]+/g, '');
 							}
 						}
 						else {
-							link = linkItem.LinkToUrl + (linkItem.SendAsQueryParameter ? ('?' + linkItem.QueryParameterName + '=' + r.LabelValue) : '');
+							link = linkItem.LinkToUrl + (linkItem.SendAsQueryParameter ? ('?' + linkItem.QueryParameterName + '=' + (r.LabelValue ? r.LabelValue.replace(/['"]+/g, '') : '')) : '');
 						}
 						r.LinkTo = link;
 					}
@@ -2509,7 +2426,9 @@ var reportViewModel = function (options) {
 					r.fontBold = col.fontBold;
 					r.fontColor = col.fontColor;
 					r.fieldId = col.fieldId;
-					r.outerGroup = col.outerGroup
+					r.outerGroup = col.outerGroup;
+					r.jsonColumnName = col.jsonColumnName;
+					r.isJsonColumn = col.isJsonColumn;
 
 					if (self.decimalFormatTypes.indexOf(col.fieldFormat) >= 0) {
 						r.FormattedValue = self.formatNumber(r.Value, col.decimalPlaces);
@@ -2565,7 +2484,13 @@ var reportViewModel = function (options) {
 						if (ddData.result) { ddData = ddData.result; }
 						ddData.ReportData.IsDrillDown = ko.observable(true);
 
-						processCols(ddData.ReportData.Columns);
+						if (ddData.HasError) {
+							toastr.error(ddData.Exception || 'Error occured in drill down');
+							e.isExpanded(false);
+							return;
+						}
+
+						processCols(ddData.ReportData.Columns, true);
 						_.forEach(ddData.ReportData.Rows, function (dr) {
 							processRow(dr.Items, ddData.ReportData.Columns);
 						});
@@ -2612,7 +2537,7 @@ var reportViewModel = function (options) {
 				};
 
 				e.exportExcel = function () {
-					self.downloadExport("/DotNetReport/DownloadExcel", {
+					self.downloadExport("DownloadExcel", {
 						reportSql: e.sql,
 						connectKey: self.currentConnectKey(),
 						reportName: 'Sub Report for ' + self.ReportName(),
@@ -2677,7 +2602,7 @@ var reportViewModel = function (options) {
 						if (subtotalResult.d) { subtotalResult = subtotalResult.d; }
 						if (subtotalResult.result) { subtotalResult = subtotalResult.result }
 
-						processCols(subtotalResult.ReportData.Columns);
+						processCols(subtotalResult.ReportData.Columns, true);
 						_.forEach(subtotalResult.ReportData.Rows, function (dr) {
 							processRow(dr.Items, subtotalResult.ReportData.Columns);
 						});
@@ -2729,6 +2654,7 @@ var reportViewModel = function (options) {
 		if (!self.isChart() || self.skipDraw === true) return;
 		// Create the data table.
 		var reportData = self.ReportResult().ReportData();
+		if (!reportData) return;
 		var data = new google.visualization.DataTable();
 
 		var subGroups = [];
@@ -2736,18 +2662,18 @@ var reportViewModel = function (options) {
 		_.forEach(reportData.Columns, function (e, i) {
 			var field = self.SelectedFields()[i];
 			if (i == 0) {
-				data.addColumn(e.IsNumeric ? 'number' : 'string', e.fieldLabel || e.ColumnName);
+				data.addColumn(e.IsNumeric ? 'number' : 'string', e.fieldLabel() || e.ColumnName);
 				//} else if (typeof field !== "undefined" && field.groupInGraph()) {
 				//	subGroups.push({ index: i, column: e.fieldLabel || e.ColumnName });
-			} else if (e.IsNumeric && !e.groupInGraph) {
-				valColumns.push({ index: i, column: e.fieldLabel || e.ColumnName });
+			} else if (e.IsNumeric && !e.groupInGraph()) {
+				valColumns.push({ index: i, column: e.fieldLabel() || e.ColumnName });
 			}
 		});
 
 		if (subGroups.length == 0) {
 			_.forEach(reportData.Columns, function (e, i) {
-				if (i > 0 && e.IsNumeric && !e.groupInGraph) {
-					data.addColumn(e.IsNumeric ? 'number' : 'string', e.fieldLabel || e.ColumnName);
+				if (i > 0 && e.IsNumeric && !e.groupInGraph()) {
+					data.addColumn(e.IsNumeric ? 'number' : 'string', e.fieldLabel() || e.ColumnName);
 				}
 			});
 		}
@@ -2782,12 +2708,11 @@ var reportViewModel = function (options) {
 							_.forEach(valColumns, function (j) {
 								data.addColumn('number', r.Value + (j == 0 ? '' : '-' + j));
 							});
-
 						}
 					} else if (r.Column.IsNumeric) {
 						itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.FormattedValue) || (r.Column.IsNumeric ? 0 : ''));
 					}
-				} else if (r.Column.IsNumeric && !column.groupInGraph) {
+				} else if (r.Column.IsNumeric && !column.groupInGraph()) {
 					itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.FormattedValue) || (r.Column.IsNumeric ? 0 : ''));
 				}
 			});
@@ -2817,6 +2742,7 @@ var reportViewModel = function (options) {
 
 		var chartDiv = document.getElementById('chart_div_' + self.ReportID());
 		var chart = null;
+		if (!chartDiv) return;
 
 		if (self.ReportType() == "Pie") {
 			chart = new google.visualization.PieChart(chartDiv);
@@ -2884,7 +2810,8 @@ var reportViewModel = function (options) {
 	self.editFieldOptions = ko.observable();
 
 	self.setupField = function (e) {
-		e.selectedFieldName = e.tableName + " > " + e.fieldName;
+		e.selectedFieldName = e.tableName + " > " + e.fieldName + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
+		e.selectedFilterName = e.tableName + " > " + (e.fieldLabel || e.fieldName) + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
 		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail').concat('Group in Detail').concat('Csv');
 		e.selectedAggregate = ko.observable(e.aggregateFunction);
 		e.filterOnFly = ko.observable(e.filterOnFly);
@@ -2908,6 +2835,8 @@ var reportViewModel = function (options) {
 		e.fieldWidth = ko.observable(e.fieldWidth);
 		e.fieldConditionOp = ko.observable(e.fieldConditionOp);
 		e.fieldConditionVal = ko.observable(e.fieldConditionVal);
+		e.jsonColumnName = e.jsonColumnName;
+		e.isJsonColumn = e.jsonColumnName ? true : false;
 
 		e.applyAllHeaderFontColor = ko.observable(false);
 		e.applyAllHeaderBackColor = ko.observable(false);
@@ -3061,6 +2990,7 @@ var reportViewModel = function (options) {
 		self.ShowOnDashboard(report.ShowOnDashboard);
 		self.SortByField(report.SortBy);
 		self.SortDesc(report.SortDesc);
+		self.pager.sortColumn('');
 		self.pager.sortDescending(report.SortDesc);
 		var match = _.find(self.SavedReports(), { reportId: report.ReportID }) || { canEdit: false };
 		self.CanEdit(report.canEdit || match.canEdit || self.adminMode());
@@ -3206,6 +3136,7 @@ var reportViewModel = function (options) {
 				});
 
 				self.SelectedFields(report.SelectedFields);
+				self.lastPickedField(null);
 				return self.PopulateReport(report, filterOnFly, reportSeries);
 			}
 		});
@@ -3232,7 +3163,7 @@ var reportViewModel = function (options) {
 							self.ReportMode("generate");
 						}
 						else {
-							self.SaveReport(false);
+							//self.SaveReport(false);
 							self.RunReport(false, true);
 							e.runMode = false;
 						}
@@ -3284,29 +3215,7 @@ var reportViewModel = function (options) {
 
 			self.SavedReports(reports);
 		});
-	};
-
-	if (self.ReportMode() != "dashboard") {
-		self.loadFolders().done(function () {
-			self.LoadAllSavedReports();
-			ajaxcall({
-				url: options.apiUrl,
-				data: {
-					method: "/ReportApi/CanSaveReports",
-					model: "{}"
-				}
-			}).done(function (x) {
-				if (x.d) { x = x.d; }
-				if (x.result) { x = x.result; }
-				x = x || {
-					allowUsersToCreateReports: true,
-					allowUsersToManageFolders: true
-				};
-				self.CanSaveReports(x.allowUsersToCreateReports);
-				self.CanManageFolders(x.allowUsersToManageFolders);
-			});
-		});
-	}
+	};	
 
 	self.changeSort = function (sort) {
 		self.pager.changeSort(sort);
@@ -3407,15 +3316,36 @@ var reportViewModel = function (options) {
 			return;
 		}
 
-		self.loadFolders(folderId);
-		self.loadTables();
-		self.loadProcs();
-
 		var adminMode = false;
 		if (localStorage) adminMode = localStorage.getItem('reportAdminMode');
 
-		if (adminMode === 'true') {
+		if (adminMode === 'true' && self.allowAdmin()) {
 			self.adminMode(true);
+		}
+		
+		self.loadTables();
+		self.loadProcs();	
+
+		if (self.ReportMode() != "dashboard") {
+			self.loadFolders().done(function () {
+				self.LoadAllSavedReports();
+				ajaxcall({
+					url: options.apiUrl,
+					data: {
+						method: "/ReportApi/CanSaveReports",
+						model: "{}"
+					}
+				}).done(function (x) {
+					if (x.d) { x = x.d; }
+					if (x.result) { x = x.result; }
+					x = x || {
+						allowUsersToCreateReports: true,
+						allowUsersToManageFolders: true
+					};
+					self.CanSaveReports(x.allowUsersToCreateReports);
+					self.CanManageFolders(x.allowUsersToManageFolders);
+				});
+			});
 		}
 	};
 
@@ -3541,7 +3471,7 @@ var reportViewModel = function (options) {
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
 			allExpanded: self.allExpanded(),
-			expandSqls: self.getExpandSqls().join(',') || '',
+			expandSqls: self.allExpanded() ? JSON.stringify(self.BuildReportData()) : '',
 			columnDetails: self.getColumnDetails(),
 			includeSubTotal: self.IncludeSubTotal(),
 			pivot: self.ReportType() == 'Pivot'
@@ -3592,10 +3522,30 @@ var dashboardViewModel = function (options) {
 
 	self.currentDashboard = ko.observable(currentDash);
 	self.selectDashboard = ko.observable(currentDash.id);
+	self.loadDashboard = function (dashboardId) {
+		ajaxcall({
+			url: options.loadSavedDashbordUrl + '?id=' + dashboardId + '&adminMode=' + self.adminMode()
+		}).done(function (reportsData) {
+			var reports = [];
+			_.forEach(reportsData, function (r) {
+				reports.push({ reportSql: r.ReportSql, reportId: r.ReportId, reportFilter: r.ReportFilter, connectKey: r.ConnectKey, x: r.X, y: r.Y, width: r.Width, height: r.Height });
+			});
+
+			var currentDash = dashboardId > 0
+				? (_.find(self.dashboards(), { id: dashboardId }) || { name: '', description: '' })
+				: (self.dashboards().length > 0 ? self.dashboards()[0] : { name: '', description: '' });
+
+			self.dashboard.Id(currentDash.id);
+			self.dashboard.Name(currentDash.name);
+			self.dashboard.Description(currentDash.description);
+			self.currentDashboard(currentDash);
+			self.loadDashboardReports(reports);
+		});
+	}
 
 	self.selectDashboard.subscribe(function (newValue) {
 		if (newValue != self.currentDashboard().id) {
-			window.location = window.location.href.split("?")[0] + "?id=" + newValue;
+			self.loadDashboard(newValue);
 		}
 	});
 
@@ -3609,6 +3559,7 @@ var dashboardViewModel = function (options) {
 		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.viewOnlyUsers, '');
 		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.deleteOnlyUserRoles, '');
 		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.deleteOnlyUsers, '');
+		self.dashboard.manageAccess.clientId('');
 
 		_.forEach(self.reportsAndFolders(), function (f) {
 			_.forEach(f.reports, function (r) {
@@ -3627,6 +3578,7 @@ var dashboardViewModel = function (options) {
 		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.viewOnlyUsers, self.currentDashboard().viewOnlyUserId || '');
 		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.deleteOnlyUserRoles, self.currentDashboard().deleteOnlyUserRoles || '');
 		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.deleteOnlyUsers, self.currentDashboard().deleteOnlyUserId || '');
+		self.dashboard.manageAccess.clientId(self.currentDashboard().clientId || '');
 
 		var selectedReports = (self.currentDashboard().selectedReports || '').split(',');
 		_.forEach(self.reportsAndFolders(), function (f) {
@@ -3686,6 +3638,7 @@ var dashboardViewModel = function (options) {
 			userRolesAccess: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.userRoles),
 			viewOnlyUserRoles: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.viewOnlyUserRoles),
 			deleteOnlyUserRoles: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.deleteOnlyUserRoles),
+			clientIdToUpdate: self.dashboard.manageAccess.clientId(),
 			adminMode: self.adminMode()
 		};
 
@@ -3700,7 +3653,7 @@ var dashboardViewModel = function (options) {
 			if (result.result) { result = result.result; }
 			toastr.success("Dashboard saved successfully");
 			setTimeout(function () {
-				window.location = window.location.href.split("?")[0] + "?id=" + result.id;
+				self.loadDashboard(result.id);
 			}, 500);
 		});
 
@@ -3727,46 +3680,6 @@ var dashboardViewModel = function (options) {
 	};
 
 	self.reports = ko.observableArray([]);
-	var i = 0;
-	_.forEach(options.reports, function (x) {
-		var report = new reportViewModel({
-			runReportUrl: options.runReportUrl,
-			runExportUrl: options.runExportUrl,
-			execReportUrl: options.execReportUrl,
-			reportWizard: options.reportWizard,
-			lookupListUrl: options.lookupListUrl,
-			runReportApiUrl: options.runReportApiUrl,
-			apiUrl: options.apiUrl,
-			reportFilter: x.reportFilter,
-			reportMode: "dashboard",
-			reportSql: x.reportSql,
-			reportId: x.reportId,
-			reportConnect: x.connectKey,
-			users: options.users,
-			userRoles: options.userRoles,
-			skipDraw: true,
-			printReportUrl: options.printReportUrl,
-			dataFilters: options.dataFilters
-		});
-
-		report.isExpanded = ko.observable(false);
-		report.toggleExpand = function () {
-			report.isExpanded(!report.isExpanded());
-		}
-		report.x = ko.observable(x.x);
-		report.y = ko.observable(x.y);
-		report.width = ko.observable(x.width);
-		report.height = ko.observable(x.height);
-		report.panelStyle = 'panel-' + (i == 0 ? 'default' : (i == 1 ? 'info' : (i == 2 ? 'warning' : 'danger')));
-		i = i == 3 ? 0 : i + 1;
-		self.reports.push(report);
-		report.LoadReport(x.reportId, true, '');
-
-		report.showFlyFilters = ko.observable(false);
-		report.toggleFlyFilters = function () {
-			report.showFlyFilters(!report.showFlyFilters());
-		};
-	});
 
 	self.drawChart = function () {
 		_.forEach(self.reports(), function (x) {
@@ -3775,8 +3688,106 @@ var dashboardViewModel = function (options) {
 		});
 	};
 
+	self.selectedReport = ko.observable(null);
+	self.skipGridRefresh = false;
+
+	self.loadDashboardReports = function (reports, skipGridRefresh) {
+		self.reports([]);
+		var allreports = [];
+		var promises = [];
+		var i = 0;
+		self.skipGridRefresh = true;
+
+		_.forEach(reports, function (x) {
+			var report = new reportViewModel({
+				runReportUrl: options.runReportUrl,
+				runExportUrl: options.runExportUrl,
+				execReportUrl: options.execReportUrl,
+				reportWizard: options.reportWizard,
+				fieldOptionsModal: options.fieldOptionsModal,
+				linkModal: options.linkModal,
+				lookupListUrl: options.lookupListUrl,
+				runReportApiUrl: options.runReportApiUrl,
+				apiUrl: options.apiUrl,
+				reportFilter: x.reportFilter,
+				reportMode: "dashboard",
+				reportSql: x.reportSql,
+				reportId: x.reportId,
+				reportConnect: x.connectKey,
+				users: options.users,
+				userRoles: options.userRoles,
+				skipDraw: true,
+				printReportUrl: options.printReportUrl,
+				dataFilters: options.dataFilters
+			});
+
+			report.x = ko.observable(x.x);
+			report.y = ko.observable(x.y);
+			report.width = ko.observable(x.width);
+			report.height = ko.observable(x.height);
+			report.panelStyle = 'panel-' + (i == 0 ? 'default' : (i == 1 ? 'info' : (i == 2 ? 'warning' : 'danger')));
+			i = i == 3 ? 0 : i + 1;
+
+			report.showFlyFilters = ko.observable(false);
+			report.toggleFlyFilters = function () {
+				report.showFlyFilters(!report.showFlyFilters());
+			};
+			report.openReport = function () {
+				// Load report
+				return report.LoadReport(x.reportId).done(function () {
+					self.selectedReport(report);
+					options.reportWizard.modal('show');
+					setTimeout(function () {
+						if ($.unblockUI) {
+							$.unblockUI();
+						}
+					}, 1000);
+				});
+			};
+			allreports.push(report);
+			promises.push(report.LoadReport(x.reportId, true, ''));
+		});
+
+		self.reports(allreports);
+		$.when(promises).done(function () {
+			setTimeout(function () {
+				if ($.unblockUI) {
+					$.unblockUI();
+				}
+
+				if (skipGridRefresh === true) return;
+				
+				var grid = $('.grid-stack').data("gridstack");
+				grid.removeAll();
+
+				// Reload the grid items from the screen
+				var gridItems = $('.grid-stack-item');
+				i = 0;
+				gridItems.each(function () {
+					var item = $(this);
+					var x = parseInt(item.attr('data-gs-x'));
+					var y = parseInt(item.attr('data-gs-y'));
+					var width = parseInt(item.attr('data-gs-width'));
+					var height = parseInt(item.attr('data-gs-height'));
+					var id = reports[i++].reportId;
+					item.attr('data-gs-id', id);
+
+					// Add the grid item to the GridStack
+					grid.addWidget(item, x, y, width, height);
+				});
+
+				self.skipGridRefresh = false;
+
+			}, 1000);
+
+			self.drawChart();
+		});		
+	}
+
+	self.loadDashboardReports(options.reports, true);
+
 	self.updatePosition = function (item) {
-		if (!item || !item.id) return;
+		if (!item || !item.id || self.skipGridRefresh) return;
 		ajaxcall({
 			url: options.apiUrl,
 			noBlocking: true,
