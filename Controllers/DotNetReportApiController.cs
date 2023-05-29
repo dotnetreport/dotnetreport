@@ -431,7 +431,7 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult> GetSchemaFromSql(SchemaFromSqlCall data)
+        public async Task<JsonResult> GetSchemaFromSql(SchemaFromSqlCall data)
         {
             try
             {
@@ -500,8 +500,8 @@ namespace ReportBuilder.Web.Controllers
         }
 
         //[Authorize(Roles="Administrator")]
-        [HttpGet]
-        public async Task<ActionResult> LoadSetupSchema(string databaseApiKey = "")
+        [HttpPost]
+        public async Task<JsonResult> LoadSetupSchema(string databaseApiKey = "")
         {
             var settings = GetSettings();
             if (!settings.CanUseAdminMode)
@@ -539,7 +539,7 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult> SearchProcedure(SearchProcCall data)
+        public async Task<JsonResult> SearchProcedure(SearchProcCall data)
         {
             string value = data.value; string accountKey = data.accountKey; string dataConnectKey = data.dataConnectKey;
             return Json(await GetSearchProcedure(value, accountKey, dataConnectKey), JsonRequestBehavior.AllowGet);
