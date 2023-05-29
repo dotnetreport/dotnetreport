@@ -415,9 +415,13 @@ var textQuery = function (options) {
         document.getElementById("query-input").innerHTML = "Show me&nbsp;";
     }
 
+    var tokenKey = '';
+    var token = JSON.parse(localStorage.getItem(tokenKey));
+
     self.searchFields = {
         selectedOption: ko.observable(),
         url: options.apiUrl,
+        headers: { "Authorization": "Bearer " + token },
         query: function (params) {
             return params.term ? {
                 method: "/ReportApi/ParseQuery",

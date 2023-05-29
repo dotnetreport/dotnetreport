@@ -97,14 +97,14 @@
 
 <script type="text/html" id="report-column-header">
     <!-- ko foreach: Columns -->
-    <th data-bind="attr: { id: fieldId }, css: {'right-align': IsNumeric}, style: {'width': fieldWidth, 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid; ">
+    <th data-bind="attr: { id: fieldId }, css: {'right-align': IsNumeric}, style: {'width': fieldWidth, 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
         <!-- ko if: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false) -->
-        <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor(), 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
+        <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
         <!-- /ko -->
         <!-- ko ifnot: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false)  -->
-        <a href="" data-bind="click: function(){ !$parent.IsDrillDown() ? $parents[3].changeSort(SqlField) : $parents[1].changeSort(SqlField); }, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}">
+        <a href="" data-bind="click: function(){ $parents[3].pager ? $parents[3].changeSort(SqlField) : $parents[5].changeSort(SqlField); }, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}">
             <span data-bind="text: fieldLabel() ? fieldLabel() : ColumnName"></span>
-            <span data-bind="text: (!$parent.IsDrillDown() ? $parents[3].pager.sortColumn() : $parents[1].pager.sortColumn()) === SqlField ? ((!$parent.IsDrillDown() ? $parents[3].pager.sortDescending() : $parents[1].pager.sortDescending()) ? '&#9660;' : '&#9650;') : ''"></span>
+            <span data-bind="text: ($parents[3].pager ? $parents[3].pager.sortColumn() : $parents[5].pager.sortColumn()) === SqlField ? (($parents[3].pager ? $parents[3].pager.sortDescending() : $parents[5].pager.sortDescending()) ? '&#9660;' : '&#9650;') : ''"></span>
         </a>
         <!-- /ko -->
 
@@ -134,7 +134,7 @@
 
 <script type="text/html" id="report-column">
     <!-- ko foreach: Items -->
-    <td data-bind="hidden: outerGroup, style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign() ? fieldAlign() : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '64px' : ''}">
+    <td data-bind="hidden: outerGroup, style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '48px' : ''}">
         <div data-bind="style: {'width': fieldWidth }">
         <!-- ko if: LinkTo-->
         <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: FormattedValue"></span></a>
@@ -166,7 +166,7 @@
                     <span data-bind="text: fieldLabel || ColumnName"></span>
                 </td>
                 <!-- ko foreach: $parent.Rows -->
-                <td data-bind="style: {'background-color': $parent.backColor, 'color': $parent.fontColor, 'font-weight': $parent.fontBold ? 'bold' : 'normal', 'text-align': $parent.fieldAlign ? $parent.fieldAlign : ($parent.IsNumeric ? 'right' : 'left') }">
+                <td data-bind="style: {'background-color': $parent.backColor, 'color': $parent.fontColor, 'font-weight': $parent.fontBold() ? 'bold' : 'normal', 'text-align': $parent.fieldAlign ? $parent.fieldAlign : ($parent.IsNumeric ? 'right' : 'left') }">
                     <span data-bind="text: Items[$parentContext.$index()].FormattedValue"></span>
                 </td>
                 <!-- /ko -->
@@ -194,12 +194,12 @@
             <tbody>
                 <tr style="display: none;" data-bind="visible: Rows.length < 1">
                     <td class="text-info" data-bind="attr:{colspan: Columns.length}">
-                        <!-- ko if: $parents[4].ReportType()=='Single' -->
+                        <!-- ko if: $parents[2].ReportType()=='Single' -->
                         <div style="text-align: center; width: 100%">
-                        <span style="font-size: 64px" title="No data found">/</span>
+                        <span style="font-size: 48px" title="No data found">/</span>
                         </div>
                         <!-- /ko -->
-                        <!-- ko if: $parents[4].ReportType()!='Single' -->
+                        <!-- ko if: $parents[2].ReportType()!='Single' -->
                         No records found
                         <!-- /ko -->
                     </td>
@@ -225,7 +225,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr style="display: none;" data-bind="visible: Rows.length < 1">
+                                <tr style="display: none;" data-bind="visible: Rows && Rows.length < 1">
                                     <td class="text-info" data-bind="attr:{colspan: Columns.length}">
                                         No records found
                                     </td>
@@ -265,7 +265,7 @@
                     <!-- /ko -->
                     <!-- ko foreach: Items -->
                     <!-- ko if: Value != 'NA' && Value != 'NaN' && !outerGroup() -->
-                    <td data-bind="style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '64px' : ''}">
+                    <td data-bind="style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '48px' : ''}">
                         <span data-bind="html: FormattedValue, css: {'right-align': true}"></span>
                     </td>
                     <!-- /ko -->
@@ -884,7 +884,7 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-md-5 control-label">Link to this URL</label>
                         <div class="col-sm-7 col-md-7">
-                            <input type="url" class="form-control" required placeholder="Enter a url to open" data-bind="value: LinkToUrl" title="Valid URL needs to start with http:// or https://">
+                            <input type="text" class="form-control" required placeholder="Enter a url to open" data-bind="value: LinkToUrl" title="Valid URL needs to start with http:// or https://">
                         </div>
                     </div>
                     <div class="checkbox">
@@ -955,7 +955,7 @@
                         </div>
                     </div>
                     <div class="col-md-3 col-sm-3 col-xs-6">
-                        <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Map'); }, css: {active: ReportType()=='Map'}">
+                        <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Map'); }, css: {active: ReportType().indexOf('Map')==0}">
                             <span class="fa fa-2x fa-globe"></span>
                             <p>Map</p>
                         </div>
@@ -975,7 +975,7 @@
                 </div>
                 <hr />
                 <h5 class="pull-left"><span class="fa fa-database"></span>&nbsp;Choose Data for Report</h5>
-                <div class="pull-right btn-group btn-group-toggle btn-group-sm" data-toggle="buttons" role="group" data-bind="if: ReportID() <= 0">
+                <div class="pull-right" role="group" data-bind="if: ReportID() <= 0">
                     <label class="btn btn-primary active" style="margin-right: 0px;" title="You can change the Data source only when creating a new report, changing this will clear all selections">
                         <input type="radio" name="dataoption" id="table" checked data-bind="checked: useStoredProc, checkedValue: false"> Dynamic
                     </label>
@@ -992,7 +992,7 @@
 
                     <div class="col-md-6" data-bind="disable: isFormulaField, hidden: useStoredProc">
                         <div data-bind="with: textQuery.searchFields">
-                            <select id="search-field" class="form-control" data-bind="select2: {placeholder: 'Or Search for a Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults }, minimumInputLength: 2, allowClear: true }, value: selectedOption"></select>
+                            <select id="search-field" class="form-control" data-bind="select2: {placeholder: 'Or Search for a Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults, headers: headers }, minimumInputLength: 2, allowClear: true }, value: selectedOption"></select>
                         </div>
                     </div>
 
