@@ -3697,6 +3697,7 @@ var dashboardViewModel = function (options) {
 		var promises = [];
 		var i = 0;
 		self.skipGridRefresh = true;
+		reports = _.orderBy(reports, ['y', 'x']);
 
 		_.forEach(reports, function (x) {
 			var report = new reportViewModel({
