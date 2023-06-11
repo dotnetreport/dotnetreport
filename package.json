@@ -1,8 +1,8 @@
 {
   "name": "dotnetreport",
-  "version": "5.1.0-beta.4",
+  "version": "5.1.0",
   "description": "module that contains all scripts needed for dotnetreport",
-  "main": "dotnetreport.min.js",
+  "main": "dotnetreport.js",
   "author": "dotnetreport",
   "dependencies": {
     "jquery": "^3.4.1",
