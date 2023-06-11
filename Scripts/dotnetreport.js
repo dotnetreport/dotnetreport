@@ -1232,9 +1232,14 @@ var reportViewModel = function (options) {
 			return [];
 		}
 
-		return _.filter(self.SavedReports(), function (x) {
-			return x.folderId == self.SelectedFolder().Id;
-		});
+		return _.chain(self.SavedReports())
+			.filter(function (x) {
+				return x.folderId == self.SelectedFolder().Id;
+			})
+			.sortBy(function (x) {
+				return x.reportName.toLowerCase();
+			})
+			.value();
 	});
 
 	var tokenKey = '';
