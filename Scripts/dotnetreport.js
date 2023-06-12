@@ -880,7 +880,7 @@ var reportViewModel = function (options) {
 		self.designingHeader(true);
 	}
 
-	self.buildCombinations = function(arrays, combine, finalList) {
+	self.buildCombinations = function (arrays, combine, finalList) {
 		var _this = this;
 		combine = combine || [];
 		finalList = finalList || [];
@@ -921,8 +921,8 @@ var reportViewModel = function (options) {
 		var computedGroups = [];
 		var options = [];
 		_.forEach(groupColumns, function (c) {
-			options.push(_.map(c.rowData, function (x) { return  { fieldId: c.fieldId, fieldIndex: c.fieldIndex, fieldName: c.fieldName, formattedValue: x }; }));
-        })
+			options.push(_.map(c.rowData, function (x) { return { fieldId: c.fieldId, fieldIndex: c.fieldIndex, fieldName: c.fieldName, formattedValue: x }; }));
+		})
 
 		var rows = self.buildCombinations(options);
 
@@ -1014,7 +1014,7 @@ var reportViewModel = function (options) {
 					if (result.success === false) {
 						toastr.error(result.message || 'Could not process this correctly, please try again');
 						return;
-                    }
+					}
 					self.ExecuteReportQuery(result.sql, result.connectKey);
 				});
 			}
@@ -1035,7 +1035,7 @@ var reportViewModel = function (options) {
 
 	self.openDesigner = function () {
 		options.reportWizard.modal('show');
-    }
+	}
 
 	self.textQuery.searchFields.selectedOption.subscribe(function (newValue) {
 		if (newValue) {
@@ -1261,11 +1261,13 @@ var reportViewModel = function (options) {
 		url: options.apiUrl,
 		query: function (params) {
 			self.searchReports(params.term);
+			if (params.term && params.term.length <= 2) return;
 			return params.term ? {
 				method: "/ReportApi/ParseQuery",
 				model: JSON.stringify({
 					token: params.term,
-					text: ''
+					text: '',
+					onlyInReports: true
 				})
 			} : null;
 		},
@@ -1280,6 +1282,12 @@ var reportViewModel = function (options) {
 			};
 		}
 	}
+
+	self.searchFieldsInReport.selectedOption.subscribe(function (x) {
+		if (!x) {
+			self.searchReports('');
+		}
+	});
 
 	self.reportsInSearch = ko.observableArray([]);
 	self.reportsInSearchCompute = ko.computed(function () {
