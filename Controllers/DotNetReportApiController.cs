@@ -110,9 +110,9 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> CallReportApi(string method, string model)
+        public async Task<IActionResult> CallReportApi(string? method, string? model)
         {
-            return await ExecuteCallReportApi(method, model);
+            return string.IsNullOrEmpty(method) || string.IsNullOrEmpty(model) ? Ok() : await ExecuteCallReportApi(method, model);
         }
 
         private async Task<IActionResult> ExecuteCallReportApi(string method, string model, DotNetReportSettings settings = null)
