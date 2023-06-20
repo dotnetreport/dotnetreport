@@ -586,13 +586,13 @@
 </script>
 
 <script type="text/html" id="filter-parameters">
-    <div class="table-responsive card" style="margin-left: 20px;">
+    <div class="table-responsive card">
         <div class="card-body">
             <span data-bind="hidden: showParameters">No filters available to choose</span>
             <table class="table  table-hover table-borderless" data-bind="visible: showParameters">
                 <thead>
                     <tr>
-                        <th style="width: 30%">Paramter</th>
+                        <th style="width: 30%">Filter</th>
                         <th style="width: 20%"></th>
                         <th style="width: 30%">Value</th>
                         <th></th>
@@ -628,30 +628,29 @@
              </label>
         </div>
         <div data-bind="if: hasSchedule">
-
                 <div class="form-inline form-group">
                    <div class="row col-sm-12">
-                       <span data-bind="text: selectedOption() != 'once' ? 'Every ' : ''"></span>&nbsp;
-                      <select class="form-control" required data-bind="options: options, value: selectedOption"></select>
-                     <div data-bind="if: selectedOption() == 'once'">
-                        &nbsp;on&nbsp;<input data-bind="datepicker: selectedDate" class="form-control" required />
-                    </div>
+                        <span data-bind="text: selectedOption() != 'once' ? 'Every ' : ''"></span>&nbsp;
+                        <select class="form-control" required data-bind="options: options, value: selectedOption"></select>
+                        <div data-bind="if: selectedOption() == 'once'">
+                            &nbsp;on&nbsp;<input data-bind="datepicker: selectedDate" class="form-control" required />
+                        </div>
                         <div data-bind="if: showDays">
                            &nbsp;on&nbsp;<select multiple class="form-control" required data-bind="select2: { placeholder: 'Choose Days', allowClear: true }, options: days, selectedOptions: selectedDays"></select>
-                       </div>
-                      <div data-bind="if: showDates">
-                          &nbsp;on&nbsp;<select multiple class="form-control" required data-bind="select2: { placeholder: 'Choose Dates', allowClear: true }, options: dates, selectedOptions: selectedDates"></select>
-                     </div>
-                     <div data-bind="if: showMonths">
-                        &nbsp;of&nbsp;<select multiple class="form-control" required data-bind="select2: { placeholder: 'Choose Months', allowClear: true }, options: months, selectedOptions: selectedMonths"></select>
-                    </div>
+                        </div>
+                        <div data-bind="if: showDates">
+                           &nbsp;on&nbsp;<select multiple class="form-control" required data-bind="select2: { placeholder: 'Choose Dates', allowClear: true }, options: dates, selectedOptions: selectedDates"></select>
+                        </div>
+                        <div data-bind="if: showMonths">
+                          &nbsp;of&nbsp;<select multiple class="form-control" required data-bind="select2: { placeholder: 'Choose Months', allowClear: true }, options: months, selectedOptions: selectedMonths"></select>
+                        </div>
                         <div data-bind="if: showAtTime">
-                           &nbsp;at&nbsp;<select class="form-control" data-bind="options: hours, value: selectedHour"></select>
-                           <select class="form-control" data-bind="options: minutes, value: selectedMinute"></select>
-                          <select class="form-control" data-bind="value: selectedAmPm">
-                              <option>AM</option>
-                             <option>PM</option>
-                        </select>
+                            &nbsp;at&nbsp;<select class="form-control" data-bind="options: hours, value: selectedHour"></select>
+                            <select class="form-control" data-bind="options: minutes, value: selectedMinute"></select>
+                            <select class="form-control" data-bind="value: selectedAmPm">
+                                <option>AM</option>
+                                <option>PM</option>
+                            </select>
                         </div>
                    </div>
                </div>
@@ -692,7 +691,7 @@
             </div>
             <div class="form-horizontal form-group">
                     <div class="form-group row">
-                       <div class="col-sm-2 control-label">
+                       <div class="col-sm-4 control-label">
                            <div class="checkbox">
                               <label title="Set a date to start sending scheduled report">
                                   <input type="checkbox" data-bind="checked: hasScheduleStart" />
@@ -708,7 +707,7 @@
 
             <div class="form-horizontal form-group">
                     <div class="form-group row">
-                       <div class="col-sm-2 control-label">
+                       <div class="col-sm-4 control-label">
                           <div class="checkbox" title="Set a date to stop sending scheduled report">
                               <label>
                                  <input type="checkbox" data-bind="checked: hasScheduleEnd" />
@@ -1236,20 +1235,16 @@
                         </ul>
                     </div>
                     <hr />
-                    <div data-bind="if: useStoredProc">
+                    <div>
                         <h5><span class="fa fa-filter"></span>&nbsp;Choose filters</h5>
 
                         <div class="row" style="padding: 10px 10px; overflow-x: auto;">
-                            <div data-bind="template: {name: 'filter-parameters'}" class="col"></div>
-                            <br />
-                        </div>
-                    </div>
-                    <div data-bind="ifnot: useStoredProc">
-                        <h5><span class="fa fa-filter"></span>&nbsp;Choose filters</h5>
-
-                        <div class="row" style="padding: 10px 10px; overflow-x: auto;">
-                            <div data-bind="template: {name: 'filter-group'}" class="col-12"></div>
-                            <br />
+                            <div data-bind="if: useStoredProc" class="col-md-12">
+                                <div data-bind="template: {name: 'filter-parameters'}" ></div>
+                            </div>
+                            <div data-bind="ifnot: useStoredProc" class="col-md-12">
+                                <div data-bind="template: {name: 'filter-group'}"></div>
+                            </div>
 
                             <div class="checkbox col-12">
                                 <label>
@@ -1257,6 +1252,7 @@
                                     Allow setting up and saving filters on Report
                                 </label>
                             </div>
+                            <br />
                         </div>
                     </div>
                 </div>
