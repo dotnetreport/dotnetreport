@@ -105,7 +105,7 @@ namespace ReportBuilder.Web.Controllers
 
         public async Task<JsonResult> CallReportApi(string method, string model)
         {
-            return string.IsNullOrEmpty(method) || string.IsNullOrEmpty(model) ? Ok() : await ExecuteCallReportApi(method, model);
+            return string.IsNullOrEmpty(method) || string.IsNullOrEmpty(model) ? Json(new { }) : await ExecuteCallReportApi(method, model);
         }
 
         private async Task<JsonResult> ExecuteCallReportApi(string method, string model, DotNetReportSettings settings = null)
