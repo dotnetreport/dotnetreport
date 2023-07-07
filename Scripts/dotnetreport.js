@@ -2357,7 +2357,7 @@ var reportViewModel = function (options) {
 						e.linkItem = {};
 						e.linkField = false;
 					}
-					//col = ko.toJS(col || { fieldName: e.ColumnName });
+					col = col || { fieldName: e.ColumnName };
 
 					if (skipColDetails !== true) self.columnDetails.push(col);
 
