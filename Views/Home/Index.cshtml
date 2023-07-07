@@ -1,0 +1,27 @@
+﻿@using Newtonsoft.Json;
+@{
+    ViewBag.Title = "Setup Report Builder";
+    Layout = "~/Views/shared/_Layout.Report.cshtml";
+}
+
+<div class="container">
+    <h2 class="text-center">Get Started with TrecAnalytics</h2>
+    <div class="row justify-content-center mt-5">
+        <div class="col-md-6">
+            <div class="list-group">
+                <a href="/dotnetsetup" class="list-group-item list-group-item-action" data-bind="click: setupDatabaseConnection">
+                    <i class="fa fa-database mr-2"></i>Setup Database Connection
+                </a>
+                <a href="#" class="list-group-item list-group-item-action" data-bind="click: manageUsersAndAccess">
+                    <i class="fa fa-user-cog mr-2"></i>Manage Users and Access
+                </a>
+                <a href="/dotnetreport/dashboard" class="list-group-item list-group-item-action" data-bind="click: viewManageDashboards">
+                    <i class="fa fa-chart-pie mr-2"></i>View/Manage Dashboards
+                </a>
+                <a href="/dotnetreport" class="list-group-item list-group-item-action" data-bind="click: viewManageReports">
+                    <i class="fa fa-file-alt mr-2"></i>View/Manage Reports
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
