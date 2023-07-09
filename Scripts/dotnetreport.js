@@ -2349,9 +2349,11 @@ var reportViewModel = function (options) {
 					}
 					else if (e.FormatType == 'Json') {
 						col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.jsonColumnName, e.ColumnName); });
-                    }
-					else
-						col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.fieldName, e.ColumnName, x.dbField, e.SqlField, x.aggregateFunction); });
+					}
+					else {
+						col = _.find(self.SelectedFields(), function (x) { return x.dbField == e.SqlField; });
+						if (!col) col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.fieldName, e.ColumnName, x.dbField, e.SqlField, x.aggregateFunction); });
+					}
 					if (col && col.linkField()) {
 						e.linkItem = col.linkFieldItem.toJs();
 						e.linkField = true;
