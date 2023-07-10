@@ -1261,6 +1261,7 @@ var reportViewModel = function (options) {
 		url: options.apiUrl,
 		query: function (params) {
 			self.searchReports(params.term);
+			$('.select2-selection__placeholder').text(params.term);
 			if (params.term && params.term.length <= 2) return;
 			return params.term ? {
 				method: "/ReportApi/ParseQuery",
@@ -1293,6 +1294,11 @@ var reportViewModel = function (options) {
 	self.reportsInSearchCompute = ko.computed(function () {
 		var searchReports = self.searchReports();
 		var searchFieldId = self.searchFieldsInReport.selectedOption();
+
+		if (!searchReports) {
+			$('.select2-selection__placeholder').text('Search for text or select a field');
+			$('#search-report').val([]).trigger('change'); 
+		}
 
 		if (!searchReports && !searchFieldId) {
 			self.reportsInSearch([]);
@@ -2317,9 +2323,11 @@ var reportViewModel = function (options) {
 			self.ReportSeries = reportSeries;
 			if (result.HasError) return;
 
-			function matchColumnName(src, dst, dbSrc, dbDst) {
+			function matchColumnName(src, dst, dbSrc, dbDst, agg) {
 				if (src == dst) return true;
 				if (dbSrc && dbDst && dbSrc == dbDst) return true;
+
+				if (agg && dbSrc && dbDst && agg + '(' + dbSrc + ')' == dbDst) return true;
 
 				if (dst.indexOf('(Count)') < 0 && dst.indexOf("(Avg)") < 0 && dst.indexOf("(Sum)") < 0 && dst.indexOf("(Average)") < 0)
 					return false;
@@ -2347,9 +2355,11 @@ var reportViewModel = function (options) {
 					}
 					else if (e.FormatType == 'Json') {
 						col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.jsonColumnName, e.ColumnName); });
-                    }
-					else
-						col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.fieldName, e.ColumnName, x.dbField, e.SqlField); });
+					}
+					else {
+						col = _.find(self.SelectedFields(), function (x) { return x.dbField == e.SqlField; });
+						if (!col) col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.fieldName, e.ColumnName, x.dbField, e.SqlField, x.aggregateFunction); });
+					}
 					if (col && col.linkField()) {
 						e.linkItem = col.linkFieldItem.toJs();
 						e.linkField = true;
@@ -2357,7 +2367,7 @@ var reportViewModel = function (options) {
 						e.linkItem = {};
 						e.linkField = false;
 					}
-					//col = ko.toJS(col || { fieldName: e.ColumnName });
+					//col = col || { fieldName: e.ColumnName };
 
 					if (skipColDetails !== true) self.columnDetails.push(col);
 
