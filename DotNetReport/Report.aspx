@@ -59,53 +59,62 @@
 </asp:Content>
 <asp:Content ID="Content3" ContentPlaceHolderID="body" runat="server">
 
+
+<!-- Field Options Modal -->
+<div class="modal" id="fieldOptionsModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div data-bind="template: {name: 'report-field-options', data: $data}"></div>
+</div>
+
+<!-- Link Edit Modal -->
+<div class="modal" id="linkModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div data-bind="template: {name: 'report-link-edit', data: $data}"></div>
+</div>
+
+<div class="report-view">
+<div class="pull-right">
+    <a href="/DotNetReport/Index.aspx?folderId=<%= Model.SelectedFolder %>" class="btn btn-primary">
+        Back to Reports
+    </a>
+    <button onclick="history.back()" class="btn btn-primary" data-bind="visible: ReportMode()=='linked'">
+        Back to Parent Report
+    </button>
+    <a href="/DotNetReport/Index.aspx?reportId=<%= Model.ReportId %>&folderId=<%= Model.SelectedFolder%>" class="btn btn-primary" data-bind="visible: $root.CanEdit()">
+        Edit Report
+    </a>
+
+    <div class="btn-group">
+        <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            <span class="fa fa-download"></span> Export <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu">
+            <li class="dropdown-item">
+                <a href="#" data-bind="click: downloadPdfAlt">
+                    <span class="fa fa-file-pdf-o"></span> Pdf
+                </a>
+            </li>
+            <li class="dropdown-item">
+                <a href="#" data-bind="click: downloadExcel">
+                    <span class="fa fa-file-excel-o"></span> Excel
+                </a>
+            </li>
+            <li class="dropdown-item">
+                <a href="#" data-bind="click: downloadCsv">
+                    <span class="fa fa-file-excel-o"></span> Csv
+                </a>
+            </li>
+            <li class="dropdown-item">
+                <a href="#" data-bind="click: downloadXml">
+                    <span class="fa fa-file-code-o"></span> Xml
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>
+<div class="clear-fix" style="clear: both; margin-bottom: 20px;"></div>
 <div data-bind="with: ReportResult">
 
     <div data-bind="ifnot: HasError">
-        <div class="report-view" data-bind="with: $root">
-            <div class="pull-right">
-                <a href="/DotNetReport/Index.aspx?folderId=<%= Model.SelectedFolder %>" class="btn btn-primary">
-                    Back to Reports
-                </a>
-                <button onclick="history.back()" class="btn btn-primary" data-bind="visible: ReportMode()=='linked'">
-                    Back to Parent Report
-                </button>
-                <a href="/DotNetReport/Index.aspx?reportId=<%= Model.ReportId %>&folderId=<%= Model.SelectedFolder%>" class="btn btn-primary" data-bind="visible: $root.CanEdit()">
-                    Edit Report
-                </a>
-
-                <div class="btn-group">
-                    <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        <span class="fa fa-download"></span> Export <span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li class="dropdown-item">
-                            <a href="#" data-bind="click: downloadPdfAlt">
-                                <span class="fa fa-file-pdf-o"></span> Pdf
-                            </a>
-                        </li>
-                        <li class="dropdown-item">
-                            <a href="#" data-bind="click: downloadExcel">
-                                <span class="fa fa-file-excel-o"></span> Excel
-                            </a>
-                        </li>
-                        <li class="dropdown-item">
-                            <a href="#" data-bind="click: downloadCsv">
-                                <span class="fa fa-file-excel-o"></span> Csv
-                            </a>
-                        </li>
-                        <li class="dropdown-item">
-                            <a href="#" data-bind="click: downloadXml">
-                                <span class="fa fa-file-code-o"></span> Xml
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-            <br />
-            <br />
-            <div style="clear: both;"></div>
-            <br />
+        <div data-bind="with: $root">
 
             <div data-bind="if: EditFiltersOnReport">
                 <div class="card">
@@ -117,14 +126,18 @@
                         </h5>
                     </div>
                     <div id="filter-panel" class="card-body">
-                        <div>
+                         <div data-bind="if: useStoredProc">
                             <div class="row">
-                                <div data-bind="template: {name: 'filter-group'}" class="col"></div>
+                                <div data-bind="template: {name: 'filter-parameters'}" class="col-md-12"></div>
                             </div>
-
-                            <br />
-                            <button class="btn btn-primary" data-bind="click: SaveFilterAndRunReport">Update Filters</button>
                         </div>
+                        <div data-bind="ifnot: useStoredProc">
+                            <div class="row">
+                                <div data-bind="template: {name: 'filter-group'}" class="col-md-12"></div>
+                            </div>
+                        </div>
+                        <br />
+                        <button class="btn btn-primary" data-bind="click: SaveFilterAndRunReport">Update Filters</button>
                     </div>
                 </div>
                 <br />
@@ -139,24 +152,28 @@
                 <br />
                 <br />
             </div>
-            <div class="report-menubar">
-                <div class="col-xs-12 col-centered" data-bind="with: pager">
-                    <div class="form-inline" data-bind="visible: pages()">
-                        <div class="form-group pull-left total-records">
-                            <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
-                        </div>
-                        <div class="pull-left">
-                            <button class="btn btn-secondary btn-sm" data-bind="visible: !$root.isChart() || $root.ShowDataWithGraph(), click: $root.downloadExcel" title="Export to Excel">
-                                <span class="fa fa-file-excel-o"></span>
-                            </button>
-                        </div>
-                        <div class="form-group pull-right">
-                            <div data-bind="template: 'pager-template', data: $data"></div>
+            <div class="report-render" data-bind="css: { 'report-expanded': isExpanded }">
+                <div class="report-menubar">
+                    <div class="col-xs-12 col-centered" data-bind="with: pager">
+                        <div class="form-inline" data-bind="visible: pages()">
+                            <div class="form-group pull-left total-records">
+                                <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
+                            </div>
+                            <div class="pull-left">
+                                <button class="btn btn-secondary btn-sm" data-bind="visible: !$root.isChart() || $root.ShowDataWithGraph(), click: $root.downloadExcel" title="Export to Excel">
+                                    <span class="fa fa-file-excel-o"></span>
+                                </button>
+                                    <button class="btn btn-secondary btn-sm" data-bind="click: $parent.toggleExpand">
+                                        <span class="fa" data-bind="css: {'fa-expand': !$parent.isExpanded(), 'fa-minus': $parent.isExpanded() }"></span>
+                                    </button>
+                            </div>
+                            <div class="form-group pull-right">
+                                <div data-bind="template: 'pager-template', data: $data"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="report-canvas">
+                <div class="report-canvas">
                 <div class="report-container">
                     <div class="report-inner">
                         <div class="canvas-container">
@@ -165,11 +182,12 @@
                         <h2 data-bind="text: ReportName"></h2>
                         <p data-bind="html: ReportDescription">
                         </p>
-                        <div data-bind="with: ReportResult">
+                        <div data-bind="with: ReportResult" class="report-expanded-scroll">
                             <div data-bind="template: 'report-template', data: $data"></div>
                         </div>
                     </div>
                 </div>
+            </div>
             </div>
             <br />
             <span>Report ran on: <%=DateTime.Now.ToShortDateString() %> <%=@DateTime.Now.ToShortTimeString() %></span>         
@@ -180,6 +198,7 @@
         <p>
             <%= Model.ReportDescription %>
         </p>
+
         <a href="/DotNetReport/Index.aspx?folderId=<%=Model.SelectedFolder %>" class="btn btn-primary">
             Back to Reports
         </a>
@@ -198,10 +217,10 @@
         <br />
         <br />
         <hr />
-        <code data-bind="text: ReportSql">
-
+        <code data-bind="html: ReportSql">
         </code>
     </div>
 </div>
-    
+</div>
+
 </asp:Content>
