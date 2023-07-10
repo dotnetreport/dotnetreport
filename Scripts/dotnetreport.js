@@ -1261,6 +1261,7 @@ var reportViewModel = function (options) {
 		url: options.apiUrl,
 		query: function (params) {
 			self.searchReports(params.term);
+			$('.select2-selection__placeholder').text(params.term);
 			if (params.term && params.term.length <= 2) return;
 			return params.term ? {
 				method: "/ReportApi/ParseQuery",
@@ -1293,6 +1294,11 @@ var reportViewModel = function (options) {
 	self.reportsInSearchCompute = ko.computed(function () {
 		var searchReports = self.searchReports();
 		var searchFieldId = self.searchFieldsInReport.selectedOption();
+
+		if (!searchReports) {
+			$('.select2-selection__placeholder').text('Search for text or select a field');
+			$('#search-report').val([]).trigger('change'); 
+		}
 
 		if (!searchReports && !searchFieldId) {
 			self.reportsInSearch([]);
