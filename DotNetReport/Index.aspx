@@ -106,7 +106,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         </ul>
                         <form class="form-inline my-5 my-md-0">
                             <div data-bind="with: searchFieldsInReport">
-                                <select id="search-report" class="form-control" data-bind="select2: {placeholder: 'Search Report by Name, Description or Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults }, minimumInputLength: 0, language: language, allowClear: true }, value: selectedOption"></select>
+                                <select id="search-report" class="form-control" data-bind="select2: {placeholder: 'Search Report by Name, Description or Data Field...', ajax: { url: url, dataType: 'json', contentType: 'application/json; charset=utf-8', data: query, processResults: processResults, type: 'POST' }, minimumInputLength: 0, language: language, allowClear: true }, value: selectedOption"></select>
                             </div>
                         </form>
                     </div>
