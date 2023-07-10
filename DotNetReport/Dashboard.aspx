@@ -62,7 +62,8 @@
                             dataFilters: data.dataFilters,
                             dashboardId: dashboardId,
                             runExportUrl: svc,
-                            printReportUrl: window.location.protocol + "//" + window.location.host + "/DotnetReport/ReportPrint.aspx"
+                            printReportUrl: window.location.protocol + "//" + window.location.host + "/DotnetReport/ReportPrint.aspx",
+                            loadSavedDashbordUrl: svc + 'LoadSavedDashboard'
                         });
 
                         vm.init().done(function () {
@@ -135,7 +136,7 @@
         </div>
     </div>
     <div class="clearfix"></div>
-    
+
     <div class="pull-right">
         <a href="/DotnetReport/Index.aspx">Manage Reports</a> | Learn how to <a href="https://dotnetreport.com/getting-started-with-dotnet-report/" target="_blank">Integrate in your App here</a>.
     </div>
@@ -195,10 +196,10 @@
                             </div>
                         </div>
                     </div>
-                    <!-- ko if: $parent.adminMode -->
+                    <div data-bind="if: $parent.adminMode">
                     <hr />
                     <div data-bind="template: {name: 'manage-access-template'}"></div>
-                    <!-- /ko -->
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button onclick="return false;" type="button" class="btn btn-danger" data-bind="click: $root.deleteDashboard, visible: Id">Delete Dashboard</button>
@@ -211,8 +212,7 @@
 
     <div class="clearfix"></div>
 
-    <div class="grid-stack" data-bind="visible: reports().length>0" style="display: none;">
-        <!-- ko foreach: reports -->
+    <div class="grid-stack" data-bind="visible: reports().length>0, foreach: reports" style="display: none;">
         <div class="grid-stack-item" data-bind="attr: {'data-gs-x': x, 'data-gs-y': y, 'data-gs-width': width, 'data-gs-height': height, 'data-gs-auto-position': true, 'data-gs-id': ReportID}">
 
             <div class="card" data-bind="attr: {class: 'card ' + panelStyle + ' grid-stack-item-content'}, css: { expanded: isExpanded }" style="overflow-y: hidden;">
@@ -222,15 +222,13 @@
                             <span class="fa fa-ellipsis-v"></span>
                         </button>
                         <ul class="dropdown-menu small" style="z-index: 1001;">
-                            <!-- ko if: FlyFilters().length> 0-->
-                            <li class="dropdown-item">
+                            <li class="dropdown-item" data-bind="visible: FlyFilters().length> 0">
                                 <a href="#" data-bind="click: toggleFlyFilters">
                                     <span class="fa fa-filter"></span> Filter
                                 </a>
                             </li>
-                            <!-- /ko -->
-                            <li class="dropdown-item">
-                                <a data-bind="attr: {href: '/DotNetReport/Index.aspx?reportId=' + ReportID()}">
+                            <li class="dropdown-item" data-bind="visible: CanEdit">
+                                <a href="#" data-toggle="modal" data-target="#modal-reportbuilder" data-bind="click: openReport">
                                     <span class="fa fa-pencil"></span> Edit
                                 </a>
                             </li>
@@ -278,7 +276,20 @@
             </div>
 
         </div>
-        <!-- /ko -->
     </div>
-    
+
+<!-- Report Builder -->
+<div class="modal modal-fullscreen" id="modal-reportbuilder" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="padding-right: 0px !important;" data-bind="with: selectedReport"> 
+    <div data-bind="template: {name: 'report-designer', data: $data}"></div>
+</div>
+
+<!-- Field Options Modal -->
+<div class="modal" id="fieldOptionsModal" tabindex="-1" role="dialog" aria-hidden="true" data-bind="with: selectedReport">
+    <div data-bind="template: {name: 'report-field-options', data: $data}"></div>
+</div>
+
+<!-- Link Edit Modal -->
+<div class="modal" id="linkModal" tabindex="-1" role="dialog" aria-hidden="true" data-bind="with: selectedReport">
+    <div data-bind="template: {name: 'report-link-edit', data: $data}"></div>
+</div>
 </asp:Content>
