@@ -55,7 +55,9 @@
                 deleteProcUrl: '<%= System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"] + "/ReportApi/DeleteProcedure"%>',
                 reportsApiUrl: '<%= System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]%>',
                 searchProcUrl: '/DotNetReport/ReportService.asmx/SearchProcedure',
-                getUsersAndRoles: '/DotNetReport/ReportService.asmx/GetUsersAndRoles'
+                getUsersAndRoles: '/DotNetReport/ReportService.asmx/GetUsersAndRoles',
+                getSchemaFromSql: '/DotNetReport/ReportService.asmx/GetSchemaFromSql',
+                apiUrl: '/DotNetReport/ReportService.asmx/CallReportApi',
             };
 
             var vm = new manageViewModel(options);
@@ -78,12 +80,15 @@
         <div class="alert alert-danger">
             Do not expose this Setup Tool to end users who should not have access to it. Ideally, only Developers should be given access to this utility.
         </div>
-        <div class="form-row">
-            <div class="form-group">
+        <div data-bind="visible: false;">
+            Loading...
+        </div>
+        <div class="form-row" style="display: none;" data-bind="visible: true">
+        <div class="form-group">
                 <div class="control-group">
                     <select class="form-control" data-bind="options: DataConnections, optionsText: 'DataConnectName', optionsValue: 'DataConnectGuid', value: currentConnectionKey"></select>
                     <button class="btn btn-primary btn-sm" data-bind="click: switchConnection, visible: canSwitchConnection">Switch Connection</button>
-                    <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-connection-modal" onclick="return false;">Add New Connection</button>
+                    <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-connection-modal">Add New Connection</button>
                     <button class="btn btn-primary btn-sm" data-bind="click: exportAll">Export Connection</button>
                     <button class="btn btn-primary btn-sm" data-bind="click: importStart">Import Connection</button>
                 </div>
@@ -108,7 +113,8 @@
         <div>
             <!-- Nav tabs -->
             <ul class="nav nav-tabs" role="tablist">
-                <li role="presentation" class="nav-item"><a class="nav-link active" href="#tablesfields" aria-controls="home" role="tab" data-toggle="tab">Tables and Fields</a></li>
+                <li role="presentation" class="nav-item"><a class="nav-link active" href="#tablesfields" aria-controls="home" role="tab" data-toggle="tab" data-bind="click: function() { customTableMode(false); }">Tables and Fields</a></li>
+                <li role="presentation" class="nav-item"><a class="nav-link" href="#tablesfields" aria-controls="custom" role="tab" data-toggle="tab" data-bind="click: function() { customTableMode(true); }">Custom Data Views</a></li>
                 <li role="presentation" class="nav-item"><a class="nav-link" href="#relations" aria-controls="profile" role="tab" data-toggle="tab">Relations</a></li>
                 <li role="presentation" class="nav-item"><a class="nav-link" href="#procedure" aria-controls="procedure" role="tab" data-toggle="tab">Stored Procs</a></li>
                 <li role="presentation" class="nav-item"><a class="nav-link" href="#manageaccess" aria-controls="manageaccess" role="tab" data-toggle="tab">Manage Reports Access</a></li>
@@ -117,7 +123,7 @@
         <br />
     </div>
     <!-- Tab panes -->
-    <div class="fix-content">
+    <div class="fix-content" style="display: none;" data-bind="visible: true">
         <div class="tab-content">
             <div role="tabpanel" class="tab-pane active" id="tablesfields">
                 <div data-bind="with: Tables">
@@ -125,9 +131,10 @@
                     <button class="btn btn-sm" data-bind="click: clearTableFilter,  visible: tableFilter()!='' && tableFilter()!=null"><span class="fa fa-remove"></span></button>
                     <button class="btn btn-sm" onclick="openall()" style="margin-left: 15px;">Open all</button>
                     <button class="btn btn-sm" onclick="closeall()">Close all</button>
-                    <button class="btn btn-sm" data-bind="click: selectAll">Select all</button>
-                    <button class="btn btn-sm" data-bind="click: unselectAll">Unselect all</button>
-                    <button class="btn btn-sm btn-primary" data-bind="click: $root.saveChanges">Save All Changes</button>
+                    <button class="btn btn-sm" data-bind="click: selectAll, hidden: $root.customTableMode">Select all</button>
+                    <button class="btn btn-sm" data-bind="click: unselectAll, hidden: $root.customTableMode">Unselect all</button>
+                    <button class="btn btn-sm btn-primary" data-bind="click: $root.customSql.addNewCustomSqlTable, visible: $root.customTableMode">Add New Custom Table</button>
+                    <button class="btn btn-sm btn-primary" data-bind="click: $root.saveChanges, hidden: $root.customTableMode">Save All Changes</button>
                 </div>
                 <div class="clearfix"></div>
                 <hr />
@@ -141,9 +148,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="menu row" data-bind="" style="margin-left: 20px;">
-                    <!-- ko foreach: pagedTables -->
-
+                <div class="menu row" style="margin-left: 20px;" data-bind="foreach: pagedTables">
                     <div class="menu-category card">
 
                         <div class="card-header clearfix" style="">
@@ -181,6 +186,9 @@
                                         <input class="check-box" data-val="true" type="checkbox" value="true" data-bind="checked: DoNotDisplay" title="Do not display this table for selecting in reports"> Do Not Display
                                     </label>
                                 </div>
+                                <div data-bind="if: CustomTable">
+                                    <button data-bind="click: $root.customSql.viewCustomSql.bind($data)" class="btn btn-sm btn-secondary">View Custom Sql</button>
+                                </div>
                             </div>
 
                             <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Columns().length"></span> Columns</label>
@@ -188,7 +196,6 @@
                             <button class="btn btn-sm btn-link label-sm" data-bind="click: unselectAllColumns, visible: Selected">Unselect All</button>
                             <button class="btn btn-sm btn-link label-sm" data-bind="click: selectAllColumns, visible: Selected">Select All</button>
                             <div class="list-group" data-bind="sortable: { data: Columns, options: { handle: '.sortable', cursor: 'move' }, afterMove: $parent.columnSorted }">
-                                <!-- ko foreach: Columns -->
                                 <div class="list-group-item">
                                     <div class="checkbox">
                                         <label>
@@ -203,13 +210,10 @@
                                             <span class="fa fa-arrows" aria-hidden="true" title="Drag to reorder"></span>
                                         </div>
                                     </div>
-
                                 </div>
-                                <!-- /ko -->
                             </div>
                         </div>
                     </div>
-                    <!-- /ko -->
                 </div>
             </div>
             <div role="tabpanel" class="tab-pane" id="relations">
@@ -296,15 +300,13 @@
 
             </div>
             <div id="procedure" class="tab-pane">
-                <button class="btn btn-primary" data-toggle="modal" data-target="#procedure-modal" onclick="return false;">Add Stored Procs from database</button>
+                <button class="btn btn-primary" data-toggle="modal" data-target="#procedure-modal">Add Stored Procs from database</button>
                 <br />
                 <br />
-                <div class="menu row" data-bind="with: Procedures" style="margin-left: 20px;">
-                    <div data-bind="if: savedProcedures().length == 0">
-                        No Stored Procedures have been setup yet.
-                    </div>
-                    <!-- ko foreach: savedProcedures -->
-
+                <div data-bind="if: Procedures.savedProcedures().length == 0">
+                    No Stored Procedures have been setup yet.
+                </div>                    
+                <div class="menu row" data-bind="foreach: Procedures.savedProcedures" style="margin-left: 20px;">
                     <div class="menu-category card">
 
                         <div class="card-header clearfix" style="">
@@ -341,8 +343,7 @@
                                 </p>
                                 <label class="small">Columns</label>
 
-                                <div class="list-group">
-                                    <!-- ko foreach: Columns -->
+                                <div class="list-group" data-bind="foreach: Columns">
                                     <div class="list-group-item">
                                         <label>
                                             <span data-bind="editable: DisplayName, attr: {title: 'DB field is ' + ColumnName()}"></span>
@@ -351,12 +352,10 @@
                                         <button class="btn btn-sm pull-right" data-toggle="modal" data-target="#column-modal" title="All column options" data-bind="click: $root.selectColumn.bind($data, true)">...</button>
 
                                     </div>
-                                    <!-- /ko -->
                                 </div>
                                 <label class="small">Parameters</label>
 
-                                <div class="list-group">
-                                    <!-- ko foreach: Parameters -->
+                                <div class="list-group" data-bind="foreach: Parameters">
                                     <div class="list-group-item">
                                         <label>
                                             <span data-bind="editable: DisplayName, attr: {title: 'DB field is ' + ParameterName()}"></span>
@@ -366,12 +365,10 @@
                                             <button class="btn btn-sm btn-primary pull-right" data-toggle="modal" data-target="#parameter-modal" title="All Parameter options" data-bind="click: $root.editParameter">...</button>
                                         </label>
                                     </div>
-                                    <!-- /ko -->
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <!-- /ko -->
                 </div>
             </div>
             <div id="manageaccess" class="tab-pane">
@@ -429,7 +426,7 @@
                                         </div>
 
                                         <div data-bind="if: changeAccess" class="col-md-9" >
-                                            <div style="border-left: 1px solid; padding-left: 10px;">                                                
+                                            <div style="border-left: 1px solid; padding-left: 10px;">
                                                 <div data-bind="template: {name: 'manage-access-template', data: $root }"></div>
                                                 <br />
                                                 <br />
@@ -471,7 +468,6 @@
                         <div class="tab-content">
                             <br />
                             <div role="tabpanel" class="tab-pane active" id="column-main">
-
                                 <div class="control-group">
                                     <div class="form-group row">
                                         <label class="col-md-3 col-sm-3 control-label" for="Display_Name" data-bind="attr:{placeholder:'Ex First Name'}" placeholder="Ex First Name">Display Name</label>
@@ -494,6 +490,7 @@
                                                 <option value="Money">Money</option>
                                                 <option value="Int">Int</option>
                                                 <option value="Double">Double</option>
+                                                <option value="Json">Json</option>
                                             </select>
                                         </div>
                                         <div class="col-md-3 col-sm-3">
@@ -528,6 +525,18 @@
                                         </div>
                                         <div class="col-md-3 col-sm-3">
                                             <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="If this is checked, the column will not be displayed on Report Designer, but can still be used on Global Data Filters"></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="control-group" data-bind="if: FieldType() == 'Json'">
+                                    <div class="form-group row">
+                                        <label class="col-md-3 col-sm-3 control-label">JSON Data Structure</label>
+                                        <div class="col-md-6 col-sm-6">
+                                            <textarea class="form-control text-box single-line" data-val="true" data-val-required="The DisplayName field is required." data-bind="value: JsonStructure, attr:{placeholder:'Please paste in Sample Json with all columns for this JSON data field'}" rows="5" ></textarea>
+                                        </div>
+                                        <div class="col-md-3 col-sm-3">
+                                            <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="You can paste in a sample Json blob with all the columns you want to use in this field"></span>
                                         </div>
                                     </div>
                                 </div>
@@ -762,12 +771,11 @@
                             <input type="text" class="form-control" data-bind="value: searchProcedureTerm" placeholder="Search stored procedures by name" />
                         </div>
                         <div class="col-md-2">
-                            <button class="btn btn-primary" onclick="return false;" data-bind="click: searchStoredProcedure">Search</button>
+                            <button class="btn btn-primary" data-bind="click: searchStoredProcedure">Search</button>
                         </div>
                     </div>
                     <br />
-                    <div class="menu row" style="margin-left: 20px;">
-                        <!-- ko foreach: foundProcedures -->
+                    <div class="menu row" style="margin-left: 20px;" data-bind="foreach: foundProcedures">                        
                         <div class="menu-category card">
                             <div class="card-header clearfix" style="">
                                 <div class="pull-left">
@@ -789,29 +797,24 @@
                                     <span data-bind="editable: DisplayName"></span>
                                     <label class="small">Columns</label>
 
-                                    <div class="list-group">
-                                        <!-- ko foreach: Columns -->
+                                    <div class="list-group" data-bind="foreach: Columns">
                                         <div class="list-group-item">
                                             <span data-bind="editable: DisplayName"></span>
                                             <span class="badge badge-info" data-bind="text: FieldType"></span>
                                         </div>
-                                        <!-- /ko -->
                                     </div>
                                     <label class="small">Paramters</label>
 
-                                    <div class="list-group">
-                                        <!-- ko foreach: Parameters -->
+                                    <div class="list-group" data-bind="foreach: Parameters">
                                         <div class="list-group-item">
                                             <span data-bind="editable: DisplayName"></span>
                                             <span class="badge badge-info" data-bind="text: ParameterDataTypeString"></span><br />
                                             Default Value: <span data-bind="editable: ParameterValue"></span>
                                         </div>
-                                        <!-- /ko -->
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <!-- /ko -->
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -1020,4 +1023,47 @@
         </div>
     </div>
     <div class="clearfix"></div>
+
+    <div class="modal" id="custom-sql-modal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" data-bind="with: customSql">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Enter Select SQL for your Data</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group" data-bind="validationElement: customTableName">
+                        <label for="custom-table-name">Custom Table Name</label>
+                        <input type="text" class="form-control" name="customTableName" placeholder="Enter table name" data-bind="textInput: customTableName" required>
+                        <div class="invalid-feedback">Custom Table Name is required.</div>
+                    </div>
+                    <div class="checkbox">
+                        <label>
+                            <input class="check-box" type="checkbox" data-bind="checked: useAi"> Use ChatGPT to build the query?
+                        </label>
+                    </div>
+                    <div data-bind="visible: useAi">
+                        <p id="query-input" class="query-input">
+                            Show me&nbsp;
+                        </p>                        
+                        <button data-bind="click: buildSqlUsingAi" class="btn btn-primary btn-sm">Process with ChatGPT</button>
+                        <button data-bind="click: textQuery.resetQuery" class="btn btn-secondary btn-sm">Start over</button>
+                        <hr />
+                    </div>
+
+                    <div class="form-group" data-bind="validationElement: customSql">
+                        <label for="custom-sql">Custom SQL</label> | <a href="#" data-bind="click: beautifySql">Beautify Sql</a>
+                        <textarea class="form-control" style="height: 240px;" name="customSql" data-bind="textInput: customSql" required></textarea>
+                        <div class="invalid-feedback">Custom SQL is required.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" data-bind="click: executeSql">Save changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </asp:Content>

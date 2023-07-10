@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using ReportBuilder.Web.Controllers;
 using ReportBuilder.Web.Models;
 using System;
 using System.Collections.Generic;
@@ -9,10 +10,13 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Web;
+using System.Web.Mvc;
 using System.Web.Script.Serialization;
 using System.Web.Script.Services;
 using System.Web.Services;
+using static ReportBuilder.Web.Controllers.DotNetReportApiController;
 
 namespace ReportBuilder.WebForms.DotNetReport
 {
@@ -511,6 +515,77 @@ namespace ReportBuilder.WebForms.DotNetReport
             }
 
             return warning;
+        }
+
+
+        [WebMethod(EnableSession = true)]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public object GetSchemaFromSql(string value, string accountKey, string dataConnectKey)
+        {
+            try
+            {
+                var table = new TableViewModel
+                {
+                    AllowedRoles = new List<string>(),
+                    Columns = new List<ColumnViewModel>(),
+                    CustomTable = true,
+                    Selected = true
+                };
+
+                table.CustomTableSql = value;
+
+                var connect = Setup.GetConnection(dataConnectKey);
+                using (var client = new HttpClient())
+                {
+                    var response = client.GetAsync(String.Format("{0}/ReportApi/GetDataConnectKey?account={1}&dataConnect={2}", connect.ApiUrl, connect.AccountApiKey, connect.DatabaseApiKey)).Result;
+
+                    response.EnsureSuccessStatusCode();
+
+                    var content = response.Content.ReadAsStringAsync().Result;
+                    dataConnectKey = content.Replace("\"", "");
+                }
+
+                var connString = DotNetReportHelper.GetConnectionString(dataConnectKey);
+                using (OleDbConnection conn = new OleDbConnection(connString))
+                {
+                    // open the connection to the database 
+                    conn.Open();
+                    OleDbCommand cmd = new OleDbCommand(value, conn);
+                    cmd.CommandType = CommandType.Text;
+                    using (OleDbDataReader reader = cmd.ExecuteReader())
+                    {
+                        // Get the column metadata using schema.ini file
+                        DataTable schemaTable = new DataTable();
+                        schemaTable = reader.GetSchemaTable();
+                        var idx = 0;
+
+                        foreach (DataRow dr in schemaTable.Rows)
+                        {
+                            var column = new ColumnViewModel
+                            {
+                                ColumnName = dr["ColumnName"].ToString(),
+                                DisplayName = dr["ColumnName"].ToString(),
+                                PrimaryKey = dr["ColumnName"].ToString().ToLower().EndsWith("id") && idx == 0,
+                                DisplayOrder = idx,
+                                FieldType = DotNetSetupController.ConvertToJetDataType((int)dr["ProviderType"]).ToString(),
+                                AllowedRoles = new List<string>(),
+                                Selected = true
+                            };
+
+                            idx++;
+                            table.Columns.Add(column);
+                        }
+                        table.Columns = table.Columns.OrderBy(x => x.DisplayOrder).ToList();
+                    }
+
+                    return table;
+                }
+            }
+            catch (Exception ex)
+            {
+
+                return new { errorMessage = ex.Message };
+            }
         }
 
 
