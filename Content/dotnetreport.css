@@ -556,6 +556,7 @@ select.is-invalid ~ span .select2-selection {
 
 .select2-container {
     width: 100% !important;
+    min-width: 380px !important;
 }
 
 .select2-selection {
@@ -614,3 +615,8 @@ select.is-invalid ~ span .select2-selection {
         max-height: calc(100% - var(--offset-top, 0));
     }
 
+
+
+body {
+    /*background: linear-gradient(286.83deg, #931CF0 -1.55%, #4F2CDD 100%);*/
+}

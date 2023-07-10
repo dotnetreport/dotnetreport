@@ -76,7 +76,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
         <div class="card folder-panel">
             <div class="card-header">
                 <nav class="navbar navbar-expand-lg navbar-light bg-light">
-                    <a class="navbar-brand" href="#" data-bind="click: function() {SelectedFolder(null); designingHeader(false); searchReports(''); }">Manage Reports</a>
+                    <a class="navbar-brand" href="#" data-bind="click: function() {SelectedFolder(null); designingHeader(false); searchReports(''); $('#search-report').val([]).trigger('change'); }">Manage Reports</a>
                     <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                         <span class="navbar-toggler-icon"></span>
                     </button>
@@ -112,7 +112,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         </ul>
                         <form class="form-inline my-5 my-md-0">
                             <div data-bind="with: searchFieldsInReport">
-                                <select id="search-report" class="form-control" data-bind="select2: {placeholder: 'Search Report by Name, Description or Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults }, minimumInputLength: 2, language: language, allowClear: true }, value: selectedOption"></select>
+                                <select id="search-report" class="form-control" data-bind="select2: {placeholder: 'Search Report by Name, Description or Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults }, minimumInputLength: 0, language: language, allowClear: true }, value: selectedOption"></select>
                             </div>
                         </form>
                     </div>
@@ -193,7 +193,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         <div class="clearfix">
                             <p class="pull-left">Please choose a Report from this Folder</p>
                             <div class="pull-right">
-                                <a href="#" data-bind="click: function(){ SelectedFolder(null); }">
+                                <a href="#" data-bind="click: function(){ SelectedFolder(null); searchReports(''); $('#search-report').val([]).trigger('change');}">
                                     ..back to Folders List
                                 </a>
                             </div>
@@ -428,14 +428,18 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         </h5>
                                     </div>
                                     <div id="filter-panel" class="card-body">
-                                        <div>
+                                        <div data-bind="if: useStoredProc">
                                             <div class="row">
-                                                <div data-bind="template: {name: 'filter-group'}" class="col"></div>
+                                                <div data-bind="template: {name: 'filter-parameters'}" class="col-md-12"></div>
                                             </div>
-
-                                            <br />
-                                            <button class="btn btn-primary" data-bind="click: SaveFilterAndRunReport">Update Filters</button>
                                         </div>
+                                        <div data-bind="ifnot: useStoredProc">
+                                            <div class="row">
+                                                <div data-bind="template: {name: 'filter-group'}" class="col-md-12"></div>
+                                            </div>
+                                        </div>
+                                        <br />
+                                        <button class="btn btn-primary" data-bind="click: SaveFilterAndRunReport">Update Filters</button>
                                     </div>
                                 </div>
                                 <br />

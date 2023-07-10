@@ -412,7 +412,7 @@ namespace ReportBuilder.Web.Models
         }
 
 
-        static string ParseJsonValue(JObject json, string columnToExtract, bool asTable = true)
+        static string ParseJsonValue(JToken json, string columnToExtract, bool asTable = true)
         {
             if (!string.IsNullOrEmpty(columnToExtract))
                 return json.Value<dynamic>(columnToExtract)?.ToString();
@@ -486,7 +486,7 @@ namespace ReportBuilder.Web.Models
                 var val = row[col].ToString().Trim();
                 if ((val.StartsWith("[") || val.StartsWith("{")) && IsValidJson(val) && !IsNumeric(val))
                 {
-                    JObject json = JObject.Parse(val);
+                    JToken json = JToken.Parse(val);
                     return ParseJsonValue(json, formatType == "Json" ? col.ColumnName : "", jsonAsTable);
                 }
 

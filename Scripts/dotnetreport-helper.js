@@ -40,6 +40,7 @@ function ajaxcall(options) {
         if ($.unblockUI) {
             $.unblockUI();
         }
+        setTimeout(function () { $.unblockUI(); }, 1000);
         delete options;
     }).fail(function (jqxhr, status, error) {
         if ($.unblockUI) {
