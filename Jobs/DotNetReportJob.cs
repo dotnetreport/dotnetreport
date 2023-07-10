@@ -22,6 +22,7 @@ namespace ReportBuilder.Web.Jobs
         public DateTime? NextRun { get; set; }
         public string UserId { get; set; }
         public string Format { get; set; }
+        public string DataFilters { get; set; }
     }
     public class ReportWithSchedule
     {
@@ -99,8 +100,7 @@ namespace ReportBuilder.Web.Jobs
                             if (schedule.NextRun.HasValue && DateTime.Now >= schedule.NextRun && (!String.IsNullOrEmpty(schedule.LastRun) || lastRun <= schedule.NextRun))
                             {
                                 // need to run this report
-                                var dataFilters = new { }; // you can pass global data filters to apply as needed https://dotnetreport.com/kb/docs/advance-topics/global-filters/
-                                response = await client.GetAsync($"{apiUrl}/ReportApi/RunScheduledReport?account={accountApiKey}&dataConnect={databaseApiKey}&scheduleId={schedule.Id}&reportId={report.Id}&localRunTime={schedule.NextRun.Value.ToShortDateString()} {schedule.NextRun.Value.ToShortTimeString()}&clientId={clientId}&dataFilters={(new JavaScriptSerializer()).Serialize(dataFilters)}");
+                                response = await client.GetAsync($"{apiUrl}/ReportApi/RunScheduledReport?account={accountApiKey}&dataConnect={databaseApiKey}&scheduleId={schedule.Id}&reportId={report.Id}&localRunTime={schedule.NextRun.Value.ToShortDateString()} {schedule.NextRun.Value.ToShortTimeString()}&clientId={clientId}&dataFilters={schedule.DataFilters}");
                                 response.EnsureSuccessStatusCode();
 
                                 content = await response.Content.ReadAsStringAsync();

@@ -880,7 +880,7 @@ var reportViewModel = function (options) {
 		self.designingHeader(true);
 	}
 
-	self.buildCombinations = function(arrays, combine, finalList) {
+	self.buildCombinations = function (arrays, combine, finalList) {
 		var _this = this;
 		combine = combine || [];
 		finalList = finalList || [];
@@ -921,8 +921,8 @@ var reportViewModel = function (options) {
 		var computedGroups = [];
 		var options = [];
 		_.forEach(groupColumns, function (c) {
-			options.push(_.map(c.rowData, function (x) { return  { fieldId: c.fieldId, fieldIndex: c.fieldIndex, fieldName: c.fieldName, formattedValue: x }; }));
-        })
+			options.push(_.map(c.rowData, function (x) { return { fieldId: c.fieldId, fieldIndex: c.fieldIndex, fieldName: c.fieldName, formattedValue: x }; }));
+		})
 
 		var rows = self.buildCombinations(options);
 
@@ -1014,7 +1014,7 @@ var reportViewModel = function (options) {
 					if (result.success === false) {
 						toastr.error(result.message || 'Could not process this correctly, please try again');
 						return;
-                    }
+					}
 					self.ExecuteReportQuery(result.sql, result.connectKey);
 				});
 			}
@@ -1035,7 +1035,7 @@ var reportViewModel = function (options) {
 
 	self.openDesigner = function () {
 		options.reportWizard.modal('show');
-    }
+	}
 
 	self.textQuery.searchFields.selectedOption.subscribe(function (newValue) {
 		if (newValue) {
@@ -1232,9 +1232,14 @@ var reportViewModel = function (options) {
 			return [];
 		}
 
-		return _.filter(self.SavedReports(), function (x) {
-			return x.folderId == self.SelectedFolder().Id;
-		});
+		return _.chain(self.SavedReports())
+			.filter(function (x) {
+				return x.folderId == self.SelectedFolder().Id;
+			})
+			.sortBy(function (x) {
+				return x.reportName.toLowerCase();
+			})
+			.value();
 	});
 
 	var tokenKey = '';
@@ -1256,11 +1261,14 @@ var reportViewModel = function (options) {
 		url: options.apiUrl,
 		query: function (params) {
 			self.searchReports(params.term);
-			return JSON.stringify(params.term ? {
+			$('.select2-selection__placeholder').text(params.term);
+			if (params.term && params.term.length <= 2) return;
+			return params.term ? {
 				method: "/ReportApi/ParseQuery",
 				model: JSON.stringify({
 					token: params.term,
-					text: ''
+					text: '',
+					onlyInReports: true
 				})
 			} : {});
 		},
@@ -1276,10 +1284,21 @@ var reportViewModel = function (options) {
 		}
 	}
 
+	self.searchFieldsInReport.selectedOption.subscribe(function (x) {
+		if (!x) {
+			self.searchReports('');
+		}
+	});
+
 	self.reportsInSearch = ko.observableArray([]);
 	self.reportsInSearchCompute = ko.computed(function () {
 		var searchReports = self.searchReports();
 		var searchFieldId = self.searchFieldsInReport.selectedOption();
+
+		if (!searchReports) {
+			$('.select2-selection__placeholder').text('Search for text or select a field');
+			$('#search-report').val([]).trigger('change'); 
+		}
 
 		if (!searchReports && !searchFieldId) {
 			self.reportsInSearch([]);
@@ -2304,9 +2323,11 @@ var reportViewModel = function (options) {
 			self.ReportSeries = reportSeries;
 			if (result.HasError) return;
 
-			function matchColumnName(src, dst, dbSrc, dbDst) {
+			function matchColumnName(src, dst, dbSrc, dbDst, agg) {
 				if (src == dst) return true;
 				if (dbSrc && dbDst && dbSrc == dbDst) return true;
+
+				if (agg && dbSrc && dbDst && agg + '(' + dbSrc + ')' == dbDst) return true;
 
 				if (dst.indexOf('(Count)') < 0 && dst.indexOf("(Avg)") < 0 && dst.indexOf("(Sum)") < 0 && dst.indexOf("(Average)") < 0)
 					return false;
@@ -2334,9 +2355,11 @@ var reportViewModel = function (options) {
 					}
 					else if (e.FormatType == 'Json') {
 						col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.jsonColumnName, e.ColumnName); });
-                    }
-					else
-						col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.fieldName, e.ColumnName, x.dbField, e.SqlField); });
+					}
+					else {
+						col = _.find(self.SelectedFields(), function (x) { return x.dbField == e.SqlField; });
+						if (!col) col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.fieldName, e.ColumnName, x.dbField, e.SqlField, x.aggregateFunction); });
+					}
 					if (col && col.linkField()) {
 						e.linkItem = col.linkFieldItem.toJs();
 						e.linkField = true;
@@ -2344,7 +2367,7 @@ var reportViewModel = function (options) {
 						e.linkItem = {};
 						e.linkField = false;
 					}
-					//col = ko.toJS(col || { fieldName: e.ColumnName });
+					//col = col || { fieldName: e.ColumnName };
 
 					if (skipColDetails !== true) self.columnDetails.push(col);
 
