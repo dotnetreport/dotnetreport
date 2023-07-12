@@ -1,5 +1,4 @@
 ﻿using Newtonsoft.Json;
-using ReportBuilder.Web.Controllers;
 using ReportBuilder.Web.Models;
 using System;
 using System.Collections.Generic;
@@ -10,13 +9,10 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using System.Web;
-using System.Web.Mvc;
 using System.Web.Script.Serialization;
 using System.Web.Script.Services;
 using System.Web.Services;
-using static ReportBuilder.Web.Controllers.DotNetReportApiController;
 
 namespace ReportBuilder.WebForms.DotNetReport
 {
@@ -567,7 +563,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                                 DisplayName = dr["ColumnName"].ToString(),
                                 PrimaryKey = dr["ColumnName"].ToString().ToLower().EndsWith("id") && idx == 0,
                                 DisplayOrder = idx,
-                                FieldType = DotNetSetupController.ConvertToJetDataType((int)dr["ProviderType"]).ToString(),
+                                FieldType = Setup.ConvertToJetDataType((int)dr["ProviderType"]).ToString(),
                                 AllowedRoles = new List<string>(),
                                 Selected = true
                             };

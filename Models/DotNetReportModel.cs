@@ -4,8 +4,6 @@ using PdfSharp;
 using PdfSharp.Drawing;
 using PdfSharp.Drawing.Layout;
 using PdfSharp.Pdf;
-using PuppeteerSharp;
-using PuppeteerSharp.Media;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -18,10 +16,8 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Web;
 using System.Threading.Tasks;
 using System.Net.Http;
-using System.Web.Script.Serialization;
 using Newtonsoft.Json;
 
 namespace ReportBuilder.Web.Models
@@ -900,24 +896,6 @@ namespace ReportBuilder.Web.Models
             };
         }
 
-
-        /// <summary>
-        /// Customize this method with a login for dotnet report so that it can login to print pdf reports
-        /// </summary>
-        public static async Task PerformLogin(Page page, string printUrl)
-        {
-            var loginUrl = printUrl.Replace("/DotNetReport/ReportPrint", "/Account/Login"); // link to your login page
-            var loginEmail = "yourloginid@yourcompany.com"; // your login id
-            var loginPassword = "yourPassword"; // your login password
-
-            await page.GoToAsync(loginUrl, new NavigationOptions
-            {
-                WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
-            });
-            await page.TypeAsync("#Email", loginEmail); // Make sure #Email is replaced with the username form input id
-            await page.TypeAsync("#Password", loginPassword); // Make sure #Password is replaced with the password form input id
-            await page.ClickAsync("#LoginSubmit"); // Make sure #LoginSubmit is replaced with the login button form input id
-        }
 
         private static XSolidBrush GetBrushWithColor(string htmlColor = "")
         {
