@@ -1097,6 +1097,7 @@ var reportViewModel = function (options) {
 
 	self.createNewReport = function () {
 		self.clearReport();
+		$('#modal-reportbuilder').modal('show');
 		self.ReportMode("generate");
 	};
 
@@ -1193,6 +1194,7 @@ var reportViewModel = function (options) {
 					self.Folders.remove(self.SelectedFolder());
 					folderToUpdate.FolderName = self.ManageFolder.FolderName();
 					self.Folders.push(folderToUpdate);
+					self.allFolders = self.Folders();
 					self.SelectedFolder(null);
 				}
 				$("#folderModal").modal("hide");
@@ -1220,6 +1222,7 @@ var reportViewModel = function (options) {
 						},
 					}).done(function () {
 						self.Folders.remove(self.SelectedFolder());
+						self.allFolders = self.Folders();
 						self.SelectedFolder(null);
 					});
 				}
@@ -2818,7 +2821,6 @@ var reportViewModel = function (options) {
 		}).done(function (folders) {
 			if (folders.d) { folders = folders.d; }
 			if (folders.result) { folders = folders.result; }
-			self.Folders(folders);
 			self.SelectedFolder(null);
 			if (folderId) {
 				var match = _.filter(folders, function (x) { return x.Id == folderId; });
@@ -2826,6 +2828,7 @@ var reportViewModel = function (options) {
 					self.SelectedFolder(match[0]);
 				}
 			}
+			self.allFolders = folders;
 		});
 	};
 
@@ -3183,6 +3186,7 @@ var reportViewModel = function (options) {
 					// Load report
 					return self.LoadReport(e.reportId).done(function () {
 						if (!e.runMode) {
+							$('#modal-reportbuilder').modal('show');
 							self.ReportMode("generate");
 						}
 						else {
@@ -3199,6 +3203,21 @@ var reportViewModel = function (options) {
 						self.ReportName('Copy of ' + self.ReportName());
 						self.CanEdit(true);
 						self.SaveReport(true);
+
+						_.forEach(self.manageAccess.users, function (x) { x.selected(false); });
+						_.forEach(self.manageAccess.viewOnlyUsers, function (x) { x.selected(false); });
+						_.forEach(self.manageAccess.deleteOnlyUsers, function (x) { x.selected(false); });
+						_.forEach(self.manageAccess.userRoles, function (x) { x.selected(false); });
+						_.forEach(self.manageAccess.viewOnlyUserRoles, function (x) { x.selected(false); });
+						_.forEach(self.manageAccess.deleteOnlyUserRoles, function (x) { x.selected(false); });
+
+						var _access = _.find(self.manageAccess.users, { value: self.currentUserId });
+						if (_access) { _access.selected(true); }
+						_access = _.find(self.manageAccess.viewOnlyUsers, { value: self.currentUserId });
+						if (_access) { _access.selected(true); }
+						_access = _.find(self.manageAccess.deleteOnlyUsers, { value: self.currentUserId });
+						if (_access) { _access.selected(true); }
+
 					});
 				};
 
@@ -3235,6 +3254,13 @@ var reportViewModel = function (options) {
 					options.reportWizard.modal('show');
 				}
 			});
+
+			if (!self.adminMode()) {
+				var foldersInUse = _.uniqBy(reports, 'folderId').map(function (r) { return r.folderId });
+				self.Folders(_.filter(self.allFolders, function (folder) { return foldersInUse.includes(folder.Id) || folder.Id == 0 }));
+			} else {
+				self.Folders(self.allFolders);
+			}
 
 			self.SavedReports(reports);
 		});
