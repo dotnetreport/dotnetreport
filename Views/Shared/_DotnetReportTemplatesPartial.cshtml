@@ -541,7 +541,7 @@
                         </div>
                         <div class="col-md-3">
                             <div class="form-group">
-                                <select class="form-control" style="width: 100%;" data-bind="options: $parents[$parents.length-1].selectedFieldsCanFilter, optionsText: 'selectedFieldName', optionsCaption: 'Please Choose', value: Field, attr: {required: Field()==null?'required':false}, disable: Field() && Field().forced"></select>
+                                <select class="form-control" style="width: 100%;" data-bind="options: $parents[$parents.length-2].selectedFieldsCanFilter, optionsText: 'selectedFieldName', optionsCaption: 'Please Choose', value: Field, attr: {required: Field()==null?'required':false}, disable: Field() && Field().forced"></select>
                             </div>
                         </div>
                         <div class="col-md-2">
@@ -555,8 +555,8 @@
                             <div data-bind="with: Field">
                                 <div data-bind="template: 'report-filter', data: $data"></div>
                             </div>
-                            <!-- ko if: Field() && Field().fieldType == 'DateTime' && Operator() == 'range' && $parentContext.$parent.canAddSeries() && $index()==0 -->
-                            <button class="btn btn-sm btn-secondary" data-bind="click: $parentContext.$parent.AddSeries.bind($data)">Add Comparison</button>
+                            <!-- ko if: Field() && Field().fieldType == 'DateTime' && Operator() == 'range' && $parents[$parents.length-2].canAddSeries() && $index()==0 -->
+                            <button class="btn btn-sm btn-secondary" data-bind="click: $parents[$parents.length-2].AddSeries.bind($data)">Add Comparison</button>
                             <!--/ko -->
                             <span data-bind="visible: Field() && Field().forced" class="badge badge-info">Required Filter</span>
                         </div>
