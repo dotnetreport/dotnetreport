@@ -1097,7 +1097,6 @@ var reportViewModel = function (options) {
 
 	self.createNewReport = function () {
 		self.clearReport();
-		$('#modal-reportbuilder').modal('show');
 		self.ReportMode("generate");
 	};
 
@@ -3186,11 +3185,9 @@ var reportViewModel = function (options) {
 					// Load report
 					return self.LoadReport(e.reportId).done(function () {
 						if (!e.runMode) {
-							$('#modal-reportbuilder').modal('show');
 							self.ReportMode("generate");
 						}
 						else {
-							//self.SaveReport(false);
 							self.RunReport(false, true);
 							e.runMode = false;
 						}
@@ -3557,6 +3554,7 @@ var dashboardViewModel = function (options) {
 	self.currentUserRole = (options.currentUserRole || []).join();
 	self.reportsAndFolders = ko.observableArray([]);
 	self.allowAdmin = ko.observable(options.allowAdmin);
+	self.FlyFilters = ko.observableArray([]);
 
 	var currentDash = options.dashboardId > 0
 		? (_.find(self.dashboards(), { id: options.dashboardId }) || { name: '', description: '' })
@@ -3804,6 +3802,32 @@ var dashboardViewModel = function (options) {
 					$.unblockUI();
 				}
 
+				self.FlyFilters([]);
+				_.forEach(self.reports(), function (report) {
+					_.forEach(report.FilterGroups(), function (fg) {
+						_.forEach(fg.Filters(), function (f) {
+							if (f.IsFilterOnFly
+								//&& f.Field().fieldType == 'DateTime'
+								&& _.filter(self.FlyFilters(), function (x) { return f.Field().fieldId == x.Field().fieldId; }).length == 0
+							) {
+								var filter = {
+									AndOr: ko.observable(' AND '),
+									Field: ko.observable(f.Field()),
+									Operator: ko.observable(f.Operator()),
+									Value: ko.observable(f.Value()),
+									Value2: ko.observable(f.Value2()),
+									ValueIn: ko.observable(f.ValueIn()),
+									LookupList: ko.observable(f.LookupList()),
+									Apply: ko.observable(true),
+									IsFilterOnFly: true,
+									showParentFilter: ko.observable(f.showParentFilter())
+								};
+								self.FlyFilters.push(filter);
+							}
+						});
+					});
+				});
+
 				if (skipGridRefresh === true) return;
 				
 				var grid = $('.grid-stack').data("gridstack");
@@ -3853,6 +3877,31 @@ var dashboardViewModel = function (options) {
 			}
 		});
 	};
+
+	self.RunReport = function () {
+		_.forEach(self.reports(), function (report) {
+			var filterApplied = false;
+			_.forEach(self.FlyFilters(), function (combinedFilter) {
+				_.forEach(report.FilterGroups(), function (fg) {
+					_.forEach(fg.Filters(), function (f) {
+						if (f.IsFilterOnFly && combinedFilter.Field().fieldId == f.Field().fieldId) {
+							f.Operator(combinedFilter.Operator());
+							f.Value(combinedFilter.Value());
+							f.Value2(combinedFilter.Value2());
+							f.ValueIn(combinedFilter.ValueIn());
+							f.LookupList(combinedFilter.LookupList());
+
+							filterApplied = true;
+						}
+					});
+				});
+			});
+
+			if (filterApplied) {
+				report.RunReport();
+			}
+		});
+	}
 
 	self.init = function () {
 		var adminMode = false;
