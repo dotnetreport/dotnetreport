@@ -479,12 +479,12 @@
     <div class="card" data-bind="visible: FlyFilters().length>0">
         <div class="card-header">
             <h5 class="card-title">
-                <a data-toggle="collapse" data-target="#filter-panel" href="#">
+                <a data-toggle="collapse" data-bind="attr: {'data-target': '#filter-panel-' + ReportID() }" href="#">
                     <i class="fa fa-filter"></i>Choose filter options
                 </a>
             </h5>
         </div>
-        <div id="filter-panel" class="card-body">
+        <div data-bind="attr: {id: 'filter-panel-' + ReportID() }" class="card-body collapse collapsed">
             <div>
                 <!-- ko foreach: FlyFilters -->
                 <div class="row">

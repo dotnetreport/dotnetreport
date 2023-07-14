@@ -3555,6 +3555,7 @@ var dashboardViewModel = function (options) {
 	self.reportsAndFolders = ko.observableArray([]);
 	self.allowAdmin = ko.observable(options.allowAdmin);
 	self.FlyFilters = ko.observableArray([]);
+	self.ReportID = ko.observable(0);
 
 	var currentDash = options.dashboardId > 0
 		? (_.find(self.dashboards(), { id: options.dashboardId }) || { name: '', description: '' })
@@ -3823,6 +3824,15 @@ var dashboardViewModel = function (options) {
 									showParentFilter: ko.observable(f.showParentFilter())
 								};
 								self.FlyFilters.push(filter);
+
+								if (f.Field().hasForeignKey) {
+									f.LookupList.subscribe(function (x) {
+										filter.LookupList(x);
+										filter.Value(f.Value());
+										filter.Value2(f.Value2());
+										filter.ValueIn(f.ValueIn());
+									});
+								}
 							}
 						});
 					});
