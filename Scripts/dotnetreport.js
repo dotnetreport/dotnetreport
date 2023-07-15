@@ -1116,9 +1116,14 @@ var reportViewModel = function (options) {
 	self.cancelCreateReport = function () {
 		bootbox.confirm("Are you sure you would like to cancel editing this Report?", function (r) {
 			if (r) {
-				self.clearReport();
 				options.reportWizard.modal('hide');
+
+				if (self.ReportMode() == 'dashboard') {
+					report.SaveReport(false);
+					return;
+				}
 				self.ReportMode("start");
+				self.clearReport();
 			}
 		});
 	};
@@ -3185,6 +3190,7 @@ var reportViewModel = function (options) {
 					// Load report
 					return self.LoadReport(e.reportId).done(function () {
 						if (!e.runMode) {
+							self.SaveReport(true);
 							self.ReportMode("generate");
 						}
 						else {
@@ -3219,6 +3225,7 @@ var reportViewModel = function (options) {
 				};
 
 				e.runReport = function () {
+					self.SaveReport(false);
 					e.runMode = true;
 					e.openReport();
 				};
@@ -3339,7 +3346,7 @@ var reportViewModel = function (options) {
 
 	self.loadTables = function () {
 		// Load tables
-		ajaxcall({
+		return ajaxcall({
 			url: options.apiUrl,
 			data: {
 				method: "/ReportApi/GetTables",
@@ -3556,6 +3563,9 @@ var dashboardViewModel = function (options) {
 	self.allowAdmin = ko.observable(options.allowAdmin);
 	self.FlyFilters = ko.observableArray([]);
 	self.ReportID = ko.observable(0);
+	self.tables = [];
+	self.procs = [];
+	self.folders = [];
 
 	var currentDash = options.dashboardId > 0
 		? (_.find(self.dashboards(), { id: options.dashboardId }) || { name: '', description: '' })
@@ -3745,6 +3755,7 @@ var dashboardViewModel = function (options) {
 		var promises = [];
 		var i = 0;
 		self.skipGridRefresh = true;
+		reports = _.orderBy(reports, ['y', 'x']);
 
 		_.forEach(reports, function (x) {
 			var report = new reportViewModel({
@@ -3781,14 +3792,31 @@ var dashboardViewModel = function (options) {
 				report.showFlyFilters(!report.showFlyFilters());
 			};
 			report.openReport = function () {
-				// Load report
-				return report.LoadReport(x.reportId).done(function () {
+				var promises = [];
+				if (self.tables.length == 0) {
+					promises.push(report.loadTables().done(function (x) {
+						self.tables = x;
+						report.Tables(self.tables);
+					}));
+					promises.push(report.loadProcs().done(function (x) {
+						self.procs = x;
+						report.Procs(self.procs);
+					}));
+					promises.push(report.loadFolders().done(function (x) {
+						self.folders = x;
+						report.Folders(self.folders);
+					}));
+				}
+
+				$.when(promises).done(function () {
+					// Load report
+					report.Tables(self.tables);
+					report.Procs(self.procs);
+					report.Folders(self.folders);
+					report.SaveReport(true);
 					self.selectedReport(report);
-					options.reportWizard.modal('show');
 					setTimeout(function () {
-						if ($.unblockUI) {
-							$.unblockUI();
-						}
+						options.reportWizard.modal('show');
 					}, 1000);
 				});
 			};
