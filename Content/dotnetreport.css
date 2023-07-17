@@ -704,3 +704,16 @@ select.is-invalid ~ span .select2-selection {
         color: #aaa;
         cursor: default;
     }
+
+.bootbox.modal {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding-top: 10%;
+    padding-left: 10%;
+}
+
+    .bootbox.modal .modal-dialog {
+        margin: 0;
+    }
