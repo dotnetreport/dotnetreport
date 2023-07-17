@@ -969,7 +969,6 @@ var customSqlModel = function (options, keys, tables) {
 			} else {
 				var table = _.find(tables.model(), function (x) { return x.Id() == self.selectedTable.Id; });
 				table.TableName(self.customTableName());
-				table.DisplayName(self.customTableName());
 				table.CustomTableSql(self.customSql());
 
 				_.forEach(result.Columns, function (c) {
