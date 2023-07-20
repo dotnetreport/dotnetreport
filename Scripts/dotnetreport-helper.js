@@ -167,9 +167,18 @@ ko.bindingHandlers.highlightedText = {
         var value = ko.utils.unwrapObservable(options.text) || '';
         var search = ko.utils.unwrapObservable(options.highlight) || '';
         var css = ko.utils.unwrapObservable(options.css) || 'highlight';
-       
-        var replacement = '<span class="' + css + '">' + search + '</span>';
-        element.innerHTML = value.replace(new RegExp(search, 'gim'), replacement);
+
+        // Escape special characters in the search term
+        var escapedSearch = search.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+
+        // Create a regular expression with case-insensitive flag
+        var regex = new RegExp(escapedSearch, 'gim');
+
+        function getReplacement(match) {
+            return '<span class="' + css + '">' + match + '</span>';
+        }
+
+        element.innerHTML = value.replace(regex, getReplacement);
     }
 };
 
