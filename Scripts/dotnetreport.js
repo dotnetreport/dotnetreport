@@ -2374,27 +2374,27 @@ var reportViewModel = function (options) {
 						e.linkItem = {};
 						e.linkField = false;
 					}
-					//col = col || { fieldName: e.ColumnName };
+					col = col || { fieldName: e.ColumnName };
 
 					if (skipColDetails !== true) self.columnDetails.push(col);
 
-					e.decimalPlaces = col.decimalPlaces;
-					e.fieldAlign = col.fieldAlign;
-					e.fieldConditionOp = col.fieldConditionOp;
-					e.fieldConditionVal = col.fieldConditionVal;
-					e.fieldFormat = col.fieldFormat;
-					e.fieldLabel = col.fieldLabel;
+					e.decimalPlaces = col.decimalPlaces || ko.observable();
+					e.fieldAlign = col.fieldAlign || ko.observable();
+					e.fieldConditionOp = col.fieldConditionOp || ko.observable();
+					e.fieldConditionVal = col.fieldConditionVal || ko.observable();
+					e.fieldFormat = col.fieldFormat || ko.observable();
+					e.fieldLabel = col.fieldLabel || ko.observable();
 					e.fieldName = col.fieldName;
-					e.fieldWidth = col.fieldWidth;
-					e.fontBold = col.fontBold;
-					e.headerFontBold = col.headerFontBold;
-					e.headerFontColor = col.headerFontColor;
-					e.headerBackColor = col.headerBackColor;
+					e.fieldWidth = col.fieldWidth || ko.observable();
+					e.fontBold = col.fontBold || ko.observable();
+					e.headerFontBold = col.headerFontBold || ko.observable();
+					e.headerFontColor = col.headerFontColor || ko.observable();
+					e.headerBackColor = col.headerBackColor || ko.observable();
 					e.fieldId = col.fieldId;
-					e.fontColor = col.fontColor;
-					e.backColor = col.backColor;
-					e.groupInGraph = col.groupInGraph;
-					e.dontSubTotal = col.dontSubTotal;
+					e.fontColor = col.fontColor || ko.observable();
+					e.backColor = col.backColor || ko.observable();
+					e.groupInGraph = col.groupInGraph || ko.observable();
+					e.dontSubTotal = col.dontSubTotal || ko.observable();
 					e.fieldType = col.fieldType;
 					e.jsonColumnName = col.jsonColumnName;
 					e.isJsonColumn = col.fieldType == 'Json';
