@@ -22,6 +22,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 var svc = "/DotNetReport/ReportService.asmx/";
                 var vm = new reportViewModel({
                     runReportUrl: "/DotNetReport/Report.aspx",
+                    execReportUrl: svc + "RunReport",
                     reportWizard: $("#modal-reportbuilder"),
                     linkModal: $("#linkModal"),
                     reportHeader: "report-header",
@@ -32,7 +33,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
                     getUsersAndRolesUrl: svc + "GetUsersAndRoles",
                     reportId: queryParams.reportId || 0,
                     userSettings: data,
-                    dataFilters: data.dataFilters
+                    dataFilters: data.dataFilters,
+                    samePageOnRun: true
                 });
 
                 vm.init(queryParams.folderid || 0, data.noAccount);
