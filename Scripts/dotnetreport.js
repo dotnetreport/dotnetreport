@@ -3797,14 +3797,17 @@ var dashboardViewModel = function (options) {
 				var promises = [];
 				if (self.tables.length == 0) {
 					promises.push(report.loadTables().done(function (x) {
+						if (x.d) x = x.d;
 						self.tables = x;
 						report.Tables(self.tables);
 					}));
 					promises.push(report.loadProcs().done(function (x) {
+						if (x.d) x = x.d;
 						self.procs = x;
 						report.Procs(self.procs);
 					}));
 					promises.push(report.loadFolders().done(function (x) {
+						if (x.d) x = x.d;
 						self.folders = x;
 						report.Folders(self.folders);
 					}));
