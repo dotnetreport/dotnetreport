@@ -479,16 +479,15 @@
     <div class="card" data-bind="visible: FlyFilters().length>0">
         <div class="card-header">
             <h5 class="card-title">
-                <a data-toggle="collapse" data-target="#filter-panel" href="#">
+                <a data-toggle="collapse" data-bind="attr: {'data-target': '#filter-panel-' + ReportID() }" href="#">
                     <i class="fa fa-filter"></i>Choose filter options
                 </a>
             </h5>
         </div>
-        <div id="filter-panel" class="card-body">
+        <div data-bind="attr: {id: 'filter-panel-' + ReportID() }" class="card-body collapse collapsed">
             <div>
                 <!-- ko foreach: FlyFilters -->
                 <div class="row">
-
                     <div class="col-sm-5 col-xs-4">
                         <div data-bind="with: Field" class="checkbox">
                             <div class="checkbox">
@@ -503,7 +502,7 @@
                             <select class="form-control" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
                         </div>
                     </div>
-                    <div data-bind="with: Field" class="col-xs-5">
+                    <div data-bind="with: Field" class="col-sm-5 col-xs-5">
                         <div data-bind="if: $parent.Apply">
                             <div data-bind="template: 'report-filter', data: $data"></div>
                         </div>
@@ -522,49 +521,59 @@
         <table class="table table-hover table-borderless">
             <thead>
                 <tr>
-                    <th style="width: 10%"></th>
-                    <th style="width: 30%">Field</th>
-                    <th style="width: 10%"></th>
-                    <th style="width: 30%">Filter</th>
-                    <th></th>
+                    <th class="row">
+                        <div class="col-md-1"></div>
+                        <div class="col-md-4">Field</div>
+                        <div class="col-md-2"></div>
+                        <div class="col-md-4">Filter</div>
+                        <div class="col-md-1"></div>
+                    </th>
                 </tr>
             </thead>
             <tbody data-bind="foreach: Filters">
                 <tr class="rule-container">
-                    <td>
+                    <td class="row">
+                        <div class="col-md-1">
                         <select data-bind="value: AndOr, visible: $index()>0" class="form-control">
                             <option>And</option>
                             <option>Or</option>
                         </select>
-                    </td>
-                    <td>
-                        <div class="form-group">
-                            <select class="form-control" style="width: 100%;" data-bind="options: $parents[$parents.length-1].selectedFieldsCanFilter, optionsText: 'selectedFieldName', optionsCaption: 'Please Choose', value: Field, attr: {required: Field()==null?'required':false}, disable: Field() && Field().forced"></select>
                         </div>
-                    </td>
-                    <td data-bind="with: Field">
-                        <div class="form-group">
-                            <select class="form-control" style="width: 100%;" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <select class="form-control" style="width: 100%;" data-bind="options: $parents[$parents.length-2].selectedFieldsCanFilter, optionsText: 'selectedFieldName', optionsCaption: 'Please Choose', value: Field, attr: {required: Field()==null?'required':false}, disable: Field() && Field().forced"></select>
+                            </div>
                         </div>
-                    </td>
-                    <td data-bind="with: Field">
-                        <div data-bind="template: 'report-filter', data: $data"></div>
-                    </td>
-                    <td>
-                        <span data-bind="visible: Field() && Field().forced" class="badge badge-info">Required Filter</span>
-                        <button class="btn btn-sm btn-secondary" data-bind="click: $parent.RemoveFilter, hidden: Field() && Field().forced">Remove</button>
-                        <!-- ko if: Field() && Field().fieldType == 'DateTime' && Operator() == 'range' && $parentContext.$parent.canAddSeries() && $index()==0 -->
-                        <button class="btn btn-sm btn-secondary" data-bind="click: $parentContext.$parent.AddSeries.bind($data)">Add Comparison</button>
-                        <!--/ko -->
+                        <div class="col-md-2">
+                            <div data-bind="with: Field">
+                            <div class="form-group">
+                                <select class="form-control" style="width: 100%;" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
+                            </div>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <div data-bind="with: Field">
+                                <div data-bind="template: 'report-filter', data: $data"></div>
+                            </div>
+                            <!-- ko if: Field() && Field().fieldType == 'DateTime' && Operator() == 'range' && $parents[$parents.length-2].canAddSeries() && $index()==0 -->
+                            <button class="btn btn-sm btn-secondary" data-bind="click: $parents[$parents.length-2].AddSeries.bind($data)">Add Comparison</button>
+                            <!--/ko -->
+                            <span data-bind="visible: Field() && Field().forced" class="badge badge-info">Required Filter</span>
+                        </div>
+                        <div class="col-md-1">
+                            <button class="btn btn-sm btn-secondary" data-bind="click: $parent.RemoveFilter, hidden: Field() && Field().forced">Remove</button>
+                        </div>
                     </td>
                 </tr>
                 <!-- ko foreach: compareTo -->
                 <tr>
-                    <td></td>
-                    <td style="text-align: right"><button class="btn btn-xs" data-bind="click: $parents[2].RemoveSeries"><span class="fa fa-trash-o"></span></button></td>
-                    <td>Compare To</td>
-                    <td>
-                        <div class="form-group">
+                    <td class="row">
+                        <div class="col-md-6">&nbsp;</div>
+                        <div class="col-md-2">
+                        <span style="text-align: right"><button class="btn btn-xs" data-bind="click: $parents[2].RemoveSeries"><span class="fa fa-trash-o"></span></button></span>
+                        <span>Compare To</span>
+                        </div>
+                        <div class="col-md-4">
                             <select class="form-control" data-bind="options: Range, value: Value" required></select>
                         </div>
                     </td>
@@ -914,7 +923,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="myModalLabel">
-                    <a title="Need help setting up a report?" target="_blank" href="https://dotnetreport.com/docs/designing-reports/">
+                    <a title="Need help setting up a report?" target="_blank" href="https://dotnetreport.com/blogs/docs/designing-reports">
                         <span class="fa fa-question-circle"></span>
                     </a>Design your Report
                 </h5>
