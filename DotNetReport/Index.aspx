@@ -53,7 +53,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
         </div>
         <div class="col-md-6">
             <div class="pull-right">
-            <a href="/DotnetReport/Dashboard.aspx")">View Dashboard</a> | Learn how to <a href="https://dotnetreport.com/getting-started-with-dotnet-report/" target="_blank">Integrate in your App here</a>.
+            <a href="/DotnetReport/Dashboard.aspx">View Dashboard</a> | Learn how to <a href="https://dotnetreport.com/getting-started-with-dotnet-report/" target="_blank">Integrate in your App here</a>.
             </div>
         </div>
     </div>
@@ -343,7 +343,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 <div class="modal-body">
                     <p class="alert alert-danger">dotnet Report Account Configuration missing!</p>
                     <p>You do not have the neccessary initial configuration completed to use dotnet Report.</p>
-                    <p>Please view the <a href="https://dotnetreport.com/blog/2016/03/getting-started-with-dotnet-report/" target="_blank">Getting Started Guide</a> to correctly configure dotnet Report.</p>
+                    <p>Please view the <a href="https://dotnetreport.com/blogs/getting-started-with-dotnet-report/" target="_blank">Getting Started Guide</a> to correctly configure dotnet Report.</p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
