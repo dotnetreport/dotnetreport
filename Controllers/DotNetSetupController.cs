@@ -7,32 +7,17 @@ using System.Data;
 using System.Data.OleDb;
 using System.Linq;
 using System.Net.Http;
-using System.Text;
 using System.Threading.Tasks;
 using System.Web.Mvc;
 
 namespace ReportBuilder.Web.Controllers
 {
+    //[Authorize(Roles="Administrator")]
     public class DotNetSetupController : Controller
     {
         public async Task<ActionResult> Index(string databaseApiKey = "")
-        {
-            var connect = GetConnection(databaseApiKey);
-            var tables = new List<TableViewModel>();
-            var procedures = new List<TableViewModel>();
-            tables.AddRange(await GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
-            tables.AddRange(await GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
-            procedures.AddRange(await GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
-            var model = new ManageViewModel
-            {
-                ApiUrl = connect.ApiUrl,
-                AccountApiKey = connect.AccountApiKey,
-                DatabaseApiKey = connect.DatabaseApiKey,
-                Tables = tables,
-                Procedures = procedures
-            };
-
-            return View(model);
+        {           
+            return View();
         }
 
         #region "Private Methods"
@@ -123,7 +108,7 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        private async Task<List<TableViewModel>> GetApiTables(string accountKey, string dataConnectKey)
+        public static async Task<List<TableViewModel>> GetApiTables(string accountKey, string dataConnectKey)
         {
             using (var client = new HttpClient())
             {
@@ -152,7 +137,7 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        private async Task<List<ColumnViewModel>> GetApiFields(string accountKey, string dataConnectKey, int tableId)
+        public static async Task<List<ColumnViewModel>> GetApiFields(string accountKey, string dataConnectKey, int tableId)
         {
             using (var client = new HttpClient())
             {
@@ -205,7 +190,7 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        private async Task<List<TableViewModel>> GetTables(string type = "TABLE", string accountKey = null, string dataConnectKey = null)
+        public static async Task<List<TableViewModel>> GetTables(string type = "TABLE", string accountKey = null, string dataConnectKey = null)
         {
             var tables = new List<TableViewModel>();
 
@@ -325,7 +310,7 @@ namespace ReportBuilder.Web.Controllers
             return tables;
         }
 
-        private async Task<List<TableViewModel>> GetApiProcs(string accountKey, string dataConnectKey)
+        public static async Task<List<TableViewModel>> GetApiProcs(string accountKey, string dataConnectKey)
         {
             using (var client = new HttpClient())
             {

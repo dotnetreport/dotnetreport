@@ -40,6 +40,7 @@ function ajaxcall(options) {
         if ($.unblockUI) {
             $.unblockUI();
         }
+        setTimeout(function () { $.unblockUI(); }, 1000);
         delete options;
     }).fail(function (jqxhr, status, error) {
         if ($.unblockUI) {
@@ -166,9 +167,18 @@ ko.bindingHandlers.highlightedText = {
         var value = ko.utils.unwrapObservable(options.text) || '';
         var search = ko.utils.unwrapObservable(options.highlight) || '';
         var css = ko.utils.unwrapObservable(options.css) || 'highlight';
-       
-        var replacement = '<span class="' + css + '">' + search + '</span>';
-        element.innerHTML = value.replace(new RegExp(search, 'gim'), replacement);
+
+        // Escape special characters in the search term
+        var escapedSearch = search.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+
+        // Create a regular expression with case-insensitive flag
+        var regex = new RegExp(escapedSearch, 'gim');
+
+        function getReplacement(match) {
+            return '<span class="' + css + '">' + match + '</span>';
+        }
+
+        element.innerHTML = value.replace(regex, getReplacement);
     }
 };
 
@@ -415,9 +425,13 @@ var textQuery = function (options) {
         document.getElementById("query-input").innerHTML = "Show me&nbsp;";
     }
 
+    var tokenKey = '';
+    var token = JSON.parse(localStorage.getItem(tokenKey));
+
     self.searchFields = {
         selectedOption: ko.observable(),
         url: options.apiUrl,
+        headers: { "Authorization": "Bearer " + token },
         query: function (params) {
             return params.term ? {
                 method: "/ReportApi/ParseQuery",

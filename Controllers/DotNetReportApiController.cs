@@ -1,5 +1,4 @@
 ﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using ReportBuilder.Web.Models;
 using System;
 using System.Collections.Generic;
@@ -9,12 +8,10 @@ using System.Data.OleDb;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web;
 using System.Web.Mvc;
 using System.Web.Script.Serialization;
-using System.Web.Security;
 
 namespace ReportBuilder.Web.Controllers
 {
@@ -39,7 +36,7 @@ namespace ReportBuilder.Web.Controllers
             settings.Users = new List<dynamic> { new { id = "1", text = "Jane" }, new { id = "2", text = "John" } }; // Populate all your application's user, ex  { "Jane", "John" } or { new { id="1", text="Jane" }, new { id="2", text="John" }}
             settings.UserRoles = new List<string> { "Admin", "Normal" }; // Populate all your application's user roles, ex  { "Admin", "Normal" }       
 
-            settings.CanUseAdminMode = true; // Set to true only if current user can use Admin mode to setup reports and dashboard
+            settings.CanUseAdminMode = true; // Set to true only if current user can use Admin mode to setup reports, dashboard and schema
             settings.DataFilters = new { }; // add global data filters to apply as needed https://dotnetreport.com/kb/docs/advance-topics/global-filters/
 
             return settings;
@@ -109,7 +106,7 @@ namespace ReportBuilder.Web.Controllers
 
         public async Task<JsonResult> CallReportApi(string method, string model)
         {
-            return await ExecuteCallReportApi(method, model);
+            return string.IsNullOrEmpty(method) || string.IsNullOrEmpty(model) ? Json(new { }) : await ExecuteCallReportApi(method, model);
         }
 
         private async Task<JsonResult> ExecuteCallReportApi(string method, string model, DotNetReportSettings settings = null)
@@ -175,13 +172,10 @@ namespace ReportBuilder.Web.Controllers
                     sql = DotNetReportHelper.Decrypt(HttpUtility.HtmlDecode(allSqls[i]));
                     if (!sql.StartsWith("EXEC"))
                     {
-                        var sqlSplit = sql.Substring(0, sql.LastIndexOf("FROM")).Replace("SELECT", "").Trim();
-                        sqlFields = Regex.Split(sqlSplit, "], (?![^\\(]*?\\))").Where(x => x != "CONVERT(VARCHAR(3)")
-                            .Select(x => x.EndsWith("]") ? x : x + "]")
-                            .Select(x => x.StartsWith("DISTINCT ") ? x.Replace("DISTINCT ", "") : x)
-                            .ToList();
+                        var fromIndex = DotNetReportHelper.FindFromIndex(sql);
+                        sqlFields = DotNetReportHelper.SplitSqlColumns(sql);
 
-                        var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(sql.IndexOf("FROM"))}";
+                        var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(fromIndex)}";
                         sqlCount = $"SELECT COUNT(*) FROM ({(sqlFrom.Contains("ORDER BY") ? sqlFrom.Substring(0, sqlFrom.IndexOf("ORDER BY")) : sqlFrom)}) as countQry";
 
                         if (!String.IsNullOrEmpty(sortBy))
@@ -285,7 +279,7 @@ namespace ReportBuilder.Web.Controllers
                 sql = DotNetReportHelper.Decrypt(HttpUtility.HtmlDecode(allSqls[0]));
                 var model = new DotNetReportResultModel
                 {
-                    ReportData = DataTableToDotNetReportDataModel(dtPaged, fields),
+                    ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dtPaged, fields),
                     Warnings = GetWarnings(sql),
                     ReportSql = sql,
                     ReportDebug = Request.Url.Host.Contains("localhost"),
@@ -438,7 +432,7 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult> GetSchemaFromSql(string value = null, string accountKey = null, string dataConnectKey = null)
+        public async Task<JsonResult> GetSchemaFromSql(SchemaFromSqlCall data)
         {
             try
             {
@@ -450,14 +444,14 @@ namespace ReportBuilder.Web.Controllers
                     Selected = true
                 };
 
-                table.CustomTableSql = value;
+                table.CustomTableSql = data.value;
 
-                var connString = await DotNetSetupController.GetConnectionString(DotNetSetupController.GetConnection(dataConnectKey));
+                var connString = await DotNetSetupController.GetConnectionString(DotNetSetupController.GetConnection(data.dataConnectKey));
                 using (OleDbConnection conn = new OleDbConnection(connString))
                 {
                     // open the connection to the database 
                     conn.Open();
-                    OleDbCommand cmd = new OleDbCommand(value, conn);
+                    OleDbCommand cmd = new OleDbCommand(data.value, conn);
                     cmd.CommandType = CommandType.Text;
                     using (OleDbDataReader reader = cmd.ExecuteReader())
                     {
@@ -490,7 +484,8 @@ namespace ReportBuilder.Web.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { errorMessage = ex.Message }, JsonRequestBehavior.AllowGet);
+
+                return Json(new { errorMessage = ex.Message}, JsonRequestBehavior.AllowGet);
             }
         }
 
@@ -505,54 +500,33 @@ namespace ReportBuilder.Web.Controllers
             return warning;
         }
 
-        private DotNetReportDataModel DataTableToDotNetReportDataModel(DataTable dt, List<string> sqlFields)
+        //[Authorize(Roles="Administrator")]
+        [HttpPost]
+        public async Task<JsonResult> LoadSetupSchema(string databaseApiKey = "")
         {
-            var model = new DotNetReportDataModel
+            var settings = GetSettings();
+            if (!settings.CanUseAdminMode)
             {
-                Columns = new List<DotNetReportDataColumnModel>(),
-                Rows = new List<DotNetReportDataRowModel>()
+                throw new Exception("Not Authorized to access this Resource");
+            }
+
+            var connect = DotNetSetupController.GetConnection(databaseApiKey);
+            var tables = new List<TableViewModel>();
+            var procedures = new List<TableViewModel>();
+            tables.AddRange(await DotNetSetupController.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
+            tables.AddRange(await DotNetSetupController.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
+            procedures.AddRange(await DotNetSetupController.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
+            var model = new ManageViewModel
+            {
+                ApiUrl = connect.ApiUrl,
+                AccountApiKey = connect.AccountApiKey,
+                DatabaseApiKey = connect.DatabaseApiKey,
+                Tables = tables,
+                Procedures = procedures
             };
 
-            int i = 0;
-            foreach (DataColumn col in dt.Columns)
-            {
-                var sqlField = sqlFields[i++];
-                model.Columns.Add(new DotNetReportDataColumnModel
-                {
-                    SqlField = sqlField.Substring(0, sqlField.IndexOf(" AS ")).Trim().Replace("__jsonc__", ""),
-                    ColumnName = col.ColumnName,
-                    DataType = col.DataType.ToString(),
-                    IsNumeric = DotNetReportHelper.IsNumericType(col.DataType),
-                    FormatType = sqlField.Contains("__jsonc__") ? "Json" : ""
-                });
 
-            }
-
-            foreach (DataRow row in dt.Rows)
-            {
-                i = 0;
-                var items = new List<DotNetReportDataRowItemModel>();
-
-                foreach (DataColumn col in dt.Columns)
-                {
-
-                    items.Add(new DotNetReportDataRowItemModel
-                    {
-                        Column = model.Columns[i],
-                        Value = row[col] != null ? row[col].ToString() : null,
-                        FormattedValue = DotNetReportHelper.GetFormattedValue(col, row, model.Columns[i].FormatType),
-                        LabelValue = DotNetReportHelper.GetLabelValue(col, row)
-                    });
-                    i += 1;
-                }
-
-                model.Rows.Add(new DotNetReportDataRowModel
-                {
-                    Items = items.ToArray()
-                });
-            }
-
-            return model;
+            return Json(model, JsonRequestBehavior.AllowGet);
         }
 
         public class SearchProcCall { 
@@ -566,8 +540,9 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult> SearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
+        public async Task<JsonResult> SearchProcedure(SearchProcCall data)
         {
+            string value = data.value; string accountKey = data.accountKey; string dataConnectKey = data.dataConnectKey;
             return Json(await GetSearchProcedure(value, accountKey, dataConnectKey), JsonRequestBehavior.AllowGet);
         }
 
