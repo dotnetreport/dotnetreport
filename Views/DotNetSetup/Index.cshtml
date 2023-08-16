@@ -139,10 +139,8 @@
                     <button class="btn btn-sm" data-bind="click: clearTableFilter,  visible: tableFilter()!='' && tableFilter()!=null"><span class="fa fa-remove"></span></button>
                     <button class="btn btn-sm" onclick="openall()" style="margin-left: 15px;">Open all</button>
                     <button class="btn btn-sm" onclick="closeall()">Close all</button>
-                    <button class="btn btn-sm" data-bind="click: selectAll, hidden: $root.customTableMode">Select all</button>
-                    <button class="btn btn-sm" data-bind="click: unselectAll, hidden: $root.customTableMode">Unselect all</button>
+                    <button class="btn btn-sm" data-bind="click: toggleShowAll, hidden: $root.customTableMode, text: usedOnly() ? 'Show all' : 'Show used only'">Show used only</button>
                     <button class="btn btn-sm btn-primary" data-bind="click: $root.customSql.addNewCustomSqlTable, visible: $root.customTableMode">Add New Custom Table</button>
-                    <button class="btn btn-sm btn-primary" data-bind="click: $root.saveChanges, hidden: $root.customTableMode">Save All Changes</button>
                 </div>
                 <div class="clearfix"></div>
                 <hr />
