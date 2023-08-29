@@ -2460,15 +2460,15 @@ var reportViewModel = function (options) {
 					r.jsonColumnName = col.jsonColumnName;
 					r.isJsonColumn = col.isJsonColumn;
 
-					if (self.decimalFormatTypes.indexOf(col.fieldFormat) >= 0) {
-						r.FormattedValue = self.formatNumber(r.Value, col.decimalPlaces);
-						switch (col.fieldFormat) {
+					if (self.decimalFormatTypes.indexOf(col.fieldFormat()) >= 0) {
+						r.FormattedValue = self.formatNumber(r.Value, col.decimalPlaces());
+						switch (col.fieldFormat()) {
 							case 'Currency': r.FormattedValue = '$' + r.FormattedValue; break;
 							case 'Percentage': r.FormattedValue = r.FormattedValue + '%'; break;
 						}
 					}
-					if (self.dateFormatTypes.indexOf(col.fieldFormat) >= 0) {
-						switch (col.fieldFormat) {
+					if (self.dateFormatTypes.indexOf(col.fieldFormat()) >= 0 && !isNaN(new Date(r.Value).getTime())) {
+						switch (col.fieldFormat()) {
 							case 'Date': r.FormattedValue = (new Date(r.Value)).toLocaleDateString("en-US", { year: 'numeric', month: 'numeric', day: 'numeric' }); break;
 							case 'Date and Time': r.FormattedValue = (new Date(r.Value)).toLocaleDateString("en-US", { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
 							case 'Time': r.FormattedValue = (new Date(r.Value)).toLocaleTimeString("en-US", { hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
