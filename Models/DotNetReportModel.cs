@@ -47,6 +47,7 @@ namespace ReportBuilder.Web.Models
         public string UserId { get; set; }
         public string CurrentUserRoles { get; set; }
         public string DataFilters { get; set; }
+        public string ReportData { get; set; }
     }
 
     public class DotNetReportResultModel
@@ -893,24 +894,6 @@ namespace ReportBuilder.Web.Models
         }
 
 
-        /// <summary>
-        /// Customize this method with a login for dotnet report so that it can login to print pdf reports
-        /// </summary>
-        public static async Task PerformLogin(Page page, string printUrl)
-        {
-            var loginUrl = printUrl.Replace("/DotNetReport/ReportPrint", "/Account/Login"); // link to your login page
-            var loginEmail = "yourloginid@yourcompany.com"; // your login id
-            var loginPassword = "yourPassword"; // your login password
-
-            await page.GoToAsync(loginUrl, new NavigationOptions
-            {
-                WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
-            });
-            await page.TypeAsync("#Email", loginEmail); // Make sure #Email is replaced with the username form input id
-            await page.TypeAsync("#Password", loginPassword); // Make sure #Password is replaced with the password form input id
-            await page.ClickAsync("#LoginSubmit"); // Make sure #LoginSubmit is replaced with the login button form input id
-        }
-
         private static XSolidBrush GetBrushWithColor(string htmlColor = "")
         {
             var color = ColorTranslator.FromHtml(!string.IsNullOrEmpty(htmlColor) ? htmlColor : "#007bff");
@@ -1188,17 +1171,45 @@ namespace ReportBuilder.Web.Models
                     string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false)
         {
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
-            await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync(BrowserFetcher.DefaultChromiumRevision);
+            await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
             var executablePath = "";
-            foreach(var d in Directory.GetDirectories(installPath))
+            foreach(var d in Directory.GetDirectories($"{installPath}\\chrome"))
             {
-                executablePath = $"{d}\\chrome-win\\chrome.exe";
+                executablePath = $"{d}\\chrome-win64\\chrome.exe";
                 if (File.Exists(executablePath)) break;
             }
 
             var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = true, ExecutablePath = executablePath });
             var page = await browser.NewPageAsync();
             await page.SetRequestInterceptionAsync(true);
+
+            var sql = Decrypt(reportSql);
+            var sqlFields = SplitSqlColumns(sql);
+
+            var dt = new DataTable();
+            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
+            {
+                conn.Open();
+                var command = new OleDbCommand(sql, conn);
+                var adapter = new OleDbDataAdapter(command);
+
+                adapter.Fill(dt);
+            }
+
+            var model = new DotNetReportResultModel
+            {
+                ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dt, sqlFields, false),
+                Warnings = "",
+                ReportSql = sql,
+                ReportDebug = false,
+                Pager = new DotNetReportPagerModel
+                {
+                    CurrentPage = 1,
+                    PageSize = 100000,
+                    TotalRecords = dt.Rows.Count,
+                    TotalPages = 1
+                }
+            };
 
             var formPosted = false;
             var formData = new StringBuilder();
@@ -1214,6 +1225,7 @@ namespace ReportBuilder.Web.Models
             formData.AppendLine($"<input name=\"currentUserRole\" value=\"{currentUserRole}\" />");
             formData.AppendLine($"<input name=\"expandAll\" value=\"{expandAll}\" />");
             formData.AppendLine($"<input name=\"dataFilters\" value=\"{HttpUtility.HtmlEncode(dataFilters)}\" />");
+            formData.AppendLine($"<input name=\"reportData\" value=\"{HttpUtility.HtmlEncode(JsonConvert.SerializeObject(model))}\" />");
             formData.AppendLine($"</form>");
             formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");
             formData.AppendLine("</body></html>");
