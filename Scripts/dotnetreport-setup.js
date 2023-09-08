@@ -13,8 +13,8 @@ var manageViewModel = function (options) {
 	self.DataConnections = ko.observableArray([]);
 	self.Tables = new tablesViewModel(options);
 	self.Procedures = new proceduresViewModel(options);
+	self.DbConfig = new dbConnectionViewModel(options);
 	self.pager = new pagerViewModel({autoPage: true});
-
 	self.pager.totalRecords(self.Tables.model().length);
 
 	self.Tables.filteredTables.subscribe(function (x) {		
@@ -546,6 +546,71 @@ var manageViewModel = function (options) {
 
 }
 
+var dbConnectionViewModel = function(options) {
+	var self = this;
+	var validator = new validation();
+	self.DatabaseType = ko.observable("");
+	self.DatabaseHost = ko.observable("");
+	self.DatabasePort = ko.observable("");
+	self.DatabaseName = ko.observable("");
+	self.Username = ko.observable("");
+	self.Password = ko.observable("");
+	self.AuthenticationType = ko.observable("Username");
+
+	self.connectionString = ko.computed(function () {
+		var connectionString = "";
+
+		if (self.DatabaseType() === "MS SQL") {
+			connectionString = `Server=${self.DatabaseHost()}`;
+
+			if (self.AuthenticationType() === "Integrated Security") {
+				connectionString += ";Integrated Security=SSPI";
+			} else if (self.AuthenticationType() === "Username Authentication") {
+				connectionString += `;User Id=${self.Username()};Password=${self.Password()}`;
+			}
+		} else if (self.DatabaseType() === "MySQL") {
+			connectionString = `Server=${self.DatabaseHost()}`;
+		} else if (self.DatabaseType() === "Postgre Sql") {
+			connectionString = `Host=${self.DatabaseHost()}`;
+		}
+
+		if (self.DatabasePort() !== "") {
+			connectionString += `;Port=${self.DatabasePort()}`;
+		}
+
+		connectionString += `;Database=${self.DatabaseName()}`;
+
+		return connectionString;
+	});
+
+	self.testDbConfig = function () {
+		if (self.isValid()) {
+			ajaxcall({
+				url: options.testConnectionUrl,
+				type: 'POST',
+				data: JSON.stringify({
+					account: apiKey,
+					dataConnect: dbKey,
+					connectionString: self.connectionString()
+				})
+			}).done(function () {
+				toastr.success("Connection Tested Succesfully");
+			});
+		}
+	};
+
+	self.saveDbConfig = function () {
+		if (self.isValid()) {
+
+		}
+	};
+
+	self.isValid = function () {
+		var valid = validator.validateForm('#connection-setup-modal');
+		return valid;
+	};
+}
+
 var tablesViewModel = function (options) {
 	var self = this;
 	self.model = ko.mapping.fromJS(_.sortBy(options.model.Tables, ['TableName']));
@@ -807,30 +872,8 @@ var proceduresViewModel = function (options) {
 
 }
 
-var customSqlModel = function (options, keys, tables) {
+var validation = function () {
 	var self = this;
-	self.customTableName = ko.observable();
-	self.customSql = ko.observable();
-	self.useAi = ko.observable(false);
-	self.textQuery = new textQuery(options);
-	self.selectedTable = null;
-
-	self.addNewCustomSqlTable = function () {	
-		self.selectedTable = null;
-		self.clearForm();
-		self.customTableName('');
-		self.customSql('');
-		$('#custom-sql-modal').modal('show');
-	}
-
-	self.viewCustomSql = function (e) {
-		self.selectedTable = ko.mapping.toJS(e);
-		self.clearForm();
-		self.customTableName(e.TableName());
-		self.customSql(e.CustomTableSql());
-		$('#custom-sql-modal').modal('show');
-    }
-
 	// ui-validation
 	self.isInputValid = function (ctl) {
 		// first check for custom validation
@@ -852,9 +895,8 @@ var customSqlModel = function (options, keys, tables) {
 	};
 
 
-	self.clearForm = function () {
-		self.textQuery.resetQuery();
-		var curInputs = $('#custom-sql-modal').find("input, select, textarea"),
+	self.clearForm = function (formSelector) {
+		var curInputs = $(formSelector).find("input, select, textarea"),
 			isValid = true;
 
 		$(".needs-validation").removeClass("was-validated");
@@ -864,8 +906,8 @@ var customSqlModel = function (options, keys, tables) {
 
 	};
 
-	self.validateForm = function () {
-		var curInputs = $('#custom-sql-modal').find("input, select, textarea"),
+	self.validateForm = function (formSelector) {
+		var curInputs = $(formSelector).find("input, select, textarea"),
 			isValid = true;
 
 		$(".needs-validation").removeClass("was-validated");
@@ -881,6 +923,34 @@ var customSqlModel = function (options, keys, tables) {
 		return isValid;
 	};
 
+}
+
+var customSqlModel = function (options, keys, tables) {
+	var self = this;
+	self.customTableName = ko.observable();
+	self.customSql = ko.observable();
+	self.useAi = ko.observable(false);
+	self.textQuery = new textQuery(options);
+	self.selectedTable = null;
+	var validator = new validation();
+	self.addNewCustomSqlTable = function () {	
+		self.selectedTable = null;
+		self.textQuery.resetQuery();
+		validator.clearForm('#custom-sql-modal');
+		self.customTableName('');
+		self.customSql('');
+		$('#custom-sql-modal').modal('show');
+	}
+
+	self.viewCustomSql = function (e) {
+		self.selectedTable = ko.mapping.toJS(e);
+		self.textQuery.resetQuery();
+		validator.clearForm('#custom-sql-modal');
+		self.customTableName(e.TableName());
+		self.customSql(e.CustomTableSql());
+		$('#custom-sql-modal').modal('show');
+	}
+	
 	self.buildSqlUsingAi = function () {
 		var queryText = document.getElementById("query-input").innerText;
 
@@ -923,7 +993,7 @@ var customSqlModel = function (options, keys, tables) {
     }
 
 	self.executeSql = function () {
-		var valid = self.validateForm();
+		var valid = validator.validateForm('#custom-sql-modal');
 		
 		if (!self.customTableName()) {
 			toastr.error("Custom Table Name is required");

@@ -253,6 +253,10 @@
     padding: 10px 10px 10px 10px;
 }
 
+.padded-top {
+    padding-top: 5px;
+}
+
 .formula-field {
     padding: 10px 15px;
     border: solid 1px #ddd;
