@@ -35,18 +35,19 @@
     <script src="~/lib/knockout-x-editable/knockout.x-editable.min.js"></script>
     <script type="text/javascript">
 
-        $.fn.editable.defaults.mode = 'inline';
-        $('.helptip').tooltip();
+    $.fn.editable.defaults.mode = 'inline';
+    $('.helptip').tooltip();
 
-        function closeall() {
-            $('.panel-collapse.in')
-                .collapse('hide');
-        };
+    function closeall() {
+        $('.panel-collapse.in')
+            .collapse('hide');
+    };
 
-        function openall() {
-            $('.panel-collapse.in')
-                .collapse('show');
-        };
+    function openall() {
+        $('.panel-collapse.in')
+            .collapse('show');
+    };
+
     $(document).ready(function() {
         var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
         ajaxcall({ url: '@Url.Action("LoadSetupSchema", "DotNetReportApi")' + '?databaseApiKey=' + (queryParams.databaseApiKey || '') }).done(function(model) {
@@ -83,7 +84,7 @@
     <div>
         <h2>Manage Database</h2>
         <p>
-            You can select and manage display names for the Tables and Columns you would like to allow in .Net Report Builder.
+            You can select and manage display names for the Tables and Columns you would like to allow in DNR Report Builder.
         </p>
         <div class="alert alert-danger">
             Do not expose this Setup Tool to end users who should not have access to it. Ideally, only Developers should be given access to this utility.
@@ -121,8 +122,8 @@
         <div>
             <!-- Nav tabs -->
             <ul class="nav nav-tabs" role="tablist">
-                <li role="presentation" class="nav-item"><a class="nav-link active" href="#tablesfields" aria-controls="home" role="tab" data-toggle="tab" data-bind="click: function() { customTableMode(false); }">Tables and Fields</a></li>
-                <li role="presentation" class="nav-item"><a class="nav-link" href="#tablesfields" aria-controls="custom" role="tab" data-toggle="tab" data-bind="click: function() { customTableMode(true); }">Custom Data Views</a></li>
+                <li role="presentation" class="nav-item"><a class="nav-link active" href="#tablesfields" aria-controls="custom" role="tab" data-toggle="tab" data-bind="click: function() { customTableMode(true); }">Build Datasets</a></li>
+                <li role="presentation" class="nav-item"><a class="nav-link" href="#tablesfields" aria-controls="home" role="tab" data-toggle="tab" data-bind="click: function() { customTableMode(false); }">DB Tables and Views</a></li>
                 <li role="presentation" class="nav-item"><a class="nav-link" href="#relations" aria-controls="profile" role="tab" data-toggle="tab">Relations</a></li>
                 <li role="presentation" class="nav-item"><a class="nav-link" href="#procedure" aria-controls="procedure" role="tab" data-toggle="tab">Stored Procs</a></li>
                 <li role="presentation" class="nav-item"><a class="nav-link" href="#manageaccess" aria-controls="manageaccess" role="tab" data-toggle="tab">Manage Reports Access</a></li>
@@ -140,15 +141,26 @@
                     <button class="btn btn-sm" onclick="openall()" style="margin-left: 15px;">Open all</button>
                     <button class="btn btn-sm" onclick="closeall()">Close all</button>
                     <button class="btn btn-sm" data-bind="click: toggleShowAll, hidden: $root.customTableMode, text: usedOnly() ? 'Show all' : 'Show used only'">Show used only</button>
-                    <button class="btn btn-sm btn-primary" data-bind="click: $root.customSql.addNewCustomSqlTable, visible: $root.customTableMode">Add New Custom Table</button>
+                    <button class="btn btn-sm btn-primary" data-bind="click: $root.customSql.addNewCustomSqlTable, visible: $root.customTableMode">Add New Custom Table</button>                    
+                    <button class="btn btn-sm btn-primary" data-bind="click: $root.customSql.addNewCustomSqlTable, hidden: $root.customTableMode">Load From Database</button>
                 </div>
                 <div class="clearfix"></div>
+                <br />
+                <p class="alert alert-info">
+                    <span data-bind="visible: $root.customTableMode">
+                        Define Datasets using SQL Select Query to be used in DNR by users.
+                    </span>
+                    <span data-bind="hidden: $root.customTableMode">
+                        Select Tables or Views from your Database to be used in DNR by users.
+                    </span>
+                </p>
+
                 <hr />
                 <div class="row">
                     <div class="form-group form-inline col-md-4" data-bind="with: pager">
                         <div data-bind="template: 'pager-template', data: $data"></div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-4" data-bind="ifnot: $root.customTableMode">
                         <div>
                             <span data-bind="text: Tables.model().length"></span> Tables/Views read from database.
                         </div>

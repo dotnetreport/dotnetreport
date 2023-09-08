@@ -23,7 +23,7 @@ var manageViewModel = function (options) {
 	});
 
 	self.customSql = new customSqlModel(options, self.keys, self.Tables);
-	self.customTableMode = ko.observable(false);
+	self.customTableMode = ko.observable(true);
 
 	self.pagedTables = ko.computed(function () {
 		var tables = self.Tables.filteredTables();

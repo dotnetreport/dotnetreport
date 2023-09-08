@@ -184,7 +184,7 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        public static async Task<List<TableViewModel>> GetTables(string type = "TABLE", string accountKey = null, string dataConnectKey = null)
+        public static async Task<List<TableViewModel>> GetTables(string type = "TABLE", string? accountKey = null, string? dataConnectKey = null, bool onlyApi = false)
         {
             var tables = new List<TableViewModel>();
 
@@ -214,6 +214,10 @@ namespace ReportBuilder.Web.Controllers
                     if (matchTable != null)
                     {
                         matchTable.Columns = await GetApiFields(accountKey, dataConnectKey, matchTable.Id);
+                    } 
+                    else if (onlyApi)
+                    {
+                        continue;
                     }
 
                     var table = new TableViewModel
