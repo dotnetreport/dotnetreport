@@ -586,12 +586,14 @@ var dbConnectionViewModel = function(options) {
 	self.testDbConfig = function () {
 		if (self.isValid()) {
 			ajaxcall({
-				url: options.testConnectionUrl,
+				url: options.updateDbConnectionUrl,
 				type: 'POST',
 				data: JSON.stringify({
 					account: apiKey,
 					dataConnect: dbKey,
-					connectionString: self.connectionString()
+					connectionString: self.connectionString(),
+					dbType: self.DatabaseType(),
+					testOnly: true
 				})
 			}).done(function () {
 				toastr.success("Connection Tested Succesfully");

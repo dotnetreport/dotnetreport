@@ -549,6 +549,28 @@ namespace ReportBuilder.Web.Controllers
             return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
         }
 
+        //[Authorize(Roles="Administrator")]
+        [HttpGet]
+        public async Task<IActionResult> UpdateDbConnection(string account, string dataConnect, string dbType, string connectionString, bool testOnly)
+        {
+            var settings = GetSettings();
+            if (!settings.CanUseAdminMode)
+            {
+                throw new Exception("Not Authorized to access this Resource");
+            }
+
+            var model = new ManageViewModel
+            {
+                //ApiUrl = connect.ApiUrl,
+                //AccountApiKey = connect.AccountApiKey,
+                //DatabaseApiKey = connect.DatabaseApiKey,
+                //Tables = tables,
+                //Procedures = procedures
+            };
+
+            return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+        }
+
         public class SearchProcCall { 
             public string value { get; set; } 
             public string accountKey { get; set; } 
