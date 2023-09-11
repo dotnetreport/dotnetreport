@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.Data.SqlClient;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using OfficeOpenXml;
 using PdfSharp;
@@ -323,6 +324,50 @@ namespace ReportBuilder.Web.Models
         public bool isCurrency { get; set; }
         public bool isJsonColumn { get; set; }
     }
+
+    public interface IDnrDataConnection
+    {
+        string DbConnection { get; set; }
+        string ConnectKey { get; set; }
+
+        DataTable ExecuteSql(string sql);         
+    }
+
+    public class MsSqlDnrDataConnection : IDnrDataConnection
+    {
+        private readonly IConfigurationRoot _configuration;
+        public string DbConnection { get; set; }
+        public string ConnectKey { get; set; }
+
+        public MsSqlDnrDataConnection(string connectKey)
+        {
+            // Load appsettings.json
+            var builder = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+
+            _configuration = builder.Build();
+
+            //DbConnection = dbConnection;
+            ConnectKey = connectKey;
+        }
+
+        public DataTable ExecuteSql(string sql)
+        {
+            var dt = new DataTable();
+            using (var conn = new SqlConnection(DbConnection))
+            {
+                conn.Open();
+                var command = new SqlCommand(sql, conn);
+                var adapter = new SqlDataAdapter(command);
+
+                adapter.Fill(dt);
+            }
+
+            return dt;
+        }
+    }
+
 
     public class DotNetReportHelper
     {
@@ -1280,13 +1325,7 @@ namespace ReportBuilder.Web.Models
             return File.ReadAllBytes(pdfFile);
         }
 
-        private static byte[] Combine(byte[] a, byte[] b)
-        {
-            byte[] c = new byte[a.Length + b.Length];
-            System.Buffer.BlockCopy(a, 0, c, 0, a.Length);
-            System.Buffer.BlockCopy(b, 0, c, a.Length, b.Length);
-            return c;
-        }
+
         public static string GetXmlFile(string reportSql, string connectKey, string reportName)
         {
             var sql = Decrypt(reportSql);
