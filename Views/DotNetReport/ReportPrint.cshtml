@@ -34,7 +34,7 @@
         <!-- ko ifnot: HasError -->
 
         <div class="report-view" data-bind="with: $root">
-            <div class="report-inner">
+            <div class="report-inner" style="display: none;">
                 <canvas id="report-header" width="1100" height="120" data-bind="visible: useReportHeader"></canvas>
                 <h2 data-bind="text: ReportName"></h2>
                 <p data-bind="html: ReportDescription">
@@ -233,12 +233,24 @@
         vm.pager.pageSize(10000);
 
         ko.applyBindings(vm);
-            vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {
+            vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {                
                 if (vm.useReportHeader()) {
                     vm.headerDesigner.init(true);
                     vm.headerDesigner.loadCanvas(true);
                 }
-                vm.printReport();
+
+                if (vm.useStoredProc()) {
+                    setTimeout(function(){
+                        vm.printReport();
+                    }, 1000);
+                } else {
+                    vm.printReport();
+                }
+
+                setTimeout(function () {
+                    $('.report-inner').show();
+                }, 1100);
+
             });
 
         $(window).resize(function(){
