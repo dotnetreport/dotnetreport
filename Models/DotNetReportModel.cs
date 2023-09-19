@@ -720,6 +720,7 @@ namespace ReportBuilder.Web.Models
 
         public static List<string> SplitSqlColumns(string sql)
         {
+            if (sql.StartsWith("EXEC")) return new List<string>();
             var fromIndex = FindFromIndex(sql);
             var sqlSplit = sql.Substring(0, fromIndex).Replace("SELECT", "").Trim();
             var sqlFields = Regex.Split(sqlSplit, "], (?![^\\(]*?\\))").Where(x => x != "CONVERT(VARCHAR(3)")
@@ -739,6 +740,11 @@ namespace ReportBuilder.Web.Models
                 Columns = new List<DotNetReportDataColumnModel>(),
                 Rows = new List<DotNetReportDataRowModel>()
             };
+
+            if (!sqlFields.Any())
+            {
+                foreach (DataColumn c in dt.Columns) { sqlFields.Add($"{c.ColumnName} AS {c.ColumnName}"); }
+            }
 
             int i = 0;
             foreach (DataColumn col in dt.Columns)
@@ -984,7 +990,7 @@ namespace ReportBuilder.Web.Models
 
                 adapter.Fill(dt);
             }
-
+            
             var document = new PdfDocument();
             var page = document.AddPage();
             var gfx = XGraphics.FromPdfPage(page);
