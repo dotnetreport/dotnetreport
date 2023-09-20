@@ -16,6 +16,7 @@ namespace ReportBuilder.Web.Controllers
     public class DotNetReportApiController : ControllerBase
     {
         private readonly IConfigurationRoot _configuration;
+        private readonly string _configFileName = "appsettings.dotnetreport.json";
 
         public DotNetReportApiController()
         {
@@ -548,16 +549,44 @@ namespace ReportBuilder.Web.Controllers
             tables.AddRange(await DotNetSetupController.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey, onlyApi));
             tables.AddRange(await DotNetSetupController.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey, onlyApi));
             procedures.AddRange(await DotNetSetupController.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
+            var dbConfig = GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey);
             var model = new ManageViewModel
             {
                 ApiUrl = connect.ApiUrl,
                 AccountApiKey = connect.AccountApiKey,
                 DatabaseApiKey = connect.DatabaseApiKey,
                 Tables = tables,
-                Procedures = procedures
+                Procedures = procedures,
+                DbConfig = dbConfig.ToObject<Dictionary<string, string>>()
             };
 
             return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+        }
+
+
+        private dynamic GetDbConnectionSettings(string account, string dataConnect)
+        {
+            var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+            if (!System.IO.File.Exists(_configFilePath))
+            {
+                var emptyConfig = new JObject();
+                System.IO.File.WriteAllText(_configFilePath, emptyConfig.ToString(Newtonsoft.Json.Formatting.Indented));
+            }
+
+            string configContent = System.IO.File.ReadAllText(_configFilePath);
+
+            var config = JObject.Parse(configContent);
+            var dotNetReportSection = config[$"dotNetReport"] as JObject;
+            if (dotNetReportSection != null)
+            {
+                var dataConnectSection = dotNetReportSection[dataConnect] as JObject;
+                if (dataConnectSection != null)
+                {
+                    return dataConnectSection.ToObject<dynamic>();
+                }
+            }
+        
+            return new JObject();
         }
 
         //[Authorize(Roles="Administrator")]
@@ -603,7 +632,7 @@ namespace ReportBuilder.Web.Controllers
 
                 if (!testOnly)
                 {
-                    var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), "appsettings.dotnetreport.json");
+                    var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
                     if (!System.IO.File.Exists(_configFilePath))
                     {
                         var emptyConfig = new JObject();

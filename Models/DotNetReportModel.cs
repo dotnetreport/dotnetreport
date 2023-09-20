@@ -221,6 +221,8 @@ namespace ReportBuilder.Web.Models
 
         public List<TableViewModel> Tables { get; set; }
         public List<TableViewModel> Procedures { get; set; }
+
+        public dynamic DbConfig { get; set; }
     }
 
     public class DotNetReportApiCall
