@@ -2775,6 +2775,12 @@ var reportViewModel = function (options) {
 				startup: true,
 				duration: 1000,
 				easing: 'out'
+			},
+			legend: {
+				position: 'right', 
+				textStyle: {
+					fontSize: 11
+				}
 			}
 		};
 
@@ -3246,7 +3252,8 @@ var reportViewModel = function (options) {
 								data: {
 									method: "/ReportApi/DeleteReport",
 									model: JSON.stringify({
-										reportId: e.reportId
+										reportId: e.reportId,
+										adminMode: self.adminMode()
 									})
 								}
 							}).done(function () {
