@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json.Linq;
 using ReportBuilder.Web.Models;
 using System.Data;
 using System.Data.OleDb;
@@ -14,14 +15,24 @@ namespace ReportBuilder.Web.Controllers
     [ApiController]
     public class DotNetReportApiController : ControllerBase
     {
+        private readonly IConfigurationRoot _configuration;
+
+        public DotNetReportApiController()
+        {
+            var builder = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+
+            _configuration = builder.Build();
+        }
 
         private DotNetReportSettings GetSettings()
         {
             var settings = new DotNetReportSettings
             {
-                ApiUrl = Startup.StaticConfig.GetValue<string>("dotNetReport:apiUrl"),
-                AccountApiToken = Startup.StaticConfig.GetValue<string>("dotNetReport:accountApiToken"), // Your Account Api Token from your http://dotnetreport.com Account
-                DataConnectApiToken = Startup.StaticConfig.GetValue<string>("dotNetReport:dataconnectApiToken") // Your Data Connect Api Token from your http://dotnetreport.com Account            };
+                ApiUrl = _configuration.GetValue<string>("dotNetReport:apiUrl"),
+                AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken"), // Your Account Api Token from your http://dotnetreport.com Account
+                DataConnectApiToken = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken") // Your Data Connect Api Token from your http://dotnetreport.com Account            };
             };
 
             // Populate the values below using your Application Roles/Claims if applicable
@@ -88,9 +99,9 @@ namespace ReportBuilder.Web.Controllers
         {
             var settings = new DotNetReportSettings
             {
-                ApiUrl = Startup.StaticConfig.GetValue<string>("dotNetReport:apiUrl"),
-                AccountApiToken = Startup.StaticConfig.GetValue<string>("dotNetReport:accountApiToken"), // Your Account Api Token from your http://dotnetreport.com Account
-                DataConnectApiToken = Startup.StaticConfig.GetValue<string>("dotNetReport:dataconnectApiToken") // Your Data Connect Api Token from your http://dotnetreport.com Account            };
+                ApiUrl = _configuration.GetValue<string>("dotNetReport:apiUrl"),
+                AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken"), // Your Account Api Token from your http://dotnetreport.com Account
+                DataConnectApiToken = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken") // Your Data Connect Api Token from your http://dotnetreport.com Account            };
             };
 
             return await ExecuteCallReportApi(method, model, settings);
@@ -551,24 +562,103 @@ namespace ReportBuilder.Web.Controllers
 
         //[Authorize(Roles="Administrator")]
         [HttpGet]
-        public async Task<IActionResult> UpdateDbConnection(string account, string dataConnect, string dbType, string connectionString, bool testOnly)
+        public async Task<IActionResult> UpdateDbConnection(string account, string dataConnect, string dbType, string connectionType, string connection, bool testOnly)
         {
-            var settings = GetSettings();
-            if (!settings.CanUseAdminMode)
+            try
             {
-                throw new Exception("Not Authorized to access this Resource");
+                var settings = GetSettings();
+                if (!settings.CanUseAdminMode)
+                {
+                    throw new Exception("Not Authorized to access this Resource");
+                }
+
+                var connectionString = "";
+                if (connectionType=="Build")
+                {
+                    connectionString = connection;
+                }
+                else
+                {
+                    connectionString = DotNetReportHelper.GetConnectionString(connection);
+
+                    if (string.IsNullOrEmpty(connectionString))
+                    {
+                        throw new Exception($"Connection string with key '{connection}' was not found in App Config");
+                    }
+                }
+
+                try
+                {
+                    using (OleDbConnection conn = new OleDbConnection(connectionString))
+                    {
+                        // open the connection to the database 
+                        conn.Open();
+                        conn.Close();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"Could not connect to the Database. Error: {ex.Message}");
+                }
+
+                if (!testOnly)
+                {
+                    var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), "appsettings.dotnetreport.json");
+                    if (!System.IO.File.Exists(_configFilePath))
+                    {
+                        var emptyConfig = new JObject();
+                        System.IO.File.WriteAllText(_configFilePath, emptyConfig.ToString(Newtonsoft.Json.Formatting.Indented));
+                    }
+
+                    // Get the existing JSON configuration
+                    var config = JObject.Parse(System.IO.File.ReadAllText(_configFilePath));
+                    if (config["dotNetReport"] == null)
+                    {
+                        config["dotNetReport"] = new JObject();
+                    }
+
+                    // Update the specified properties within the "dotNetReport" and "dataConfig" section
+                    var dotNetReportSection = config["dotNetReport"] as JObject;
+                    if (dotNetReportSection[dataConnect] == null)
+                    {
+                        dotNetReportSection[dataConnect] = new JObject();
+                    }
+
+                    var dataConnectSection = dotNetReportSection[dataConnect] as JObject;
+
+                    dataConnectSection["DatabaseType"] = dbType;
+                    dataConnectSection["ConnectionType"] = connectionType;
+                    if (connectionType == "Build")
+                    {
+                        dataConnectSection["ConnectionKey"] = "Default";
+                        dataConnectSection["ConnectionString"] = connection;
+                    }
+                    else if (connectionType == "Key")
+                    {
+                        dataConnectSection["ConnectionKey"] = connection;
+                        dataConnectSection["ConnectionString"] = "";
+                    }
+
+                    // Save the updated JSON back to the file
+                    System.IO.File.WriteAllText(_configFilePath, config.ToString());
+                }
+
+                return new JsonResult(new
+                {
+                    success = true,
+                    message = $"Connection Settings {(testOnly ? "Tested" : "Saved")} Successfully"
+                }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
             }
-
-            var model = new ManageViewModel
+            catch(Exception ex)
             {
-                //ApiUrl = connect.ApiUrl,
-                //AccountApiKey = connect.AccountApiKey,
-                //DatabaseApiKey = connect.DatabaseApiKey,
-                //Tables = tables,
-                //Procedures = procedures
-            };
 
-            return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+                return new JsonResult(new
+                {
+                    success = false,
+                    message = ex.Message
+                }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+
+            }
         }
 
         public class SearchProcCall { 

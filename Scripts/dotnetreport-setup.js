@@ -556,10 +556,16 @@ var dbConnectionViewModel = function(options) {
 	self.Username = ko.observable("");
 	self.Password = ko.observable("");
 	self.AuthenticationType = ko.observable("Username");
+	self.ConnectionType = ko.observable('Key');
+	self.ConnectionKey = ko.observable('');
 
 	self.connectionString = ko.computed(function () {
-		var connectionString = "";
+		if (self.ConnectionType() == 'Key') {
+			return self.ConnectionKey();
+		}
 
+		var connectionString = "";
+		
 		if (self.DatabaseType() === "MS SQL") {
 			connectionString = `Server=${self.DatabaseHost()}`;
 
@@ -583,27 +589,38 @@ var dbConnectionViewModel = function(options) {
 		return connectionString;
 	});
 
-	self.testDbConfig = function () {
-		if (self.isValid()) {
-			ajaxcall({
-				url: options.updateDbConnectionUrl,
-				type: 'POST',
-				data: JSON.stringify({
-					account: apiKey,
-					dataConnect: dbKey,
-					connectionString: self.connectionString(),
-					dbType: self.DatabaseType(),
-					testOnly: true
-				})
-			}).done(function () {
-				toastr.success("Connection Tested Succesfully");
-			});
-		}
+	self.testDbConfig = function (apiKey, dbKey) {
+		self.saveDbConfig(apiKey, dbKey, true);
 	};
 
-	self.saveDbConfig = function () {
+	self.saveDbConfig = function (apiKey, dbKey, testOnly) {
 		if (self.isValid()) {
 
+			var prms = new URLSearchParams({
+				account: apiKey,
+				dataConnect: dbKey,
+				dbType: self.DatabaseType(),
+				connectionType: self.ConnectionType(),
+				connection: self.connectionString(),
+				testOnly: testOnly === true
+			});
+
+			ajaxcall({
+				url: options.updateDbConnectionUrl + '?' + prms.toString(),
+				type: 'GET'
+			}).done(function (response) {
+				if (response) {
+					if (response.success) {
+						toastr.success(response.message);
+					} else {
+						toastr.error(response.message || 'Connection changes were not successful');
+						return false;
+					}
+				} else {
+					toastr.error('Connection changes were not successful');
+					return false;
+				}
+			});
 		}
 	};
 
