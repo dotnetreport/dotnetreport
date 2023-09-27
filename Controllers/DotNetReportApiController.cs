@@ -589,9 +589,19 @@ namespace ReportBuilder.Web.Controllers
             return new JObject();
         }
 
+        public class UpdateDbConnectionModel
+        {
+            public string account { get; set; }
+            public string dataConnect { get; set; }
+            public string dbType { get; set; }
+            public string connectionType { get; set; }
+            public string connection { get; set; }
+            public bool testOnly { get; set; }
+        }
+
         //[Authorize(Roles="Administrator")]
-        [HttpGet]
-        public async Task<IActionResult> UpdateDbConnection(string account, string dataConnect, string dbType, string connectionType, string connection, bool testOnly)
+        [HttpPost]
+        public async Task<IActionResult> UpdateDbConnection(UpdateDbConnectionModel model)
         {
             try
             {
@@ -602,17 +612,17 @@ namespace ReportBuilder.Web.Controllers
                 }
 
                 var connectionString = "";
-                if (connectionType=="Build")
+                if (model.connectionType=="Build")
                 {
-                    connectionString = connection;
+                    connectionString = model.connection;
                 }
                 else
                 {
-                    connectionString = DotNetReportHelper.GetConnectionString(connection);
+                    connectionString = DotNetReportHelper.GetConnectionString(model.connection);
 
                     if (string.IsNullOrEmpty(connectionString))
                     {
-                        throw new Exception($"Connection string with key '{connection}' was not found in App Config");
+                        throw new Exception($"Connection string with key '{model.connection}' was not found in App Config");
                     }
                 }
 
@@ -630,7 +640,7 @@ namespace ReportBuilder.Web.Controllers
                     throw new Exception($"Could not connect to the Database. Error: {ex.Message}");
                 }
 
-                if (!testOnly)
+                if (!model.testOnly)
                 {
                     var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
                     if (!System.IO.File.Exists(_configFilePath))
@@ -648,23 +658,23 @@ namespace ReportBuilder.Web.Controllers
 
                     // Update the specified properties within the "dotNetReport" and "dataConfig" section
                     var dotNetReportSection = config["dotNetReport"] as JObject;
-                    if (dotNetReportSection[dataConnect] == null)
+                    if (dotNetReportSection[model.dataConnect] == null)
                     {
-                        dotNetReportSection[dataConnect] = new JObject();
+                        dotNetReportSection[model.dataConnect] = new JObject();
                     }
 
-                    var dataConnectSection = dotNetReportSection[dataConnect] as JObject;
+                    var dataConnectSection = dotNetReportSection[model.dataConnect] as JObject;
 
-                    dataConnectSection["DatabaseType"] = dbType;
-                    dataConnectSection["ConnectionType"] = connectionType;
-                    if (connectionType == "Build")
+                    dataConnectSection["DatabaseType"] = model.dbType;
+                    dataConnectSection["ConnectionType"] = model.connectionType;
+                    if (model.connectionType == "Build")
                     {
                         dataConnectSection["ConnectionKey"] = "Default";
-                        dataConnectSection["ConnectionString"] = connection;
+                        dataConnectSection["ConnectionString"] = model.connection;
                     }
-                    else if (connectionType == "Key")
+                    else if (model.connectionType == "Key")
                     {
-                        dataConnectSection["ConnectionKey"] = connection;
+                        dataConnectSection["ConnectionKey"] = model.connection;
                         dataConnectSection["ConnectionString"] = "";
                     }
 
@@ -675,7 +685,7 @@ namespace ReportBuilder.Web.Controllers
                 return new JsonResult(new
                 {
                     success = true,
-                    message = $"Connection Settings {(testOnly ? "Tested" : "Saved")} Successfully"
+                    message = $"Connection Settings {(model.testOnly ? "Tested" : "Saved")} Successfully"
                 }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
             }
             catch(Exception ex)

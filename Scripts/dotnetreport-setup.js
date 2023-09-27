@@ -596,18 +596,17 @@ var dbConnectionViewModel = function(options) {
 	self.saveDbConfig = function (apiKey, dbKey, testOnly) {
 		if (self.isValid()) {
 
-			var prms = new URLSearchParams({
-				account: apiKey,
-				dataConnect: dbKey,
-				dbType: self.DatabaseType(),
-				connectionType: self.ConnectionType(),
-				connection: self.connectionString(),
-				testOnly: testOnly === true
-			});
-
 			ajaxcall({
-				url: options.updateDbConnectionUrl + '?' + prms.toString(),
-				type: 'GET'
+				url: options.updateDbConnectionUrl,
+				type: 'POST',
+				data: JSON.stringify({
+					account: apiKey,
+					dataConnect: dbKey,
+					dbType: self.DatabaseType(),
+					connectionType: self.ConnectionType(),
+					connection: self.connectionString(),
+					testOnly: testOnly === true
+				})
 			}).done(function (response) {
 				if (response) {
 					if (response.success) {
