@@ -425,6 +425,10 @@ namespace ReportBuilder.Web.Controllers
         private async Task<dynamic> GetDashboardsData(bool adminMode = false)
         {
             var settings = GetSettings();
+            if (string.IsNullOrEmpty(settings.AccountApiToken))
+            {
+                return new { noAccount = true };
+            }
 
             using (var client = new HttpClient())
             {
@@ -538,6 +542,12 @@ namespace ReportBuilder.Web.Controllers
         public async Task<IActionResult> LoadSetupSchema(string? databaseApiKey = "", bool onlyApi = false)
         {
             var settings = GetSettings();
+
+            if (string.IsNullOrEmpty(settings.AccountApiToken))
+            {
+                return new JsonResult(new { noAccount = true }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+            }
+
             if (!settings.CanUseAdminMode)
             {
                 throw new Exception("Not Authorized to access this Resource");
