@@ -31,16 +31,24 @@
 </head>
 
 <body>
+
     <div data-bind="with: ReportResult">
 
         <!-- ko ifnot: HasError -->
 
         <div class="report-view" data-bind="with: $root">
-            <div class="report-inner">
+            <div class="report-inner" style="display: none;">
                 <canvas id="report-header" width="1100" height="120" data-bind="visible: useReportHeader"></canvas>
                 <h2 data-bind="text: ReportName"></h2>
                 <p data-bind="html: ReportDescription">
                 </p>
+
+                <div data-bind="with: $root">
+                    <div class="" data-bind="ifnot: EditFiltersOnReport">
+                        <div data-bind="template: {name: 'fly-filter-template'}"></div>
+                    </div>
+                </div>
+
                 <div data-bind="with: ReportResult">
                     <div data-bind="template: 'report-template', data: $data"></div>
                 </div>
@@ -67,6 +75,7 @@
     </div>
 
     <script type="text/html" id="report-template">
+
         <div class="report-chart" data-bind="attr: {id: 'chart_div_' + $parent.ReportID()}, visible: $parent.isChart"></div>
 
         <div class="table-responsive" data-bind="with: ReportData">
@@ -194,6 +203,15 @@
             clientId: '@Model.ClientId'
         };
 
+        function decodeHTMLEntities(text) {
+            var parser = new DOMParser();
+            var dom = parser.parseFromString('<!doctype html><body>' + text, 'text/html');
+            var decodedText = dom.body.textContent;
+
+            // Remove new lines and carriage returns
+            return decodedText.replace(/[\n\r]/g, '');
+        }
+        
         var vm = new reportViewModel({
             runReportUrl: "@Url.Action("Report")",
             execReportUrl: "@Url.Action("RunReportUnAuth", "DotNetReportApi")",
@@ -204,31 +222,155 @@
             apiUrl: '@Url.Action("CallReportApiUnAuth", "DotNetReportApi")',
             runReportApiUrl: '@Url.Action("RunReportApi", "DotNetReportApi")',
             reportFilter: htmlDecode('@System.Web.HttpUtility.UrlDecode(Model.ReportFilter)'),
-            reportMode: "execute",
+            reportMode: "print",
             reportSql: "@Model.ReportSql",
             reportConnect: "@Model.ConnectKey",
             ReportSeries : "@Model.ReportSeries",
             reportHeader: 'report-header',
             userSettings: data,
             dataFilters: data.dataFilters,
+            reportData: JSON.parse(decodeHTMLEntities('@Model.ReportData'))
         });
         vm.pager.pageSize(10000);
 
         ko.applyBindings(vm);
-        vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {
-            if (@Html.Raw(Model.ExpandAll ? "true" : "false")) {
+            vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {                
+                if (vm.useReportHeader()) {
+                    vm.headerDesigner.init(true);
+                    vm.headerDesigner.loadCanvas(true);
+                }
+
+                if (vm.useStoredProc()) {
+                    setTimeout(function(){
+                        vm.printReport();
+                    }, 1000);
+                } else {
+                    vm.printReport();
+                }
+
                 setTimeout(function () {
-                    vm.ExpandAll();
-                }, 500);
-            }
-        });
+                    $('.report-inner').show();
+                }, 1100);
+
+            });
 
         $(window).resize(function(){
             vm.DrawChart();
+            vm.headerDesigner.resizeCanvas();
         });
 
     });
 
+    </script>
+
+    <script type="text/html" id="fly-filter-template">
+        <div data-bind="visible: FlyFilters().length>0" style="padding-left: 30px; padding-right: 30px; padding-top: 20px">
+            <div class="card card-body">
+                <!-- ko foreach: FlyFilters -->
+                <div class="row">
+                    <div class="col-sm-5 col-xs-4">
+                        <div data-bind="with: Field" >
+                            <div data-bind="if: $parent.Apply">
+                                <label>
+                                    <span data-bind="text: selectedFilterName"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div data-bind="with: Field" class="col-sm-2 col-xs-3">
+                        <div class="form-group" data-bind="if: $parent.Apply">
+                            <span data-bind="text: $parent.Operator" ></span>
+                        </div>
+                    </div>
+                    <div data-bind="with: Field" class="col-sm-5 col-xs-5">
+                        <div data-bind="if: $parent.Apply">
+                            <div data-bind="template: 'report-filter', data: $data"></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- /ko -->
+            </div>
+        </div>
+    </script>
+
+
+    <script type="text/html" id="report-filter">
+        <div class="form-group">
+            <!-- ko if: !hasForeignKey-->
+            <!-- ko if: fieldType=='DateTime'-->
+            <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 -->
+            <input class="form-control" data-bind="datepicker: $parent.Value" required />
+            <!-- /ko -->
+            <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
+            From
+            <input required class="form-control" data-bind="datepicker: $parent.Value" />
+            to
+            <input data-bind="datepicker: $parent.Value2" class="form-control" required />
+            <!-- /ko -->
+            <!-- ko if: ['range'].indexOf($parent.Operator()) != -1 -->
+            <select data-bind="value: $parent.Value" class="form-control" required>
+                <option value=""></option>
+                <option>Today</option>
+                <option>Today +</option>
+                <option>Today -</option>
+                <option>Yesterday</option>
+                <option>This Week</option>
+                <option>Last Week</option>
+                <option>This Month</option>
+                <option>Last Month</option>
+                <option>This Year</option>
+                <option>Last Year</option>
+                <option>This Month To Date</option>
+                <option>This Year To Date</option>
+                <option>Last 30 Days</option>
+                <optgroup label="Comparison Options">
+                    <option>>= Today</option>
+                    <option><= Today</option>
+                    <option>>= Today +</option>
+                    <option><= Today +</option>
+                    <option>>= Today -</option>
+                    <option><= Today -</option>
+                </optgroup>
+            </select>
+            <div data-bind="if: $parent.Value().indexOf('Today +') >= 0 || $parent.Value().indexOf('Today -') >= 0" class="form-group pull-left" style="padding-top: 5px;">
+                <input type="number" class="form-control input-sm pull-left" style="width: 80px;" data-bind="value: $parent.Value2" required /><span style="padding: 5px 5px;" class="pull-left"> days</span>
+            </div>
+            <!-- /ko -->
+            <!-- /ko -->
+            <!-- ko if: ['Int','Money','Float','Double'].indexOf(fieldType) != -1 -->
+            <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
+            <input class="form-control" type="number" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default'" required />
+            <!-- /ko -->
+            <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
+            From
+            <input class="form-control" type="number" data-bind="value: $parent.Value" required />
+            to
+            <input class="form-control" type="number" data-bind="value: $parent.Value2" required />
+            <!-- /ko -->
+            <!-- /ko -->
+            <!-- ko if: fieldType=='Boolean' && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
+            <select required class="form-control" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default'">
+                <option value="1">Yes</option>
+                <option value="0">No</option>
+            </select>
+            <!-- /ko -->
+            <!-- ko if: ['Int','Money','Float','Double','Date','DateTime','Boolean'].indexOf(fieldType) == -1 && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
+            <input class="form-control" type="text" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default'" required />
+            <!-- /ko -->
+            <!-- /ko -->
+            <!-- ko if: hasForeignKey && $parent.Operator() != 'all' -->
+            <!-- ko if: hasForeignParentKey && $parent.showParentFilter() -->
+            <select multiple class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.ParentList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ParentIn"></select>
+            <!-- /ko -->
+            <!-- ko if: $parent.Operator()=='='-->
+            <select required class="form-control" data-bind="options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', value: $parent.Value, optionsCaption: 'Please Choose'"></select>
+            <!-- /ko -->
+            <!-- ko if: $parent.Operator()=='in' || $parent.Operator()=='not in'-->
+            <select required multiple class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ValueIn"></select>
+            <!-- /ko -->
+            <!-- /ko -->
+        </div>
+    </script>
     </script>
 </body>
 </html>
