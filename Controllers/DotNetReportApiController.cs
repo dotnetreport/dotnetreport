@@ -589,6 +589,7 @@ namespace ReportBuilder.Web.Controllers
             var dotNetReportSection = config[$"dotNetReport"] as JObject;
             if (dotNetReportSection != null)
             {
+                var defaultConfig = dotNetReportSection["DefaultConnection"];
                 var dataConnectSection = dotNetReportSection[dataConnect] as JObject;
                 if (dataConnectSection != null)
                 {
@@ -605,7 +606,15 @@ namespace ReportBuilder.Web.Controllers
             public string dataConnect { get; set; }
             public string dbType { get; set; }
             public string connectionType { get; set; }
-            public string connection { get; set; }
+            public string connectionKey { get; set; }
+            public string connectionString { get; set; }
+            public string dbServer { get; set; }
+            public string dbPort { get; set; }
+            public string dbName { get; set; }
+            public string dbAuthType { get; set; }
+            public string dbUsername { get; set; }
+            public string dbPassword { get; set; }
+            public bool isDefault { get; set; }
             public bool testOnly { get; set; }
         }
 
@@ -624,15 +633,15 @@ namespace ReportBuilder.Web.Controllers
                 var connectionString = "";
                 if (model.connectionType=="Build")
                 {
-                    connectionString = model.connection;
+                    connectionString = model.connectionKey;
                 }
                 else
                 {
-                    connectionString = DotNetReportHelper.GetConnectionString(model.connection);
+                    connectionString = DotNetReportHelper.GetConnectionString(model.connectionKey);
 
                     if (string.IsNullOrEmpty(connectionString))
                     {
-                        throw new Exception($"Connection string with key '{model.connection}' was not found in App Config");
+                        throw new Exception($"Connection string with key '{model.connectionKey}' was not found in App Config");
                     }
                 }
 
@@ -680,12 +689,23 @@ namespace ReportBuilder.Web.Controllers
                     if (model.connectionType == "Build")
                     {
                         dataConnectSection["ConnectionKey"] = "Default";
-                        dataConnectSection["ConnectionString"] = model.connection;
+                        dataConnectSection["ConnectionString"] = model.connectionString;
+                        dataConnectSection["DatabaseHost"] = model.dbServer;
+                        dataConnectSection["DatabasePort"] = model.dbPort;
+                        dataConnectSection["DatabaseName"] = model.dbName;
+                        dataConnectSection["Username"] = model.dbUsername;
+                        dataConnectSection["AuthenticationType"] = model.dbAuthType;
+
                     }
                     else if (model.connectionType == "Key")
                     {
-                        dataConnectSection["ConnectionKey"] = model.connection;
+                        dataConnectSection["ConnectionKey"] = model.connectionKey;
                         dataConnectSection["ConnectionString"] = "";
+                    }
+
+                    if (model.isDefault)
+                    {
+                        dotNetReportSection["DefaultConnection"] = model.dataConnect;
                     }
 
                     // Save the updated JSON back to the file

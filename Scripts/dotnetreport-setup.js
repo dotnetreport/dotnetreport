@@ -548,22 +548,20 @@ var manageViewModel = function (options) {
 
 var dbConnectionViewModel = function(options) {
 	var self = this;
+	var dbconfig = options.model.DbConfig || {};
 	var validator = new validation();
-	self.DatabaseType = ko.observable("");
-	self.DatabaseHost = ko.observable("");
-	self.DatabasePort = ko.observable("");
-	self.DatabaseName = ko.observable("");
-	self.Username = ko.observable("");
+	self.DatabaseType = ko.observable(dbconfig.DatabaseType);
+	self.DatabaseHost = ko.observable(dbconfig.DatabaseHost);
+	self.DatabasePort = ko.observable(dbconfig.DatabasePort);
+	self.DatabaseName = ko.observable(dbconfig.DatabaseName);
+	self.Username = ko.observable(dbconfig.Username);
 	self.Password = ko.observable("");
-	self.AuthenticationType = ko.observable("Username");
-	self.ConnectionType = ko.observable('Key');
-	self.ConnectionKey = ko.observable('');
+	self.AuthenticationType = ko.observable(dbconfig.AuthenticationType || "Username");
+	self.ConnectionType = ko.observable(dbconfig.ConnectionType || 'Key');
+	self.ConnectionKey = ko.observable(dbconfig.ConnectionKey);
+	self.IsDefault = ko.observable(options.model.IsDefault === true);
 
 	self.connectionString = ko.computed(function () {
-		if (self.ConnectionType() == 'Key') {
-			return self.ConnectionKey();
-		}
-
 		var connectionString = "";
 		
 		if (self.DatabaseType() === "MS SQL") {
@@ -604,7 +602,15 @@ var dbConnectionViewModel = function(options) {
 					dataConnect: dbKey,
 					dbType: self.DatabaseType(),
 					connectionType: self.ConnectionType(),
-					connection: self.connectionString(),
+					connectionString: self.connectionString(),
+					connectionKey: self.ConnectionKey(),
+					dbServer: self.DatabaseHost() || '',
+					dbPort: self.DatabasePort() || '',
+					dbName: self.DatabaseName() || '',
+					dbUsername: self.Username() || '',
+					dbPassword: self.Password() || '',
+					dbAuthType: self.AuthenticationType(),
+					isDefault: self.IsDefault(),
 					testOnly: testOnly === true
 				})
 			}).done(function (response) {
