@@ -524,8 +524,7 @@ namespace ReportBuilder.Web.Controllers
                 Procedures = procedures
             };
 
-
-            return Json(model, JsonRequestBehavior.AllowGet);
+            return new JsonResult { Data = model, MaxJsonLength = int.MaxValue };
         }
 
         public class SearchProcCall { 
