@@ -111,8 +111,10 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 </a>
                             </li>
                         </ul>
-                        <form class="form-inline my-5 my-md-0">
-                            <div data-bind="with: searchFieldsInReport">
+                        <form class="form-inline my-5 my-md-0 ml-auto w-50">
+                            <input type="text" class="form-control w-75" data-bind="value: searchReports" placeholder="Search Report by Name, Description or Data Field..." />
+                            <button class="btn btn-secondary"><i class="fa fa-search"></i></button>
+                            <div data-bind="with: searchFieldsInReport, visible: false">
                                 <select id="search-report" class="form-control" data-bind="select2: {placeholder: 'Search Report by Name, Description or Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults }, minimumInputLength: 0, language: language, allowClear: true }, value: selectedOption"></select>
                             </div>
                         </form>
@@ -220,7 +222,12 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             </div>
                                             <div class="clearfix"></div>
                                             <p data-bind="text: reportDescription"></p>
-                                            <p data-bind="if: $parent.searchReports()"><span class="fa fa-folder"></span> <span data-bind="text: folderName"></span></p>
+                                            <p data-bind="if: $parent.searchReports()">
+                                                <span class="fa fa-folder"></span> <span data-bind="text: folderName"></span>
+                                                <div>
+                                                <span data-bind="text: message" class="highlight small"></span>
+                                                </div>
+                                            </p>
                                             <div data-bind="if: $parent.adminMode">
                                                 <div class="small">
                                                     <b>Report Access</b><br />
