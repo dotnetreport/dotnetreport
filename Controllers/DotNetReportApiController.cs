@@ -4,6 +4,7 @@ using Newtonsoft.Json.Linq;
 using ReportBuilder.Web.Models;
 using System.Data;
 using System.Data.OleDb;
+using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Web;
@@ -541,36 +542,43 @@ namespace ReportBuilder.Web.Controllers
         [HttpGet]
         public async Task<IActionResult> LoadSetupSchema(string? databaseApiKey = "", bool onlyApi = false)
         {
-            var settings = GetSettings();
-
-            if (string.IsNullOrEmpty(settings.AccountApiToken))
+            try
             {
-                return new JsonResult(new { noAccount = true }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+                var settings = GetSettings();
+
+                if (string.IsNullOrEmpty(settings.AccountApiToken))
+                {
+                    return new JsonResult(new { noAccount = true }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+                }
+
+                if (!settings.CanUseAdminMode)
+                {
+                    throw new Exception("Not Authorized to access this Resource");
+                }
+
+                var connect = DotNetSetupController.GetConnection(databaseApiKey);
+                var tables = new List<TableViewModel>();
+                var procedures = new List<TableViewModel>();
+                tables.AddRange(await DotNetSetupController.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey, onlyApi));
+                tables.AddRange(await DotNetSetupController.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey, onlyApi));
+                procedures.AddRange(await DotNetSetupController.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
+                var dbConfig = GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey);
+                var model = new ManageViewModel
+                {
+                    ApiUrl = connect.ApiUrl,
+                    AccountApiKey = connect.AccountApiKey,
+                    DatabaseApiKey = connect.DatabaseApiKey,
+                    Tables = tables,
+                    Procedures = procedures,
+                    DbConfig = dbConfig.ToObject<Dictionary<string, string>>()
+                };
+
+                return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
             }
-
-            if (!settings.CanUseAdminMode)
+            catch (Exception ex)
             {
-                throw new Exception("Not Authorized to access this Resource");
+                return new JsonResult(new { Message = ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null }) { StatusCode = (int)HttpStatusCode.InternalServerError };
             }
-
-            var connect = DotNetSetupController.GetConnection(databaseApiKey);
-            var tables = new List<TableViewModel>();
-            var procedures = new List<TableViewModel>();
-            tables.AddRange(await DotNetSetupController.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey, onlyApi));
-            tables.AddRange(await DotNetSetupController.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey, onlyApi));
-            procedures.AddRange(await DotNetSetupController.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
-            var dbConfig = GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey);
-            var model = new ManageViewModel
-            {
-                ApiUrl = connect.ApiUrl,
-                AccountApiKey = connect.AccountApiKey,
-                DatabaseApiKey = connect.DatabaseApiKey,
-                Tables = tables,
-                Procedures = procedures,
-                DbConfig = dbConfig.ToObject<Dictionary<string, string>>()
-            };
-
-            return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
         }
 
 
