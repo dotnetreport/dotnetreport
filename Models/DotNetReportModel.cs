@@ -329,6 +329,11 @@ namespace ReportBuilder.Web.Models
         public static string GetConnectionString(string key)
         {
             var connString = Startup.StaticConfig.GetConnectionString(key);
+            if (connString == null)
+            {
+                throw new Exception($"Connection string using key '{key}' not found in config file");
+            }
+
             connString = connString.Replace("Trusted_Connection=True", "");
 
             if (!connString.ToLower().StartsWith("provider"))
