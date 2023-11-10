@@ -16,6 +16,9 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
+using Npgsql;
+using MySql.Data.MySqlClient;
+using static ReportBuilder.Web.Controllers.DotNetReportApiController;
 
 namespace ReportBuilder.Web.Models
 {
@@ -1476,4 +1479,128 @@ namespace ReportBuilder.Web.Models
             }
         }
     }
+    public interface IDatabaseConnection
+    {
+        bool TestConnection(string connectionString);
+        string CreateConnection(UpdateDbConnectionModel model);
+    }
+    public class SqlServerDatabaseConnection : IDatabaseConnection
+    {
+        public  bool TestConnection(string connectionString)
+        {
+            using (SqlConnection conn = new SqlConnection(connectionString))
+            {
+                try
+                {
+                    //Test Connection
+                    conn.Open();
+                    conn.Close();
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+        }
+
+
+        public string CreateConnection(UpdateDbConnectionModel model)
+        {
+            SqlConnectionStringBuilder sqlConnectionStringBuilder = new SqlConnectionStringBuilder();
+
+            // Set other SQL connection properties
+            sqlConnectionStringBuilder.DataSource = model.dbServer;
+            sqlConnectionStringBuilder.Add("Initial Catalog", model.dbName);
+            sqlConnectionStringBuilder.Encrypt = false;
+            if (model.dbAuthType.ToLower() == "username")
+            {
+                sqlConnectionStringBuilder.Add("User ID", model.dbUsername);
+                sqlConnectionStringBuilder.Add("Password",model.dbPassword);
+            }
+            else
+            {
+                sqlConnectionStringBuilder.Add("Integrated Security", "SSPI");
+            }
+
+            return sqlConnectionStringBuilder.ConnectionString;
+        }
+    }
+    public class MySqlDatabaseConnection : IDatabaseConnection
+    {
+        public bool TestConnection(string connectionString)
+        {
+            using (MySqlConnection conn = new MySqlConnection(connectionString))
+            {
+                try
+                {
+                    //Test Connection
+                    conn.Open();
+                    conn.Close();
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+        }
+
+        public string CreateConnection(UpdateDbConnectionModel model)
+        {
+            MySqlConnectionStringBuilder conn_string = new MySqlConnectionStringBuilder();
+            conn_string.Server = model.dbServer; //"127.0.0.1";
+            conn_string.Port = Convert.ToUInt32(model.dbPort);// 3306;
+            if (model.dbAuthType.ToLower() == "username")
+            {
+                conn_string.UserID = model.dbUsername;// "root";
+                conn_string.Password = model.dbPassword;// "mysqladmin";
+            }
+            else
+            {
+                conn_string.IntegratedSecurity =true;
+            }
+            conn_string.Database = model.dbName;// "test";
+            return conn_string.ToString();
+        }
+    }
+    public class PostgresDatabaseConnection : IDatabaseConnection
+    {
+        public bool TestConnection(string connectionString)
+        {
+            using (NpgsqlConnection conn = new NpgsqlConnection(connectionString))
+            {
+                try
+                {
+                    //Test Connection
+                    conn.Open();
+                    conn.Close();
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+        }
+
+        public string CreateConnection(UpdateDbConnectionModel model)
+        {
+            NpgsqlConnectionStringBuilder conn_string = new NpgsqlConnectionStringBuilder();
+            conn_string.Host = model.dbServer; //"127.0.0.1";
+            conn_string.Port = Convert.ToInt32(model.dbPort);// 3306;
+            if (model.dbAuthType.ToLower() == "username")
+            {
+                conn_string.Username = model.dbUsername;// "root";
+                conn_string.Password = model.dbPassword;// "mysqladmin";
+            }
+            else
+            {
+                conn_string.IntegratedSecurity = true;
+            }
+            conn_string.Database = model.dbName;// "test";
+            return conn_string.ToString();
+        }
+    }
+
 }

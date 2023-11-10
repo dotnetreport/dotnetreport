@@ -629,16 +629,34 @@ namespace ReportBuilder.Web.Controllers
                 {
                     throw new Exception("Not Authorized to access this Resource");
                 }
+                // Use dependency injection to get the appropriate implementation based on the database type
+                IDatabaseConnection databaseConnection;
 
+                switch (model.dbType.ToLower())
+                {
+                    case "ms sql":
+                        databaseConnection = new SqlServerDatabaseConnection();
+                        break;
+                    case "mysql":
+                        databaseConnection = new MySqlDatabaseConnection();
+                        break;
+                    case "postgre sql":
+                        databaseConnection = new PostgresDatabaseConnection();
+                        break;
+                    default:
+                        throw new Exception($"Unsupported database type: {model.dbType}");
+                }
                 var connectionString = "";
                 if (model.connectionType=="Build")
                 {
-                    connectionString = model.connectionKey;
+                    connectionString = databaseConnection.CreateConnection(model);
                 }
                 else
                 {
                     connectionString = DotNetReportHelper.GetConnectionString(model.connectionKey);
-
+                    //For Replacing OLEDB Provider to Empty
+                    connectionString = connectionString.Replace("Provider=sqloledb;", "");
+                   
                     if (string.IsNullOrEmpty(connectionString))
                     {
                         throw new Exception($"Connection string with key '{model.connectionKey}' was not found in App Config");
@@ -647,11 +665,10 @@ namespace ReportBuilder.Web.Controllers
 
                 try
                 {
-                    using (OleDbConnection conn = new OleDbConnection(connectionString))
+                    // Test the database connection
+                    if (!databaseConnection.TestConnection(connectionString))
                     {
-                        // open the connection to the database 
-                        conn.Open();
-                        conn.Close();
+                        throw new Exception("Could not connect to the Database.");
                     }
                 }
                 catch (Exception ex)
@@ -689,7 +706,7 @@ namespace ReportBuilder.Web.Controllers
                     if (model.connectionType == "Build")
                     {
                         dataConnectSection["ConnectionKey"] = "Default";
-                        dataConnectSection["ConnectionString"] = model.connectionString;
+                        dataConnectSection["ConnectionString"] = connectionString;
                         dataConnectSection["DatabaseHost"] = model.dbServer;
                         dataConnectSection["DatabasePort"] = model.dbPort;
                         dataConnectSection["DatabaseName"] = model.dbName;
@@ -700,7 +717,7 @@ namespace ReportBuilder.Web.Controllers
                     else if (model.connectionType == "Key")
                     {
                         dataConnectSection["ConnectionKey"] = model.connectionKey;
-                        dataConnectSection["ConnectionString"] = "";
+                        dataConnectSection["ConnectionString"] = connectionString;
                     }
 
                     if (model.isDefault)
