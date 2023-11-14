@@ -1478,6 +1478,32 @@ namespace ReportBuilder.Web.Models
             }
         }
     }
+
+    public static class DatabaseConnectionFactory
+    {
+        public static IDatabaseConnection GetConnection(string dbtype)
+        {
+            IDatabaseConnection databaseConnection;
+            switch (dbtype.ToLower())
+            {
+                case "ms sql":
+                    databaseConnection = new SqlServerDatabaseConnection();
+                    break;
+                case "mysql":
+                    databaseConnection = new MySqlDatabaseConnection();
+                    break;
+                case "postgre sql":
+                    databaseConnection = new PostgresDatabaseConnection();
+                    break;
+                default:
+                    throw new Exception($"Unsupported database type: {dbtype}");
+            }
+
+            return databaseConnection;
+        }
+
+
+    }
     public interface IDatabaseConnection
     {
         bool TestConnection(string connectionString);
@@ -1685,9 +1711,9 @@ namespace ReportBuilder.Web.Models
                     conn.Close();
                     return true;
                 }
-                catch
+                catch (Exception ex)
                 {
-                    return false;
+                    throw ex;
                 }
             }
         }
