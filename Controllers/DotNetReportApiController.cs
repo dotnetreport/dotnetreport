@@ -241,16 +241,39 @@ namespace ReportBuilder.Web.Controllers
                             sql = sql.Replace("__jsonc__", "");
                     }
                     // Execute sql
+                    var connect = DotNetSetupController.GetConnection(connectKey);
+                    var dataconnectkey = "";
+                    var dbConfig = GetDbConnectionSettings(connect.AccountApiKey, dataconnectkey);
+                    var dbtype=  dbConfig["DatabaseType"].ToString();
+                    string connectionString = dbConfig["ConnectionString"].ToString();
+                    IDatabaseConnection databaseConnection;
+                    switch (dbtype.ToLower())
+                    {
+                        case "ms sql":
+                            databaseConnection = new SqlServerDatabaseConnection();
+                            break;
+                        case "mysql":
+                            databaseConnection = new MySqlDatabaseConnection();
+                            break;
+                        case "postgre sql":
+                            databaseConnection = new PostgresDatabaseConnection();
+                            break;
+                        default:
+                            throw new Exception($"Unsupported database type: {dbtype}");
+                    }
                     var dtPagedRun = new DataTable();
                     using (var conn = new OleDbConnection(DotNetReportHelper.GetConnectionString(connectKey)))
                     {
-                        conn.Open();
-                        var command = new OleDbCommand(sqlCount, conn);
-                        if (!sql.StartsWith("EXEC")) totalRecords = (int)command.ExecuteScalar();
+                        totalRecords = databaseConnection.GetTotalRecords(connectionString, sqlCount, sql);
+                        dtPagedRun= databaseConnection.ExecuteQuery(connectionString, sql);
 
-                        command = new OleDbCommand(sql, conn);
-                        var adapter = new OleDbDataAdapter(command);
-                        adapter.Fill(dtPagedRun);
+                        //conn.Open();
+                        //var command = new OleDbCommand(sqlCount, conn);
+                        //if (!sql.StartsWith("EXEC")) totalRecords = (int)command.ExecuteScalar();
+
+                        //command = new OleDbCommand(sql, conn);
+                        //var adapter = new OleDbDataAdapter(command);
+                        //adapter.Fill(dtPagedRun);
                         if (sql.StartsWith("EXEC"))
                         {
                             totalRecords = dtPagedRun.Rows.Count;
@@ -589,7 +612,7 @@ namespace ReportBuilder.Web.Controllers
             var dotNetReportSection = config[$"dotNetReport"] as JObject;
             if (dotNetReportSection != null)
             {
-                var defaultConfig = dotNetReportSection["DefaultConnection"];
+                var defaultConfig = dotNetReportSection["ConnectionString"];
                 var dataConnectSection = dotNetReportSection[dataConnect] as JObject;
                 if (dataConnectSection != null)
                 {
