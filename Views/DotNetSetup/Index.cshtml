@@ -130,6 +130,7 @@
             <li role="presentation" class="nav-item"><a class="nav-link" href="#tablesfields" aria-controls="home" role="tab" data-toggle="tab" data-bind="click: function() { customTableMode(false); }">DB Tables and Views</a></li>
             <li role="presentation" class="nav-item"><a class="nav-link" href="#relations" aria-controls="profile" role="tab" data-toggle="tab">Relations</a></li>
             <li role="presentation" class="nav-item"><a class="nav-link" href="#procedure" aria-controls="procedure" role="tab" data-toggle="tab">Stored Procs</a></li>
+            <li role="presentation" class="nav-item"><a class="nav-link" href="#manageusers" aria-controls="manageusers" role="tab" data-toggle="tab">Users and Roles</a></li>
             <li role="presentation" class="nav-item"><a class="nav-link" href="#manageaccess" aria-controls="manageaccess" role="tab" data-toggle="tab">Manage Reports Access</a></li>
         </ul>
     </div>
@@ -460,6 +461,60 @@
                             </li>
                         </ul>
                     </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div id="manageusers" class="tab-pane" data-bind="with: UsesAndRolesConfig">
+
+            <div class="checkbox">
+                <label>
+                    <input class="check-box" data-val="true" type="checkbox" data-bind="checked:RequireLogin"> Require Login and enable Access for Authorized Users only
+                </label>
+            </div>
+
+            <div class="card-body">
+                <a class="btn btn-link" role="button" data-toggle="collapse" href="#user-card">
+                    <i class="fa fa-user"></i> Users
+                </a>
+                <div class="collapse" id="user-card">
+                    <div class="form-group row">
+                        <label class="col-md-4 col-sm-4 control-label">Users Source</label>
+                        <div class="col-md-8 col-sm-8">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="usersSource" value="UsersTable" data-bind="checked: UsersSource">
+                                <label class="form-check-label">Existing Users Table in Database</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="usersSource" value="UsersCreate" data-bind="checked: UsersSource">
+                                <label class="form-check-label">Create and Manage Users here</label>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="card-body">
+                <a class="btn btn-link" role="button" data-toggle="collapse" href="#userrole-card">
+                    <i class="fa fa-user"></i> User Roles
+                </a>
+                <div class="collapse" id="userrole-card">
+                    <div class="form-group row">
+                        <label class="col-md-4 col-sm-4 control-label">User Roles Source</label>
+                        <div class="col-md-8 col-sm-8">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="userrolesSource" value="UsersTable" data-bind="checked: UserRolesSource">
+                                <label class="form-check-label">Existing User Roles Table in Database</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="userrolesSource" value="UsersCreate" data-bind="checked: UserRolesSource">
+                                <label class="form-check-label">Create and Manage User Roles here</label>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>

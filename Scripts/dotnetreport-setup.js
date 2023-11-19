@@ -14,6 +14,7 @@ var manageViewModel = function (options) {
 	self.Tables = new tablesViewModel(options);
 	self.Procedures = new proceduresViewModel(options);
 	self.DbConfig = new dbConnectionViewModel(options);
+	self.UsesAndRolesConfig = new usersAndRolesViewModel(options);
 	self.pager = new pagerViewModel({autoPage: true});
 	self.pager.totalRecords(self.Tables.model().length);
 
@@ -543,6 +544,15 @@ var manageViewModel = function (options) {
 			self.reportsAndFolders(setup);
 		});
 	}
+
+}
+
+var usersAndRolesViewModel = function (options) {
+	var self = this;
+	var userConfig = options.model.UserConfig || {};
+	self.RequireLogin = ko.observable(userConfig.RequireLogin === true);
+	self.UsersSource = ko.observable(userConfig.UsersSource);
+	self.UserRolesSource = ko.observable(userConfig.UserRolesSource);
 
 }
 

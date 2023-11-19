@@ -565,9 +565,9 @@ namespace ReportBuilder.Web.Controllers
             var connect = DotNetSetupController.GetConnection(databaseApiKey);
             var tables = new List<TableViewModel>();
             var procedures = new List<TableViewModel>();
-            tables.AddRange(await DotNetSetupController.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey, onlyApi));
-            tables.AddRange(await DotNetSetupController.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey, onlyApi));
-            procedures.AddRange(await DotNetSetupController.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
+            //tables.AddRange(await DotNetSetupController.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey, onlyApi));
+            //tables.AddRange(await DotNetSetupController.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey, onlyApi));
+            //procedures.AddRange(await DotNetSetupController.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
             var dbConfig = GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey) ?? new JObject();
             var model = new ManageViewModel
             {
