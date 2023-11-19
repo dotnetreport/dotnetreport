@@ -245,9 +245,14 @@ namespace ReportBuilder.Web.Controllers
                     // Execute sql
                     var connect = DotNetSetupController.GetConnection();
                     var dbConfig = GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey);
+                    if (dbConfig == null)
+                    {
+                        throw new Exception("Data Connection settings not found");
+                    }
+
                     var dbtype = dbConfig["DatabaseType"].ToString();
                     string connectionString = dbConfig["ConnectionString"].ToString();
-                    var databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+                     var databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
 
                     var dtPagedRun = new DataTable();
 
@@ -557,22 +562,22 @@ namespace ReportBuilder.Web.Controllers
                     throw new Exception("Not Authorized to access this Resource");
                 }
 
-                var connect = DotNetSetupController.GetConnection(databaseApiKey);
-                var tables = new List<TableViewModel>();
-                var procedures = new List<TableViewModel>();
-                tables.AddRange(await DotNetSetupController.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey, onlyApi));
-                tables.AddRange(await DotNetSetupController.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey, onlyApi));
-                procedures.AddRange(await DotNetSetupController.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
-                var dbConfig = GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey);
-                var model = new ManageViewModel
-                {
-                    ApiUrl = connect.ApiUrl,
-                    AccountApiKey = connect.AccountApiKey,
-                    DatabaseApiKey = connect.DatabaseApiKey,
-                    Tables = tables,
-                    Procedures = procedures,
-                    DbConfig = dbConfig.ToObject<Dictionary<string, string>>()
-                };
+            var connect = DotNetSetupController.GetConnection(databaseApiKey);
+            var tables = new List<TableViewModel>();
+            var procedures = new List<TableViewModel>();
+            tables.AddRange(await DotNetSetupController.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey, onlyApi));
+            tables.AddRange(await DotNetSetupController.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey, onlyApi));
+            procedures.AddRange(await DotNetSetupController.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
+            var dbConfig = GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey) ?? new JObject();
+            var model = new ManageViewModel
+            {
+                ApiUrl = connect.ApiUrl,
+                AccountApiKey = connect.AccountApiKey,
+                DatabaseApiKey = connect.DatabaseApiKey,
+                Tables = tables,
+                Procedures = procedures,
+                DbConfig = dbConfig.ToObject<Dictionary<string, string>>()
+            };
 
                 return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
             }
@@ -606,7 +611,7 @@ namespace ReportBuilder.Web.Controllers
                 }
             }
         
-            return new JObject();
+            return null;
         }
 
         public class UpdateDbConnectionModel
@@ -722,6 +727,13 @@ namespace ReportBuilder.Web.Controllers
 
                     // Save the updated JSON back to the file
                     System.IO.File.WriteAllText(_configFilePath, config.ToString());
+
+                    // Update to Account as well
+                    var result = await ExecuteCallReportApi("UpdateDataConnection", JsonSerializer.Serialize(new
+                    {
+                        model.connectionKey,
+                        model.dbType,
+                    }));
                 }
 
                 return new JsonResult(new

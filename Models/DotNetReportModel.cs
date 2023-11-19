@@ -1529,9 +1529,9 @@ namespace ReportBuilder.Web.Models
                     conn.Close();
                     return true;
                 }
-                catch
+                catch (Exception ex)
                 {
-                    return false;
+                    throw ex;
                 }
             }
         }
