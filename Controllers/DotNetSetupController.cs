@@ -16,7 +16,7 @@ namespace ReportBuilder.Web.Controllers
 
         #region "Private Methods"
 
-        public static ConnectViewModel GetConnection(string databaseApiKey)
+        public static ConnectViewModel GetConnection(string databaseApiKey = "")
         {
             return new ConnectViewModel
             {

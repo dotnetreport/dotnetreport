@@ -393,7 +393,6 @@ namespace ReportBuilder.Web.Models
 
             return connString;
         }
-
         public static bool IsNumericType(Type type)
         {
 
@@ -1484,10 +1483,38 @@ namespace ReportBuilder.Web.Models
             }
         }
     }
+
+    public static class DatabaseConnectionFactory
+    {
+        public static IDatabaseConnection GetConnection(string dbtype)
+        {
+            IDatabaseConnection databaseConnection;
+            switch (dbtype.ToLower())
+            {
+                case "ms sql":
+                    databaseConnection = new SqlServerDatabaseConnection();
+                    break;
+                case "mysql":
+                    databaseConnection = new MySqlDatabaseConnection();
+                    break;
+                case "postgre sql":
+                    databaseConnection = new PostgresDatabaseConnection();
+                    break;
+                default:
+                    throw new Exception($"Unsupported database type: {dbtype}");
+            }
+
+            return databaseConnection;
+        }
+
+
+    }
     public interface IDatabaseConnection
     {
         bool TestConnection(string connectionString);
         string CreateConnection(UpdateDbConnectionModel model);
+        int GetTotalRecords(string connectionString, string sqlCount, string sql);
+        DataTable ExecuteQuery(string connectionString, string sql);
     }
     public class SqlServerDatabaseConnection : IDatabaseConnection
     {
@@ -1530,6 +1557,60 @@ namespace ReportBuilder.Web.Models
 
             return sqlConnectionStringBuilder.ConnectionString;
         }
+
+        public int GetTotalRecords(string connectionString, string sqlCount, string sql)
+        {
+            int totalRecords = 0;
+
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(connectionString))
+                {
+                    conn.Open();
+
+                    using (SqlCommand command = new SqlCommand(sqlCount, conn))
+                    {
+                        if (!sql.StartsWith("EXEC"))
+                            totalRecords = (int)command.ExecuteScalar();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Handle exception (log, rethrow, etc.)
+                throw new Exception($"Error executing SQL query for total records: {ex.Message}", ex);
+            }
+
+            return totalRecords;
+        }
+
+        public DataTable ExecuteQuery(string connectionString, string sql)
+        {
+            DataTable dataTable = new DataTable();
+
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(connectionString))
+                {
+                    conn.Open();
+
+                    using (SqlCommand command = new SqlCommand(sql, conn))
+                    {
+                        using (SqlDataAdapter adapter = new SqlDataAdapter(command))
+                        {
+                            adapter.Fill(dataTable);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Handle exception (log, rethrow, etc.)
+                throw new Exception($"Error executing SQL query: {ex.Message}", ex);
+            }
+
+            return dataTable;
+        }
     }
     public class MySqlDatabaseConnection : IDatabaseConnection
     {
@@ -1568,6 +1649,59 @@ namespace ReportBuilder.Web.Models
             conn_string.Database = model.dbName;// "test";
             return conn_string.ToString();
         }
+        public int GetTotalRecords(string connectionString, string sqlCount, string sql)
+        {
+            int totalRecords = 0;
+
+            try
+            {
+                using (MySqlConnection conn = new MySqlConnection(connectionString))
+                {
+                    conn.Open();
+
+                    using (MySqlCommand command = new MySqlCommand(sqlCount, conn))
+                    {
+                        if (!sql.StartsWith("EXEC"))
+                            totalRecords = (int)command.ExecuteScalar();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Handle exception (log, rethrow, etc.)
+                throw new Exception($"Error executing SQL query for total records: {ex.Message}", ex);
+            }
+
+            return totalRecords;
+        }
+
+        public DataTable ExecuteQuery(string connectionString, string sql)
+        {
+            DataTable dataTable = new DataTable();
+
+            try
+            {
+                using (MySqlConnection conn = new MySqlConnection(connectionString))
+                {
+                    conn.Open();
+
+                    using (MySqlCommand command = new MySqlCommand(sql, conn))
+                    {
+                        using (MySqlDataAdapter adapter = new MySqlDataAdapter(command))
+                        {
+                            adapter.Fill(dataTable);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Handle exception (log, rethrow, etc.)
+                throw new Exception($"Error executing SQL query: {ex.Message}", ex);
+            }
+
+            return dataTable;
+        }
     }
     public class PostgresDatabaseConnection : IDatabaseConnection
     {
@@ -1582,9 +1716,9 @@ namespace ReportBuilder.Web.Models
                     conn.Close();
                     return true;
                 }
-                catch
+                catch (Exception ex)
                 {
-                    return false;
+                    throw ex;
                 }
             }
         }
@@ -1606,6 +1740,61 @@ namespace ReportBuilder.Web.Models
             conn_string.Database = model.dbName;// "test";
             return conn_string.ToString();
         }
+
+        public int GetTotalRecords(string connectionString, string sqlCount, string sql)
+        {
+            int totalRecords = 0;
+
+            try
+            {
+                using (NpgsqlConnection conn = new NpgsqlConnection(connectionString))
+                {
+                    conn.Open();
+
+                    using (NpgsqlCommand command = new NpgsqlCommand(sqlCount, conn))
+                    {
+                        if (!sql.StartsWith("EXEC"))
+                            totalRecords = (int)command.ExecuteScalar();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Handle exception (log, rethrow, etc.)
+                throw new Exception($"Error executing SQL query for total records: {ex.Message}", ex);
+            }
+
+            return totalRecords;
+        }
+
+        public DataTable ExecuteQuery(string connectionString, string sql)
+        {
+            DataTable dataTable = new DataTable();
+
+            try
+            {
+                using (NpgsqlConnection conn = new NpgsqlConnection(connectionString))
+                {
+                    conn.Open();
+
+                    using (NpgsqlCommand command = new NpgsqlCommand(sql, conn))
+                    {
+                        using (NpgsqlDataAdapter adapter = new NpgsqlDataAdapter(command))
+                        {
+                            adapter.Fill(dataTable);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Handle exception (log, rethrow, etc.)
+                throw new Exception($"Error executing SQL query: {ex.Message}", ex);
+            }
+
+            return dataTable;
+        }
+
     }
 
 }

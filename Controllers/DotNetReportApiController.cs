@@ -241,77 +241,78 @@ namespace ReportBuilder.Web.Controllers
                         if (sql.Contains("__jsonc__"))
                             sql = sql.Replace("__jsonc__", "");
                     }
+
                     // Execute sql
+                    var connect = DotNetSetupController.GetConnection();
+                    var dbConfig = GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey);
+                    var dbtype = dbConfig["DatabaseType"].ToString();
+                    string connectionString = dbConfig["ConnectionString"].ToString();
+                    var databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+
                     var dtPagedRun = new DataTable();
-                    using (var conn = new OleDbConnection(DotNetReportHelper.GetConnectionString(connectKey)))
+
+                    totalRecords = databaseConnection.GetTotalRecords(connectionString, sqlCount, sql);
+                    dtPagedRun = databaseConnection.ExecuteQuery(connectionString, sql);
+
+                    if (sql.StartsWith("EXEC"))
                     {
-                        conn.Open();
-                        var command = new OleDbCommand(sqlCount, conn);
-                        if (!sql.StartsWith("EXEC")) totalRecords = (int)command.ExecuteScalar();
+                        totalRecords = dtPagedRun.Rows.Count;
+                        if (dtPagedRun.Rows.Count > 0)
+                            dtPagedRun = dtPagedRun.AsEnumerable().Skip((pageNumber - 1) * pageSize).Take(pageSize).CopyToDataTable();
+                    }
+                    if (!sqlFields.Any())
+                    {
+                        foreach (DataColumn c in dtPagedRun.Columns) { sqlFields.Add($"{c.ColumnName} AS {c.ColumnName}"); }
+                    }
 
-                        command = new OleDbCommand(sql, conn);
-                        var adapter = new OleDbDataAdapter(command);
-                        adapter.Fill(dtPagedRun);
-                        if (sql.StartsWith("EXEC"))
+                    string[] series = { };
+                    if (i == 0)
+                    {
+                        dtPaged = dtPagedRun;
+                        dtCols = dtPagedRun.Columns.Count;
+                        fields.AddRange(sqlFields);
+                    }
+                    else if (i > 0)
+                    {
+                        // merge in to dt
+                        if (!string.IsNullOrEmpty(reportSeries))
+                            series = reportSeries.Split(new string[] { "%2C", "," }, StringSplitOptions.RemoveEmptyEntries);
+
+                        var j = 1;
+                        while (j < dtPagedRun.Columns.Count)
                         {
-                            totalRecords = dtPagedRun.Rows.Count;
-                            if (dtPagedRun.Rows.Count > 0)
-                                dtPagedRun = dtPagedRun.AsEnumerable().Skip((pageNumber - 1) * pageSize).Take(pageSize).CopyToDataTable();
-                        }
-                        if (!sqlFields.Any())
-                        {
-                            foreach (DataColumn c in dtPagedRun.Columns) { sqlFields.Add($"{c.ColumnName} AS {c.ColumnName}"); }
+                            var col = dtPagedRun.Columns[j++];
+                            dtPaged.Columns.Add($"{col.ColumnName} ({series[i - 1]})", col.DataType);
+                            fields.Add(sqlFields[j - 1]);
                         }
 
-                        string[] series = { };
-                        if (i == 0)
+                        foreach (DataRow dr in dtPaged.Rows)
                         {
-                            dtPaged = dtPagedRun;
-                            dtCols = dtPagedRun.Columns.Count;
-                            fields.AddRange(sqlFields);
-                        }
-                        else if (i > 0)
-                        {
-                            // merge in to dt
-                            if (!string.IsNullOrEmpty(reportSeries))
-                                series = reportSeries.Split(new string[] { "%2C", "," }, StringSplitOptions.RemoveEmptyEntries);
-
-                            var j = 1;
-                            while (j < dtPagedRun.Columns.Count)
+                            DataRow match = null;
+                            if (fields[0].ToUpper().StartsWith("CONVERT(VARCHAR(10)")) // group by day
                             {
-                                var col = dtPagedRun.Columns[j++];
-                                dtPaged.Columns.Add($"{col.ColumnName} ({series[i - 1]})", col.DataType);
-                                fields.Add(sqlFields[j - 1]);
+                                match = dtPagedRun.AsEnumerable().Where(r => !string.IsNullOrEmpty(r.Field<string>(0)) && !string.IsNullOrEmpty((string)dr[0]) && Convert.ToDateTime(r.Field<string>(0)).Day == Convert.ToDateTime((string)dr[0]).Day).FirstOrDefault();
                             }
-
-                            foreach (DataRow dr in dtPaged.Rows)
+                            else if (fields[0].ToUpper().StartsWith("CONVERT(VARCHAR(3)")) // group by month/year
                             {
-                                DataRow match = null;
-                                if (fields[0].ToUpper().StartsWith("CONVERT(VARCHAR(10)")) // group by day
-                                {
-                                    match = dtPagedRun.AsEnumerable().Where(r => !string.IsNullOrEmpty(r.Field<string>(0)) && !string.IsNullOrEmpty((string)dr[0]) && Convert.ToDateTime(r.Field<string>(0)).Day == Convert.ToDateTime((string)dr[0]).Day).FirstOrDefault();
-                                }
-                                else if (fields[0].ToUpper().StartsWith("CONVERT(VARCHAR(3)")) // group by month/year
-                                {
 
-                                }
-                                else
+                            }
+                            else
+                            {
+                                match = dtPagedRun.AsEnumerable().Where(r => r.Field<string>(0) == (string)dr[0]).FirstOrDefault();
+                            }
+                            if (match != null)
+                            {
+                                j = 1;
+                                while (j < dtCols)
                                 {
-                                    match = dtPagedRun.AsEnumerable().Where(r => r.Field<string>(0) == (string)dr[0]).FirstOrDefault();
-                                }
-                                if (match != null)
-                                {
-                                    j = 1;
-                                    while (j < dtCols)
-                                    {
-                                        dr[j + i + dtCols - 2] = match[j];
-                                        j++;
-                                    }
+                                    dr[j + i + dtCols - 2] = match[j];
+                                    j++;
                                 }
                             }
                         }
                     }
-                }
+                }                
 
                 sql = DotNetReportHelper.Decrypt(HttpUtility.HtmlDecode(allSqls[0]));
                 var model = new DotNetReportResultModel
@@ -597,7 +598,7 @@ namespace ReportBuilder.Web.Controllers
             var dotNetReportSection = config[$"dotNetReport"] as JObject;
             if (dotNetReportSection != null)
             {
-                var defaultConfig = dotNetReportSection["DefaultConnection"];
+                var defaultConfig = dotNetReportSection["ConnectionString"];
                 var dataConnectSection = dotNetReportSection[dataConnect] as JObject;
                 if (dataConnectSection != null)
                 {
@@ -638,22 +639,8 @@ namespace ReportBuilder.Web.Controllers
                     throw new Exception("Not Authorized to access this Resource");
                 }
                 // Use dependency injection to get the appropriate implementation based on the database type
-                IDatabaseConnection databaseConnection;
+                var  databaseConnection = DatabaseConnectionFactory.GetConnection(model.dbType);
 
-                switch (model.dbType.ToLower())
-                {
-                    case "ms sql":
-                        databaseConnection = new SqlServerDatabaseConnection();
-                        break;
-                    case "mysql":
-                        databaseConnection = new MySqlDatabaseConnection();
-                        break;
-                    case "postgre sql":
-                        databaseConnection = new PostgresDatabaseConnection();
-                        break;
-                    default:
-                        throw new Exception($"Unsupported database type: {model.dbType}");
-                }
                 var connectionString = "";
                 if (model.connectionType=="Build")
                 {
