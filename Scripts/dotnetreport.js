@@ -3193,7 +3193,7 @@ var reportViewModel = function (options) {
 			url: options.apiUrl,
 			data: {
 				method: "/ReportApi/GetSavedReports",
-				model: JSON.stringify({ adminMode: self.adminMode() })
+				model: JSON.stringify({ adminMode: self.adminMode(), applyClientInAdmin: true })
 			}
 		}).done(function (reports) {
 			if (reports.d) { reports = reports.d; }
