@@ -27,10 +27,15 @@ var manageViewModel = function (options) {
 
 	self.pagedTables = ko.computed(function () {
 		var tables = self.Tables.filteredTables();
+		var usedOnly = self.Tables.usedOnly();
 
 		if (self.customTableMode()) {
 			tables = _.filter(tables, function(x) { return x.CustomTable(); });
-        }
+		}
+
+		if (usedOnly) {
+			tables = _.filter(tables, function (x) { return x.Selected(); });
+		}
 
 		var pageNumber = self.pager.currentPage();
 		var pageSize = self.pager.pageSize();
@@ -543,7 +548,7 @@ var manageViewModel = function (options) {
 
 var tablesViewModel = function (options) {
 	var self = this;
-	self.model = ko.mapping.fromJS(options.model.Tables);
+	self.model = ko.mapping.fromJS(_.sortBy(options.model.Tables, ['TableName']));
 
 	self.processTable = function (t) {
 		t.availableColumns = ko.computed(function () {
@@ -736,6 +741,11 @@ var tablesViewModel = function (options) {
 			});
 		});
 	}	
+
+	self.usedOnly = ko.observable(false);
+	self.toggleShowAll = function () {
+		self.usedOnly(!self.usedOnly());
+	}
 
 	self.columnSorted = function (args) {
 		_.forEach(args.targetParent(), function (e) {

@@ -45,7 +45,7 @@ namespace ReportBuilder.Web.Controllers
         public ActionResult ReportPrint(int reportId, string reportName, string reportDescription, string reportSql, string connectKey, string reportFilter, string reportType,
             int selectedFolder = 0, bool includeSubTotal = true, bool showUniqueRecords = false, bool aggregateReport = false, bool showDataWithGraph = true,
             string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "",
-            string reportSeries = "", bool expandAll = false)
+            string reportSeries = "", bool expandAll = false, string reportData = "")
         {
             var model = new DotNetReportPrintModel
             {
@@ -65,7 +65,8 @@ namespace ReportBuilder.Web.Controllers
                 ClientId = clientId,
                 UserId = userId,
                 CurrentUserRoles = currentUserRole,
-                DataFilters = dataFilters
+                DataFilters = HttpUtility.HtmlDecode(dataFilters),
+                ReportData = HttpUtility.HtmlDecode(reportData)
             };
 
             return View(model);
