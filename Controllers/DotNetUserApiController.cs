@@ -7,7 +7,7 @@ using System.Text.Json;
 
 namespace ReportBuilder.Web.Controllers
 {
-    //[Route("api/[controller]/[action]")]
+    [Route("api/[controller]/[action]")]
     [ApiController]
     public class DotNetUserApiController : ControllerBase
     {
@@ -62,11 +62,11 @@ namespace ReportBuilder.Web.Controllers
 
     ALTER TABLE [dbo].[AspNetUserRoles] 
     CHECK CONSTRAINT [FK_AspNetUserRoles_AspNetUsers_UserId];";
-
         public IActionResult ExistingUsersTable([FromBody] UserModel model)
         {
             try
             {
+
                 var dbConfig = DotNetReportApiController.GetDbConnectionSettings(model.account, model.dataConnect);
                 if (dbConfig == null)
                 {
@@ -750,6 +750,18 @@ namespace ReportBuilder.Web.Controllers
         public string UserName { get; set; }
         public string Email { get; set; }
         public string RoleName { get; set; }
+
+    }
+    public class UserModel
+    {
+        public string account { get; set; }
+        public string dataConnect { get; set; }
+        public string UserName { get; set; }
+        public string Email { get; set; }
+        public string Password { get; set; }
+        public string RoleName { get; set; }
+        public string UserId { get; set; }
+        public string RoleId { get; set; }
 
     }
 }
