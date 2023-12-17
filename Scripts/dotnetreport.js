@@ -1116,9 +1116,14 @@ var reportViewModel = function (options) {
 	self.cancelCreateReport = function () {
 		bootbox.confirm("Are you sure you would like to cancel editing this Report?", function (r) {
 			if (r) {
-				self.clearReport();
 				options.reportWizard.modal('hide');
+
+				if (self.ReportMode() == 'dashboard') {
+					report.SaveReport(false);
+					return;
+				}
 				self.ReportMode("start");
+				self.clearReport();
 			}
 		});
 	};
@@ -1193,6 +1198,7 @@ var reportViewModel = function (options) {
 					self.Folders.remove(self.SelectedFolder());
 					folderToUpdate.FolderName = self.ManageFolder.FolderName();
 					self.Folders.push(folderToUpdate);
+					self.allFolders = self.Folders();
 					self.SelectedFolder(null);
 				}
 				$("#folderModal").modal("hide");
@@ -1220,6 +1226,7 @@ var reportViewModel = function (options) {
 						},
 					}).done(function () {
 						self.Folders.remove(self.SelectedFolder());
+						self.allFolders = self.Folders();
 						self.SelectedFolder(null);
 					});
 				}
@@ -1261,6 +1268,7 @@ var reportViewModel = function (options) {
 		url: options.apiUrl,
 		query: function (params) {
 			self.searchReports(params.term);
+			$('.select2-selection__placeholder').text(params.term);
 			if (params.term && params.term.length <= 2) return;
 			return params.term ? {
 				method: "/ReportApi/ParseQuery",
@@ -1293,6 +1301,11 @@ var reportViewModel = function (options) {
 	self.reportsInSearchCompute = ko.computed(function () {
 		var searchReports = self.searchReports();
 		var searchFieldId = self.searchFieldsInReport.selectedOption();
+
+		if (!searchReports) {
+			$('.select2-selection__placeholder').text('Search for text or select a field');
+			$('#search-report').val([]).trigger('change'); 
+		}
 
 		if (!searchReports && !searchFieldId) {
 			self.reportsInSearch([]);
@@ -2283,6 +2296,337 @@ var reportViewModel = function (options) {
 		});
 	};
 
+	self.printReport = function () {
+		self.processReportResult(options.reportData, options.reportSql, options.reportConnect, options.ReportSeries);
+	}
+
+	self.processReportResult = function (result, reportSql, connectKey, reportSeries) {
+
+		var reportResult = self.ReportResult();
+		reportResult.HasError(result.HasError);
+		reportResult.Exception(result.Exception);
+		reportResult.Warnings(result.Warnings);
+		reportResult.ReportDebug(result.ReportDebug);
+		reportResult.ReportSql(beautifySql(result.ReportSql));
+		self.ReportSeries = reportSeries;
+		if (result.HasError) return;
+
+		function matchColumnName(src, dst, dbSrc, dbDst, agg) {
+			if (src == dst) return true;
+			if (dbSrc && dbDst && dbSrc == dbDst) return true;
+
+			if (agg && dbSrc && dbDst && agg + '(' + dbSrc + ')' == dbDst) return true;
+
+			if (dst.indexOf('(Count)') < 0 && dst.indexOf("(Avg)") < 0 && dst.indexOf("(Sum)") < 0 && dst.indexOf("(Average)") < 0)
+				return false;
+
+			dst = (dst || "")
+				.replace("(Count)", "")
+				.replace("(Avg)", "")
+				.replace("(Average)", "")
+				.replace("(Sum)", "")
+				.trim();
+
+			src = (src || "").trim()
+			src = (src.endsWith("Id") || src.endsWith("ID") ? src.slice(0, -2) : src).trim();
+
+			return src == dst;
+		}
+
+		function processCols(cols, skipColDetails = false) {
+			if (skipColDetails !== true) self.columnDetails([]);
+			_.forEach(cols, function (e, i) {
+				var col;
+				if (self.useStoredProc()) {
+					col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.procColumnName, e.ColumnName); });
+					e.hideStoredProcColumn = (col ? col.disabled() : true);
+				}
+				else if (e.FormatType == 'Json') {
+					col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.jsonColumnName, e.ColumnName); });
+				}
+				else {
+					col = _.find(self.SelectedFields(), function (x) { return x.dbField == e.SqlField; });
+					if (!col) col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.fieldName, e.ColumnName, x.dbField, e.SqlField, x.aggregateFunction); });
+				}
+				if (col && col.linkField()) {
+					e.linkItem = col.linkFieldItem.toJs();
+					e.linkField = true;
+				} else {
+					e.linkItem = {};
+					e.linkField = false;
+				}
+				col = col || { fieldName: e.ColumnName };
+
+				if (skipColDetails !== true) self.columnDetails.push(col);
+
+				e.decimalPlaces = col.decimalPlaces || ko.observable();
+				e.fieldAlign = col.fieldAlign || ko.observable();
+				e.fieldConditionOp = col.fieldConditionOp || ko.observable();
+				e.fieldConditionVal = col.fieldConditionVal || ko.observable();
+				e.fieldFormat = col.fieldFormat || ko.observable();
+				e.fieldLabel = col.fieldLabel || ko.observable();
+				e.fieldName = col.fieldName;
+				e.fieldWidth = col.fieldWidth || ko.observable();
+				e.fontBold = col.fontBold || ko.observable();
+				e.headerFontBold = col.headerFontBold || ko.observable();
+				e.headerFontColor = col.headerFontColor || ko.observable();
+				e.headerBackColor = col.headerBackColor || ko.observable();
+				e.fieldId = col.fieldId;
+				e.fontColor = col.fontColor || ko.observable();
+				e.backColor = col.backColor || ko.observable();
+				e.groupInGraph = col.groupInGraph || ko.observable();
+				e.dontSubTotal = col.dontSubTotal || ko.observable();
+				e.fieldType = col.fieldType;
+				e.jsonColumnName = col.jsonColumnName;
+				e.isJsonColumn = col.fieldType == 'Json';
+				e.outerGroup = ko.observable(false);
+				e.colIndex = i;
+
+				e.toggleOuterGroup = function () {
+					e.outerGroup(!e.outerGroup());
+
+					if (e.outerGroup()) {
+						self.OuterGroupColumns.push({
+							fieldId: col.fieldId,
+							fieldName: col.fieldName,
+							fieldIndex: e.colIndex,
+							rowData: _.uniq(_.map(result.ReportData.Rows, function (r) {
+								return r.Items[e.colIndex].FormattedValue;
+							})).sort(),
+							remove: function () {
+								e.outerGroup(false);
+								self.OuterGroupColumns.remove(this);
+							}
+						});
+					}
+				}
+
+				e.setupFieldOptions = function () {
+					col.setupFieldOptions();
+				}
+
+				if (col.selectedAggregate == 'Outer Group' && !_.find(self.OuterGroupColumns(), {fieldId: e.fieldId})) {
+					e.toggleOuterGroup()
+				}
+			});
+		}
+
+		function processRow(row, columns) {
+			_.forEach(row, function (r, i) {
+				r.LinkTo = '';
+				var col = columns[i];
+				if (col && col.linkField) {
+					var linkItem = col.linkItem;
+					var link = '';
+					if (linkItem.LinksToReport) {
+						link = options.runReportUrl + '?linkedreport=true&reportId=' + linkItem.LinkedToReportId;
+						if (linkItem.SendAsFilterParameter && r.Value) {
+							link += '&filterId=' + linkItem.SelectedFilterId + '&filterValue=' + r.Value.replace(/['"]+/g, '');
+						}
+					}
+					else {
+						link = linkItem.LinkToUrl + (linkItem.SendAsQueryParameter ? ('?' + linkItem.QueryParameterName + '=' + (r.LabelValue ? r.LabelValue.replace(/['"]+/g, '') : '')) : '');
+					}
+					r.LinkTo = link;
+				}
+
+				col = col || {};
+				r.backColor = col.backColor;
+				r.fieldAlign = col.fieldAlign;
+				r.fieldWidth = col.fieldWidth;
+				r.fontBold = col.fontBold;
+				r.fontColor = col.fontColor;
+				r.fieldId = col.fieldId;
+				r.outerGroup = col.outerGroup;
+				r.jsonColumnName = col.jsonColumnName;
+				r.isJsonColumn = col.isJsonColumn;
+
+				if (self.decimalFormatTypes.indexOf(col.fieldFormat()) >= 0) {
+					r.FormattedValue = self.formatNumber(r.Value, col.decimalPlaces());
+					switch (col.fieldFormat()) {
+						case 'Currency': r.FormattedValue = '$' + r.FormattedValue; break;
+						case 'Percentage': r.FormattedValue = r.FormattedValue + '%'; break;
+					}
+				}
+				if (self.dateFormatTypes.indexOf(col.fieldFormat()) >= 0 && !isNaN(new Date(r.Value).getTime())) {
+					switch (col.fieldFormat()) {
+						case 'Date': r.FormattedValue = (new Date(r.Value)).toLocaleDateString("en-US", { year: 'numeric', month: 'numeric', day: 'numeric' }); break;
+						case 'Date and Time': r.FormattedValue = (new Date(r.Value)).toLocaleDateString("en-US", { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
+						case 'Time': r.FormattedValue = (new Date(r.Value)).toLocaleTimeString("en-US", { hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
+					}
+				}
+			});
+		}
+
+		processCols(result.ReportData.Columns);
+		if (self.useStoredProc()) {
+			result.ReportData.Columns = _.filter(result.ReportData.Columns, function (x) { return x.hideStoredProcColumn == false; });
+		}
+		var validFieldNames = _.map(result.ReportData.Columns, 'SqlField');
+		result.ReportData.IsDrillDown = ko.observable(false);
+		_.forEach(result.ReportData.Rows, function (e) {
+			e.DrillDownData = ko.observable(null);
+			e.pager = new pagerViewModel({ pageSize: 10 });
+			e.sql = "";
+			e.connectKey = "";
+			e.changeSort = function (sort) {
+				e.pager.changeSort(sort);
+				e.execute();
+				return false;
+			};
+			e.isExpanded = ko.observable(false);
+			e.execute = function () {
+				if (e.sql == '') return;
+				ajaxcall({
+					url: options.execReportUrl,
+					type: "POST",
+					data: JSON.stringify({
+						reportSql: e.sql,
+						connectKey: e.connectKey,
+						reportType: 'List',
+						pageNumber: e.pager.currentPage(),
+						pageSize: e.pager.pageSize(),
+						sortBy: e.pager.sortColumn() || '',
+						desc: e.pager.sortDescending() || false,
+						reportSeries: reportSeries || ''
+					})
+				}).done(function (ddData) {
+					if (ddData.d) { ddData = ddData.d; }
+					if (ddData.result) { ddData = ddData.result; }
+					ddData.ReportData.IsDrillDown = ko.observable(true);
+
+					if (ddData.HasError) {
+						toastr.error(ddData.Exception || 'Error occured in drill down');
+						e.isExpanded(false);
+						return;
+					}
+
+					processCols(ddData.ReportData.Columns, true);
+					_.forEach(ddData.ReportData.Rows, function (dr) {
+						processRow(dr.Items, ddData.ReportData.Columns);
+					});
+
+					e.DrillDownData(ddData.ReportData);
+					e.pager.totalRecords(ddData.Pager.TotalRecords);
+					e.pager.pages(ddData.Pager.TotalPages);
+				});
+			};
+
+			e.expand = function (index) {
+				// load drill down data
+				ajaxcall({
+					url: options.runReportApiUrl,
+					type: "POST",
+					data: JSON.stringify({
+						method: "/ReportApi/RunDrillDownReport",
+						SaveReport: false,
+						ReportJson: JSON.stringify(self.BuildReportData(e.Items)),
+						adminMode: self.adminMode(),
+						SubTotalMode: false
+					})
+				}).done(function (ddResult) {
+					if (ddResult.d) { ddResult = ddResult.d; }
+					if (ddResult.result) { ddResult = ddResult.result; }
+					e.sql = ddResult.sql;
+					e.connectKey = ddResult.connectKey;
+					self.expandSqls.push({ index: index, sql: e.sql });
+					e.execute();
+				});
+
+				e.isExpanded(true);
+			};
+
+			e.pager.currentPage.subscribe(function () {
+				e.execute();
+			});
+			e.collapse = function () {
+				e.isExpanded(false);
+			};
+
+			e.toggle = function () {
+				if (e.isExpanded()) e.collapse(); else e.expand();
+			};
+
+			e.exportExcel = function () {
+				self.downloadExport("DownloadExcel", {
+					reportSql: e.sql,
+					connectKey: self.currentConnectKey(),
+					reportName: 'Sub Report for ' + self.ReportName(),
+					allExpanded: false,
+					expandSqls: '',
+					columnDetails: self.getColumnDetails(),
+					includeSubTotals: false
+				}, 'xlsx');
+			}
+
+			if (self.useStoredProc()) {
+				e.Items = _.filter(e.Items, function (x) { return _.includes(validFieldNames, x.Column.SqlField); });
+			}
+			processRow(e.Items, result.ReportData.Columns);
+		});
+
+		reportResult.ReportData(result.ReportData);
+
+		self.pager.totalRecords(result.Pager.TotalRecords);
+		self.pager.pages(result.Pager.TotalPages);
+
+		self.currentSql(reportSql);
+		self.currentConnectKey(connectKey);
+
+		if (result.Warnings) {
+			toastr.info('Note: ' + result.Warnings);
+		}
+
+		if (self.isChart()) {
+			google.charts.load('current', { packages: ['corechart', 'geochart'] });
+			google.charts.setOnLoadCallback(self.DrawChart);
+		}
+
+		if (self.IncludeSubTotal()) {
+			ajaxcall({
+				url: options.runReportApiUrl,
+				type: "POST",
+				data: JSON.stringify({
+					method: "/ReportApi/RunReport",
+					SaveReport: self.CanSaveReports() ? self.SaveReport() : false,
+					ReportJson: JSON.stringify(self.BuildReportData()),
+					adminMode: self.adminMode(),
+					SubTotalMode: true
+				})
+			}).done(function (subtotalsqlResult) {
+				if (subtotalsqlResult.d) { subtotalsqlResult = subtotalsqlResult.d; }
+				if (subtotalsqlResult.result) { subtotalsqlResult = subtotalsqlResult.result; }
+				ajaxcall({
+					url: options.execReportUrl,
+					type: "POST",
+					data: JSON.stringify({
+						reportSql: subtotalsqlResult.sql,
+						connectKey: subtotalsqlResult.connectKey,
+						reportType: self.ReportType(),
+						pageNumber: 1,
+						pageSize: 1,
+						sortBy: '',
+						desc: false,
+						reportSeries: ''
+					})
+				}).done(function (subtotalResult) {
+					if (subtotalResult.d) { subtotalResult = subtotalResult.d; }
+					if (subtotalResult.result) { subtotalResult = subtotalResult.result }
+
+					processCols(subtotalResult.ReportData.Columns, true);
+					_.forEach(subtotalResult.ReportData.Rows, function (dr) {
+						processRow(dr.Items, subtotalResult.ReportData.Columns);
+					});
+
+					self.ReportResult().SubTotals(subtotalResult.ReportData.Rows);
+				});
+			});
+		}
+
+		setTimeout(function () {
+			self.allowTableResize();
+		}, 2000);
+	}
 	self.ExecuteReportQuery = function (reportSql, connectKey, reportSeries) {
 		if (!reportSql || !connectKey) return;
 		self.ChartData('');
@@ -2308,326 +2652,7 @@ var reportViewModel = function (options) {
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
 			if (result.result) { result = result.result; }
-			var reportResult = self.ReportResult();
-			reportResult.HasError(result.HasError);
-			reportResult.Exception(result.Exception);
-			reportResult.Warnings(result.Warnings);
-			reportResult.ReportDebug(result.ReportDebug);
-			reportResult.ReportSql(beautifySql(result.ReportSql));
-			self.ReportSeries = reportSeries;
-			if (result.HasError) return;
-
-			function matchColumnName(src, dst, dbSrc, dbDst) {
-				if (src == dst) return true;
-				if (dbSrc && dbDst && dbSrc == dbDst) return true;
-
-				if (dst.indexOf('(Count)') < 0 && dst.indexOf("(Avg)") < 0 && dst.indexOf("(Sum)") < 0 && dst.indexOf("(Average)") < 0)
-					return false;
-
-				dst = (dst || "")
-					.replace("(Count)", "")
-					.replace("(Avg)", "")
-					.replace("(Average)", "")
-					.replace("(Sum)", "")
-					.trim();
-
-				src = (src || "").trim()
-				src = (src.endsWith("Id") || src.endsWith("ID") ? src.slice(0, -2) : src).trim();
-
-				return src == dst;
-			}
-
-			function processCols(cols, skipColDetails = false) {
-				if (skipColDetails !== true) self.columnDetails([]);
-				_.forEach(cols, function (e, i) {
-					var col;
-					if (self.useStoredProc()) {
-						col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.procColumnName, e.ColumnName); });
-						e.hideStoredProcColumn = (col ? col.disabled() : true);
-					}
-					else if (e.FormatType == 'Json') {
-						col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.jsonColumnName, e.ColumnName); });
-                    }
-					else
-						col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.fieldName, e.ColumnName, x.dbField, e.SqlField); });
-					if (col && col.linkField()) {
-						e.linkItem = col.linkFieldItem.toJs();
-						e.linkField = true;
-					} else {
-						e.linkItem = {};
-						e.linkField = false;
-					}
-					//col = ko.toJS(col || { fieldName: e.ColumnName });
-
-					if (skipColDetails !== true) self.columnDetails.push(col);
-
-					e.decimalPlaces = col.decimalPlaces;
-					e.fieldAlign = col.fieldAlign;
-					e.fieldConditionOp = col.fieldConditionOp;
-					e.fieldConditionVal = col.fieldConditionVal;
-					e.fieldFormat = col.fieldFormat;
-					e.fieldLabel = col.fieldLabel;
-					e.fieldName = col.fieldName;
-					e.fieldWidth = col.fieldWidth;
-					e.fontBold = col.fontBold;
-					e.headerFontBold = col.headerFontBold;
-					e.headerFontColor = col.headerFontColor;
-					e.headerBackColor = col.headerBackColor;
-					e.fieldId = col.fieldId;
-					e.fontColor = col.fontColor;
-					e.backColor = col.backColor;
-					e.groupInGraph = col.groupInGraph;
-					e.dontSubTotal = col.dontSubTotal;
-					e.fieldType = col.fieldType;
-					e.jsonColumnName = col.jsonColumnName;
-					e.isJsonColumn = col.fieldType == 'Json';
-					e.outerGroup = ko.observable(false);
-					e.colIndex = i;
-
-					e.toggleOuterGroup = function () {
-						e.outerGroup(!e.outerGroup());
-
-						if (e.outerGroup()) {
-							self.OuterGroupColumns.push({
-								fieldId: col.fieldId,
-								fieldName: col.fieldName,
-								fieldIndex: e.colIndex,
-								rowData: _.uniq(_.map(result.ReportData.Rows, function (r) {
-									return r.Items[e.colIndex].FormattedValue;
-								})).sort(),
-								remove: function () {
-									e.outerGroup(false);
-									self.OuterGroupColumns.remove(this);
-                                }
-                            });
-						} 
-					}
-
-					e.setupFieldOptions = function () {
-						col.setupFieldOptions();
-					}
-
-					if (col.selectedAggregate == 'Outer Group' && !_.find(self.OuterGroupColumns(), {fieldId: e.fieldId})) {
-						e.toggleOuterGroup()
-					}
-				});
-			}
-
-			function processRow(row, columns) {
-				_.forEach(row, function (r, i) {
-					r.LinkTo = '';
-					var col = columns[i];
-					if (col && col.linkField) {
-						var linkItem = col.linkItem;
-						var link = '';
-						if (linkItem.LinksToReport) {
-							link = options.runReportUrl + '?linkedreport=true&reportId=' + linkItem.LinkedToReportId;
-							if (linkItem.SendAsFilterParameter && r.Value) {
-								link += '&filterId=' + linkItem.SelectedFilterId + '&filterValue=' + r.Value.replace(/['"]+/g, '');
-							}
-						}
-						else {
-							link = linkItem.LinkToUrl + (linkItem.SendAsQueryParameter ? ('?' + linkItem.QueryParameterName + '=' + (r.LabelValue ? r.LabelValue.replace(/['"]+/g, '') : '')) : '');
-						}
-						r.LinkTo = link;
-					}
-
-					col = col || {};
-					r.backColor = col.backColor;
-					r.fieldAlign = col.fieldAlign;
-					r.fieldWidth = col.fieldWidth;
-					r.fontBold = col.fontBold;
-					r.fontColor = col.fontColor;
-					r.fieldId = col.fieldId;
-					r.outerGroup = col.outerGroup;
-					r.jsonColumnName = col.jsonColumnName;
-					r.isJsonColumn = col.isJsonColumn;
-
-					if (self.decimalFormatTypes.indexOf(col.fieldFormat) >= 0) {
-						r.FormattedValue = self.formatNumber(r.Value, col.decimalPlaces);
-						switch (col.fieldFormat) {
-							case 'Currency': r.FormattedValue = '$' + r.FormattedValue; break;
-							case 'Percentage': r.FormattedValue = r.FormattedValue + '%'; break;
-						}
-					}
-					if (self.dateFormatTypes.indexOf(col.fieldFormat) >= 0) {
-						switch (col.fieldFormat) {
-							case 'Date': r.FormattedValue = (new Date(r.Value)).toLocaleDateString("en-US", { year: 'numeric', month: 'numeric', day: 'numeric' }); break;
-							case 'Date and Time': r.FormattedValue = (new Date(r.Value)).toLocaleDateString("en-US", { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
-							case 'Time': r.FormattedValue = (new Date(r.Value)).toLocaleTimeString("en-US", { hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
-						}
-					}
-				});
-			}
-
-			processCols(result.ReportData.Columns);
-			if (self.useStoredProc()) {
-				result.ReportData.Columns = _.filter(result.ReportData.Columns, function (x) { return x.hideStoredProcColumn == false; });
-			}
-			var validFieldNames = _.map(result.ReportData.Columns, 'SqlField');
-			result.ReportData.IsDrillDown = ko.observable(false);
-			_.forEach(result.ReportData.Rows, function (e) {
-				e.DrillDownData = ko.observable(null);
-				e.pager = new pagerViewModel({ pageSize: 10 });
-				e.sql = "";
-				e.connectKey = "";
-				e.changeSort = function (sort) {
-					e.pager.changeSort(sort);
-					e.execute();
-					return false;
-				};
-				e.isExpanded = ko.observable(false);
-				e.execute = function () {
-					if (e.sql == '') return;
-					ajaxcall({
-						url: options.execReportUrl,
-						type: "POST",
-						data: JSON.stringify({
-							reportSql: e.sql,
-							connectKey: e.connectKey,
-							reportType: 'List',
-							pageNumber: e.pager.currentPage(),
-							pageSize: e.pager.pageSize(),
-							sortBy: e.pager.sortColumn() || '',
-							desc: e.pager.sortDescending() || false,
-							reportSeries: reportSeries || ''
-						})
-					}).done(function (ddData) {
-						if (ddData.d) { ddData = ddData.d; }
-						if (ddData.result) { ddData = ddData.result; }
-						ddData.ReportData.IsDrillDown = ko.observable(true);
-
-						if (ddData.HasError) {
-							toastr.error(ddData.Exception || 'Error occured in drill down');
-							e.isExpanded(false);
-							return;
-						}
-
-						processCols(ddData.ReportData.Columns, true);
-						_.forEach(ddData.ReportData.Rows, function (dr) {
-							processRow(dr.Items, ddData.ReportData.Columns);
-						});
-
-						e.DrillDownData(ddData.ReportData);
-						e.pager.totalRecords(ddData.Pager.TotalRecords);
-						e.pager.pages(ddData.Pager.TotalPages);
-					});
-				};
-
-				e.expand = function (index) {
-					// load drill down data
-					ajaxcall({
-						url: options.runReportApiUrl,
-						type: "POST",
-						data: JSON.stringify({
-							method: "/ReportApi/RunDrillDownReport",
-							SaveReport: false,
-							ReportJson: JSON.stringify(self.BuildReportData(e.Items)),
-							adminMode: self.adminMode(),
-							SubTotalMode: false
-						})
-					}).done(function (ddResult) {
-						if (ddResult.d) { ddResult = ddResult.d; }
-						if (ddResult.result) { ddResult = ddResult.result; }
-						e.sql = ddResult.sql;
-						e.connectKey = ddResult.connectKey;
-						self.expandSqls.push({ index: index, sql: e.sql });
-						e.execute();
-					});
-
-					e.isExpanded(true);
-				};
-
-				e.pager.currentPage.subscribe(function () {
-					e.execute();
-				});
-				e.collapse = function () {
-					e.isExpanded(false);
-				};
-
-				e.toggle = function () {
-					if (e.isExpanded()) e.collapse(); else e.expand();
-				};
-
-				e.exportExcel = function () {
-					self.downloadExport("DownloadExcel", {
-						reportSql: e.sql,
-						connectKey: self.currentConnectKey(),
-						reportName: 'Sub Report for ' + self.ReportName(),
-						allExpanded: false,
-						expandSqls: '',
-						columnDetails: self.getColumnDetails(),
-						includeSubTotals: false
-					}, 'xlsx');
-				}
-
-				if (self.useStoredProc()) {
-					e.Items = _.filter(e.Items, function (x) { return _.includes(validFieldNames, x.Column.SqlField); });
-				}
-				processRow(e.Items, result.ReportData.Columns);
-			});
-
-			reportResult.ReportData(result.ReportData);
-
-			self.pager.totalRecords(result.Pager.TotalRecords);
-			self.pager.pages(result.Pager.TotalPages);
-
-			self.currentSql(reportSql);
-			self.currentConnectKey(connectKey);
-
-			if (result.Warnings) {
-				toastr.info('Note: ' + result.Warnings);
-			}
-
-			if (self.isChart()) {
-				google.charts.load('current', { packages: ['corechart', 'geochart'] });
-				google.charts.setOnLoadCallback(self.DrawChart);
-			}
-
-			if (self.IncludeSubTotal()) {
-				ajaxcall({
-					url: options.runReportApiUrl,
-					type: "POST",
-					data: JSON.stringify({
-						method: "/ReportApi/RunReport",
-						SaveReport: self.CanSaveReports() ? self.SaveReport() : false,
-						ReportJson: JSON.stringify(self.BuildReportData()),
-						adminMode: self.adminMode(),
-						SubTotalMode: true
-					})
-				}).done(function (subtotalsqlResult) {
-					if (subtotalsqlResult.d) { subtotalsqlResult = subtotalsqlResult.d; }
-					if (subtotalsqlResult.result) { subtotalsqlResult = subtotalsqlResult.result; }
-					ajaxcall({
-						url: options.execReportUrl,
-						type: "POST",
-						data: JSON.stringify({
-							reportSql: subtotalsqlResult.sql,
-							connectKey: subtotalsqlResult.connectKey,
-							reportType: self.ReportType(),
-							pageNumber: 1,
-							pageSize: 1,
-							sortBy: '',
-							desc: false,
-							reportSeries: ''
-						})
-					}).done(function (subtotalResult) {
-						if (subtotalResult.d) { subtotalResult = subtotalResult.d; }
-						if (subtotalResult.result) { subtotalResult = subtotalResult.result }
-
-						processCols(subtotalResult.ReportData.Columns, true);
-						_.forEach(subtotalResult.ReportData.Rows, function (dr) {
-							processRow(dr.Items, subtotalResult.ReportData.Columns);
-						});
-
-						self.ReportResult().SubTotals(subtotalResult.ReportData.Rows);
-					});
-				});
-			}
-
-			setTimeout(function () {
-				self.allowTableResize();
-			}, 2000);
+			self.processReportResult(result, reportSql, connectKey, reportSeries);
 		});
 	};
 
@@ -2808,7 +2833,6 @@ var reportViewModel = function (options) {
 		}).done(function (folders) {
 			if (folders.d) { folders = folders.d; }
 			if (folders.result) { folders = folders.result; }
-			self.Folders(folders);
 			self.SelectedFolder(null);
 			if (folderId) {
 				var match = _.filter(folders, function (x) { return x.Id == folderId; });
@@ -2816,6 +2840,7 @@ var reportViewModel = function (options) {
 					self.SelectedFolder(match[0]);
 				}
 			}
+			self.allFolders = folders;
 		});
 	};
 
@@ -3173,10 +3198,10 @@ var reportViewModel = function (options) {
 					// Load report
 					return self.LoadReport(e.reportId).done(function () {
 						if (!e.runMode) {
+							self.SaveReport(true);
 							self.ReportMode("generate");
 						}
 						else {
-							//self.SaveReport(false);
 							self.RunReport(false, true);
 							e.runMode = false;
 						}
@@ -3189,10 +3214,26 @@ var reportViewModel = function (options) {
 						self.ReportName('Copy of ' + self.ReportName());
 						self.CanEdit(true);
 						self.SaveReport(true);
+
+						_.forEach(self.manageAccess.users, function (x) { x.selected(false); });
+						_.forEach(self.manageAccess.viewOnlyUsers, function (x) { x.selected(false); });
+						_.forEach(self.manageAccess.deleteOnlyUsers, function (x) { x.selected(false); });
+						_.forEach(self.manageAccess.userRoles, function (x) { x.selected(false); });
+						_.forEach(self.manageAccess.viewOnlyUserRoles, function (x) { x.selected(false); });
+						_.forEach(self.manageAccess.deleteOnlyUserRoles, function (x) { x.selected(false); });
+
+						var _access = _.find(self.manageAccess.users, { value: self.currentUserId });
+						if (_access) { _access.selected(true); }
+						_access = _.find(self.manageAccess.viewOnlyUsers, { value: self.currentUserId });
+						if (_access) { _access.selected(true); }
+						_access = _.find(self.manageAccess.deleteOnlyUsers, { value: self.currentUserId });
+						if (_access) { _access.selected(true); }
+
 					});
 				};
 
 				e.runReport = function () {
+					self.SaveReport(false);
 					e.runMode = true;
 					e.openReport();
 				};
@@ -3226,6 +3267,13 @@ var reportViewModel = function (options) {
 				}
 			});
 
+			if (!self.adminMode()) {
+				var foldersInUse = _.uniqBy(reports, 'folderId').map(function (r) { return r.folderId });
+				self.Folders(_.filter(self.allFolders, function (folder) { return foldersInUse.includes(folder.Id) || folder.Id == 0 }));
+			} else {
+				self.Folders(self.allFolders);
+			}
+
 			self.SavedReports(reports);
 		});
 	};	
@@ -3239,8 +3287,11 @@ var reportViewModel = function (options) {
 	self.formatNumber = function (number, decPlaces) {
 		if (decPlaces === null) decPlaces = 2;
 		decPlaces = isNaN(decPlaces = Math.abs(decPlaces)) ? 2 : decPlaces;
-		return parseFloat(number).toFixed(decPlaces).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+		const parts = parseFloat(number).toFixed(decPlaces).split('.');
+		parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+		return parts.join('.');
 	}
+
 
 	// ui-validation
 	self.isInputValid = function (ctl) {
@@ -3306,7 +3357,7 @@ var reportViewModel = function (options) {
 
 	self.loadTables = function () {
 		// Load tables
-		ajaxcall({
+		return ajaxcall({
 			url: options.apiUrl,
 			data: {
 				method: "/ReportApi/GetTables",
@@ -3521,6 +3572,11 @@ var dashboardViewModel = function (options) {
 	self.currentUserRole = (options.currentUserRole || []).join();
 	self.reportsAndFolders = ko.observableArray([]);
 	self.allowAdmin = ko.observable(options.allowAdmin);
+	self.FlyFilters = ko.observableArray([]);
+	self.ReportID = ko.observable(0);
+	self.tables = [];
+	self.procs = [];
+	self.folders = [];
 
 	var currentDash = options.dashboardId > 0
 		? (_.find(self.dashboards(), { id: options.dashboardId }) || { name: '', description: '' })
@@ -3747,14 +3803,31 @@ var dashboardViewModel = function (options) {
 				report.showFlyFilters(!report.showFlyFilters());
 			};
 			report.openReport = function () {
-				// Load report
-				return report.LoadReport(x.reportId).done(function () {
+				var promises = [];
+				if (self.tables.length == 0) {
+					promises.push(report.loadTables().done(function (x) {
+						self.tables = x;
+						report.Tables(self.tables);
+					}));
+					promises.push(report.loadProcs().done(function (x) {
+						self.procs = x;
+						report.Procs(self.procs);
+					}));
+					promises.push(report.loadFolders().done(function (x) {
+						self.folders = x;
+						report.Folders(self.folders);
+					}));
+				}
+
+				$.when(promises).done(function () {
+					// Load report
+					report.Tables(self.tables);
+					report.Procs(self.procs);
+					report.Folders(self.folders);
+					report.SaveReport(true);
 					self.selectedReport(report);
-					options.reportWizard.modal('show');
 					setTimeout(function () {
-						if ($.unblockUI) {
-							$.unblockUI();
-						}
+						options.reportWizard.modal('show');
 					}, 1000);
 				});
 			};
@@ -3768,6 +3841,41 @@ var dashboardViewModel = function (options) {
 				if ($.unblockUI) {
 					$.unblockUI();
 				}
+
+				self.FlyFilters([]);
+				_.forEach(self.reports(), function (report) {
+					_.forEach(report.FilterGroups(), function (fg) {
+						_.forEach(fg.Filters(), function (f) {
+							if (f.IsFilterOnFly
+								//&& f.Field().fieldType == 'DateTime'
+								&& _.filter(self.FlyFilters(), function (x) { return f.Field().fieldId == x.Field().fieldId; }).length == 0
+							) {
+								var filter = {
+									AndOr: ko.observable(' AND '),
+									Field: ko.observable(f.Field()),
+									Operator: ko.observable(f.Operator()),
+									Value: ko.observable(f.Value()),
+									Value2: ko.observable(f.Value2()),
+									ValueIn: ko.observable(f.ValueIn()),
+									LookupList: ko.observable(f.LookupList()),
+									Apply: ko.observable(true),
+									IsFilterOnFly: true,
+									showParentFilter: ko.observable(f.showParentFilter())
+								};
+								self.FlyFilters.push(filter);
+
+								if (f.Field().hasForeignKey) {
+									f.LookupList.subscribe(function (x) {
+										filter.LookupList(x);
+										filter.Value(f.Value());
+										filter.Value2(f.Value2());
+										filter.ValueIn(f.ValueIn());
+									});
+								}
+							}
+						});
+					});
+				});
 
 				if (skipGridRefresh === true) return;
 				
@@ -3818,6 +3926,31 @@ var dashboardViewModel = function (options) {
 			}
 		});
 	};
+
+	self.RunReport = function () {
+		_.forEach(self.reports(), function (report) {
+			var filterApplied = false;
+			_.forEach(self.FlyFilters(), function (combinedFilter) {
+				_.forEach(report.FilterGroups(), function (fg) {
+					_.forEach(fg.Filters(), function (f) {
+						if (f.IsFilterOnFly && combinedFilter.Field().fieldId == f.Field().fieldId) {
+							f.Operator(combinedFilter.Operator());
+							f.Value(combinedFilter.Value());
+							f.Value2(combinedFilter.Value2());
+							f.ValueIn(combinedFilter.ValueIn());
+							f.LookupList(combinedFilter.LookupList());
+
+							filterApplied = true;
+						}
+					});
+				});
+			});
+
+			if (filterApplied) {
+				report.RunReport();
+			}
+		});
+	}
 
 	self.init = function () {
 		var adminMode = false;

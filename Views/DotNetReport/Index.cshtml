@@ -36,7 +36,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 userSettings: data,
                 dataFilters: data.dataFilters,
                 printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, Context.Request.Scheme)",
-                samePageOnRun: false
+                samePageOnRun: true
             });
 
             vm.init(queryParams.folderid || 0, data.noAccount);
@@ -77,7 +77,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
         <div class="card folder-panel">
             <div class="card-header">
                 <nav class="navbar navbar-expand-lg navbar-light bg-light">
-                    <a class="navbar-brand" href="#" data-bind="click: function() {SelectedFolder(null); designingHeader(false); searchReports(''); }">Manage Reports</a>
+                    <a class="navbar-brand" href="#" data-bind="click: function() {SelectedFolder(null); designingHeader(false); searchReports(''); $('#search-report').val([]).trigger('change'); }">Manage Reports</a>
                     <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                         <span class="navbar-toggler-icon"></span>
                     </button>
@@ -194,7 +194,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         <div class="clearfix">
                             <p class="pull-left">Please choose a Report from this Folder</p>
                             <div class="pull-right">
-                                <a href="#" data-bind="click: function(){ SelectedFolder(null); }">
+                                <a href="#" data-bind="click: function(){ SelectedFolder(null); searchReports(''); $('#search-report').val([]).trigger('change');}">
                                     ..back to Folders List
                                 </a>
                             </div>
@@ -350,7 +350,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 <div class="modal-body">
                     <p class="alert alert-danger">dotnet Report Account Configuration missing!</p>
                     <p>You do not have the neccessary initial configuration completed to use dotnet Report.</p>
-                    <p>Please view the <a href="https://dotnetreport.com/blog/2016/03/getting-started-with-dotnet-report/" target="_blank">Getting Started Guide</a> to correctly configure dotnet Report.</p>
+                    <p>Please view the <a href="https://dotnetreport.com/blogs/getting-started-with-dotnet-report/" target="_blank">Getting Started Guide</a> to correctly configure dotnet Report.</p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
@@ -389,8 +389,13 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 </button>
                                 <ul class="dropdown-menu">
                                     <li class="dropdown-item">
+                                        <a href="#" data-bind="click: downloadPdf">
+                                            <span class="fa fa-file-pdf-o"></span> Pdf (Enhanced)
+                                        </a>
+                                    </li>
+                                    <li class="dropdown-item">
                                         <a href="#" data-bind="click: downloadPdfAlt">
-                                            <span class="fa fa-file-pdf-o"></span> Pdf
+                                            <span class="fa fa-file-pdf-o"></span> Pdf (Basic)
                                         </a>
                                     </li>
                                     <li class="dropdown-item">

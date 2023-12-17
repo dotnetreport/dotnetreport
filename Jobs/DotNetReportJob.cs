@@ -61,7 +61,7 @@ namespace ReportBuilder.Web.Jobs
             var databaseApiKey = Startup.StaticConfig.GetValue<string>("dotNetReport:dataconnectApiToken");
 
             var fromEmail = Startup.StaticConfig.GetValue<string>("email:fromemail");
-            var fromName = Startup.StaticConfig.GetValue<string>("email.:romname");
+            var fromName = Startup.StaticConfig.GetValue<string>("email:fromname");
             var mailServer = Startup.StaticConfig.GetValue<string>("email:server");
             var mailUserName = Startup.StaticConfig.GetValue<string>("email:username");
             var mailPassword = Startup.StaticConfig.GetValue<string>("email:password");
