@@ -2631,11 +2631,14 @@ var reportViewModel = function (options) {
 		if (!reportSql || !connectKey) return;
 		self.ChartData('');
 		self.ReportResult().ReportData(null);
-		setTimeout(function () {
-			if ($.blockUI) {
-				$.blockUI({ baseZ: 500 });
-			}
-		}, 500);
+		if (!options.samePageOnRun) {
+			setTimeout(function () {
+				if ($.blockUI) {
+					$.blockUI({ baseZ: 500 });
+				}
+			}, 500);
+		}
+
 		return ajaxcall({
 			url: options.execReportUrl,
 			type: "POST",
