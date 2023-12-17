@@ -11,7 +11,7 @@
 	  <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
 	  <PackageReference Include="PdfSharp" Version="1.50.5147" />
 	  <PackageReference Include="Npgsql" Version="7.0.2" />
-	  <PackageReference Include="PuppeteerSharp" Version="8.0.0" />
+	  <PackageReference Include="PuppeteerSharp" Version="11.0.5" />
 	  <PackageReference Include="Quartz" Version="3.5.0" />
 	</ItemGroup>
 
