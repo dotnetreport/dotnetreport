@@ -54,7 +54,7 @@ namespace ReportBuilder.Web.Controllers
             var sql = DotNetReportHelper.Decrypt(lookupSql);
 
             // Uncomment if you want to restrict max records returned
-            sql = sql.Replace("SELECT ", "SELECT TOP 500 ");
+            sql = sql + " LIMIT 500";
 
             var json = new StringBuilder();
             var dt = new DataTable();
