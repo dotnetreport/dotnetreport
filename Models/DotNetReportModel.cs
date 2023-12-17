@@ -226,8 +226,15 @@ namespace ReportBuilder.Web.Models
         public List<TableViewModel> Procedures { get; set; }
 
         public dynamic DbConfig { get; set; }
-    }
+        public UserRolesConfig UserAndRolesConfig { get; set; }
 
+    }
+    public class UserRolesConfig
+    {
+        public bool RequireLogin  { get; set; }
+        public bool UsersSource { get; set; }
+        public bool UserRolesSource { get; set; }
+    }
     public class DotNetReportApiCall
     {
         public string Method { get; set; }
