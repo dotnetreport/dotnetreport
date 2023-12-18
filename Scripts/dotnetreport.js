@@ -2631,11 +2631,14 @@ var reportViewModel = function (options) {
 		if (!reportSql || !connectKey) return;
 		self.ChartData('');
 		self.ReportResult().ReportData(null);
-		setTimeout(function () {
-			if ($.blockUI) {
-				$.blockUI({ baseZ: 500 });
-			}
-		}, 500);
+		if (!options.samePageOnRun && self.ReportMode() != "dashboard") {
+			setTimeout(function () {
+				if ($.blockUI) {
+					$.blockUI({ baseZ: 500 });
+				}
+			}, 500);
+		}
+
 		return ajaxcall({
 			url: options.execReportUrl,
 			type: "POST",
@@ -3601,8 +3604,15 @@ var dashboardViewModel = function (options) {
 			});
 
 			var currentDash = dashboardId > 0
-				? (_.find(self.dashboards(), { id: dashboardId }) || { name: '', description: '' })
-				: (self.dashboards().length > 0 ? self.dashboards()[0] : { name: '', description: '' });
+				? (_.find(self.dashboards(), { id: dashboardId }))
+				: (self.dashboards().length > 0 ? self.dashboards()[0] : null);
+
+			if (currentDash == null) {
+				currentDash = { id: dashboardId, name: self.dashboard.Name(), description: self.dashboard.Description() };
+				if (dashboardId > 0) {
+				  self.dashboards.push(currentDash);
+				}
+			}
 
 			self.dashboard.Id(currentDash.id);
 			self.dashboard.Name(currentDash.name);
