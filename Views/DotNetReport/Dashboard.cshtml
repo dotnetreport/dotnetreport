@@ -34,6 +34,11 @@
             var adminMode = queryParams.adminMode == 'true' ? 'true' : 'false';
 
             ajaxcall({ url: '@Url.Action("GetDashboards", "DotNetReportApi")' + '?adminMode=' + adminMode }).done(function (dashboardData) {
+                if (dashboardData && dashboardData.noAccount === true) {
+                    $("#noaccountModal").modal('show');
+                    return;
+                }
+
                 _.forEach(dashboardData, function (d) {
                     dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles });
                 });
@@ -127,13 +132,8 @@
 
     <div class="col-4 right-align" style="display: none;" data-bind="visible: dashboards().length > 0 ">
         <div class="row">
-
             <label class="col">Switch Dashboard</label>
             <select class="col form-control" data-bind="options: dashboards, optionsText: 'name', optionsValue: 'id', value: selectDashboard"></select>
-            <div class="col">
-                <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Edit Dashboard Settings" data-bind="click: editDashboard">Edit</button>
-                <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Add a New Dashboard" data-bind="click: newDashboard">Add</button>
-            </div>
         </div>
     </div>
 </div>
@@ -144,6 +144,14 @@
 </div>
 
 <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
+
+<div class="row padded-top">
+    <div class="col-md-12">
+        <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Edit Dashboard Settings" data-bind="click: editDashboard">Edit this Dashboard</button>
+        <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Add a New Dashboard" data-bind="click: newDashboard">Add a new Dashboard</button>
+    </div>
+</div>
+<div class="padded-top"></div>
 
 <div class="centered" style="display: none;" data-bind="visible: dashboards().length == 0 ">
     No Dashboards yet. Click below to Start<br />
