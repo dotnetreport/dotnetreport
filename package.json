@@ -1,6 +1,6 @@
 {
   "name": "dotnetreport",
-  "version": "5.2.1",
+  "version": "5.2.2",
   "description": "module that contains all scripts needed for dotnetreport",
   "main": "dotnetreport.js",
   "author": "dotnetreport",
