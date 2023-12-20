@@ -17,7 +17,7 @@ namespace ReportBuilder.Web.Controllers
     public class DotNetReportApiController : ControllerBase
     {
         private readonly IConfigurationRoot _configuration;
-        private readonly string _configFileName = "appsettings.dotnetreport.json";
+        private readonly static string _configFileName = "appsettings.dotnetreport.json";
 
         public DotNetReportApiController()
         {
@@ -576,7 +576,8 @@ namespace ReportBuilder.Web.Controllers
                 DatabaseApiKey = connect.DatabaseApiKey,
                 Tables = tables,
                 Procedures = procedures,
-                DbConfig = dbConfig.ToObject<Dictionary<string, string>>()
+                DbConfig = dbConfig.ToObject<Dictionary<string, string>>(),
+                UserAndRolesConfig = new UserRolesConfig { RequireLogin = true ,UserRolesSource=true,UsersSource=true}
             };
 
                 return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
@@ -588,7 +589,7 @@ namespace ReportBuilder.Web.Controllers
         }
 
 
-        private dynamic GetDbConnectionSettings(string account, string dataConnect)
+        public static dynamic  GetDbConnectionSettings(string account, string dataConnect)
         {
             var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
             if (!System.IO.File.Exists(_configFilePath))
