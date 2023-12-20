@@ -2263,6 +2263,26 @@ var reportViewModel = function (options) {
 					return;
 				}
 
+				if (self.ReportMode().indexOf('export-') == 0) {
+
+					self.ReportID(_result.reportId);
+					self.currentSql(_result.sql);
+					self.currentConnectKey(_result.connectKey);
+					switch (self.ReportMode()) {
+						case 'export-pdf':
+							self.downloadPdf(); break;
+						case 'export-pdfalt':
+							self.downloadPdfAlt(); break;
+						case 'export-excel':
+							self.downloadExcel(); break;
+						case 'export-csv':
+							self.downloadCsv(); break;
+					}
+
+					self.ReportMode('start');
+					return;
+				}
+
 				if (options.samePageOnRun) {
 					self.ReportID(_result.reportId);
 					self.ExecuteReportQuery(_result.sql, _result.connectKey);
@@ -3236,6 +3256,11 @@ var reportViewModel = function (options) {
 
 					});
 				};
+
+				e.exportReport = function (format) {
+					self.ReportMode('export-' + format);
+					e.runReport();
+				}
 
 				e.runReport = function () {
 					self.SaveReport(false);
