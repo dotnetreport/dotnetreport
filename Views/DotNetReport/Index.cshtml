@@ -248,6 +248,10 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                         For Client <span class="label label-info" data-bind="text: clientId ? clientId : 'Any'"></span>
                                                         <br />
                                                     </div>
+                                                    <div>
+                                                        Direct Link to Run Report: <a data-bind="attr: {href: '/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + reportId }" target="_blank"><span class="fa fa-link"></span></a>
+                                                        &nbsp;<a href="#" data-bind="click: navigator.clipboard.writeText('/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + reportId )"><span class="fa fa-copy" title="Click to Copy Link"></span></a>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>

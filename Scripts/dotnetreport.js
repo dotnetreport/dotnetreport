@@ -3125,6 +3125,8 @@ var reportViewModel = function (options) {
 				}).done(function (linkedReport) {
 					if (linkedReport.d) { linkedReport = linkedReport.d; }
 					if (linkedReport.result) { linkedReport = linkedReport.result; }
+					if (queryParams.noparent == 'true') self.ReportMode('execute');
+
 					return self.ExecuteReportQuery(linkedReport.ReportSql, linkedReport.ConnectKey, reportSeries);
 				});
 			}
