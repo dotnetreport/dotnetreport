@@ -1373,6 +1373,7 @@ var reportViewModel = function (options) {
 		self.maxRecords(false);
 		self.OnlyTop(null);
 		self.lastPickedField(null);
+		self.OuterGroupColumns([]);
 	};
 
 	self.SelectedProc.subscribe(function (proc) {
@@ -3025,6 +3026,7 @@ var reportViewModel = function (options) {
 			self.ReportType(report.ReportType);
 		}
 
+		self.OuterGroupColumns([]);
 		self.ReportName(report.ReportName);
 		self.ReportDescription(report.ReportDescription);
 		self.FolderID(report.FolderID);
