@@ -14,6 +14,12 @@ namespace ReportBuilder.Web.Controllers
             return View();
         }
 
+        public async Task<IActionResult> UsersAndRoles(string databaseApiKey = "")
+        {
+            return View();
+        }
+
+
         #region "Private Methods"
 
         public static ConnectViewModel GetConnection(string databaseApiKey = "")
