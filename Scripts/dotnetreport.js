@@ -1373,6 +1373,7 @@ var reportViewModel = function (options) {
 		self.maxRecords(false);
 		self.OnlyTop(null);
 		self.lastPickedField(null);
+		self.OuterGroupColumns([]);
 	};
 
 	self.SelectedProc.subscribe(function (proc) {
@@ -2263,6 +2264,26 @@ var reportViewModel = function (options) {
 					return;
 				}
 
+				if (self.ReportMode().indexOf('export-') == 0) {
+
+					self.ReportID(_result.reportId);
+					self.currentSql(_result.sql);
+					self.currentConnectKey(_result.connectKey);
+					switch (self.ReportMode()) {
+						case 'export-pdf':
+							self.downloadPdf(); break;
+						case 'export-pdfalt':
+							self.downloadPdfAlt(); break;
+						case 'export-excel':
+							self.downloadExcel(); break;
+						case 'export-csv':
+							self.downloadCsv(); break;
+					}
+
+					self.ReportMode('start');
+					return;
+				}
+
 				if (options.samePageOnRun) {
 					self.ReportID(_result.reportId);
 					self.ExecuteReportQuery(_result.sql, _result.connectKey);
@@ -2631,11 +2652,14 @@ var reportViewModel = function (options) {
 		if (!reportSql || !connectKey) return;
 		self.ChartData('');
 		self.ReportResult().ReportData(null);
-		setTimeout(function () {
-			if ($.blockUI) {
-				$.blockUI({ baseZ: 500 });
-			}
-		}, 500);
+		if (!options.samePageOnRun && self.ReportMode() != "dashboard") {
+			setTimeout(function () {
+				if ($.blockUI) {
+					$.blockUI({ baseZ: 500 });
+				}
+			}, 500);
+		}
+
 		return ajaxcall({
 			url: options.execReportUrl,
 			type: "POST",
@@ -3008,6 +3032,7 @@ var reportViewModel = function (options) {
 			self.ReportType(report.ReportType);
 		}
 
+		self.OuterGroupColumns([]);
 		self.ReportName(report.ReportName);
 		self.ReportDescription(report.ReportDescription);
 		self.FolderID(report.FolderID);
@@ -3128,6 +3153,8 @@ var reportViewModel = function (options) {
 				}).done(function (linkedReport) {
 					if (linkedReport.d) { linkedReport = linkedReport.d; }
 					if (linkedReport.result) { linkedReport = linkedReport.result; }
+					if (queryParams.noparent == 'true') self.ReportMode('execute');
+
 					return self.ExecuteReportQuery(linkedReport.ReportSql, linkedReport.ConnectKey, reportSeries);
 				});
 			}
@@ -3237,6 +3264,11 @@ var reportViewModel = function (options) {
 
 					});
 				};
+
+				e.exportReport = function (format) {
+					self.ReportMode('export-' + format);
+					e.runReport();
+				}
 
 				e.runReport = function () {
 					self.SaveReport(false);
@@ -3608,8 +3640,15 @@ var dashboardViewModel = function (options) {
 			});
 
 			var currentDash = dashboardId > 0
-				? (_.find(self.dashboards(), { id: dashboardId }) || { name: '', description: '' })
-				: (self.dashboards().length > 0 ? self.dashboards()[0] : { name: '', description: '' });
+				? (_.find(self.dashboards(), { id: dashboardId }))
+				: (self.dashboards().length > 0 ? self.dashboards()[0] : null);
+
+			if (currentDash == null) {
+				currentDash = { id: dashboardId, name: self.dashboard.Name(), description: self.dashboard.Description() };
+				if (dashboardId > 0) {
+				  self.dashboards.push(currentDash);
+				}
+			}
 
 			self.dashboard.Id(currentDash.id);
 			self.dashboard.Name(currentDash.name);

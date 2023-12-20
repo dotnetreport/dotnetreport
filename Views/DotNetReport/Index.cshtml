@@ -210,7 +210,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <div class="list-group-item">
                                     <div class="row">
                                         <div class="col-sm-7">
-                                            <div class="fa fa-2x pull-left" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map', 'fa-window-maximize': reportType=='Single', 'fa-random': reportType=='Pivot'}"></div>
+                                            <div class="fa fa-2x pull-left" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType.indexOf('Map')==0, 'fa-window-maximize': reportType=='Single', 'fa-random': reportType=='Pivot'}"></div>
                                             <div class="pull-left">
                                                 <h4>
                                                     <a data-bind="click: runReport" style="cursor: pointer">
@@ -248,6 +248,10 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                         For Client <span class="label label-info" data-bind="text: clientId ? clientId : 'Any'"></span>
                                                         <br />
                                                     </div>
+                                                    <div>
+                                                        Direct Link to Run Report: <a data-bind="attr: {href: '/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + reportId }" target="_blank"><span class="fa fa-link"></span></a>
+                                                        &nbsp;<a href="#" data-bind="click: navigator.clipboard.writeText(window.location.href + '/Report?linkedreport=true&noparent=true&reportId=' + reportId )"><span class="fa fa-copy" title="Click to Copy Link"></span></a>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -262,9 +266,20 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                         <span class="fa fa-copy" aria-hidden="true"></span>Copy
                                                     </button>
                                                 </span>
-                                                <button class="btn btn-sm btn-primary" data-bind="click: runReport">
-                                                    <span class="fa fa-gears" aria-hidden="true"></span>Run
-                                                </button>
+                                                <div class="btn-group">
+                                                    <button type="button" class="btn btn-sm btn-primary" data-bind="click: runReport">
+                                                        <span class="fa fa-gears" aria-hidden="true"></span>Run
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" style="margin-left: -4px;">
+                                                        <span class="sr-only"></span>
+                                                    </button>
+                                                    <div class="dropdown-menu">
+                                                        <a class="dropdown-item" href="#" data-bind="click: function() {exportReport('excel');}">
+                                                            <span class="fa fa-file-excel-o"></span> Download Excel
+                                                        </a>
+                                                    </div>
+                                                </div>
+
                                                 <button class="btn btn-sm btn-danger" data-bind="click: deleteReport, visible: canDelete">
                                                     <span class="fa fa-trash" aria-hidden="true"></span>Delete
                                                 </button>
