@@ -1325,7 +1325,7 @@ namespace ReportBuilder.Web.Models
         /// </summary>
         public static string Decrypt(string encryptedText)
         {
-            encryptedText = encryptedText.Split(new string[] { "%2C" }, StringSplitOptions.RemoveEmptyEntries)[0];
+            encryptedText = encryptedText.Split(new string[] { "%2C", "," }, StringSplitOptions.RemoveEmptyEntries)[0];
             byte[] initVectorBytes = Encoding.ASCII.GetBytes("yk0z8f39lgpu70gi"); // PLESE DO NOT CHANGE THIS KEY
             int keysize = 256;
 

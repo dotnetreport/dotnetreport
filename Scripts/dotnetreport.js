@@ -1835,7 +1835,7 @@ var reportViewModel = function (options) {
 		return _.filter(self.SelectedFields(), function (x) { return x.fieldType == "DateTime"; });
 	});
 	self.TotalSeries = ko.observable(0);
-	self.AllSqlQuries = ko.observable("");
+	self.allSqlQueries = ko.observable("");
 
 	self.canAddSeries = ko.computed(function () {
 		var c1 = self.dateFields().length > 0 && ['Summary', 'Bar', 'Line', 'Single'].indexOf(self.ReportType()) >= 0 && self.SelectedFields()[0].fieldType == 'DateTime';
@@ -2209,7 +2209,7 @@ var reportViewModel = function (options) {
 		var isExecuteReportQuery = false;
 		var _result = null;
 		var seriesCount = self.AdditionalSeries().length;
-		self.AllSqlQuries('');
+		self.allSqlQueries('');
 		var promises = [];
 		do {
 			if (i > 0) {
@@ -2233,7 +2233,7 @@ var reportViewModel = function (options) {
 				if (result.d) { result = result.d; }
 				if (result.result) { result = result.result; }
 				_result = result;
-				self.AllSqlQuries(self.AllSqlQuries() + (result.sql + ","));
+				self.allSqlQueries(self.allSqlQueries() + (self.allSqlQueries() ? ',' : '') + result.sql);
 
 				self.ReportID(result.reportId);
 				if (self.SaveReport()) {
@@ -2241,7 +2241,7 @@ var reportViewModel = function (options) {
 					if (saveOnly && seriesCount === 0) {
 						//SeriesCount = 0;
 						toastr.success("Report Saved");
-						self.AllSqlQuries("");
+						self.allSqlQueries("");
 						self.LoadAllSavedReports(true);
 					}
 				}
@@ -2289,7 +2289,7 @@ var reportViewModel = function (options) {
 
 				if (options.samePageOnRun) {
 					self.ReportID(_result.reportId);
-					self.ExecuteReportQuery(self.AllSqlQuries(), _result.connectKey, _.map(self.AdditionalSeries(), function (e, i) {
+					self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, _.map(self.AdditionalSeries(), function (e, i) {
 						return e.Value();
 					}).join(','));
 					self.ReportMode("execute");
@@ -2308,7 +2308,7 @@ var reportViewModel = function (options) {
 						showUniqueRecords: self.ShowUniqueRecords(),
 						aggregateReport: self.AggregateReport(),
 						showDataWithGraph: self.ShowDataWithGraph(),
-						reportSql: self.AllSqlQuries(),
+						reportSql: self.allSqlQueries(),
 						connectKey: _result.connectKey,
 						reportFilter: JSON.stringify(_.map(self.FlyFilters(), function (x) { return ko.toJS(x); })),
 						reportType: self.ReportType(),
