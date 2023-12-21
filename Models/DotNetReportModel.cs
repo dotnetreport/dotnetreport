@@ -817,7 +817,7 @@ namespace ReportBuilder.Web.Models
 
                     if (allExpanded)
                     {
-                        var insertRowIndex = 5;
+                        var insertRowIndex = 3;
                         foreach (DataRow dr in dt.Rows)
                         {
                             var drilldownRow = new List<string>();
@@ -852,13 +852,14 @@ namespace ReportBuilder.Web.Models
                                 var adp = new OleDbDataAdapter(cmd);
                                 adp.Fill(ddt);
 
-                                ws.InsertRow(insertRowIndex, ddt.Rows.Count + 1);
-                                ws.Cells[insertRowIndex, dt.Columns.Count + 1].LoadFromDataTable(ddt, true);
-                                insertRowIndex += ddt.Rows.Count + 2;
+                                ws.InsertRow(insertRowIndex + 2, ddt.Rows.Count);
+                                ws.Cells[insertRowIndex == 3 ? 3 : (insertRowIndex + 1), dt.Columns.Count + 1].LoadFromDataTable(ddt, insertRowIndex == 3);
+                                insertRowIndex += ddt.Rows.Count + 1;
                             }
                         }
                     }
 
+                    ws.View.FreezePanes(4, 1);
                     return xp.GetAsByteArray();
                 }
             }
