@@ -825,7 +825,7 @@ namespace ReportBuilder.Web.Models
                                         ""LabelValue"":""'{dr[dc]}'"",
                                         ""NumericValue"":null,
                                         ""Column"":{{
-                                            ""SqlField"":""{col}"",
+                                            ""SqlField"":""{col.Substring(0, col.LastIndexOf(" AS "))}"",
                                             ""ColumnName"":""{dc.ColumnName}"",
                                             ""DataType"":""{dc.DataType.ToString()}"",
                                             ""IsNumeric"":{(dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal" ? "true" : "false")},
@@ -838,7 +838,7 @@ namespace ReportBuilder.Web.Models
                             var reportData = expandSqls.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(',', drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
                             var drilldownSql = RunReportApiCall(reportData).Result;
                             if (!string.IsNullOrEmpty(drilldownSql))
-                            {
+                            {                                
                                 var ddt = new DataTable();
                                 var cmd = new OleDbCommand(drilldownSql, conn);
                                 var adp = new OleDbDataAdapter(cmd);
