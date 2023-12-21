@@ -1838,7 +1838,7 @@ var reportViewModel = function (options) {
 	self.AllSqlQuries = ko.observable("");
 
 	self.canAddSeries = ko.computed(function () {
-		var c1 = self.dateFields().length > 0 && ['Group', 'Bar', 'Line', 'Single'].indexOf(self.ReportType()) >= 0 && self.SelectedFields()[0].fieldType == 'DateTime';
+		var c1 = self.dateFields().length > 0 && ['Summary', 'Bar', 'Line', 'Single'].indexOf(self.ReportType()) >= 0 && self.SelectedFields()[0].fieldType == 'DateTime';
 		var c2 = _.filter(self.FilterGroups(), function (g) { return _.filter(g.Filters(), function (x) { return x.Operator() == 'range' && x.Value() && x.Value().indexOf('This') == 0; }).length > 0; }).length > 0;
 		return c1 && c2;
 	});
