@@ -2802,7 +2802,7 @@ var reportViewModel = function (options) {
 		data.addRows(rowArray);
 
 		// Set chart options
-		var options = {
+		var chartOptions = {
 			'title': self.ReportName(),
 			animation: {
 				startup: true,
@@ -2810,6 +2810,11 @@ var reportViewModel = function (options) {
 				easing: 'out'
 			}
 		};
+
+		if (options.chartSize) {
+			chartOptions.width = options.chartSize.width;
+			chartOptions.height = options.chartSize.height;
+		}
 
 		var chartDiv = document.getElementById('chart_div_' + self.ReportID());
 		var chart = null;
@@ -2831,18 +2836,18 @@ var reportViewModel = function (options) {
 			chart = new google.visualization.GeoChart(chartDiv);
 			// Refer to for full list of regions https://developers.google.com/chart/interactive/docs/gallery/geochart#Continent_Hierarchy
 			if (self.mapRegion() == 'US States') {
-				options.displayMode = 'regions';
-				options.region = 'US';
-				options.resolution = 'provinces';
+				chartOptions.displayMode = 'regions';
+				chartOptions.region = 'US';
+				chartOptions.resolution = 'provinces';
 			}
 			if (self.mapRegion() == 'US Metro') {
-				options.displayMode = 'regions';
-				options.region = 'US';
-				options.resolution = 'metros';
+				chartOptions.displayMode = 'regions';
+				chartOptions.region = 'US';
+				chartOptions.resolution = 'metros';
 			}
 			if (self.mapRegion() == 'North America') {
-				options.displayMode = 'regions';
-				options.region = '021';
+				chartOptions.displayMode = 'regions';
+				chartOptions.region = '021';
 			}
 		}
 
@@ -2860,7 +2865,7 @@ var reportViewModel = function (options) {
 			}
 		});
 
-		chart.draw(data, options);
+		chart.draw(data, chartOptions);
 	};
 
 	self.loadFolders = function (folderId) {
