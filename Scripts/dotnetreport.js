@@ -2209,6 +2209,7 @@ var reportViewModel = function (options) {
 		var isExecuteReportQuery = false;
 		var _result = null;
 		var seriesCount = self.AdditionalSeries().length;
+		self.AllSqlQuries('');
 		var promises = [];
 		do {
 			if (i > 0) {
@@ -2288,7 +2289,9 @@ var reportViewModel = function (options) {
 
 				if (options.samePageOnRun) {
 					self.ReportID(_result.reportId);
-					self.ExecuteReportQuery(_result.sql, _result.connectKey);
+					self.ExecuteReportQuery(self.AllSqlQuries(), _result.connectKey, _.map(self.AdditionalSeries(), function (e, i) {
+						return e.Value();
+					}).join(','));
 					self.ReportMode("execute");
 
 					if (self.useReportHeader()) {
@@ -2856,7 +2859,7 @@ var reportViewModel = function (options) {
 		// Add click event listener
 		google.visualization.events.addListener(chart, 'select', function () {
 			var selectedItem = chart.getSelection()[0];
-			if (selectedItem) {
+			if (selectedItem && selectedItem.row) {
 				self.ChartDrillDownData(null);
 				self.ReportResult().ReportData().Rows[selectedItem.row].expand();
 				$("#drilldownModal").modal('show');
@@ -3049,6 +3052,7 @@ var reportViewModel = function (options) {
 		}
 
 		self.OuterGroupColumns([]);
+		self.AdditionalSeries([]);
 		self.ReportName(report.ReportName);
 		self.ReportDescription(report.ReportDescription);
 		self.FolderID(report.FolderID);
