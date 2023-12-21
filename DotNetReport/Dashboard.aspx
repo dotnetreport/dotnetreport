@@ -125,23 +125,26 @@
 
     <div class="col-4 right-align" style="display: none;" data-bind="visible: dashboards().length > 0 ">
         <div class="row">
-
             <label class="col">Switch Dashboard</label>
             <select class="col form-control" data-bind="options: dashboards, optionsText: 'name', optionsValue: 'id', value: selectDashboard"></select>
-            <div class="col">
-                    <button onclick="return false;" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Edit Dashboard Settings" data-bind="click: editDashboard">Edit</button>
-                    <button onclick="return false;" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Add a New Dashboard" data-bind="click: newDashboard">Add</button>
-            </div>
         </div>
     </div>
 </div>
 <div class="clearfix"></div>
 
 <div class="pull-right">
-        <a href="/DotnetReport/Index.aspx">Manage Reports</a> | Learn how to <a href="https://dotnetreport.com/getting-started-with-dotnet-report/" target="_blank">Integrate in your App here</a>.
+    <a href="/DotnetReport/Index.aspx">Manage Reports</a> | Learn how to <a href="https://dotnetreport.com/getting-started-with-dotnet-report/" target="_blank">Integrate in your App here</a>.
 </div>
 
 <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
+
+<div class="row padded-top">
+    <div class="col-md-12">
+        <button class="btn btn-primary btn-sm" onclick="return false;" data-toggle="modal" data-target="#add-dashboard-modal" title="Edit Dashboard Settings" data-bind="click: editDashboard">Edit this Dashboard</button>
+        <button class="btn btn-primary btn-sm" onclick="return false;" data-toggle="modal" data-target="#add-dashboard-modal" title="Add a New Dashboard" data-bind="click: newDashboard">Add a new Dashboard</button>
+    </div>
+</div>
+<div class="padded-top"></div>
 
 <div class="centered" style="display: none;" data-bind="visible: dashboards().length == 0 ">
     No Dashboards yet. Click below to Start<br />
@@ -247,6 +250,12 @@
                                 <span class="fa fa-file-pdf-o"></span> PDF
                             </a>
                         </li>
+                        <li class="dropdown-item">
+                            <a data-bind="attr: {href: '/DotNetReport/Report.aspx?linkedreport=true&noparent=true&reportId=' + ReportID() }" target="_blank">
+                                <span class="fa fa-file"></span> Report
+                            </a>
+                        </li>
+
                         <li class="dropdown-item">
                             <a href="#" data-bind="click: function() { $parent.removeReportFromDashboard(ReportID()); }">
                                 <span class="fa fa-close"></span> Remove

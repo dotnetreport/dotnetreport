@@ -97,6 +97,11 @@
                     <span class="fa fa-file-excel-o"></span> Excel
                 </a>
             </li>
+            <li class="dropdown-item" data-bind="visible: canDrilldown">
+                <a href="#" data-bind="click: downloadExcelWithDrilldown">
+                    <span class="fa fa-file-excel-o"></span> Excel (Expanded)
+                </a>
+            </li>
             <li class="dropdown-item">
                 <a href="#" data-bind="click: downloadCsv">
                     <span class="fa fa-file-excel-o"></span> Csv
