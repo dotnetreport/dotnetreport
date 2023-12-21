@@ -2527,6 +2527,7 @@ var reportViewModel = function (options) {
 						processRow(dr.Items, ddData.ReportData.Columns);
 					});
 
+					self.ChartDrillDownData(e);
 					e.DrillDownData(ddData.ReportData);
 					e.pager.totalRecords(ddData.Pager.TotalRecords);
 					e.pager.pages(ddData.Pager.TotalPages);
@@ -2648,6 +2649,9 @@ var reportViewModel = function (options) {
 			self.allowTableResize();
 		}, 2000);
 	}
+
+	self.ChartDrillDownData = ko.observable();
+
 	self.ExecuteReportQuery = function (reportSql, connectKey, reportSeries) {
 		if (!reportSql || !connectKey) return;
 		self.ChartData('');
@@ -2839,6 +2843,16 @@ var reportViewModel = function (options) {
 
 		google.visualization.events.addListener(chart, 'ready', function () {
 			self.ChartData(chart.getImageURI());
+		});
+
+		// Add click event listener
+		google.visualization.events.addListener(chart, 'select', function () {
+			var selectedItem = chart.getSelection()[0];
+			if (selectedItem) {
+				self.ChartDrillDownData(null);
+				self.ReportResult().ReportData().Rows[selectedItem.row].expand();
+				$("#drilldownModal").modal('show');
+			}
 		});
 
 		chart.draw(data, options);

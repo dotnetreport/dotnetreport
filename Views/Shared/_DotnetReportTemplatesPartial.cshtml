@@ -1375,6 +1375,71 @@
     </div>
 </script>
 
+<div class="modal" id="drilldownModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" data-bind="with: ChartDrillDownData">
+            <div class="modal-header">
+                <h4 class="modal-title">Drilldown Details Data</h4>
+                <button type="button" class="close pull-right" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <!-- ko if: DrillDownData -->
+            <div class="modal-body">
+                <table class="table table-hover table-condensed" data-bind="with: DrillDownData">
+                    <thead>
+                        <tr class="no-highlight">
+                            <!-- ko foreach: Columns -->
+                            <th data-bind="attr: { id: fieldId }, css: {'right-align': IsNumeric}, style: {'width': fieldWidth, 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
+                                <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
+                               
+                            </th>
+                            <!-- /ko -->
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="display: none;" data-bind="visible: Rows && Rows.length < 1">
+                            <td class="text-info" data-bind="attr:{colspan: Columns.length}">
+                                No records found
+                            </td>
+                        </tr>
+                        <!-- ko foreach: Rows  -->
+                        <tr>
+                            <!-- ko foreach: Items -->
+                            <td data-bind="hidden: outerGroup, style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal' }">
+                                <div data-bind="style: {'width': fieldWidth }">
+                                    <!-- ko if: LinkTo-->
+                                    <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: FormattedValue"></span></a>
+                                    <!-- /ko-->
+                                    <!-- ko ifnot: LinkTo-->
+                                    <span data-bind="html: FormattedValue"></span>
+                                    <!-- /ko-->
+                                </div>
+                            </td>
+                            <!-- /ko-->
+                        </tr> 
+                        <!-- /ko -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <div class="col-xs-12 col-centered" data-bind="with: pager">
+                    <div class="form-inline small text-muted">
+                        <div class="pull-left total-records" data-bind="visible: pages()">
+                            <span data-bind="text: 'Total Records: ' + totalRecords()"></span>
+                        </div>
+                        <div class="pull-left">
+                            <button class="btn btn-xs" title="Download Excel" data-bind="click: $parent.exportExcel"><span class="fa fa-file-excel-o"></span></button>
+                        </div>
+                        <div class="form-group pull-right" data-bind="visible: pages()">
+                            <div data-bind="template: 'pager-template', data: $data"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- /ko -->
+        </div>
+    </div>
+</div>
+
 <div class="modal" id="noaccountModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">

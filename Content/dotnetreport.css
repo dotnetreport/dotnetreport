@@ -722,3 +722,13 @@ select.is-invalid ~ span .select2-selection {
     .bootbox.modal .modal-dialog {
         margin: 0;
     }
+
+.modal-header .modal-title {
+    margin: 0 auto;
+    text-align: left;
+    width: 100%;
+}
+
+.modal-dialog.modal-lg {
+    max-width: 90%; /* or any percentage or pixel value you prefer */
+}
