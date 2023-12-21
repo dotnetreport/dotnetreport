@@ -2276,6 +2276,8 @@ var reportViewModel = function (options) {
 							self.downloadPdfAlt(); break;
 						case 'export-excel':
 							self.downloadExcel(); break;
+						case 'export-excel-sub':
+							self.downloadExcelWithDrilldown(); break;
 						case 'export-csv':
 							self.downloadCsv(); break;
 					}
@@ -3290,6 +3292,7 @@ var reportViewModel = function (options) {
 					e.openReport();
 				};
 
+				e.hasDrilldown = ["List", "Pivot"].indexOf(e.reportType) < 0;
 				e.deleteReport = function () {
 					bootbox.confirm("Are you sure you would like to Delete this Report?", function (r) {
 						if (r) {
@@ -3587,8 +3590,21 @@ var reportViewModel = function (options) {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
-			allExpanded: self.allExpanded(),
+			allExpanded: false,
 			expandSqls: self.allExpanded() ? JSON.stringify(self.BuildReportData()) : '',
+			columnDetails: self.getColumnDetails(),
+			includeSubTotal: self.IncludeSubTotal(),
+			pivot: self.ReportType() == 'Pivot'
+		}, 'xlsx');
+	}
+
+	self.downloadExcelWithDrilldown = function () {
+		self.downloadExport("DownloadExcel", {
+			reportSql: self.currentSql(),
+			connectKey: self.currentConnectKey(),
+			reportName: self.ReportName(),
+			allExpanded: true,
+			expandSqls: JSON.stringify(self.BuildReportData()),
 			columnDetails: self.getColumnDetails(),
 			includeSubTotal: self.IncludeSubTotal(),
 			pivot: self.ReportType() == 'Pivot'
