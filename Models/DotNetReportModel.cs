@@ -1189,7 +1189,7 @@ namespace ReportBuilder.Web.Models
             var executablePath = "";
             foreach (var d in Directory.GetDirectories(installPath))
             {
-                executablePath = $"{d}\\chrome-win64\\chrome.exe";
+                executablePath = $"{d}\\chrome-win\\chrome.exe";
                 if (File.Exists(executablePath)) break;
             }
 

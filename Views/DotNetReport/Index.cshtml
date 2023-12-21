@@ -12,7 +12,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
 -->
 @section scripts{
 
-<script type="text/javascript">
+    <script type="text/javascript">
 
     var toastr = toastr || { error: function(msg) { window.alert(msg); }, success: function(msg) { window.alert(msg); } };
 
@@ -35,6 +35,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 reportId: queryParams.reportId || 0,
                 userSettings: data,
                 dataFilters: data.dataFilters,
+                printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, this.Request.Url.Scheme)",
                 samePageOnRun: true
             });
 
@@ -48,7 +49,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
         });
     });
 
-</script>
+    </script>
 }
 
 <div class="container-fluid">
