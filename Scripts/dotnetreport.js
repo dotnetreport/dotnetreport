@@ -3639,6 +3639,7 @@ var dashboardViewModel = function (options) {
 	self.tables = [];
 	self.procs = [];
 	self.folders = [];
+	self.ChartDrillDownData = ko.observable();
 
 	var currentDash = options.dashboardId > 0
 		? (_.find(self.dashboards(), { id: options.dashboardId }) || { name: '', description: '' })
@@ -3900,6 +3901,10 @@ var dashboardViewModel = function (options) {
 					}, 1000);
 				});
 			};
+
+			report.ChartDrillDownData.subscribe(function (e) {
+				self.ChartDrillDownData(e);
+			});
 			allreports.push(report);
 			promises.push(report.LoadReport(x.reportId, true, ''));
 		});
