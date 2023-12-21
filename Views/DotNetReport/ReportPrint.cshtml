@@ -227,31 +227,34 @@
             reportHeader: 'report-header',
             userSettings: data,
             dataFilters: data.dataFilters,
-            reportData: JSON.parse(decodeHTMLEntities('@Model.ReportData'))
+            reportData: JSON.parse(decodeHTMLEntities('@Model.ReportData')),
+            chartSize: { width: 1000, height: 450 }
         });
 
         vm.pager.pageSize(10000);
-
         ko.applyBindings(vm);
-            vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {                
-                if (vm.useReportHeader()) {
-                    vm.headerDesigner.init(true);
-                    vm.headerDesigner.loadCanvas(true);
-                }
-
-                if (vm.useStoredProc()) {
-                    setTimeout(function(){
-                        vm.printReport();
-                    }, 1000);
-                } else {
+        vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {                
+            if (vm.useReportHeader()) {
+                vm.headerDesigner.init(true);
+                vm.headerDesigner.loadCanvas(true);
+            }
+            
+            if (vm.useStoredProc()) {
+                setTimeout(function(){
                     vm.printReport();
-                }
+                }, 1000);
+            } else {
+                vm.printReport();
+            }
 
-                setTimeout(function () {
-                    $('.report-inner').show();
-                }, 1100);
+            setTimeout(function () {
+                $('.report-inner').show();
+            }, 1500);
 
-            });
+            setTimeout(function () {
+                $('.report-inner').show();
+            }, 15000);
+        });
 
         $(window).resize(function(){
             vm.DrawChart();
@@ -369,7 +372,6 @@
             <!-- /ko -->
             <!-- /ko -->
         </div>
-    </script>
     </script>
 </body>
 </html>
