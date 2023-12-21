@@ -762,7 +762,7 @@ namespace ReportBuilder.Web.Models
             return model;
         }
 
-        public static byte[] GetExcelFile(string reportSql, string connectKey, string reportName, bool allExpanded = false,
+        public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, bool allExpanded = false,
                 string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
         {
             var sql = Decrypt(reportSql);
@@ -844,7 +844,7 @@ namespace ReportBuilder.Web.Models
                             }
 
                             var reportData = expandSqls.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
-                            var drilldownSql = RunReportApiCall(reportData).Result;
+                            var drilldownSql = await RunReportApiCall(reportData);
                             if (!string.IsNullOrEmpty(drilldownSql))
                             {                                
                                 var ddt = new DataTable();

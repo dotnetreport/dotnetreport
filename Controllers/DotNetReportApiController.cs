@@ -315,7 +315,7 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        [HttpGet]
+        [HttpPost]
         public async Task<JsonResult> RunReportLink(int reportId, int? filterId = null, string filterValue = "", bool adminMode = false)
         {
             var model = new DotNetReportModel();
