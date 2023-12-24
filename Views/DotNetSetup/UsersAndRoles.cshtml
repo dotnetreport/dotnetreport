@@ -55,7 +55,7 @@
 
         $(document).ready(function () {
             var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
-            ajaxcall({ url: '@Url.Action("LoadSetupSchema", "DotNetReportApi")' + '?databaseApiKey=' + (queryParams.databaseApiKey || '') + '&onlyApi=false' }).done(function (model) {
+            ajaxcall({ url: '@Url.Action("LoadSetupSchema", "DotNetReportApi")' + '?databaseApiKey=' + (queryParams.databaseApiKey || '') }).done(function (model) {
                 if (model && model.noAccount === true) {
                     $("#noaccountModal").modal('show');
                     return;

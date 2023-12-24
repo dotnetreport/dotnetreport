@@ -546,7 +546,7 @@ namespace ReportBuilder.Web.Controllers
 
         //[Authorize(Roles="Administrator")]
         [HttpGet]
-        public async Task<IActionResult> LoadSetupSchema(string? databaseApiKey = "", bool onlyApi = false)
+        public async Task<IActionResult> LoadSetupSchema(string? databaseApiKey = "", bool? onlyApi = null)
         {
             try
             {
@@ -562,23 +562,33 @@ namespace ReportBuilder.Web.Controllers
                     throw new Exception("Not Authorized to access this Resource");
                 }
 
-            var connect = DotNetSetupController.GetConnection(databaseApiKey);
-            var tables = new List<TableViewModel>();
-            var procedures = new List<TableViewModel>();
-            //tables.AddRange(await DotNetSetupController.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey, onlyApi));
-            //tables.AddRange(await DotNetSetupController.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey, onlyApi));
-            //procedures.AddRange(await DotNetSetupController.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
-            var dbConfig = GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey) ?? new JObject();
-            var model = new ManageViewModel
-            {
-                ApiUrl = connect.ApiUrl,
-                AccountApiKey = connect.AccountApiKey,
-                DatabaseApiKey = connect.DatabaseApiKey,
-                Tables = tables,
-                Procedures = procedures,
-                DbConfig = dbConfig.ToObject<Dictionary<string, string>>(),
-                UserAndRolesConfig = new UserRolesConfig { RequireLogin = true ,UserRolesSource=true,UsersSource=true}
-            };
+                var connect = DotNetSetupController.GetConnection(databaseApiKey);
+                var tables = new List<TableViewModel>();
+                var procedures = new List<TableViewModel>();
+                if (onlyApi.HasValue)
+                {
+                    if (onlyApi.Value)
+                    {
+                        tables.AddRange(await DotNetSetupController.GetApiTables(connect.AccountApiKey, connect.DatabaseApiKey, true));
+                    }
+                    else
+                    {
+                        tables.AddRange(await DotNetSetupController.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
+                        tables.AddRange(await DotNetSetupController.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
+                    }
+                    procedures.AddRange(await DotNetSetupController.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
+                }
+                var dbConfig = GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey) ?? new JObject();
+                var model = new ManageViewModel
+                {
+                    ApiUrl = connect.ApiUrl,
+                    AccountApiKey = connect.AccountApiKey,
+                    DatabaseApiKey = connect.DatabaseApiKey,
+                    Tables = tables,
+                    Procedures = procedures,
+                    DbConfig = dbConfig.ToObject<Dictionary<string, string>>(),
+                    UserAndRolesConfig = new UserRolesConfig { RequireLogin = true, UserRolesSource = true, UsersSource = true }
+                };
 
                 return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
             }
@@ -587,7 +597,6 @@ namespace ReportBuilder.Web.Controllers
                 return new JsonResult(new { Message = ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null }) { StatusCode = (int)HttpStatusCode.InternalServerError };
             }
         }
-
 
         public static dynamic  GetDbConnectionSettings(string account, string dataConnect)
         {

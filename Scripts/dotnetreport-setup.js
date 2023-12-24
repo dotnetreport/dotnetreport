@@ -17,6 +17,16 @@ var manageViewModel = function (options) {
 	self.UserAndRolesConfig = new usersAndRolesViewModel(options);
 	self.pager = new pagerViewModel({autoPage: true});
 	self.pager.totalRecords(self.Tables.model().length);
+	self.onlyApi= ko.observable(options.onlyApi)
+
+	self.loadFromDatabase = function() {
+		bootbox.confirm("Confirm loading all Tables and Views from the database? Note: This action will discard unsaved changes and it may take some time.", function (r) {
+			if (r) {
+				window.location.href = window.location.pathname + "?onlyApi=false&" + $.param({ 'databaseApiKey': self.currentConnectionKey() })
+			}
+		});
+
+	}
 
 	self.Tables.filteredTables.subscribe(function (x) {		
 		self.pager.totalRecords(x.length);

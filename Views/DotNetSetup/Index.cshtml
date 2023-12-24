@@ -50,7 +50,7 @@
 
         $(document).ready(function () {
             var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
-            ajaxcall({ url: '@Url.Action("LoadSetupSchema", "DotNetReportApi")' + '?databaseApiKey=' + (queryParams.databaseApiKey || '') + '&onlyApi=false' }).done(function (model) {
+            ajaxcall({ url: '@Url.Action("LoadSetupSchema", "DotNetReportApi")' + '?databaseApiKey=' + (queryParams.databaseApiKey || '') + '&onlyApi=' + (queryParams.onlyApi === 'false' ? false : true) }).done(function (model) {
                 if (model && model.noAccount === true) {
                     $("#noaccountModal").modal('show');
                     return;
@@ -71,7 +71,8 @@
                     searchProcUrl: '@Url.Action("SearchProcedure", "DotNetReportApi")',
                     getSchemaFromSql: '@Url.Action("GetSchemaFromSql", "DotNetReportApi")',
                     updateDbConnectionUrl: '@Url.Action("UpdateDbConnection", "DotNetReportApi")',
-                    apiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")'
+                    apiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")',
+                    onlyApi: queryParams.onlyApi !== 'false'
                 };
 
                 var vm = new manageViewModel(options);
@@ -208,8 +209,9 @@
                 <button class="btn btn-sm" data-bind="click: clearTableFilter,  visible: tableFilter()!='' && tableFilter()!=null"><span class="fa fa-remove"></span></button>
                 <button class="btn btn-sm" onclick="openall()" style="margin-left: 15px;">Open all</button>
                 <button class="btn btn-sm" onclick="closeall()">Close all</button>
-                <button class="btn btn-sm" data-bind="click: toggleShowAll, hidden: $root.customTableMode, text: usedOnly() ? 'Show all' : 'Show used only'">Show used only</button>
+                <button class="btn btn-sm" data-bind="click: toggleShowAll, hidden: $root.customTableMode() || $root.onlyApi(), text: usedOnly() ? 'Show all' : 'Show used only'">Show used only</button>
                 <button class="btn btn-sm btn-primary" data-bind="click: $root.customSql.addNewCustomSqlTable, visible: $root.customTableMode">Add New Custom Table</button>
+                <button class="btn btn-sm btn-primary" data-bind="click: $root.loadFromDatabase, hidden: $root.customTableMode() || !$root.onlyApi()">Load all DB Tables</button>
             </div>
             <div class="clearfix"></div>            
             <hr />
@@ -219,7 +221,7 @@
                 </div>
                 <div class="col-md-4" data-bind="ifnot: $root.customTableMode">
                     <div>
-                        <span data-bind="text: Tables.model().length"></span> Tables/Views read from database.
+                        <span data-bind="text: Tables.model().length"></span> Tables/Views <span data-bind="text: $root.onlyApi() ? 'configured and used' : 'read from database'"></span>
                     </div>
                 </div>
             </div>
