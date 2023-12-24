@@ -912,11 +912,8 @@ var usersAndRolesViewModel = function (options) {
 				if (response) {
 					if (response.success) {
 						toastr.success(response.message);
-						self.ExistingUserTable(apiKey, dbKey)
 					} else {
 						toastr.error(response.message);
-						self.ExistingUserTable(apiKey, dbKey)
-
 						return false;
 					}
 				} else {
