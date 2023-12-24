@@ -154,7 +154,6 @@
     <div class="tab-content">
 
         <div id="useroptions" class="tab-pane active" data-bind="with: UserAndRolesConfig">
-
             <div>
                 <b>User and Roles Management Options</b><br />
                 <p>Please select how you want to use DNR with your users and manage secure login access.</p>
@@ -243,58 +242,36 @@
             <p>
                 Configure and manage your Application Users and Roles in DNR.
             </p>
-            <div class="card-body">
-                <a class="btn btn-link" role="button" data-toggle="collapse" href="#user-card">
-                    <i class="fa fa-user"></i> Users
-                </a>
-                <div class="collapse" id="user-card">
-                    <div class="form-group row">
-                        <label class="col-md-4 col-sm-4 control-label">Users Source</label>
-                        <div class="col-md-8 col-sm-8">
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="usersSource" value="UsersTable" data-bind="checked: UserCreateShow, click: function() { createAndManageUsersTableClicked($root.keys.AccountApiKey, $root.keys.DatabaseApiKey); }">
-                                <label class="form-check-label">Existing Users Table in Database</label>
+
+            <div data-bind="if: selectedUserConfig() == 'api-managed'">
+            </div>
+
+            <div data-bind="if: selectedUserConfig() == 'dnr-managed'">
+                <div class="alert alert-info">
+                    Users and Roles will be managed using Standard ASP.NET Individual Account Identity. It uses "AspNetUsers" and "AspNetUserRoles" tables. If these tables don't exist in your database, they will be created, otherwise existing tables will be used. 
+                </div>
+                <div>
+                    <!-- Nav tabs -->
+                    <ul class="nav nav-tabs" role="tablist">
+                        <li role="presentation" class="nav-item"><a class="nav-link active" href="#setup-users" aria-controls="setup-users" role="tab" data-toggle="tab">Users</a></li>
+                        <li role="presentation" class="nav-item"><a class="nav-link" href="#setup-userroles" aria-controls="setup-userroles" role="tab" data-toggle="tab">User Roles</a></li>
+                        <li role="presentation" class="nav-item"><a class="nav-link" href="#setup-useruserroles" aria-controls="setup-useruserroles" role="tab" data-toggle="tab">Assign Roles to Users</a></li>
+                    </ul>
+                </div>
+
+                <div class="tab-content">
+                    <div id="setup-users" class="tab-pane active padded-top">                        
+                        <div class="col-lg-12 col-md-8 col-sm-8">                         
+                            <div class="padded-top">
+                                <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#createUserModal">Create New User</button>
                             </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="usersSource" value="UsersCreate" data-bind="checked: UserCreateShow, click: function() { createAndManageUsersTableClicked($root.keys.AccountApiKey, $root.keys.DatabaseApiKey); }">
-                                <label class="form-check-label">Create and Manage Users here</label>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Form for Create and Manage Users -->
-                    <div data-bind="if: UserCreateShow() === 'UsersTable'" class="col-lg-12  col-md-8 col-sm-8">
-                        <div class="table-responsive">
-                            <table class="table table-striped table-bordered ">
-                                <thead class="thead-dark">
+                            <br />
+                            <table class="table table-striped table-bordered">
+                                <thead>
                                     <tr>
                                         <th>User ID</th>
                                         <th>User Name</th>
                                         <th>Email</th>
-                                        <!-- Add more columns as needed -->
-                                    </tr>
-                                </thead>
-                                <tbody data-bind="foreach: usersTableData">
-                                    <tr>
-                                        <td data-bind="text: UserId"></td>
-                                        <td data-bind="text: UserName"></td>
-                                        <td data-bind="text: Email"></td>
-                                        <!-- Add more columns as needed -->
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <!-- Data grid to display users table data -->
-                    <div data-bind="if: UserCreateShow() === 'UsersCreate'" class="col-lg-12 col-md-8 col-sm-8">
-                        <div class="table-responsive">
-                            <button class="btn btn-primary m-2" data-toggle="modal" data-target="#createUserModal">Create New User</button>
-                            <table class="table table-striped table-bordered ">
-                                <thead class="thead-dark">
-                                    <tr>
-                                        <th>User ID</th>
-                                        <th>User Name</th>
-                                        <th>Email</th>
-                                        @*<th>Password</th>*@
                                         <th>Action</th>
                                         <!-- Add more columns as needed -->
                                     </tr>
@@ -304,67 +281,27 @@
                                         <td data-bind="text: UserId"></td>
                                         <td data-bind="text: UserName"></td>
                                         <td data-bind="text: Email"></td>
-                                        @*<td data-bind="text: Password"></td>*@
                                         <td>
-                                            <button class="btn btn-primary" data-toggle="modal" data-target="#editUserModal" data-bind="click: function() { $parent.openEditUserModal($data); }">Edit</button>
-                                            <button class="btn btn-danger" data-toggle="modal" data-target="#deleteUserModal" data-bind="click: function() { $parent.openDeleteUserModal($data); }">Delete</button>
+                                            <button class="btn btn-sm btn-primary" data-toggle="modal" data-target="#editUserModal" data-bind="click: function() { $parent.openEditUserModal($data); }">Edit</button>
+                                            <button class="btn btn-sm btn-danger" data-toggle="modal" data-target="#deleteUserModal" data-bind="click: function() { $parent.openDeleteUserModal($data); }">Delete</button>
                                         </td>
                                         <!-- Add more columns as needed -->
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
-                    </div>
-                    <div data-bind="if: (UserCreateShow() === 'UsersCreate' || UserCreateShow() === 'UsersTable') && usersTableData().length === 0" class="col-md-8 col-sm-8">
-                        <p>No data found.</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card-body">
-                <a class="btn btn-link" role="button" data-toggle="collapse" href="#role-card">
-                    <i class="fa fa-user"></i> Roles
-                </a>
-                <div class="collapse" id="role-card">
-                    <div class="form-group row">
-                        <label class="col-md-4 col-sm-4 control-label"> Roles Source</label>
-                        <div class="col-md-8 col-sm-8">
-                            <div class="form-check">
-
-                                <input class="form-check-input" type="radio" name="rolesSource" value="RoleTable" data-bind="checked: RoleCreateShow,click: function() { createAndManageRoleTableClicked($root.keys.AccountApiKey, $root.keys.DatabaseApiKey); }">
-                                <label class="form-check-label">Existing  Roles Table in Database</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="userrolesSource" value="RoleCreate" data-bind="checked: RoleCreateShow,click: function() { createAndManageRoleTableClicked($root.keys.AccountApiKey, $root.keys.DatabaseApiKey); }">
-                                <label class="form-check-label">Create and Manage  Roles here</label>
-                            </div>
+                        <div data-bind="if: usersTableData().length === 0" class="col-md-8 col-sm-8">
+                            <p>No data found.</p>
                         </div>
                     </div>
-                    <!-- Form for Create and Manage  Role -->
-                    <div data-bind="if: RoleCreateShow() === 'RoleTable'" class="col-lg-12 col-md-8 col-sm-8">
-                        <div class="table-responsive">
+                    <div id="setup-userroles" class="tab-pane padded-top">
+                        <div class="col-lg-12 col-md-8 col-sm-8">
+                            <div class="padded-top">
+                                <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#createRoleModal">Create New Role</button>
+                            </div>
+                            <br />
                             <table class="table table-striped table-bordered">
-                                <thead class="thead-dark">
-                                    <tr>
-                                        <th>Role ID</th>
-                                        <th>Role</th>
-                                    </tr>
-                                </thead>
-                                <tbody data-bind="foreach: RoleTableData">
-                                    <tr>
-                                        <td data-bind="text: RoleId"></td>
-                                        <td data-bind="text: RoleName"></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <!-- Data grid to display  ROle table data -->
-                    <div data-bind="if: RoleCreateShow() === 'RoleCreate'" class="col-lg-12 col-md-8 col-sm-8">
-                        <div class="table-responsive">
-                            <button class="btn btn-primary m-2" data-toggle="modal" data-target="#createRoleModal">Create New Role</button>
-                            <table class="table table-striped table-bordered">
-                                <thead class="thead-dark">
+                                <thead>
                                     <tr>
                                         <th>Role ID</th>
                                         <th>Role</th>
@@ -377,70 +314,28 @@
                                         <td data-bind="text: RoleId"></td>
                                         <td data-bind="text: RoleName"></td>
                                         <td>
-                                            <button class="btn btn-primary" data-toggle="modal" data-target="#editRoleModal" data-bind="click: function() { $parent.openEditRoleModal($data); }">Edit</button>
-                                            <button class="btn btn-danger" data-toggle="modal" data-target="#deleteRoleModal" data-bind="click: function() { $parent.openDeleteRoleModal($data); }">Delete</button>
+                                            <button class="btn btn-sm btn-primary" data-toggle="modal" data-target="#editRoleModal" data-bind="click: function() { $parent.openEditRoleModal($data); }">Edit</button>
+                                            <button class="btn btn-sm btn-danger" data-toggle="modal" data-target="#deleteRoleModal" data-bind="click: function() { $parent.openDeleteRoleModal($data); }">Delete</button>
                                         </td>
                                         <!-- Add more columns as needed -->
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
-                    </div>
 
-                    <div data-bind="if: (UserRoleCreateShow() === 'RoleTable' || UserRoleCreateShow() === 'RoleCreate' )&& RoleTableData().length === 0" class="col-md-8 col-sm-8">
-                        <p>No data found.</p>
-                    </div>
-                </div>
-            </div>
-            <div class="card-body">
-                <a class="btn btn-link" role="button" data-toggle="collapse" href="#userrole-card">
-                    <i class="fa fa-user"></i>Assign User Roles
-                </a>
-                <div class="collapse" id="userrole-card">
-                    <div class="form-group row">
-                        <label class="col-md-4 col-sm-4 control-label">User Roles Source</label>
-                        <div class="col-md-8 col-sm-8">
-                            <div class="form-check">
-
-                                <input class="form-check-input" type="radio" name="userrolesSource" value="UserRoleTable" data-bind="checked: UserRoleCreateShow, click: function() { createAndManageUserRoleTableClicked($root.keys.AccountApiKey, $root.keys.DatabaseApiKey); }">
-                                <label class="form-check-label">Existing User Roles Table in Database</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="userrolesSource" value="UserRoleCreate" data-bind="checked: UserRoleCreateShow, click: function() { createAndManageUserRoleTableClicked($root.keys.AccountApiKey, $root.keys.DatabaseApiKey);} ">
-                                <label class="form-check-label">Create and Manage User Roles here</label>
-                            </div>
+                        <div data-bind="if: RoleTableData().length === 0" class="col-md-8 col-sm-8">
+                            <p>No data found.</p>
                         </div>
                     </div>
-                    <!-- Form for Create and Manage Users Role -->
-                    <!-- Data grid to display users ROle table data -->
-                    <div data-bind="if: UserRoleCreateShow() === 'UserRoleTable' && UserRoleTableData().length > 0" class="col-lg-12 col-md-8 col-sm-8">
-                        <div class="table-responsive">
-                            <table class="table table-striped table-bordered ">
-                                <thead class="thead-dark">
-                                    <tr>
-                                        <th>User ID</th>
-                                        <th>UserName</th>
-                                        <th>Role</th>
-                                        <!-- Add more columns as needed -->
-                                    </tr>
-                                </thead>
-                                <tbody data-bind="foreach: UserRoleTableData">
-                                    <tr>
-                                        <td data-bind="text: UserId"></td>
-                                        <td data-bind="text: UserName"></td>
-                                        <td data-bind="text: RoleName"></td>
 
-                                        <!-- Add more columns as needed -->
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div data-bind="if: UserRoleCreateShow() === 'UserRoleCreate'" class="col-lg-12 col-md-8 col-sm-8">
-                        <div class="table-responsive">
-                            <button class="btn btn-primary m-2" data-toggle="modal" data-target="#createUserRoleModal" data-bind="click:function (){ loadUserRoleData($root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}">Create New User Role</button>
+                    <div id="setup-useruserroles" class="tab-pane padded-top">
+                        <div class="col-lg-12 col-md-8 col-sm-8">
+                                <div class="padded-top">
+                                <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#createUserRoleModal" data-bind="click:function (){ loadUserRoleData($root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}">Create New User Role</button>
+                            </div>
+                            <br />
                             <table class="table table-striped table-bordered ">
-                                <thead class="thead-dark">
+                                <thead>
                                     <tr>
                                         <th>User ID</th>
                                         <th>UserName</th>
@@ -455,23 +350,22 @@
                                         <td data-bind="text: UserName"></td>
                                         <td data-bind="text: RoleName"></td>
                                         <td>
-                                            <button class="btn btn-primary" data-toggle="modal" data-target="#editUserRoleModal" data-bind="click:function (){ $parent.loadRoleData($root.keys.AccountApiKey, $root.keys.DatabaseApiKey,$data);}">Edit</button>
-                                            <button class="btn btn-danger" data-toggle="modal" data-target="#deleteUserRoleModal" data-bind="click: function() { $parent.openDeleteUserRoleModal($data); }">Delete</button>
+                                            <button class="btn btn-sm btn-primary" data-toggle="modal" data-target="#editUserRoleModal" data-bind="click:function (){ $parent.loadRoleData($root.keys.AccountApiKey, $root.keys.DatabaseApiKey,$data);}">Edit</button>
+                                            <button class="btn btn-sm btn-danger" data-toggle="modal" data-target="#deleteUserRoleModal" data-bind="click: function() { $parent.openDeleteUserRoleModal($data); }">Delete</button>
                                         </td>
                                         <!-- Add more columns as needed -->
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
-                    </div>
 
-                    <div data-bind="if: (UserRoleCreateShow() === 'UserRoleTable' || UserRoleCreateShow() ===  'UserRoleCreate') && UserRoleTableData().length === 0" class="col-md-8 col-sm-8">
-                        <p>No data found.</p>
+                        <div data-bind="if: UserRoleTableData().length === 0" class="col-md-8 col-sm-8">
+                            <p>No data found.</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-
         <div id="manageaccess" class="tab-pane">
             <b>Manage Access</b>
             <p>
