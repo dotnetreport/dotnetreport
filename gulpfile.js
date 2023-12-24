@@ -115,6 +115,7 @@ gulp.task("scripts", function () {
 	streams.push(gulp.src("Scripts/dotnetreport-setup.js").pipe(gulp.dest("wwwroot/js/")));
 	streams.push(gulp.src("Content/dotnetreport.css").pipe(gulp.dest("wwwroot/css/")));
 	streams.push(gulp.src("Content/img/report-logo.png").pipe(gulp.dest("wwwroot/img/")));
+	streams.push(gulp.src("Content/img/report-main.png").pipe(gulp.dest("wwwroot/img/")));
 
 	return merge(streams);
 

@@ -24,7 +24,8 @@ var manageViewModel = function (options) {
 	});
 
 	self.customSql = new customSqlModel(options, self.keys, self.Tables);
-	self.customTableMode = ko.observable(true);
+	self.customTableMode = ko.observable(false);
+	self.ChartDrillDownData = null;
 
 	self.pagedTables = ko.computed(function () {
 		var tables = self.Tables.filteredTables();

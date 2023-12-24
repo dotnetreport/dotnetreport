@@ -181,7 +181,7 @@
 
 <script type="text/html" id="report-table">
         <div class="table-responsive" >
-        <table class="table table-hover table-condensed">
+        <table class="table table-hover table-condensed" data-bind="attr: {class: 'table table-hover table-condensed ' + $parents[2].selectedStyle()}">
             <thead data-bind="if: $parents[2].ReportType() != 'Single'">
                 <tr class="no-highlight">
                     <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !IsDrillDown() -->
@@ -217,7 +217,7 @@
                     <td style="width: 30px;"></td>
                     <td data-bind="attr:{colspan: $parent.Columns.length }" style="padding-left: 0px;">
                         <!-- ko if: DrillDownData -->
-                        <table class="table table-hover table-condensed" data-bind="with: DrillDownData">
+                        <table class="table table-hover table-condensed" data-bind="with: DrillDownData, attr: {class: 'table table-hover table-condensed ' + $parents[2].selectedStyle()}">
                             <thead>
                                 <tr class="no-highlight">
                                     <!-- ko template: 'report-column-header', data: $data -->

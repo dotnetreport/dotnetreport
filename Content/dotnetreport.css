@@ -587,6 +587,7 @@ select.is-invalid ~ span .select2-selection {
 
 
 .report-layout-footer {
+    font-size: 10pt;
     position: fixed;
     padding: 15px 15px;
     left: 0;
