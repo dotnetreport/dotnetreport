@@ -1,7 +1,7 @@
 ﻿@using Newtonsoft.Json;
 @{
     ViewBag.Title = "Setup Report Builder";
-    Layout = "~/Views/shared/_Layout.Report.cshtml";
+    Layout = "~/Views/shared/_Layout.ReportSetup.cshtml";
 }
 
 @section head{
@@ -86,46 +86,69 @@
     </script>
 }
 
-<div>
-    <h2>Manage Database</h2>
-    <p>
-        You can select and manage display names for the Tables and Columns you would like to allow in DNR Report Builder.
-    </p>
+@section dboptions {
+    <a class="bg-dark list-group-item list-group-item-action" href="#connection" aria-controls="home" role="tab" data-toggle="tab">
+        <div class="d-flex w-100 justify-content-start align-items-center">
+            <span class="fa fa-database fa-fw mr-3"></span>
+            <span class="menu-collapsed">DB Connections</span>
+        </div>
+    </a>
+
+    <a class="bg-dark list-group-item list-group-item-action" href="#tablesfields" aria-controls="home" role="tab" data-toggle="tab" data-bind="click: function() { customTableMode(false); }">
+        <div class="d-flex w-100 justify-content-start align-items-center">
+            <span class="fa fa-tasks fa-fw mr-3"></span>
+            <span class="menu-collapsed">DB Tables and Views</span>
+        </div>
+    </a>
+
+    <a href="#tablesfields" aria-controls="custom" role="tab" data-toggle="tab" data-bind="click: function() { customTableMode(true); }" class="bg-dark list-group-item list-group-item-action">
+        <div class="d-flex w-100 justify-content-start align-items-center">
+            <span class="fa fa-list fa-fw mr-3"></span>
+            <span class="menu-collapsed">Custom Datasets</span>
+        </div>
+    </a>
+
+    <a href="#relations" aria-controls="profile" role="tab" data-toggle="tab" class="bg-dark list-group-item list-group-item-action">
+        <div class="d-flex w-100 justify-content-start align-items-center">
+            <span class="fa fa-arrow-right fa-fw mr-3"></span>
+            <span class="menu-collapsed">Relations</span>
+        </div>
+    </a>
+
+    <a href="#procedure" aria-controls="procedure" role="tab" data-toggle="tab" class="bg-dark list-group-item list-group-item-action">
+        <div class="d-flex w-100 justify-content-start align-items-center">
+            <span class="fa fa-code fa-fw mr-3"></span>
+            <span class="menu-collapsed">Stored Procs</span>
+        </div>
+    </a>
+}
+
+@section useroptions {
+    <a href="/dotnetsetup/usersandroles" class="bg-dark list-group-item list-group-item-action">
+        <div class="d-flex w-100 justify-content-start align-items-center">
+            <span class="fa fa-users fa-fw mr-3"></span>
+            <span class="menu-collapsed">Users and Roles</span>
+        </div>
+    </a>
+
+    <a href="#" class="bg-dark list-group-item list-group-item-action">
+        <div class="d-flex w-100 justify-content-start align-items-center">
+            <span class="fa fa-gears fa-fw mr-3"></span>
+            <span class="menu-collapsed">System Settings</span>
+        </div>
+    </a>
+}
+
+<div>    
     <div class="alert alert-danger">
         Do not expose this Setup Tool to end users who should not have access to it. Ideally, only Developers should be given access to this utility.
     </div>
-    <div class="form-row" style="display: none;" data-bind="visible: true">
-        <div class="form-group">
-            <div class="control-group">
-                <select class="form-control" data-bind="options: DataConnections, optionsText: 'DataConnectName', optionsValue: 'DataConnectGuid', value: currentConnectionKey"></select>
-                <div class="padded-top"></div>
-                <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#connection-setup-modal">Manage DB Connection</button>
-                <button class="btn btn-primary btn-sm" data-bind="click: switchConnection, visible: canSwitchConnection">Switch Connection</button>
-                <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-connection-modal">Add New Connection</button>
-                <button class="btn btn-primary btn-sm" data-bind="click: exportAll, visible: false">Export Connection</button>
-                <button class="btn btn-primary btn-sm" data-bind="click: importStart, visible: false">Import Connection</button>
-            </div>
-            <div data-bind="visible: importingFile">
-                <br />
-                <div class="alert alert-info">
-                    Please select a file you have previously exported from this utility. The system will load the screen with the Data Connection setting in the file, however, it will <b>NOT</b> be saved until you press the Save All button or Save individual tables
-                    <br />
-                    <div class="input-group">
-                        <input type="file" accept=".json" id="import-file" data-bind="event: { change: function() { importFile($element.files[0]) } }" />
-                        <span class="input-group-btn">
-                            <button class="btn btn-link" data-bind="click: importCancel">Cancel</button>
-                        </span>
-                    </div>
 
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div>
+    <div class="d-sm-block d-md-none">
         <!-- Nav tabs -->
         <ul class="nav nav-tabs" role="tablist">
-            <li role="presentation" class="nav-item"><a class="nav-link active" href="#tablesfields" aria-controls="home" role="tab" data-toggle="tab" data-bind="click: function() { customTableMode(false); }">DB Tables and Views</a></li>
+            <li role="presentation" class="nav-item"><a class="nav-link active" href="#connection" aria-controls="home" role="tab" data-toggle="tab">DB Connection</a></li>            
+            <li role="presentation" class="nav-item"><a class="nav-link" href="#tablesfields" aria-controls="home" role="tab" data-toggle="tab" data-bind="click: function() { customTableMode(false); }">DB Tables and Views</a></li>
             <li role="presentation" class="nav-item"><a class="nav-link" href="#tablesfields" aria-controls="custom" role="tab" data-toggle="tab" data-bind="click: function() { customTableMode(true); }">Build Datasets</a></li>
             <li role="presentation" class="nav-item"><a class="nav-link" href="#relations" aria-controls="profile" role="tab" data-toggle="tab">Relations</a></li>
             <li role="presentation" class="nav-item"><a class="nav-link" href="#procedure" aria-controls="procedure" role="tab" data-toggle="tab">Stored Procs</a></li>
@@ -136,7 +159,50 @@
 <!-- Tab panes -->
 <div class="fix-content" style="display: none;" data-bind="visible: true">
     <div class="tab-content">
-        <div role="tabpanel" class="tab-pane active" id="tablesfields">
+        <div role="tabpanel" class="tab-pane active" id="connection">
+            <b>Manage Database Connection</b>
+            <p>
+                Select and manage Data you would like to allow access to in DNR to use in building Reports and Dashboards
+            </p>
+            <div class="form-row" style="display: none;" data-bind="visible: true">
+                <div class="form-group">
+                    <div class="control-group">
+                        <select class="form-control" data-bind="options: DataConnections, optionsText: 'DataConnectName', optionsValue: 'DataConnectGuid', value: currentConnectionKey"></select>
+                        <div class="padded-top"></div>
+                        <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#connection-setup-modal">Manage DB Connection</button>
+                        <button class="btn btn-primary btn-sm" data-bind="click: switchConnection, visible: canSwitchConnection">Switch Connection</button>
+                        <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-connection-modal">Add New Connection</button>
+                        <button class="btn btn-primary btn-sm" data-bind="click: exportAll, visible: false">Export Connection</button>
+                        <button class="btn btn-primary btn-sm" data-bind="click: importStart, visible: false">Import Connection</button>
+                    </div>
+                    <div data-bind="visible: importingFile">
+                        <br />
+                        <div class="alert alert-info">
+                            Please select a file you have previously exported from this utility. The system will load the screen with the Data Connection setting in the file, however, it will <b>NOT</b> be saved until you press the Save All button or Save individual tables
+                            <br />
+                            <div class="input-group">
+                                <input type="file" accept=".json" id="import-file" data-bind="event: { change: function() { importFile($element.files[0]) } }" />
+                                <span class="input-group-btn">
+                                    <button class="btn btn-link" data-bind="click: importCancel">Cancel</button>
+                                </span>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div role="tabpanel" class="tab-pane" id="tablesfields">
+            <b data-bind="text: customTableMode() ? 'Custom Datasets' : 'DB Tables and Views'"></b>
+            <p>
+                <span data-bind="visible: $root.customTableMode">
+                    Define Datasets using SQL Select Query to use in DNR for Reporting and Analytics.
+                </span>
+                <span data-bind="hidden: $root.customTableMode">
+                    Select Tables or Views from your Database to use in DNR for Reporting and Analytics.
+                </span>
+            </p>
+
             <div data-bind="with: Tables">
                 <input type="text" class="form-control input-sm" placeholder="Filter Tables for..." data-bind="value: tableFilter, valueUpdate: 'afterkeydown'" style="float: left; width: 140px;">
                 <button class="btn btn-sm" data-bind="click: clearTableFilter,  visible: tableFilter()!='' && tableFilter()!=null"><span class="fa fa-remove"></span></button>
@@ -145,17 +211,7 @@
                 <button class="btn btn-sm" data-bind="click: toggleShowAll, hidden: $root.customTableMode, text: usedOnly() ? 'Show all' : 'Show used only'">Show used only</button>
                 <button class="btn btn-sm btn-primary" data-bind="click: $root.customSql.addNewCustomSqlTable, visible: $root.customTableMode">Add New Custom Table</button>
             </div>
-            <div class="clearfix"></div>
-            <br />
-            <p class="alert alert-info">
-                <span data-bind="visible: $root.customTableMode">
-                    Define Datasets using SQL Select Query to be used in DNR by users.
-                </span>
-                <span data-bind="hidden: $root.customTableMode">
-                    Select Tables or Views from your Database to be used in DNR by users.
-                </span>
-            </p>
-
+            <div class="clearfix"></div>            
             <hr />
             <div class="row">
                 <div class="form-group form-inline col-md-4" data-bind="with: pager">
@@ -236,15 +292,15 @@
             </div>
         </div>
         <div role="tabpanel" class="tab-pane" id="relations">
-
+            <b>Relations</b>
+            <p>
+                Setup your Database Relations for DNR to produce dynamic queries
+            </p>
+            <button class="btn btn-sm btn-primary" data-bind="click: AddJoin">Add new Join</button>&nbsp;
+            <button class="btn btn-sm btn-primary" data-bind="click: SaveJoins">Save Joins</button>
+            <br />
             <br />
             <form id="form-joins">
-
-                <p>
-                    Setup your Database Relations
-                    <span data-toggle="tooltip" data-placement="right" title="Report Builder also needs to know the Data Table Relations in order to Generate Reports. You have to specify it here." class="fa fa-question-circle helptip"></span>
-                </p>
-
                 <table class="table">
                     <thead data-bind="with: JoinFilters">
                         <tr>
@@ -313,15 +369,17 @@
                         </tr>
                     </tbody>
                 </table>
-                <button class="btn btn-primary" data-bind="click: AddJoin">Add new Join</button>&nbsp;
-                <button class="btn btn-primary" data-bind="click: SaveJoins">Save Joins</button>
             </form>
-
+            <br />
+            <br />
         </div>
         <div id="procedure" class="tab-pane">
-            <button class="btn btn-primary" data-toggle="modal" data-target="#procedure-modal">Add Stored Procs from database</button>
-            <br />
-            <br />
+            <b>Stored Procedures</b>
+            <p>
+                Select and manage Stored Procedures to use in DNR for more complex and coded Reports
+            </p>
+            <hr />
+            <button class="btn btn-sm btn-primary" data-toggle="modal" data-target="#procedure-modal">Add Stored Procs from database</button>
             <div data-bind="if: Procedures.savedProcedures().length == 0">
                 No Stored Procedures have been setup yet.
             </div>

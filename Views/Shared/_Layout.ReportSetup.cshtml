@@ -100,24 +100,19 @@
         </a>
         <div class="collapse navbar-collapse" id="navbarNavDropdown">
             <ul class="navbar-nav ml-auto">
-                <li class="nav-item active">
-                    <a class="nav-link" href="#top">Home <span class="sr-only">(current)</span></a>
+                <li class="nav-item">
+                    <a class="nav-link" href="/DotnetReport/Dashboard">Dashboards</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#top">Features</a>
+                    <a class="nav-link" href="/DotnetReport">Reports</a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#top">Pricing</a>
-                </li>
-                <!-- This menu is hidden in bigger devices with d-sm-none.
-                The sidebar isn't proper for smaller screens imo, so this dropdown menu can keep all the useful sidebar itens exclusively for smaller screens  -->
+
+                <!-- This menu is hidden in bigger devices with d-sm-none -->
                 <li class="nav-item dropdown d-sm-block d-md-none">
                     <a class="nav-link dropdown-toggle" href="#" id="smallerscreenmenu" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> Menu </a>
                     <div class="dropdown-menu" aria-labelledby="smallerscreenmenu">
-                        <a class="dropdown-item" href="#top">hjsahgjsa</a>
-                        <a class="dropdown-item" href="#top">Profile</a>
-                        <a class="dropdown-item" href="#top">Tasks</a>
-                        <a class="dropdown-item" href="#top">Etc ...</a>
+                        <a class="dropdown-item" href="/dotnetsetup">Database Setup</a>
+                        <a class="dropdown-item" href="/dotnetsetup/usersandroles">Users Setup</a>
                     </div>
                 </li><!-- Smaller devices menu END -->
             </ul>
@@ -127,12 +122,10 @@
     <div class="row" id="body-row">
         <!-- Sidebar -->
         <div id="sidebar-container" class="sidebar-expanded d-none d-md-block">
-            <!-- Bootstrap List Group -->
-            <ul class="list-group">
-                <!-- Separator with title -->
-                <li class="list-group-item sidebar-separator-title text-muted d-flex align-items-center menu-collapsed">
+            <div class="list-group">
+                <div class="list-group-item sidebar-separator-title text-muted d-flex align-items-center menu-collapsed">
                     <small>DATABASE</small>
-                </li>
+                </div>
                 <!-- Menu with submenu -->
                 <!--<a href="#submenu1" data-toggle="collapse" aria-expanded="false" class="bg-dark list-group-item list-group-item-action flex-column align-items-start">
                     <div class="d-flex w-100 justify-content-start align-items-center">
@@ -146,75 +139,23 @@
                     <a href="#" class="list-group-item list-group-item-action bg-dark text-white">
                         <span class="menu-collapsed">Chahgag</span>
                     </a>
-                    <a href="#" class="list-group-item list-group-item-action bg-dark text-white">
-                        <span class="menu-collapsed">Reports</span>
-                    </a>
-                    <a href="#" class="list-group-item list-group-item-action bg-dark text-white">
-                        <span class="menu-collapsed">Tables</span>
-                    </a>
                 </div>-->
+                
+                @RenderSection("dboptions")
 
-                <a href="#" class="bg-dark list-group-item list-group-item-action">
-                    <div class="d-flex w-100 justify-content-start align-items-center">
-                        <span class="fa fa-tasks fa-fw mr-3"></span>
-                        <span class="menu-collapsed">DB Tables and Views</span>
-                    </div>
-                </a>
-
-                <a href="#" class="bg-dark list-group-item list-group-item-action">
-                    <div class="d-flex w-100 justify-content-start align-items-center">
-                        <span class="fa fa-tasks fa-fw mr-3"></span>
-                        <span class="menu-collapsed">Custom Datasets</span>
-                    </div>
-                </a>
-
-                <a href="#" class="bg-dark list-group-item list-group-item-action">
-                    <div class="d-flex w-100 justify-content-start align-items-center">
-                        <span class="fa fa-tasks fa-fw mr-3"></span>
-                        <span class="menu-collapsed">Relations</span>
-                    </div>
-                </a>
-
-
-                <a href="#" class="bg-dark list-group-item list-group-item-action">
-                    <div class="d-flex w-100 justify-content-start align-items-center">
-                        <span class="fa fa-tasks fa-fw mr-3"></span>
-                        <span class="menu-collapsed">Stored Procs</span>
-                    </div>
-                </a>
-
-                <!-- Separator with title -->
-                <li class="list-group-item sidebar-separator-title text-muted d-flex align-items-center menu-collapsed">
+                <div class="list-group-item sidebar-separator-title text-muted d-flex align-items-center menu-collapsed">
                     <small>CONFIGURATION</small>
-                </li>
-                <!-- /END Separator -->
-                <a href="#" class="bg-dark list-group-item list-group-item-action">
-                    <div class="d-flex w-100 justify-content-start align-items-center">
-                        <span class="fa fa-calendar fa-fw mr-3"></span>
-                        <span class="menu-collapsed">Users and Roles</span>
-                    </div>
-                </a>
-                <a href="#" class="bg-dark list-group-item list-group-item-action">
-                    <div class="d-flex w-100 justify-content-start align-items-center">
-                        <span class="fa fa-envelope-o fa-fw mr-3"></span>
-                        <span class="menu-collapsed">Report Access</span>
-                    </div>
-                </a>
-               
-                <a href="#" class="bg-dark list-group-item list-group-item-action">
-                    <div class="d-flex w-100 justify-content-start align-items-center">
-                        <span class="fa fa-envelope-o fa-fw mr-3"></span>
-                        <span class="menu-collapsed">System Settings</span>
-                    </div>
-                </a>
+                </div>
 
+                @RenderSection("useroptions")
+                
                 <a href="#top" data-toggle="sidebar-colapse" class="bg-dark list-group-item list-group-item-action d-flex align-items-center">
                     <div class="d-flex w-100 justify-content-start align-items-center">
                         <span id="collapse-icon" class="fa fa-2x mr-3"></span>
                         <span id="collapse-text" class="menu-collapsed">Collapse</span>
                     </div>
                 </a>
-            </ul><!-- List Group END-->
+            </div>
         </div><!-- sidebar-container END -->
         <!-- MAIN -->
         <div class="col p-4">

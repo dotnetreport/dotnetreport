@@ -1,7 +1,7 @@
 ﻿@using Newtonsoft.Json;
 @{
     ViewBag.Title = "Setup Report Builder";
-    Layout = "~/Views/shared/_Layout.Report.cshtml";
+    Layout = "~/Views/shared/_Layout.ReportSetup.cshtml";
 }
 
 @section head{
@@ -92,16 +92,54 @@
     </script>
 }
 
+
+@section dboptions {
+    <a class="bg-dark list-group-item list-group-item-action" href="/dotnetsetup/" >
+        <div class="d-flex w-100 justify-content-start align-items-center">
+            <span class="fa fa-database fa-fw mr-3"></span>
+            <span class="menu-collapsed">DB Connections</span>
+        </div>
+    </a>
+}
+
+@section useroptions {
+
+    <a class="bg-dark list-group-item list-group-item-action" href="#useroptions" aria-controls="home" role="tab" data-toggle="tab">
+        <div class="d-flex w-100 justify-content-start align-items-center">
+            <span class="fa fa-gear fa-fw mr-3"></span>
+            <span class="menu-collapsed">Configuration</span>
+        </div>
+    </a>
+
+
+    <a href="#manageusers" aria-controls="manageusers" role="tab" data-toggle="tab" class="bg-dark list-group-item list-group-item-action">
+        <div class="d-flex w-100 justify-content-start align-items-center">
+            <span class="fa fa-users fa-fw mr-3"></span>
+            <span class="menu-collapsed">Users and Roles</span>
+        </div>
+    </a>
+
+    <a href="#manageaccess" aria-controls="manageaccess" role="tab" data-toggle="tab" class="bg-dark list-group-item list-group-item-action">
+        <div class="d-flex w-100 justify-content-start align-items-center">
+            <span class="fa fa-user-secret fa-fw mr-3"></span>
+            <span class="menu-collapsed">Manage Access</span>
+        </div>
+    </a>
+
+    <a href="#" class="bg-dark list-group-item list-group-item-action">
+        <div class="d-flex w-100 justify-content-start align-items-center">
+            <span class="fa fa-gears fa-fw mr-3"></span>
+            <span class="menu-collapsed">System Settings</span>
+        </div>
+    </a>
+}
+
 <div>
-    <h2>Manage Users and Roles</h2>
-    <p>
-        You can select and manage Users and Roles in DNR Report Builder.
-    </p>
     <div class="alert alert-danger">
         Do not expose this Setup Tool to end users who should not have access to it. Ideally, only Developers should be given access to this utility.
     </div>
     
-    <div>
+    <div class="d-sm-block d-md-none">
         <!-- Nav tabs -->
         <ul class="nav nav-tabs" role="tablist">
             <li role="presentation" class="nav-item"><a class="nav-link active" href="#useroptions" aria-controls="manageusers" role="tab" data-toggle="tab">Configuration</a></li>
@@ -120,6 +158,7 @@
             <div>
                 <b>User and Roles Management Options</b><br />
                 <p>Please select how you want to use DNR with your users and manage secure login access.</p>
+                <br />
                 <!-- Option 1 -->
                 <div class="col-md-8 mb-4">
                     <div class="card" data-bind="css: { 'selected-option': selectedUserConfig() === 'dnr-managed' }">
@@ -189,7 +228,7 @@
                             <div class="card-text">
                                 Use DNR openly, and allow any user with a link to directly access the system and Create/Manage/Run any Report or Dashboard.
                                 <div class="padded-top"></div>
-                                <div class="padded-div small alert bg-danger">
+                                <div class="padded-div small alert alert-danger">
                                     <i class="fa fa-lightbulb-o"></i> This option is NOT recommended. It will make DNR publicly available without Authentication or Login, as long as a user has the working URL to the system. There are limited options to prevent unauthorized users from editing existing reports, and the admin section will still require login.
                                 </div>
                             </div>
@@ -200,7 +239,10 @@
 
         </div>
         <div id="manageusers" class="tab-pane" data-bind="with: UserAndRolesConfig">
-
+            <b>Manage Users and Roles</b>
+            <p>
+                Configure and manage your Application Users and Roles in DNR.
+            </p>
             <div class="card-body">
                 <a class="btn btn-link" role="button" data-toggle="collapse" href="#user-card">
                     <i class="fa fa-user"></i> Users
@@ -431,6 +473,10 @@
         </div>
 
         <div id="manageaccess" class="tab-pane">
+            <b>Manage Access</b>
+            <p>
+                Configure and manage Access to run or manage reports in DNR by User or User Roles
+            </p>
             <div data-bind="foreach: reportsAndFolders" class="card" style="margin-left: 20px;">
                 <div class="card-body">
                     <a class="btn btn-link" role="button" data-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }">
