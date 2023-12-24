@@ -25,6 +25,11 @@
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
+
+        .selected-option {
+            border: 1px solid #007bff; /* A subtle blue border */
+            box-shadow: 0 0 10px rgba(0, 123, 255, 0.5); /* A light blue shadow for emphasis */
+        }
     </style>
 }
 @section scripts{
@@ -99,7 +104,8 @@
     <div>
         <!-- Nav tabs -->
         <ul class="nav nav-tabs" role="tablist">
-            <li role="presentation" class="nav-item"><a class="nav-link active" href="#manageusers" aria-controls="manageusers" role="tab" data-toggle="tab">Users and Roles</a></li>
+            <li role="presentation" class="nav-item"><a class="nav-link active" href="#useroptions" aria-controls="manageusers" role="tab" data-toggle="tab">Configuration</a></li>
+            <li role="presentation" class="nav-item"><a class="nav-link" href="#manageusers" aria-controls="manageusers" role="tab" data-toggle="tab">Users and Roles</a></li>
             <li role="presentation" class="nav-item"><a class="nav-link" href="#manageaccess" aria-controls="manageaccess" role="tab" data-toggle="tab">Manage Reports Access</a></li>
         </ul>
     </div>
@@ -108,12 +114,93 @@
 <!-- Tab panes -->
 <div class="fix-content" style="display: none;" data-bind="visible: true">
     <div class="tab-content">
-        <div id="manageusers" class="tab-pane active" data-bind="with: UserAndRolesConfig">
-            <div class="checkbox">
-                <label>
-                    <input class="check-box" data-val="true" type="checkbox" data-bind="checked:RequireLogin"> Require Login and enable Access for Authorized Users only
-                </label>
+
+        <div id="useroptions" class="tab-pane active" data-bind="with: UserAndRolesConfig">
+
+            <div>
+                <b>User and Roles Management Options</b><br />
+                <p>Please select how you want to use DNR with your users and manages secure login access</p>
+                <!-- Option 1 -->
+                <div class="col-md-8 mb-4">
+                    <div class="card" data-bind="css: { 'selected-option': selectedUserConfig() === 'dnr-managed' }">
+                        <div class="card-body">
+                            <div class="form-check font-weight-bold">
+                                <input type="checkbox" id="dnr-managed" class="form-check-input" data-bind="checked: selectedUserConfig, click: function() { selectedUserConfig('dnr-managed'); return true; }, checkedValue: 'dnr-managed'">
+                                <label class="form-check-label" for="dnr-managed">Managed by DNR</label>
+                            </div>
+                            <div class="card-text ">
+                                Create your Users and Roles using DNR. We will present you with the options to create and manage Users and their Roles, and store and manage all your users and access. <br />
+                                <div class="padded-top"></div>
+                                <div class="padded-div small alert bg-light">
+                                    <i class="fa fa-lightbulb-o"></i> This option works best when using DNR as a "Standalone System" where you would give access to your users to DNR Reports and Dashboards using <b>this</b> web application. You have limited options for Multi-Tenancy Support.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Option 2 -->
+                <div class="col-md-8 mb-4">
+                    <div class="card" data-bind="css: { 'selected-option': selectedUserConfig() === 'api-managed' }">
+                        <div class="card-body">
+                            <div class="form-check font-weight-bold">
+                                <input type="checkbox" id="api-managed" class="form-check-input" data-bind="checked: selectedUserConfig, click: function() { selectedUserConfig('api-managed'); return true; }, checkedValue: 'api-managed'">
+                                <label class="form-check-label" for="api-managed">Using your API or SSO Service</label>
+                            </div>
+                            <div class="card-text ">
+                                Manage your Users, Roles and their Claims access using your own code and infratsturcture outside of DNR. Just connect your API or SSO Service, and DNR will authorize login access using your service.
+                                <div class="padded-top"></div>
+                                <div class="padded-div small alert bg-light">
+                                    <i class="fa fa-lightbulb-o"></i> This option works best for using DNR as a "Standalone System" as well, where you would give access to your users to DNR Reports and Dashboards using <b>this</b> web application. This could work for "Embedded" option as well using iFrame, but it's not ideal for embedding. Some coding will be required.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Option 3 -->
+                <div class="col-md-8 mb-4">
+                    <div class="card" data-bind="css: { 'selected-option': selectedUserConfig() === 'code-managed' }">
+                        <div class="card-body">
+                            <div class="form-check font-weight-bold">
+                                <input type="checkbox" id="code-managed" class="form-check-input" data-bind="checked: selectedUserConfig, click: function() { selectedUserConfig('code-managed'); return true; }, checkedValue: 'code-managed'">
+                                <label class="form-check-label" for="code-managed">Embedded / Code</label>
+                                <label class="badge badge-info"><i class="fa fa-star"></i> Most Popular</label>
+                            </div>
+                            <div class="card-text ">
+                                Embed DNR directly in to your current Web Application code, and work directly with your existing Authentication and Claims infrastructure.
+                                <div class="padded-top"></div>
+                                <div class="padded-div small alert bg-light">
+                                    <i class="fa fa-lightbulb-o"></i> This is the ideal option when you want to Embed DNR in your existing SaaS or proprietory Web Application, especially if you want to take full advantage of all the Multi-Tenancy Client feautres of DNR. It will require some coding and updating in your web application.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Option 4 -->
+                <div class="col-md-8 mb-4">
+                    <div class="card" data-bind="css: { 'selected-option': selectedUserConfig() === 'not-managed' }">
+                        <div class="card-body">
+                            <div class="form-check font-weight-bold error">
+                                <input type="checkbox" id="not-managed" class="form-check-input" data-bind="checked: selectedUserConfig, click: function() { selectedUserConfig('not-managed'); return true; }, checkedValue: 'not-managed'">
+                                <label class="form-check-label" for="not-managed">No Login required</label>
+                            </div>
+                            <div class="card-text ">
+                                Use DNR openly, and allow any user with a link to directly access the system and Create/Manage/Run any Report or Dashboard.
+                                <div class="padded-top"></div>
+                                <div class="padded-div small alert bg-danger">
+                                    <i class="fa fa-lightbulb-o"></i> This option is NOT recommended. It will make DNR publicly available without Authentication or Login, as long as a user has the working url to the system. There are limited options to not let unauthorized users to edit existing reports, and admin section will still require login.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
+        </div>
+        <div id="manageusers" class="tab-pane" data-bind="with: UserAndRolesConfig">
+
             <div class="card-body">
                 <a class="btn btn-link" role="button" data-toggle="collapse" href="#user-card">
                     <i class="fa fa-user"></i> Users

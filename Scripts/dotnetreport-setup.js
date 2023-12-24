@@ -559,7 +559,8 @@ var usersAndRolesViewModel = function (options) {
 	self.UserRolesSource = ko.observable(UserConfig.UserRolesSource);
 	self.UserCreateShow = ko.observable("")
 	self.RoleCreateShow = ko.observable("")
-	self.UserRoleCreateShow = ko.observable("")
+	self.UserRoleCreateShow = ko.observable("");
+	self.selectedUserConfig = ko.observable(UserConfig.SelectedUserConfig || "dnr-managed");
 
 	// Observable array to store users table data
 	self.usersTableData = ko.observableArray([]);
