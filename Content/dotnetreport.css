@@ -522,7 +522,6 @@ select.is-invalid ~ span .select2-selection {
     list-style: none;
     padding: 0 0 0 15px;
     margin: 0;
-    background-color: #fff;
 }
 
     .query-builder .rules-list > ::after, .query-builder .rules-list > ::before {

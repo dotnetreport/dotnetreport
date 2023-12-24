@@ -1,0 +1,375 @@
+﻿
+/* General Dark Theme Settings */
+:root {
+    --dark-bg: #212529; /* Dark background */
+    --dark-bg-secondary: #343a40; /* Slightly lighter dark background */
+    --dark-text: #f8f9fa; /* Light text */
+    --dark-border: #495057; /* Dark border color */
+    --dark-hover-bg: #495057; /* Hover background color */
+    --dark-active: #6c757d; /* Active or selected color */
+    --dark-primary: #121212;
+    --dark-secondary: #1c1c1c;
+    --dark-text: #f8f9fa;
+    --dark-border: #343a40;
+    --dark-link: #17a2b8;
+}
+
+body {
+    background-color: var(--dark-primary);
+    color: var(--dark-text);
+}
+
+a {
+    color: var(--dark-link);
+}
+
+    a:hover {
+        color: var(--dark-link);
+        text-decoration: underline;
+    }
+
+.navbar {
+    background-color: var(--dark-secondary);
+    border-bottom: 1px solid var(--dark-border);
+}
+
+.card {
+    background-color: var(--dark-secondary);
+    border-color: var(--dark-border);
+}
+
+.card-header {
+    background-color: var(--dark-primary);
+    border-bottom: 1px solid var(--dark-border);
+}
+
+.card-footer {
+    background-color: var(--dark-primary);
+    border-top: 1px solid var(--dark-border);
+}
+
+.table {
+    color: var(--dark-text);
+}
+
+    .table thead th {
+        color: var(--dark-text);
+        background-color: var(--dark-secondary);
+    }
+
+.table-bordered th,
+.table-bordered td {
+    border-color: var(--dark-border);
+}
+
+.bg-light {
+    background-color: var(--dark-secondary) !important;
+}
+
+.text-dark {
+    color: var(--dark-text) !important;
+}
+
+.bg-white {
+    background-color: var(--dark-primary) !important;
+}
+
+.footer {
+    background-color: var(--dark-secondary);
+    color: var(--dark-text);
+}
+
+/* Additional overrides for other components as needed... */
+
+
+/* Applying dark theme to your custom styles */
+.listbox {
+    background-color: var(--dark-bg-secondary);
+    color: var(--dark-text);
+    border-color: var(--dark-border);
+    /* other styles remain the same */
+}
+
+.list-overflow, .list-overflow-auto {
+    background-color: var(--dark-bg);
+    color: var(--dark-text);
+    /* other styles remain the same */
+}
+
+.list-report li {
+    background-color: var(--dark-bg);
+    color: var(--dark-text);
+    border-bottom: solid 1px var(--dark-border);
+    /* other styles remain the same */
+}
+
+.folder-panel {
+    background-color: var(--dark-bg);
+    /* other styles remain the same */
+}
+
+.folder-list li {
+    background-color: var(--dark-bg-secondary);
+    color: var(--dark-text);
+    border: 1px solid var(--dark-border);
+    /* other styles remain the same */
+}
+
+    .folder-list li:hover {
+        background-color: var(--dark-hover-bg);
+        /* other styles remain the same */
+    }
+
+/* .modal-fullscreen and related styles */
+.modal-fullscreen .modal-dialog {
+    background-color: var(--dark-bg);
+    /* other styles remain the same */
+}
+
+.modal-content {
+    background-color: var(--dark-bg);
+    color: var(--dark-text);
+    border-color: var(--dark-border);
+    /* other styles remain the same */
+}
+
+/* Additional custom styles */
+.button-box {
+    background-color: var(--dark-bg-secondary);
+    color: var(--dark-text);
+    border: 2px solid var(--dark-border);
+    /* other styles remain the same */
+}
+
+    .button-box:hover {
+        background-color: var(--dark-hover-bg);
+        color: var(--dark-active);
+        /* other styles remain the same */
+    }
+
+/* Continuing with other custom styles... */
+.report-container, .report-outer, .report-canvas {
+    background-color: var(--dark-bg);
+}
+
+.report-menubar {
+    background-color: var(--dark-bg-secondary);
+    /* other styles remain the same */
+}
+
+/* More adjustments for other components... */
+
+/* Ensuring contrast and readability */
+.material-switch > label::before {
+    background-color: var(--dark-border);
+    /* other styles remain the same */
+}
+
+.material-switch > label::after {
+    background-color: var(--dark-text);
+    /* other styles remain the same */
+}
+
+/* Dark Theme Adjustments for Bootstrap List Groups */
+.list-group {
+    background-color: var(--dark-bg); /* Dark background for the list group container */
+    /* Additional styles if needed */
+}
+
+.list-group-item {
+    background-color: var(--dark-bg-secondary); /* Slightly different dark background for list items */
+    color: var(--dark-text); /* Light text for readability */
+    border-color: var(--dark-border); /* Dark themed border */
+}
+
+    /* Hover and active state for list group items */
+    .list-group-item:hover, .list-group-item:focus {
+        background-color: var(--dark-hover-bg); /* Slightly lighter background on hover/focus */
+        color: var(--dark-active); /* Change text color if needed */
+    }
+
+    .list-group-item.active {
+        background-color: var(--dark-active); /* Active item background */
+        border-color: var(--dark-active); /* Active item border */
+        color: var(--dark-text); /* Light text color for contrast */
+    }
+
+    /* If you have any additional specific classes within list-group, you can customize them as well */
+    .list-group-item.custom-class {
+        /* Custom dark theme styles for your specific class */
+    }
+
+.table {
+    --bs-table-color-type: initial;
+    --bs-table-bg-type: initial;
+    --bs-table-color-state: initial;
+    --bs-table-bg-state: initial;
+    --bs-table-color: #212529;
+    --bs-table-bg: var(--bs-body-bg);
+    --bs-table-border-color: rgba(0, 0, 0, 0.6);
+    --bs-table-accent-bg: rgba(255, 255, 255, 0.05);
+    --bs-table-striped-color: #fff;
+    --bs-table-striped-bg: rgba(var(--bs-emphasis-color-rgb), 0.05);
+    --bs-table-active-color: #fff;
+    --bs-table-active-bg: rgba(var(--bs-emphasis-color-rgb), 0.1);
+    --bs-table-hover-color: #000;
+    --bs-table-hover-bg: rgba(255, 255, 255, 0.075);
+    width: 100%;
+    margin-bottom: 1rem;
+    vertical-align: top;
+    border-color: var(--bs-table-border-color);
+}
+
+    .table > :not(caption) > * > * {
+        padding: 0.5rem 0.5rem;
+        color: var(--bs-table-color-state, var(--bs-table-color-type, var(--bs-table-color)));
+        background-color: var(--bs-table-bg);
+        border-bottom-width: var(--bs-border-width);
+        box-shadow: inset 0 0 0 9999px var(--bs-table-bg-state, var(--bs-table-bg-type, var(--bs-table-accent-bg)));
+    }
+
+    .table > tbody {
+        vertical-align: inherit;
+    }
+
+    .table > thead {
+        vertical-align: bottom;
+    }
+
+.table-group-divider {
+    border-top: calc(var(--bs-border-width) * 2) solid currentcolor;
+}
+
+.caption-top {
+    caption-side: top;
+}
+
+.table-sm > :not(caption) > * > * {
+    padding: 0.25rem 0.25rem;
+}
+
+.table-bordered > :not(caption) > * {
+    border-width: var(--bs-border-width) 0;
+}
+
+    .table-bordered > :not(caption) > * > * {
+        border-width: 0 var(--bs-border-width);
+    }
+
+.table-borderless > :not(caption) > * > * {
+    border-bottom-width: 0;
+}
+
+.table-borderless > :not(:first-child) {
+    border-top-width: 0;
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+    --bs-table-color-type: var(--bs-table-striped-color);
+    --bs-table-bg-type: var(--bs-table-striped-bg);
+}
+
+.table-striped-columns > :not(caption) > tr > :nth-child(even) {
+    --bs-table-color-type: var(--bs-table-striped-color);
+    --bs-table-bg-type: var(--bs-table-striped-bg);
+}
+
+.table-active {
+    --bs-table-color-state: var(--bs-table-active-color);
+    --bs-table-bg-state: var(--bs-table-active-bg);
+}
+
+.table-hover > tbody > tr:hover > * {
+    --bs-table-color-state: var(--bs-table-hover-color);
+    --bs-table-bg-state: var(--bs-table-hover-bg);
+}
+
+
+.btn-primary {
+    background-image: linear-gradient(#52565a, #3a3f44 60%, #353a3f);
+    border-color: #52565a;
+    filter: none;
+}
+
+    .btn-primary:not([disabled]):not(.disabled):hover {
+        background-image: linear-gradient(#313539, #34393d 40%, #373b40);
+        filter: none;
+    }
+
+    .btn-primary:not([disabled]):not(.disabled):active:hover, .btn-primary:not([disabled]):not(.disabled).active:hover {
+        background-image: linear-gradient(#25282c, #292c30 40%, #2b2f32);
+        filter: none;
+    }
+
+.btn-secondary {
+    background-image: linear-gradient(#8a9196, #7a8288 60%, #70787d);
+    filter: none;
+}
+
+    .btn-secondary:not([disabled]):not(.disabled):hover {
+        background-image: linear-gradient(#666d72, #6e757a 40%, #737a80);
+        filter: none;
+    }
+
+    .btn-secondary:not([disabled]):not(.disabled):active:hover, .btn-secondary:not([disabled]):not(.disabled).active:hover {
+        background-image: linear-gradient(#4e5357, #555b5f 40%, #5a6065);
+        filter: none;
+    }
+
+p {
+    color: #6c757d;
+}
+
+/* Base Style for Select2 Container */
+.select2-container {
+    background-color: var(--dark-bg-secondary); /* Dark background */
+    color: var(--dark-text); /* Light text for contrast */
+    border: 1px solid var(--dark-border); /* Dark border */
+}
+
+/* Styles for the Select2 Dropdown */
+.select2-dropdown {
+    background-color: var(--dark-bg-secondary); /* Dark background */
+    color: var(--dark-text); /* Light text for contrast */
+    border-color: var(--dark-border); /* Dark border */
+}
+
+/* Styles for Select2 Options */
+.select2-results__option {
+    background-color: var(--dark-bg-secondary); /* Dark background */
+    color: var(--dark-text); /* Light text for contrast */
+}
+
+.select2-results__option--highlighted {
+    background-color: var(--dark-hover-bg); /* Slightly lighter background for highlighted option */
+    color: var(--dark-active); /* Text color for highlighted option */
+}
+
+/* Style for the Select2 Search Field */
+.select2-search--dropdown .select2-search__field {
+    background-color: var(--dark-bg); /* Darker background for search field */
+    color: var(--dark-text); /* Light text for contrast */
+    border: 1px solid var(--dark-border); /* Dark border */
+}
+
+/* Style for Select2 Selection */
+.select2-container--default .select2-selection--single {
+    background-color: var(--dark-bg-secondary); /* Dark background */
+    color: var(--dark-text); /* Light text for contrast */
+    border: 1px solid var(--dark-border); /* Dark border */
+}
+
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: var(--dark-text); /* Light text for contrast */
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__arrow b {
+        border-color: var(--dark-text) transparent transparent transparent; /* Arrow color */
+    }
+
+/* Style for Multi-select Tags */
+.select2-container--default .select2-selection--multiple .select2-selection__choice {
+    background-color: var(--dark-active); /* Background for tags */
+    color: var(--dark-text); /* Text color for tags */
+    border: 1px solid var(--dark-hover-bg); /* Border for tags */
+}
