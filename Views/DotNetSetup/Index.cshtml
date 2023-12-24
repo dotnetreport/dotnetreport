@@ -380,10 +380,11 @@
             </p>
             <hr />
             <button class="btn btn-sm btn-primary" data-toggle="modal" data-target="#procedure-modal">Add Stored Procs from database</button>
+            <br />
             <div data-bind="if: Procedures.savedProcedures().length == 0">
                 No Stored Procedures have been setup yet.
             </div>
-            <div class="menu row" data-bind="foreach: Procedures.savedProcedures" style="margin-left: 20px;">
+            <div class="menu row" data-bind="foreach: Procedures.savedProcedures" style="margin-left: 20px; padding-top: 20px;">
                 <div class="menu-category card">
 
                     <div class="card-header clearfix" style="">
