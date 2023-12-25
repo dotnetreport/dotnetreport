@@ -160,7 +160,7 @@ namespace ReportBuilder.Web.Controllers
                 {
                     throw new Exception("Query not found");
                 }
-                var allSqls = reportSql.Split(new string[] { "%2C" }, StringSplitOptions.RemoveEmptyEntries);
+                var allSqls = reportSql.Split(new string[] { "%2C", "," }, StringSplitOptions.RemoveEmptyEntries);
                 var dtPaged = new DataTable();
                 var dtCols = 0;
 
@@ -315,7 +315,7 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        [HttpGet]
+        [HttpPost]
         public async Task<JsonResult> RunReportLink(int reportId, int? filterId = null, string filterValue = "", bool adminMode = false)
         {
             var model = new DotNetReportModel();

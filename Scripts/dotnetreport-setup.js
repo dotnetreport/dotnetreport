@@ -14,8 +14,8 @@ var manageViewModel = function (options) {
 	self.Tables = new tablesViewModel(options);
 	self.Procedures = new proceduresViewModel(options);
 	self.pager = new pagerViewModel({autoPage: true});
-
 	self.pager.totalRecords(self.Tables.model().length);
+	self.ChartDrillDownData = null;
 
 	self.Tables.filteredTables.subscribe(function (x) {		
 		self.pager.totalRecords(x.length);

@@ -541,12 +541,12 @@ namespace ReportBuilder.Web.Models
             return "";
         }
 
-        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false)
+        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool loadHeader=true)
         {
-            ws.Cells[rowstart, colstart].LoadFromDataTable(dt, true);
-            ws.Cells[rowstart, colstart, rowstart, dt.Columns.Count].Style.Font.Bold = true;
+            ws.Cells[rowstart, colstart].LoadFromDataTable(dt, loadHeader);
+            if (loadHeader) ws.Cells[rowstart, colstart, rowstart, colstart + dt.Columns.Count -1].Style.Font.Bold = true;
 
-            int i = 1; var isNumeric = false;
+            int i = colstart; var isNumeric = false;
             foreach (DataColumn dc in dt.Columns)
             {
                 isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
@@ -762,7 +762,7 @@ namespace ReportBuilder.Web.Models
             return model;
         }
 
-        public static byte[] GetExcelFile(string reportSql, string connectKey, string reportName, bool allExpanded = false,
+        public async static Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, bool allExpanded = false,
                 string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
         {
             var sql = Decrypt(reportSql);
@@ -817,7 +817,7 @@ namespace ReportBuilder.Web.Models
 
                     if (allExpanded)
                     {
-                        var insertRowIndex = 5;
+                        var insertRowIndex = 3;
                         foreach (DataRow dr in dt.Rows)
                         {
                             var drilldownRow = new List<string>();
@@ -833,7 +833,7 @@ namespace ReportBuilder.Web.Models
                                         ""LabelValue"":""'{dr[dc]}'"",
                                         ""NumericValue"":null,
                                         ""Column"":{{
-                                            ""SqlField"":""{col}"",
+                                            ""SqlField"":""{col.Substring(0, col.LastIndexOf(" AS "))}"",
                                             ""ColumnName"":""{dc.ColumnName}"",
                                             ""DataType"":""{dc.DataType.ToString()}"",
                                             ""IsNumeric"":{(dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal" ? "true" : "false")},
@@ -844,21 +844,24 @@ namespace ReportBuilder.Web.Models
                             }
 
                             var reportData = expandSqls.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
-                            var drilldownSql = RunReportApiCall(reportData).Result;
+                            var drilldownSql = await RunReportApiCall(reportData);
                             if (!string.IsNullOrEmpty(drilldownSql))
-                            {
+                            {                                
                                 var ddt = new DataTable();
                                 var cmd = new OleDbCommand(drilldownSql, conn);
                                 var adp = new OleDbDataAdapter(cmd);
                                 adp.Fill(ddt);
 
-                                ws.InsertRow(insertRowIndex, ddt.Rows.Count + 1);
-                                ws.Cells[insertRowIndex, dt.Columns.Count + 1].LoadFromDataTable(ddt, true);
-                                insertRowIndex += ddt.Rows.Count + 2;
+                                ws.InsertRow(insertRowIndex + 2, ddt.Rows.Count);
+
+                                FormatExcelSheet(ddt, ws, insertRowIndex == 3 ? 3 : (insertRowIndex + 1), ddt.Columns.Count + 1, columns, false, insertRowIndex == 3);
+
+                                insertRowIndex += ddt.Rows.Count + 1;
                             }
                         }
                     }
 
+                    ws.View.FreezePanes(4, 1);
                     return xp.GetAsByteArray();
                 }
             }
@@ -1189,7 +1192,7 @@ namespace ReportBuilder.Web.Models
             var executablePath = "";
             foreach (var d in Directory.GetDirectories(installPath))
             {
-                executablePath = $"{d}\\chrome-win64\\chrome.exe";
+                executablePath = $"{d}\\chrome-win\\chrome.exe";
                 if (File.Exists(executablePath)) break;
             }
 
@@ -1333,7 +1336,7 @@ namespace ReportBuilder.Web.Models
         /// </summary>
         public static string Decrypt(string encryptedText)
         {
-            encryptedText = encryptedText.Split(new string[] { "%2C" }, StringSplitOptions.RemoveEmptyEntries)[0];
+            encryptedText = encryptedText.Split(new string[] { "%2C", "," }, StringSplitOptions.RemoveEmptyEntries)[0];
             byte[] initVectorBytes = Encoding.ASCII.GetBytes("yk0z8f39lgpu70gi"); // PLESE DO NOT CHANGE THIS KEY
             int keysize = 256;
 
