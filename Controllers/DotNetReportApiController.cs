@@ -156,7 +156,7 @@ namespace ReportBuilder.Web.Controllers
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + method), content);
                 var stringContent = await response.Content.ReadAsStringAsync();
 
-                Response.StatusCode = (int)response.StatusCode;
+                 Response.StatusCode = (int)response.StatusCode;
                 var result = JsonSerializer.Deserialize<dynamic>(stringContent);
                 if (stringContent == "\"\"") result = new { };
                 return Response.StatusCode == 200 ? Ok(result) : BadRequest(result);
@@ -739,9 +739,9 @@ namespace ReportBuilder.Web.Controllers
                     System.IO.File.WriteAllText(_configFilePath, config.ToString());
 
                     // Update to Account as well
-                    var result = await ExecuteCallReportApi("UpdateDataConnection", JsonSerializer.Serialize(new
+                    var result = await ExecuteCallReportApi("ReportApi/UpdateDataConnection", JsonSerializer.Serialize(new
                     {
-                        model.connectionKey,
+                        model.dataConnect,
                         model.dbType,
                     }));
                 }
