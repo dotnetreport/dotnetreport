@@ -900,9 +900,8 @@ var usersAndRolesViewModel = function (options) {
 			if (response) {
 				if (response.success) {
 					self.usersTableData(response.data);
-					toastr.success(response.message);
 				} else {
-					toastr.error(response.message || 'Existing Tables are Not Found ');
+					toastr.error(response.message || 'Could not find or load Users Table');
 					return false;
 				}
 			} else {
@@ -925,9 +924,8 @@ var usersAndRolesViewModel = function (options) {
 			if (response) {
 				if (response.success) {
 					self.roleTableData(response.data);
-					toastr.success(response.message);
 				} else {
-					toastr.error(response.message || 'Existing Tables are Not Found ');
+					toastr.error(response.message || 'Could not find or load Roles Table');
 					return false;
 				}
 			} else {
@@ -950,9 +948,8 @@ var usersAndRolesViewModel = function (options) {
 			if (response) {
 				if (response.success) {
 					self.userRoleTableData(response.data);
-					toastr.success(response.message);
 				} else {
-					toastr.error(response.message || 'Existing Tables are Not Found ');
+					toastr.error(response.message || 'Could not find or load User Roles Table');
 					return false;
 				}
 			} else {
@@ -988,8 +985,16 @@ var usersAndRolesViewModel = function (options) {
 		return valid;
 	};
 
+	self.selectedUserConfig.subscribe(function (x) {
+		if (x == 'dnr-managed') {
+			self.init();
+		}
+	});
+
 	self.init = function () {
-		return $.when(self.loadUsersData(), self.loadRolesData(), self.loadUserRolesData());
+		if (self.selectedUserConfig() == 'dnr-managed') {
+			return $.when(self.loadUsersData(), self.loadRolesData(), self.loadUserRolesData());
+		}
 	}
 }
 
