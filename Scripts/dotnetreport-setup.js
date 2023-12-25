@@ -724,8 +724,10 @@ var usersAndRolesViewModel = function (options) {
 				if (response) {
 					if (response.success) {
 						toastr.success(response.message);
+						self.ExistingRoleTable(apiKey, dbKey);
 					} else {
 						toastr.error(response.message);
+						self.ExistingRoleTable(apiKey, dbKey);
 						return false;
 					}
 				} else {
@@ -760,8 +762,10 @@ var usersAndRolesViewModel = function (options) {
 				if (response) {
 					if (response.success) {
 						toastr.success(response.message);
+						self.ExistingUserTable(apiKey, dbKey)
 					} else {
 						toastr.error(response.message);
+						self.ExistingUserTable(apiKey, dbKey)
 						return false;
 					}
 				} else {
@@ -795,8 +799,10 @@ var usersAndRolesViewModel = function (options) {
 				if (response) {
 					if (response.success) {
 						toastr.success(response.message);
+						self.ExistingUserRoleTable(apiKey, dbKey)
 					} else {
 						toastr.error(response.message);
+						self.ExistingUserRoleTable(apiKey, dbKey)
 						return false;
 					}
 				} else {
@@ -825,8 +831,10 @@ var usersAndRolesViewModel = function (options) {
 			if (response) {
 				if (response.success) {
 					toastr.success(response.message);
+					self.ExistingRoleTable(apiKey, dbKey);
 				} else {
 					toastr.error(response.message);
+					self.ExistingRoleTable(apiKey, dbKey);
 					return false;
 				}
 			} else {
@@ -852,8 +860,11 @@ var usersAndRolesViewModel = function (options) {
 			if (response) {
 				if (response.success) {
 					toastr.success(response.message);
+					self.ExistingUserTable(apiKey, dbKey);
+
 				} else {
 					toastr.error(response.message);
+					self.ExistingUserTable(apiKey, dbKey);
 					return false;
 				}
 			} else {
@@ -882,8 +893,10 @@ var usersAndRolesViewModel = function (options) {
 			if (response) {
 				if (response.success) {
 					toastr.success(response.message);
+					self.ExistingUserRoleTable(apiKey, dbKey);
 				} else {
 					toastr.error(response.message);
+					self.ExistingUserRoleTable(apiKey, dbKey);
 					return false;
 				}
 			} else {
@@ -912,8 +925,10 @@ var usersAndRolesViewModel = function (options) {
 				if (response) {
 					if (response.success) {
 						toastr.success(response.message);
+						self.ExistingUserTable(apiKey, dbKey)
 					} else {
 						toastr.error(response.message);
+						self.ExistingUserTable(apiKey, dbKey)
 						return false;
 					}
 				} else {
@@ -942,8 +957,10 @@ var usersAndRolesViewModel = function (options) {
 				if (response) {
 					if (response.success) {
 						toastr.success(response.message);
+						self.ExistingRoleTable(apiKey, dbKey)
 					} else {
 						toastr.error(response.message);
+						self.ExistingRoleTable(apiKey, dbKey)
 						return false;
 					}
 				} else {
@@ -974,8 +991,10 @@ var usersAndRolesViewModel = function (options) {
 				if (response) {
 					if (response.success) {
 						toastr.success(response.message);
+						self.ExistingUserRoleTable(apiKey, dbKey)
 					} else {
 						toastr.error(response.message);
+						self.ExistingUserRoleTable(apiKey, dbKey)
 						return false;
 					}
 				} else {

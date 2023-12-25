@@ -13,27 +13,39 @@ namespace ReportBuilder.Web.Controllers
     {
         const string createUserTableQuery = @"
             CREATE TABLE [dbo].[AspNetUsers](
-                [Id] [nvarchar](450) NOT NULL,
-                [UserName] [nvarchar](256) NULL,
-                [NormalizedUserName] [nvarchar](256) NULL,
-                [Email] [nvarchar](256) NULL,
-                [NormalizedEmail] [nvarchar](256) NULL,
-                [PasswordHash] [nvarchar](max) NULL,
-                CONSTRAINT [PK_AspNetUsers] PRIMARY KEY CLUSTERED 
-                (
-                    [Id] ASC
-                )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
-            ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY];";
+	[Id] [nvarchar](450) NOT NULL,
+	[UserName] [nvarchar](256) NULL,
+	[NormalizedUserName] [nvarchar](256) NULL,
+	[Email] [nvarchar](256) NULL,
+	[NormalizedEmail] [nvarchar](256) NULL,
+	[EmailConfirmed] [bit] NOT NULL,
+	[PasswordHash] [nvarchar](max) NULL,
+	[SecurityStamp] [nvarchar](max) NULL,
+	[ConcurrencyStamp] [nvarchar](max) NULL,
+	[PhoneNumber] [nvarchar](max) NULL,
+	[PhoneNumberConfirmed] [bit] NOT NULL,
+	[TwoFactorEnabled] [bit] NOT NULL,
+	[LockoutEnd] [datetimeoffset](7) NULL,
+	[LockoutEnabled] [bit] NOT NULL,
+	[AccessFailedCount] [int] NOT NULL,
+     CONSTRAINT [PK_AspNetUsers] PRIMARY KEY CLUSTERED 
+    (
+	    [Id] ASC
+    )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+    ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+    GO";
         const string createRoleTableQuery = @"
                     CREATE TABLE [dbo].[AspNetRoles](
-                        [Id] [nvarchar](450) NOT NULL,
-                        [Name] [nvarchar](256) NULL,
-                        [NormalizedName] [nvarchar](256) NULL,
-                        CONSTRAINT [PK_AspNetRoles] PRIMARY KEY CLUSTERED 
-                        (
-                            [Id] ASC
-                        )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
-                    );";
+	                    [Id] [nvarchar](450) NOT NULL,
+	                    [Name] [nvarchar](256) NULL,
+	                    [NormalizedName] [nvarchar](256) NULL,
+	                    [ConcurrencyStamp] [nvarchar](max) NULL,
+                    CONSTRAINT [PK_AspNetRoles] PRIMARY KEY CLUSTERED 
+                    (
+                    	[Id] ASC
+                    )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+                    ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+                    GO";
 
         const string createUserRoleTableQuery = @"
     -- Create the AspNetUserRoles table
@@ -174,7 +186,7 @@ namespace ReportBuilder.Web.Controllers
                 {
                     connection.Open();
 
-                    string insertUserDataQuery = $@" INSERT INTO [dbo].[AspNetUsers]  VALUES (NEWID(), '{model.UserName}', '{model.UserName.ToUpper()}', '{model.Email}', '{model.Email.ToUpper()}', '{model.Password}');";
+                    string insertUserDataQuery = $@" INSERT INTO [dbo].[AspNetUsers]  VALUES (NEWID(), '{model.UserName}', '{model.UserName.ToUpper()}', '{model.Email}', '{model.Email.ToUpper()}',0, '{model.Password}','','',NULL,0,0,NULL,1,0);";
                     // Check if the table exists
                     if (TableAndColumnExist(connection, "AspNetUsers", "Id"))
                     {
@@ -218,7 +230,7 @@ namespace ReportBuilder.Web.Controllers
                     throw new Exception("Data Connection settings not found");
                 }
                 string connectionString = dbConfig["ConnectionString"].ToString();
-                string insertRoleDataQuery = $@" INSERT INTO [dbo].[AspNetRoles]  VALUES (NEWID(), '{model.RoleName}', '{model.RoleName.ToUpper()}');";
+                string insertRoleDataQuery = $@" INSERT INTO [dbo].[AspNetRoles]  VALUES (NEWID(), '{model.RoleName}', '{model.RoleName.ToUpper()}',NULL);";
                 using (SqlConnection connection = new SqlConnection(connectionString))
                 {
                     connection.Open();
@@ -328,7 +340,7 @@ namespace ReportBuilder.Web.Controllers
                 {
                     connection.Open();
                     string updateUserDataQuery = $@" UPDATE [dbo].[AspNetUsers] SET 
-                     UserName = '{model.UserName}', NormalizedUserName = '{model.UserName.ToUpper()}',  Email = '{model.Email}', NormalizedEmail = '{model.Email.ToUpper()}',  PasswordHash = '{model.Password}'
+                     UserName = '{model.UserName}', NormalizedUserName = '{model.UserName.ToUpper()}',  Email = '{model.Email}', NormalizedEmail = '{model.Email.ToUpper()}',EmailConfirmed = 0,  PasswordHash = '{model.Password}',SecurityStamp = '', ConcurrencyStamp = '', PhoneNumber = NULL, PhoneNumberConfirmed = 0, TwoFactorEnabled = 0, LockoutEnd = NULL, LockoutEnabled = 1, AccessFailedCount = 0
                      WHERE  Id = '{model.UserId}';";
                     // Check if the table exists
                     if (TableAndColumnExist(connection, "AspNetUsers", "Id"))
@@ -364,7 +376,7 @@ namespace ReportBuilder.Web.Controllers
                 {
                     connection.Open();
                     string updateRoleQuery = $@" UPDATE [dbo].[AspNetRoles] SET 
-                     Name = '{model.RoleName}', NormalizedName = '{model.RoleName.ToUpper()}'
+                     Name = '{model.RoleName}', NormalizedName = '{model.RoleName.ToUpper()}',ConcurrencyStamp=NULL
                      WHERE  Id = '{model.RoleId}';";
                     // Check if the table exists
                     if (TableAndColumnExist(connection, "AspNetRoles", "Id"))

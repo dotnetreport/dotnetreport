@@ -253,9 +253,9 @@
                 <div>
                     <!-- Nav tabs -->
                     <ul class="nav nav-tabs" role="tablist">
-                        <li role="presentation" class="nav-item"><a class="nav-link active" href="#setup-users" aria-controls="setup-users" role="tab" data-toggle="tab">Users</a></li>
-                        <li role="presentation" class="nav-item"><a class="nav-link" href="#setup-userroles" aria-controls="setup-userroles" role="tab" data-toggle="tab">User Roles</a></li>
-                        <li role="presentation" class="nav-item"><a class="nav-link" href="#setup-useruserroles" aria-controls="setup-useruserroles" role="tab" data-toggle="tab">Assign Roles to Users</a></li>
+                        <li role="presentation" class="nav-item"><a class="nav-link active" href="#setup-users" aria-controls="setup-users" role="tab" data-toggle="tab" data-bind="click:function (){ ExistingUserTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}">Users</a></li>
+                        <li role="presentation" class="nav-item"><a class="nav-link" href="#setup-userroles" aria-controls="setup-userroles" role="tab" data-toggle="tab" data-bind="click:function (){ ExistingRoleTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}">User Roles</a></li>
+                        <li role="presentation" class="nav-item"><a class="nav-link" href="#setup-useruserroles" aria-controls="setup-useruserroles" role="tab" data-toggle="tab" data-bind="click:function (){ ExistingUserRoleTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}">Assign Roles to Users</a></li>
                     </ul>
                 </div>
 
