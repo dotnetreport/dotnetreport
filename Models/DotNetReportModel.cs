@@ -383,7 +383,7 @@ namespace ReportBuilder.Web.Models
 
     public class DotNetReportHelper
     {
-        public static string GetConnectionString(string key)
+        public static string GetConnectionString(string key, bool addOledbProvider = true)
         {
             var connString = Startup.StaticConfig.GetConnectionString(key);
             if (connString == null)
@@ -393,7 +393,7 @@ namespace ReportBuilder.Web.Models
 
             connString = connString.Replace("Trusted_Connection=True", "");
 
-            if (!connString.ToLower().StartsWith("provider"))
+            if (!connString.ToLower().StartsWith("provider") && addOledbProvider)
             {
                 connString = "Provider=sqloledb;" + connString;
             }

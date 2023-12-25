@@ -252,7 +252,7 @@ namespace ReportBuilder.Web.Controllers
 
                     var dbtype = dbConfig["DatabaseType"].ToString();
                     string connectionString = dbConfig["ConnectionString"].ToString();
-                     var databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+                    IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
 
                     var dtPagedRun = new DataTable();
 
@@ -598,7 +598,7 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        public static dynamic  GetDbConnectionSettings(string account, string dataConnect)
+        public static dynamic GetDbConnectionSettings(string account, string dataConnect)
         {
             var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
             if (!System.IO.File.Exists(_configFilePath))
@@ -611,16 +611,34 @@ namespace ReportBuilder.Web.Controllers
 
             var config = JObject.Parse(configContent);
             var dotNetReportSection = config[$"dotNetReport"] as JObject;
+
+            // First try to get connection from the dotnetreport appsettings file
             if (dotNetReportSection != null)
             {
-                var defaultConfig = dotNetReportSection["ConnectionString"];
                 var dataConnectSection = dotNetReportSection[dataConnect] as JObject;
                 if (dataConnectSection != null)
                 {
                     return dataConnectSection.ToObject<dynamic>();
                 }
+            } 
+            else
+            {
+                // Next try to get config from appsettings (original method)
+                var connection = DotNetSetupController.GetConnection();
+                var connectionString = DotNetSetupController.GetConnectionString(connection).Result;
+
+                if (!string.IsNullOrEmpty(connectionString))
+                {
+                    var dbConfig = new JObject
+                    {
+                        ["DatabaseType"] = "",
+                        ["ConnectionKey"] = "Default",
+                        ["ConnectionString"] = connectionString
+                    };
+                    return dbConfig.ToObject<dynamic>();
+                }
             }
-        
+
             return null;
         }
 
@@ -663,10 +681,8 @@ namespace ReportBuilder.Web.Controllers
                 }
                 else
                 {
-                    connectionString = DotNetReportHelper.GetConnectionString(model.connectionKey);
-                    //For Replacing OLEDB Provider to Empty
-                    connectionString = connectionString.Replace("Provider=sqloledb;", "");
-                   
+                    connectionString = DotNetReportHelper.GetConnectionString(model.connectionKey, false);
+                    
                     if (string.IsNullOrEmpty(connectionString))
                     {
                         throw new Exception($"Connection string with key '{model.connectionKey}' was not found in App Config");
