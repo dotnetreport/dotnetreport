@@ -13,72 +13,72 @@ namespace ReportBuilder.Web.Controllers
     {
         const string createUserTableQuery = @"
             CREATE TABLE [dbo].[AspNetUsers](
-	[Id] [nvarchar](450) NOT NULL,
-	[UserName] [nvarchar](256) NULL,
-	[NormalizedUserName] [nvarchar](256) NULL,
-	[Email] [nvarchar](256) NULL,
-	[NormalizedEmail] [nvarchar](256) NULL,
-	[EmailConfirmed] [bit] NOT NULL,
-	[PasswordHash] [nvarchar](max) NULL,
-	[SecurityStamp] [nvarchar](max) NULL,
-	[ConcurrencyStamp] [nvarchar](max) NULL,
-	[PhoneNumber] [nvarchar](max) NULL,
-	[PhoneNumberConfirmed] [bit] NOT NULL,
-	[TwoFactorEnabled] [bit] NOT NULL,
-	[LockoutEnd] [datetimeoffset](7) NULL,
-	[LockoutEnabled] [bit] NOT NULL,
-	[AccessFailedCount] [int] NOT NULL,
-     CONSTRAINT [PK_AspNetUsers] PRIMARY KEY CLUSTERED 
-    (
-	    [Id] ASC
-    )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
-    ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
-    ";
+	            [Id] [nvarchar](450) NOT NULL,
+	            [UserName] [nvarchar](256) NULL,
+	            [NormalizedUserName] [nvarchar](256) NULL,
+	            [Email] [nvarchar](256) NULL,
+	            [NormalizedEmail] [nvarchar](256) NULL,
+	            [EmailConfirmed] [bit] NOT NULL,
+	            [PasswordHash] [nvarchar](max) NULL,
+	            [SecurityStamp] [nvarchar](max) NULL,
+	            [ConcurrencyStamp] [nvarchar](max) NULL,
+	            [PhoneNumber] [nvarchar](max) NULL,
+	            [PhoneNumberConfirmed] [bit] NOT NULL,
+	            [TwoFactorEnabled] [bit] NOT NULL,
+	            [LockoutEnd] [datetimeoffset](7) NULL,
+	            [LockoutEnabled] [bit] NOT NULL,
+	            [AccessFailedCount] [int] NOT NULL,
+                 CONSTRAINT [PK_AspNetUsers] PRIMARY KEY CLUSTERED 
+                (
+	                [Id] ASC
+                )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+                ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+                ";
         const string createRoleTableQuery = @"
-                    CREATE TABLE [dbo].[AspNetRoles](
-	                    [Id] [nvarchar](450) NOT NULL,
-	                    [Name] [nvarchar](256) NULL,
-	                    [NormalizedName] [nvarchar](256) NULL,
-	                    [ConcurrencyStamp] [nvarchar](max) NULL,
-                    CONSTRAINT [PK_AspNetRoles] PRIMARY KEY CLUSTERED 
-                    (
-                    	[Id] ASC
-                    )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
-                    ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
-                    ";
+            CREATE TABLE [dbo].[AspNetRoles](
+	            [Id] [nvarchar](450) NOT NULL,
+	            [Name] [nvarchar](256) NULL,
+	            [NormalizedName] [nvarchar](256) NULL,
+	            [ConcurrencyStamp] [nvarchar](max) NULL,
+            CONSTRAINT [PK_AspNetRoles] PRIMARY KEY CLUSTERED 
+            (
+                [Id] ASC
+            )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+            ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+            ";
 
         const string createUserRoleTableQuery = @"
-    -- Create the AspNetUserRoles table
-    CREATE TABLE [dbo].[AspNetUserRoles](
-        [UserId] [nvarchar](450) NOT NULL,
-        [RoleId] [nvarchar](450) NOT NULL,
-        CONSTRAINT [PK_AspNetUserRoles] PRIMARY KEY CLUSTERED 
-        (
-            [UserId] ASC,
-            [RoleId] ASC
-        )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
-    ) ON [PRIMARY];
+            -- Create the AspNetUserRoles table
+            CREATE TABLE [dbo].[AspNetUserRoles](
+                [UserId] [nvarchar](450) NOT NULL,
+                [RoleId] [nvarchar](450) NOT NULL,
+                CONSTRAINT [PK_AspNetUserRoles] PRIMARY KEY CLUSTERED 
+                (
+                    [UserId] ASC,
+                    [RoleId] ASC
+                )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+            ) ON [PRIMARY];
 
-    -- Add foreign key constraint to AspNetRoles table
-    ALTER TABLE [dbo].[AspNetUserRoles]  
-    WITH CHECK ADD CONSTRAINT [FK_AspNetUserRoles_AspNetRoles_RoleId] 
-    FOREIGN KEY([RoleId]) REFERENCES [dbo].[AspNetRoles] ([Id]) ON DELETE CASCADE;
+            -- Add foreign key constraint to AspNetRoles table
+            ALTER TABLE [dbo].[AspNetUserRoles]  
+            WITH CHECK ADD CONSTRAINT [FK_AspNetUserRoles_AspNetRoles_RoleId] 
+            FOREIGN KEY([RoleId]) REFERENCES [dbo].[AspNetRoles] ([Id]) ON DELETE CASCADE;
 
-    ALTER TABLE [dbo].[AspNetUserRoles] 
-    CHECK CONSTRAINT [FK_AspNetUserRoles_AspNetRoles_RoleId];
+            ALTER TABLE [dbo].[AspNetUserRoles] 
+            CHECK CONSTRAINT [FK_AspNetUserRoles_AspNetRoles_RoleId];
 
-    -- Add foreign key constraint to AspNetUsers table
-    ALTER TABLE [dbo].[AspNetUserRoles]  
-    WITH CHECK ADD CONSTRAINT [FK_AspNetUserRoles_AspNetUsers_UserId] 
-    FOREIGN KEY([UserId]) REFERENCES [dbo].[AspNetUsers] ([Id]) ON DELETE CASCADE;
+            -- Add foreign key constraint to AspNetUsers table
+            ALTER TABLE [dbo].[AspNetUserRoles]  
+            WITH CHECK ADD CONSTRAINT [FK_AspNetUserRoles_AspNetUsers_UserId] 
+            FOREIGN KEY([UserId]) REFERENCES [dbo].[AspNetUsers] ([Id]) ON DELETE CASCADE;
 
-    ALTER TABLE [dbo].[AspNetUserRoles] 
-    CHECK CONSTRAINT [FK_AspNetUserRoles_AspNetUsers_UserId];";
+            ALTER TABLE [dbo].[AspNetUserRoles] 
+            CHECK CONSTRAINT [FK_AspNetUserRoles_AspNetUsers_UserId];";
+
         public IActionResult ExistingUsersTable([FromBody] UserModel model)
         {
             try
             {
-
                 var dbConfig = DotNetReportApiController.GetDbConnectionSettings(model.account, model.dataConnect);
                 if (dbConfig == null)
                 {
@@ -535,47 +535,6 @@ namespace ReportBuilder.Web.Controllers
             catch (Exception ex)
             {
                 return new JsonResult(new { message = ex.Message }) { StatusCode = (int)HttpStatusCode.InternalServerError };
-            }
-        }
-        public IActionResult LoadUserRolesData([FromBody] UserModel model)
-        {
-            try
-            {
-                var dbConfig = DotNetReportApiController.GetDbConnectionSettings(model.account, model.dataConnect);
-                if (dbConfig == null)
-                {
-                    throw new Exception("Data Connection settings not found");
-                }
-                using (SqlConnection connection = new SqlConnection(dbConfig["ConnectionString"].ToString()))
-                {
-                    connection.Open();
-
-                    // Check if the default Users table and Id column exist in the database
-                    if (TableAndColumnExist(connection, "AspNetUserRoles", "UserId") && TableAndColumnExist(connection, "AspNetRoles", "Id"))
-                    {
-                        // Get all roles
-                        Dictionary<string, string> allRoles = GetAllRoles(connection);
-
-                        // Get users without roles
-                        Dictionary<string, string> usersWithoutRoles = GetUsersWithoutRoles(connection);
-
-                        var data = new
-                        {
-                            allRoles = allRoles,
-                            allUsers = usersWithoutRoles
-                        };
-                        return new JsonResult(new { success = true, message = "User Roles and Role Table Data Found.", data = data }, new JsonSerializerOptions { PropertyNamingPolicy = null });
-                    }
-                    else
-                    {
-                        return new JsonResult(new { success = false, message = "Existing User Role Table Not Found." }, new JsonSerializerOptions { PropertyNamingPolicy = null });
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-
-                return new JsonResult(new { message = ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null }) { StatusCode = (int)HttpStatusCode.InternalServerError };
             }
         }
         public IActionResult LoadRolesData([FromBody] UserModel model)

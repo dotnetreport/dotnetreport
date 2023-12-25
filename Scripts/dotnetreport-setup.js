@@ -560,22 +560,18 @@ var manageViewModel = function (options) {
 
 var usersAndRolesViewModel = function (options) {
 	var self = this;
-	console.log(self)
-	var UserConfig = options.model.UserAndRolesConfig || {};
-	console.log(UserConfig)
+	var userConfig = options.model.UserAndRolesConfig || {};
 	var validator = new validation();
-	self.RequireLogin = ko.observable(UserConfig.RequireLogin === true);
-	self.UsersSource = ko.observable(UserConfig.UsersSource);
-	self.UserRolesSource = ko.observable(UserConfig.UserRolesSource);
-	self.UserCreateShow = ko.observable("")
-	self.RoleCreateShow = ko.observable("")
-	self.UserRoleCreateShow = ko.observable("");
-	self.selectedUserConfig = ko.observable(UserConfig.SelectedUserConfig || "dnr-managed");
 
-	// Observable array to store users table data
+	var apiKey = options.model.AccountApiKey;
+	var dbKey = options.model.DatabaseApiKey;
+
+	self.selectedUserConfig = ko.observable(userConfig.SelectedUserConfig || "dnr-managed");
+
 	self.usersTableData = ko.observableArray([]);
-	self.RoleTableData = ko.observableArray([]);
-	self.UserRoleTableData = ko.observableArray([]);
+	self.roleTableData = ko.observableArray([]);
+	self.userRoleTableData = ko.observableArray([]);
+
 	self.SelectedRole = ko.observable({
 		roleId: ko.observable(),
 		roleName: ko.observable()
@@ -590,8 +586,8 @@ var usersAndRolesViewModel = function (options) {
 		userId: ko.observable(),
 		roleId: ko.observable(),
 		userName: ko.observable(),
-	})
-	// Define Knockout observables for form fields
+	});
+
 	self.tableName = ko.observable("");
 	self.userName = ko.observable("");
 	self.email = ko.observable("");
@@ -599,83 +595,8 @@ var usersAndRolesViewModel = function (options) {
 	self.roleName = ko.observable("");
 	self.roleId = ko.observable("");
 
-	self.allUsers = ko.observableArray([]); // Populate this array with users from the server
 	self.selectedUserId = ko.observable();
-	self.allRoles = ko.observableArray([]); // Populate this array with roles from the server
 	self.selectedRolesId = ko.observable();
-	self.loadUserRoleData = function (apiKey, dbKey) {
-
-		ajaxcall({
-			url: options.LoadUserRoleUrl,
-			type: 'POST',
-			data: JSON.stringify({
-				account: apiKey,
-				dataConnect: dbKey
-			})
-		}).done(function (response) {
-			if (response) {
-				if (response.success) {
-					console.log(response)
-					var usersKeyValuePair = response.data.allUsers;
-					if (Object.keys(usersKeyValuePair).length > 0) {
-						self.allUsers(Object.entries(usersKeyValuePair).map(([userId, userName]) => ({ id: userId, name: userName })));
-					} else {
-						toastr.error('Please Add User.');
-					}
-					var rolesKeyValuePair = response.data.allRoles;
-					if (Object.keys(rolesKeyValuePair).length > 0) {
-						self.allRoles(Object.entries(rolesKeyValuePair).map(([roleId, roleName]) => ({ id: roleId, name: roleName })));
-					} else {
-						toastr.error('Please Add Roles.');
-					}
-					if (Object.keys(usersKeyValuePair).length > 0 && Object.keys(rolesKeyValuePair).length > 0) {
-						toastr.success(response.message);
-					}
-				} else {
-					toastr.error(response.message || 'Existing Tables are Not Found ');
-					return false;
-				}
-			} else {
-				toastr.error('Connection Error');
-				return false;
-			}
-		});
-	};
-	self.loadRoleData = function (apiKey, dbKey, roleData) {
-		ajaxcall({
-			url: options.LoadRolesUrl,
-			type: 'POST',
-			data: JSON.stringify({
-				account: apiKey,
-				dataConnect: dbKey
-			})
-		}).done(function (response) {
-			if (response) {
-				if (response.success) {
-					console.log(response)
-					var rolesKeyValuePair = response.data.allRoles;
-					if (Object.keys(rolesKeyValuePair).length > 0) {
-						self.allRoles(Object.entries(rolesKeyValuePair).map(([roleId, roleName]) => ({ id: roleId, name: roleName })));
-						self.SelectedUserRole({
-							userId: roleData.UserId,
-							userName: roleData.UserName,
-							roleId: self.selectedRolesId()
-						});
-
-						toastr.success(response.message);
-					} else {
-						toastr.error('Please Add Roles.');
-					}
-				} else {
-					toastr.error(response.message || 'Existing Tables are Not Found ');
-					return false;
-				}
-			} else {
-				toastr.error('Connection Error');
-				return false;
-			}
-		});
-	};
 
 	self.openEditRoleModal = function (roleData) {
 		self.SelectedRole({
@@ -693,34 +614,27 @@ var usersAndRolesViewModel = function (options) {
 		self.SelectedUser({
 			userId: roleData.UserId,
 			userName: roleData.UserName,
-			email: roleData.Email,
-			//password: roleData.Password
+			email: roleData.Email
 		});
 	};
 	self.openDeleteUserModal = function (roleData) {
 		self.SelectedUser({
 			userId: roleData.UserId,
 			userName: roleData.UserName,
-			email: roleData.Email,
-			//password: roleData.Password
+			email: roleData.Email
 		});
 	};
 	self.openDeleteUserRoleModal = function (roleData) {
 		self.SelectedUserRole({
 			userId: roleData.UserId,
-			userName: roleData.UserName,
-			//roleid: self.selectedRolesId()
-			//password: roleData.Password
+			userName: roleData.UserName
 		});
 	};
-	self.EditRole = function (apiKey, dbKey) {
+	self.EditRole = function() {
 		if (self.isValidforEditRole()) {
 			const roledataid = self.SelectedRole().roleId;
 			const rolename = self.SelectedRole().roleName;
-			console.log(apiKey)
-			console.log(dbKey)
-			console.log(roledataid)
-			console.log(rolename)
+			
 			ajaxcall({
 				url: options.UpdateRoleDataUrl,
 				type: 'POST',
@@ -734,10 +648,9 @@ var usersAndRolesViewModel = function (options) {
 				if (response) {
 					if (response.success) {
 						toastr.success(response.message);
-						self.ExistingRoleTable(apiKey, dbKey);
+						self.loadRolesData(apiKey, dbKey);
 					} else {
 						toastr.error(response.message);
-						self.ExistingRoleTable(apiKey, dbKey);
 						return false;
 					}
 				} else {
@@ -748,16 +661,12 @@ var usersAndRolesViewModel = function (options) {
 		}
 
 	}
-	self.EditUser = function (apiKey, dbKey) {
+	self.EditUser = function() {
 		if (self.isValidforEditUser()) {
 			const userid = self.SelectedUser().userId;
 			const username = self.SelectedUser().userName;
 			const email = self.SelectedUser().email;
-			console.log(apiKey)
-			console.log(dbKey)
-			console.log(userid)
-			console.log(username)
-			console.log(email)
+			
 			ajaxcall({
 				url: options.UpdateUserDataUrl,
 				type: 'POST',
@@ -772,11 +681,9 @@ var usersAndRolesViewModel = function (options) {
 				if (response) {
 					if (response.success) {
 						toastr.success(response.message);
-						self.ExistingUserTable(apiKey, dbKey)
+						self.loadUsersData()
 					} else {
 						toastr.error(response.message);
-						self.ExistingUserTable(apiKey, dbKey)
-						return false;
 					}
 				} else {
 					toastr.error('Connection Error');
@@ -784,18 +691,13 @@ var usersAndRolesViewModel = function (options) {
 				}
 			});
 		}
-
 	}
-	self.EditUserRoles = function (apiKey, dbKey) {
+	self.EditUserRoles = function() {
 		if (self.isValidforEditUserRole()) {
 			const userid = self.SelectedUserRole().userId;
 			const username = self.SelectedUserRole().userName;
 			const roleid = self.selectedRolesId();
-			console.log(apiKey)
-			console.log(dbKey)
-			console.log(userid)
-			console.log(username)
-			console.log(roleid)
+			
 			ajaxcall({
 				url: options.UpdateUserRoleDataUrl,
 				type: 'POST',
@@ -809,10 +711,9 @@ var usersAndRolesViewModel = function (options) {
 				if (response) {
 					if (response.success) {
 						toastr.success(response.message);
-						self.ExistingUserRoleTable(apiKey, dbKey)
+						self.loadUserRolesData()
 					} else {
 						toastr.error(response.message);
-						self.ExistingUserRoleTable(apiKey, dbKey)
 						return false;
 					}
 				} else {
@@ -821,14 +722,10 @@ var usersAndRolesViewModel = function (options) {
 				}
 			});
 		}
-
 	}
 	// Function to delete a role
-	self.DeleteRole = function (apiKey, dbKey) {
-		console.log(apiKey)
-		console.log(dbKey)
+	self.DeleteRole = function() {
 		var roledataid = self.SelectedRole().roleId;
-		console.log(roledataid)
 		ajaxcall({
 			url: options.DeleteRoleDataUrl,
 			type: 'POST',
@@ -841,10 +738,9 @@ var usersAndRolesViewModel = function (options) {
 			if (response) {
 				if (response.success) {
 					toastr.success(response.message);
-					self.ExistingRoleTable(apiKey, dbKey);
+					self.loadRolesData(apiKey, dbKey);
 				} else {
 					toastr.error(response.message);
-					self.ExistingRoleTable(apiKey, dbKey);
 					return false;
 				}
 			} else {
@@ -853,11 +749,8 @@ var usersAndRolesViewModel = function (options) {
 			}
 		});
 	};
-	self.DeleteUser = function (apiKey, dbKey) {
-		console.log(apiKey)
-		console.log(dbKey)
+	self.DeleteUser = function() {
 		var userId = self.SelectedUser().userId;
-		console.log(userId)
 		ajaxcall({
 			url: options.DeleteUserDataUrl,
 			type: 'POST',
@@ -870,11 +763,10 @@ var usersAndRolesViewModel = function (options) {
 			if (response) {
 				if (response.success) {
 					toastr.success(response.message);
-					self.ExistingUserTable(apiKey, dbKey);
+					self.loadUsersData(apiKey, dbKey);
 
 				} else {
 					toastr.error(response.message);
-					self.ExistingUserTable(apiKey, dbKey);
 					return false;
 				}
 			} else {
@@ -883,13 +775,9 @@ var usersAndRolesViewModel = function (options) {
 			}
 		});
 	};
-	self.DeleteUserRole = function (apiKey, dbKey) {
-		console.log(apiKey)
-		console.log(dbKey)
+	self.DeleteUserRole = function() {
 		var userId = self.SelectedUserRole().userId;
-		console.log(userId)
 		var roleId = self.SelectedUserRole().roleId;
-		console.log(roleId)
 		ajaxcall({
 			url: options.DeleteUserRoleDataUrl,
 			type: 'POST',
@@ -903,10 +791,9 @@ var usersAndRolesViewModel = function (options) {
 			if (response) {
 				if (response.success) {
 					toastr.success(response.message);
-					self.ExistingUserRoleTable(apiKey, dbKey);
+					self.loadUserRolesData(apiKey, dbKey);
 				} else {
 					toastr.error(response.message);
-					self.ExistingUserRoleTable(apiKey, dbKey);
 					return false;
 				}
 			} else {
@@ -915,18 +802,16 @@ var usersAndRolesViewModel = function (options) {
 			}
 		});
 	};
-	self.createUserTable = function (apiKey, dbKey) {
+	self.createUser = function() {
 		if (self.isValidforCreateUser()) {
-			// Prepare data to be sent in the AJAX request
 			var requestData = {
 				account: apiKey,
 				dataConnect: dbKey,
 				userName: self.userName(),
 				email: self.email(),
 				password: self.password()
-				// Add other properties as needed
 			};
-			// Make AJAX request
+
 			ajaxcall({
 				url: options.CreatingUserTableUrl,  // Replace with your actual endpoint
 				type: 'POST',
@@ -935,87 +820,75 @@ var usersAndRolesViewModel = function (options) {
 				if (response) {
 					if (response.success) {
 						toastr.success(response.message);
-						self.ExistingUserTable(apiKey, dbKey)
+						self.loadUsersData(apiKey, dbKey);
 					} else {
 						toastr.error(response.message);
-						self.ExistingUserTable(apiKey, dbKey)
 						return false;
 					}
 				} else {
-					toastr.error('Error Creating With Tables');
+					toastr.error('Error creating tables');
 					return false;
 				}
 			});
 		}
 	};
-	self.createRoleTable = function (apiKey, dbKey) {
+	self.createRole = function() {
 
 		if (self.isValidforCreateRole()) {
-			// Prepare data to be sent in the AJAX request
 			var requestData = {
 				account: apiKey,
 				dataConnect: dbKey,
 				roleName: self.roleName()
-				// Add other properties as needed
 			};
-			// Make AJAX request
 			ajaxcall({
-				url: options.CreatingRoleTableUrl,  // Replace with your actual endpoint
+				url: options.CreatingRoleTableUrl,  
 				type: 'POST',
 				data: JSON.stringify(requestData)
 			}).done(function (response) {
 				if (response) {
 					if (response.success) {
 						toastr.success(response.message);
-						self.ExistingRoleTable(apiKey, dbKey)
+						self.loadRolesData(apiKey, dbKey);
 					} else {
 						toastr.error(response.message);
-						self.ExistingRoleTable(apiKey, dbKey)
 						return false;
 					}
 				} else {
-					toastr.error('Error Creating With Tables');
+					toastr.error('Error creating tables');
 					return false;
 				}
 			});
 		}
 	};
-	self.createUserRoleTable = function (apiKey, dbKey) {
+	self.createUserRoleTable = function() {
 		if (self.isValidforCreateUserRole()) {
-
-
-			// Prepare data to be sent in the AJAX request
 			var requestData = {
 				account: apiKey,
 				dataConnect: dbKey,
 				RoleId: self.selectedRolesId(),
 				UserId: self.selectedUserId()
-				// Add other properties as needed
 			};
-			// Make AJAX request
 			ajaxcall({
-				url: options.CreatingUserRoleTableUrl,  // Replace with your actual endpoint
+				url: options.CreatingUserRoleTableUrl, 
 				type: 'POST',
 				data: JSON.stringify(requestData)
 			}).done(function (response) {
 				if (response) {
 					if (response.success) {
 						toastr.success(response.message);
-						self.ExistingUserRoleTable(apiKey, dbKey)
+						self.loadUserRolesData(apiKey, dbKey);
 					} else {
 						toastr.error(response.message);
-						self.ExistingUserRoleTable(apiKey, dbKey)
 						return false;
 					}
 				} else {
-					toastr.error('Error Creating With Tables');
+					toastr.error('Error creating tables');
 					return false;
 				}
 			});
 		}
 	};
-	self.ExistingUserTable = function (apiKey, dbKey) {
-
+	self.loadUsersData = function() {
 		ajaxcall({
 			url: options.ExistingUsersUrl,
 			type: 'POST',
@@ -1026,7 +899,6 @@ var usersAndRolesViewModel = function (options) {
 		}).done(function (response) {
 			if (response) {
 				if (response.success) {
-					// Update users table data
 					self.usersTableData(response.data);
 					toastr.success(response.message);
 				} else {
@@ -1038,35 +910,9 @@ var usersAndRolesViewModel = function (options) {
 				return false;
 			}
 		});
-
 	};
-	self.createAndManageUsersTableClicked = function (apiKey, dbKey) {
-		//if (self.UserCreateShow() === 'UsersTable') {
 
-		//	self.ExistingUserTable(apiKey, dbKey)
-
-		//}
-		self.ExistingUserTable(apiKey, dbKey)
-
-	};
-	self.createAndManageRoleTableClicked = function (apiKey, dbKey) {
-		//if (self.RoleCreateShow() === 'RoleTable') {
-
-		//	self.ExistingRoleTable(apiKey, dbKey)
-
-		//}
-		self.ExistingRoleTable(apiKey, dbKey)
-	};
-	self.createAndManageUserRoleTableClicked = function (apiKey, dbKey) {
-		//if (self.UserRoleCreateShow() === 'UserRoleTable') {
-
-		//	self.ExistingUserRoleTable(apiKey, dbKey)
-
-		//}
-		self.ExistingUserRoleTable(apiKey, dbKey)
-
-	};
-	self.ExistingRoleTable = function (apiKey, dbKey) {
+	self.loadRolesData = function() {
 
 		ajaxcall({
 			url: options.ExistingRoleUrl,
@@ -1078,7 +924,7 @@ var usersAndRolesViewModel = function (options) {
 		}).done(function (response) {
 			if (response) {
 				if (response.success) {
-					self.RoleTableData(response.data);
+					self.roleTableData(response.data);
 					toastr.success(response.message);
 				} else {
 					toastr.error(response.message || 'Existing Tables are Not Found ');
@@ -1091,7 +937,7 @@ var usersAndRolesViewModel = function (options) {
 		});
 
 	};
-	self.ExistingUserRoleTable = function (apiKey, dbKey) {
+	self.loadUserRolesData = function() {
 
 		ajaxcall({
 			url: options.ExistingUserRoleUrl,
@@ -1103,7 +949,7 @@ var usersAndRolesViewModel = function (options) {
 		}).done(function (response) {
 			if (response) {
 				if (response.success) {
-					self.UserRoleTableData(response.data);
+					self.userRoleTableData(response.data);
 					toastr.success(response.message);
 				} else {
 					toastr.error(response.message || 'Existing Tables are Not Found ');
@@ -1139,9 +985,12 @@ var usersAndRolesViewModel = function (options) {
 	};
 	self.isValidforEditUserRole = function () {
 		var valid = validator.validateForm('#editUserRoleModal');
-		console.log(valid)
 		return valid;
 	};
+
+	self.init = function () {
+		return $.when(self.loadUsersData(), self.loadRolesData(), self.loadUserRolesData());
+	}
 }
 
 var dbConnectionViewModel = function(options) {
