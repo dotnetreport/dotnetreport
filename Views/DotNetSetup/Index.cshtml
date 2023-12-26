@@ -401,7 +401,7 @@
 
                                             <div class="small" style="padding-top: 10px;">
                                                 <b>Current Report Access</b><br />
-                                                Manage by User <span class="badge badge-info" data-bind="text: userId ? userId : 'No User'"></span>
+                                                Manage by User <span class="badge badge-info" data-bind="text: userId ? userId : 'Any User'"></span>
                                                 <br />
                                                 View only by User <span class="badge badge-info" data-bind="text: (viewOnlyUserId ? viewOnlyUserId : (userId ? userId : 'Any User'))"></span>
                                                 <br />
@@ -410,7 +410,7 @@
                                                     <br />
                                                 </div>
                                                 <div data-bind="if: userRole">
-                                                    Manage by Role <span class="badge badge-info" data-bind="text: userRole ? userRole : 'No Role'"></span>
+                                                    Manage by Role <span class="badge badge-info" data-bind="text: userRole ? userRole : 'Any Role'"></span>
                                                     <br />
                                                 </div>
                                                 <div data-bind="if: viewOnlyUserRole">
