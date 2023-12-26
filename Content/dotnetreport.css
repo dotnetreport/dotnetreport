@@ -732,3 +732,59 @@ select.is-invalid ~ span .select2-selection {
 .modal-dialog.modal-lg {
     max-width: 90%; /* or any percentage or pixel value you prefer */
 }
+
+
+.styled-select {
+    appearance: none; /* Removes default browser styling */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+
+.style1-option {
+    background-color: #f2f2f2;
+}
+
+.style2-option {
+    background-color: #d9ead3;
+}
+
+.style3-option {
+    background-color: #cfe2f3;
+}
+
+.style4-option {
+    background-color: #f4cccc;
+}
+
+
+.style1 tbody tr:nth-child(odd) {
+    background-color: #f2f2f2;
+}
+
+.style1 tbody tr:nth-child(even) {
+    background-color: #ffffff;
+}
+
+.style2 tbody tr:nth-child(odd) {
+    background-color: #d9ead3;
+}
+
+.style2 tbody tr:nth-child(even) {
+    background-color: #b6d7a8;
+}
+
+.style3 tbody tr:nth-child(odd) {
+    background-color: #cfe2f3;
+}
+
+.style3 tbody tr:nth-child(even) {
+    background-color: #9fc5e8;
+}
+
+.style4 tbody tr:nth-child(odd) {
+    background-color: #f4cccc;
+}
+
+.style4 tbody tr:nth-child(even) {
+    background-color: #ea9999;
+}

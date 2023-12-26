@@ -217,7 +217,7 @@
                     <td style="width: 30px;"></td>
                     <td data-bind="attr:{colspan: $parent.Columns.length }" style="padding-left: 0px;">
                         <!-- ko if: DrillDownData -->
-                        <table class="table table-hover table-condensed" data-bind="with: DrillDownData, attr: {class: 'table table-hover table-condensed ' + $parents[2].selectedStyle()}">
+                        <table class="table table-hover table-condensed" data-bind="with: DrillDownData, attr: {class: 'table table-hover table-condensed '}">
                             <thead>
                                 <tr class="no-highlight">
                                     <!-- ko template: 'report-column-header', data: $data -->

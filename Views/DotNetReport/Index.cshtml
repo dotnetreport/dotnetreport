@@ -487,7 +487,15 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             </div>
                                             <div class="form-group pull-right">
                                                 <div data-bind="template: 'pager-template', data: $data"></div>
-                                            </div>                                            
+                                            </div>
+                                            <div>
+                                                <select data-bind="value: $parent.selectedStyle" class="form-control styled-select">
+                                                    <option value="style1" class="style1-option">Color Set 1</option>
+                                                    <option value="style2" class="style2-option">Color Set 2</option>
+                                                    <option value="style3" class="style3-option">Color Set 3</option>
+                                                    <option value="style4" class="style4-option">Color Set 4</option>
+                                                </select>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

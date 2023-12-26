@@ -846,6 +846,29 @@ var reportViewModel = function (options) {
 	self.useReportHeader = ko.observable(false);
 	self.searchReports = ko.observable();
 
+	const style1 = ['#FF5733', '#33FF57', '#3357FF', '#FF33F5', '#F5FF33', '#FF6347', '#4682B4', '#DA70D6', '#40E0D0', '#FF69B4', '#F08080', '#20B2AA', '#87CEFA', '#778899', '#B0C4DE', '#FFB6C1', '#FFA07A', '#87CEEB', '#6495ED', '#7B68EE'];
+	const style2 = ['#8A2BE2', '#DEB887', '#5F9EA0', '#D2691E', '#FF7F50', '#7FFF00', '#D2B48C', '#FF4500', '#2E8B57', '#DAA520', '#CD5C5C', '#4B0082', '#FFFFF0', '#F0E68C', '#E6E6FA', '#FFF0F5', '#7CFC00', '#FFFACD', '#ADD8E6', '#F08080'];
+	const style3 = ['#DC143C', '#00FFFF', '#00008B', '#008B8B', '#B8860B', '#A9A9A9', '#006400', '#BDB76B', '#8B008B', '#556B2F', '#FF8C00', '#9932CC', '#8FBC8F', '#483D8B', '#2F4F4F', '#00CED1', '#9400D3', '#FF1493', '#00BFFF', '#696969'];
+	const style4 = ['#006400', '#BDB76B', '#8B008B', '#556B2F', '#FF8C00', '#1E90FF', '#B22222', '#FFFAF0', '#228B22', '#FF00FF', '#DCDCDC', '#F8F8FF', '#FFD700', '#DAA520', '#808080', '#008000', '#ADFF2F', '#F0FFF0', '#FF69B4', '#CD853F'];
+	const style5 = ['#E9967A', '#8FBC8F', '#483D8B', '#2F4F4F', '#00CED1', '#4682B4', '#D2691E', '#C71585', '#191970', '#F5FFFA', '#FFDEAD', '#000080', '#FDF5E6', '#808000', '#6B8E23', '#FFA500', '#FF4500', '#DA70D6', '#EEE8AA', '#98FB98'];
+
+	self.colorScheme = ko.observableArray(style1);
+	self.selectedStyle = ko.observable('style1');
+
+	self.selectedStyle.subscribe(function (x) {
+		switch (x) {
+			case 'style1': self.colorScheme(style1); break;
+			case 'style2': self.colorScheme(style2); break;
+			case 'style3': self.colorScheme(style3); break;
+			case 'style4': self.colorScheme(style4); break;
+			case 'style5': self.colorScheme(style5); break;
+		}
+	});
+
+	self.colorScheme.subscribe(function (x) {
+		self.DrawChart();
+	});
+
 	self.SavedReports.subscribe(function (x) {
 		if (self.ReportID()) {
 			var match = _.find(x, { reportId: self.ReportID() }) || { canEdit: false };
@@ -2809,12 +2832,15 @@ var reportViewModel = function (options) {
 				duration: 1000,
 				easing: 'out'
 			},
+			colors: self.colorScheme(),
 			legend: {
 				position: 'right', 
 				textStyle: {
 					fontSize: 11
 				}
-			}
+			},
+			backgroundColor: self.colorScheme()[15], // Set the background color here
+			chartArea: { backgroundColor: self.colorScheme()[15] }
 		};
 
 		if (options.chartSize) {
@@ -2919,9 +2945,9 @@ var reportViewModel = function (options) {
 		e.decimalPlaces = ko.observable(e.decimalPlaces);
 		e.fieldAlign = ko.observable(e.fieldAlign);
 		e.fontColor = ko.observable(e.fontColor);
-		e.backColor = ko.observable(e.backColor || '#ffffff');
+		e.backColor = ko.observable(e.backColor == '#ffffff' ? null : e.backColor);
 		e.headerFontColor = ko.observable(e.headerFontColor);
-		e.headerBackColor = ko.observable(e.headerBackColor || '#ffffff');
+		e.headerBackColor = ko.observable(e.headerBackColor == '#ffffff' ? null : e.headerBackColor);
 		e.fontBold = ko.observable(e.fontBold);
 		e.headerFontBold = ko.observable(e.headerFontBold);
 		e.fieldWidth = ko.observable(e.fieldWidth);
