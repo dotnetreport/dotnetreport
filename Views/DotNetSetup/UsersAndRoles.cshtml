@@ -158,7 +158,25 @@
                 <b>User and Roles Management Options</b><br />
                 <p>Please select how you want to use DNR with your users and manage secure login access.</p>
                 <br />
-                <!-- Option 1 -->
+
+                <div class="col-md-8 mb-4">
+                    <div class="card" data-bind="css: { 'selected-option': selectedUserConfig() === 'not-managed' }">
+                        <div class="card-body">
+                            <div class="form-check font-weight-bold error">
+                                <input type="checkbox" id="not-managed" class="form-check-input" data-bind="checked: selectedUserConfig, click: function() { selectedUserConfig('not-managed'); return true; }, checkedValue: 'not-managed'">
+                                <label class="form-check-label" for="not-managed">No Login Required</label>
+                            </div>
+                            <div class="card-text">
+                                Use DNR openly, and allow any user with a link to directly access the system and Create/Manage/Run any Report or Dashboard.
+                                <div class="padded-top"></div>
+                                <div class="padded-div small alert alert-danger">
+                                    <i class="fa fa-lightbulb-o"></i> This option is NOT recommended. It will make DNR publicly available without Authentication or Login, as long as a user has the working URL to the system. There are limited options to prevent unauthorized users from editing existing reports, and the admin section will still require login.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="col-md-8 mb-4">
                     <div class="card" data-bind="css: { 'selected-option': selectedUserConfig() === 'dnr-managed' }">
                         <div class="card-body">
@@ -177,26 +195,6 @@
                     </div>
                 </div>
 
-                <!-- Option 2 -->
-                <div class="col-md-8 mb-4">
-                    <div class="card" data-bind="css: { 'selected-option': selectedUserConfig() === 'api-managed' }">
-                        <div class="card-body">
-                            <div class="form-check font-weight-bold">
-                                <input type="checkbox" id="api-managed" class="form-check-input" data-bind="checked: selectedUserConfig, click: function() { selectedUserConfig('api-managed'); return true; }, checkedValue: 'api-managed'">
-                                <label class="form-check-label" for="api-managed">Using your API or SSO Service</label>
-                            </div>
-                            <div class="card-text">
-                                Manage your Users, Roles, and their Claims access using your own code and infrastructure outside of DNR. Just connect your API or SSO Service, and DNR will authorize login access using your service.
-                                <div class="padded-top"></div>
-                                <div class="padded-div small alert bg-light">
-                                    <i class="fa fa-lightbulb-o"></i> This option works best for using DNR as a "Standalone System" as well, where you would give access to your users to DNR Reports and Dashboards using <b>this</b> web application. This could work for the "Embedded" option as well using an iFrame, but it's not ideal for embedding. Some coding will be required.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Option 3 -->
                 <div class="col-md-8 mb-4">
                     <div class="card" data-bind="css: { 'selected-option': selectedUserConfig() === 'code-managed' }">
                         <div class="card-body">
@@ -216,24 +214,26 @@
                     </div>
                 </div>
 
-                <!-- Option 4 -->
                 <div class="col-md-8 mb-4">
-                    <div class="card" data-bind="css: { 'selected-option': selectedUserConfig() === 'not-managed' }">
+                    <div class="card" data-bind="css: { 'selected-option': selectedUserConfig() === 'api-managed' }">
                         <div class="card-body">
-                            <div class="form-check font-weight-bold error">
-                                <input type="checkbox" id="not-managed" class="form-check-input" data-bind="checked: selectedUserConfig, click: function() { selectedUserConfig('not-managed'); return true; }, checkedValue: 'not-managed'">
-                                <label class="form-check-label" for="not-managed">No Login Required</label>
+                            <div class="form-check font-weight-bold">
+                                <input type="checkbox" id="api-managed" class="form-check-input" disabled="disabled" data-bind="checked: selectedUserConfig, click: function() { selectedUserConfig('api-managed'); return true; }, checkedValue: 'api-managed'">
+                                <label class="form-check-label" for="api-managed">Using your API or SSO Service</label>
+
+                                <label class="badge badge-warning" title="This option is not available yet">Coming Soon</label>
                             </div>
                             <div class="card-text">
-                                Use DNR openly, and allow any user with a link to directly access the system and Create/Manage/Run any Report or Dashboard.
+                                Manage your Users, Roles, and their Claims access using your own code and infrastructure outside of DNR. Just connect your API or SSO Service, and DNR will authorize login access using your service.
                                 <div class="padded-top"></div>
-                                <div class="padded-div small alert alert-danger">
-                                    <i class="fa fa-lightbulb-o"></i> This option is NOT recommended. It will make DNR publicly available without Authentication or Login, as long as a user has the working URL to the system. There are limited options to prevent unauthorized users from editing existing reports, and the admin section will still require login.
+                                <div class="padded-div small alert bg-light">
+                                    <i class="fa fa-lightbulb-o"></i> This option works best for using DNR as a "Standalone System" as well, where you would give access to your users to DNR Reports and Dashboards using <b>this</b> web application. This could work for the "Embedded" option as well using an iFrame, but it's not ideal for embedding. Some coding will be required.
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+
             </div>
 
         </div>
@@ -243,11 +243,30 @@
                 Configure and manage your Application Users and Roles in DNR.
             </p>
 
+            <div data-bind="if: selectedUserConfig() == 'not-managed'">
+                <div class="alert alert-danger">
+                    Your selected option is <b>No Login Required</b>. With this option, you do not need to manage or setup users at all.<br />
+                    Any user will be able to Run or Manage Reports and Dashboard <b>IF</b> you deploy this web application and provide the URL to a user
+                </div>
+            </div>
+
+            <div data-bind="if: selectedUserConfig() == 'code-managed'">
+                <div class="alert alert-info">
+                    Your selected option is <b>Embedded / Code</b>. With this option, you do not need to manage or setup users here.<br />
+                    You need to install DNR in your application using the corrent Nuget package. We have different nuget install packages for different versions of .NET
+                </div>
+            </div>
+
             <div data-bind="if: selectedUserConfig() == 'api-managed'">
+                <div class="alert alert-info">
+                    Your selected option is <b>Using your API or SSO</b>. With this option, you can provide your API URL or SSO Redirect URL below.<br />
+                    Your Authorization Service must return JSON or Claims in the format described below. 
+                </div>
             </div>
 
             <div data-bind="if: selectedUserConfig() == 'dnr-managed'">
                 <div class="alert alert-info">
+                    Your selected option is <b>Managed by DNR</b>. With this option, you can create and manage your users who will access the system below. <br />
                     Users and Roles will be managed using Standard ASP.NET Individual Account Identity. It uses "AspNetUsers" and "AspNetUserRoles" tables. If these tables don't exist in your database, they will be created, otherwise existing tables will be used. 
                 </div>
                 <div>
