@@ -480,7 +480,7 @@
     <div class="card" data-bind="visible: FlyFilters().length>0">
         <div class="card-header">
             <a data-toggle="collapse" data-bind="attr: {'data-target': '#filter-panel-' + ReportID() }" href="#">
-                <i class="fa fa-filter"></i>Choose filter options
+                <i class="fa fa-filter"></i> Choose Filters
             </a>
         </div>
         <div data-bind="attr: {id: 'filter-panel-' + ReportID() }" class="card-body collapse collapsed">
@@ -491,7 +491,7 @@
                         <div data-bind="with: Field" class="checkbox">
                             <div class="checkbox">
                                 <label>
-                                    <input type="checkbox" title="Apply this filter" data-bind="checked: $parent.Apply" /><span data-bind="text: selectedFilterName"></span>
+                                    <input type="checkbox" title="Apply this filter" data-bind="checked: $parent.Apply" /> <span data-bind="text: selectedFilterName"></span>
                                 </label>
                             </div>
                         </div>
