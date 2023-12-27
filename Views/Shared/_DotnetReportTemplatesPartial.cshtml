@@ -464,8 +464,8 @@
                     </div>
                 </div>
                 <div data-bind="visible: isRoot">
-                    <div class="btn-group btn-group-sm">
-                        <label class="btn btn-primary">Filter Conditions</label>
+                    <div class="pull-left padded-div">
+                        <label> &nbsp;Filter Conditions</label>
                     </div>
                 </div>
                 <div class="clearfix"></div>
@@ -478,11 +478,9 @@
 <script type="text/html" id="fly-filter-template">
     <div class="card" data-bind="visible: FlyFilters().length>0">
         <div class="card-header">
-            <h5 class="card-title">
-                <a data-toggle="collapse" data-bind="attr: {'data-target': '#filter-panel-' + ReportID() }" href="#">
-                    <i class="fa fa-filter"></i>Choose filter options
-                </a>
-            </h5>
+            <a data-toggle="collapse" data-bind="attr: {'data-target': '#filter-panel-' + ReportID() }" href="#">
+                <i class="fa fa-filter"></i>Choose filter options
+            </a>
         </div>
         <div data-bind="attr: {id: 'filter-panel-' + ReportID() }" class="card-body collapse collapsed">
             <div>
