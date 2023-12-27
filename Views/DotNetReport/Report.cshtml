@@ -131,13 +131,11 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
             <div data-bind="if: EditFiltersOnReport">
                 <div class="card">
                     <div class="card-header">
-                        <h5 class="card-title">
-                            <a data-toggle="collapse" data-target="#filter-panel" href="#">
-                                <i class="fa fa-filter"></i>Choose filter options
-                            </a>
-                        </h5>
+                        <a data-toggle="collapse" data-target="#filter-panel" href="#">
+                            <i class="fa fa-filter"></i>Choose Filters
+                        </a>
                     </div>
-                    <div id="filter-panel" class="card-body">
+                    <div id="filter-panel" class="card-body collapse">
                          <div data-bind="if: useStoredProc">
                             <div class="row">
                                 <div data-bind="template: {name: 'filter-parameters'}" class="col-md-12"></div>
