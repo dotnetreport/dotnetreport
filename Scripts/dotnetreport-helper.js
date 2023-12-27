@@ -537,3 +537,13 @@ var textQuery = function (options) {
             });
     }
 }
+
+// pick theme 
+function changeTheme(theme) {
+    if (theme) {
+        localStorage.setItem('dotnetreport-selectedTheme', theme);
+        document.getElementById('theme-css').href = '/css/dotnetreport-' + theme.toLowerCase() + '.css';
+    }
+}
+var theme = localStorage.getItem('dotnetreport-selectedTheme') || 'default';
+changeTheme(theme);
