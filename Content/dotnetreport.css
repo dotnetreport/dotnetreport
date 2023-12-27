@@ -785,7 +785,6 @@ select.is-invalid ~ span .select2-selection {
 }
 
 h2 {
-    color: #0056b3;
     font-size: 1.3em;
     margin-top: 5px;
 }
@@ -793,6 +792,70 @@ h2 {
 .btn:hover {
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
+
+/* Style the Select2 container to look like plain text */
+.select-as-text + .select2 .select2-selection {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+/* Hide the dropdown arrow by default */
+.select-as-text + .select2 .select2-selection__arrow {
+    display: none;
+}
+
+/* Show the dropdown arrow when hovering over the Select2 container */
+.select-as-text + .select2:hover .select2-selection__arrow {
+    display: block;
+}
+
+/* Customizing the BlockUI message container */
+.blockUI.blockMsg.blockPage {
+    background: transparent !important; /* Transparent background */
+    border: none !important; /* No border */
+    box-shadow: none !important; /* No shadow */
+    width: 100px; /* Adjust width as needed */
+    height: 100px; /* Adjust height as needed */
+    text-align: center;
+    position: relative;
+}
+
+    /* Adjust the font size of the default text */
+    .blockUI.blockMsg.blockPage h1 {
+        display:none;
+        font-size: 14px;
+        position: absolute; /* Position the text absolutely */
+        top: 110px; /* Adjust the top value as needed */
+        width: 100%; /* Ensure the text spans the width of the container */
+        left: 50%;
+        transform: translateX(-50%); /* Center the text horizontally */
+    }
+
+    /* Dual-ring spinner styling */
+    .blockUI.blockMsg.blockPage:after {
+        content: " ";
+        display: block;
+        width: 64px;
+        height: 64px;
+        margin: 18px auto; /* Center the spinner horizontally */
+        border-radius: 50%;
+        border: 6px solid #3498db;
+        border-color: #3498db transparent #3498db transparent;
+        animation: dual-ring-spin 1.2s linear infinite;
+    }
+
+/* Animation for the dual-ring spinner */
+@keyframes dual-ring-spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
 
 .styled-select {
     appearance: none;
