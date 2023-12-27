@@ -1,12 +1,10 @@
-
-/* General Dark Theme Settings */
 :root {
-    --dark-bg: #222; /* Dark background */
-    --dark-bg-secondary: #343a40; /* Slightly lighter dark background */
-    --dark-text: #f8f9fa; /* Light text */
-    --dark-border: #495057; /* Dark border color */
-    --dark-hover-bg: #495057; /* Hover background color */
-    --dark-active: #6c757d; /* Active or selected color */
+    --dark-bg: #222;
+    --dark-bg-secondary: #343a40;
+    --dark-text: #f8f9fa;
+    --dark-border: #495057;
+    --dark-hover-bg: #495057;
+    --dark-active: #6c757d;
     --dark-primary: #121212;
     --dark-secondary: #1c1c1c;
     --dark-text: #f8f9fa;
@@ -30,53 +28,48 @@ a {
 
 .navbar-light {
     color: var(--dark-link);
-    background-color: var(--dark-bg); /* Dark background for the navbar */
-    border-color: var(--dark-border); /* Border color for the navbar */
+    background-color: var(--dark-bg);
+    border-color: var(--dark-border);
 }
 
-    /* Navbar brand and links color */
     .navbar-light .navbar-brand,
     .navbar-light .navbar-nav .nav-link {
-        color: var(--dark-text); /* Light text for contrast */
+        color: var(--dark-text);
     }
 
-        /* Navbar link hover and active states */
         .navbar-light .navbar-nav .nav-link:hover,
         .navbar-light .navbar-nav .nav-link:focus,
         .navbar-light .navbar-nav .nav-link.active {
-            color: var(--dark-active); /* Slightly different color for hover/focus/active states */
-            background-color: transparent; /* Optional: Change background on hover/focus/active */
+            color: var(--dark-active);
+            background-color: transparent;
         }
 
-    /* Dropdown menu styles within navbar */
     .navbar-light .navbar-nav .nav-item.dropdown .dropdown-menu {
-        background-color: var(--dark-bg-secondary); /* Dark background for dropdown menus */
-        border-color: var(--dark-border); /* Border color for dropdown menus */
+        background-color: var(--dark-bg-secondary);
+        border-color: var(--dark-border);
     }
 
         .navbar-light .navbar-nav .nav-item.dropdown .dropdown-menu .dropdown-item {
-            color: var(--dark-text); /* Light text color for dropdown items */
+            color: var(--dark-text);
         }
 
             .navbar-light .navbar-nav .nav-item.dropdown .dropdown-menu .dropdown-item:hover,
             .navbar-light .navbar-nav .nav-item.dropdown .dropdown-menu .dropdown-item:focus {
-                background-color: var(--dark-hover-bg); /* Background color for hover/focus states */
-                color: var(--dark-active); /* Text color for hover/focus states */
+                background-color: var(--dark-hover-bg);
+                color: var(--dark-active);
             }
 
-    /* Responsive navbar toggler */
     .navbar-light .navbar-toggler {
-        border-color: var(--dark-border); /* Border color for toggler */
+        border-color: var(--dark-border);
     }
 
     .navbar-light .navbar-toggler-icon {
-        background-image: url("data:image/svg+xml;charset=utf8,%3Csvg viewBox='0 0 30 30' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath stroke='rgba(255, 255, 255, 0.5)' stroke-width='2' stroke-linecap='round' stroke-miterlimit='10' d='M4 7h22M4 15h22M4 23h22'/%3E%3C/svg%3E"); /* Toggler icon color */
+        background-image: url("data:image/svg+xml;charset=utf8,%3Csvg viewBox='0 0 30 30' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath stroke='rgba(255, 255, 255, 0.5)' stroke-width='2' stroke-linecap='round' stroke-miterlimit='10' d='M4 7h22M4 15h22M4 23h22'/%3E%3C/svg%3E");
     }
 
     .navbar-light .navbar-nav .active > .nav-link, .navbar-light .navbar-nav .nav-link.active, .navbar-light .navbar-nav .nav-link.show, .navbar-light .navbar-nav .show > .nav-link {
-        color: var(--dark-active); /* Distinct color for active state */
+        color: var(--dark-active);
     }
-
 
 .card {
     background-color: var(--dark-secondary);
@@ -94,6 +87,7 @@ a {
 }
 
 .table {
+    background-color: var(--dark-bg-secondary);
     color: var(--dark-text);
 }
 
@@ -105,6 +99,11 @@ a {
 .table-bordered th,
 .table-bordered td {
     border-color: var(--dark-border);
+}
+
+.table-hover tbody tr:hover {
+    color: var(--dark-text);
+    background-color: var(--dark-bg);
 }
 
 .bg-light {
@@ -124,21 +123,15 @@ a {
     color: var(--dark-text);
 }
 
-/* Additional overrides for other components as needed... */
-
-
-/* Applying dark theme to your custom styles */
 .listbox {
     background-color: var(--dark-bg-secondary);
     color: var(--dark-text);
     border-color: var(--dark-border);
-    /* other styles remain the same */
 }
 
 .list-overflow, .list-overflow-auto {
     background-color: var(--dark-bg);
     color: var(--dark-text);
-    /* other styles remain the same */
 }
 
 .list-report li {
@@ -149,22 +142,18 @@ a {
 
 .folder-panel {
     background-color: var(--dark-bg);
-    /* other styles remain the same */
 }
 
 .folder-list li {
     background-color: var(--dark-bg-secondary);
     color: var(--dark-text);
     border: 1px solid var(--dark-bg);
-    /* other styles remain the same */
 }
 
     .folder-list li:hover {
         background-color: var(--dark-hover-bg);
-        /* other styles remain the same */
     }
 
-/* .modal-fullscreen and related styles */
 .modal-fullscreen .modal-dialog {
     background-color: var(--dark-bg);
     color: var(--dark-text);
@@ -174,164 +163,69 @@ a {
     background-color: var(--dark-hover-bg);
     color: var(--dark-text);
     border-color: var(--dark-border);
-    /* other styles remain the same */
 }
 
-/* Additional custom styles */
 .button-box {
     color: var(--dark-text);
     border: 2px solid var(--dark-border);
-    /* other styles remain the same */
 }
 
     .button-box:hover {
         background-color: var(--dark-hover-bg);
         color: var(--dark-active);
-        /* other styles remain the same */
     }
-
-
 
     .button-box.active {
         background-color: transparent;
     }
-/* Continuing with other custom styles... */
+
 .report-container, .report-outer, .report-canvas {
     background-color: var(--dark-bg);
 }
 
 .report-menubar {
     background-color: var(--dark-bg-secondary);
-    /* other styles remain the same */
 }
 
-/* More adjustments for other components... */
-
-/* Ensuring contrast and readability */
 .material-switch > label::before {
-    background-color: var(--dark-border);
-    /* other styles remain the same */
+    background-color: #fff;
 }
 
 .material-switch > label::after {
-    background-color: var(--dark-text);
-    /* other styles remain the same */
+    background-color: #fff;
 }
 
-/* Dark Theme Adjustments for Bootstrap List Groups */
+.material-switch > .label-primary {
+    background-color: #fff !important;
+}
+
 .list-group {
-    background-color: var(--dark-bg); /* Dark background for the list group container */
-    /* Additional styles if needed */
+    background-color: var(--dark-bg);
 }
 
 .list-group-item {
-    background-color: var(--dark-bg); /* Slightly different dark background for list items */
-    color: var(--dark-text); /* Light text for readability */
-    border-color: var(--dark-border); /* Dark themed border */
+    background-color: var(--dark-bg);
+    color: #e4e5e5;
+    border-color: var(--dark-border);
 }
 
-    /* Hover and active state for list group items */
     .list-group-item:hover, .list-group-item:focus {
-        background-color: var(--dark-hover-bg); /* Slightly lighter background on hover/focus */
-        color: var(--dark-text); /* Change text color if needed */
+        background-color: var(--dark-hover-bg);
+        color: var(--dark-text);
     }
 
     .list-group-item.active {
-        background-color: var(--dark-active); /* Active item background */
-        border-color: var(--dark-active); /* Active item border */
-        color: var(--dark-text); /* Light text color for contrast */
+        background-color: var(--dark-active);
+        border-color: var(--dark-active);
+        color: var(--dark-text);
     }
 
-    /* If you have any additional specific classes within list-group, you can customize them as well */
     .list-group-item.custom-class {
-        /* Custom dark theme styles for your specific class */
     }
-
-.table {
-    --bs-table-color-type: initial;
-    --bs-table-bg-type: initial;
-    --bs-table-color-state: initial;
-    --bs-table-bg-state: initial;
-    --bs-table-color: #212529;
-    --bs-table-bg: var(--bs-body-bg);
-    --bs-table-border-color: rgba(0, 0, 0, 0.6);
-    --bs-table-accent-bg: rgba(255, 255, 255, 0.05);
-    --bs-table-striped-color: #fff;
-    --bs-table-striped-bg: rgba(var(--bs-emphasis-color-rgb), 0.05);
-    --bs-table-active-color: #fff;
-    --bs-table-active-bg: rgba(var(--bs-emphasis-color-rgb), 0.1);
-    --bs-table-hover-color: #000;
-    --bs-table-hover-bg: rgba(255, 255, 255, 0.075);
-    width: 100%;
-    margin-bottom: 1rem;
-    vertical-align: top;
-    border-color: var(--bs-table-border-color);
-}
-
-    .table > :not(caption) > * > * {
-        padding: 0.5rem 0.5rem;
-        color: var(--bs-table-color-state, var(--bs-table-color-type, var(--bs-table-color)));
-        background-color: var(--bs-table-bg);
-        border-bottom-width: var(--bs-border-width);
-        box-shadow: inset 0 0 0 9999px var(--bs-table-bg-state, var(--bs-table-bg-type, var(--bs-table-accent-bg)));
-    }
-
-    .table > tbody {
-        vertical-align: inherit;
-    }
-
-    .table > thead {
-        vertical-align: bottom;
-    }
-
-.table-group-divider {
-    border-top: calc(var(--bs-border-width) * 2) solid currentcolor;
-}
 
 .caption-top {
     caption-side: top;
 }
-
-.table-sm > :not(caption) > * > * {
-    padding: 0.25rem 0.25rem;
-}
-
-.table-bordered > :not(caption) > * {
-    border-width: var(--bs-border-width) 0;
-}
-
-    .table-bordered > :not(caption) > * > * {
-        border-width: 0 var(--bs-border-width);
-    }
-
-.table-borderless > :not(caption) > * > * {
-    border-bottom-width: 0;
-}
-
-.table-borderless > :not(:first-child) {
-    border-top-width: 0;
-}
-
-.table-striped > tbody > tr:nth-of-type(odd) > * {
-    --bs-table-color-type: var(--bs-table-striped-color);
-    --bs-table-bg-type: var(--bs-table-striped-bg);
-}
-
-.table-striped-columns > :not(caption) > tr > :nth-child(even) {
-    --bs-table-color-type: var(--bs-table-striped-color);
-    --bs-table-bg-type: var(--bs-table-striped-bg);
-}
-
-.table-active {
-    --bs-table-color-state: var(--bs-table-active-color);
-    --bs-table-bg-state: var(--bs-table-active-bg);
-}
-
-.table-hover > tbody > tr:hover > * {
-    --bs-table-color-state: var(--bs-table-hover-color);
-    --bs-table-bg-state: var(--bs-table-hover-bg);
-}
-
 
 .btn-primary {
     background-image: linear-gradient(#52565a, #3a3f44 60%, #353a3f);
@@ -368,77 +262,70 @@ p {
     color: #6c757d;
 }
 
-/* Base Style for Select2 Container */
 .select2-container {
-    background-color: var(--dark-bg-secondary); /* Dark background */
-    color: var(--dark-text); /* Light text for contrast */
-    border: 1px solid var(--dark-border); /* Dark border */
+    background-color: var(--dark-bg-secondary);
+    color: var(--dark-text);
+    border: 1px solid var(--dark-border);
 }
 
-/* Styles for the Select2 Dropdown */
 .select2-dropdown {
-    background-color: var(--dark-bg-secondary); /* Dark background */
-    color: var(--dark-text); /* Light text for contrast */
-    border-color: var(--dark-border); /* Dark border */
+    background-color: var(--dark-bg-secondary);
+    color: var(--dark-text);
+    border-color: var(--dark-border);
 }
 
-/* Styles for Select2 Options */
 .select2-results__option {
-    background-color: var(--dark-bg-secondary); /* Dark background */
-    color: var(--dark-text); /* Light text for contrast */
+    background-color: var(--dark-bg-secondary);
+    color: var(--dark-text);
 }
 
 .select2-results__option--highlighted {
-    background-color: var(--dark-hover-bg); /* Slightly lighter background for highlighted option */
-    color: var(--dark-active); /* Text color for highlighted option */
+    background-color: var(--dark-hover-bg);
+    color: var(--dark-active);
 }
 
-/* Style for the Select2 Search Field */
 .select2-search--dropdown .select2-search__field {
-    background-color: var(--dark-bg); /* Darker background for search field */
-    color: var(--dark-text); /* Light text for contrast */
-    border: 1px solid var(--dark-border); /* Dark border */
+    background-color: var(--dark-bg);
+    color: var(--dark-text);
+    border: 1px solid var(--dark-border);
 }
 
-/* Style for Select2 Selection */
 .select2-container--default .select2-selection--single {
-    background-color: var(--dark-bg-secondary); /* Dark background */
-    color: var(--dark-text); /* Light text for contrast */
-    border: 1px solid var(--dark-border); /* Dark border */
+    background-color: var(--dark-bg-secondary);
+    color: var(--dark-text);
+    border: 1px solid var(--dark-border);
 }
 
     .select2-container--default .select2-selection--single .select2-selection__rendered {
-        color: var(--dark-text); /* Light text for contrast */
+        color: var(--dark-text);
     }
 
     .select2-container--default .select2-selection--single .select2-selection__arrow b {
-        border-color: var(--dark-text) transparent transparent transparent; /* Arrow color */
+        border-color: var(--dark-text) transparent transparent transparent;
     }
 
-/* Style for Multi-select Tags */
 .select2-container--default .select2-selection--multiple .select2-selection__choice {
-    background-color: var(--dark-active); /* Background for tags */
-    color: var(--dark-text); /* Text color for tags */
-    border: 1px solid var(--dark-hover-bg); /* Border for tags */
+    background-color: var(--dark-active);
+    color: var(--dark-text);
+    border: 1px solid var(--dark-hover-bg);
 }
 
-/* Style for Bootstrap 4 cards - Dark Theme */
 .card {
-    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.6); /* Darker shadow for cards */
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.6);
     transition: 0.3s;
 }
 
     .card:hover {
-        box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.8); /* Even darker shadow for hover */
+        box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.8);
     }
 
 .list-group-item {
-    box-shadow: 0 3px 6px 0 rgba(0, 0, 0, 0.7); /* More prominent shadow for list items */
+    box-shadow: 0 3px 6px 0 rgba(0, 0, 0, 0.7);
     transition: 0.3s;
 }
 
     .list-group-item:hover {
-        box-shadow: 0 6px 12px 0 rgba(0, 0, 0, 0.9); /* More prominent shadow for hover */
+        box-shadow: 0 6px 12px 0 rgba(0, 0, 0, 0.9);
     }
 
 .query-builder .rule-container, .query-builder .rule-placeholder, .query-builder .rules-group-container {
@@ -446,23 +333,23 @@ p {
     margin: 4px 0;
     border-radius: 5px;
     padding: 5px;
-    border: 1px solid #444; /* Dark border for contrast */
-    background-color: #333; /* Dark background */
-    color: #f8f9fa; /* Light text for readability */
+    border: 1px solid #444;
+    background-color: #333;
+    color: #f8f9fa;
     width: 100%;
 }
 
 .query-builder .rules-group-container {
     padding: 10px;
     padding-bottom: 6px;
-    border: 1px solid #555; /* Slightly lighter border for distinction */
-    background-color: #2b2b2b; /* Slightly different dark background for nested groups */
+    border: 1px solid #555;
+    background-color: #2b2b2b;
 }
 
 .query-builder .rules-group-header {
     margin-bottom: 10px;
-    background-color: #3a3a3a; /* Dark header background */
-    color: #f8f9fa; /* Light text for header */
+    background-color: #3a3a3a;
+    color: #f8f9fa;
 }
 
     .query-builder .rules-group-header .group-conditions .btn.readonly:not(.active),
@@ -494,7 +381,7 @@ p {
         left: -10px;
         width: 10px;
         height: calc(50% + 4px);
-        border-color: #666; /* Dark connector lines */
+        border-color: #666;
         border-style: solid;
     }
 
