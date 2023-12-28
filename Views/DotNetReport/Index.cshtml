@@ -462,12 +462,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <div data-bind="template: {name: 'fly-filter-template'}"></div>
                                 <br />
                             </div>
-                            <div data-bind="if: canDrilldown">
-                                <button class="btn btn-secondary btn-xs" data-bind="click: ExpandAll">Expand All</button>
-                                <button class="btn btn-secondary btn-xs" data-bind="click: CollapseAll">Collapse All</button>
-                                <br />
-                                <br />
-                            </div>
+                            
                             <div class="report-render" data-bind="css: { 'report-expanded': isExpanded }">
                                 <div class="report-menubar">
                                     <div class="col-xs-12 col-centered" data-bind="with: pager">
@@ -481,17 +476,29 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 </button>
                                                 <button class="btn btn-secondary btn-sm" data-bind="click: $parent.toggleExpand">
                                                     <span class="fa" data-bind="css: {'fa-expand': !$parent.isExpanded(), 'fa-minus': $parent.isExpanded() }"></span>
-                                                </button>                                                
+                                                </button>      
+                                                <button class="btn btn-secondary btn-sm" data-bind="visible: $parent.canDrilldown, click: $parent.ExpandAll" title="Expand all rows">
+                                                    <span class="fa fa-plus"></span>
+                                                </button>
+                                                <button class="btn btn-secondary btn-sm" data-bind="visible: $parent.canDrilldown, click: $parent.CollapseAll" title="Collapse all rows">
+                                                    <span class="fa fa-minus"></span>
+                                                </button>
                                             </div>
                                             <div class="form-group pull-right">
                                                 <div data-bind="template: 'pager-template', data: $data"></div>
                                             </div>
                                             <div>
-                                                <select data-bind="value: $parent.selectedStyle" class="form-control styled-select">
-                                                    <option value="style1" class="style1-option">Color Set 1</option>
-                                                    <option value="style2" class="style2-option">Color Set 2</option>
-                                                    <option value="style3" class="style3-option">Color Set 3</option>
-                                                    <option value="style4" class="style4-option">Color Set 4</option>
+                                                <select class="form-control form-control-sm" data-bind="value: $parent.selectedStyle, select2: {
+                                                        placeholder: 'Pick a color scheme',
+                                                        width: '100px',
+                                                        data: $parent.colorSchemes,
+                                                        templateResult: function (state) {
+                                                            return state.html;
+                                                        },
+                                                        escapeMarkup: function (markup) {
+                                                            return markup;
+                                                        }
+                                                    }">
                                                 </select>
                                             </div>
                                         </div>

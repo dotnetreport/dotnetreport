@@ -823,6 +823,17 @@ h2 {
     }
 }
 
+.color-table {
+    display: flex;
+    align-items: center;
+    margin: 5px;
+}
+
+.color-cell {
+    width: 20px; /* Set a fixed width */
+    height: 20px; /* Set a fixed height */
+}
+
 /* Style Gray */
 .style-gray tbody tr:nth-child(odd) {
     background-color: #d1d1d1;
