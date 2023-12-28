@@ -846,22 +846,29 @@ var reportViewModel = function (options) {
 	self.useReportHeader = ko.observable(false);
 	self.searchReports = ko.observable();
 
-	const style1 = ['#FF5733', '#33FF57', '#3357FF', '#FF33F5', '#F5FF33', '#FF6347', '#4682B4', '#DA70D6', '#40E0D0', '#FF69B4', '#F08080', '#20B2AA', '#87CEFA', '#778899', '#B0C4DE', '#FFB6C1', '#FFA07A', '#87CEEB', '#6495ED', '#7B68EE'];
-	const style2 = ['#8A2BE2', '#DEB887', '#5F9EA0', '#D2691E', '#FF7F50', '#7FFF00', '#D2B48C', '#FF4500', '#2E8B57', '#DAA520', '#CD5C5C', '#4B0082', '#FFFFF0', '#F0E68C', '#E6E6FA', '#FFF0F5', '#7CFC00', '#FFFACD', '#ADD8E6', '#F08080'];
-	const style3 = ['#DC143C', '#00FFFF', '#00008B', '#008B8B', '#B8860B', '#A9A9A9', '#006400', '#BDB76B', '#8B008B', '#556B2F', '#FF8C00', '#9932CC', '#8FBC8F', '#483D8B', '#2F4F4F', '#00CED1', '#9400D3', '#FF1493', '#00BFFF', '#696969'];
-	const style4 = ['#006400', '#BDB76B', '#8B008B', '#556B2F', '#FF8C00', '#1E90FF', '#B22222', '#FFFAF0', '#228B22', '#FF00FF', '#DCDCDC', '#F8F8FF', '#FFD700', '#DAA520', '#808080', '#008000', '#ADFF2F', '#F0FFF0', '#FF69B4', '#CD853F'];
-	const style5 = ['#E9967A', '#8FBC8F', '#483D8B', '#2F4F4F', '#00CED1', '#4682B4', '#D2691E', '#C71585', '#191970', '#F5FFFA', '#FFDEAD', '#000080', '#FDF5E6', '#808000', '#6B8E23', '#FFA500', '#FF4500', '#DA70D6', '#EEE8AA', '#98FB98'];
+	const styleMixed = ["#c8d8e4", "#e4d8c8", "#d8e4c8", "#e4c8d8", "#c8e4d8","#d8c8e4", "#e4c8c8", "#c8e4e4", "#e4e4c8", "#d8e4e4","#c8d8d8", "#d8c8c8", "#c8c8e4", "#e4d8d8", "#d8d8c8","#c8d8e4", "#e4c8e4", "#d8e4d8", "#e4d8e4", "#d8d8e4","#e4e4d8", "#c8e4c8", "#e4c8d8", "#d8c8d8", "#c8e4e4"];
+	const styleMixedBright = ["#fff", "#ff9999", "#99ff99", "#9999ff", "#ffff99", "#99ffff", "#ff99ff", "#d9d9d9", "#b3b3ff", "#ffb3b3", "#b3ffb3", "#ffcc66", "#ccff66", "#66ffcc", "#66ccff", "#cc66ff", "#ff6666", "#66ff66", "#6666ff", "#ffff66", "#66ffff"];
+	const styleGray = ["#f0f0f0", "#e0e0e0", "#d1d1d1", "#c2c2c2", "#b3b3b3","#a4a4a4", "#959595", "#868686", "#777777", "#686868","#595959", "#4a4a4a", "#3b3b3b", "#2c2c2c", "#1d1d1d","#0e0e0e", "#0f0f0f", "#1e1e1e", "#2d2d2d", "#3c3c3c","#4b4b4b", "#5a5a5a", "#696969", "#787878", "#878787"];
+	const styleBlue = ["#e6f7ff", "#cceeff", "#b3e6ff", "#99ddff", "#80d4ff","#66ccff", "#4dc3ff", "#33bbff", "#1ab2ff", "#00aaff","#0099e6", "#0088cc", "#0077b3", "#006699", "#005580","#004466", "#00334d", "#002233", "#00111a", "#000000","#0033ff", "#0044ff", "#0055ff", "#0066ff", "#0077ff"];
+	const styleGreen = ["#e9f7e9", "#d3efd3", "#bde6bd", "#a7dea7", "#90d690","#7acf7a", "#64c764", "#4dbf4d", "#36b736", "#20b020","#1fa01f", "#1e8f1e", "#1d7f1d", "#1c6e1c", "#1b5e1b","#1a4d1a", "#194d19", "#183c18", "#172c17", "#161b16","#150a15", "#140014", "#130013", "#120012", "#110011"];
+	const styleRed = ["#ffe6e6", "#ffcccc", "#ffb3b3", "#ff9999", "#ff8080", "#ff6666", "#ff4d4d", "#ff3333", "#ff1a1a", "#ff0000", "#e60000", "#cc0000", "#b30000", "#990000", "#800000", "#660000", "#4d0000", "#330000", "#1a0000", "#000000", "#ff3333", "#ff4040", "#ff4d4d", "#ff5959", "#ff6666"];
+	const styleYellow = ["#ffffe6", "#ffffcc", "#ffffb3", "#ffff99", "#ffff80", "#ffff66", "#ffff4d", "#ffff33", "#ffff1a", "#ffff00", "#ffff33", "#ffff47", "#ffff5c", "#ffff70", "#ffff85"];
+	const styleOrange = ["#fff5e6", "#ffebcc", "#ffe0b3", "#ffd699", "#ffcc80", "#ffc266", "#ffb84d", "#ffad33", "#ffa31a", "#ff9900", "#e68a00", "#cc7a00", "#b36b00", "#995c00", "#804d00", "#664000", "#4d3300", "#332600", "#1a1900", "#000000", "#ffad33", "#ffb347", "#ffb85c", "#ffbd70", "#ffc285"];
 
-	self.colorScheme = ko.observableArray(style1);
-	self.selectedStyle = ko.observable('style1');
+	self.colorScheme = ko.observableArray([]);
+	self.selectedStyle = ko.observable('');
 
 	self.selectedStyle.subscribe(function (x) {
 		switch (x) {
-			case 'style1': self.colorScheme(style1); break;
-			case 'style2': self.colorScheme(style2); break;
-			case 'style3': self.colorScheme(style3); break;
-			case 'style4': self.colorScheme(style4); break;
-			case 'style5': self.colorScheme(style5); break;
+			case 'style-gray': self.colorScheme(styleGray); break;
+			case 'style-blue': self.colorScheme(styleBlue); break;
+			case 'style-red': self.colorScheme(styleRed); break;
+			case 'style-orange': self.colorScheme(styleOrange); break;
+			case 'style-green': self.colorScheme(styleGreen); break;
+			case 'style-yellow': self.colorScheme(styleYellow); break;
+			case 'style-mixed': self.colorScheme(styleMixed); break;
+			case 'style-mixed-bright': self.colorScheme(styleMixedBright); break;
+			default: self.colorScheme([]);
 		}
 	});
 
@@ -2832,16 +2839,19 @@ var reportViewModel = function (options) {
 				duration: 1000,
 				easing: 'out'
 			},
-			colors: self.colorScheme(),
 			legend: {
 				position: 'right', 
 				textStyle: {
 					fontSize: 11
 				}
-			},
-			backgroundColor: self.colorScheme()[15], // Set the background color here
-			chartArea: { backgroundColor: self.colorScheme()[15] }
+			}
 		};
+
+		if (self.colorScheme() != null && self.colorScheme().length > 0) {
+			chartOptions.colors = self.colorScheme().slice(1);
+			chartOptions.backgroundColor = self.colorScheme()[0], // Set the background color here
+			chartOptions.chartArea = { backgroundColor: self.colorScheme()[0] }
+		}
 
 		if (options.chartSize) {
 			chartOptions.width = options.chartSize.width;
