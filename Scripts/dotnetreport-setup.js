@@ -566,7 +566,7 @@ var usersAndRolesViewModel = function (options) {
 	var apiKey = options.model.AccountApiKey;
 	var dbKey = options.model.DatabaseApiKey;
 
-	self.selectedUserConfig = ko.observable(userConfig.SelectedUserConfig || "dnr-managed");
+	self.selectedUserConfig = ko.observable(userConfig.SelectedUserConfig || "not-managed");
 
 	self.usersTableData = ko.observableArray([]);
 	self.roleTableData = ko.observableArray([]);
