@@ -1,0 +1,96 @@
+﻿
+@model ReportBuilder.Web.Controllers.HomeController.LoginViewModel
+@{
+    ViewBag.Title = "Log in";
+    Layout = "~/Views/shared/_Layout.Report.cshtml";
+
+}
+    <style type="text/css">
+        .bg-image {
+            background-image: url('/img/mk-1.png');
+            background-color: #0F1A36;
+            background-repeat: no-repeat;
+            background-position: right center;
+            background-size: 90%
+        }
+
+        .bg-image-trial {
+            background-image: url('/img/freetrial.png');
+            background-color: #0F1A36;
+            background-repeat: no-repeat;
+            background-position: right center;
+            background-size: 90%
+        }
+    </style>
+<div class="row g-0">
+
+    <div class="col-md-8 col-lg-6">
+        <div class="d-flex align-items-center" style="min-height: 90vh;">
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-9 col-lg-8 mx-auto">
+                        <section id="loginForm" >
+                            @using (Html.BeginForm("Login", "Home", FormMethod.Post, new { @class = "form-horizontal form-box", role = "form" }))
+                            {
+                                @Html.AntiForgeryToken()
+                                    <div class="text-center">
+                                        <img src="~/img/report-logo.png" width="180" />
+                                        <h4>Welcome back, please Login below.</h4>
+                                    </div>
+                                    <br />
+                                @Html.ValidationSummary(true, "", new { @class = "text-danger" })
+                                    <div class="form-group">
+                                    @Html.LabelFor(m => m.Email, new { @class = "control-label" })
+                                        <div>
+                                        @Html.TextBoxFor(m => m.Email, new { @class = "form-control" })
+                                        @Html.ValidationMessageFor(m => m.Email, "", new { @class = "text-danger" })
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                    @Html.LabelFor(m => m.Password, new { @class = "control-label" })
+                                        <div>
+                                        @Html.PasswordFor(m => m.Password, new { @class = "form-control" })
+                                        @Html.ValidationMessageFor(m => m.Password, "", new { @class = "text-danger" })
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <div class="col-md-offset-1 col-md-10">
+                                            <div class="checkbox">
+                                            @Html.CheckBoxFor(m => m.RememberMe)
+                                            @Html.LabelFor(m => m.RememberMe)
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <div class="col-md-offset-3 col-md-10">
+                                            <input type="submit" value="Log in" class="btn btn-primary btn-lg" />
+                                        </div>
+                                    </div>
+                                    <hr />
+                                <p>
+                                    @Html.ActionLink("If you dont have an Account, Register now.", "Register", "Home")
+                                </p>
+                            }
+                        </section>
+                        <br />
+                        <br />
+                        <footer class="text-center text-sm">
+                            <p>&copy; @DateTime.Now.Year - Dot Report, Inc. All Rights Reserved.</p>
+                        </footer>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-none d-md-flex col-md-4 col-lg-6 bg-image"></div>
+
+
+    @*<div class="col-md-4">
+            <section id="socialLoginForm">
+                @Html.Partial("_ExternalLoginsListPartial", new ExternalLoginListViewModel { ReturnUrl = ViewBag.ReturnUrl })
+            </section>
+        </div>*@
+
+</div>
