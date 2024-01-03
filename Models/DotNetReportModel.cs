@@ -234,6 +234,7 @@ namespace ReportBuilder.Web.Models
         public bool RequireLogin  { get; set; }
         public bool UsersSource { get; set; }
         public bool UserRolesSource { get; set; }
+        public string SelectedUserConfig { get; set; }
     }
     public class DotNetReportApiCall
     {
