@@ -318,8 +318,8 @@ namespace ReportBuilder.Web.Controllers
                 using (var connection = new SqlConnection(connString))
                 {
                     connection.Open();
-                    string updateUserDataQuery = $@" UPDATE [dbo].[AspNetUsers] SET 
-                     UserName = '{model.UserName}', NormalizedUserName = '{model.UserName.ToUpper()}',  Email = '{model.Email}', NormalizedEmail = '{model.Email.ToUpper()}',EmailConfirmed = 0,  PasswordHash = '{model.Password}',SecurityStamp = '', ConcurrencyStamp = '', PhoneNumber = NULL, PhoneNumberConfirmed = 0, TwoFactorEnabled = 0, LockoutEnd = NULL, LockoutEnabled = 1, AccessFailedCount = 0
+                    string updateUserDataQuery = $@"UPDATE [dbo].[AspNetUsers] SET 
+                     UserName = '{model.UserName}', Email = '{model.Email}'
                      WHERE  Id = '{model.UserId}';";
                     // Check if the table exists
                     if (TableAndColumnExist(connection, "AspNetUsers", "Id"))
@@ -348,8 +348,8 @@ namespace ReportBuilder.Web.Controllers
                 using (var connection = new SqlConnection(connString))
                 {
                     connection.Open();
-                    string updateRoleQuery = $@" UPDATE [dbo].[AspNetRoles] SET 
-                     Name = '{model.RoleName}', NormalizedName = '{model.RoleName.ToUpper()}',ConcurrencyStamp=NULL
+                    string updateRoleQuery = $@"UPDATE [dbo].[AspNetRoles] SET 
+                     Name = '{model.RoleName}', NormalizedName = '{model.RoleName.ToUpper()}'
                      WHERE  Id = '{model.RoleId}';";
                     // Check if the table exists
                     if (TableAndColumnExist(connection, "AspNetRoles", "Id"))
@@ -379,7 +379,7 @@ namespace ReportBuilder.Web.Controllers
                 using (var connection = new SqlConnection(connString))
                 {
                     connection.Open();
-                    string updateUserRoleQuery = $@" UPDATE [dbo].[AspNetUserRoles] SET 
+                    string updateUserRoleQuery = $@"UPDATE [dbo].[AspNetUserRoles] SET 
                      RoleId = '{model.RoleId.ToUpper()}'
                      WHERE  UserId = '{model.UserId.ToUpper()}';";
                     // Check if the table exists
