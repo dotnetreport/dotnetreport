@@ -1,9 +1,8 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
-using static ReportBuilder.Web.Controllers.DotNetReportApiController;
 using System.Net;
 using System.Text.Json;
+using Microsoft.AspNetCore.Identity;
 
 namespace ReportBuilder.Web.Controllers
 {
@@ -11,6 +10,15 @@ namespace ReportBuilder.Web.Controllers
     [ApiController]
     public class DotNetUserApiController : ControllerBase
     {
+        private readonly PasswordHasher<IdentityUser> _passwordHasher;
+        private readonly DotNetReportUserStore _userStore;
+
+        public DotNetUserApiController()
+        {
+            _passwordHasher = new PasswordHasher<IdentityUser>();
+            _userStore = new DotNetReportUserStore();
+        }
+
         const string createUserTableQuery = @"
             CREATE TABLE [dbo].[AspNetUsers](
 	            [Id] [nvarchar](450) NOT NULL,
@@ -34,6 +42,7 @@ namespace ReportBuilder.Web.Controllers
                 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
                 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
                 ";
+
         const string createRoleTableQuery = @"
             CREATE TABLE [dbo].[AspNetRoles](
 	            [Id] [nvarchar](450) NOT NULL,
@@ -75,16 +84,23 @@ namespace ReportBuilder.Web.Controllers
             ALTER TABLE [dbo].[AspNetUserRoles] 
             CHECK CONSTRAINT [FK_AspNetUserRoles_AspNetUsers_UserId];";
 
+        private string GetConnection(string account, string dataConnect)
+        {
+            var dbConfig = DotNetReportApiController.GetDbConnectionSettings(account, dataConnect);
+            if (dbConfig == null)
+            {
+                throw new Exception("Data Connection settings not found");
+            }
+
+            return dbConfig["ConnectionString"].ToString();
+        }
+
         public IActionResult ExistingUsersTable([FromBody] UserModel model)
         {
             try
             {
-                var dbConfig = DotNetReportApiController.GetDbConnectionSettings(model.account, model.dataConnect);
-                if (dbConfig == null)
-                {
-                    throw new Exception("Data Connection settings not found");
-                }
-                using (SqlConnection connection = new SqlConnection(dbConfig["ConnectionString"].ToString()))
+                var connString = GetConnection(model.account, model.dataConnect);
+                using (var connection = new SqlConnection(connString))
                 {
                     connection.Open();
 
@@ -93,14 +109,11 @@ namespace ReportBuilder.Web.Controllers
                     {
                         // Fetch users table data from the database
                         var usersData = FetchUserTableData(connection);
-
-                        // return new JsonResult(new { success = true, data = usersData });
-
-                        return new JsonResult(new { success = true, message = "Existing User Table Found.", data = usersData }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                        return new JsonResult(new { success = true, message = "Users table found", data = usersData }, new JsonSerializerOptions { PropertyNamingPolicy = null });
                     }
                     else
                     {
-                        return new JsonResult(new { success = false, message = "Existing User Table Not Found." }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                        return new JsonResult(new { success = false, message = "Users table not found" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
                     }
                 }
             }
@@ -113,12 +126,8 @@ namespace ReportBuilder.Web.Controllers
         {
             try
             {
-                var dbConfig = DotNetReportApiController.GetDbConnectionSettings(model.account, model.dataConnect);
-                if (dbConfig == null)
-                {
-                    throw new Exception("Data Connection settings not found");
-                }
-                using (SqlConnection connection = new SqlConnection(dbConfig["ConnectionString"].ToString()))
+                var connString = GetConnection(model.account, model.dataConnect);
+                using (var connection = new SqlConnection(connString))
                 {
                     connection.Open();
 
@@ -126,11 +135,11 @@ namespace ReportBuilder.Web.Controllers
                     if (TableAndColumnExist(connection, "AspNetRoles", "Id"))
                     {
                         var usersData = FetchRoleTableData(connection);
-                        return new JsonResult(new { success = true, message = "Existing  Role Table Found.", data = usersData }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                        return new JsonResult(new { success = true, message = "Roles table found", data = usersData }, new JsonSerializerOptions { PropertyNamingPolicy = null });
                     }
                     else
                     {
-                        return new JsonResult(new { success = false, message = "Existing  Role Table Not Found." }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                        return new JsonResult(new { success = false, message = "Roles table not found" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
                     }
                 }
             }
@@ -143,12 +152,8 @@ namespace ReportBuilder.Web.Controllers
         {
             try
             {
-                var dbConfig = DotNetReportApiController.GetDbConnectionSettings(model.account, model.dataConnect);
-                if (dbConfig == null)
-                {
-                    throw new Exception("Data Connection settings not found");
-                }
-                using (SqlConnection connection = new SqlConnection(dbConfig["ConnectionString"].ToString()))
+                var connString = GetConnection(model.account, model.dataConnect);
+                using (var connection = new SqlConnection(connString))
                 {
                     connection.Open();
 
@@ -156,11 +161,11 @@ namespace ReportBuilder.Web.Controllers
                     if (TableAndColumnExist(connection, "AspNetUserRoles", "UserId"))
                     {
                         var usersData = FetchUserRoleTableData(connection);
-                        return new JsonResult(new { success = true, message = "Existing User Role Table Found.", data = usersData }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                        return new JsonResult(new { success = true, message = "User roles table found", data = usersData }, new JsonSerializerOptions { PropertyNamingPolicy = null });
                     }
                     else
                     {
-                        return new JsonResult(new { success = false, message = "Existing User Role Table Not Found." }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                        return new JsonResult(new { success = false, message = "User roles table not found" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
                     }
                 }
             }
@@ -169,48 +174,41 @@ namespace ReportBuilder.Web.Controllers
                 return new JsonResult(new { message = ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null }) { StatusCode = (int)HttpStatusCode.InternalServerError };
             }
         }
-        public IActionResult CreateandInsertUser([FromBody] UserModel model)
+        public async Task<IActionResult> CreateandInsertUser([FromBody] UserModel model)
         {
             try
             {
-                // Dynamically change the database connection string
-                var dbConfig = DotNetReportApiController.GetDbConnectionSettings(model.account, model.dataConnect);
-                if (dbConfig == null)
-                {
-                    throw new Exception("Data Connection settings not found");
-                }
-                string connectionString = dbConfig["ConnectionString"].ToString();
-                // Create a new instance of DbContext with the updated options
+                var connString = GetConnection(model.account, model.dataConnect);
+                using (var connection = new SqlConnection(connString))
 
-                using (SqlConnection connection = new SqlConnection(connectionString))
                 {
                     connection.Open();
-
-                    string insertUserDataQuery = $@" INSERT INTO [dbo].[AspNetUsers]  VALUES (NEWID(), '{model.UserName}', '{model.UserName.ToUpper()}', '{model.Email}', '{model.Email.ToUpper()}',0, '{model.Password}','','',NULL,0,0,NULL,1,0);";
-                    // Check if the table exists
-                    if (TableAndColumnExist(connection, "AspNetUsers", "Id"))
+                    if (!TableAndColumnExist(connection, "AspNetUsers", "Id"))
                     {
-                        var success = ExecuteQuery(insertUserDataQuery, connection);
-                        if (success == null)
+                        var error = ExecuteQuery(createUserTableQuery, connection);
+                        if (error != null)
                         {
-                            return new JsonResult(new { success = true, message = "User Table already exists and Data Inserted" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                            return new JsonResult(new { success = false, message = @$"An unexpected error occurred {error}" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
                         }
-                        return new JsonResult(new { success = false, message = @$"Some Thing Happen Wrong {success}" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                    }
 
+                    _userStore.SetConnectionString(connString);
+                    var user = new IdentityUser
+                    {
+                        UserName = model.UserName,
+                        Email = model.Email
+                    };
+                    
+                    user.PasswordHash = HashPassword(user, model.Password);
+                    var result = await _userStore.CreateAsync(user, CancellationToken.None);
+
+                    if (result.Succeeded)
+                    {
+                        return new JsonResult(new { success = true, message = "User added successfully" });
                     }
                     else
                     {
-                        var success = ExecuteQuery(createUserTableQuery, connection);
-                        if (success == null)
-                        {
-                            var successfordatainsert = ExecuteQuery(insertUserDataQuery, connection);
-                            if (successfordatainsert == null)
-                            {
-                                return new JsonResult(new { success = true, message = "User Table created  and Data Inserted successfully" });
-                            }
-                            return new JsonResult(new { success = false, message = $@"Some Thing Happen Wrong with Insertion of User Data {successfordatainsert}" });
-                        }
-                        return new JsonResult(new { success = false, message = $@"Some Thing Happen Wrong with Creation Of User Table {success}" });
+                        return BadRequest(result.Errors);
                     }
                 }
             }
@@ -223,43 +221,37 @@ namespace ReportBuilder.Web.Controllers
         {
             try
             {
-                // Dynamically change the database connection string
-                var dbConfig = DotNetReportApiController.GetDbConnectionSettings(model.account, model.dataConnect);
-                if (dbConfig == null)
-                {
-                    throw new Exception("Data Connection settings not found");
-                }
-                string connectionString = dbConfig["ConnectionString"].ToString();
-                string insertRoleDataQuery = $@" INSERT INTO [dbo].[AspNetRoles]  VALUES (NEWID(), '{model.RoleName}', '{model.RoleName.ToUpper()}',NULL);";
-                using (SqlConnection connection = new SqlConnection(connectionString))
+                var insertRoleDataQuery = $@" INSERT INTO [dbo].[AspNetRoles]  VALUES (NEWID(), '{model.RoleName}', '{model.RoleName.ToUpper()}',NULL);";
+                var connString = GetConnection(model.account, model.dataConnect);
+                using (var connection = new SqlConnection(connString))
                 {
                     connection.Open();
                     // Check if the table exists
                     if (TableAndColumnExist(connection, "AspNetRoles", "Id"))
                     {
-                        var success = ExecuteQuery(insertRoleDataQuery, connection);
-                        if (success == null)
+                        var error = ExecuteQuery(insertRoleDataQuery, connection);
+                        if (error == null)
                         {
-                            return new JsonResult(new { success = true, message = "Roles Table already exists." }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                            return new JsonResult(new { success = true, message = "Roles table already exists." }, new JsonSerializerOptions { PropertyNamingPolicy = null });
                         }
-                        return new JsonResult(new { success = false, message = $@"Some Thing Happen Wrong Insertion of Role Data {success}" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                        return new JsonResult(new { success = false, message = $@"An unexpected error occurred inserting Role Data {error}" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
                     }
                     else
                     {
                         {
-                            var successforrole = ExecuteQuery(createRoleTableQuery, connection);
-                            var successforuserrole = ExecuteQuery(createUserRoleTableQuery, connection);
+                            var errorForRole = ExecuteQuery(createRoleTableQuery, connection);
+                            var errorForUserRole = ExecuteQuery(createUserRoleTableQuery, connection);
 
-                            if (successforrole == null && successforuserrole == null)
+                            if (errorForRole == null && errorForUserRole == null)
                             {
                                 var successfordatainsert = ExecuteQuery(insertRoleDataQuery, connection);
                                 if (successfordatainsert == null)
                                 {
-                                    return new JsonResult(new { success = true, message = "Role Table created  and Data Inserted successfully" });
+                                    return new JsonResult(new { success = true, message = "Role Table created and record added successfully" });
                                 }
-                                return new JsonResult(new { success = false, message = $@"Some Thing Happen Wrong with Insertion Of Role Data {successfordatainsert}" });
+                                return new JsonResult(new { success = false, message = $@"Unexpected error when inserting Role Data {successfordatainsert}" });
                             }
-                            return new JsonResult(new { success = false, message = $@"Some Thing Happen Wrong with Creation Of Role Table {successforrole}" });
+                            return new JsonResult(new { success = false, message = $@"Unexpected error when creating Role Table {errorForRole}" });
                         }
                     }
                 }
@@ -273,14 +265,8 @@ namespace ReportBuilder.Web.Controllers
         {
             try
             {
-                // Dynamically change the database connection string
-                var dbConfig = DotNetReportApiController.GetDbConnectionSettings(model.account, model.dataConnect);
-                if (dbConfig == null)
-                {
-                    throw new Exception("Data Connection settings not found");
-                }
-                string connectionString = dbConfig["ConnectionString"].ToString();
-                using (SqlConnection connection = new SqlConnection(connectionString))
+                var connString = GetConnection(model.account, model.dataConnect);
+                using (var connection = new SqlConnection(connString))
                 {
                     connection.Open();
                     string insertUserRoleDataQuery = $@" INSERT INTO [dbo].[AspNetUserRoles]  VALUES ('{model.UserId.ToUpper()}', '{model.RoleId.ToUpper()}');";
@@ -295,28 +281,26 @@ namespace ReportBuilder.Web.Controllers
                     }
                     if (TableAndColumnExist(connection, "AspNetUserRoles", "UserId"))
                     {
-                        var success = ExecuteQuery(insertUserRoleDataQuery, connection);
-                        if (success == null)
+                        var error = ExecuteQuery(insertUserRoleDataQuery, connection);
+                        if (error == null)
                         {
-                            return new JsonResult(new { success = true, message = "User Roles Table already exists Data Inserted successfully" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                            return new JsonResult(new { success = true, message = "" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
                         }
-                        return new JsonResult(new { success = false, message = $@"Some Thing Happen Wrong Insertion of User Role Data{success}" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                        return new JsonResult(new { success = false, message = $@"An unexpected error occurred inserting User Role Data {error}" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
                     }
                     else
                     {
+                        var error = ExecuteQuery(createUserRoleTableQuery, connection);
+                        if (error == null)
                         {
-                            var success = ExecuteQuery(createUserRoleTableQuery, connection);
-                            if (success == null)
+                            var successfordatainsert = ExecuteQuery(insertUserRoleDataQuery, connection);
+                            if (successfordatainsert == null)
                             {
-                                var successfordatainsert = ExecuteQuery(insertUserRoleDataQuery, connection);
-                                if (successfordatainsert == null)
-                                {
-                                    return new JsonResult(new { success = true, message = "User Role Table created  and Data Inserted successfully" });
-                                }
-                                return new JsonResult(new { success = false, message = $@"Some Thing Happen Wrong with Insertion Of User Role Data {successfordatainsert}" });
+                                return new JsonResult(new { success = true, message = "User Role Table created and record added successfully" });
                             }
-                            return new JsonResult(new { success = false, message = $@"Some Thing Happen Wrong with Creation Of User Role Table {success}" });
+                            return new JsonResult(new { success = false, message = $@"Unexpected error when inserting User Role {successfordatainsert}" });
                         }
+                        return new JsonResult(new { success = false, message = $@"Unexpected error when creating User Role Table {error}" });
                     }
                 }
             }
@@ -330,13 +314,8 @@ namespace ReportBuilder.Web.Controllers
         {
             try
             {
-                var dbConfig = DotNetReportApiController.GetDbConnectionSettings(model.account, model.dataConnect);
-                if (dbConfig == null)
-                {
-                    throw new Exception("Data Connection settings not found");
-                }
-                string connectionString = dbConfig["ConnectionString"].ToString();
-                using (SqlConnection connection = new SqlConnection(connectionString))
+                var connString = GetConnection(model.account, model.dataConnect);
+                using (var connection = new SqlConnection(connString))
                 {
                     connection.Open();
                     string updateUserDataQuery = $@" UPDATE [dbo].[AspNetUsers] SET 
@@ -348,13 +327,12 @@ namespace ReportBuilder.Web.Controllers
                         var success = ExecuteQuery(updateUserDataQuery, connection);
                         if (success == null)
                         {
-                            return new JsonResult(new { success = true, message = "User  Data Updated" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                            return new JsonResult(new { success = true, message = "User updated" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
                         }
-                        return new JsonResult(new { success = false, message = $@"Some Thing Happen Wrong {success}" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                        return new JsonResult(new { success = false, message = $@"An unexpected error occurred {success}" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
 
                     }
-                    return new JsonResult(new { success = false, message = "Need to Add Some Data" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
-
+                    return new JsonResult(new { success = false, message = "Could not update User" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
                 }
             }
             catch (Exception ex)
@@ -366,13 +344,8 @@ namespace ReportBuilder.Web.Controllers
         {
             try
             {
-                var dbConfig = DotNetReportApiController.GetDbConnectionSettings(model.account, model.dataConnect);
-                if (dbConfig == null)
-                {
-                    throw new Exception("Data Connection settings not found");
-                }
-                string connectionString = dbConfig["ConnectionString"].ToString();
-                using (SqlConnection connection = new SqlConnection(connectionString))
+                var connString = GetConnection(model.account, model.dataConnect);
+                using (var connection = new SqlConnection(connString))
                 {
                     connection.Open();
                     string updateRoleQuery = $@" UPDATE [dbo].[AspNetRoles] SET 
@@ -384,12 +357,12 @@ namespace ReportBuilder.Web.Controllers
                         var success = ExecuteQuery(updateRoleQuery, connection);
                         if (success == null)
                         {
-                            return new JsonResult(new { success = true, message = "Role Data Updated" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                            return new JsonResult(new { success = true, message = "Role updated" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
                         }
-                        return new JsonResult(new { success = false, message = $@"Some Thing Happen Wrong {success}" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                        return new JsonResult(new { success = false, message = $@"An unexpected error occurred {success}" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
 
                     }
-                    return new JsonResult(new { success = false, message = "Need to Add Some Data" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                    return new JsonResult(new { success = false, message = "Unexpected error" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
 
                 }
             }
@@ -402,13 +375,8 @@ namespace ReportBuilder.Web.Controllers
         {
             try
             {
-                var dbConfig = DotNetReportApiController.GetDbConnectionSettings(model.account, model.dataConnect);
-                if (dbConfig == null)
-                {
-                    throw new Exception("Data Connection settings not found");
-                }
-                string connectionString = dbConfig["ConnectionString"].ToString();
-                using (SqlConnection connection = new SqlConnection(connectionString))
+                var connString = GetConnection(model.account, model.dataConnect);
+                using (var connection = new SqlConnection(connString))
                 {
                     connection.Open();
                     string updateUserRoleQuery = $@" UPDATE [dbo].[AspNetUserRoles] SET 
@@ -420,12 +388,12 @@ namespace ReportBuilder.Web.Controllers
                         var success = ExecuteQuery(updateUserRoleQuery, connection);
                         if (success == null)
                         {
-                            return new JsonResult(new { success = true, message = "User Role  Data Updated" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                            return new JsonResult(new { success = true, message = "User Roles updated" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
                         }
-                        return new JsonResult(new { success = false, message = $@"Some Thing Happen Wrong {success}" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                        return new JsonResult(new { success = false, message = $@"An unexpected error occurred {success}" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
 
                     }
-                    return new JsonResult(new { success = false, message = "Need to Add Some Data" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                    return new JsonResult(new { success = false, message = "Unexpected error" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
 
                 }
             }
@@ -438,13 +406,8 @@ namespace ReportBuilder.Web.Controllers
         {
             try
             {
-                var dbConfig = DotNetReportApiController.GetDbConnectionSettings(model.account, model.dataConnect);
-                if (dbConfig == null)
-                {
-                    throw new Exception("Data Connection settings not found");
-                }
-                string connectionString = dbConfig["ConnectionString"].ToString();
-                using (SqlConnection connection = new SqlConnection(connectionString))
+                var connString = GetConnection(model.account, model.dataConnect);
+                using (var connection = new SqlConnection(connString))
                 {
                     connection.Open();
                     string DeleteUserQuery = $@" DELETE FROM [dbo].[AspNetUsers] WHERE Id = '{model.UserId}'; ";
@@ -454,12 +417,12 @@ namespace ReportBuilder.Web.Controllers
                         var success = ExecuteQuery(DeleteUserQuery, connection);
                         if (success == null)
                         {
-                            return new JsonResult(new { success = true, message = "User  Data Deleted" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                            return new JsonResult(new { success = true, message = "User deleted" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
                         }
-                        return new JsonResult(new { success = false, message = $@"User  Data Not Deleted {success}" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                        return new JsonResult(new { success = false, message = $@"User not deleted {success}" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
 
                     }
-                    return new JsonResult(new { success = false, message = "Need to Add Some Data" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                    return new JsonResult(new { success = false, message = "Unexpected error" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
 
                 }
             }
@@ -472,13 +435,8 @@ namespace ReportBuilder.Web.Controllers
         {
             try
             {
-                var dbConfig = DotNetReportApiController.GetDbConnectionSettings(model.account, model.dataConnect);
-                if (dbConfig == null)
-                {
-                    throw new Exception("Data Connection settings not found");
-                }
-                string connectionString = dbConfig["ConnectionString"].ToString();
-                using (SqlConnection connection = new SqlConnection(connectionString))
+                var connString = GetConnection(model.account, model.dataConnect);
+                using (var connection = new SqlConnection(connString))
                 {
                     connection.Open();
                     string deleteRoleQuery = $@" DELETE FROM [dbo].[AspNetRoles] WHERE Id = '{model.RoleId.ToUpper()}';";
@@ -488,12 +446,12 @@ namespace ReportBuilder.Web.Controllers
                         var success = ExecuteQuery(deleteRoleQuery, connection);
                         if (success == null)
                         {
-                            return new JsonResult(new { success = true, message = "Role  Deleted" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                            return new JsonResult(new { success = true, message = "Role deleted" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
                         }
-                        return new JsonResult(new { success = false, message = $@"Role Not Deleted {success}" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                        return new JsonResult(new { success = false, message = $@"Role not deleted {success}" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
 
                     }
-                    return new JsonResult(new { success = false, message = "Need to Add Some Data" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                    return new JsonResult(new { success = false, message = "Unexpected error" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
 
                 }
             }
@@ -506,13 +464,8 @@ namespace ReportBuilder.Web.Controllers
         {
             try
             {
-                var dbConfig = DotNetReportApiController.GetDbConnectionSettings(model.account, model.dataConnect);
-                if (dbConfig == null)
-                {
-                    throw new Exception("Data Connection settings not found");
-                }
-                string connectionString = dbConfig["ConnectionString"].ToString();
-                using (SqlConnection connection = new SqlConnection(connectionString))
+                var connString = GetConnection(model.account, model.dataConnect);
+                using (var connection = new SqlConnection(connString))
                 {
                     connection.Open();
 
@@ -523,12 +476,12 @@ namespace ReportBuilder.Web.Controllers
                         var success = ExecuteQuery(deleteUserRoleQuery, connection);
                         if (success == null)
                         {
-                            return new JsonResult(new { success = true, message = "User Role  Deleted" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                            return new JsonResult(new { success = true, message = "User role deleted" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
                         }
-                        return new JsonResult(new { success = false, message = $@"User Role Not Deleted {success}" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                        return new JsonResult(new { success = false, message = $@"User role not deleted {success}" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
 
                     }
-                    return new JsonResult(new { success = false, message = "Need to Add Some Data" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                    return new JsonResult(new { success = false, message = "Unexpected error" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
 
                 }
             }
@@ -541,12 +494,8 @@ namespace ReportBuilder.Web.Controllers
         {
             try
             {
-                var dbConfig = DotNetReportApiController.GetDbConnectionSettings(model.account, model.dataConnect);
-                if (dbConfig == null)
-                {
-                    throw new Exception("Data Connection settings not found");
-                }
-                using (SqlConnection connection = new SqlConnection(dbConfig["ConnectionString"].ToString()))
+                var connString = GetConnection(model.account, model.dataConnect);
+                using (var connection = new SqlConnection(connString))
                 {
                     connection.Open();
 
@@ -559,11 +508,11 @@ namespace ReportBuilder.Web.Controllers
                         {
                             allRoles = allRoles
                         };
-                        return new JsonResult(new { success = true, message = "Roles Table Data Found.", data = data }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                        return new JsonResult(new { success = true, message = "Roles table found", data = data }, new JsonSerializerOptions { PropertyNamingPolicy = null });
                     }
                     else
                     {
-                        return new JsonResult(new { success = false, message = "Existing  Role Table Not Found." }, new JsonSerializerOptions { PropertyNamingPolicy = null });
+                        return new JsonResult(new { success = false, message = "Roles table not found" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
                     }
                 }
             }
@@ -572,6 +521,11 @@ namespace ReportBuilder.Web.Controllers
 
                 return new JsonResult(new { message = ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null }) { StatusCode = (int)HttpStatusCode.InternalServerError };
             }
+        }
+
+        private string HashPassword(IdentityUser user, string password)
+        {
+            return _passwordHasher.HashPassword(user, password);
         }
 
         // Helper method to check if the table and column exist
@@ -735,4 +689,184 @@ namespace ReportBuilder.Web.Controllers
         public string? RoleId { get; set; } = "";
 
     }
+
+    public class DotNetReportUserStore : IUserStore<IdentityUser>
+    {
+        private string _connectionString;
+
+        public DotNetReportUserStore()
+        {
+            
+        }
+
+        public DotNetReportUserStore(string connectionString)
+        {
+            _connectionString = connectionString;
+        }
+
+        public void SetConnectionString(string connectionString)
+        {
+            _connectionString = connectionString;
+        }
+
+
+        public async Task<IdentityResult> CreateAsync(IdentityUser user, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (user == null)
+                throw new ArgumentNullException(nameof(user));
+
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync(cancellationToken);
+
+                using (var command = new SqlCommand(@"INSERT INTO AspNetUsers (Id, UserName, NormalizedUserName, Email, NormalizedEmail, EmailConfirmed, PasswordHash, SecurityStamp, ConcurrencyStamp, PhoneNumber, PhoneNumberConfirmed, TwoFactorEnabled, LockoutEnd, LockoutEnabled, AccessFailedCount) 
+                VALUES (@Id, @UserName, @NormalizedUserName, @Email, @NormalizedEmail, @EmailConfirmed, @PasswordHash, @SecurityStamp, @ConcurrencyStamp, @PhoneNumber, @PhoneNumberConfirmed, @TwoFactorEnabled, @LockoutEnd, @LockoutEnabled, @AccessFailedCount)", connection))
+                {
+                    command.Parameters.AddWithValue("@Id", user.Id);
+                    command.Parameters.AddWithValue("@UserName", (object)user.UserName ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@NormalizedUserName", (object)user.NormalizedUserName ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@Email", (object)user.Email ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@NormalizedEmail", (object)user.NormalizedEmail ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@EmailConfirmed", user.EmailConfirmed);
+                    command.Parameters.AddWithValue("@PasswordHash", (object)user.PasswordHash ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@SecurityStamp", (object)user.SecurityStamp ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@ConcurrencyStamp", (object)user.ConcurrencyStamp ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@PhoneNumber", (object)user.PhoneNumber ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@PhoneNumberConfirmed", user.PhoneNumberConfirmed);
+                    command.Parameters.AddWithValue("@TwoFactorEnabled", user.TwoFactorEnabled);
+                    command.Parameters.AddWithValue("@LockoutEnd", (object)user.LockoutEnd ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@LockoutEnabled", user.LockoutEnabled);
+                    command.Parameters.AddWithValue("@AccessFailedCount", user.AccessFailedCount);
+
+                    var result = await command.ExecuteNonQueryAsync(cancellationToken);
+
+                    if (result > 0)
+                        return IdentityResult.Success;
+                }
+            }
+
+            return IdentityResult.Failed(new IdentityError { Description = $"Could not insert user {user.UserName}." });
+        }
+
+        public async Task<IdentityResult> DeleteAsync(IdentityUser user, CancellationToken cancellationToken)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync(cancellationToken);
+
+                using (var command = new SqlCommand("DELETE FROM AspNetUsers WHERE Id = @Id", connection))
+                {
+                    command.Parameters.AddWithValue("@Id", user.Id);
+
+                    int result = await command.ExecuteNonQueryAsync(cancellationToken);
+                    if (result > 0)
+                        return IdentityResult.Success;
+                }
+            }
+
+            return IdentityResult.Failed(new IdentityError { Description = $"Could not delete user {user.Id}." });
+        }
+
+
+        public void Dispose()
+        {
+        }
+
+        public async Task<IdentityUser> FindByIdAsync(string userId, CancellationToken cancellationToken)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync(cancellationToken);
+
+                using (var command = new SqlCommand("SELECT * FROM AspNetUsers WHERE Id = @Id", connection))
+                {
+                    command.Parameters.AddWithValue("@Id", userId);
+
+                    using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+                    {
+                        if (await reader.ReadAsync(cancellationToken))
+                        {
+                            return new IdentityUser
+                            {
+                                Id = reader.GetString(reader.GetOrdinal("Id")),
+                                UserName = reader.GetString(reader.GetOrdinal("UserName")),
+                                // Other properties
+                            };
+                        }
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        public async Task<IdentityUser> FindByNameAsync(string normalizedUserName, CancellationToken cancellationToken)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync(cancellationToken);
+
+                using (var command = new SqlCommand("SELECT * FROM AspNetUsers WHERE NormalizedUserName = @NormalizedUserName", connection))
+                {
+                    command.Parameters.AddWithValue("@NormalizedUserName", normalizedUserName);
+
+                    using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+                    {
+                        if (await reader.ReadAsync(cancellationToken))
+                        {
+                            return new IdentityUser
+                            {
+                                Id = reader.GetString(reader.GetOrdinal("Id")),
+                                UserName = reader.GetString(reader.GetOrdinal("UserName")),
+                                // Other properties
+                            };
+                        }
+                    }
+                }
+            }
+
+            return null;
+        }
+
+
+        public Task<string> GetNormalizedUserNameAsync(IdentityUser user, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(user.NormalizedUserName);
+        }
+
+
+        public Task<string> GetUserIdAsync(IdentityUser user, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(user.Id);
+        }
+
+        public Task<string> GetUserNameAsync(IdentityUser user, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(user.UserName);
+        }
+
+
+        public Task SetNormalizedUserNameAsync(IdentityUser user, string normalizedName, CancellationToken cancellationToken)
+        {
+            user.NormalizedUserName = normalizedName;
+            return Task.CompletedTask;
+        }
+
+
+        public Task SetUserNameAsync(IdentityUser user, string userName, CancellationToken cancellationToken)
+        {
+            user.UserName = userName;
+            return Task.CompletedTask;
+        }
+
+
+        public Task<IdentityResult> UpdateAsync(IdentityUser user, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
+    }
+
 }
