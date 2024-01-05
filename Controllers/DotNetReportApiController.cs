@@ -236,7 +236,17 @@ namespace ReportBuilder.Web.Controllers
                         }
 
                         if (sql.Contains("ORDER BY") && !sql.Contains(" TOP "))
-                            sql = sql + $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
+                        {
+                            var fromPart = sql.Substring(fromIndex);
+                            var orderByPart = fromPart.Substring(fromPart.IndexOf("ORDER BY"));
+                            fromPart = fromPart.Substring(0, fromPart.IndexOf("ORDER BY"));
+
+                            sql = @$"SELECT * FROM 
+                                        (SELECT {string.Join(", ", sqlFields)}
+                                                , ROW_NUMBER() OVER (ORDER BY (SELECT 1)) AS RowNum
+                                        {fromPart}) AS SubQuery 
+                                   WHERE SubQuery.RowNum BETWEEN {((pageNumber - 1) * pageSize) + 1} AND {((pageNumber - 1) * pageSize) + pageSize} ";
+                        }
 
                         if (sql.Contains("__jsonc__"))
                             sql = sql.Replace("__jsonc__", "");
@@ -317,8 +327,9 @@ namespace ReportBuilder.Web.Controllers
                             }
                         }
                     }
-                }                
+                }
 
+                dtPaged.Columns.RemoveAt(dtPaged.Columns.Count - 1);
                 sql = DotNetReportHelper.Decrypt(HttpUtility.HtmlDecode(allSqls[0]));
                 var model = new DotNetReportResultModel
                 {
