@@ -540,7 +540,7 @@ var textQuery = function (options) {
 
 // pick theme 
 function changeTheme(theme) {
-    if (theme) {
+    if (theme && document.getElementById('theme-css')) {
         localStorage.setItem('dotnetreport-selectedTheme', theme);
         document.getElementById('theme-css').href = '/css/dotnetreport-' + theme.toLowerCase() + '.css';
     }
