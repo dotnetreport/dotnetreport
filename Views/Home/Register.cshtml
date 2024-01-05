@@ -1,132 +1,86 @@
 ﻿@model ReportBuilder.Web.Models.RegisterViewModel
 @{
     ViewBag.Title = "Register";
-     Layout = "~/Views/shared/_Layout.Report.cshtml";
+    Layout = "~/Views/shared/_Layout.Report.cshtml";
 
 }
-<style type="text/css">
-    .bg-image {
-        background-image: url('/img/mk-1.png');
-        background-color: #0F1A36;
-        background-repeat: no-repeat;
-        background-position: right center;
-        background-size: 90%
-    }
 
-    .bg-image-trial {
-        background-image: url('/img/freetrial.png');
-        background-color: #0F1A36;
-        background-repeat: no-repeat;
-        background-position: right center;
-        background-size: 90%
-    }
-</style>
-<link href="~/Content/bootstrap.min.css" rel="stylesheet" />
-<link href="~/Content/bootstrap-mvc-validation.css" rel="stylesheet" />
-<link href="~/Content/themes/base/datepicker.css" rel="stylesheet" />
-<link href="~/Content/font-awesome.min.css" rel="stylesheet" />
+<div class="row justify-content-center mt-5">
 
-<div class="row g-0">
-
-    <div class="col-sm-8 col-lg-6 col-xs-12">
-        <div class="d-flex align-items-center" style="min-height: 100vh;">
-            <div class="container">
-                <div class="row">
-                    <div class="col-md-9 col-lg-8 mx-auto">
-                        @using (Html.BeginForm("Register", "Home", FormMethod.Post, new { @class = "form-box needs-validation", role = "form", novalidate = "" }))
-                        {
-                            @Html.AntiForgeryToken()
-                            <div class="text-center">
-                                <img src="~/img/report-logo.png" width="180" />
-                                <h4>Let's get started!</h4>
-                                <br />
-                            </div>
-                            @Html.ValidationSummary("", new { @class = "text-danger" })
-                            <div class="form-group row">
-                                <label class="control-label col-sm-3" for="PrimaryContact">* Name</label>
-                                <div class="col-sm-9">
-                                    <input class="form-control" data-val="true" data-val-required="Your Name is required." id="PrimaryContact" name="PrimaryContact" required type="text" value="">
-                                    <div class="invalid-feedback">
-                                        Please enter your name to create an account.
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="form-group row">
-                                <label class="control-label col-sm-3" for="Email">* Work Email</label>
-                                <div class="col-sm-9">
-                                    <input class="form-control" data-val="true" data-val-email="This is not a valid e-mail address." data-val-required="Your Email is required." id="Email" name="Email" type="text" value="" required>
-                                    <div>
-                                        <span class="small">(Password will be emailed to you)</span>
-                                    </div>
-                                    <div class="invalid-feedback">
-                                        Please provide a valid email address.
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="form-group row">
-                                <label class="control-label col-sm-3" for="PhoneNumber">Phone</label>
-                                <div class="col-sm-9">
-                                    <input class="form-control" id="PhoneNumber" name="PhoneNumber" type="text" value="">
-                                </div>
-                            </div>
-                            <div class="form-group row">
-                                <label class="control-label col-sm-3" for="BusinessName">Company</label>
-                                <div class="col-sm-9">
-                                    <input class="form-control" id="BusinessName" name="BusinessName" type="text" value="">
-                                    <input class="form-control" id="KeyContact" name="KeyContact" type="text" value="" style="display: none;">
-@*                                     <input class="form-control" id="UtmSource" name="UtmSource" type="hidden" value="@Request.QueryString["utm_source"]" />
- *@                                </div>
-                            </div>
-
-                            <div class="form-group row">
-                                <label class="control-label col-sm-3">How did you find us?</label>
-                                <div class="col-sm-9">
-                                    <select class="form-control" id="Source" name="Source" onchange="referredByChanged()">
-                                        <option>Google Search</option>
-                                        <option>LinkedIn Post/Ad</option>
-                                        <option>Referred By</option>
-                                    </select>
-                                    <input class="form-control" id="ReferredBy" name="ReferredBy" type="text" placeholder="Please enter who you were referred by">
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <div>
-                                    <input type="submit" class="btn btn-primary btn-lg" value="Sign Up" />
-                                    <br />
-                                </div>
-                            </div>
-                            <hr />
-                            <p>
-                                @Html.ActionLink("Already have an Account? Login here", "Login", "Home")
-                            </p>
-
-                        }
-
-                        <br />
-                        <br />
-                        <footer class="text-center text-sm">
-                            <p>&copy; @DateTime.Now.Year - Dot Report, Inc. All Rights Reserved.</p>
-                        </footer>
+<div class="col-md-4">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12 col-lg-12 mx-auto">
+            @using (Html.BeginForm("Register", "Home", FormMethod.Post, new { @class = "form-box needs-validation", role = "form", novalidate = "" }))
+            {
+                @Html.AntiForgeryToken()
+                <div class="text-center">
+                    <h4>Let's get started!</h4>
+                    <div class="alert alert-info">
+                        This will create a new Dotnet Report Cloud Account<div class="small">Your temporary password will be sent to your email address</div>
                     </div>
-
+                    <br />
                 </div>
+                        
+                <div class="form-group">
+                    @Html.LabelFor(m => m.PrimaryContact, new { @class = "control-label requird" })
+                    <div>
+                        @Html.TextBoxFor(m => m.PrimaryContact, new { @class = "form-control" })
+                        @Html.ValidationMessageFor(m => m.PrimaryContact, "", new { @class = "text-danger" })
+                    </div>
+                </div>
+
+                <div class="form-group">
+                            @Html.LabelFor(m => m.Email, new { @class = "control-label requird" })
+                    <div>
+                        @Html.TextBoxFor(m => m.Email, new { @class = "form-control" })
+                        @Html.ValidationMessageFor(m => m.Email, "", new { @class = "text-danger" })
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    @Html.LabelFor(m => m.PhoneNumber, new { @class = "control-label" })
+                    <div>
+                        @Html.TextBoxFor(m => m.PhoneNumber, new { @class = "form-control", data_val = "false" })
+                        @Html.ValidationMessageFor(m => m.PhoneNumber, "", new { @class = "text-danger" })
+                    </div>
+                </div>
+                        
+                <div class="form-group">
+                    @Html.LabelFor(m => m.BusinessName, new { @class = "control-label" })
+                    <div>
+                        @Html.TextBoxFor(m => m.BusinessName, new { @class = "form-control", data_val = "false" })
+                        @Html.ValidationMessageFor(m => m.BusinessName, "", new { @class = "text-danger" })
+                    </div>
+                </div>
+
+
+                <div class="form-group">
+                    <div>
+                        <input type="submit" class="btn btn-primary btn-lg" value="Sign Up" />
+                        <br />
+                    </div>
+                </div>
+                <hr />
+                <p>
+                    @Html.ActionLink("Already have an Account? Login here", "Login", "Home")
+                </p>
+
+            }
+
             </div>
         </div>
     </div>
-
-    <div class="d-none d-md-flex col-sm-4 col-lg-6 bg-image-trial col-xs-12">
-    </div>
-
 </div>
+
 
 @section scripts {
 
-    <script type="text/javascript">
-        $('#ReferredBy').hide();
-        function referredByChanged(e) {
-            if ($('#Source').val() == 'Referred By') $('#ReferredBy').show(); else $('#ReferredBy').hide();
-        }
-    </script>
+<script type="text/javascript">
+    $('#ReferredBy').hide();
+    function referredByChanged(e) {
+        if ($('#Source').val() == 'Referred By') $('#ReferredBy').show(); else $('#ReferredBy').hide();
+    }
+</script>
 
 }

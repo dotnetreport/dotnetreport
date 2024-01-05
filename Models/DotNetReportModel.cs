@@ -1512,7 +1512,7 @@ namespace ReportBuilder.Web.Models
     public class RegisterViewModel
     {
         [Display(Name = "Business Name")]
-        public string BusinessName { get; set; }
+        public string? BusinessName { get; set; }
 
         [Required]
         [Display(Name = "Primary Contact")]
@@ -1520,11 +1520,11 @@ namespace ReportBuilder.Web.Models
 
 
         [Display(Name = "Phone Number")]
-        public string PhoneNumber { get; set; }
+        public string? PhoneNumber { get; set; }
 
         [Required]
         [EmailAddress]
-        [Display(Name = "Email")]
+        [Display(Name = "Account Email")]
         public string Email { get; set; }
         public string IpAddress { get; set; } = "";
 
