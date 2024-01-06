@@ -580,7 +580,8 @@ var usersAndRolesViewModel = function (options) {
 		userId: ko.observable(),
 		userName: ko.observable(),
 		email: ko.observable(),
-		password: ko.observable()
+		password: ko.observable(),
+		isactive: ko.observable()
 	})
 	self.SelectedUserRole = ko.observable({
 		userId: ko.observable(),
@@ -594,7 +595,7 @@ var usersAndRolesViewModel = function (options) {
 	self.password = ko.observable("");
 	self.roleName = ko.observable("");
 	self.roleId = ko.observable("");
-
+	self.isactive = ko.observable(false);
 	self.selectedUserId = ko.observable();
 	self.selectedRolesId = ko.observable();
 
@@ -614,7 +615,8 @@ var usersAndRolesViewModel = function (options) {
 		self.SelectedUser({
 			userId: roleData.UserId,
 			userName: roleData.UserName,
-			email: roleData.Email
+			email: roleData.Email,
+			isactive: roleData.IsActive
 		});
 	};
 	self.openDeleteUserModal = function (roleData) {
@@ -666,7 +668,7 @@ var usersAndRolesViewModel = function (options) {
 			const userid = self.SelectedUser().userId;
 			const username = self.SelectedUser().userName;
 			const email = self.SelectedUser().email;
-			
+			const isactive = self.SelectedUser().isactive;
 			ajaxcall({
 				url: options.UpdateUserDataUrl,
 				type: 'POST',
@@ -675,7 +677,8 @@ var usersAndRolesViewModel = function (options) {
 					dataConnect: dbKey,
 					UserName: username,
 					UserId: userid,
-					Email: email
+					Email: email,
+					IsActive: isactive
 				})
 			}).done(function (response) {
 				if (response) {
@@ -809,9 +812,9 @@ var usersAndRolesViewModel = function (options) {
 				dataConnect: dbKey,
 				userName: self.userName(),
 				email: self.email(),
-				password: self.password()
+				password: self.password(),
+				isactive: self.isactive(),
 			};
-
 			ajaxcall({
 				url: options.CreatingUserTableUrl,  // Replace with your actual endpoint
 				type: 'POST',

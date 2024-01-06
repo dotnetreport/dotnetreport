@@ -200,6 +200,7 @@ namespace ReportBuilder.Web.Controllers
                     };
                     
                     user.PasswordHash = HashPassword(user, model.Password);
+                    user.LockoutEnabled = model.IsActive;
                     var result = await _userStore.CreateAsync(user, CancellationToken.None);
 
                     if (result.Succeeded)
@@ -319,7 +320,7 @@ namespace ReportBuilder.Web.Controllers
                 {
                     connection.Open();
                     string updateUserDataQuery = $@"UPDATE [dbo].[AspNetUsers] SET 
-                     UserName = '{model.UserName}', Email = '{model.Email}'
+                     UserName = '{model.UserName}', Email = '{model.Email}',LockoutEnabled ='{model.IsActive}'
                      WHERE  Id = '{model.UserId}';";
                     // Check if the table exists
                     if (TableAndColumnExist(connection, "AspNetUsers", "Id"))
@@ -544,7 +545,7 @@ namespace ReportBuilder.Web.Controllers
             List<UserViewModel> usersData = new List<UserViewModel>();
 
             // Assuming there is a Users table with columns UserId, UserName, Email
-            using (var command = new SqlCommand("SELECT Id, UserName, Email FROM AspNetUsers", connection))
+            using (var command = new SqlCommand("SELECT Id, UserName, Email, [LockoutEnabled] as [IsActive] FROM AspNetUsers", connection))
             {
                 using (var reader = command.ExecuteReader())
                 {
@@ -555,7 +556,8 @@ namespace ReportBuilder.Web.Controllers
                         {
                             UserId = reader.GetString(0),
                             UserName = reader.GetString(1),
-                            Email = reader.GetString(2)
+                            Email = reader.GetString(2),
+                            IsActive= reader.GetBoolean(3)
                         };
                         usersData.Add(user);
                     }
@@ -675,6 +677,8 @@ namespace ReportBuilder.Web.Controllers
         public string UserName { get; set; }
         public string Email { get; set; }
         public string RoleName { get; set; }
+        public bool IsActive { get; set; }
+
 
     }
     public class UserModel
@@ -687,6 +691,7 @@ namespace ReportBuilder.Web.Controllers
         public string? RoleName { get; set; } = "";
         public string? UserId { get; set; } = "";
         public string? RoleId { get; set; } = "";
+        public bool IsActive { get; set; } = false;
 
     }
 

@@ -288,6 +288,7 @@
                             <table class="table table-striped table-bordered">
                                 <thead>
                                     <tr>
+                                        <th>IsActive</th>
                                         <th>User Name</th>
                                         <th>Email</th>
                                         <th>Action</th>
@@ -296,6 +297,7 @@
                                 </thead>
                                 <tbody data-bind="foreach: usersTableData">
                                     <tr>
+                                        <td data-bind="text: IsActive"></td>
                                         <td data-bind="text: UserName"></td>
                                         <td data-bind="text: Email"></td>
                                         <td>
@@ -594,6 +596,10 @@
                         <div class="invalid-feedback">Password is required.</div>
 
                     </div>
+                    <div class="form-group">
+                        <label for="isactive">IsActive</label>
+                        <input type="checkbox" id="isactive" name="isactive" data-bind="checked: isactive">
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -629,7 +635,10 @@
                         <div class="invalid-feedback">Email is required.</div>
 
                     </div>
-                    
+                    <div class="form-group">
+                        <label for="isactive">IsActive</label>
+                        <input type="checkbox" id="isactive" name="isactive" data-bind="checked: isactive">
+                    </div>
                 </form>
             </div>
             <div class="modal-footer" data-bind="with: UserAndRolesConfig">
