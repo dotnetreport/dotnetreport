@@ -626,6 +626,12 @@ var usersAndRolesViewModel = function (options) {
 			email: roleData.Email
 		});
 	};
+	self.openEditUserRoleModal = function (userroledata) {
+		self.SelectedUserRole({
+			userId: userroledata.UserId,
+			userName: userroledata.UserName
+		});
+	};
 	self.openDeleteUserRoleModal = function (roleData) {
 		self.SelectedUserRole({
 			userId: roleData.UserId,

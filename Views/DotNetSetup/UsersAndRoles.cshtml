@@ -365,7 +365,7 @@
                                         <td data-bind="text: UserName"></td>
                                         <td data-bind="text: RoleName"></td>
                                         <td>
-                                            <button class="btn btn-sm btn-primary" data-toggle="modal" data-target="#editUserRoleModal">Edit</button>
+                                            <button class="btn btn-sm btn-primary" data-toggle="modal" data-target="#editUserRoleModal" data-bind="click: function() { $parent.openEditUserRoleModal($data); }"">Edit</button>
                                             <button class="btn btn-sm btn-danger" data-toggle="modal" data-target="#deleteUserRoleModal" data-bind="click: function() { $parent.openDeleteUserRoleModal($data); }">Delete</button>
                                         </td>
                                         <!-- Add more columns as needed -->
