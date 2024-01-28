@@ -2382,7 +2382,7 @@ var reportViewModel = function (options) {
 					e.linkField = false;
 				}
 				col = col || { fieldName: e.ColumnName };
-
+				col.customfieldLabel = col.fieldLabel();
 				if (skipColDetails !== true) self.columnDetails.push(col);
 
 				e.decimalPlaces = col.decimalPlaces || ko.observable();
@@ -2391,7 +2391,6 @@ var reportViewModel = function (options) {
 				e.fieldConditionVal = col.fieldConditionVal || ko.observable();
 				e.fieldFormat = col.fieldFormat || ko.observable();
 				e.fieldLabel = col.fieldLabel || ko.observable();
-				e.fieldName = col.fieldName;
 				e.fieldWidth = col.fieldWidth || ko.observable();
 				e.fontBold = col.fontBold || ko.observable();
 				e.headerFontBold = col.headerFontBold || ko.observable();

@@ -313,6 +313,7 @@ namespace ReportBuilder.Web.Models
     {
         public string fieldName { get; set; }
         public string fieldLabel { get; set; }
+        public string customfieldLabel { get; set; }
         public bool hideStoredProcColumn { get; set; }
         public int? decimalPlaces { get; set; }
         public string fieldAlign { get; set; }
@@ -780,9 +781,9 @@ namespace ReportBuilder.Web.Models
                         {
                             dt.Columns.Remove(col.fieldName);
                         }
-                        else if (!String.IsNullOrWhiteSpace(col.fieldLabel) && dt.Columns.Contains(col.fieldName))
+                        else if (!String.IsNullOrWhiteSpace(col.customfieldLabel))
                         {
-                            dt.Columns[col.fieldName].ColumnName = col.fieldLabel;
+                            dt.Columns[col.fieldName].ColumnName = col.customfieldLabel;
                         }
                     }
                 }
