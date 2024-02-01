@@ -433,16 +433,16 @@ var textQuery = function (options) {
         url: options.apiUrl,
         headers: { "Authorization": "Bearer " + token },
         query: function (params) {
-            return params.term ? {
+            return params.term ? JSON.stringify({
                 method: "/ReportApi/ParseQuery",
                 model: JSON.stringify({
                     token: params.term,
                     text: ''
                 })
-            } : null;
+            }) : null;
         },
         processResults: function (data) {
-            if (data.d) results = data.d;
+            if (data.d) data = data.d;
             var items = _.map(data, function (x) {
                 return { id: x.fieldId, text: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey };
             });

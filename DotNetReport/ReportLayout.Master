@@ -1069,7 +1069,7 @@
 
                     <div class="col-md-6" data-bind="disable: isFormulaField, hidden: useStoredProc">
                         <div data-bind="with: textQuery.searchFields">
-                            <select id="search-field" class="form-control" data-bind="select2: {placeholder: 'Or Search for a Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults, headers: headers }, minimumInputLength: 2, allowClear: true }, value: selectedOption"></select>
+                            <select id="search-field" class="form-control" data-bind="select2: {placeholder: 'Or Search for a Data Field...', ajax: { url: url, dataType: 'json', contentType: 'application/json; charset=utf-8', data: query, processResults: processResults, headers: headers, type: 'POST' }, minimumInputLength: 2, allowClear: true }, value: selectedOption"></select>
                         </div>
                     </div>
 
