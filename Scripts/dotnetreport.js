@@ -866,6 +866,7 @@ var reportViewModel = function (options) {
 
 	self.fieldFormatTypes = ['Auto', 'Number', 'Decimal', 'Currency', 'Percentage', 'Date', 'Date and Time', 'Time', 'String'];
 	self.decimalFormatTypes = ['Number', 'Decimal', 'Currency', 'Percentage'];
+	self.dateFormats = ['Uk Format', 'US Format', 'Custom'];
 	self.dateFormatTypes = ['Date', 'Date and Time', 'Time'];
 	self.fieldAlignments = ['Auto', 'Left', 'Right', 'Center'];
 	self.designingHeader = ko.observable(false);
@@ -2482,6 +2483,12 @@ var reportViewModel = function (options) {
 						case 'Time': r.FormattedValue = (new Date(r.Value)).toLocaleTimeString("en-US", { hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
 					}
 				}
+				if (self.dateFormats.indexOf(col.fieldFormat()) >= 0 && !isNaN(new Date(r.Value).getTime())) {
+					switch (col.fieldFormat()) {
+						case 'Uk Format': r.FormattedValue = (new Date(r.Value)).toLocaleDateString("en-Uk", { year: 'numeric', month: 'numeric', day: 'numeric' }); break;
+						case 'US Format': r.FormattedValue = (new Date(r.Value)).toLocaleDateString("en-US", { year: 'numeric', month: 'numeric', day: 'numeric' }); break;
+						case 'Custom':r.FormattedValue = self.customDateFormat();break;					}
+				}
 			});
 		}
 
@@ -2913,6 +2920,8 @@ var reportViewModel = function (options) {
 		e.fieldFormat = ko.observable(e.fieldFormat);
 		e.fieldLabel = ko.observable(e.fieldLabel);
 		e.decimalPlaces = ko.observable(e.decimalPlaces);
+		e.dateFormat = ko.observable(e.dateFormat)
+		e.customDateFormat = ko.observable(e.customDateFormat)
 		e.fieldAlign = ko.observable(e.fieldAlign);
 		e.fontColor = ko.observable(e.fontColor);
 		e.backColor = ko.observable(e.backColor || '#ffffff');
