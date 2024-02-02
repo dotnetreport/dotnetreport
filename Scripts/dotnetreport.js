@@ -2660,12 +2660,12 @@ var reportViewModel = function (options) {
 		if (!reportSql || !connectKey) return;
 		self.ChartData('');
 		self.ReportResult().ReportData(null);
-		if (!options.samePageOnRun && self.ReportMode() != "dashboard") {
+		if (self.ReportMode() != "dashboard") {
 			setTimeout(function () {
 				if ($.blockUI) {
 					$.blockUI({ baseZ: 500 });
 				}
-			}, 500);
+			}, options.samePageOnRun ? 1000 : 500);
 		}
 
 		return ajaxcall({
