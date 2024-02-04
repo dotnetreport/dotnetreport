@@ -1,6 +1,6 @@
-﻿/// dotnet Report Builder view model v5.0.0
+﻿/// dotnet Report Builder view model v5.3.0
 /// License must be purchased for commercial use
-/// 2022 (c) www.dotnetreport.com
+/// 2024 (c) www.dotnetreport.com
 
 function formulaFieldViewModel(args) {
 	args = args || {};
@@ -2407,6 +2407,10 @@ var reportViewModel = function (options) {
 				e.isJsonColumn = col.fieldType == 'Json';
 				e.outerGroup = ko.observable(false);
 				e.colIndex = i;
+				e.pagerIndex = function ($parents) {
+					return $parents[1].pager ? 1
+						: $parents[3].pager ? 3 : 5;
+				}
 
 				e.toggleOuterGroup = function () {
 					e.outerGroup(!e.outerGroup());

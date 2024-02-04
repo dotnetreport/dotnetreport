@@ -158,9 +158,9 @@
         <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
         <!-- /ko -->
         <!-- ko ifnot: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false)  -->
-        <a href="" data-bind="click: function(){ $parents[3].pager ? $parents[3].changeSort(SqlField) : $parents[5].changeSort(SqlField); }, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}">
+        <a href="" data-bind="click: function(){ $parents[pagerIndex($parents)].changeSort(SqlField) }, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}">
             <span data-bind="text: fieldLabel() ? fieldLabel() : ColumnName"></span>
-            <span data-bind="text: ($parents[3].pager ? $parents[3].pager.sortColumn() : $parents[5].pager.sortColumn()) === SqlField ? (($parents[3].pager ? $parents[3].pager.sortDescending() : $parents[5].pager.sortDescending()) ? '&#9660;' : '&#9650;') : ''"></span>
+            <span data-bind="text: $parents[pagerIndex($parents)].pager.sortColumn() === SqlField ? ($parents[pagerIndex($parents)].pager.sortDescending() ? '&#9660;' : '&#9650;') : ''"></span>
         </a>
         <!-- /ko -->
 
