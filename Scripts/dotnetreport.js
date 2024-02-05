@@ -1,6 +1,6 @@
-﻿/// dotnet Report Builder view model v5.0.0
+﻿/// dotnet Report Builder view model v5.3.0
 /// License must be purchased for commercial use
-/// 2022 (c) www.dotnetreport.com
+/// 2024 (c) www.dotnetreport.com
 
 function formulaFieldViewModel(args) {
 	args = args || {};
@@ -1282,7 +1282,7 @@ var reportViewModel = function (options) {
 			} : null;
 		},
 		processResults: function (data) {
-			if (data.d) results = data.d;
+			if (data.d) data = data.d;
 			var items = _.map(data, function (x) {
 				return { id: x.fieldId, text: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey };
 			});
@@ -2065,7 +2065,7 @@ var reportViewModel = function (options) {
 	self.BuildReportData = function (drilldown, isComparison, index) {
 
 		drilldown = _.compact(_.map(drilldown || [], function (x) {
-			if (x.isJsonColumn || x.isRuleSet || x.Column.FormatType == 'Csv' || x.Column.FormatType == 'Json') return;
+			if (x.isJsonColumn || x.isRuleSet || x.Column.FormatType == 'Csv' || x.Column.FormatType == 'Json' || x.Value.indexOf('/>') >= 0) return;
 			return x;
 		}));		
 		var hasGroupInDetail = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Group in Detail' }) != null;
@@ -2398,6 +2398,7 @@ var reportViewModel = function (options) {
 				e.fieldConditionVal = col.fieldConditionVal || ko.observable();
 				e.fieldFormat = col.fieldFormat || ko.observable();
 				e.fieldLabel = col.fieldLabel || ko.observable();
+				e.fieldName = col.fieldName;
 				e.fieldWidth = col.fieldWidth || ko.observable();
 				e.fontBold = col.fontBold || ko.observable();
 				e.headerFontBold = col.headerFontBold || ko.observable();
@@ -2413,6 +2414,10 @@ var reportViewModel = function (options) {
 				e.isJsonColumn = col.fieldType == 'Json';
 				e.outerGroup = ko.observable(false);
 				e.colIndex = i;
+				e.pagerIndex = function ($parents) {
+					return $parents[1].pager ? 1
+						: $parents[3].pager ? 3 : 5;
+				}
 
 				e.toggleOuterGroup = function () {
 					e.outerGroup(!e.outerGroup());
@@ -2938,8 +2943,8 @@ var reportViewModel = function (options) {
 		e.fieldFormat = ko.observable(e.fieldFormat);
 		e.fieldLabel = ko.observable(e.fieldLabel);
 		e.decimalPlaces = ko.observable(e.decimalPlaces);
-		e.dateFormat = ko.observable(e.dateFormat)
-		e.customDateFormat = ko.observable(e.customDateFormat)
+		e.dateFormat = ko.observable(e.dateFormat);
+		e.customDateFormat = ko.observable(e.customDateFormat);
 		e.fieldAlign = ko.observable(e.fieldAlign);
 		e.fontColor = ko.observable(e.fontColor);
 		e.backColor = ko.observable(e.backColor || '#ffffff');
@@ -3615,7 +3620,7 @@ var reportViewModel = function (options) {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
-			chartData: self.ChartData(),
+			chartData: self.ChartData() || '',
 			columnDetails: self.getColumnDetails(),
 			includeSubTotal: self.IncludeSubTotal(),
 			pivot: self.ReportType() == 'Pivot'
@@ -3717,8 +3722,10 @@ var dashboardViewModel = function (options) {
 	self.selectDashboard = ko.observable(currentDash.id);
 	self.loadDashboard = function (dashboardId) {
 		ajaxcall({
-			url: options.loadSavedDashbordUrl + '?id=' + dashboardId + '&adminMode=' + self.adminMode()
+			url: options.loadSavedDashbordUrl,
+			data: { id: dashboardId, adminMode: self.adminMode() }
 		}).done(function (reportsData) {
+			if (reportsData.d) reportsData = reportsData.d;
 			var reports = [];
 			_.forEach(reportsData, function (r) {
 				reports.push({ reportSql: r.ReportSql, reportId: r.ReportId, reportFilter: r.ReportFilter, connectKey: r.ConnectKey, x: r.X, y: r.Y, width: r.Width, height: r.Height });
@@ -3937,14 +3944,17 @@ var dashboardViewModel = function (options) {
 				var promises = [];
 				if (self.tables.length == 0) {
 					promises.push(report.loadTables().done(function (x) {
+						if (x.d) x = x.d;
 						self.tables = x;
 						report.Tables(self.tables);
 					}));
 					promises.push(report.loadProcs().done(function (x) {
+						if (x.d) x = x.d;
 						self.procs = x;
 						report.Procs(self.procs);
 					}));
 					promises.push(report.loadFolders().done(function (x) {
+						if (x.d) x = x.d;
 						self.folders = x;
 						report.Folders(self.folders);
 					}));
