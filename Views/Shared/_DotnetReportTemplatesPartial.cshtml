@@ -138,10 +138,10 @@
     <td data-bind="hidden: outerGroup, style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '48px' : ''}">
         <div data-bind="style: {'width': fieldWidth }">
         <!-- ko if: LinkTo-->
-        <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: FormattedValue"></span></a>
+        <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: formattedVal"></span></a>
         <!-- /ko-->
         <!-- ko ifnot: LinkTo-->
-        <span data-bind="html: FormattedValue"></span>
+        <span data-bind="html: formattedVal"></span>
         <!-- /ko-->
         </div>
     </td>
@@ -267,7 +267,7 @@
                     <!-- ko foreach: Items -->
                     <!-- ko if: Value != 'NA' && Value != 'NaN' && !outerGroup() -->
                     <td data-bind="style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '48px' : ''}">
-                        <span data-bind="html: FormattedValue, css: {'right-align': true}"></span>
+                        <span data-bind="html: formattedVal, css: {'right-align': true}"></span>
                     </td>
                     <!-- /ko -->
                     <!-- /ko -->
@@ -772,10 +772,10 @@
                         <select class="form-control" required data-bind="options: $parent.dateFormats, value: dateFormat"></select>
                     </div>
                 </div>
-                   <div class="form-group row" data-bind="visible:dateFormat()==='Custom'">
+                   <div class="form-group row" data-bind="visible: dateFormat()==='Custom'">
                      <label class="col-sm-5 col-md-5 control-label">Enter Custom Date Format</label>
                     <div class="col-sm-7 col-md-7">
-                        <input type="number" class="form-control" data-bind="value: customDateFormat" placeholder="YYYY-MM-DD" />
+                        <input type="text" class="form-control" data-bind="value: customDateFormat" placeholder="dd/mm/yyyy" />
                     </div>
                  </div>
                 <div class="form-group row">
@@ -1439,10 +1439,10 @@
                             <td data-bind="hidden: outerGroup, style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal' }">
                                 <div data-bind="style: {'width': fieldWidth }">
                                     <!-- ko if: LinkTo-->
-                                    <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: FormattedValue"></span></a>
+                                    <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: formattedVal"></span></a>
                                     <!-- /ko-->
                                     <!-- ko ifnot: LinkTo-->
-                                    <span data-bind="html: FormattedValue"></span>
+                                    <span data-bind="html: formattedVal"></span>
                                     <!-- /ko-->
                                 </div>
                             </td>

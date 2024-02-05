@@ -866,7 +866,7 @@ var reportViewModel = function (options) {
 
 	self.fieldFormatTypes = ['Auto', 'Number', 'Decimal', 'Currency', 'Percentage', 'Date', 'Date and Time', 'Time', 'String'];
 	self.decimalFormatTypes = ['Number', 'Decimal', 'Currency', 'Percentage'];
-	self.dateFormats = ['Uk Format', 'US Format', 'Custom'];
+	self.dateFormats = ['United States', 'United Kingdom', 'France', 'German', 'Spanish', 'Chinese', 'Custom'];
 	self.dateFormatTypes = ['Date', 'Date and Time', 'Time'];
 	self.fieldAlignments = ['Auto', 'Left', 'Right', 'Center'];
 	self.designingHeader = ko.observable(false);
@@ -2129,6 +2129,8 @@ var reportViewModel = function (options) {
 					LinkFieldItem: x.linkField() ? x.linkFieldItem.toJs() : null,
 					FieldLabel: x.fieldLabel(),
 					DecimalPlaces: x.decimalPlaces(),
+					DateFormat: x.dateFormat(),
+					CustomDateFormat: x.customDateFormat(),
 					FieldAlign: x.fieldAlign(),
 					FontColor: x.fontColor(),
 					BackColor: x.backColor(),
@@ -2389,6 +2391,8 @@ var reportViewModel = function (options) {
 				if (skipColDetails !== true) self.columnDetails.push(col);
 
 				e.decimalPlaces = col.decimalPlaces || ko.observable();
+				e.dateFormat = col.dateFormat || ko.observable();
+				e.customDateFormat = col.customDateFormat || ko.observable();
 				e.fieldAlign = col.fieldAlign || ko.observable();
 				e.fieldConditionOp = col.fieldConditionOp || ko.observable();
 				e.fieldConditionVal = col.fieldConditionVal || ko.observable();
@@ -2469,26 +2473,40 @@ var reportViewModel = function (options) {
 				r.jsonColumnName = col.jsonColumnName;
 				r.isJsonColumn = col.isJsonColumn;
 
-				if (self.decimalFormatTypes.indexOf(col.fieldFormat()) >= 0) {
-					r.FormattedValue = self.formatNumber(r.Value, col.decimalPlaces());
-					switch (col.fieldFormat()) {
-						case 'Currency': r.FormattedValue = '$' + r.FormattedValue; break;
-						case 'Percentage': r.FormattedValue = r.FormattedValue + '%'; break;
+				r.formattedVal = ko.computed(function () {
+
+					if (self.decimalFormatTypes.indexOf(col.fieldFormat()) >= 0) {
+						r.FormattedValue = self.formatNumber(r.Value, col.decimalPlaces());
+						switch (col.fieldFormat()) {
+							case 'Currency': r.FormattedValue = '$' + r.FormattedValue; break;
+							case 'Percentage': r.FormattedValue = r.FormattedValue + '%'; break;
+						}
 					}
-				}
-				if (self.dateFormatTypes.indexOf(col.fieldFormat()) >= 0 && !isNaN(new Date(r.Value).getTime())) {
-					switch (col.fieldFormat()) {
-						case 'Date': r.FormattedValue = (new Date(r.Value)).toLocaleDateString("en-US", { year: 'numeric', month: 'numeric', day: 'numeric' }); break;
-						case 'Date and Time': r.FormattedValue = (new Date(r.Value)).toLocaleDateString("en-US", { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
-						case 'Time': r.FormattedValue = (new Date(r.Value)).toLocaleTimeString("en-US", { hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
+					if (self.dateFormatTypes.indexOf(col.fieldFormat()) >= 0 && !isNaN(new Date(r.Value).getTime())) {
+						var dtFormat = "en-US";
+						switch (col.dateFormat()) {
+							case 'United Kingdom': dtFormat = 'en-GB'; break;
+							case 'France': dtFormat = 'fr-FR'; break;
+							case 'German': dtFormat = 'de-DE'; break;
+							case 'Spanish': dtFormat = 'es-ES'; break;
+							case 'Chinese': dtFormat = 'zn-CN'; break;
+						}
+
+						if (col.dateFormat() == 'Custom' && col.customDateFormat()) {
+							r.FormattedValue = self.formatDate(new Date(r.Value), col.customDateFormat());
+						}
+						else {
+							switch (col.fieldFormat()) {
+								case 'Date': r.FormattedValue = (new Date(r.Value)).toLocaleDateString(dtFormat, { year: 'numeric', month: 'numeric', day: 'numeric' }); break;
+								case 'Date and Time': r.FormattedValue = (new Date(r.Value)).toLocaleDateString(dtFormat, { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
+								case 'Time': r.FormattedValue = (new Date(r.Value)).toLocaleTimeString(dtFormat, { hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
+							}
+						}
 					}
-				}
-				if (self.dateFormats.indexOf(col.fieldFormat()) >= 0 && !isNaN(new Date(r.Value).getTime())) {
-					switch (col.fieldFormat()) {
-						case 'Uk Format': r.FormattedValue = (new Date(r.Value)).toLocaleDateString("en-Uk", { year: 'numeric', month: 'numeric', day: 'numeric' }); break;
-						case 'US Format': r.FormattedValue = (new Date(r.Value)).toLocaleDateString("en-US", { year: 'numeric', month: 'numeric', day: 'numeric' }); break;
-						case 'Custom':r.FormattedValue = self.customDateFormat();break;					}
-				}
+
+					return r.FormattedValue;
+				});
+
 			});
 		}
 
@@ -3000,6 +3018,8 @@ var reportViewModel = function (options) {
 				fieldFormat: e.fieldFormat(),
 				fieldLabel: e.fieldLabel(),
 				decimalPlaces: e.decimalPlaces(),
+				dateFormat: e.dateFormat(),
+				customDateFormat: e.customDateFormat(),
 				fieldAlign: e.fieldAlign(),
 				fontColor: e.fontColor(),
 				backColor: e.backColor(),
@@ -3033,6 +3053,8 @@ var reportViewModel = function (options) {
 			e.fieldLabel(self.currentFieldOptions.fieldLabel);
 			e.fieldAlign(self.currentFieldOptions.fieldAlign);
 			e.decimalPlaces(self.currentFieldOptions.decimalPlaces);
+			e.dateFormat(self.currentFieldOptions.dateFormat);
+			e.customDateFormat(self.currentFieldOptions.customDateFormat);
 			e.fontColor(self.currentFieldOptions.fontColor);
 			e.backColor(self.currentFieldOptions.backColor);
 			e.headerFontColor(self.currentFieldOptions.headerFontColor);
@@ -3361,6 +3383,23 @@ var reportViewModel = function (options) {
 		return parts.join('.');
 	}
 
+	self.formatDate = function(date, format) {
+		const pad = (n) => n < 10 ? '0' + n : n;
+		const monthNamesShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+		let day = date.getDate(),
+			month = date.getMonth(), // Months are zero-based
+			year = date.getFullYear();
+
+		return format
+			.replace('yyyy', year)
+			.replace('yy', year.toString().slice(-2))
+			.replace('MM', monthNamesShort[month])
+			.replace('mm', pad(month + 1))
+			.replace('m', month + 1)
+			.replace('dd', pad(day))
+			.replace('d', day);
+	}
 
 	// ui-validation
 	self.isInputValid = function (ctl) {
