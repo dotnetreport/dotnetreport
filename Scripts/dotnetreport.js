@@ -2089,6 +2089,9 @@ var reportViewModel = function (options) {
 			IncludeSubTotals: self.IncludeSubTotal(),
 			EditFiltersOnReport: self.EditFiltersOnReport(),
 			ShowUniqueRecords: self.ShowUniqueRecords(),
+			ReportSettings: JSON.stringify({
+				ShowExpandOption: self.ShowExpandOption()
+			}),
 			OnlyTop: self.maxRecords() ? self.OnlyTop() : null,
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : self.AggregateReport(),
 			ShowDataWithGraph: self.ShowDataWithGraph(),
@@ -2129,8 +2132,10 @@ var reportViewModel = function (options) {
 					LinkFieldItem: x.linkField() ? x.linkFieldItem.toJs() : null,
 					FieldLabel: x.fieldLabel(),
 					DecimalPlaces: x.decimalPlaces(),
-					DateFormat: x.dateFormat(),
-					CustomDateFormat: x.customDateFormat(),
+					FieldSettings: JSON.stringify({
+						dateFormat: x.dateFormat(),
+						customDateFormat: x.customDateFormat()
+					}),
 					FieldAlign: x.fieldAlign(),
 					FontColor: x.fontColor(),
 					BackColor: x.backColor(),
@@ -2928,6 +2933,7 @@ var reportViewModel = function (options) {
 	self.editFieldOptions = ko.observable();
 
 	self.setupField = function (e) {
+		e.fieldSettings = JSON.parse(e.fieldSettings || "{}");
 		e.selectedFieldName = e.tableName + " > " + e.fieldName + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
 		e.selectedFilterName = e.tableName + " > " + (e.fieldLabel || e.fieldName) + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
 		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail').concat('Group in Detail').concat('Csv');
@@ -2943,8 +2949,8 @@ var reportViewModel = function (options) {
 		e.fieldFormat = ko.observable(e.fieldFormat);
 		e.fieldLabel = ko.observable(e.fieldLabel);
 		e.decimalPlaces = ko.observable(e.decimalPlaces);
-		e.dateFormat = ko.observable(e.dateFormat);
-		e.customDateFormat = ko.observable(e.customDateFormat);
+		e.dateFormat = ko.observable(e.fieldSettings.dateFormat || '');
+		e.customDateFormat = ko.observable(e.fieldSettings.customDateFormat || '');
 		e.fieldAlign = ko.observable(e.fieldAlign);
 		e.fontColor = ko.observable(e.fontColor);
 		e.backColor = ko.observable(e.backColor);
@@ -3126,6 +3132,9 @@ var reportViewModel = function (options) {
 		self.scheduleBuilder.fromJs(report.Schedule);
 		self.HideReportHeader(report.HideReportHeader);
 		self.useReportHeader(report.UseReportHeader && !report.HideReportHeader);
+
+		var reportSettings = JSON.parse(report.ReportSettings || "{}");
+		self.ShowExpandOption(reportSettings.ShowExpandOption || false);
 
 		if (self.ReportMode() == "execute") {
 			if (self.useReportHeader()) {
