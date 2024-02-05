@@ -1,8 +1,8 @@
 ﻿@using System.Configuration
 
 @{
-ViewBag.Title = "Report Builder";
-Layout = "../shared/_Layout.Report.cshtml";
+    ViewBag.Title = "Report Builder";
+    Layout = "../shared/_Layout.Report.cshtml";
 }
 <!--
 The html and JavaScript code below is related to presentation for the Report Builder. You don't have to change it, unless you intentionally want to
@@ -53,17 +53,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
 }
 
 <div class="container-fluid">
-    <div class="row">
-        <div class="col-md-6">
-            <p>
-            </p>
-        </div>
-        <div class="col-md-6">
-            <div class="pull-right">
-                <a href="@Url.Action("Dashboard","DotNetReport")">View Dashboard</a> | Learn how to <a href="https://dotnetreport.com/getting-started-with-dotnet-report/" target="_blank">Integrate in your App here</a>.
-            </div>
-        </div>
-    </div>
+   
 
     <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
 
@@ -373,26 +363,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
             </div>
         </div>
     </div>
-
-    <div class="modal" id="noaccountModal" tabindex="-1" role="dialog" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                    <h4 class="modal-title">Account not Setup</h4>
-                </div>
-                <div class="modal-body">
-                    <p class="alert alert-danger">dotnet Report Account Configuration missing!</p>
-                    <p>You do not have the neccessary initial configuration completed to use dotnet Report.</p>
-                    <p>Please view the <a href="https://dotnetreport.com/blogs/getting-started-with-dotnet-report/" target="_blank">Getting Started Guide</a> to correctly configure dotnet Report.</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
+    
     <div data-bind="if: ReportMode() == 'execute' || ReportMode() == 'Linked'">
 
          <div class="card">
@@ -466,9 +437,11 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             <div data-bind="if: EditFiltersOnReport">
                                 <div class="card">
                                     <div class="card-header">
-                                        <a data-toggle="collapse" data-target="#filter-panel" href="#">
-                                            <i class="fa fa-filter"></i>Choose Filters
-                                        </a>
+                                        <h5 class="card-title">
+                                            <a data-toggle="collapse" data-target="#filter-panel" href="#">
+                                                <i class="fa fa-filter"></i>Choose Filters
+                                            </a>
+                                        </h5>
                                     </div>
                                     <div id="filter-panel" class="card-body collapse">
                                         <div data-bind="if: useStoredProc">
@@ -510,11 +483,11 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 </button>
                                                 <button class="btn btn-secondary btn-sm" data-bind="click: $parent.toggleExpand">
                                                     <span class="fa" data-bind="css: {'fa-expand': !$parent.isExpanded(), 'fa-minus': $parent.isExpanded() }"></span>
-                                                </button>
+                                                </button>                                                
                                             </div>
                                             <div class="form-group pull-right">
                                                 <div data-bind="template: 'pager-template', data: $data"></div>
-                                            </div>
+                                            </div>                                            
                                         </div>
                                     </div>
                                 </div>

@@ -14,24 +14,31 @@
 </head>
 
 <body>
-    <div class="navbar border-bottom box-shadow navbar-inverse bg-dark">
-        <div class="">
-            <div class="navbar-brand">
-                <a href="/">
-                    <img src="/img/report-logo.png" alt=".Net Report Builder" width="200" />
-                </a>
-            </div>
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark">
+        <a class="navbar-brand" href="/">
+            <img src="~/img/report-logo.png" alt=".Net Report Builder" style="width: 140px;" />
+        </a>
+        <div class="collapse navbar-collapse" id="navbarNavDropdown">
+            <ul class="navbar-nav ml-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="/DotnetReport/Dashboard">Dashboards</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/DotnetReport">Reports</a>
+                </li>
+            </ul>
         </div>
-    </div>
+    </nav>
+
     <div class="body-content container-fluid" style="padding-bottom: 60px;">
         @RenderBody()
     </div>
     <div class="report-layout-footer">
         <!-- ########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
-        <p>Ad Hoc Reporting and Dashboard powered by <a href="http://www.dotNetReport.com" target="_blank">dotnetReport.com</a></p>
+        <p>Ad Hoc Reporting and Dashboard powered by <a href="http://www.dotNetReport.com" target="_blank">dotnetreport</a>. Copyright © www.dotnetreport.com.</p>
         <!--########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
     </div>
-    
+
     @await Html.PartialAsync("_DotnetReportTemplatesPartial")
     @await Html.PartialAsync("_DotnetReportJsLibrariesPartial")
 
