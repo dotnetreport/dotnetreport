@@ -1,6 +1,6 @@
-﻿/// dotnet Report Builder view model v5.0.0
+﻿/// dotnet Report Builder view model v5.3.1
 /// License must be purchased for commercial use
-/// 2022 (c) www.dotnetreport.com
+/// 2024 (c) www.dotnetreport.com
 
 var manageViewModel = function (options) {
 	var self = this;

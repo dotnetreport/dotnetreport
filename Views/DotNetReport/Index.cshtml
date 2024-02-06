@@ -1,8 +1,8 @@
 ﻿@using System.Configuration
 
 @{
-ViewBag.Title = "Report Builder";
-Layout = "../shared/_Layout.Report.cshtml";
+    ViewBag.Title = "Report Builder";
+    Layout = "../shared/_Layout.Report.cshtml";
 }
 <!--
 The html and JavaScript code below is related to presentation for the Report Builder. You don't have to change it, unless you intentionally want to
@@ -214,7 +214,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             <div data-bind="if: $parent.adminMode">
                                                 <div class="small">
                                                     <b>Report Access</b><br />
-                                                    Manage by User <span class="badge badge-info" data-bind="text: userId ? userId : 'No User'"></span>
+                                                    Manage by User <span class="badge badge-info" data-bind="text: userId ? userId : 'Any User'"></span>
                                                     <br />
                                                     View only by User <span class="badge badge-info" data-bind="text: (viewOnlyUserId ? viewOnlyUserId : (userId ? userId : 'Any User'))"></span>
                                                     <br />
@@ -263,7 +263,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                     <button type="button" class="btn btn-sm btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" style="margin-left: -4px;">
                                                         <span class="sr-only"></span>
                                                     </button>
-                                                    <div class="dropdown-menu">
+                                                    <div class="dropdown-menu dropdown-menu-right">
                                                         <a class="dropdown-item" href="#" data-bind="click: function() {exportReport('excel');}">
                                                             <span class="fa fa-file-excel-o"></span> Download Excel
                                                         </a>

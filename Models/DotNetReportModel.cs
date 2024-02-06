@@ -327,6 +327,7 @@ namespace ReportBuilder.Web.Models
     {
         public string fieldName { get; set; }
         public string fieldLabel { get; set; }
+        public string customfieldLabel { get; set; }
         public bool hideStoredProcColumn { get; set; }
         public int? decimalPlaces { get; set; }
         public string fieldAlign { get; set; }
@@ -816,7 +817,32 @@ namespace ReportBuilder.Web.Models
             return model;
         }
 
-        public async static Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, bool allExpanded = false,
+        private static string GetWhereClause(string sql)
+        {
+
+            int whereIndex = sql.IndexOf("WHERE ", StringComparison.OrdinalIgnoreCase);
+            int nextClauseIndex = sql.IndexOf("GROUP BY ", whereIndex, StringComparison.OrdinalIgnoreCase);
+            if (nextClauseIndex < 0)
+            {
+                nextClauseIndex = sql.IndexOf("ORDER BY ", whereIndex, StringComparison.OrdinalIgnoreCase);
+            }
+            nextClauseIndex = nextClauseIndex < 0 ? sql.Length : nextClauseIndex;
+            var modifiedSql = sql.Substring(0, whereIndex) + sql.Substring(nextClauseIndex);
+            var whereClause = sql.Substring(whereIndex, nextClauseIndex-whereIndex);
+
+            return whereClause;
+        }
+
+        private static string ReplaceWhereClause(string sql, string where)
+        {
+            int whereIndex = sql.IndexOf("WHERE ", StringComparison.OrdinalIgnoreCase);
+            int nextClauseIndex = sql.IndexOf("ORDER BY ", whereIndex, StringComparison.OrdinalIgnoreCase);
+            nextClauseIndex = nextClauseIndex < 0 ? sql.Length : nextClauseIndex;
+            var modifiedSql = sql.Substring(0, whereIndex) + where + sql.Substring(nextClauseIndex);
+            return modifiedSql;
+        }
+
+        public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, bool allExpanded = false,
                 string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
         {
             var sql = Decrypt(reportSql);
@@ -842,9 +868,9 @@ namespace ReportBuilder.Web.Models
                         {
                             dt.Columns.Remove(col.fieldName);
                         }
-                        else if (!String.IsNullOrWhiteSpace(col.fieldLabel) && dt.Columns.Contains(col.fieldName))
+                        else if (!String.IsNullOrWhiteSpace(col.customfieldLabel))
                         {
-                            dt.Columns[col.fieldName].ColumnName = col.fieldLabel;
+                            dt.Columns[col.fieldName].ColumnName = col.customfieldLabel;
                         }
                     }
                 }
@@ -858,23 +884,24 @@ namespace ReportBuilder.Web.Models
                     int rowend = rowstart;
                     int colend = dt.Columns.Count;
 
-                    ws.Cells[rowstart, colstart, rowend, colend].Merge = true;
-                    ws.Cells[rowstart, colstart, rowend, colend].Value = reportName;
-                    ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Bold = true;
-                    ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Size = 14;
-
-                    rowstart += 2;
-                    rowend = rowstart + dt.Rows.Count;
-
-                    DataTableToDotNetReportDataModel(dt, sqlFields, false);
-                    FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeSubtotal);
-
-                    if (allExpanded)
+                    if (dt.Rows.Count > 0)
                     {
-                        var insertRowIndex = 3;
-                        foreach (DataRow dr in dt.Rows)
+                        ws.Cells[rowstart, colstart, rowend, colend].Merge = true;
+                        ws.Cells[rowstart, colstart, rowend, colend].Value = reportName;
+                        ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Bold = true;
+                        ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Size = 14;
+
+                        rowstart += 2;
+                        rowend = rowstart + dt.Rows.Count;
+
+                        FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeSubtotal);
+
+                        if (allExpanded)
                         {
+                            var insertRowIndex = 3;
+
                             var drilldownRow = new List<string>();
+                            var dr = dt.Rows[0];
 
                             int i = 0;
                             foreach (DataColumn dc in dt.Columns)
@@ -899,22 +926,42 @@ namespace ReportBuilder.Web.Models
 
                             var reportData = expandSqls.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(',', drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
                             var drilldownSql = await RunReportApiCall(reportData);
+
+                            var combinedSqls = "";
                             if (!string.IsNullOrEmpty(drilldownSql))
-                            {                                
-                                var ddt = new DataTable();
-                                var cmd = new OleDbCommand(drilldownSql, conn);
-                                var adp = new OleDbDataAdapter(cmd);
-                                adp.Fill(ddt);
+                            {
+                                foreach (DataRow ddr in dt.Rows)
+                                {
+                                    i = 0;
+                                    var filteredSql = drilldownSql;
+                                    foreach (DataColumn dc in dt.Columns)
+                                    {
+                                        var value = ddr[dc].ToString().Replace("'", "''");
+                                        filteredSql = filteredSql.Replace($"<{dc.ColumnName}>", value);
+                                    }
 
-                                ws.InsertRow(insertRowIndex + 2, ddt.Rows.Count);
+                                    combinedSqls += filteredSql += ";\n";
+                                }
 
-                                FormatExcelSheet(ddt, ws, insertRowIndex == 3 ? 3 : (insertRowIndex + 1), ddt.Columns.Count + 1, columns, false, insertRowIndex == 3);
+                                using (var dts = new DataSet()) {
+                                    using (var cmd = new OleDbCommand(combinedSqls, conn))
+                                    using (var adp = new OleDbDataAdapter(cmd))
+                                    {
+                                        adp.Fill(dts);
+                                    }
 
-                                insertRowIndex += ddt.Rows.Count + 1;
+                                    foreach (DataTable ddt in dts.Tables)
+                                    {
+                                        ws.InsertRow(insertRowIndex + 2, ddt.Rows.Count);
+
+                                        FormatExcelSheet(ddt, ws, insertRowIndex == 3 ? 3 : (insertRowIndex + 1), ddt.Columns.Count + 1, columns, false, insertRowIndex == 3);
+
+                                        insertRowIndex += ddt.Rows.Count + 1;
+                                    }
+                                }
                             }
                         }
                     }
-
                     ws.View.FreezePanes(4, 1);
                     return xp.GetAsByteArray();
                 }

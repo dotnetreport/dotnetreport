@@ -25,6 +25,7 @@
             <option>Last Month</option>
             <option>This Year</option>
             <option>Last Year</option>
+            <option>This Week To Date</option>
             <option>This Month To Date</option>
             <option>This Year To Date</option>
             <option>Last 30 Days</option>
@@ -102,9 +103,9 @@
         <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
         <!-- /ko -->
         <!-- ko ifnot: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false)  -->
-        <a href="" data-bind="click: function(){ $parents[3].pager ? $parents[3].changeSort(SqlField) : $parents[5].changeSort(SqlField); }, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}">
+        <a href="" data-bind="click: function(){ $parents[pagerIndex($parents)].changeSort(SqlField) }, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}">
             <span data-bind="text: fieldLabel() ? fieldLabel() : ColumnName"></span>
-            <span data-bind="text: ($parents[3].pager ? $parents[3].pager.sortColumn() : $parents[5].pager.sortColumn()) === SqlField ? (($parents[3].pager ? $parents[3].pager.sortDescending() : $parents[5].pager.sortDescending()) ? '&#9660;' : '&#9650;') : ''"></span>
+            <span data-bind="text: $parents[pagerIndex($parents)].pager.sortColumn() === SqlField ? ($parents[pagerIndex($parents)].pager.sortDescending() ? '&#9660;' : '&#9650;') : ''"></span>
         </a>
         <!-- /ko -->
 
@@ -137,10 +138,10 @@
     <td data-bind="hidden: outerGroup, style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '48px' : ''}">
         <div data-bind="style: {'width': fieldWidth }">
         <!-- ko if: LinkTo-->
-        <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: FormattedValue"></span></a>
+        <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: formattedVal"></span></a>
         <!-- /ko-->
         <!-- ko ifnot: LinkTo-->
-        <span data-bind="html: FormattedValue"></span>
+        <span data-bind="html: formattedVal"></span>
         <!-- /ko-->
         </div>
     </td>
@@ -148,7 +149,7 @@
 
 <script type="text/html" id="report-pivot">
         <div class="table-responsive" data-bind="with: ReportData">
-        <table class="table table-hover table-condensed">
+        <table class="table table-striped table-hover table-condensed">
             <thead>
                 <tr>
                     <th></th>
@@ -181,10 +182,10 @@
 
 <script type="text/html" id="report-table">
         <div class="table-responsive" >
-        <table class="table table-hover table-condensed" data-bind="attr: {class: 'table table-hover table-condensed ' + $parents[2].selectedStyle()}">
+        <table class="table table-hover table-condensed" data-bind="attr: {class: 'table table-striped table-hover table-condensed ' + $parents[2].selectedStyle()}">
             <thead data-bind="if: $parents[2].ReportType() != 'Single'">
                 <tr class="no-highlight">
-                    <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !IsDrillDown() -->
+                    <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !IsDrillDown() && !CanExpandOption() -->
                     <th style="width: 30px; border-left: 1px solid;"></th>
                     <!-- /ko -->
                     <!-- ko template: 'report-column-header', data: $data -->
@@ -206,7 +207,7 @@
                 </tr>
                 <!-- ko foreach: $parent.rows  -->
                 <tr>
-                    <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() && $parentContext.$parentContext.$parentContext.$parent.ReportType() != 'Single' -->
+                    <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() && !$parent.CanExpandOption() && $parentContext.$parentContext.$parentContext.$parent.ReportType() != 'Single' -->
                     <td style="width: 30px; vertical-align: middle;"><a href="#" data-bind="click: function(){ toggle(); }"><span class="fa" data-bind="css: {'fa-plus': !isExpanded(), 'fa-minus': isExpanded()}"></span></a></td>
                     <!-- /ko -->
                     <!-- ko template: 'report-column', data: $data -->
@@ -217,7 +218,7 @@
                     <td style="width: 30px;"></td>
                     <td data-bind="attr:{colspan: $parent.Columns.length }" style="padding-left: 0px;">
                         <!-- ko if: DrillDownData -->
-                        <table class="table table-hover table-condensed" data-bind="with: DrillDownData, attr: {class: 'table table-hover table-condensed '}">
+                        <table class="table table-striped table-hover table-condensed" data-bind="with: DrillDownData, attr: {class: 'table table-hover table-condensed '}">
                             <thead>
                                 <tr class="no-highlight">
                                     <!-- ko template: 'report-column-header', data: $data -->
@@ -266,7 +267,7 @@
                     <!-- ko foreach: Items -->
                     <!-- ko if: Value != 'NA' && Value != 'NaN' && !outerGroup() -->
                     <td data-bind="style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '48px' : ''}">
-                        <span data-bind="html: FormattedValue, css: {'right-align': true}"></span>
+                        <span data-bind="html: formattedVal, css: {'right-align': true}"></span>
                     </td>
                     <!-- /ko -->
                     <!-- /ko -->
@@ -516,7 +517,7 @@
 <script type="text/html" id="filter-inner">
     <div class="rules-list" >
         <div class="rule-container" data-bind="visible: Filters().length>0">
-        <table class="table table-hover table-borderless">
+        <table class="table table-striped table-hover table-borderless">
             <thead>
                 <tr>
                     <th class="row">
@@ -609,7 +610,7 @@
     <div class="table-responsive card">
         <div class="card-body">
             <span data-bind="hidden: showParameters">No filters available to choose</span>
-            <table class="table  table-hover table-borderless" data-bind="visible: showParameters">
+            <table class="table table-striped table-hover table-borderless" data-bind="visible: showParameters">
                 <thead>
                     <tr>
                         <th style="width: 30%">Filter</th>
@@ -763,6 +764,18 @@
                         <input type="number" class="form-control" data-bind="value: decimalPlaces" placeholder="" />
                     </div>
                 </div>
+                  <div class="form-group row" data-bind="visible: $parent.dateFormatTypes.indexOf($data.fieldFormat())>=0">
+                    <label class="col-sm-5 col-md-5 control-label">Pick Date Format</label>
+                    <div class="col-sm-7 col-md-7">
+                        <select class="form-control" required data-bind="options: $parent.dateFormats, value: dateFormat"></select>
+                    </div>
+                </div>
+                   <div class="form-group row" data-bind="visible: dateFormat()==='Custom'">
+                     <label class="col-sm-5 col-md-5 control-label">Enter Custom Date Format</label>
+                    <div class="col-sm-7 col-md-7">
+                        <input type="text" class="form-control" data-bind="value: customDateFormat" placeholder="dd/mm/yyyy" />
+                    </div>
+                 </div>
                 <div class="form-group row">
                     <label class="col-sm-5 col-md-5 control-label">Choose Column Label</label>
                     <div class="col-sm-7 col-md-7">
@@ -1150,7 +1163,7 @@
                                                 <option>+</option>
                                                 <!-- /ko -->
                                                 <option>-</option>
-                                                <!-- ko if: ['Int','Money','Float','Double'].indexOf(fieldType) != -1 -->
+                                                <!-- ko if: ['Integer','Money','Float','Double','Decimal','Currency'].indexOf($parent.formulaDataFormat()) != -1 -->
                                                 <option>*</option>
                                                 <option>/</option>
                                                 <!-- /ko -->
@@ -1340,6 +1353,12 @@
                                 Show only Unique Records
                             </label>
                         </div>
+                        <div class="checkbox" data-bind="visible: ReportType()!='List'">
+                            <label>
+                                <input type="checkbox" data-bind="checked: ShowExpandOption" />
+                                Don't Show Expand Option
+                            </label>
+                        </div>
                         <div class="form-group row">
                             <div class="checkbox col-md-2">
                                 <label >
@@ -1395,7 +1414,7 @@
             </div>
             <!-- ko if: DrillDownData -->
             <div class="modal-body">
-                <table class="table table-hover table-condensed" data-bind="with: DrillDownData">
+                <table class="table table-striped table-hover table-condensed" data-bind="with: DrillDownData">
                     <thead>
                         <tr class="no-highlight">
                             <!-- ko foreach: Columns -->
@@ -1418,10 +1437,10 @@
                             <td data-bind="hidden: outerGroup, style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal' }">
                                 <div data-bind="style: {'width': fieldWidth }">
                                     <!-- ko if: LinkTo-->
-                                    <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: FormattedValue"></span></a>
+                                    <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: formattedVal"></span></a>
                                     <!-- /ko-->
                                     <!-- ko ifnot: LinkTo-->
-                                    <span data-bind="html: FormattedValue"></span>
+                                    <span data-bind="html: formattedVal"></span>
                                     <!-- /ko-->
                                 </div>
                             </td>

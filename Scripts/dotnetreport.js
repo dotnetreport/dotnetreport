@@ -1,6 +1,6 @@
-﻿/// dotnet Report Builder view model v5.0.0
+﻿/// dotnet Report Builder view model v5.3.0
 /// License must be purchased for commercial use
-/// 2022 (c) www.dotnetreport.com
+/// 2024 (c) www.dotnetreport.com
 
 function formulaFieldViewModel(args) {
 	args = args || {};
@@ -803,6 +803,7 @@ var reportViewModel = function (options) {
 
 	self.IncludeSubTotal = ko.observable(false);
 	self.ShowUniqueRecords = ko.observable(false);
+	self.ShowExpandOption = ko.observable(false);
 	self.AggregateReport = ko.observable(false);
 	self.SortByField = ko.observable();
 	self.SortDesc = ko.observable(false);
@@ -944,6 +945,7 @@ var reportViewModel = function (options) {
 
 	self.fieldFormatTypes = ['Auto', 'Number', 'Decimal', 'Currency', 'Percentage', 'Date', 'Date and Time', 'Time', 'String'];
 	self.decimalFormatTypes = ['Number', 'Decimal', 'Currency', 'Percentage'];
+	self.dateFormats = ['United States', 'United Kingdom', 'France', 'German', 'Spanish', 'Chinese', 'Custom'];
 	self.dateFormatTypes = ['Date', 'Date and Time', 'Time'];
 	self.fieldAlignments = ['Auto', 'Left', 'Right', 'Center'];
 	self.designingHeader = ko.observable(false);
@@ -1359,7 +1361,7 @@ var reportViewModel = function (options) {
 			} : null;
 		},
 		processResults: function (data) {
-			if (data.d) results = data.d;
+			if (data.d) data = data.d;
 			var items = _.map(data, function (x) {
 				return { id: x.fieldId, text: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey };
 			});
@@ -1440,6 +1442,7 @@ var reportViewModel = function (options) {
 		self.IncludeSubTotal(false);
 		self.EditFiltersOnReport(false);
 		self.ShowUniqueRecords(false);
+		self.ShowExpandOption(false);
 		self.AggregateReport(false);
 		self.SortByField(null);
 		self.SortDesc(false);
@@ -1712,7 +1715,7 @@ var reportViewModel = function (options) {
 		if (!value) return;
 		var result = self.formulaOnlyHasDateFields();
 		if (result && ['Days', 'Hours', 'Minutes', 'Seconds'].indexOf(self.formulaDataFormat()) < 0) self.formulaDataFormat('Days');
-		if (!result && ['String', 'Integer', 'Double'].indexOf(self.formulaDataFormat()) < 0) self.formulaDataFormat('String');
+		if (!result && ['String', 'Integer', 'Double', 'Decimal', 'Currency'].indexOf(self.formulaDataFormat()) < 0) self.formulaDataFormat('String');
 	});
 
 	self.formulaHasConstantValue = ko.computed(function () {
@@ -2141,7 +2144,7 @@ var reportViewModel = function (options) {
 	self.BuildReportData = function (drilldown, isComparison, index) {
 
 		drilldown = _.compact(_.map(drilldown || [], function (x) {
-			if (x.isJsonColumn || x.isRuleSet || x.Column.FormatType == 'Csv' || x.Column.FormatType == 'Json') return;
+			if (x.isJsonColumn || x.isRuleSet || x.Column.FormatType == 'Csv' || x.Column.FormatType == 'Json' || x.Value.indexOf('/>') >= 0) return;
 			return x;
 		}));		
 		var hasGroupInDetail = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Group in Detail' }) != null;
@@ -2165,6 +2168,9 @@ var reportViewModel = function (options) {
 			IncludeSubTotals: self.IncludeSubTotal(),
 			EditFiltersOnReport: self.EditFiltersOnReport(),
 			ShowUniqueRecords: self.ShowUniqueRecords(),
+			ReportSettings: JSON.stringify({
+				ShowExpandOption: self.ShowExpandOption()
+			}),
 			OnlyTop: self.maxRecords() ? self.OnlyTop() : null,
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : self.AggregateReport(),
 			ShowDataWithGraph: self.ShowDataWithGraph(),
@@ -2205,6 +2211,10 @@ var reportViewModel = function (options) {
 					LinkFieldItem: x.linkField() ? x.linkFieldItem.toJs() : null,
 					FieldLabel: x.fieldLabel(),
 					DecimalPlaces: x.decimalPlaces(),
+					FieldSettings: JSON.stringify({
+						dateFormat: x.dateFormat(),
+						customDateFormat: x.customDateFormat()
+					}),
 					FieldAlign: x.fieldAlign(),
 					FontColor: x.fontColor(),
 					BackColor: x.backColor(),
@@ -2461,10 +2471,12 @@ var reportViewModel = function (options) {
 					e.linkField = false;
 				}
 				col = col || { fieldName: e.ColumnName };
-
+				col.customfieldLabel = col.fieldLabel();
 				if (skipColDetails !== true) self.columnDetails.push(col);
 
 				e.decimalPlaces = col.decimalPlaces || ko.observable();
+				e.dateFormat = col.dateFormat || ko.observable();
+				e.customDateFormat = col.customDateFormat || ko.observable();
 				e.fieldAlign = col.fieldAlign || ko.observable();
 				e.fieldConditionOp = col.fieldConditionOp || ko.observable();
 				e.fieldConditionVal = col.fieldConditionVal || ko.observable();
@@ -2486,6 +2498,10 @@ var reportViewModel = function (options) {
 				e.isJsonColumn = col.fieldType == 'Json';
 				e.outerGroup = ko.observable(false);
 				e.colIndex = i;
+				e.pagerIndex = function ($parents) {
+					return $parents[1].pager ? 1
+						: $parents[3].pager ? 3 : 5;
+				}
 
 				e.toggleOuterGroup = function () {
 					e.outerGroup(!e.outerGroup());
@@ -2546,20 +2562,40 @@ var reportViewModel = function (options) {
 				r.jsonColumnName = col.jsonColumnName;
 				r.isJsonColumn = col.isJsonColumn;
 
-				if (self.decimalFormatTypes.indexOf(col.fieldFormat()) >= 0) {
-					r.FormattedValue = self.formatNumber(r.Value, col.decimalPlaces());
-					switch (col.fieldFormat()) {
-						case 'Currency': r.FormattedValue = '$' + r.FormattedValue; break;
-						case 'Percentage': r.FormattedValue = r.FormattedValue + '%'; break;
+				r.formattedVal = ko.computed(function () {
+
+					if (self.decimalFormatTypes.indexOf(col.fieldFormat()) >= 0) {
+						r.FormattedValue = self.formatNumber(r.Value, col.decimalPlaces());
+						switch (col.fieldFormat()) {
+							case 'Currency': r.FormattedValue = '$' + r.FormattedValue; break;
+							case 'Percentage': r.FormattedValue = r.FormattedValue + '%'; break;
+						}
 					}
-				}
-				if (self.dateFormatTypes.indexOf(col.fieldFormat()) >= 0 && !isNaN(new Date(r.Value).getTime())) {
-					switch (col.fieldFormat()) {
-						case 'Date': r.FormattedValue = (new Date(r.Value)).toLocaleDateString("en-US", { year: 'numeric', month: 'numeric', day: 'numeric' }); break;
-						case 'Date and Time': r.FormattedValue = (new Date(r.Value)).toLocaleDateString("en-US", { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
-						case 'Time': r.FormattedValue = (new Date(r.Value)).toLocaleTimeString("en-US", { hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
+					if (self.dateFormatTypes.indexOf(col.fieldFormat()) >= 0 && !isNaN(new Date(r.Value).getTime())) {
+						var dtFormat = "en-US";
+						switch (col.dateFormat()) {
+							case 'United Kingdom': dtFormat = 'en-GB'; break;
+							case 'France': dtFormat = 'fr-FR'; break;
+							case 'German': dtFormat = 'de-DE'; break;
+							case 'Spanish': dtFormat = 'es-ES'; break;
+							case 'Chinese': dtFormat = 'zn-CN'; break;
+						}
+
+						if (col.dateFormat() == 'Custom' && col.customDateFormat()) {
+							r.FormattedValue = self.formatDate(new Date(r.Value), col.customDateFormat());
+						}
+						else {
+							switch (col.fieldFormat()) {
+								case 'Date': r.FormattedValue = (new Date(r.Value)).toLocaleDateString(dtFormat, { year: 'numeric', month: 'numeric', day: 'numeric' }); break;
+								case 'Date and Time': r.FormattedValue = (new Date(r.Value)).toLocaleDateString(dtFormat, { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
+								case 'Time': r.FormattedValue = (new Date(r.Value)).toLocaleTimeString(dtFormat, { hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
+							}
+						}
 					}
-				}
+
+					return r.FormattedValue;
+				});
+
 			});
 		}
 
@@ -2569,6 +2605,7 @@ var reportViewModel = function (options) {
 		}
 		var validFieldNames = _.map(result.ReportData.Columns, 'SqlField');
 		result.ReportData.IsDrillDown = ko.observable(false);
+		result.ReportData.CanExpandOption = ko.computed(function () { return self.ShowExpandOption(); });
 		_.forEach(result.ReportData.Rows, function (e) {
 			e.DrillDownData = ko.observable(null);
 			e.pager = new pagerViewModel({ pageSize: 10 });
@@ -2599,7 +2636,7 @@ var reportViewModel = function (options) {
 					if (ddData.d) { ddData = ddData.d; }
 					if (ddData.result) { ddData = ddData.result; }
 					ddData.ReportData.IsDrillDown = ko.observable(true);
-
+					ddData.ReportData.CanExpandOption = ko.computed(function () { return self.ShowExpandOption(); });
 					if (ddData.HasError) {
 						toastr.error(ddData.Exception || 'Error occured in drill down');
 						e.isExpanded(false);
@@ -2740,12 +2777,12 @@ var reportViewModel = function (options) {
 		if (!reportSql || !connectKey) return;
 		self.ChartData('');
 		self.ReportResult().ReportData(null);
-		if (!options.samePageOnRun && self.ReportMode() != "dashboard") {
+		if (self.ReportMode() != "dashboard") {
 			setTimeout(function () {
 				if ($.blockUI) {
 					$.blockUI({ baseZ: 500 });
 				}
-			}, 500);
+			}, options.samePageOnRun ? 1000 : 500);
 		}
 
 		return ajaxcall({
@@ -2987,6 +3024,7 @@ var reportViewModel = function (options) {
 	self.editFieldOptions = ko.observable();
 
 	self.setupField = function (e) {
+		e.fieldSettings = JSON.parse(e.fieldSettings || "{}");
 		e.selectedFieldName = e.tableName + " > " + e.fieldName + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
 		e.selectedFilterName = e.tableName + " > " + (e.fieldLabel || e.fieldName) + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
 		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail').concat('Group in Detail').concat('Csv');
@@ -3002,6 +3040,8 @@ var reportViewModel = function (options) {
 		e.fieldFormat = ko.observable(e.fieldFormat);
 		e.fieldLabel = ko.observable(e.fieldLabel);
 		e.decimalPlaces = ko.observable(e.decimalPlaces);
+		e.dateFormat = ko.observable(e.fieldSettings.dateFormat || '');
+		e.customDateFormat = ko.observable(e.fieldSettings.customDateFormat || '');
 		e.fieldAlign = ko.observable(e.fieldAlign);
 		e.fontColor = ko.observable(e.fontColor);
 		e.backColor = ko.observable(e.backColor == '#ffffff' ? null : e.backColor);
@@ -3080,6 +3120,8 @@ var reportViewModel = function (options) {
 				fieldFormat: e.fieldFormat(),
 				fieldLabel: e.fieldLabel(),
 				decimalPlaces: e.decimalPlaces(),
+				dateFormat: e.dateFormat(),
+				customDateFormat: e.customDateFormat(),
 				fieldAlign: e.fieldAlign(),
 				fontColor: e.fontColor(),
 				backColor: e.backColor(),
@@ -3113,6 +3155,8 @@ var reportViewModel = function (options) {
 			e.fieldLabel(self.currentFieldOptions.fieldLabel);
 			e.fieldAlign(self.currentFieldOptions.fieldAlign);
 			e.decimalPlaces(self.currentFieldOptions.decimalPlaces);
+			e.dateFormat(self.currentFieldOptions.dateFormat);
+			e.customDateFormat(self.currentFieldOptions.customDateFormat);
 			e.fontColor(self.currentFieldOptions.fontColor);
 			e.backColor(self.currentFieldOptions.backColor);
 			e.headerFontColor(self.currentFieldOptions.headerFontColor);
@@ -3179,6 +3223,9 @@ var reportViewModel = function (options) {
 		self.scheduleBuilder.fromJs(report.Schedule);
 		self.HideReportHeader(report.HideReportHeader);
 		self.useReportHeader(report.UseReportHeader && !report.HideReportHeader);
+
+		var reportSettings = JSON.parse(report.ReportSettings || "{}");
+		self.ShowExpandOption(reportSettings.ShowExpandOption || false);
 
 		if (self.ReportMode() == "execute") {
 			if (self.useReportHeader()) {
@@ -3338,6 +3385,7 @@ var reportViewModel = function (options) {
 			_.forEach(reports, function (e) {
 				e.runMode = false;
 				e.openReport = function () {
+					var saveReportFlag = self.SaveReport();
 					// Load report
 					return self.LoadReport(e.reportId).done(function () {
 						if (!e.runMode) {
@@ -3345,6 +3393,7 @@ var reportViewModel = function (options) {
 							self.ReportMode("generate");
 						}
 						else {
+							self.SaveReport(saveReportFlag);
 							self.RunReport(false, true);
 							e.runMode = false;
 						}
@@ -3442,6 +3491,23 @@ var reportViewModel = function (options) {
 		return parts.join('.');
 	}
 
+	self.formatDate = function(date, format) {
+		const pad = (n) => n < 10 ? '0' + n : n;
+		const monthNamesShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+		let day = date.getDate(),
+			month = date.getMonth(), // Months are zero-based
+			year = date.getFullYear();
+
+		return format
+			.replace('yyyy', year)
+			.replace('yy', year.toString().slice(-2))
+			.replace('MM', monthNamesShort[month])
+			.replace('mm', pad(month + 1))
+			.replace('m', month + 1)
+			.replace('dd', pad(day))
+			.replace('d', day);
+	}
 
 	// ui-validation
 	self.isInputValid = function (ctl) {
@@ -3657,7 +3723,7 @@ var reportViewModel = function (options) {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
-			chartData: self.ChartData(),
+			chartData: self.ChartData() || '',
 			columnDetails: self.getColumnDetails(),
 			includeSubTotal: self.IncludeSubTotal(),
 			pivot: self.ReportType() == 'Pivot'
@@ -3693,12 +3759,14 @@ var reportViewModel = function (options) {
 	}
 
 	self.downloadExcelWithDrilldown = function () {
+		var reportData = self.BuildReportData();
+		reportData.DrillDownRowUsePlaceholders = true;
 		self.downloadExport("DownloadExcel", {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
 			allExpanded: true,
-			expandSqls: JSON.stringify(self.BuildReportData()),
+			expandSqls: JSON.stringify(reportData),
 			columnDetails: self.getColumnDetails(),
 			includeSubTotal: self.IncludeSubTotal(),
 			pivot: self.ReportType() == 'Pivot'
@@ -3757,8 +3825,10 @@ var dashboardViewModel = function (options) {
 	self.selectDashboard = ko.observable(currentDash.id);
 	self.loadDashboard = function (dashboardId) {
 		ajaxcall({
-			url: options.loadSavedDashbordUrl + '?id=' + dashboardId + '&adminMode=' + self.adminMode()
+			url: options.loadSavedDashbordUrl,
+			data: { id: dashboardId, adminMode: self.adminMode() }
 		}).done(function (reportsData) {
+			if (reportsData.d) reportsData = reportsData.d;
 			var reports = [];
 			_.forEach(reportsData, function (r) {
 				reports.push({ reportSql: r.ReportSql, reportId: r.ReportId, reportFilter: r.ReportFilter, connectKey: r.ConnectKey, x: r.X, y: r.Y, width: r.Width, height: r.Height });
@@ -3977,14 +4047,17 @@ var dashboardViewModel = function (options) {
 				var promises = [];
 				if (self.tables.length == 0) {
 					promises.push(report.loadTables().done(function (x) {
+						if (x.d) x = x.d;
 						self.tables = x;
 						report.Tables(self.tables);
 					}));
 					promises.push(report.loadProcs().done(function (x) {
+						if (x.d) x = x.d;
 						self.procs = x;
 						report.Procs(self.procs);
 					}));
 					promises.push(report.loadFolders().done(function (x) {
+						if (x.d) x = x.d;
 						self.folders = x;
 						report.Folders(self.folders);
 					}));
