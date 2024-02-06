@@ -2065,7 +2065,7 @@ var reportViewModel = function (options) {
 	self.BuildReportData = function (drilldown, isComparison, index) {
 
 		drilldown = _.compact(_.map(drilldown || [], function (x) {
-			if (x.isJsonColumn || x.isRuleSet || x.Column.FormatType == 'Csv' || x.Column.FormatType == 'Json' || x.Value.indexOf('/>') >= 0) return;
+			if (x.isJsonColumn || x.isRuleSet || x.Column.FormatType == 'Csv' || x.Column.FormatType == 'Json' || x.Value.indexOf('/>') >= 0 || x.Column.SqlField == '__') return;
 			return x;
 		}));		
 		var hasGroupInDetail = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Group in Detail' }) != null;
@@ -2705,6 +2705,9 @@ var reportViewModel = function (options) {
 				}
 			}, options.samePageOnRun ? 1000 : 500);
 		}
+		var pivotColumn = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' });
+		var reportData = pivotColumn != null ? self.BuildReportData() : '';
+		if (pivotColumn) reportData.DrillDownRowUsePlaceholders = true;
 
 		return ajaxcall({
 			url: options.execReportUrl,
@@ -2717,7 +2720,9 @@ var reportViewModel = function (options) {
 				pageSize: self.pager.pageSize(),
 				sortBy: self.pager.sortColumn() || '',
 				desc: self.pager.sortDescending() || false,
-				reportSeries: reportSeries ||''
+				reportSeries: reportSeries || "",
+				pivotColumn: pivotColumn ? pivotColumn.fieldName : '',
+				reportData: pivotColumn ? JSON.stringify(reportData) : ''
 			})
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
@@ -2936,7 +2941,7 @@ var reportViewModel = function (options) {
 		e.fieldSettings = JSON.parse(e.fieldSettings || "{}");
 		e.selectedFieldName = e.tableName + " > " + e.fieldName + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
 		e.selectedFilterName = e.tableName + " > " + (e.fieldLabel || e.fieldName) + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
-		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail').concat('Group in Detail').concat('Csv');
+		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail').concat('Group in Detail').concat('Pivot').concat('Csv');
 		e.selectedAggregate = ko.observable(e.aggregateFunction);
 		e.filterOnFly = ko.observable(e.filterOnFly);
 		e.disabled = ko.observable(e.disabled);
