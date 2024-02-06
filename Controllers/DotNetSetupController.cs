@@ -121,6 +121,7 @@ namespace ReportBuilder.Web.Controllers
                         TableName = item.tableDbName,
                         DisplayName = item.tableName,
                         AllowedRoles = item.tableRoles.ToObject<List<string>>(),
+                        DoNotDisplay = item.doNotDisplay,
                         CustomTable = item.customTable,
                         CustomTableSql = Convert.ToBoolean(item.customTable) == true ? DotNetReportHelper.Decrypt(Convert.ToString(item.customTableSql)) : "",
                         Columns = new List<ColumnViewModel>(),
@@ -154,8 +155,8 @@ namespace ReportBuilder.Web.Controllers
 
                                 ForeignParentKey = field.hasForeignParentKey,
                                 ForeignParentApplyTo = field.foreignParentApplyTo,
-                                ForeignParentKeyField = field.foreignParentKey,
-                                ForeignParentValueField = field.foreignParentValue,
+                                ForeignParentKeyField = field.foreignParentKeyField,
+                                ForeignParentValueField = field.foreignParentValueField,
                                 ForeignParentTable = field.foreignParentTable,
                                 ForeignParentRequired = field.foreignParentRequired,
 
