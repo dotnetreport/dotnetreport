@@ -3294,6 +3294,7 @@ var reportViewModel = function (options) {
 			_.forEach(reports, function (e) {
 				e.runMode = false;
 				e.openReport = function () {
+					var saveReportFlag = self.SaveReport();
 					// Load report
 					return self.LoadReport(e.reportId).done(function () {
 						if (!e.runMode) {
@@ -3301,6 +3302,7 @@ var reportViewModel = function (options) {
 							self.ReportMode("generate");
 						}
 						else {
+							self.SaveReport(saveReportFlag);
 							self.RunReport(false, true);
 							e.runMode = false;
 						}
