@@ -804,6 +804,7 @@ var reportViewModel = function (options) {
 	self.IncludeSubTotal = ko.observable(false);
 	self.ShowUniqueRecords = ko.observable(false);
 	self.ShowExpandOption = ko.observable(false);
+	self.DontExecuteOnRun = ko.observable(false);
 	self.AggregateReport = ko.observable(false);
 	self.SortByField = ko.observable();
 	self.SortDesc = ko.observable(false);
@@ -1364,6 +1365,7 @@ var reportViewModel = function (options) {
 		self.EditFiltersOnReport(false);
 		self.ShowUniqueRecords(false);
 		self.ShowExpandOption(false);
+		self.DontExecuteOnRun(false);
 		self.AggregateReport(false);
 		self.SortByField(null);
 		self.SortDesc(false);
@@ -2090,7 +2092,8 @@ var reportViewModel = function (options) {
 			EditFiltersOnReport: self.EditFiltersOnReport(),
 			ShowUniqueRecords: self.ShowUniqueRecords(),
 			ReportSettings: JSON.stringify({
-				ShowExpandOption: self.ShowExpandOption()
+				ShowExpandOption: self.ShowExpandOption(),
+				DontExecuteOnRun: self.DontExecuteOnRun()
 			}),
 			OnlyTop: self.maxRecords() ? self.OnlyTop() : null,
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : self.AggregateReport(),
@@ -2691,12 +2694,19 @@ var reportViewModel = function (options) {
 		}, 2000);
 	}
 
+	self.executingReport = false;
+	self.ExecuteReport = function () {
+		self.executingReport = true;
+		self.SaveReport(false);
+		self.RunReport();
+	}
 	self.ChartDrillDownData = ko.observable();
 
 	self.ExecuteReportQuery = function (reportSql, connectKey, reportSeries) {
 		if (!reportSql || !connectKey) return;
 		self.ChartData('');
 		self.ReportResult().ReportData(null);
+		if (self.DontExecuteOnRun() && !self.executingReport) return;
 		if (self.ReportMode() != "dashboard") {
 			setTimeout(function () {
 				if ($.blockUI) {
@@ -3138,7 +3148,9 @@ var reportViewModel = function (options) {
 		self.useReportHeader(report.UseReportHeader && !report.HideReportHeader);
 
 		var reportSettings = JSON.parse(report.ReportSettings || "{}");
-		self.ShowExpandOption(reportSettings.ShowExpandOption || false);
+		self.ShowExpandOption(reportSettings.ShowExpandOption === true ? true : false);
+		self.DontExecuteOnRun(reportSettings.DontExecuteOnRun === true ? true : false);
+
 
 		if (self.ReportMode() == "execute") {
 			if (self.useReportHeader()) {
