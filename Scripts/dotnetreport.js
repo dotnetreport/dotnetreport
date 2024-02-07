@@ -2392,7 +2392,6 @@ var reportViewModel = function (options) {
 					e.linkField = false;
 				}
 				col = col || { fieldName: e.ColumnName };
-				col.customfieldLabel = col.fieldLabel();
 				if (skipColDetails !== true) self.columnDetails.push(col);
 
 				e.decimalPlaces = col.decimalPlaces || ko.observable();
@@ -2408,10 +2407,10 @@ var reportViewModel = function (options) {
 				e.fontBold = col.fontBold || ko.observable();
 				e.headerFontBold = col.headerFontBold || ko.observable();
 				e.headerFontColor = col.headerFontColor || ko.observable();
-				e.headerBackColor = col.headerBackColor || ko.observable();
+				e.headerBackColor = ko.observable(e.headerBackColor == '#ffffff' ? null : e.headerBackColor);
 				e.fieldId = col.fieldId;
 				e.fontColor = col.fontColor || ko.observable();
-				e.backColor = col.backColor || ko.observable();
+				e.backColor = ko.observable(e.backColor == '#ffffff' ? null : e.backColor);
 				e.groupInGraph = col.groupInGraph || ko.observable();
 				e.dontSubTotal = col.dontSubTotal || ko.observable();
 				e.fieldType = col.fieldType;
@@ -3358,7 +3357,8 @@ var reportViewModel = function (options) {
 								data: {
 									method: "/ReportApi/DeleteReport",
 									model: JSON.stringify({
-										reportId: e.reportId
+										reportId: e.reportId,
+										adminMode: self.adminMode()
 									})
 								}
 							}).done(function () {
@@ -3658,32 +3658,30 @@ var reportViewModel = function (options) {
 		}, 'pdf');
 	}
 
-	self.downloadExcel = function () {
-		self.downloadExport("DownloadExcel", {
-			reportSql: self.currentSql(),
-			connectKey: self.currentConnectKey(),
-			reportName: self.ReportName(),
-			allExpanded: false,
-			expandSqls: self.allExpanded() ? JSON.stringify(self.BuildReportData()) : '',
-			columnDetails: self.getColumnDetails(),
-			includeSubTotal: self.IncludeSubTotal(),
-			pivot: self.ReportType() == 'Pivot'
-		}, 'xlsx');
-	}
-
-	self.downloadExcelWithDrilldown = function () {
+	self.runExcelDownload = function (expand) {
 		var reportData = self.BuildReportData();
 		reportData.DrillDownRowUsePlaceholders = true;
+		var pivotColumn = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' });
+
 		self.downloadExport("DownloadExcel", {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
-			allExpanded: true,
+			allExpanded: expand === true ? true : false,
 			expandSqls: JSON.stringify(reportData),
 			columnDetails: self.getColumnDetails(),
 			includeSubTotal: self.IncludeSubTotal(),
-			pivot: self.ReportType() == 'Pivot'
+			pivot: self.ReportType() == 'Pivot',
+			pivotColumn: pivotColumn ? pivotColumn.fieldName : ''
 		}, 'xlsx');
+	}
+
+	self.downloadExcel = function () {
+		self.runExcelDownload(false);
+	}
+
+	self.downloadExcelWithDrilldown = function () {
+		self.runExcelDownload(true);
 	}
 
 	self.downloadCsv = function () {
@@ -3985,6 +3983,9 @@ var dashboardViewModel = function (options) {
 					self.selectedReport(report);
 					setTimeout(function () {
 						options.reportWizard.modal('show');
+						if ($.unblockUI) {
+							$.unblockUI();
+						}
 					}, 1000);
 				});
 			};
