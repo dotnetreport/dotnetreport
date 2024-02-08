@@ -2471,12 +2471,12 @@ var reportViewModel = function (options) {
 					e.linkField = false;
 				}
 				col = col || { fieldName: e.ColumnName };
-				col.customfieldLabel = col.fieldLabel();
+				col.fieldSettings = col.fieldSettings || {};
 				if (skipColDetails !== true) self.columnDetails.push(col);
 
 				e.decimalPlaces = col.decimalPlaces || ko.observable();
-				e.dateFormat = col.dateFormat || ko.observable();
-				e.customDateFormat = col.customDateFormat || ko.observable();
+				e.dateFormat = col.fieldSettings.dateFormat || ko.observable();
+				e.customDateFormat = col.fieldSettings.customDateFormat || ko.observable();
 				e.fieldAlign = col.fieldAlign || ko.observable();
 				e.fieldConditionOp = col.fieldConditionOp || ko.observable();
 				e.fieldConditionVal = col.fieldConditionVal || ko.observable();
