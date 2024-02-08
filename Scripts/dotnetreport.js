@@ -1,6 +1,6 @@
-﻿/// dotnet Report Builder view model v5.0.0
+﻿/// dotnet Report Builder view model v5.3.0
 /// License must be purchased for commercial use
-/// 2022 (c) www.dotnetreport.com
+/// 2024 (c) www.dotnetreport.com
 
 function formulaFieldViewModel(args) {
 	args = args || {};
@@ -803,6 +803,7 @@ var reportViewModel = function (options) {
 
 	self.IncludeSubTotal = ko.observable(false);
 	self.ShowUniqueRecords = ko.observable(false);
+	self.ShowExpandOption = ko.observable(false);
 	self.AggregateReport = ko.observable(false);
 	self.SortByField = ko.observable();
 	self.SortDesc = ko.observable(false);
@@ -846,6 +847,85 @@ var reportViewModel = function (options) {
 	self.useReportHeader = ko.observable(false);
 	self.searchReports = ko.observable();
 
+	const styleMixed = ["#c8d8e4", "#e4d8c8", "#d8e4c8", "#e4c8d8", "#c8e4d8","#d8c8e4", "#e4c8c8", "#c8e4e4", "#e4e4c8", "#d8e4e4","#c8d8d8", "#d8c8c8", "#c8c8e4", "#e4d8d8", "#d8d8c8","#c8d8e4", "#e4c8e4", "#d8e4d8", "#e4d8e4", "#d8d8e4","#e4e4d8", "#c8e4c8", "#e4c8d8", "#d8c8d8", "#c8e4e4"];
+	const styleMixedBright = ["#fff", "#ff9999", "#99ff99", "#9999ff", "#ffff99", "#99ffff", "#ff99ff", "#d9d9d9", "#b3b3ff", "#ffb3b3", "#b3ffb3", "#ffcc66", "#ccff66", "#66ffcc", "#66ccff", "#cc66ff", "#ff6666", "#66ff66", "#6666ff", "#ffff66", "#66ffff"];
+	const styleGray = ["#f0f0f0", "#e0e0e0", "#d1d1d1", "#c2c2c2", "#b3b3b3","#a4a4a4", "#959595", "#868686", "#777777", "#686868","#595959", "#4a4a4a", "#3b3b3b", "#2c2c2c", "#1d1d1d","#0e0e0e", "#0f0f0f", "#1e1e1e", "#2d2d2d", "#3c3c3c","#4b4b4b", "#5a5a5a", "#696969", "#787878", "#878787"];
+	const styleBlue = ["#e6f7ff", "#cceeff", "#b3e6ff", "#99ddff", "#80d4ff","#66ccff", "#4dc3ff", "#33bbff", "#1ab2ff", "#00aaff","#0099e6", "#0088cc", "#0077b3", "#006699", "#005580","#004466", "#00334d", "#002233", "#00111a", "#000000","#0033ff", "#0044ff", "#0055ff", "#0066ff", "#0077ff"];
+	const styleGreen = ["#e9f7e9", "#d3efd3", "#bde6bd", "#a7dea7", "#90d690","#7acf7a", "#64c764", "#4dbf4d", "#36b736", "#20b020","#1fa01f", "#1e8f1e", "#1d7f1d", "#1c6e1c", "#1b5e1b","#1a4d1a", "#194d19", "#183c18", "#172c17", "#161b16","#150a15", "#140014", "#130013", "#120012", "#110011"];
+	const styleRed = ["#ffe6e6", "#ffcccc", "#ffb3b3", "#ff9999", "#ff8080", "#ff6666", "#ff4d4d", "#ff3333", "#ff1a1a", "#ff0000", "#e60000", "#cc0000", "#b30000", "#990000", "#800000", "#660000", "#4d0000", "#330000", "#1a0000", "#000000", "#ff3333", "#ff4040", "#ff4d4d", "#ff5959", "#ff6666"];
+	const styleYellow = ["#ffffe6", "#ffffcc", "#ffffb3", "#ffff99", "#ffff80", "#ffff66", "#ffff4d", "#ffff33", "#ffff1a", "#ffff00", "#ffff33", "#ffff47", "#ffff5c", "#ffff70", "#ffff85"];
+	const styleOrange = ["#fff5e6", "#ffebcc", "#ffe0b3", "#ffd699", "#ffcc80", "#ffc266", "#ffb84d", "#ffad33", "#ffa31a", "#ff9900", "#e68a00", "#cc7a00", "#b36b00", "#995c00", "#804d00", "#664000", "#4d3300", "#332600", "#1a1900", "#000000", "#ffad33", "#ffb347", "#ffb85c", "#ffbd70", "#ffc285"];
+	
+	self.colorScheme = ko.observableArray([]);
+	self.selectedStyle = ko.observable('default');
+	self.colorSchemeDisplay = function (colorScheme, name) {
+		var $table = $('<div class="color-table">'+ name + '&nbsp;</div>');
+		colorScheme.slice(1, 10).forEach(function (color) {
+			$table.append('<div class="color-cell" style="background-color:' + color + ';"></div>');
+		});
+		return $table;
+	}
+
+	self.colorSchemes = [{
+		id: 'default',
+		text: 'Default',
+		colors: [],
+		html: '<div class="color-table">Default</div>'
+	}, {
+		id: 'style-mixed',
+		text: 'Mixed',
+		colors: styleMixed,
+		html: this.colorSchemeDisplay(styleMixed, 'Mixed')
+	}, {
+		id: 'style-mixed-bright',
+		text: 'Bright',
+		colors: styleMixedBright,
+		html: this.colorSchemeDisplay(styleMixedBright, 'Bright')
+	}, {
+		id: 'style-gray',
+		text: 'Gray',
+		colors: styleGray,
+		html: this.colorSchemeDisplay(styleGray, 'Gray')
+	}, {
+		id: 'style-blue',
+		text: 'Blue',
+		colors: styleBlue,
+		html: this.colorSchemeDisplay(styleBlue, 'Blue')
+	}, {
+		id: 'style-green',
+		text: 'Green',
+		colors: styleGreen,
+		html: this.colorSchemeDisplay(styleGreen, 'Green')
+	}, {
+		id: 'style-red',
+		text: 'Red',
+		colors: styleRed,
+		html: this.colorSchemeDisplay(styleRed, 'Red')
+	}, {
+		id: 'style-orange',
+		text: 'Orange',
+		colors: styleOrange,
+		html: this.colorSchemeDisplay(styleOrange, 'Orange')
+	}];
+
+	self.selectedStyle.subscribe(function (x) {
+		switch (x) {
+			case 'style-gray': self.colorScheme(styleGray); break;
+			case 'style-blue': self.colorScheme(styleBlue); break;
+			case 'style-red': self.colorScheme(styleRed); break;
+			case 'style-orange': self.colorScheme(styleOrange); break;
+			case 'style-green': self.colorScheme(styleGreen); break;
+			case 'style-yellow': self.colorScheme(styleYellow); break;
+			case 'style-mixed': self.colorScheme(styleMixed); break;
+			case 'style-mixed-bright': self.colorScheme(styleMixedBright); break;
+			default: self.colorScheme([]);
+		}
+	});
+
+	self.colorScheme.subscribe(function (x) {
+		self.DrawChart();
+	});
+
 	self.SavedReports.subscribe(function (x) {
 		if (self.ReportID()) {
 			var match = _.find(x, { reportId: self.ReportID() }) || { canEdit: false };
@@ -865,6 +945,7 @@ var reportViewModel = function (options) {
 
 	self.fieldFormatTypes = ['Auto', 'Number', 'Decimal', 'Currency', 'Percentage', 'Date', 'Date and Time', 'Time', 'String'];
 	self.decimalFormatTypes = ['Number', 'Decimal', 'Currency', 'Percentage'];
+	self.dateFormats = ['United States', 'United Kingdom', 'France', 'German', 'Spanish', 'Chinese', 'Custom'];
 	self.dateFormatTypes = ['Date', 'Date and Time', 'Time'];
 	self.fieldAlignments = ['Auto', 'Left', 'Right', 'Center'];
 	self.designingHeader = ko.observable(false);
@@ -1280,7 +1361,7 @@ var reportViewModel = function (options) {
 			} : null;
 		},
 		processResults: function (data) {
-			if (data.d) results = data.d;
+			if (data.d) data = data.d;
 			var items = _.map(data, function (x) {
 				return { id: x.fieldId, text: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey };
 			});
@@ -1361,6 +1442,7 @@ var reportViewModel = function (options) {
 		self.IncludeSubTotal(false);
 		self.EditFiltersOnReport(false);
 		self.ShowUniqueRecords(false);
+		self.ShowExpandOption(false);
 		self.AggregateReport(false);
 		self.SortByField(null);
 		self.SortDesc(false);
@@ -1633,7 +1715,7 @@ var reportViewModel = function (options) {
 		if (!value) return;
 		var result = self.formulaOnlyHasDateFields();
 		if (result && ['Days', 'Hours', 'Minutes', 'Seconds'].indexOf(self.formulaDataFormat()) < 0) self.formulaDataFormat('Days');
-		if (!result && ['String', 'Integer', 'Double'].indexOf(self.formulaDataFormat()) < 0) self.formulaDataFormat('String');
+		if (!result && ['String', 'Integer', 'Double', 'Decimal', 'Currency'].indexOf(self.formulaDataFormat()) < 0) self.formulaDataFormat('String');
 	});
 
 	self.formulaHasConstantValue = ko.computed(function () {
@@ -2062,7 +2144,7 @@ var reportViewModel = function (options) {
 	self.BuildReportData = function (drilldown, isComparison, index) {
 
 		drilldown = _.compact(_.map(drilldown || [], function (x) {
-			if (x.isJsonColumn || x.isRuleSet || x.Column.FormatType == 'Csv' || x.Column.FormatType == 'Json') return;
+			if (x.isJsonColumn || x.isRuleSet || x.Column.FormatType == 'Csv' || x.Column.FormatType == 'Json' || x.Value.indexOf('/>') >= 0) return;
 			return x;
 		}));		
 		var hasGroupInDetail = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Group in Detail' }) != null;
@@ -2086,6 +2168,9 @@ var reportViewModel = function (options) {
 			IncludeSubTotals: self.IncludeSubTotal(),
 			EditFiltersOnReport: self.EditFiltersOnReport(),
 			ShowUniqueRecords: self.ShowUniqueRecords(),
+			ReportSettings: JSON.stringify({
+				ShowExpandOption: self.ShowExpandOption()
+			}),
 			OnlyTop: self.maxRecords() ? self.OnlyTop() : null,
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : self.AggregateReport(),
 			ShowDataWithGraph: self.ShowDataWithGraph(),
@@ -2126,6 +2211,10 @@ var reportViewModel = function (options) {
 					LinkFieldItem: x.linkField() ? x.linkFieldItem.toJs() : null,
 					FieldLabel: x.fieldLabel(),
 					DecimalPlaces: x.decimalPlaces(),
+					FieldSettings: JSON.stringify({
+						dateFormat: x.dateFormat(),
+						customDateFormat: x.customDateFormat()
+					}),
 					FieldAlign: x.fieldAlign(),
 					FontColor: x.fontColor(),
 					BackColor: x.backColor(),
@@ -2382,10 +2471,12 @@ var reportViewModel = function (options) {
 					e.linkField = false;
 				}
 				col = col || { fieldName: e.ColumnName };
-
+				col.customfieldLabel = col.fieldLabel();
 				if (skipColDetails !== true) self.columnDetails.push(col);
 
 				e.decimalPlaces = col.decimalPlaces || ko.observable();
+				e.dateFormat = col.dateFormat || ko.observable();
+				e.customDateFormat = col.customDateFormat || ko.observable();
 				e.fieldAlign = col.fieldAlign || ko.observable();
 				e.fieldConditionOp = col.fieldConditionOp || ko.observable();
 				e.fieldConditionVal = col.fieldConditionVal || ko.observable();
@@ -2407,6 +2498,10 @@ var reportViewModel = function (options) {
 				e.isJsonColumn = col.fieldType == 'Json';
 				e.outerGroup = ko.observable(false);
 				e.colIndex = i;
+				e.pagerIndex = function ($parents) {
+					return $parents[1].pager ? 1
+						: $parents[3].pager ? 3 : 5;
+				}
 
 				e.toggleOuterGroup = function () {
 					e.outerGroup(!e.outerGroup());
@@ -2467,20 +2562,40 @@ var reportViewModel = function (options) {
 				r.jsonColumnName = col.jsonColumnName;
 				r.isJsonColumn = col.isJsonColumn;
 
-				if (self.decimalFormatTypes.indexOf(col.fieldFormat()) >= 0) {
-					r.FormattedValue = self.formatNumber(r.Value, col.decimalPlaces());
-					switch (col.fieldFormat()) {
-						case 'Currency': r.FormattedValue = '$' + r.FormattedValue; break;
-						case 'Percentage': r.FormattedValue = r.FormattedValue + '%'; break;
+				r.formattedVal = ko.computed(function () {
+
+					if (self.decimalFormatTypes.indexOf(col.fieldFormat()) >= 0) {
+						r.FormattedValue = self.formatNumber(r.Value, col.decimalPlaces());
+						switch (col.fieldFormat()) {
+							case 'Currency': r.FormattedValue = '$' + r.FormattedValue; break;
+							case 'Percentage': r.FormattedValue = r.FormattedValue + '%'; break;
+						}
 					}
-				}
-				if (self.dateFormatTypes.indexOf(col.fieldFormat()) >= 0 && !isNaN(new Date(r.Value).getTime())) {
-					switch (col.fieldFormat()) {
-						case 'Date': r.FormattedValue = (new Date(r.Value)).toLocaleDateString("en-US", { year: 'numeric', month: 'numeric', day: 'numeric' }); break;
-						case 'Date and Time': r.FormattedValue = (new Date(r.Value)).toLocaleDateString("en-US", { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
-						case 'Time': r.FormattedValue = (new Date(r.Value)).toLocaleTimeString("en-US", { hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
+					if (self.dateFormatTypes.indexOf(col.fieldFormat()) >= 0 && !isNaN(new Date(r.Value).getTime())) {
+						var dtFormat = "en-US";
+						switch (col.dateFormat()) {
+							case 'United Kingdom': dtFormat = 'en-GB'; break;
+							case 'France': dtFormat = 'fr-FR'; break;
+							case 'German': dtFormat = 'de-DE'; break;
+							case 'Spanish': dtFormat = 'es-ES'; break;
+							case 'Chinese': dtFormat = 'zn-CN'; break;
+						}
+
+						if (col.dateFormat() == 'Custom' && col.customDateFormat()) {
+							r.FormattedValue = self.formatDate(new Date(r.Value), col.customDateFormat());
+						}
+						else {
+							switch (col.fieldFormat()) {
+								case 'Date': r.FormattedValue = (new Date(r.Value)).toLocaleDateString(dtFormat, { year: 'numeric', month: 'numeric', day: 'numeric' }); break;
+								case 'Date and Time': r.FormattedValue = (new Date(r.Value)).toLocaleDateString(dtFormat, { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
+								case 'Time': r.FormattedValue = (new Date(r.Value)).toLocaleTimeString(dtFormat, { hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
+							}
+						}
 					}
-				}
+
+					return r.FormattedValue;
+				});
+
 			});
 		}
 
@@ -2490,6 +2605,7 @@ var reportViewModel = function (options) {
 		}
 		var validFieldNames = _.map(result.ReportData.Columns, 'SqlField');
 		result.ReportData.IsDrillDown = ko.observable(false);
+		result.ReportData.CanExpandOption = ko.computed(function () { return self.ShowExpandOption(); });
 		_.forEach(result.ReportData.Rows, function (e) {
 			e.DrillDownData = ko.observable(null);
 			e.pager = new pagerViewModel({ pageSize: 10 });
@@ -2520,7 +2636,7 @@ var reportViewModel = function (options) {
 					if (ddData.d) { ddData = ddData.d; }
 					if (ddData.result) { ddData = ddData.result; }
 					ddData.ReportData.IsDrillDown = ko.observable(true);
-
+					ddData.ReportData.CanExpandOption = ko.computed(function () { return self.ShowExpandOption(); });
 					if (ddData.HasError) {
 						toastr.error(ddData.Exception || 'Error occured in drill down');
 						e.isExpanded(false);
@@ -2661,12 +2777,12 @@ var reportViewModel = function (options) {
 		if (!reportSql || !connectKey) return;
 		self.ChartData('');
 		self.ReportResult().ReportData(null);
-		if (!options.samePageOnRun && self.ReportMode() != "dashboard") {
+		if (self.ReportMode() != "dashboard") {
 			setTimeout(function () {
 				if ($.blockUI) {
 					$.blockUI({ baseZ: 500 });
 				}
-			}, 500);
+			}, options.samePageOnRun ? 1000 : 500);
 		}
 
 		return ajaxcall({
@@ -2817,6 +2933,12 @@ var reportViewModel = function (options) {
 			}
 		};
 
+		if (self.colorScheme() != null && self.colorScheme().length > 0) {
+			chartOptions.colors = self.colorScheme().slice(1);
+			chartOptions.backgroundColor = self.colorScheme()[0], // Set the background color here
+			chartOptions.chartArea = { backgroundColor: self.colorScheme()[0] }
+		}
+
 		if (options.chartSize) {
 			chartOptions.width = options.chartSize.width;
 			chartOptions.height = options.chartSize.height;
@@ -2902,6 +3024,7 @@ var reportViewModel = function (options) {
 	self.editFieldOptions = ko.observable();
 
 	self.setupField = function (e) {
+		e.fieldSettings = JSON.parse(e.fieldSettings || "{}");
 		e.selectedFieldName = e.tableName + " > " + e.fieldName + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
 		e.selectedFilterName = e.tableName + " > " + (e.fieldLabel || e.fieldName) + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
 		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail').concat('Group in Detail').concat('Csv');
@@ -2917,11 +3040,13 @@ var reportViewModel = function (options) {
 		e.fieldFormat = ko.observable(e.fieldFormat);
 		e.fieldLabel = ko.observable(e.fieldLabel);
 		e.decimalPlaces = ko.observable(e.decimalPlaces);
+		e.dateFormat = ko.observable(e.fieldSettings.dateFormat || '');
+		e.customDateFormat = ko.observable(e.fieldSettings.customDateFormat || '');
 		e.fieldAlign = ko.observable(e.fieldAlign);
 		e.fontColor = ko.observable(e.fontColor);
-		e.backColor = ko.observable(e.backColor || '#ffffff');
+		e.backColor = ko.observable(e.backColor == '#ffffff' ? null : e.backColor);
 		e.headerFontColor = ko.observable(e.headerFontColor);
-		e.headerBackColor = ko.observable(e.headerBackColor || '#ffffff');
+		e.headerBackColor = ko.observable(e.headerBackColor == '#ffffff' ? null : e.headerBackColor);
 		e.fontBold = ko.observable(e.fontBold);
 		e.headerFontBold = ko.observable(e.headerFontBold);
 		e.fieldWidth = ko.observable(e.fieldWidth);
@@ -2995,6 +3120,8 @@ var reportViewModel = function (options) {
 				fieldFormat: e.fieldFormat(),
 				fieldLabel: e.fieldLabel(),
 				decimalPlaces: e.decimalPlaces(),
+				dateFormat: e.dateFormat(),
+				customDateFormat: e.customDateFormat(),
 				fieldAlign: e.fieldAlign(),
 				fontColor: e.fontColor(),
 				backColor: e.backColor(),
@@ -3028,6 +3155,8 @@ var reportViewModel = function (options) {
 			e.fieldLabel(self.currentFieldOptions.fieldLabel);
 			e.fieldAlign(self.currentFieldOptions.fieldAlign);
 			e.decimalPlaces(self.currentFieldOptions.decimalPlaces);
+			e.dateFormat(self.currentFieldOptions.dateFormat);
+			e.customDateFormat(self.currentFieldOptions.customDateFormat);
 			e.fontColor(self.currentFieldOptions.fontColor);
 			e.backColor(self.currentFieldOptions.backColor);
 			e.headerFontColor(self.currentFieldOptions.headerFontColor);
@@ -3094,6 +3223,9 @@ var reportViewModel = function (options) {
 		self.scheduleBuilder.fromJs(report.Schedule);
 		self.HideReportHeader(report.HideReportHeader);
 		self.useReportHeader(report.UseReportHeader && !report.HideReportHeader);
+
+		var reportSettings = JSON.parse(report.ReportSettings || "{}");
+		self.ShowExpandOption(reportSettings.ShowExpandOption || false);
 
 		if (self.ReportMode() == "execute") {
 			if (self.useReportHeader()) {
@@ -3253,6 +3385,7 @@ var reportViewModel = function (options) {
 			_.forEach(reports, function (e) {
 				e.runMode = false;
 				e.openReport = function () {
+					var saveReportFlag = self.SaveReport();
 					// Load report
 					return self.LoadReport(e.reportId).done(function () {
 						if (!e.runMode) {
@@ -3260,6 +3393,7 @@ var reportViewModel = function (options) {
 							self.ReportMode("generate");
 						}
 						else {
+							self.SaveReport(saveReportFlag);
 							self.RunReport(false, true);
 							e.runMode = false;
 						}
@@ -3357,6 +3491,23 @@ var reportViewModel = function (options) {
 		return parts.join('.');
 	}
 
+	self.formatDate = function(date, format) {
+		const pad = (n) => n < 10 ? '0' + n : n;
+		const monthNamesShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+		let day = date.getDate(),
+			month = date.getMonth(), // Months are zero-based
+			year = date.getFullYear();
+
+		return format
+			.replace('yyyy', year)
+			.replace('yy', year.toString().slice(-2))
+			.replace('MM', monthNamesShort[month])
+			.replace('mm', pad(month + 1))
+			.replace('m', month + 1)
+			.replace('dd', pad(day))
+			.replace('d', day);
+	}
 
 	// ui-validation
 	self.isInputValid = function (ctl) {
@@ -3572,7 +3723,7 @@ var reportViewModel = function (options) {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
-			chartData: self.ChartData(),
+			chartData: self.ChartData() || '',
 			columnDetails: self.getColumnDetails(),
 			includeSubTotal: self.IncludeSubTotal(),
 			pivot: self.ReportType() == 'Pivot'
@@ -3608,12 +3759,14 @@ var reportViewModel = function (options) {
 	}
 
 	self.downloadExcelWithDrilldown = function () {
+		var reportData = self.BuildReportData();
+		reportData.DrillDownRowUsePlaceholders = true;
 		self.downloadExport("DownloadExcel", {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
 			allExpanded: true,
-			expandSqls: JSON.stringify(self.BuildReportData()),
+			expandSqls: JSON.stringify(reportData),
 			columnDetails: self.getColumnDetails(),
 			includeSubTotal: self.IncludeSubTotal(),
 			pivot: self.ReportType() == 'Pivot'
@@ -3672,8 +3825,10 @@ var dashboardViewModel = function (options) {
 	self.selectDashboard = ko.observable(currentDash.id);
 	self.loadDashboard = function (dashboardId) {
 		ajaxcall({
-			url: options.loadSavedDashbordUrl + '?id=' + dashboardId + '&adminMode=' + self.adminMode()
+			url: options.loadSavedDashbordUrl,
+			data: { id: dashboardId, adminMode: self.adminMode() }
 		}).done(function (reportsData) {
+			if (reportsData.d) reportsData = reportsData.d;
 			var reports = [];
 			_.forEach(reportsData, function (r) {
 				reports.push({ reportSql: r.ReportSql, reportId: r.ReportId, reportFilter: r.ReportFilter, connectKey: r.ConnectKey, x: r.X, y: r.Y, width: r.Width, height: r.Height });
@@ -3892,14 +4047,17 @@ var dashboardViewModel = function (options) {
 				var promises = [];
 				if (self.tables.length == 0) {
 					promises.push(report.loadTables().done(function (x) {
+						if (x.d) x = x.d;
 						self.tables = x;
 						report.Tables(self.tables);
 					}));
 					promises.push(report.loadProcs().done(function (x) {
+						if (x.d) x = x.d;
 						self.procs = x;
 						report.Procs(self.procs);
 					}));
 					promises.push(report.loadFolders().done(function (x) {
+						if (x.d) x = x.d;
 						self.folders = x;
 						report.Folders(self.folders);
 					}));

@@ -1,6 +1,6 @@
-﻿/// dotnet Report Builder view model v5.0.0
+﻿/// dotnet Report Builder view model v5.3.1
 /// License must be purchased for commercial use
-/// 2022 (c) www.dotnetreport.com
+/// 2024 (c) www.dotnetreport.com
 
 var manageViewModel = function (options) {
 	var self = this;
@@ -566,7 +566,30 @@ var usersAndRolesViewModel = function (options) {
 	var apiKey = options.model.AccountApiKey;
 	var dbKey = options.model.DatabaseApiKey;
 
-	self.selectedUserConfig = ko.observable(userConfig.SelectedUserConfig || "dnr-managed");
+	self.selectedUserConfig = ko.observable(userConfig.SelectedUserConfig || "not-managed");
+	self._selectedUserConfig = ko.observable(self.selectedUserConfig());
+
+	self.confirmUpdate = function (newValue) {
+		bootbox.confirm({
+			message: "Choosing this option will update the system configuration. Are you sure?",
+			buttons: {
+				confirm: {
+					label: 'Yes',
+					className: 'btn-success'
+				},
+				cancel: {
+					label: 'No',
+					className: 'btn-danger'
+				}
+			},
+			callback: function (result) {
+				if (result) {
+					self.selectedUserConfig(newValue);					
+				}
+				self._selectedUserConfig(self.selectedUserConfig());
+			}
+		});
+	}
 
 	self.usersTableData = ko.observableArray([]);
 	self.roleTableData = ko.observableArray([]);
@@ -732,7 +755,7 @@ var usersAndRolesViewModel = function (options) {
 			});
 		}
 	}
-	// Function to delete a role
+	
 	self.DeleteRole = function() {
 		var roledataid = self.SelectedRole().roleId;
 		ajaxcall({

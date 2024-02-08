@@ -127,12 +127,13 @@ namespace ReportBuilder.Web.Controllers
                         TableName = item.tableDbName,
                         DisplayName = item.tableName,
                         AllowedRoles = item.tableRoles.ToObject<List<string>>(),
+                        DoNotDisplay = item.doNotDisplay,
                         CustomTable = item.customTable,
                         CustomTableSql = Convert.ToBoolean(item.customTable) == true ? DotNetReportHelper.Decrypt(Convert.ToString(item.customTableSql)) : "",
                         Columns = new List<ColumnViewModel>(),
                         Selected = true
                     };
-                    
+
                     if (loadColumns)
                     {
                         foreach (var field in item.fields)
@@ -160,8 +161,8 @@ namespace ReportBuilder.Web.Controllers
 
                                 ForeignParentKey = field.hasForeignParentKey,
                                 ForeignParentApplyTo = field.foreignParentApplyTo,
-                                ForeignParentKeyField = field.foreignParentKey,
-                                ForeignParentValueField = field.foreignParentValue,
+                                ForeignParentKeyField = field.foreignParentKeyField,
+                                ForeignParentValueField = field.foreignParentValueField,
                                 ForeignParentTable = field.foreignParentTable,
                                 ForeignParentRequired = field.foreignParentRequired,
 
@@ -177,7 +178,6 @@ namespace ReportBuilder.Web.Controllers
                 return tables;
             }
         }
-
         public static async Task<List<ColumnViewModel>> GetApiFields(string accountKey, string dataConnectKey, int tableId)
         {
             using (var client = new HttpClient())
@@ -258,7 +258,7 @@ namespace ReportBuilder.Web.Controllers
 
                     // see if this table is already in database
                     var matchTable = currentTables.FirstOrDefault(x => x.TableName.ToLower() == tableName.ToLower());
-                    
+
                     var table = new TableViewModel
                     {
                         Id = matchTable != null ? matchTable.Id : 0,
@@ -319,7 +319,8 @@ namespace ReportBuilder.Web.Controllers
                     }
 
                     // add columns not in db, but in dotnet report
-                    if (matchTable != null) {
+                    if (matchTable != null)
+                    {
                         table.Columns.AddRange(matchTable.Columns.Where(x => !table.Columns.Select(c => c.Id).Contains(x.Id)).ToList());
                     }
 
@@ -328,10 +329,10 @@ namespace ReportBuilder.Web.Controllers
                 }
 
                 // add tables not in db, but in dotnet report
-                var notMatchedTables = currentTables.Where(x => !tables.Select(c => c.Id).Contains(x.Id) && ((type=="TABLE") ? !x.IsView : x.IsView)).ToList();
+                var notMatchedTables = currentTables.Where(x => !tables.Select(c => c.Id).Contains(x.Id) && ((type == "TABLE") ? !x.IsView : x.IsView)).ToList();
                 if (notMatchedTables.Any())
                 {
-                    foreach(var notMatchedTable in notMatchedTables)
+                    foreach (var notMatchedTable in notMatchedTables)
                     {
                         notMatchedTable.Selected = true;
                         notMatchedTable.Columns = await GetApiFields(accountKey, dataConnectKey, notMatchedTable.Id);

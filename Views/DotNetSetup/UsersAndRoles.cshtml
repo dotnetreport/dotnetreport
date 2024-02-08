@@ -163,7 +163,7 @@
                     <div class="card" data-bind="css: { 'selected-option': selectedUserConfig() === 'not-managed' }">
                         <div class="card-body">
                             <div class="form-check font-weight-bold error">
-                                <input type="checkbox" id="not-managed" class="form-check-input" data-bind="checked: selectedUserConfig, click: function() { selectedUserConfig('not-managed'); return true; }, checkedValue: 'not-managed'">
+                                <input type="checkbox" id="not-managed" class="form-check-input" data-bind="checked: _selectedUserConfig, click: function() { confirmUpdate('not-managed'); return true; }, checkedValue: 'not-managed'">
                                 <label class="form-check-label" for="not-managed">No Login Required</label>
                             </div>
                             <div class="card-text">
@@ -181,7 +181,7 @@
                     <div class="card" data-bind="css: { 'selected-option': selectedUserConfig() === 'dnr-managed' }">
                         <div class="card-body">
                             <div class="form-check font-weight-bold">
-                                <input type="checkbox" id="dnr-managed" class="form-check-input" data-bind="checked: selectedUserConfig, click: function() { selectedUserConfig('dnr-managed'); return true; }, checkedValue: 'dnr-managed'">
+                                <input type="checkbox" id="dnr-managed" class="form-check-input" data-bind="checked: _selectedUserConfig, click: function() { confirmUpdate('dnr-managed'); return true; }, checkedValue: 'dnr-managed'">
                                 <label class="form-check-label" for="dnr-managed">Managed by DNR</label>
                             </div>
                             <div class="card-text">
@@ -199,7 +199,7 @@
                     <div class="card" data-bind="css: { 'selected-option': selectedUserConfig() === 'code-managed' }">
                         <div class="card-body">
                             <div class="form-check font-weight-bold">
-                                <input type="checkbox" id="code-managed" class="form-check-input" data-bind="checked: selectedUserConfig, click: function() { selectedUserConfig('code-managed'); return true; }, checkedValue: 'code-managed'">
+                                <input type="checkbox" id="code-managed" class="form-check-input" data-bind="checked: _selectedUserConfig, click: function() { confirmUpdate('code-managed'); return true; }, checkedValue: 'code-managed'">
                                 <label class="form-check-label" for="code-managed">Embedded / Code</label>
                                 <label class="badge badge-info"><i class="fa fa-star"></i> Most Popular</label>
                             </div>
@@ -218,7 +218,7 @@
                     <div class="card" data-bind="css: { 'selected-option': selectedUserConfig() === 'api-managed' }">
                         <div class="card-body">
                             <div class="form-check font-weight-bold">
-                                <input type="checkbox" id="api-managed" class="form-check-input" disabled="disabled" data-bind="checked: selectedUserConfig, click: function() { selectedUserConfig('api-managed'); return true; }, checkedValue: 'api-managed'">
+                                <input type="checkbox" id="api-managed" class="form-check-input" disabled="disabled" data-bind="checked: _selectedUserConfig, click: function() { confirmUpdate('api-managed'); return true; }, checkedValue: 'api-managed'">
                                 <label class="form-check-label" for="api-managed">Using your API or SSO Service</label>
 
                                 <label class="badge badge-warning" title="This option is not available yet">Coming Soon</label>
@@ -253,7 +253,7 @@
             <div data-bind="if: selectedUserConfig() == 'code-managed'">
                 <div class="alert alert-info">
                     Your selected option is <b>Embedded / Code</b>. With this option, you do not need to manage or setup users here.<br />
-                    You need to install DNR in your application using the corrent Nuget package. We have different nuget install packages for different versions of .NET
+                    You need to install DNR in your application using the corrent NuGet package. We have different NuGet install packages for different versions of .NET
                 </div>
             </div>
 
@@ -604,7 +604,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" data-bind="click: createUser">Save Role Assignment</button>
+                <button type="button" class="btn btn-primary" data-bind="click: createUser">Save User</button>
             </div>
         </div>
     </div>
