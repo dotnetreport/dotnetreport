@@ -126,23 +126,17 @@
 }
 
 <div class="row">
-    <div class="col-8" data-bind="with: currentDashboard">
-        <h2 data-bind="text: name ? name : 'Dashboard'">Dashboard</h2>
+    <div class="col-4" data-bind="with: currentDashboard">
+        <h2 title="Switch Dashboard">
+            <select class="form-control select-as-text" title="Switch Dashboard" data-bind="select2: {minimumResultsForSearch: Infinity}, options: $parent.dashboards, optionsText: 'name', optionsValue: 'id', value: $parent.selectDashboard"></select>
+        </h2>
         <p data-bind="text: description"></p>
     </div>
-
-    <div class="col-4 right-align" style="display: none;" data-bind="visible: dashboards().length > 0 ">
-        <div class="row">
-            <label class="col">Switch Dashboard</label>
-            <select class="col form-control" data-bind="options: dashboards, optionsText: 'name', optionsValue: 'id', value: selectDashboard"></select>
-        </div>
+    <div class="col-4">
+        &nbsp;
     </div>
 </div>
 <div class="clearfix"></div>
-
-<div class="pull-right">
-    <a href="@Url.Action("Index","DotNetReport")">Manage Reports</a> | Learn how to <a href="https://dotnetreport.com/getting-started-with-dotnet-report/" target="_blank">Integrate in your App here</a>.
-</div>
 
 <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
 

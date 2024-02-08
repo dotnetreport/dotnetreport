@@ -730,5 +730,200 @@ select.is-invalid ~ span .select2-selection {
 }
 
 .modal-dialog.modal-lg {
-    max-width: 90%; /* or any percentage or pixel value you prefer */
+    max-width: 90%;
+}
+
+
+
+.card {
+    box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);
+    transition: 0.3s;
+}
+
+    .card:hover {
+        box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2);
+    }
+
+.list-group-item {
+    box-shadow: 0 2px 4px 0 rgba(0,0,0,0.2);
+    transition: 0.3s;
+}
+
+    .list-group-item:hover {
+        box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);
+    }
+
+.report-container {
+    padding: 20px;
+    margin: 20px auto;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    font-family: 'Arial', sans-serif;
+    color: #333;
+    background-color: #f4f4f4;
+}
+
+.report-inner {
+    padding: 30px;
+}
+
+.report-view {
+    margin: 0 auto;
+}
+
+.report-canvas {
+    background-color: #fafafa;
+}
+
+.report-menubar {
+    padding: 10px 15px;
+    background-color: #e9ecef;
+    border-bottom: 1px solid #ddd;
+}
+
+.styled-select {
+    border-radius: 3px;
+    border: 1px solid #ccc;
+}
+
+@media(max-width: 992px) {
+    .report-container, .report-inner {
+        min-height: auto;
+    }
+}
+
+@media(min-width: 993px) {
+    .report-container, .report-inner {
+        min-height: auto;
+    }
+}
+
+.total-records {
+    color: #888;
+}
+
+h2 {
+    font-size: 1.3em;
+    margin-top: 5px;
+}
+
+.btn:hover {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Style the Select2 container to look like plain text */
+.select-as-text + .select2 .select2-selection {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+/* Hide the dropdown arrow by default */
+.select-as-text + .select2 .select2-selection__arrow {
+    display: none;
+}
+
+/* Show the dropdown arrow when hovering over the Select2 container */
+.select-as-text + .select2:hover .select2-selection__arrow {
+    display: block;
+}
+
+/* Customizing the BlockUI message container */
+.blockUI.blockMsg.blockPage {
+    background: transparent !important; /* Transparent background */
+    border: none !important; /* No border */
+    box-shadow: none !important; /* No shadow */
+    width: 100px; /* Adjust width as needed */
+    height: 100px; /* Adjust height as needed */
+    text-align: center;
+    position: relative;
+}
+
+    /* Adjust the font size of the default text */
+    .blockUI.blockMsg.blockPage h1 {
+        display:none;
+        font-size: 14px;
+        position: absolute; /* Position the text absolutely */
+        top: 110px; /* Adjust the top value as needed */
+        width: 100%; /* Ensure the text spans the width of the container */
+        left: 50%;
+        transform: translateX(-50%); /* Center the text horizontally */
+    }
+
+    /* Dual-ring spinner styling */
+    .blockUI.blockMsg.blockPage:after {
+        content: " ";
+        display: block;
+        width: 64px;
+        height: 64px;
+        margin: 18px auto; /* Center the spinner horizontally */
+        border-radius: 50%;
+        border: 6px solid #3498db;
+        border-color: #3498db transparent #3498db transparent;
+        animation: dual-ring-spin 1.2s linear infinite;
+    }
+
+/* Animation for the dual-ring spinner */
+@keyframes dual-ring-spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+
+.styled-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+
+.style1-option {
+    background-color: #f2f2f2;
+}
+
+.style2-option {
+    background-color: #d9ead3;
+}
+
+.style3-option {
+    background-color: #cfe2f3;
+}
+
+.style4-option {
+    background-color: #f4cccc;
+}
+
+.style1 tbody tr:nth-child(odd) {
+    background-color: #f2f2f2;
+}
+
+.style1 tbody tr:nth-child(even) {
+    background-color: #ffffff;
+}
+
+.style2 tbody tr:nth-child(odd) {
+    background-color: #d9ead3;
+}
+
+.style2 tbody tr:nth-child(even) {
+    background-color: #b6d7a8;
+}
+
+.style3 tbody tr:nth-child(odd) {
+    background-color: #cfe2f3;
+}
+
+.style3 tbody tr:nth-child(even) {
+    background-color: #9fc5e8;
+}
+
+.style4 tbody tr:nth-child(odd) {
+    background-color: #f4cccc;
+}
+
+.style4 tbody tr:nth-child(even) {
+    background-color: #ea9999;
 }
