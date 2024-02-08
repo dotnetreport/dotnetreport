@@ -501,7 +501,7 @@ namespace ReportBuilder.Web.Controllers
 
         //[Authorize(Roles="Administrator")]
         [HttpPost]
-        public async Task<JsonResult> LoadSetupSchema(string databaseApiKey = "")
+        public async Task<JsonResult> LoadSetupSchema(string databaseApiKey = "", bool onlyApi = false)
         {
             var settings = GetSettings();
             if (!settings.CanUseAdminMode)
@@ -512,9 +512,17 @@ namespace ReportBuilder.Web.Controllers
             var connect = DotNetSetupController.GetConnection(databaseApiKey);
             var tables = new List<TableViewModel>();
             var procedures = new List<TableViewModel>();
-            tables.AddRange(await DotNetSetupController.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
-            tables.AddRange(await DotNetSetupController.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
+            if (onlyApi)
+            {
+                tables.AddRange(await DotNetSetupController.GetApiTables(connect.AccountApiKey, connect.DatabaseApiKey, true));
+            }
+            else
+            {
+                tables.AddRange(await DotNetSetupController.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
+                tables.AddRange(await DotNetSetupController.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
+            }
             procedures.AddRange(await DotNetSetupController.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
+
             var model = new ManageViewModel
             {
                 ApiUrl = connect.ApiUrl,
@@ -552,7 +560,7 @@ namespace ReportBuilder.Web.Controllers
             {
                 // open the connection to the database 
                 conn.Open();
-                string spQuery = "SELECT ROUTINE_NAME, ROUTINE_DEFINITION, ROUTINE_SCHEMA FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_DEFINITION LIKE '%" + value + "%' AND ROUTINE_TYPE = 'PROCEDURE'";
+                string spQuery = "SELECT ROUTINE_NAME, ROUTINE_DEFINITION, ROUTINE_SCHEMA FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_NAME LIKE '%" + value + "%' AND ROUTINE_TYPE = 'PROCEDURE'";
                 OleDbCommand cmd = new OleDbCommand(spQuery, conn);
                 cmd.CommandType = CommandType.Text;
                 DataTable dtProcedures = new DataTable();

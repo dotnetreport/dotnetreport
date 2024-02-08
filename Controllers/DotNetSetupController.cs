@@ -108,18 +108,18 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        public static async Task<List<TableViewModel>> GetApiTables(string accountKey, string dataConnectKey)
+        public static async Task<List<TableViewModel>> GetApiTables(string accountKey, string dataConnectKey, bool loadColumns = false)
         {
             using (var client = new HttpClient())
             {
-                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetTables?account={1}&dataConnect={2}&clientId=", ConfigurationManager.AppSettings["dotNetReport.apiUrl"], accountKey, dataConnectKey));
+                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetTables?account={1}&dataConnect={2}&includeDoNotDisplay=true&includeColumns=true&clientId=", ConfigurationManager.AppSettings["dotNetReport.apiUrl"], accountKey, dataConnectKey));
                 response.EnsureSuccessStatusCode();
                 var content = await response.Content.ReadAsStringAsync();
                 dynamic values = JsonConvert.DeserializeObject<dynamic>(content);
                 var tables = new List<TableViewModel>();
                 foreach (var item in values)
                 {
-                    tables.Add(new TableViewModel
+                    var table = new TableViewModel
                     {
                         Id = item.tableId,
                         SchemaName = item.schemaName,
@@ -127,16 +127,57 @@ namespace ReportBuilder.Web.Controllers
                         TableName = item.tableDbName,
                         DisplayName = item.tableName,
                         AllowedRoles = item.tableRoles.ToObject<List<string>>(),
+                        DoNotDisplay = item.doNotDisplay,
                         CustomTable = item.customTable,
-                        CustomTableSql = Convert.ToBoolean(item.customTable) == true ? DotNetReportHelper.Decrypt(Convert.ToString(item.customTableSql)) : ""
-                    });
+                        CustomTableSql = Convert.ToBoolean(item.customTable) == true ? DotNetReportHelper.Decrypt(Convert.ToString(item.customTableSql)) : "",
+                        Columns = new List<ColumnViewModel>(),
+                        Selected = true
+                    };
 
+                    if (loadColumns)
+                    {
+                        foreach (var field in item.fields)
+                        {
+                            table.Columns.Add(new ColumnViewModel
+                            {
+                                Id = field.fieldId,
+                                ColumnName = field.fieldDbName,
+                                DisplayName = field.fieldName,
+                                FieldType = field.fieldType,
+                                PrimaryKey = field.isPrimary,
+                                ForeignKey = field.hasForeignKey,
+                                DisplayOrder = field.fieldOrder,
+                                ForeignKeyField = field.foreignKey,
+                                ForeignValueField = field.foreignValue,
+                                ForeignJoin = field.foreignJoin,
+                                ForeignTable = field.foreignTable,
+                                DoNotDisplay = field.doNotDisplay,
+                                ForceFilter = field.forceFilter,
+                                ForceFilterForTable = field.forceFilterForTable,
+                                RestrictedDateRange = field.restrictedDateRange,
+                                RestrictedEndDate = field.restrictedEndDate,
+                                RestrictedStartDate = field.restrictedStartDate,
+                                AllowedRoles = field.columnRoles.ToObject<List<string>>(),
+
+                                ForeignParentKey = field.hasForeignParentKey,
+                                ForeignParentApplyTo = field.foreignParentApplyTo,
+                                ForeignParentKeyField = field.foreignParentKeyField,
+                                ForeignParentValueField = field.foreignParentValueField,
+                                ForeignParentTable = field.foreignParentTable,
+                                ForeignParentRequired = field.foreignParentRequired,
+
+                                JsonStructure = field.jsonStructure,
+                                Selected = true
+                            });
+                        }
+                    }
+
+                    tables.Add(table);
                 }
 
                 return tables;
             }
         }
-
         public static async Task<List<ColumnViewModel>> GetApiFields(string accountKey, string dataConnectKey, int tableId)
         {
             using (var client = new HttpClient())
@@ -190,7 +231,7 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        public static async Task<List<TableViewModel>> GetTables(string type = "TABLE", string accountKey = null, string dataConnectKey = null)
+        public static async Task<List<TableViewModel>> GetTables(string type = "TABLE", string accountKey = "", string dataConnectKey = "")
         {
             var tables = new List<TableViewModel>();
 
@@ -198,7 +239,7 @@ namespace ReportBuilder.Web.Controllers
 
             if (!String.IsNullOrEmpty(accountKey) && !String.IsNullOrEmpty(dataConnectKey))
             {
-                currentTables = await GetApiTables(accountKey, dataConnectKey);
+                currentTables = await GetApiTables(accountKey, dataConnectKey, true);
             }
 
             var connString = await GetConnectionString(GetConnection(dataConnectKey));
@@ -217,10 +258,6 @@ namespace ReportBuilder.Web.Controllers
 
                     // see if this table is already in database
                     var matchTable = currentTables.FirstOrDefault(x => x.TableName.ToLower() == tableName.ToLower());
-                    if (matchTable != null)
-                    {
-                        matchTable.Columns = await GetApiFields(accountKey, dataConnectKey, matchTable.Id);
-                    }
 
                     var table = new TableViewModel
                     {
@@ -282,7 +319,8 @@ namespace ReportBuilder.Web.Controllers
                     }
 
                     // add columns not in db, but in dotnet report
-                    if (matchTable != null) {
+                    if (matchTable != null)
+                    {
                         table.Columns.AddRange(matchTable.Columns.Where(x => !table.Columns.Select(c => c.Id).Contains(x.Id)).ToList());
                     }
 
@@ -291,10 +329,10 @@ namespace ReportBuilder.Web.Controllers
                 }
 
                 // add tables not in db, but in dotnet report
-                var notMatchedTables = currentTables.Where(x => !tables.Select(c => c.Id).Contains(x.Id) && ((type=="TABLE") ? !x.IsView : x.IsView)).ToList();
+                var notMatchedTables = currentTables.Where(x => !tables.Select(c => c.Id).Contains(x.Id) && ((type == "TABLE") ? !x.IsView : x.IsView)).ToList();
                 if (notMatchedTables.Any())
                 {
-                    foreach(var notMatchedTable in notMatchedTables)
+                    foreach (var notMatchedTable in notMatchedTables)
                     {
                         notMatchedTable.Selected = true;
                         notMatchedTable.Columns = await GetApiFields(accountKey, dataConnectKey, notMatchedTable.Id);

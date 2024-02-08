@@ -1,6 +1,6 @@
-﻿/// dotnet Report Builder view model v5.0.0
+﻿/// dotnet Report Builder view model v5.3.1
 /// License must be purchased for commercial use
-/// 2022 (c) www.dotnetreport.com
+/// 2024 (c) www.dotnetreport.com
 
 var manageViewModel = function (options) {
 	var self = this;
@@ -13,9 +13,21 @@ var manageViewModel = function (options) {
 	self.DataConnections = ko.observableArray([]);
 	self.Tables = new tablesViewModel(options);
 	self.Procedures = new proceduresViewModel(options);
+	self.DbConfig = {};
+	self.UserAndRolesConfig = {};
 	self.pager = new pagerViewModel({autoPage: true});
 	self.pager.totalRecords(self.Tables.model().length);
+	self.onlyApi = ko.observable(options.onlyApi);
 	self.ChartDrillDownData = null;
+
+	self.loadFromDatabase = function() {
+		bootbox.confirm("Confirm loading all Tables and Views from the database? Note: This action will discard unsaved changes and it may take some time.", function (r) {
+			if (r) {
+				window.location.href = window.location.pathname + "?onlyApi=false&" + $.param({ 'databaseApiKey': self.currentConnectionKey() })
+			}
+		});
+
+	}
 
 	self.Tables.filteredTables.subscribe(function (x) {		
 		self.pager.totalRecords(x.length);
@@ -807,30 +819,8 @@ var proceduresViewModel = function (options) {
 
 }
 
-var customSqlModel = function (options, keys, tables) {
+var validation = function () {
 	var self = this;
-	self.customTableName = ko.observable();
-	self.customSql = ko.observable();
-	self.useAi = ko.observable(false);
-	self.textQuery = new textQuery(options);
-	self.selectedTable = null;
-
-	self.addNewCustomSqlTable = function () {	
-		self.selectedTable = null;
-		self.clearForm();
-		self.customTableName('');
-		self.customSql('');
-		$('#custom-sql-modal').modal('show');
-	}
-
-	self.viewCustomSql = function (e) {
-		self.selectedTable = ko.mapping.toJS(e);
-		self.clearForm();
-		self.customTableName(e.TableName());
-		self.customSql(e.CustomTableSql());
-		$('#custom-sql-modal').modal('show');
-    }
-
 	// ui-validation
 	self.isInputValid = function (ctl) {
 		// first check for custom validation
@@ -852,9 +842,8 @@ var customSqlModel = function (options, keys, tables) {
 	};
 
 
-	self.clearForm = function () {
-		self.textQuery.resetQuery();
-		var curInputs = $('#custom-sql-modal').find("input, select, textarea"),
+	self.clearForm = function (formSelector) {
+		var curInputs = $(formSelector).find("input, select, textarea"),
 			isValid = true;
 
 		$(".needs-validation").removeClass("was-validated");
@@ -864,8 +853,8 @@ var customSqlModel = function (options, keys, tables) {
 
 	};
 
-	self.validateForm = function () {
-		var curInputs = $('#custom-sql-modal').find("input, select, textarea"),
+	self.validateForm = function (formSelector) {
+		var curInputs = $(formSelector).find("input, select, textarea"),
 			isValid = true;
 
 		$(".needs-validation").removeClass("was-validated");
@@ -881,6 +870,34 @@ var customSqlModel = function (options, keys, tables) {
 		return isValid;
 	};
 
+}
+
+var customSqlModel = function (options, keys, tables) {
+	var self = this;
+	self.customTableName = ko.observable();
+	self.customSql = ko.observable();
+	self.useAi = ko.observable(false);
+	self.textQuery = new textQuery(options);
+	self.selectedTable = null;
+	var validator = new validation();
+	self.addNewCustomSqlTable = function () {	
+		self.selectedTable = null;
+		self.textQuery.resetQuery();
+		validator.clearForm('#custom-sql-modal');
+		self.customTableName('');
+		self.customSql('');
+		$('#custom-sql-modal').modal('show');
+	}
+
+	self.viewCustomSql = function (e) {
+		self.selectedTable = ko.mapping.toJS(e);
+		self.textQuery.resetQuery();
+		validator.clearForm('#custom-sql-modal');
+		self.customTableName(e.TableName());
+		self.customSql(e.CustomTableSql());
+		$('#custom-sql-modal').modal('show');
+	}
+	
 	self.buildSqlUsingAi = function () {
 		var queryText = document.getElementById("query-input").innerText;
 
@@ -923,7 +940,7 @@ var customSqlModel = function (options, keys, tables) {
     }
 
 	self.executeSql = function () {
-		var valid = self.validateForm();
+		var valid = validator.validateForm('#custom-sql-modal');
 		
 		if (!self.customTableName()) {
 			toastr.error("Custom Table Name is required");
