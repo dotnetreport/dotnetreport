@@ -22,15 +22,21 @@
 </head>
 <body>
     <form id="form1" runat="server">
-    <div class="navbar  border-bottom box-shadow ">
-        <div class="">
-            <div class="navbar-brand">
-                <a href="/">
-                    <img src="/content/img/report-logo.png" alt=".Net Report Builder" width="200" />
-                </a>
-            </div>
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark">
+        <a class="navbar-brand" href="/">
+            <img src="/content/img/report-logo.png" alt=".Net Report Builder" style="width: 140px;" />
+        </a>
+        <div class="collapse navbar-collapse" id="navbarNavDropdown">
+            <ul class="navbar-nav ml-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="/DotnetReport/Dashboard.aspx">Dashboards</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/DotnetReport/index.aspx">Reports</a>
+                </li>
+            </ul>
         </div>
-    </div>
+    </nav>
     <div class="body-content">
         <asp:ContentPlaceHolder ID="body" runat="server">
         </asp:ContentPlaceHolder>
@@ -193,10 +199,10 @@
     <td data-bind="hidden: outerGroup, style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '48px' : ''}">
         <div data-bind="style: {'width': fieldWidth }">
         <!-- ko if: LinkTo-->
-        <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: FormattedValue"></span></a>
+        <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: formattedVal"></span></a>
         <!-- /ko-->
         <!-- ko ifnot: LinkTo-->
-        <span data-bind="html: FormattedValue"></span>
+        <span data-bind="html: formattedVal"></span>
         <!-- /ko-->
         </div>
     </td>
@@ -204,7 +210,7 @@
 
 <script type="text/html" id="report-pivot">
         <div class="table-responsive" data-bind="with: ReportData">
-        <table class="table table-hover table-condensed">
+        <table class="table table-striped table-hover table-condensed">
             <thead>
                 <tr>
                     <th></th>
@@ -237,10 +243,10 @@
 
 <script type="text/html" id="report-table">
         <div class="table-responsive" >
-        <table class="table table-hover table-condensed">
+        <table class="table table-striped table-hover table-condensed">
             <thead data-bind="if: $parents[2].ReportType() != 'Single'">
                 <tr class="no-highlight">
-                    <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !IsDrillDown() -->
+                    <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !IsDrillDown() && !CanExpandOption() -->
                     <th style="width: 30px; border-left: 1px solid;"></th>
                     <!-- /ko -->
                     <!-- ko template: 'report-column-header', data: $data -->
@@ -262,7 +268,7 @@
                 </tr>
                 <!-- ko foreach: $parent.rows  -->
                 <tr>
-                    <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() && $parentContext.$parentContext.$parentContext.$parent.ReportType() != 'Single' -->
+                    <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() && !$parent.CanExpandOption() && $parentContext.$parentContext.$parentContext.$parent.ReportType() != 'Single' -->
                     <td style="width: 30px; vertical-align: middle;"><a href="#" data-bind="click: function(){ toggle(); }"><span class="fa" data-bind="css: {'fa-plus': !isExpanded(), 'fa-minus': isExpanded()}"></span></a></td>
                     <!-- /ko -->
                     <!-- ko template: 'report-column', data: $data -->
@@ -273,7 +279,7 @@
                     <td style="width: 30px;"></td>
                     <td data-bind="attr:{colspan: $parent.Columns.length }" style="padding-left: 0px;">
                         <!-- ko if: DrillDownData -->
-                        <table class="table table-hover table-condensed" data-bind="with: DrillDownData">
+                        <table class="table table-striped table-hover table-condensed" data-bind="with: DrillDownData">
                             <thead>
                                 <tr class="no-highlight">
                                     <!-- ko template: 'report-column-header', data: $data -->
@@ -322,7 +328,7 @@
                     <!-- ko foreach: Items -->
                     <!-- ko if: Value != 'NA' && Value != 'NaN' && !outerGroup() -->
                     <td data-bind="style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '48px' : ''}">
-                        <span data-bind="html: FormattedValue, css: {'right-align': true}"></span>
+                        <span data-bind="html: formattedVal, css: {'right-align': true}"></span>
                     </td>
                     <!-- /ko -->
                     <!-- /ko -->
@@ -520,8 +526,8 @@
                     </div>
                 </div>
                 <div data-bind="visible: isRoot">
-                    <div class="btn-group btn-group-sm">
-                        <label class="btn btn-primary">Filter Conditions</label>
+                    <div class="pull-left padded-div">
+                        <label> &nbsp;Filter Conditions</label>
                     </div>
                 </div>
                 <div class="clearfix"></div>
@@ -534,11 +540,9 @@
 <script type="text/html" id="fly-filter-template">
     <div class="card" data-bind="visible: FlyFilters().length>0">
         <div class="card-header">
-            <h5 class="card-title">
-                <a data-toggle="collapse" data-bind="attr: {'data-target': '#filter-panel-' + ReportID() }" href="#">
-                    <i class="fa fa-filter"></i>Choose filter options
-                </a>
-            </h5>
+            <a data-toggle="collapse" data-bind="attr: {'data-target': '#filter-panel-' + ReportID() }" href="#">
+                <i class="fa fa-filter"></i> Choose Filters
+            </a>
         </div>
         <div data-bind="attr: {id: 'filter-panel-' + ReportID() }" class="card-body collapse collapsed">
             <div>
@@ -548,7 +552,7 @@
                         <div data-bind="with: Field" class="checkbox">
                             <div class="checkbox">
                                 <label>
-                                    <input type="checkbox" title="Apply this filter" data-bind="checked: $parent.Apply" /><span data-bind="text: selectedFilterName"></span>
+                                    <input type="checkbox" title="Apply this filter" data-bind="checked: $parent.Apply" /> <span data-bind="text: selectedFilterName"></span>
                                 </label>
                             </div>
                         </div>
@@ -574,7 +578,7 @@
 <script type="text/html" id="filter-inner">
     <div class="rules-list" >
         <div class="rule-container" data-bind="visible: Filters().length>0">
-        <table class="table table-hover table-borderless">
+        <table class="table table-striped table-hover table-borderless">
             <thead>
                 <tr>
                     <th class="row">
@@ -667,7 +671,7 @@
     <div class="table-responsive card">
         <div class="card-body">
             <span data-bind="hidden: showParameters">No filters available to choose</span>
-            <table class="table  table-hover table-borderless" data-bind="visible: showParameters">
+            <table class="table table-striped table-hover table-borderless" data-bind="visible: showParameters">
                 <thead>
                     <tr>
                         <th style="width: 30%">Filter</th>
@@ -821,6 +825,18 @@
                         <input type="number" class="form-control" data-bind="value: decimalPlaces" placeholder="" />
                     </div>
                 </div>
+                  <div class="form-group row" data-bind="visible: $parent.dateFormatTypes.indexOf($data.fieldFormat())>=0">
+                    <label class="col-sm-5 col-md-5 control-label">Pick Date Format</label>
+                    <div class="col-sm-7 col-md-7">
+                        <select class="form-control" required data-bind="options: $parent.dateFormats, value: dateFormat"></select>
+                    </div>
+                </div>
+                   <div class="form-group row" data-bind="visible: dateFormat()==='Custom'">
+                     <label class="col-sm-5 col-md-5 control-label">Enter Custom Date Format</label>
+                    <div class="col-sm-7 col-md-7">
+                        <input type="text" class="form-control" data-bind="value: customDateFormat" placeholder="dd/mm/yyyy" />
+                    </div>
+                 </div>
                 <div class="form-group row">
                     <label class="col-sm-5 col-md-5 control-label">Choose Column Label</label>
                     <div class="col-sm-7 col-md-7">
@@ -1208,7 +1224,7 @@
                                                 <option>+</option>
                                                 <!-- /ko -->
                                                 <option>-</option>
-                                                <!-- ko if: ['Int','Money','Float','Double'].indexOf(fieldType) != -1 -->
+                                                <!-- ko if: ['Integer','Money','Float','Double','Decimal','Currency'].indexOf($parent.formulaDataFormat()) != -1 -->
                                                 <option>*</option>
                                                 <option>/</option>
                                                 <!-- /ko -->
@@ -1398,6 +1414,12 @@
                                 Show only Unique Records
                             </label>
                         </div>
+                        <div class="checkbox" data-bind="visible: ReportType()!='List'">
+                            <label>
+                                <input type="checkbox" data-bind="checked: ShowExpandOption" />
+                                Don't Show Expand Option
+                            </label>
+                        </div>
                         <div class="form-group row">
                             <div class="checkbox col-md-2">
                                 <label >
@@ -1453,7 +1475,7 @@
             </div>
             <!-- ko if: DrillDownData -->
             <div class="modal-body">
-                <table class="table table-hover table-condensed" data-bind="with: DrillDownData">
+                <table class="table table-striped table-hover table-condensed" data-bind="with: DrillDownData">
                     <thead>
                         <tr class="no-highlight">
                             <!-- ko foreach: Columns -->
@@ -1476,10 +1498,10 @@
                             <td data-bind="hidden: outerGroup, style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal' }">
                                 <div data-bind="style: {'width': fieldWidth }">
                                     <!-- ko if: LinkTo-->
-                                    <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: FormattedValue"></span></a>
+                                    <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: formattedVal"></span></a>
                                     <!-- /ko-->
                                     <!-- ko ifnot: LinkTo-->
-                                    <span data-bind="html: FormattedValue"></span>
+                                    <span data-bind="html: formattedVal"></span>
                                     <!-- /ko-->
                                 </div>
                             </td>

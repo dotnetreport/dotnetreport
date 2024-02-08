@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using ReportBuilder.Web.Controllers;
 using ReportBuilder.Web.Models;
 using System;
 using System.Collections.Generic;
@@ -11,6 +12,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web;
+using System.Web.Mvc;
 using System.Web.Script.Serialization;
 using System.Web.Script.Services;
 using System.Web.Services;
@@ -515,6 +517,42 @@ namespace ReportBuilder.WebForms.DotNetReport
             return warning;
         }
 
+        [WebMethod(EnableSession = true)]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public async Task<object> LoadSetupSchema(string databaseApiKey = "", bool onlyApi = false)
+        {
+            var settings = GetSettings();
+            if (!settings.CanUseAdminMode)
+            {
+                throw new Exception("Not Authorized to access this Resource");
+            }
+
+            var connect = Setup.GetConnection(databaseApiKey);
+            var tables = new List<TableViewModel>();
+            var procedures = new List<TableViewModel>();
+            if (onlyApi)
+            {
+                tables.AddRange(await Setup.GetApiTables(connect.AccountApiKey, connect.DatabaseApiKey, true));
+            }
+            else
+            {
+                tables.AddRange(await Setup.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
+                tables.AddRange(await Setup.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
+            }
+            procedures.AddRange(await Setup.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
+
+            var model = new ManageViewModel
+            {
+                ApiUrl = connect.ApiUrl,
+                AccountApiKey = connect.AccountApiKey,
+                DatabaseApiKey = connect.DatabaseApiKey,
+                Tables = tables,
+                Procedures = procedures
+            };
+
+            return model;
+        }
+
 
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
@@ -613,7 +651,7 @@ namespace ReportBuilder.WebForms.DotNetReport
             {
                 // open the connection to the database 
                 conn.Open();
-                string spQuery = "SELECT ROUTINE_NAME, ROUTINE_DEFINITION, ROUTINE_SCHEMA FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_DEFINITION LIKE '%" + value + "%' AND ROUTINE_TYPE = 'PROCEDURE'";
+                string spQuery = "SELECT ROUTINE_NAME, ROUTINE_DEFINITION, ROUTINE_SCHEMA FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_NAME LIKE '%" + value + "%' AND ROUTINE_TYPE = 'PROCEDURE'";
                 OleDbCommand cmd = new OleDbCommand(spQuery, conn);
                 cmd.CommandType = CommandType.Text;
                 DataTable dtProcedures = new DataTable();

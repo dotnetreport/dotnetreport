@@ -33,9 +33,6 @@ namespace ReportBuilder.WebForms.DotNetReport
             var connect = GetConnection(databaseApiKey);
             var tables = new List<TableViewModel>();
             var procedures = new List<TableViewModel>();
-            tables.AddRange(await GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
-            tables.AddRange(await GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
-            procedures.AddRange(await GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
             Model = new ManageViewModel
             {
                 ApiUrl = connect.ApiUrl,
@@ -59,11 +56,11 @@ namespace ReportBuilder.WebForms.DotNetReport
             };
         }
 
-        private async Task<string> GetConnectionString(ConnectViewModel connect)
+        private static async Task<string> GetConnectionString(ConnectViewModel connect)
         {
             using (var client = new HttpClient())
             {
-                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetDataConnectKey?account={1}&dataConnect={2}", connect.ApiUrl, connect.AccountApiKey, connect.DatabaseApiKey));
+                var response = client.GetAsync(String.Format("{0}/ReportApi/GetDataConnectKey?account={1}&dataConnect={2}", connect.ApiUrl, connect.AccountApiKey, connect.DatabaseApiKey)).Result;
 
                 response.EnsureSuccessStatusCode();
 
@@ -134,39 +131,82 @@ namespace ReportBuilder.WebForms.DotNetReport
             }
         }
 
-        private async Task<List<TableViewModel>> GetApiTables(string accountKey, string dataConnectKey)
+        public static async Task<List<TableViewModel>> GetApiTables(string accountKey, string dataConnectKey, bool loadColumns = false)
         {
             using (var client = new HttpClient())
             {
-                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetTables?account={1}&dataConnect={2}&clientId=&includeDoNotDisplay=true", ConfigurationManager.AppSettings["dotNetReport.apiUrl"], accountKey, dataConnectKey));
+                var response = client.GetAsync(String.Format("{0}/ReportApi/GetTables?account={1}&dataConnect={2}&includeDoNotDisplay=true&includeColumns=true&clientId=", ConfigurationManager.AppSettings["dotNetReport.apiUrl"], accountKey, dataConnectKey)).Result;
                 response.EnsureSuccessStatusCode();
                 var content = await response.Content.ReadAsStringAsync();
                 dynamic values = JsonConvert.DeserializeObject<dynamic>(content);
                 var tables = new List<TableViewModel>();
                 foreach (var item in values)
                 {
-                    tables.Add(new TableViewModel
+                    var table = new TableViewModel
                     {
                         Id = item.tableId,
                         SchemaName = item.schemaName,
                         AccountIdField = item.accountIdField,
                         TableName = item.tableDbName,
                         DisplayName = item.tableName,
+                        AllowedRoles = item.tableRoles.ToObject<List<string>>(),
                         DoNotDisplay = item.doNotDisplay,
-                        AllowedRoles = item.tableRoles.ToObject<List<string>>()
-                    });
+                        CustomTable = item.customTable,
+                        CustomTableSql = Convert.ToBoolean(item.customTable) == true ? DotNetReportHelper.Decrypt(Convert.ToString(item.customTableSql)) : "",
+                        Columns = new List<ColumnViewModel>(),
+                        Selected = true
+                    };
 
+                    if (loadColumns)
+                    {
+                        foreach (var field in item.fields)
+                        {
+                            table.Columns.Add(new ColumnViewModel
+                            {
+                                Id = field.fieldId,
+                                ColumnName = field.fieldDbName,
+                                DisplayName = field.fieldName,
+                                FieldType = field.fieldType,
+                                PrimaryKey = field.isPrimary,
+                                ForeignKey = field.hasForeignKey,
+                                DisplayOrder = field.fieldOrder,
+                                ForeignKeyField = field.foreignKey,
+                                ForeignValueField = field.foreignValue,
+                                ForeignJoin = field.foreignJoin,
+                                ForeignTable = field.foreignTable,
+                                DoNotDisplay = field.doNotDisplay,
+                                ForceFilter = field.forceFilter,
+                                ForceFilterForTable = field.forceFilterForTable,
+                                RestrictedDateRange = field.restrictedDateRange,
+                                RestrictedEndDate = field.restrictedEndDate,
+                                RestrictedStartDate = field.restrictedStartDate,
+                                AllowedRoles = field.columnRoles.ToObject<List<string>>(),
+
+                                ForeignParentKey = field.hasForeignParentKey,
+                                ForeignParentApplyTo = field.foreignParentApplyTo,
+                                ForeignParentKeyField = field.foreignParentKeyField,
+                                ForeignParentValueField = field.foreignParentValueField,
+                                ForeignParentTable = field.foreignParentTable,
+                                ForeignParentRequired = field.foreignParentRequired,
+
+                                JsonStructure = field.jsonStructure,
+                                Selected = true
+                            });
+                        }
+                    }
+
+                    tables.Add(table);
                 }
 
                 return tables;
             }
         }
 
-        private async Task<List<ColumnViewModel>> GetApiFields(string accountKey, string dataConnectKey, int tableId)
+        private static async Task<List<ColumnViewModel>> GetApiFields(string accountKey, string dataConnectKey, int tableId)
         {
             using (var client = new HttpClient())
             {
-                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetFields?account={1}&dataConnect={2}&clientId={3}&tableId={4}&includeDoNotDisplay=true", ConfigurationManager.AppSettings["dotNetReport.apiUrl"], accountKey, dataConnectKey, "", tableId));
+                var response = client.GetAsync(String.Format("{0}/ReportApi/GetFields?account={1}&dataConnect={2}&clientId={3}&tableId={4}&includeDoNotDisplay=true", ConfigurationManager.AppSettings["dotNetReport.apiUrl"], accountKey, dataConnectKey, "", tableId)).Result;
 
                 response.EnsureSuccessStatusCode();
 
@@ -213,7 +253,7 @@ namespace ReportBuilder.WebForms.DotNetReport
             }
         }
 
-        private async Task<List<TableViewModel>> GetTables(string type = "TABLE", string accountKey = null, string dataConnectKey = null)
+        public static async Task<List<TableViewModel>> GetTables(string type = "TABLE", string accountKey = null, string dataConnectKey = null)
         {
             var tables = new List<TableViewModel>();
 
@@ -314,11 +354,11 @@ namespace ReportBuilder.WebForms.DotNetReport
             return tables;
         }
 
-        private async Task<List<TableViewModel>> GetApiProcs(string accountKey, string dataConnectKey)
+        public static async Task<List<TableViewModel>> GetApiProcs(string accountKey, string dataConnectKey)
         {
             using (var client = new HttpClient())
             {
-                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetProcedures?account={1}&dataConnect={2}&clientId=", ConfigurationManager.AppSettings["dotNetReport.apiUrl"], accountKey, dataConnectKey));
+                var response = client.GetAsync(String.Format("{0}/ReportApi/GetProcedures?account={1}&dataConnect={2}&clientId=", ConfigurationManager.AppSettings["dotNetReport.apiUrl"], accountKey, dataConnectKey)).Result;
                 response.EnsureSuccessStatusCode();
                 var content = await response.Content.ReadAsStringAsync();
                 var tables = JsonConvert.DeserializeObject<List<TableViewModel>>(content);
