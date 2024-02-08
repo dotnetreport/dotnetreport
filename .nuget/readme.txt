@@ -16,6 +16,10 @@ To start the Scheduler Job, add the following line to your Application_Start() m
 
 	JobScheduler.Start();
 
+	
+** IMPORTANT NOTE FOR BOOTSTRAP VERSION CONFLICT **
+Please note that Dotnet Report requires Bootstrap v4.6.0. 
+If your setup page does not load correctly, then please check your bootstrap verison, and install v4.6.0. 
 
-For more details and documentation, you can visit https://www.dotnetreport.com/knowledgebase. 
+For more details and documentation, you can visit https://dotnetreport.com/docs/. 
 
