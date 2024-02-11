@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using ReportBuilder.Web.Models;
 using System.Data;
@@ -6,7 +7,7 @@ using System.Data.OleDb;
 
 namespace ReportBuilder.Web.Controllers
 {
-    //[Authorize(Roles="Administrator")]
+    [Authorize(Roles = DotNetReportRoles.DotNetReportAdmin)]
     public class DotNetSetupController : Controller
     {
         public async Task<IActionResult> Index(string databaseApiKey = "")

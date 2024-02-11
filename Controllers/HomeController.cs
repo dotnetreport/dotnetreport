@@ -1,16 +1,17 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using MySqlX.XDevAPI.Relational;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using ReportBuilder.Web.Models;
-using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 using System.Text.Json;
-using static ReportBuilder.Web.Controllers.DotNetReportApiController;
 
 namespace ReportBuilder.Web.Controllers
 {
+    [Authorize]
     public class HomeController : Controller
     {
         private readonly IConfigurationRoot _configuration;
@@ -18,8 +19,8 @@ namespace ReportBuilder.Web.Controllers
         public HomeController()
         {
             var builder = new ConfigurationBuilder()
-         .SetBasePath(Directory.GetCurrentDirectory())
-         .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+                 .SetBasePath(Directory.GetCurrentDirectory())
+                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
             _configuration = builder.Build();
 
         }
@@ -33,15 +34,45 @@ namespace ReportBuilder.Web.Controllers
         {
             return View();
         }
+
         [AllowAnonymous]
         public IActionResult Register()
         {
             return View();
         }
+
+        private async Task LoginUser(string email, string contact, bool dotnetAdmin)
+        {
+            var claims = new List<Claim>
+                    {
+                        new Claim(ClaimTypes.Email, email),
+                        new Claim(ClaimTypes.NameIdentifier, contact),
+                        new Claim("http://schemas.microsoft.com/accesscontrolservice/2010/07/claims/identityprovider", "AspNet.Identity"),
+                    };
+
+            if (dotnetAdmin)
+            {
+                claims.Add(
+                    new Claim(ClaimTypes.Role, DotNetReportRoles.DotNetReportAdmin)
+                );
+            }
+            var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var authProperties = new AuthenticationProperties
+            {
+                
+                // Configure additional properties as needed
+            };
+
+            await HttpContext.SignInAsync(
+                IdentityConstants.ApplicationScheme,
+                new ClaimsPrincipal(claimsIdentity), authProperties);
+
+        }
+
         [HttpPost]
         [AllowAnonymous]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> Login(LoginViewModel model)
+        public async Task<ActionResult> Login(LoginViewModel model, string? returnUrl)
         {
             if (!ModelState.IsValid)
             {
@@ -49,7 +80,7 @@ namespace ReportBuilder.Web.Controllers
             }
             var settings = new DotNetReportSettings
             {
-                ApiUrl = _configuration.GetValue<string>("dotNetReport:apiUrl"),
+                ApiUrl = _configuration.GetValue<string>("dotNetReport:accountapiurl"),
             };
             using (var client = new HttpClient())
             {
@@ -60,19 +91,31 @@ namespace ReportBuilder.Web.Controllers
                 });
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + "/account/login"), content);
                 var stringContent = await response.Content.ReadAsStringAsync();
-                using (JsonDocument document = JsonDocument.Parse(stringContent))
+                var loginResult = JsonConvert.DeserializeObject<LoginResult>(stringContent) ?? new LoginResult
                 {
-                    JsonElement root = document.RootElement;
-                    if (root.TryGetProperty("success", out JsonElement successElement) && successElement.ValueKind == JsonValueKind.True)
+                    Success = false,
+                    Message = "Could not Login, please try again"
+                };
+
+                if (loginResult.Success)
+                {
+                    await LoginUser(model.Email, loginResult.PrimaryContact, true);
+
+                    if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
                     {
-                        HttpContext.Session.SetString("UserEmail", model.Email);
-                        return RedirectToAction("Index", "DotNetSetup");
+                        return Redirect(returnUrl);
+                    }
+                    else
+                    {
+                        return RedirectToAction("Index", "Home");
                     }
                 }
-                ModelState.AddModelError(string.Empty, "Invalid login attempt.");
+                
+                ModelState.AddModelError(string.Empty, loginResult.Message);
                 return View(model);
             }
         }
+
         [HttpPost]
         [AllowAnonymous]
         [ValidateAntiForgeryToken]
@@ -87,7 +130,7 @@ namespace ReportBuilder.Web.Controllers
 
             var settings = new DotNetReportSettings
             {
-                ApiUrl = _configuration.GetValue<string>("dotNetReport:apiUrl"),
+                ApiUrl = _configuration.GetValue<string>("dotNetReport:accountapiurl"),
             };
             using (var client = new HttpClient())
             {
@@ -108,8 +151,9 @@ namespace ReportBuilder.Web.Controllers
                         string privateApiKey = root.GetProperty("PrivateApiKey").GetString();
                         string dataConnectKey = root.GetProperty("DataConnectKey").GetString();
                         UpdateConfigurationFile(accountApiKey, privateApiKey, dataConnectKey);
-                        HttpContext.Session.SetString("UserEmail", model.Email);
-                        return RedirectToAction("Index", "DotNetSetup");
+
+
+                        return RedirectToAction("Index", "Home");
 
                     }
                 }

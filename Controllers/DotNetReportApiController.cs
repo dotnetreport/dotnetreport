@@ -11,7 +11,7 @@ using System.Web;
 
 namespace ReportBuilder.Web.Controllers
 {
-    //[Authorize]
+    [Authorize]
     [Route("api/[controller]/[action]")]
     [ApiController]
     public class DotNetReportApiController : ControllerBase

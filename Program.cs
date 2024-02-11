@@ -1,9 +1,34 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Identity;
+using ReportBuilder.Web.Controllers;
 using ReportBuilder.Web.Jobs;
 using ReportBuilder.Web.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+var services = builder.Services;
+
+// Add Identity services to the services container.
+services.AddIdentity<IdentityUser, IdentityRole>(options =>
+{
+    // Identity options configuration, like password strength, lockout duration, etc.
+})
+.AddUserStore<DotNetReportUserStore>()
+.AddRoleStore<DotNetReportRoleStore>()
+.AddDefaultTokenProviders();
 
 builder.Services.AddControllersWithViews();
+
+// Configure authentication
+services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = IdentityConstants.ApplicationScheme;
+    options.DefaultChallengeScheme = IdentityConstants.ApplicationScheme;
+}).AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
+{
+    options.LoginPath = "/Home/Login";
+    options.LogoutPath = "/Home/Logout";
+    options.AccessDeniedPath = "/Home/Index";
+});
 
 builder.Services.AddCors(options =>
 {
@@ -14,6 +39,7 @@ builder.Services.AddCors(options =>
               .AllowAnyOrigin();
     });
 });
+
 
 var app = builder.Build();
 
@@ -35,6 +61,7 @@ app.UseStaticFiles();
 app.UseRouting();
 app.UseCors();
 
+app.UseAuthentication(); 
 app.UseAuthorization();
 
 app.MapControllerRoute(

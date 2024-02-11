@@ -1,11 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using ReportBuilder.Web.Models;
 using System.Web;
 
 namespace ReportBuilder.Web.Controllers
 {
-    //[Authorize]
+    [Authorize]
     public class DotNetReportController : Controller
     {
 

@@ -19,7 +19,6 @@ using System.Web;
 using Npgsql;
 using MySql.Data.MySqlClient;
 using static ReportBuilder.Web.Controllers.DotNetReportApiController;
-using System.ComponentModel.DataAnnotations;
 
 namespace ReportBuilder.Web.Models
 {
@@ -1541,42 +1540,6 @@ namespace ReportBuilder.Web.Models
                 //return csv;
             }
         }
-    }
-    public class LoginViewModel
-    {
-        [Required]
-        [Display(Name = "Email")]
-        [EmailAddress]
-        public string Email { get; set; }
-
-        [Required]
-        [DataType(DataType.Password)]
-        [Display(Name = "Password")]
-        public string Password { get; set; }
-
-        [Display(Name = "Remember me?")]
-        public bool RememberMe { get; set; }
-    }
-    public class RegisterViewModel
-    {
-        [Display(Name = "Business Name")]
-        public string? BusinessName { get; set; }
-
-        [Required]
-        [Display(Name = "Primary Contact")]
-        public string PrimaryContact { get; set; }
-
-
-        [Display(Name = "Phone Number")]
-        public string? PhoneNumber { get; set; }
-
-        [Required]
-        [EmailAddress]
-        [Display(Name = "Account Email")]
-        public string Email { get; set; }
-        public string IpAddress { get; set; } = "";
-
-
     }
 
     public static class DatabaseConnectionFactory
