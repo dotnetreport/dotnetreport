@@ -598,7 +598,7 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        public static dynamic GetDbConnectionSettings(string account, string dataConnect)
+        public static dynamic GetDbConnectionSettings(string account, string dataConnect, bool addOledbProvider = true)
         {
             var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
             if (!System.IO.File.Exists(_configFilePath))
@@ -613,7 +613,7 @@ namespace ReportBuilder.Web.Controllers
             var dotNetReportSection = config[$"dotNetReport"] as JObject;
 
             // First try to get connection from the dotnetreport appsettings file
-            if (dotNetReportSection != null)
+            if (dotNetReportSection != null && !string.IsNullOrEmpty(dataConnect))
             {
                 var dataConnectSection = dotNetReportSection[dataConnect] as JObject;
                 if (dataConnectSection != null)
@@ -625,7 +625,7 @@ namespace ReportBuilder.Web.Controllers
             {
                 // Next try to get config from appsettings (original method)
                 var connection = DotNetSetupController.GetConnection();
-                var connectionString = DotNetSetupController.GetConnectionString(connection).Result;
+                var connectionString = DotNetSetupController.GetConnectionString(connection, addOledbProvider).Result;
 
                 if (!string.IsNullOrEmpty(connectionString))
                 {
@@ -660,7 +660,7 @@ namespace ReportBuilder.Web.Controllers
             public bool testOnly { get; set; }
         }
 
-        //[Authorize(Roles="Administrator")]
+        [Authorize(Roles=DotNetReportRoles.DotNetReportAdmin)]
         [HttpPost]
         public async Task<IActionResult> UpdateDbConnection(UpdateDbConnectionModel model)
         {

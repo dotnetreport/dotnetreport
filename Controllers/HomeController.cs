@@ -15,9 +15,14 @@ namespace ReportBuilder.Web.Controllers
     public class HomeController : Controller
     {
         private readonly IConfigurationRoot _configuration;
+        private readonly SignInManager<IdentityUser> _signInManager;
+        private readonly UserManager<IdentityUser> _userManager;
 
-        public HomeController()
+        public HomeController(SignInManager<IdentityUser> signInManager, UserManager<IdentityUser> userManager)
         {
+            _signInManager = signInManager;
+            _userManager = userManager;
+        
             var builder = new ConfigurationBuilder()
                  .SetBasePath(Directory.GetCurrentDirectory())
                  .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
@@ -32,12 +37,22 @@ namespace ReportBuilder.Web.Controllers
         [AllowAnonymous]
         public IActionResult Login()
         {
+            if (User.Identity.IsAuthenticated)
+            {
+                return RedirectToAction("Index", "Home");
+            }
+
             return View();
         }
 
         [AllowAnonymous]
         public IActionResult Register()
         {
+            if (User.Identity.IsAuthenticated)
+            {
+                return RedirectToAction("Index", "Home");
+            }
+
             return View();
         }
 
@@ -85,6 +100,7 @@ namespace ReportBuilder.Web.Controllers
             };
             using (var client = new HttpClient())
             {
+                // try to login with dotnet report account first
                 var content = new FormUrlEncodedContent(new[]
                 {
                          new KeyValuePair<string, string>("Email", model.Email),
@@ -108,6 +124,16 @@ namespace ReportBuilder.Web.Controllers
                     }
                     else
                     {
+                        return RedirectToAction("Index", "Home");
+                    }
+                } 
+                else
+                {
+                    // check if we can login with local account
+                    var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, isPersistent: false, lockoutOnFailure: false);
+                    if (result.Succeeded)
+                    {
+                        // Redirect or return success response
                         return RedirectToAction("Index", "Home");
                     }
                 }
@@ -162,9 +188,9 @@ namespace ReportBuilder.Web.Controllers
                         string dataConnectKey = root.GetProperty("DataConnectKey").GetString();
                         UpdateConfigurationFile(accountApiKey, privateApiKey, dataConnectKey);
 
+                        await LoginUser(model.Email, model.PrimaryContact, true);
 
                         return RedirectToAction("Index", "Home");
-
                     }
                 }
 

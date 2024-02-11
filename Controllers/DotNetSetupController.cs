@@ -33,7 +33,7 @@ namespace ReportBuilder.Web.Controllers
             };
         }
        
-        public static async Task<string> GetConnectionString(ConnectViewModel connect)
+        public static async Task<string> GetConnectionString(ConnectViewModel connect, bool addOledbProvider = true)
         {
             using (var client = new HttpClient())
             {
@@ -42,7 +42,7 @@ namespace ReportBuilder.Web.Controllers
                 response.EnsureSuccessStatusCode();
 
                 var content = await response.Content.ReadAsStringAsync();
-                return DotNetReportHelper.GetConnectionString(content.Replace("\"", ""));
+                return DotNetReportHelper.GetConnectionString(content.Replace("\"", ""), addOledbProvider);
             }
             
         }

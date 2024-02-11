@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.SqlClient;
+using ReportBuilder.Web.Controllers;
 using System.ComponentModel.DataAnnotations;
 
 namespace ReportBuilder.Web.Models
@@ -7,6 +8,21 @@ namespace ReportBuilder.Web.Models
 
     public class DotNetReportIdentity
     {
+        public static string GetConnection()
+        {
+            return GetConnection("", "");
+        }
+
+        public static string GetConnection(string account, string dataConnect)
+        {
+            var dbConfig = DotNetReportApiController.GetDbConnectionSettings(account, dataConnect, false);
+            if (dbConfig != null)
+            {
+                return dbConfig["ConnectionString"].ToString(); 
+            }
+
+            return "";
+        }
     }
 
     public static class  DotNetReportRoles
@@ -82,13 +98,13 @@ namespace ReportBuilder.Web.Models
         public string PrimaryContact { get; set; }
     }
 
-    public class DotNetReportUserStore : IUserStore<IdentityUser>
+    public class DotNetReportUserStore : IUserStore<IdentityUser>, IUserPasswordStore<IdentityUser>
     {
         private string _connectionString;
 
         public DotNetReportUserStore()
         {
-
+            _connectionString = DotNetReportIdentity.GetConnection();
         }
 
         public DotNetReportUserStore(string connectionString)
@@ -210,7 +226,7 @@ namespace ReportBuilder.Web.Models
             {
                 await connection.OpenAsync(cancellationToken);
 
-                using (var command = new SqlCommand("SELECT * FROM AspNetUsers WHERE NormalizedUserName = @NormalizedUserName", connection))
+                using (var command = new SqlCommand("SELECT * FROM AspNetUsers WHERE UPPER(NormalizedUserName) = @NormalizedUserName AND LockoutEnabled = 0", connection))
                 {
                     command.Parameters.AddWithValue("@NormalizedUserName", normalizedUserName);
 
@@ -222,7 +238,8 @@ namespace ReportBuilder.Web.Models
                             {
                                 Id = reader.GetString(reader.GetOrdinal("Id")),
                                 UserName = reader.GetString(reader.GetOrdinal("UserName")),
-                                // Other properties
+                                Email = reader.GetString(reader.GetOrdinal("Email")),
+                                PasswordHash = reader.GetString(reader.GetOrdinal("PasswordHash"))
                             };
                         }
                     }
@@ -269,6 +286,24 @@ namespace ReportBuilder.Web.Models
             throw new NotImplementedException();
         }
 
+        public Task SetPasswordHashAsync(IdentityUser user, string passwordHash, CancellationToken cancellationToken)
+        {
+            // Set the password hash for the user
+            user.PasswordHash = passwordHash;
+            return Task.CompletedTask;
+        }
+
+        public Task<string> GetPasswordHashAsync(IdentityUser user, CancellationToken cancellationToken)
+        {
+            // Return the password hash for the user
+            return Task.FromResult(user.PasswordHash);
+        }
+
+        public Task<bool> HasPasswordAsync(IdentityUser user, CancellationToken cancellationToken)
+        {
+            // Return true if the password hash is set, indicating the user has a password
+            return Task.FromResult(user.PasswordHash != null);
+        }
     }
 
     public class DotNetReportRoleStore : IRoleStore<IdentityRole>

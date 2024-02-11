@@ -89,13 +89,7 @@ namespace ReportBuilder.Web.Controllers
 
         private string GetConnection(string account, string dataConnect)
         {
-            var dbConfig = DotNetReportApiController.GetDbConnectionSettings(account, dataConnect);
-            if (dbConfig == null)
-            {
-                throw new Exception("Data Connection settings not found");
-            }
-
-            return dbConfig["ConnectionString"].ToString();
+            return DotNetReportIdentity.GetConnection(account, dataConnect);
         }
 
         public IActionResult ExistingUsersTable([FromBody] UserModel model)
@@ -199,11 +193,13 @@ namespace ReportBuilder.Web.Controllers
                     var user = new IdentityUser
                     {
                         UserName = model.UserName,
-                        Email = model.Email
+                        Email = model.Email,
+                        NormalizedUserName = model.Email.ToUpper(),
+                        NormalizedEmail = model.Email.ToUpper(),
                     };
                     
-                    user.PasswordHash = HashPassword(user, model.Password);
-                    user.LockoutEnabled = model.IsActive;
+                    user.PasswordHash = _passwordHasher.HashPassword(user, model.Password); 
+                    user.LockoutEnabled = !model.IsActive;
                     var result = await _userStore.CreateAsync(user, CancellationToken.None);
 
                     if (result.Succeeded)
@@ -323,7 +319,7 @@ namespace ReportBuilder.Web.Controllers
                 {
                     connection.Open();
                     string updateUserDataQuery = $@"UPDATE [dbo].[AspNetUsers] SET 
-                     UserName = '{model.UserName}', Email = '{model.Email}',LockoutEnabled ='{model.IsActive}'
+                     UserName = '{model.UserName}', Email = '{model.Email}',LockoutEnabled ='{!model.IsActive}'
                      WHERE  Id = '{model.UserId}';";
                     // Check if the table exists
                     if (TableAndColumnExist(connection, "AspNetUsers", "Id"))
@@ -527,11 +523,6 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        private string HashPassword(IdentityUser user, string password)
-        {
-            return _passwordHasher.HashPassword(user, password);
-        }
-
         // Helper method to check if the table and column exist
         private bool TableAndColumnExist(SqlConnection connection, string tableName, string columnName)
         {
@@ -547,20 +538,18 @@ namespace ReportBuilder.Web.Controllers
         {
             List<UserViewModel> usersData = new List<UserViewModel>();
 
-            // Assuming there is a Users table with columns UserId, UserName, Email
             using (var command = new SqlCommand("SELECT Id, UserName, Email, [LockoutEnabled] as [IsActive] FROM AspNetUsers", connection))
             {
                 using (var reader = command.ExecuteReader())
                 {
                     while (reader.Read())
                     {
-                        // Map data to UserViewModel
                         var user = new UserViewModel
                         {
                             UserId = reader.GetString(0),
                             UserName = reader.GetString(1),
                             Email = reader.GetString(2),
-                            IsActive= reader.GetBoolean(3)
+                            IsActive= !reader.GetBoolean(3)
                         };
                         usersData.Add(user);
                     }
