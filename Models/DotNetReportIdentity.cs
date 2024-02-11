@@ -168,6 +168,11 @@ namespace ReportBuilder.Web.Models
 
         public async Task<IdentityUser> FindByIdAsync(string userId, CancellationToken cancellationToken)
         {
+            if (string.IsNullOrEmpty(_connectionString))
+            {
+                return new IdentityUser { Email = userId, Id = userId, UserName = userId, NormalizedUserName = userId };
+            }
+
             using (var connection = new SqlConnection(_connectionString))
             {
                 await connection.OpenAsync(cancellationToken);
@@ -196,6 +201,11 @@ namespace ReportBuilder.Web.Models
 
         public async Task<IdentityUser> FindByNameAsync(string normalizedUserName, CancellationToken cancellationToken)
         {
+            if (string.IsNullOrEmpty(_connectionString))
+            {
+                return new IdentityUser { Email = normalizedUserName, Id = normalizedUserName, UserName = normalizedUserName, NormalizedUserName = normalizedUserName };
+            }
+
             using (var connection = new SqlConnection(_connectionString))
             {
                 await connection.OpenAsync(cancellationToken);

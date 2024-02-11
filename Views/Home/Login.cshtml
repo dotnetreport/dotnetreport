@@ -20,7 +20,9 @@ Layout = "~/Views/shared/_Layout.Report.cshtml";
                         <h4>Welcome back, please Login below.</h4>
                     </div>
                     <br />
-                    @Html.ValidationSummary(true, "", new { @class = "text-danger" })
+                    <div class="form-group">
+                            @Html.ValidationSummary(true, "", new { @class = "text-danger" })
+                    </div>
                     <div class="form-group">
                         @Html.LabelFor(m => m.Email, new { @class = "control-label" })
                         <div>

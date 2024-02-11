@@ -16,6 +16,14 @@ services.AddIdentity<IdentityUser, IdentityRole>(options =>
 .AddRoleStore<DotNetReportRoleStore>()
 .AddDefaultTokenProviders();
 
+services.ConfigureApplicationCookie(options =>
+{
+    options.LoginPath = "/Home/Login";
+    options.LogoutPath = "/Home/Logout";
+    options.AccessDeniedPath = "/Home/Index";
+});
+
+
 builder.Services.AddControllersWithViews();
 
 // Configure authentication

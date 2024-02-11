@@ -48,6 +48,7 @@ namespace ReportBuilder.Web.Controllers
                         new Claim(ClaimTypes.Email, email),
                         new Claim(ClaimTypes.NameIdentifier, contact),
                         new Claim("http://schemas.microsoft.com/accesscontrolservice/2010/07/claims/identityprovider", "AspNet.Identity"),
+                        new Claim(ClaimTypes.Name, contact)
                     };
 
             if (dotnetAdmin)
@@ -94,7 +95,7 @@ namespace ReportBuilder.Web.Controllers
                 var loginResult = JsonConvert.DeserializeObject<LoginResult>(stringContent) ?? new LoginResult
                 {
                     Success = false,
-                    Message = "Could not Login, please try again"
+                    Message = "Could not Login, please try again."
                 };
 
                 if (loginResult.Success)
@@ -115,6 +116,15 @@ namespace ReportBuilder.Web.Controllers
                 return View(model);
             }
         }
+
+        [HttpPost]
+        public async Task<ActionResult> LogOut()
+        {
+            await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+
+            return RedirectToAction("Index", "Home");
+        }
+
 
         [HttpPost]
         [AllowAnonymous]
@@ -162,6 +172,7 @@ namespace ReportBuilder.Web.Controllers
                 return View(model);
             }
         }
+
         public void UpdateConfigurationFile(string accountApiKey, string privateApiKey, string dataConnectKey)
         {
             var _configFileName = "appsettings.json";

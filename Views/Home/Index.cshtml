@@ -1,4 +1,5 @@
 ﻿@using Newtonsoft.Json;
+@using ReportBuilder.Web.Models;
 @{
     ViewBag.Title = "DNR Report Builder";
     Layout = "~/Views/shared/_Layout.Report.cshtml";
@@ -33,6 +34,10 @@
             <img src="/img/report-main.png">
         </div>
         <div class="hero-text">
+            @if (User.Identity.IsAuthenticated)
+                {
+                <h4>Hi @User.Identity.Name</h4>
+                }
             <h1>Welcome to Dotnet Report</h1>
             <p>DNR is an easy-to-use and feature-rich Reports, Analytics and Dashboards system.</p>
 
@@ -44,7 +49,7 @@
         <div class="col-md-4">
             <div class="list-group">
                 <div class="list-group-item list-group-item-dark list-group-item-heading">
-                    DNR Front End for Users
+                    Front End Options for Users
                 </div>
                 <a href="/dotnetreport/dashboard" class="list-group-item list-group-item-action" data-bind="click: viewManageDashboards">
                     <i class="fa fa-dashboard mr-2"></i>View/Design Dashboards
@@ -63,12 +68,14 @@
             </div>
 
         </div>
-        <div class="col-md-4">
+        @if (User.IsInRole(DotNetReportRoles.DotNetReportAdmin))
+        {
+            <div class="col-md-4">
 
             <div class="list-group">
 
                 <div class="list-group-item list-group-item-dark list-group-item-heading">
-                    DNR Backend for Admins
+                    Backend Options for Admins
                 </div>                
                 <a href="/dotnetsetup" class="list-group-item list-group-item-action">
                     <i class="fa fa-database mr-2"></i>Manage Database
@@ -85,6 +92,7 @@
             </div>
 
         </div>
+        }
 
     </div>
 </div>

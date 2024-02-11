@@ -1,4 +1,8 @@
-﻿<!DOCTYPE html>
+﻿@using Microsoft.AspNetCore.Identity
+@using ReportBuilder.Web.Models;
+@inject SignInManager<IdentityUser> SignInManager
+@inject UserManager<IdentityUser> UserManager
+<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8" />
@@ -39,12 +43,29 @@
                         <a class="dropdown-item" href="#" onclick="changeTheme('solar')">Solar</a>
                     </div>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/DotnetReport/Dashboard">Dashboards</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/DotnetReport">Reports</a>
-                </li>               
+                @if (User.Identity.IsAuthenticated)
+                {
+                    <li class="nav-item">
+                        <a class="nav-link" href="/DotnetReport/Dashboard"><span class="fa fa-dashboard"></span> Dashboards</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/DotnetReport"><span class="fa fa-file"></span> Reports</a>
+                    </li>                                   
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fa fa-user"></i> @User.Identity.Name
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-right" aria-labelledby="userDropdown">
+                            @if (User.IsInRole(DotNetReportRoles.DotNetReportAdmin))
+                            {
+                                <a class="dropdown-item" href="/DotnetSetup"><span class="fa fa-gear"></span> Configure Database</a>
+                            }
+                            <form id="logoutForm" action="@Url.Action("Logout", "Home")" method="post">
+                                <a class="dropdown-item" href="javascript:logout()"><span class="fa fa-close"></span> Logout</a>
+                            </form>
+                        </div>
+                    </li>
+                }
             </ul>
         </div>
     </nav>
@@ -62,5 +83,16 @@
     @await Html.PartialAsync("_DotnetReportJsLibrariesPartial")
 
     @RenderSection("scripts", required: false)
+
+    <script type="text/javascript">        
+        function logout() 
+        {
+            bootbox.confirm("Are you sure you want to Logout?", function(x) {
+                if (x) {
+                    document.getElementById('logoutForm').submit();
+                }
+            });
+        }
+    </script>
 </body>
 </html>
