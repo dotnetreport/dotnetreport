@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Caching.Memory;
 using ReportBuilder.Web.Controllers;
 using System.ComponentModel.DataAnnotations;
 
@@ -8,6 +9,9 @@ namespace ReportBuilder.Web.Models
 
     public class DotNetReportIdentity
     {
+        private static readonly MemoryCache Cache = new MemoryCache(new MemoryCacheOptions());
+        private static readonly TimeSpan CacheExpirationOptions = TimeSpan.FromMinutes(60); // Cache expiration time
+
         public static string GetConnection()
         {
             return GetConnection("", "");
@@ -27,10 +31,20 @@ namespace ReportBuilder.Web.Models
 
         public static List<UserViewModel> GetAppUsers()
         {
-            using (var conn = new SqlConnection(GetConnection())) {
-                conn.Open();    
-                return GetAppUsers(conn);
+            const string cacheKey = "AppUsers";
+            if (!Cache.TryGetValue(cacheKey, out List<UserViewModel> users))
+            {
+                using (var conn = new SqlConnection(GetConnection()))
+                {
+                    conn.Open();
+                    users = GetAppUsers(conn);
+                    var cacheEntryOptions = new MemoryCacheEntryOptions()
+                        .SetSlidingExpiration(CacheExpirationOptions);
+
+                    Cache.Set(cacheKey, users, cacheEntryOptions);
+                }
             }
+            return users;
         }
 
         public static List<UserViewModel> GetAppUsers(SqlConnection connection)
@@ -61,11 +75,22 @@ namespace ReportBuilder.Web.Models
 
         public static List<UserViewModel> GetAppRoles()
         {
-            using (var conn = new SqlConnection(GetConnection()))
+            const string cacheKey = "AppRoles";
+            if (!Cache.TryGetValue(cacheKey, out List<UserViewModel> roles))
             {
-                conn.Open();
-                return GetAppRoles(conn);
+                using (var conn = new SqlConnection(GetConnection()))
+                {
+                    conn.Open();
+                    roles = GetAppRoles(conn);
+
+                    var cacheEntryOptions = new MemoryCacheEntryOptions()
+                        .SetSlidingExpiration(CacheExpirationOptions);
+
+                    Cache.Set(cacheKey, roles, cacheEntryOptions);
+                }
             }
+
+            return roles;
         }
 
         public static List<UserViewModel> GetAppRoles(SqlConnection connection)
@@ -119,7 +144,11 @@ namespace ReportBuilder.Web.Models
 
             return usersData;
         }
-
+        public static void BustCache()
+        {
+            Cache.Remove("AppUsers");
+            Cache.Remove("AppRoles");
+        }
     }
 
     public static class  DotNetReportRoles

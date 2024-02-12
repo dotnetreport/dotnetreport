@@ -204,6 +204,7 @@ namespace ReportBuilder.Web.Controllers
 
                     if (result.Succeeded)
                     {
+                        DotNetReportIdentity.BustCache();
                         return new JsonResult(new { success = true, message = "User added successfully" });
                     }
                     else
@@ -247,6 +248,7 @@ namespace ReportBuilder.Web.Controllers
                                 var successfordatainsert = ExecuteQuery(insertRoleDataQuery, connection);
                                 if (successfordatainsert == null)
                                 {
+                                    DotNetReportIdentity.BustCache();
                                     return new JsonResult(new { success = true, message = "Role Table created and record added successfully" });
                                 }
                                 return new JsonResult(new { success = false, message = $@"Unexpected error when inserting Role Data {successfordatainsert}" });
@@ -296,6 +298,7 @@ namespace ReportBuilder.Web.Controllers
                             var successfordatainsert = ExecuteQuery(insertUserRoleDataQuery, connection);
                             if (successfordatainsert == null)
                             {
+                                DotNetReportIdentity.BustCache();
                                 return new JsonResult(new { success = true, message = "User Role Table created and record added successfully" });
                             }
                             return new JsonResult(new { success = false, message = $@"Unexpected error when inserting User Role {successfordatainsert}" });
@@ -327,6 +330,7 @@ namespace ReportBuilder.Web.Controllers
                         var success = ExecuteQuery(updateUserDataQuery, connection);
                         if (success == null)
                         {
+                            DotNetReportIdentity.BustCache();
                             return new JsonResult(new { success = true, message = "User updated" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
                         }
                         return new JsonResult(new { success = false, message = $@"An unexpected error occurred {success}" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
@@ -357,6 +361,7 @@ namespace ReportBuilder.Web.Controllers
                         var success = ExecuteQuery(updateRoleQuery, connection);
                         if (success == null)
                         {
+                            DotNetReportIdentity.BustCache();
                             return new JsonResult(new { success = true, message = "Role updated" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
                         }
                         return new JsonResult(new { success = false, message = $@"An unexpected error occurred {success}" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
@@ -388,6 +393,7 @@ namespace ReportBuilder.Web.Controllers
                         var success = ExecuteQuery(updateUserRoleQuery, connection);
                         if (success == null)
                         {
+                            DotNetReportIdentity.BustCache();
                             return new JsonResult(new { success = true, message = "User Roles updated" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
                         }
                         return new JsonResult(new { success = false, message = $@"An unexpected error occurred {success}" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
@@ -417,6 +423,7 @@ namespace ReportBuilder.Web.Controllers
                         var success = ExecuteQuery(DeleteUserQuery, connection);
                         if (success == null)
                         {
+                            DotNetReportIdentity.BustCache();
                             return new JsonResult(new { success = true, message = "User deleted" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
                         }
                         return new JsonResult(new { success = false, message = $@"User not deleted {success}" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
@@ -446,6 +453,7 @@ namespace ReportBuilder.Web.Controllers
                         var success = ExecuteQuery(deleteRoleQuery, connection);
                         if (success == null)
                         {
+                            DotNetReportIdentity.BustCache();
                             return new JsonResult(new { success = true, message = "Role deleted" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
                         }
                         return new JsonResult(new { success = false, message = $@"Role not deleted {success}" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
@@ -476,6 +484,7 @@ namespace ReportBuilder.Web.Controllers
                         var success = ExecuteQuery(deleteUserRoleQuery, connection);
                         if (success == null)
                         {
+                            DotNetReportIdentity.BustCache();
                             return new JsonResult(new { success = true, message = "User role deleted" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
                         }
                         return new JsonResult(new { success = false, message = $@"User role not deleted {success}" }, new JsonSerializerOptions { PropertyNamingPolicy = null });
