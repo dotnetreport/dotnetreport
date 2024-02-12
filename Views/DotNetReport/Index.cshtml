@@ -94,7 +94,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <a class="dropdown-item" href="#" data-bind="click: ManageFolder.deleteFolder">Delete Selected Folder</a>
                                 </div>
                             </li>
-                            <li class="nav-item active">
+                            <li class="nav-item active" data-bind="visible: adminMode">
                                 <a href="#" class="nav-link" data-bind="click: function(){ initHeaderDesigner(); }">
                                     <span class="fa fa-arrow-up"></span> Report Header
                                 </a>
