@@ -75,7 +75,7 @@
     <script type="text/html" id="report-template">
 
         <div class="report-chart" data-bind="attr: {id: 'chart_div_' + $parent.ReportID()}, visible: $parent.isChart"></div>
-
+        <div style="padding-bottom: 20px;">&nbsp;</div>
         <div class="table-responsive" data-bind="with: ReportData">
             <table class="table table-condensed table-striped" data-bind="attr: {class: 'table table-hover table-condensed table-striped ' +  $root.selectedStyle()}">
                 <thead>
