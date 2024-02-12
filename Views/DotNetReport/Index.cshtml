@@ -387,6 +387,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             <a href="#" class="btn btn-primary" data-bind="visible: $root.CanEdit()" data-toggle="modal" data-target="#modal-reportbuilder">
                                 Edit Report
                             </a>
+                            <button class="btn btn-primary" data-bind="visible: CanSaveReports(), click: SaveWithoutRun">Save Report</button>
 
                             <div class="btn-group">
                                 <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">

@@ -2195,6 +2195,7 @@ var reportViewModel = function (options) {
 			ShowUniqueRecords: self.ShowUniqueRecords(),
 			ReportSettings: JSON.stringify({
 				ShowExpandOption: self.ShowExpandOption(),
+				SelectedStyle: self.selectedStyle(),
 				DontExecuteOnRun: self.DontExecuteOnRun()
 			}),
 			OnlyTop: self.maxRecords() ? self.OnlyTop() : null,
@@ -2337,7 +2338,7 @@ var reportViewModel = function (options) {
 				type: "POST",
 				data: JSON.stringify({
 					method: "/ReportApi/RunReport",
-					SaveReport: self.CanSaveReports() ? self.SaveReport() : false,
+					SaveReport: self.CanSaveReports() ? (saveOnly || self.SaveReport()) : false,
 					ReportJson: JSON.stringify(self.BuildReportData([], isComparison, i - 1)),
 					adminMode: self.adminMode(),
 					userIdForFilter: self.userIdForFilter,
@@ -2351,7 +2352,7 @@ var reportViewModel = function (options) {
 				self.allSqlQueries(self.allSqlQueries() + (self.allSqlQueries() ? ',' : '') + result.sql);
 
 				self.ReportID(result.reportId);
-				if (self.SaveReport()) {
+				if (self.SaveReport() || saveOnly) {
 
 					if (saveOnly && seriesCount === 0) {
 						//SeriesCount = 0;
@@ -3252,6 +3253,7 @@ var reportViewModel = function (options) {
 		self.useReportHeader(report.UseReportHeader && !report.HideReportHeader);
 
 		var reportSettings = JSON.parse(report.ReportSettings || "{}");
+		self.selectedStyle(reportSettings.SelectedStyle || 'default');
 		self.ShowExpandOption(reportSettings.ShowExpandOption === true ? true : false);
 		self.DontExecuteOnRun(reportSettings.DontExecuteOnRun === true ? true : false);
 
