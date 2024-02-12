@@ -86,14 +86,18 @@ namespace ReportBuilder.Web.Controllers
 
             var json = new StringBuilder();
             var dt = new DataTable();
-            using (var conn = new OleDbConnection(DotNetReportHelper.GetConnectionString(connectKey)))
-            {
-                conn.Open();
-                var command = new OleDbCommand(sql, conn);
-                var adapter = new OleDbDataAdapter(command);
 
-                adapter.Fill(dt);
+            var connect = DotNetSetupController.GetConnection();
+            var dbConfig = GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey);
+            if (dbConfig == null)
+            {
+                throw new Exception("Data Connection settings not found");
             }
+
+            var dbtype = dbConfig["DatabaseType"].ToString();
+            string connectionString = dbConfig["ConnectionString"].ToString();
+            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+            dt = databaseConnection.ExecuteQuery(connectionString, sql);
 
             var data = new List<object>();
             foreach (DataRow dr in dt.Rows)
@@ -647,7 +651,7 @@ namespace ReportBuilder.Web.Controllers
                 {
                     var dbConfig = new JObject
                     {
-                        ["DatabaseType"] = "",
+                        ["DatabaseType"] = "MS Sql",
                         ["ConnectionKey"] = "Default",
                         ["ConnectionString"] = connectionString
                     };
