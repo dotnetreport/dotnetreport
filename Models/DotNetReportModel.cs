@@ -1080,7 +1080,7 @@ namespace ReportBuilder.Web.Models
                 {
                     // Draw column headers
                     var columnFormatting = columns[k];
-                    var columnName = dt.Columns[k].ColumnName;
+                        var columnName = !string.IsNullOrEmpty(columns[k].customfieldLabel) ? columns[k].customfieldLabel : columns[k].fieldName;
                     
                     rect = new XRect(currentXPosition, currentYPosition, columnWidth, 20);
 
@@ -1426,10 +1426,11 @@ namespace ReportBuilder.Web.Models
 
                 //Build the CSV file data as a Comma separated string.
                 string csv = string.Empty;
-                foreach (DataColumn column in dt.Columns)
+                for (int i = 0; i < dt.Columns.Count; i++)
                 {
-                    //Add the Header row for CSV file.
-                    csv += column.ColumnName + ',';
+                    DataColumn column = dt.Columns[i];
+                    var columnName = !string.IsNullOrEmpty(columns[i].customfieldLabel) ? columns[i].customfieldLabel : columns[i].fieldName;
+                    csv += columnName + ',';
                 }
 
                 //Add new line.
