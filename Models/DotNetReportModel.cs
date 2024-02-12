@@ -390,7 +390,7 @@ namespace ReportBuilder.Web.Models
             var connString = Startup.StaticConfig.GetConnectionString(key);
             if (connString == null)
             {
-                throw new Exception($"Connection string using key '{key}' not found in config file");
+                return "";
             }
 
             connString = connString.Replace("Trusted_Connection=True", "");

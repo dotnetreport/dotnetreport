@@ -95,3 +95,12 @@
 
     </div>
 </div>
+
+@section scripts{
+    @if (ViewBag.NewAccount == true)
+    {
+    <script>
+        toastr.success("Thank you for signing up. Your new account is ready!")
+    </script>
+    }
+}

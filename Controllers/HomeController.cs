@@ -31,6 +31,8 @@ namespace ReportBuilder.Web.Controllers
         }
         public IActionResult Index()
         {
+            ViewBag.NewAccount = TempData["IsNewAccount"] != null && (bool)TempData["IsNewAccount"];
+            TempData["IsNewAccount"] = false;
             return View();
         }
 
@@ -158,6 +160,7 @@ namespace ReportBuilder.Web.Controllers
         public async Task<ActionResult> Register(RegisterViewModel model)
         {
             model.IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+            var errors = new List<string>();
 
             if (!ModelState.IsValid)
             {
@@ -181,7 +184,7 @@ namespace ReportBuilder.Web.Controllers
                 using (JsonDocument document = JsonDocument.Parse(stringContent))
                 {
                     JsonElement root = document.RootElement;
-                    if (root.TryGetProperty("success", out JsonElement successElement) && successElement.ValueKind == JsonValueKind.True)
+                    if (root.TryGetProperty("Success", out JsonElement successElement) && successElement.ValueKind == JsonValueKind.True)
                     {
                         string accountApiKey = root.GetProperty("AccountApiKey").GetString();
                         string privateApiKey = root.GetProperty("PrivateApiKey").GetString();
@@ -190,11 +193,24 @@ namespace ReportBuilder.Web.Controllers
 
                         await LoginUser(model.Email, model.PrimaryContact, true);
 
+                        TempData["IsNewAccount"] = true;
                         return RedirectToAction("Index", "Home");
+                    }
+                    else
+                    {
+                        JsonElement errorsElement;
+                        if (root.TryGetProperty("Errors", out errorsElement) && errorsElement.ValueKind == JsonValueKind.Array)
+                        {
+                            foreach (JsonElement error in errorsElement.EnumerateArray())
+                            {
+                                errors.Add(error.GetString());
+                            }
+                        }
                     }
                 }
 
-                ModelState.AddModelError(string.Empty, "Account Could Not Created");
+                ModelState.AddModelError(string.Empty, "Account could not be created. Please try again");
+                errors.ForEach(e => ModelState.AddModelError(string.Empty, e));
                 return View(model);
             }
         }

@@ -19,7 +19,9 @@
                     </div>
                     <br />
                 </div>
-                        
+                <div class="form-group">
+                    @Html.ValidationSummary(true, "", new { @class = "text-danger" })
+                </div>
                 <div class="form-group">
                     @Html.LabelFor(m => m.PrimaryContact, new { @class = "control-label requird" })
                     <div>
