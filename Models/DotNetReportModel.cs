@@ -1559,7 +1559,8 @@ namespace ReportBuilder.Web.Models
                     databaseConnection = new PostgresDatabaseConnection();
                     break;
                 default:
-                    throw new Exception($"Unsupported database type: {dbtype}");
+                    databaseConnection = new OleDbDatabaseConnection();
+                    break;
             }
 
             return databaseConnection;
@@ -1853,6 +1854,102 @@ namespace ReportBuilder.Web.Models
             return dataTable;
         }
 
+    }
+
+    public class OleDbDatabaseConnection : IDatabaseConnection
+    {
+        public bool TestConnection(string connectionString)
+        {
+            using (OleDbConnection conn = new OleDbConnection(connectionString))
+            {
+                try
+                {
+                    //Test Connection
+                    conn.Open();
+                    conn.Close();
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    throw ex;
+                }
+            }
+        }
+
+
+        public string CreateConnection(UpdateDbConnectionModel model)
+        {
+            OleDbConnectionStringBuilder OleDbConnectionStringBuilder = new OleDbConnectionStringBuilder();
+
+            // Set other OleDb connection properties
+            OleDbConnectionStringBuilder.DataSource = model.dbServer;
+            OleDbConnectionStringBuilder.Add("Initial Catalog", model.dbName);
+            if (model.dbAuthType.ToLower() == "username")
+            {
+                OleDbConnectionStringBuilder.Add("User ID", model.dbUsername);
+                OleDbConnectionStringBuilder.Add("Password", model.dbPassword);
+            }
+            else
+            {
+                OleDbConnectionStringBuilder.Add("Integrated Security", "SSPI");
+            }
+
+            return OleDbConnectionStringBuilder.ConnectionString;
+        }
+
+        public int GetTotalRecords(string connectionString, string OleDbCount, string OleDb)
+        {
+            int totalRecords = 0;
+
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    using (OleDbCommand command = new OleDbCommand(OleDbCount, conn))
+                    {
+                        if (!OleDb.StartsWith("EXEC"))
+                            totalRecords = (int)command.ExecuteScalar();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Handle exception (log, rethrow, etc.)
+                throw new Exception($"Error executing OleDb query for total records: {ex.Message}", ex);
+            }
+
+            return totalRecords;
+        }
+
+        public DataTable ExecuteQuery(string connectionString, string OleDb)
+        {
+            DataTable dataTable = new DataTable();
+
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    using (OleDbCommand command = new OleDbCommand(OleDb, conn))
+                    {
+                        using (OleDbDataAdapter adapter = new OleDbDataAdapter(command))
+                        {
+                            adapter.Fill(dataTable);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Handle exception (log, rethrow, etc.)
+                throw new Exception($"Error executing OleDb query: {ex.Message}", ex);
+            }
+
+            return dataTable;
+        }
     }
 
 }
