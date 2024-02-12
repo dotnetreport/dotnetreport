@@ -34,7 +34,9 @@ namespace ReportBuilder.Web.Models
             const string cacheKey = "AppUsers";
             if (!Cache.TryGetValue(cacheKey, out List<UserViewModel> users))
             {
-                using (var conn = new SqlConnection(GetConnection()))
+                var connstring = GetConnection();
+                if (string.IsNullOrEmpty(connstring)) return new List<UserViewModel>();
+                using (var conn = new SqlConnection(connstring))
                 {
                     conn.Open();
                     users = GetAppUsers(conn);
@@ -78,7 +80,9 @@ namespace ReportBuilder.Web.Models
             const string cacheKey = "AppRoles";
             if (!Cache.TryGetValue(cacheKey, out List<UserViewModel> roles))
             {
-                using (var conn = new SqlConnection(GetConnection()))
+                var connstring = GetConnection();
+                if (string.IsNullOrEmpty(connstring)) return new List<UserViewModel>();
+                using (var conn = new SqlConnection(connstring))
                 {
                     conn.Open();
                     roles = GetAppRoles(conn);
