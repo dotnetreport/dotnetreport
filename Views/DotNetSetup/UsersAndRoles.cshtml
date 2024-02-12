@@ -1,6 +1,5 @@
 ﻿@using Newtonsoft.Json;
 @{
-    ViewBag.Title = "Setup Report Builder";
     Layout = "~/Views/shared/_Layout.ReportSetup.cshtml";
 }
 
@@ -78,7 +77,8 @@
                     DeleteUserDataUrl: '@Url.Action("DeleteUser", "DotNetUserApi")',
                     DeleteRoleDataUrl: '@Url.Action("DeleteRole", "DotNetUserApi")',
                     DeleteUserRoleDataUrl: '@Url.Action("DeleteUserRole", "DotNetUserApi")',
-                    LoadRolesUrl: '@Url.Action("LoadRolesData","DotNetUserApi")'
+                    LoadRolesUrl: '@Url.Action("LoadRolesData","DotNetUserApi")',
+                    UpdateUserConfigSettingUrl: '@Url.Action("UpdateUserConfigSetting", "DotNetReportApi")',
                 };
 
                 var vm = new manageViewModel(options);
