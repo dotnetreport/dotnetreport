@@ -856,18 +856,17 @@ h2 {
 
 /* Style Blue */
 .style-blue tbody tr:nth-child(odd) {
-    background-color: #99ddff;
+    background-color: #DEEBF7;
 }
 
 .style-blue tbody tr:nth-child(even) {
-    background-color: #b3e6ff;
 }
 
 .style-blue thead th {
-    background-color: #80d4ff;
-    color: #333333;
+    background-color: #CFE2F3;
+    color: #000000;
     padding: 10px;
-    border-bottom: 2px solid #4dc3ff;
+    border-bottom: 1px solid #4dc3ff;
 }
 
 .style-blue a {
@@ -936,18 +935,17 @@ h2 {
 
 /* Style Orange */
 .style-orange tbody tr:nth-child(odd) {
-    background-color: #ffe0b3;
+    background-color: #FCE5CD;
 }
 
 .style-orange tbody tr:nth-child(even) {
-    background-color: #ffebcc;
 }
 
 .style-orange thead th {
-    background-color: #ffcc80;
+    background-color: #F9CB9C;
     color: #333333;
     padding: 10px;
-    border-bottom: 2px solid #ffb84d;
+    border-bottom: 1px solid #ffb84d;
 }
 
 .style-orange a {
@@ -981,20 +979,62 @@ h2 {
 
 
 .style-mixed-bright tbody tr:nth-child(odd) {
-    background-color: #99ff99;
+    background-color: #D5A6BD;
 }
 
 .style-mixed-bright tbody tr:nth-child(even) {
-    background-color: #99ffff;
 }
 
 .style-mixed-bright thead th {
-    background-color: #ff99ff;
+    background-color: #C27BA0;
     color: #333333;
     padding: 10px;
-    border-bottom: 2px solid #d9d9d9;
+    border-bottom: 1px solid #d9d9d9;
 }
 
 .style-mixed-bright a {
     color: #1a1a1a;
 }
+
+
+.dropdown-content {
+    display: flex; /* Use flexbox to lay out child elements in a row */
+    flex-wrap: wrap; /* Allows items to wrap to the next line if needed */
+    background-color: #f9f9f9;
+    box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2);
+    padding: 10px; /* Adds some padding around the options */
+    z-index: 1;
+}
+
+.dropdown-option {
+    display: inline-flex; /* Makes each option an inline flex container */
+    flex-direction: column; /* Aligns the mini-table previews vertically */
+    align-items: center; /* Centers the mini-table previews */
+    cursor: pointer;
+    padding: 5px; /* Adds some padding around each option */
+    margin: 5px; /* Adds some space between the options */
+    border: 1px solid #ccc; /* Adds a border around each option */
+    background-color: #fff; /* Optional: sets a background color for each option */
+}
+
+.mini-table-preview {
+    width: 80px; /* Set a fixed width for the mini-table previews */
+    height: 50px; /* Set a fixed height for the mini-table previews */
+    overflow: hidden; /* Hides any overflow */
+    display: flex; /* Use flexbox for the mini-table layout */
+    flex-direction: column; /* Aligns the rows vertically */
+}
+
+.mini-table-row {
+    display: flex; /* Use flexbox for the row layout */
+    flex-grow: 1; /* Allows rows to expand to fill available space */
+}
+
+.mini-table-cell {
+    flex-grow: 1; /* Allows cells to expand, maintaining the flex layout */
+    border: 1px solid #ddd; /* Adds a border to each cell */
+    box-sizing: border-box; /* Ensures the border is included in the cell's dimensions */
+    width: 15px; /* Sets a fixed width for each cell */
+    height: 10px; /* Sets a different fixed height for each cell, making it rectangular */
+}
+
