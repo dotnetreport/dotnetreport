@@ -560,13 +560,13 @@ var manageViewModel = function (options) {
 
 var usersAndRolesViewModel = function (options) {
 	var self = this;
-	var userConfig = options.model.UserAndRolesConfig || {};
+	var dbConfig = options.model.DbConfig || {};
 	var validator = new validation();
 
 	var apiKey = options.model.AccountApiKey;
 	var dbKey = options.model.DatabaseApiKey;
 
-	self.selectedUserConfig = ko.observable(userConfig.SelectedUserConfig || "not-managed");
+	self.selectedUserConfig = ko.observable(dbConfig.UserConfig || "not-managed");
 	self._selectedUserConfig = ko.observable(self.selectedUserConfig());
 
 	self.confirmUpdate = function (newValue) {
@@ -584,9 +584,36 @@ var usersAndRolesViewModel = function (options) {
 			},
 			callback: function (result) {
 				if (result) {
-					self.selectedUserConfig(newValue);					
+
+					ajaxcall({
+						url: options.UpdateUserConfigSettingUrl,
+						type: 'POST',
+						data: JSON.stringify({
+							account: apiKey,
+							dataConnect: dbKey,
+							userConfig: newValue
+						})
+					}).done(function (response) {
+						if (response) {
+							if (response.success) {
+								self.selectedUserConfig(newValue);
+								self._selectedUserConfig(self.selectedUserConfig());
+								toastr.success('User setting updated successfully');
+							} else {
+								self.selectedUserConfig(self._selectedUserConfig());
+								toastr.error(response.message || 'User setting changes were not successful');
+								return false;
+							}
+						} else {
+							self._selectedUserConfig(self.selectedUserConfig());
+							toastr.error('User setting changes were not successful');
+							return false;
+						}
+					});
 				}
-				self._selectedUserConfig(self.selectedUserConfig());
+				else {
+					self._selectedUserConfig(self.selectedUserConfig());
+				}
 			}
 		});
 	}

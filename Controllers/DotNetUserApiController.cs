@@ -105,7 +105,7 @@ namespace ReportBuilder.Web.Controllers
                     if (TableAndColumnExist(connection, "AspNetUsers", "Id"))
                     {
                         // Fetch users table data from the database
-                        var usersData = FetchUserTableData(connection);
+                        var usersData = DotNetReportIdentity.GetAppUsers(connection);
                         return new JsonResult(new { success = true, message = "Users table found", data = usersData }, new JsonSerializerOptions { PropertyNamingPolicy = null });
                     }
                     else
@@ -131,7 +131,7 @@ namespace ReportBuilder.Web.Controllers
                     // Check if the default Users table and Id column exist in the database
                     if (TableAndColumnExist(connection, "AspNetRoles", "Id"))
                     {
-                        var usersData = FetchRoleTableData(connection);
+                        var usersData = DotNetReportIdentity.GetAppRoles(connection);
                         return new JsonResult(new { success = true, message = "Roles table found", data = usersData }, new JsonSerializerOptions { PropertyNamingPolicy = null });
                     }
                     else
@@ -157,7 +157,7 @@ namespace ReportBuilder.Web.Controllers
                     // Check if the default Users table and Id column exist in the database
                     if (TableAndColumnExist(connection, "AspNetUserRoles", "UserId"))
                     {
-                        var usersData = FetchUserRoleTableData(connection);
+                        var usersData = DotNetReportIdentity.GetAppUserRoles(connection);
                         return new JsonResult(new { success = true, message = "User roles table found", data = usersData }, new JsonSerializerOptions { PropertyNamingPolicy = null });
                     }
                     else
@@ -524,7 +524,7 @@ namespace ReportBuilder.Web.Controllers
         }
 
         // Helper method to check if the table and column exist
-        private bool TableAndColumnExist(SqlConnection connection, string tableName, string columnName)
+        public static bool TableAndColumnExist(SqlConnection connection, string tableName, string columnName)
         {
             using (SqlCommand command = new SqlCommand($"SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '{tableName}' AND COLUMN_NAME = '{columnName}'", connection))
             {
@@ -534,101 +534,7 @@ namespace ReportBuilder.Web.Controllers
                 }
             }
         }
-        private List<UserViewModel> FetchUserTableData(SqlConnection connection)
-        {
-            List<UserViewModel> usersData = new List<UserViewModel>();
-
-            using (var command = new SqlCommand("SELECT Id, UserName, Email, [LockoutEnabled] as [IsActive] FROM AspNetUsers", connection))
-            {
-                using (var reader = command.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        var user = new UserViewModel
-                        {
-                            UserId = reader.GetString(0),
-                            UserName = reader.GetString(1),
-                            Email = reader.GetString(2),
-                            IsActive= !reader.GetBoolean(3)
-                        };
-                        usersData.Add(user);
-                    }
-                }
-            }
-
-            return usersData;
-        }
-        private List<UserViewModel> FetchRoleTableData(SqlConnection connection)
-        {
-            List<UserViewModel> usersData = new List<UserViewModel>();
-
-            // Assuming there is a Users table with columns UserId, UserName, Email
-            using (var command = new SqlCommand("SELECT Id , Name FROM AspNetRoles;", connection))
-            {
-                using (var reader = command.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        // Map data to UserViewModel
-                        var user = new UserViewModel
-                        {
-                            RoleId = reader.GetString(0),
-                            RoleName = reader.GetString(1)
-                        };
-                        usersData.Add(user);
-                    }
-                }
-            }
-
-            return usersData;
-        }
-        private List<UserViewModel> FetchUserRoleTableData(SqlConnection connection)
-        {
-            List<UserViewModel> usersData = new List<UserViewModel>();
-
-            using (var command = new SqlCommand("SELECT u.Id AS UserId, u.UserName, r.Name AS RoleName " +
-                                               "FROM AspNetUsers u " +
-                                               "JOIN AspNetUserRoles ur ON u.Id = ur.UserId " +
-                                               "JOIN AspNetRoles r ON ur.RoleId = r.Id", connection))
-            {
-                using (var reader = command.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        // Map data to UserViewModel
-                        var user = new UserViewModel
-                        {
-                            UserId = reader.GetString(0),
-                            UserName = reader.GetString(1),
-                            RoleName = reader.GetString(2)
-                        };
-                        usersData.Add(user);
-                    }
-                }
-            }
-
-            return usersData;
-        }
-        private Dictionary<string, string> GetUsersWithoutRoles(SqlConnection connection)
-        {
-            Dictionary<string, string> usersWithoutRoles = new Dictionary<string, string>();
-
-            using (var command = new SqlCommand("SELECT u.Id, u.UserName " +
-                                               "FROM AspNetUsers u " +
-                                               "WHERE u.Id NOT IN (SELECT UserId FROM AspNetUserRoles)", connection))
-            {
-                using (var reader = command.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        usersWithoutRoles.Add(reader.GetString(0), reader.GetString(1));
-                    }
-                }
-            }
-
-            return usersWithoutRoles;
-        }
-        private Dictionary<string, string> GetAllRoles(SqlConnection connection)
+        public static Dictionary<string, string> GetAllRoles(SqlConnection connection)
         {
             Dictionary<string, string> allRoles = new Dictionary<string, string>();
 

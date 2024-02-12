@@ -37,6 +37,13 @@ namespace ReportBuilder.Web.Controllers
                 DataConnectApiToken = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken") // Your Data Connect Api Token from your http://dotnetreport.com Account            };
             };
 
+            var userConfig = "";
+            var dbConfig = GetDbConnectionSettings(settings.AccountApiToken, settings.DataConnectApiToken);
+            if (dbConfig != null)
+            {
+                userConfig = dbConfig["UserConfig"].ToString();
+            }
+
             // Populate the values below using your Application Roles/Claims if applicable
             settings.ClientId = "";  // You can pass your multi-tenant client id here to track their reports and folders
             settings.UserId = ""; // You can pass your current authenticated user id here to track their reports and folders            
@@ -45,8 +52,17 @@ namespace ReportBuilder.Web.Controllers
 
             settings.Users = new List<dynamic>(); // Populate all your application's user, ex  { "Jane", "John" } or { new { id="1", text="Jane" }, new { id="2", text="John" }}
             settings.UserRoles = new List<string>(); // Populate all your application's user roles, ex  { "Admin", "Normal" }       
-            settings.CanUseAdminMode = true; // Set to true only if current user can use Admin mode to setup reports, dashboard and schema
+            settings.CanUseAdminMode = User.IsInRole(DotNetReportRoles.DotNetReportAdmin); // Set to true only if current user can use Admin mode to setup reports, dashboard and schema
             settings.DataFilters = new { }; // add global data filters to apply as needed https://dotnetreport.com/kb/docs/advance-topics/global-filters/
+
+            if (userConfig == "dnr-managed")
+            {
+                var users = DotNetReportIdentity.GetAppUsers();
+                var roles = DotNetReportIdentity.GetAppRoles();
+
+                settings.Users = users.Select(x => new { id = x.Email, text = x.UserName }).ToList<dynamic>();
+                settings.UserRoles = roles.Select(x=>x.RoleName).ToList();
+            }
 
             return settings;
         }
@@ -544,7 +560,7 @@ namespace ReportBuilder.Web.Controllers
             return warning;
         }
 
-        //[Authorize(Roles="Administrator")]
+        [Authorize(Roles=DotNetReportRoles.DotNetReportAdmin)]
         [HttpGet]
         public async Task<IActionResult> LoadSetupSchema(string? databaseApiKey = "", bool? onlyApi = null)
         {
@@ -640,6 +656,13 @@ namespace ReportBuilder.Web.Controllers
             }
 
             return null;
+        }
+
+        public class UpdateUserConfigModel
+        {
+            public string account { get; set; }
+            public string dataConnect { get; set; }
+            public string userConfig { get; set; }
         }
 
         public class UpdateDbConnectionModel
@@ -769,6 +792,63 @@ namespace ReportBuilder.Web.Controllers
                 }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
             }
             catch(Exception ex)
+            {
+
+                return new JsonResult(new
+                {
+                    success = false,
+                    message = ex.Message
+                }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+
+            }
+        }
+
+        [Authorize(Roles = DotNetReportRoles.DotNetReportAdmin)]
+        [HttpPost]
+        public async Task<IActionResult> UpdateUserConfigSetting(UpdateUserConfigModel model)
+        {
+            try
+            {
+                var settings = GetSettings();
+                if (!settings.CanUseAdminMode)
+                {
+                    throw new Exception("Not Authorized to access this Resource");
+                }
+                      
+                var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+                if (!System.IO.File.Exists(_configFilePath))
+                {
+                    var emptyConfig = new JObject();
+                    System.IO.File.WriteAllText(_configFilePath, emptyConfig.ToString(Newtonsoft.Json.Formatting.Indented));
+                }
+
+                // Get the existing JSON configuration
+                var config = JObject.Parse(System.IO.File.ReadAllText(_configFilePath));
+                if (config["dotNetReport"] == null)
+                {
+                    config["dotNetReport"] = new JObject();
+                }
+
+                // Update the specified properties within the "dotNetReport" and "dataConfig" section
+                var dotNetReportSection = config["dotNetReport"] as JObject;
+                if (dotNetReportSection[model.dataConnect] == null)
+                {
+                    dotNetReportSection[model.dataConnect] = new JObject();
+                }
+
+                var dataConnectSection = dotNetReportSection[model.dataConnect] as JObject;
+                dataConnectSection["UserConfig"] = model.userConfig;
+
+                // Save the updated JSON back to the file
+                System.IO.File.WriteAllText(_configFilePath, config.ToString());
+
+                return new JsonResult(new
+                {
+                    success = true,
+                    message = $"User Setting updated successfully"
+                }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+            }
+            catch (Exception ex)
             {
 
                 return new JsonResult(new
