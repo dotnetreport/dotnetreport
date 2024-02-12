@@ -850,6 +850,106 @@ var reportViewModel = function (options) {
 	self.useReportHeader = ko.observable(false);
 	self.searchReports = ko.observable();
 
+	const styleMixed = ["#c8d8e4", "#e4d8c8", "#d8e4c8", "#e4c8d8", "#c8e4d8","#d8c8e4", "#e4c8c8", "#c8e4e4", "#e4e4c8", "#d8e4e4","#c8d8d8", "#d8c8c8", "#c8c8e4", "#e4d8d8", "#d8d8c8","#c8d8e4", "#e4c8e4", "#d8e4d8", "#e4d8e4", "#d8d8e4","#e4e4d8", "#c8e4c8", "#e4c8d8", "#d8c8d8", "#c8e4e4"];
+	const styleMixedBright = ["#fff", "#ff9999", "#99ff99", "#9999ff", "#ffff99", "#99ffff", "#ff99ff", "#d9d9d9", "#b3b3ff", "#ffb3b3", "#b3ffb3", "#ffcc66", "#ccff66", "#66ffcc", "#66ccff", "#cc66ff", "#ff6666", "#66ff66", "#6666ff", "#ffff66", "#66ffff"];
+	const styleGray = ["#f0f0f0", "#e0e0e0", "#d1d1d1", "#c2c2c2", "#b3b3b3","#a4a4a4", "#959595", "#868686", "#777777", "#686868","#595959", "#4a4a4a", "#3b3b3b", "#2c2c2c", "#1d1d1d","#0e0e0e", "#0f0f0f", "#1e1e1e", "#2d2d2d", "#3c3c3c","#4b4b4b", "#5a5a5a", "#696969", "#787878", "#878787"];
+	const styleBlue = ["#e6f7ff", "#cceeff", "#b3e6ff", "#99ddff", "#80d4ff","#66ccff", "#4dc3ff", "#33bbff", "#1ab2ff", "#00aaff","#0099e6", "#0088cc", "#0077b3", "#006699", "#005580","#004466", "#00334d", "#002233", "#00111a", "#000000","#0033ff", "#0044ff", "#0055ff", "#0066ff", "#0077ff"];
+	const styleGreen = ["#e9f7e9", "#d3efd3", "#bde6bd", "#a7dea7", "#90d690","#7acf7a", "#64c764", "#4dbf4d", "#36b736", "#20b020","#1fa01f", "#1e8f1e", "#1d7f1d", "#1c6e1c", "#1b5e1b","#1a4d1a", "#194d19", "#183c18", "#172c17", "#161b16","#150a15", "#140014", "#130013", "#120012", "#110011"];
+	const styleRed = ["#ffe6e6", "#ffcccc", "#ffb3b3", "#ff9999", "#ff8080", "#ff6666", "#ff4d4d", "#ff3333", "#ff1a1a", "#ff0000", "#e60000", "#cc0000", "#b30000", "#990000", "#800000", "#660000", "#4d0000", "#330000", "#1a0000", "#000000", "#ff3333", "#ff4040", "#ff4d4d", "#ff5959", "#ff6666"];
+	const styleYellow = ["#ffffe6", "#ffffcc", "#ffffb3", "#ffff99", "#ffff80", "#ffff66", "#ffff4d", "#ffff33", "#ffff1a", "#ffff00", "#ffff33", "#ffff47", "#ffff5c", "#ffff70", "#ffff85"];
+	const styleOrange = ["#fff5e6", "#ffebcc", "#ffe0b3", "#ffd699", "#ffcc80", "#ffc266", "#ffb84d", "#ffad33", "#ffa31a", "#ff9900", "#e68a00", "#cc7a00", "#b36b00", "#995c00", "#804d00", "#664000", "#4d3300", "#332600", "#1a1900", "#000000", "#ffad33", "#ffb347", "#ffb85c", "#ffbd70", "#ffc285"];
+
+	self.tableStyles = ko.observableArray([
+		{ name: 'Default', headerBg: '#fff', rowBg: '#FFFFFF', altRowBg: '#F4F4F4', textColor: '#000000', colorscheme: 'default' },
+		{ name: 'Modern', headerBg: '#CFE2F3', rowBg: '#FFFFFF', altRowBg: '#DEEBF7', textColor: '#000000', colorscheme: 'style-blue' },
+		{ name: 'Warm', headerBg: '#F9CB9C', rowBg: '#FFFFFF', altRowBg: '#FCE5CD', textColor: '#000000', colorscheme: 'style-orange' },
+		{ name: 'Cool', headerBg: '#A2C4C9', rowBg: '#c8d8d8', altRowBg: '#d8e4e4', textColor: '#000000', colorscheme: 'style-mixed' },
+		{ name: 'Vibrant', headerBg: '#C27BA0', rowBg: '#FFFFFF', altRowBg: '#D5A6BD', textColor: '#FFFFFF', colorscheme: 'style-mixed-bright' }
+	]);
+
+	self.colorScheme = ko.observableArray([]);
+	self.selectedStyle = ko.observable('default');
+	self.selectedTableStyle = ko.observable(self.tableStyles()[0]);
+	self.dropdownOpen = ko.observable(false);
+
+	self.toggleDropdown = function () {
+		self.dropdownOpen(!self.dropdownOpen());
+	};
+
+	self.selectStyle = function (style) {
+		self.selectedTableStyle(style);
+		self.selectedStyle(style.colorscheme);
+		self.dropdownOpen(false);
+	};
+
+	self.colorSchemeDisplay = function (colorScheme, name) {
+		var $table = $('<div class="color-table">'+ name + '&nbsp;</div>');
+		colorScheme.slice(1, 10).forEach(function (color) {
+			$table.append('<div class="color-cell" style="background-color:' + color + ';"></div>');
+		});
+		return $table;
+	}
+
+	self.colorSchemes = [{
+		id: 'default',
+		text: 'Default',
+		colors: [],
+		html: '<div class="color-table">Default</div>'
+	}, {
+		id: 'style-mixed',
+		text: 'Mixed',
+		colors: styleMixed,
+		html: this.colorSchemeDisplay(styleMixed, 'Mixed')
+	}, {
+		id: 'style-mixed-bright',
+		text: 'Bright',
+		colors: styleMixedBright,
+		html: this.colorSchemeDisplay(styleMixedBright, 'Bright')
+	}, {
+		id: 'style-gray',
+		text: 'Gray',
+		colors: styleGray,
+		html: this.colorSchemeDisplay(styleGray, 'Gray')
+	}, {
+		id: 'style-blue',
+		text: 'Blue',
+		colors: styleBlue,
+		html: this.colorSchemeDisplay(styleBlue, 'Blue')
+	}, {
+		id: 'style-green',
+		text: 'Green',
+		colors: styleGreen,
+		html: this.colorSchemeDisplay(styleGreen, 'Green')
+	}, {
+		id: 'style-red',
+		text: 'Red',
+		colors: styleRed,
+		html: this.colorSchemeDisplay(styleRed, 'Red')
+	}, {
+		id: 'style-orange',
+		text: 'Orange',
+		colors: styleOrange,
+		html: this.colorSchemeDisplay(styleOrange, 'Orange')
+	}];
+
+	self.selectedStyle.subscribe(function (x) {
+		switch (x) {
+			case 'style-gray': self.colorScheme(styleGray); break;
+			case 'style-blue': self.colorScheme(styleBlue); break;
+			case 'style-red': self.colorScheme(styleRed); break;
+			case 'style-orange': self.colorScheme(styleOrange); break;
+			case 'style-green': self.colorScheme(styleGreen); break;
+			case 'style-yellow': self.colorScheme(styleYellow); break;
+			case 'style-mixed': self.colorScheme(styleMixed); break;
+			case 'style-mixed-bright': self.colorScheme(styleMixedBright); break;
+			default: self.colorScheme([]);
+		}
+	});
+
+	self.colorScheme.subscribe(function (x) {
+		self.DrawChart();
+	});
+
 	self.SavedReports.subscribe(function (x) {
 		if (self.ReportID()) {
 			var match = _.find(x, { reportId: self.ReportID() }) || { canEdit: false };
@@ -2555,7 +2655,9 @@ var reportViewModel = function (options) {
 						pageSize: e.pager.pageSize(),
 						sortBy: e.pager.sortColumn() || '',
 						desc: e.pager.sortDescending() || false,
-						reportSeries: reportSeries || ''
+						reportSeries: reportSeries || '',
+						pivotColumn: '',
+						reportData: ''
 					})
 				}).done(function (ddData) {
 					if (ddData.d) { ddData = ddData.d; }
