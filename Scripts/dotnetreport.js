@@ -290,7 +290,7 @@ function filterGroupViewModel(args) {
 		return found;
 	}
 
-	self.AddFilter = function (e, isFilterOnFly) {
+	self.AddFilter = function (e, isFilterOnFly, printMode) {
 		e = e || {};
 		var lookupList = ko.observableArray([]);
 		var parentList = ko.observableArray([]);
@@ -335,6 +335,7 @@ function filterGroupViewModel(args) {
 		});
 
 		function loadLookupList(fieldId, dataFilters) {
+			if (printMode === true) return;
 			ajaxcall({
 				url: args.options.apiUrl,
 				data: {
@@ -383,6 +384,7 @@ function filterGroupViewModel(args) {
 
 					var existingParentFilter = self.GetValuesInFilterGroupForFieldAndTable(newField.foreignParentTable, newField.foreignParentKeyField);
 					if (!existingParentFilter) {
+						if (printMode === true) return;
 						ajaxcall({
 							url: args.options.apiUrl,
 							data: {
@@ -3174,7 +3176,7 @@ var reportViewModel = function (options) {
 					if (onFly) filterFieldsOnFly.push({ fieldId: e.FieldId });
 
 					if (group == null) group = self.FilterGroups()[0];
-					group.AddFilter(e, onFly);
+					group.AddFilter(e, onFly, self.ReportMode() === 'print');
 				}
 
 				addSavedFilters(e.Filters, group);
@@ -3191,7 +3193,7 @@ var reportViewModel = function (options) {
 						e.FieldId = e.Field.fieldId;
 						e.Value1 = e.Value;
 						filterFieldsOnFly.push(match[0]);
-						self.FilterGroups()[0].AddFilter(e, true);
+						self.FilterGroups()[0].AddFilter(e, true, self.ReportMode()==='print');
 					}
 				});
 			}
