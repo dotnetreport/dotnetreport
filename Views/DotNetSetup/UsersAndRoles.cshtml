@@ -79,6 +79,7 @@
                     DeleteUserRoleDataUrl: '@Url.Action("DeleteUserRole", "DotNetUserApi")',
                     LoadRolesUrl: '@Url.Action("LoadRolesData","DotNetUserApi")',
                     UpdateUserConfigSettingUrl: '@Url.Action("UpdateUserConfigSetting", "DotNetReportApi")',
+                    saveSettingAccessUrl: '@Url.Action("SaveSettingAccess", "DotNetReportApi")',
                 };
 
                 var vm = new manageViewModel(options);
@@ -126,7 +127,7 @@
         </div>
     </a>
 
-    <a href="#" class="bg-dark list-group-item list-group-item-action">
+    <a href="#settingpage" aria-controls="settingpage" role="tab" data-toggle="tab" class="bg-dark list-group-item list-group-item-action">
         <div class="d-flex w-100 justify-content-start align-items-center">
             <span class="fa fa-gears fa-fw mr-3"></span>
             <span class="menu-collapsed">System Settings</span>
@@ -145,6 +146,8 @@
             <li role="presentation" class="nav-item"><a class="nav-link active" href="#useroptions" aria-controls="manageusers" role="tab" data-toggle="tab">Configuration</a></li>
             <li role="presentation" class="nav-item"><a class="nav-link" href="#manageusers" aria-controls="manageusers" role="tab" data-toggle="tab">Users and Roles</a></li>
             <li role="presentation" class="nav-item"><a class="nav-link" href="#manageaccess" aria-controls="manageaccess" role="tab" data-toggle="tab">Manage Reports Access</a></li>
+            <li role="presentation" class="nav-item"><a class="nav-link" href="#settingpage" aria-controls="settingpage" role="tab" data-toggle="tab">Setting Access</a></li>
+
         </ul>
     </div>
     <br />
@@ -456,6 +459,83 @@
                 </div>
             </div>
         </div>
+
+        <!-- Add settingpage -->
+        <div id="settingpage" class="tab-pane">
+            <b>Setting Access</b>
+            <p>
+                Configure and manage Access to run or manage reports in DNR by User or User Roles
+            </p>
+            <div class="row">
+                <div class="col-md-8 mb-4">
+                    <div class="card" style="margin: 20px;">
+                        <div class="card-body">
+                            <form id="settingsAccessForm" data-bind="with: SettingPage">
+                                <label for="backendApiUrl">Backend Service API Url:</label>
+                                <input type="text" class="form-control" id="apiurl" required name="backendApiUrl" data-bind="value: backendApiUrl">
+                                <div class="invalid-feedback">BackendApiUrl is required.</div>
+                                <div >
+                                    <label for="theme">Application Theme:</label>
+                                    <select class="form-control" id="theme" data-bind="options: appThemes,
+                                               optionsText: 'name',
+                                               optionsValue: 'value',
+                                               value:selectedAppTheme
+                                               optionsCaption: 'Select a Theme'"></select>
+                                    <br>
+                                    <div class="invalid-feedback">Application Theme is required.</div>
+                                </div>
+                                <div >
+                                    <label for="timezone">Default time zone:</label>
+                                    <select class="form-control" id="timezoneSelect" data-bind="options: timeZones,
+                                               optionsText: 'displayName',
+                                               optionsValue: 'value',
+                                               value:selectedTimeZone
+                                               optionsCaption: 'Select a timezone'"></select>
+                                    <br>
+                                    <div class="invalid-feedback">Select timezone is required.</div>
+                                </div>
+                            <div >
+                                        <div class="card-body">
+                                            <h5 class="card-title">Scheduled Job Email Settings:</h5>
+                                            <div class="form-group">
+                                                <label for="emailUsername">Email Username:</label>
+                                            <input type="text" class="form-control" id="emailUsername" required data-bind="value: emailUsername">
+                                                <div class="invalid-feedback">Email Username is required.</div>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="emailPassword">Email Password:</label>
+                                            <input type="password" class="form-control" id="emailPassword" required data-bind="value: emailPassword">
+                                                <div class="invalid-feedback">Email Password is required.</div>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="emailServer">Email Server:</label>
+                                                <input type="text" class="form-control" id="emailServer" required data-bind="value: emailServer">
+                                                <div class="invalid-feedback">Email Server is required.</div>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="emailPort">Email Port:</label>
+                                                <input type="text" class="form-control" id="emailPort" required data-bind="value: emailPort">
+                                                 <div class="invalid-feedback">Email Port is required.</div>
+                                            </div>
+                                              <div class="form-group">
+                                                <label for="emailName">From Email Name:</label>
+                                            <input type="text" class="form-control" id="emailName" required data-bind="value: emailName">
+                                                <div class="invalid-feedback">Email Name is required.</div>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="emailaddress">From Email:</label>
+                                            <input type="email" class="form-control" id="emailaddress" required name="emailaddress" data-bind="value: emailAddress">
+                                                <div class="invalid-feedback">From Email is required.</div>
+                                            </div>
+                                        </div>
+                                </div>
+                                <button type="button" id="saveSettings" class="btn btn-primary" data-bind="click: saveSettings">Save</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
     </div>
 </div>
 

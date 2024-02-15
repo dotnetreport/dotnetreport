@@ -4,7 +4,6 @@
 
 var manageViewModel = function (options) {
 	var self = this;
-
 	self.keys = {
 		AccountApiKey: options.model.AccountApiKey,
 		DatabaseApiKey: options.model.DatabaseApiKey
@@ -17,8 +16,8 @@ var manageViewModel = function (options) {
 	self.UserAndRolesConfig = new usersAndRolesViewModel(options);
 	self.pager = new pagerViewModel({autoPage: true});
 	self.pager.totalRecords(self.Tables.model().length);
-	self.onlyApi= ko.observable(options.onlyApi)
-
+	self.onlyApi = ko.observable(options.onlyApi)
+	self.SettingPage = new settingPageViewModel(options);
 	self.loadFromDatabase = function() {
 		bootbox.confirm("Confirm loading all Tables and Views from the database? Note: This action will discard unsaved changes and it may take some time.", function (r) {
 			if (r) {
@@ -1617,4 +1616,105 @@ var customSqlModel = function (options, keys, tables) {
 
 		return false;
     }
+}
+
+var settingPageViewModel = function (options) {
+	var self = this;
+	var dbConfig = options.model.DbConfig || {};
+	var validator = new validation();
+	var apiKey = options.model.AccountApiKey;
+	var dbKey = options.model.DatabaseApiKey;
+
+	self.backendApiUrl = ko.observable("");
+	self.emailServer = ko.observable("");
+	self.emailPort = ko.observable("");
+	self.emailUsername = ko.observable("");
+	self.emailPassword = ko.observable("");
+	self.emailName = ko.observable("");
+	self.emailAddress = ko.observable("");
+	self.selectedAppTheme = ko.observable();
+	self.selectedTimeZone = ko.observable();
+	self.appThemes = ko.observableArray([
+		{ name: 'Default', value: 'default' },
+		{ name: 'Dark', value: 'dark' },
+		{ name: 'Serenity', value: 'teal' },
+		{ name: 'Flatly', value: 'flatly' },
+		{ name: 'Lumen', value: 'lumen' },
+		{ name: 'Monotone', value: 'monotone' },
+		{ name: 'Morph', value: 'morph' },
+		{ name: 'Quartz', value: 'quartz' },
+		{ name: 'Sandstone', value: 'sandstone' },
+		{ name: 'Sketchy', value: 'sketchy' },
+		{ name: 'Solar', value: 'solar' }
+	]);
+	// Define an observable array to hold the list of timezones
+	self.timeZones = ko.observableArray([
+		{ displayName: '(UTC-11:00) Pacific/Midway', value: -11 },
+		{ displayName: '(UTC-10:00) Pacific/Honolulu', value: -10 },
+		{ displayName: '(UTC-9:00) America/Anchorage', value: -9 },
+		{ displayName: '(UTC-8:00) America/Los_Angeles', value: -8 },
+		{ displayName: '(UTC-7:00) America/Denver', value: -7 },
+		{ displayName: '(UTC-6:00) America/Chicago', value: -6 },
+		{ displayName: '(UTC-5:00) America/New_York', value: -5 },
+		{ displayName: '(UTC-4:30) America/Caracas', value: -4.5 },
+		{ displayName: '(UTC-4:00) America/Halifax', value: -4 },
+		{ displayName: '(UTC-3:00) America/Sao_Paulo', value: -3 },
+		{ displayName: '(UTC-3:30) America/St_Johns', value: -3.5 },
+		{ displayName: '(UTC-3:00) America/Argentina/Buenos_Aires', value: -3 },
+		{ displayName: '(UTC-2:00) Atlantic/South_Georgia', value: -2 },
+		{ displayName: '(UTC-1:00) Atlantic/Azores', value: -1 },
+		{ displayName: '(UTC-1:00) Atlantic/Cape_Verde', value: -1 },
+		{ displayName: '(UTC+0:00) Africa/Casablanca', value: 0 },
+		{ displayName: '(UTC+0:00) Europe/London', value: 0 },
+		{ displayName: '(UTC+1:00) Europe/Paris', value: 1 },
+		{ displayName: '(UTC+2:00) Europe/Istanbul', value: 2 },
+		{ displayName: '(UTC+2:00) Africa/Johannesburg', value: 2 },
+		{ displayName: '(UTC+2:00) Asia/Damascus', value: 2 },
+		{ displayName: '(UTC+2:00) Asia/Amman', value: 2 },
+		{ displayName: '(UTC+2:00) Asia/Beirut', value: 2 },
+		{ displayName: '(UTC+2:00) Asia/Jerusalem', value: 2 },
+		{ displayName: '(UTC+3:00) Asia/Riyadh', value: 3 },
+		{ displayName: '(UTC+3:30) Asia/Tehran', value: 3.5 },
+		{ displayName: '(UTC+4:00) Asia/Dubai', value: 4 },
+		{ displayName: '(UTC+4:00) Asia/Baku', value: 4 }
+	]);
+	self.saveSettings = function () {
+
+		if (this.isValidforSettingAccess()) {
+			ajaxcall({
+				url: options.saveSettingAccessUrl,
+				type: 'POST',
+				data: JSON.stringify({
+					account: apiKey,
+					dataConnect: dbKey,
+					emailUserName: self.emailUsername(),
+					emailPassword: self.emailPassword(),
+					emailServer: self.emailServer(),
+					emailPort: self.emailPort(),
+					emailName: self.emailName(),
+					emailAddress: self.emailAddress(),
+					backendApiUrl: self.backendApiUrl(),
+					timeZone: `${self.selectedTimeZone() }`,
+					appThemes: self.selectedAppTheme(),
+				})
+			}).done(function (response) {
+				if (response) {
+					if (response.success) {
+						toastr.success(response.message);
+					} else {
+						toastr.error(response.message);
+					}
+				} else {
+					toastr.error('Setting  Error');
+					return false;
+				}
+			});
+		};
+
+	}
+	self.isValidforSettingAccess = function () {
+		var valid = validator.validateForm('#settingsAccessForm');
+		return valid;
+	};
+// Apply Knockout bindings
 }

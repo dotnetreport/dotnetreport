@@ -863,7 +863,81 @@ namespace ReportBuilder.Web.Controllers
 
             }
         }
+        public class SettingAccessModel
+        {
+            public string account { get; set; } = "";
+            public string dataConnect { get; set; } = "";
+            public string emailUserName { get; set; } = "";
+            public string emailPassword { get; set; } = "";
+            public string emailServer { get; set; } = "";
+            public string emailPort { get; set; } = "";
+            public string emailName { get; set; } = "";
+            public string emailAddress { get; set; } = "";
+            public string backendApiUrl { get; set; } = "";
+            public string timeZone { get; set; } = "";
+            public string appThemes { get; set; } = "";
+        }
+        public async Task<IActionResult> SaveSettingAccess(SettingAccessModel model)
+        {
+            try
+            {
+                var settings = GetSettings();
+                if (!settings.CanUseAdminMode)
+                {
+                    throw new Exception("Not Authorized to access this Resource");
+                }
+                    var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+                    if (!System.IO.File.Exists(_configFilePath))
+                    {
+                        var emptyConfig = new JObject();
+                        System.IO.File.WriteAllText(_configFilePath, emptyConfig.ToString(Newtonsoft.Json.Formatting.Indented));
+                    }
 
+                //// Get the existing JSON configuration
+                var config = JObject.Parse(System.IO.File.ReadAllText(_configFilePath));
+                if (config["dotNetReport"] == null)
+                {
+                    config["dotNetReport"] = new JObject();
+                }
+                var appsetting = config["dotNetReport"]["AppSetting"] ?? new JObject();
+                appsetting["email"] = new JObject
+                {
+                    ["fromemail"] = model.emailAddress,
+                    ["fromname"] = model.emailName,
+                    ["server"] = model.emailServer,
+                    ["port"] = model.emailPort,
+                    ["username"] = model.emailUserName,
+                    ["password"] = model.emailPassword
+                };
+
+                appsetting["BaseApiUrl"] = model.backendApiUrl;
+                appsetting["TimeZone"] = model.timeZone;
+                appsetting["AppTheme"] = model.appThemes;
+
+                config["dotNetReport"]["AppSetting"] = appsetting;
+
+                // Save the updated JSON back to the file
+                System.IO.File.WriteAllText(_configFilePath, config.ToString());
+
+                //// Save the updated JSON back to the file
+                System.IO.File.WriteAllText(_configFilePath, config.ToString());
+                return new JsonResult(new
+                {
+                    success = true,
+                    message = $"Settings Access Saved Successfully"
+                }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+        }
+            catch (Exception ex)
+            {
+
+                return new JsonResult(new
+                {
+                    success = false,
+                    message = ex.Message
+                }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+
+            }
+        }
         public class SearchProcCall { 
             public string value { get; set; } 
             public string accountKey { get; set; } 
