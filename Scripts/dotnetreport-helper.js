@@ -538,6 +538,19 @@ var textQuery = function (options) {
     }
 }
 
+function getThemeFromAppSettings() {
+    ajaxcall({
+        url: '/api/DotNetReportApi/AppSettings',
+    }).done(function (response) {
+        if (response && response.appThemes) {
+            changeTheme(response.appThemes);
+        } else {
+            var theme = localStorage.getItem('dotnetreport-selectedTheme') || 'default';
+            changeTheme(theme);
+            return false;
+        }
+    });
+}
 // pick theme 
 function changeTheme(theme) {
     if (theme && document.getElementById('theme-css')) {
@@ -545,5 +558,4 @@ function changeTheme(theme) {
         document.getElementById('theme-css').href = '/css/dotnetreport-' + theme.toLowerCase() + '.css';
     }
 }
-var theme = localStorage.getItem('dotnetreport-selectedTheme') || 'default';
-changeTheme(theme);
+getThemeFromAppSettings()

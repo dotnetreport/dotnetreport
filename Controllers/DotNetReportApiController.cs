@@ -970,7 +970,7 @@ namespace ReportBuilder.Web.Controllers
 
             }
         }
-        public async Task<IActionResult> AppSettings(AppSettingModel model)
+        public async Task<IActionResult> AppSettings()
         {
             try
             {

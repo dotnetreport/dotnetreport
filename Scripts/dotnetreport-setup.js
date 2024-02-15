@@ -1715,11 +1715,6 @@ var settingPageViewModel = function (options) {
 	self.getAppSettings = function () {
 		ajaxcall({
 			url: options.getAppSettingUrl,
-			type: 'POST',
-			data: JSON.stringify({
-				account: apiKey,
-				dataConnect: dbKey,
-			})
 		}).done(function (response) {
 
 			if (response) {
