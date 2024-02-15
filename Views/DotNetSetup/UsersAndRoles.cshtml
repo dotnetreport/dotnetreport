@@ -79,7 +79,8 @@
                     DeleteUserRoleDataUrl: '@Url.Action("DeleteUserRole", "DotNetUserApi")',
                     LoadRolesUrl: '@Url.Action("LoadRolesData","DotNetUserApi")',
                     UpdateUserConfigSettingUrl: '@Url.Action("UpdateUserConfigSetting", "DotNetReportApi")',
-                    saveSettingAccessUrl: '@Url.Action("SaveSettingAccess", "DotNetReportApi")',
+                    saveAppSettingUrl: '@Url.Action("SaveAppSettings", "DotNetReportApi")',
+                    getAppSettingUrl: '@Url.Action("AppSettings", "DotNetReportApi")',
                 };
 
                 var vm = new manageViewModel(options);
@@ -470,13 +471,13 @@
                 <div class="col-md-8 mb-4">
                     <div class="card" style="margin: 20px;">
                         <div class="card-body">
-                            <form id="settingsAccessForm" data-bind="with: SettingPage">
+                            <form id="appSettingsForm" data-bind="with: SettingPage">
                                 <label for="backendApiUrl">Backend Service API Url:</label>
-                                <input type="text" class="form-control" id="apiurl" required name="backendApiUrl" data-bind="value: backendApiUrl">
+                                <input type="text" class="form-control"  required  data-bind="value: backendApiUrl">
                                 <div class="invalid-feedback">BackendApiUrl is required.</div>
                                 <div >
-                                    <label for="theme">Application Theme:</label>
-                                    <select class="form-control" id="theme" data-bind="options: appThemes,
+                                    <label for="themeSelect">Application Theme:</label>
+                                    <select class="form-control" id="themeSelect" data-bind="options: appThemes,
                                                optionsText: 'name',
                                                optionsValue: 'value',
                                                value:selectedAppTheme
@@ -499,37 +500,37 @@
                                             <h5 class="card-title">Scheduled Job Email Settings:</h5>
                                             <div class="form-group">
                                                 <label for="emailUsername">Email Username:</label>
-                                            <input type="text" class="form-control" id="emailUsername" required data-bind="value: emailUsername">
+                                            <input type="text" class="form-control"  required data-bind="value: emailUsername">
                                                 <div class="invalid-feedback">Email Username is required.</div>
                                             </div>
                                             <div class="form-group">
                                                 <label for="emailPassword">Email Password:</label>
-                                            <input type="password" class="form-control" id="emailPassword" required data-bind="value: emailPassword">
+                                            <input type="password" class="form-control"  required data-bind="value: emailPassword">
                                                 <div class="invalid-feedback">Email Password is required.</div>
                                             </div>
                                             <div class="form-group">
                                                 <label for="emailServer">Email Server:</label>
-                                                <input type="text" class="form-control" id="emailServer" required data-bind="value: emailServer">
+                                                <input type="text" class="form-control"  required data-bind="value: emailServer">
                                                 <div class="invalid-feedback">Email Server is required.</div>
                                             </div>
                                             <div class="form-group">
                                                 <label for="emailPort">Email Port:</label>
-                                                <input type="text" class="form-control" id="emailPort" required data-bind="value: emailPort">
+                                                <input type="text" class="form-control"  required data-bind="value: emailPort">
                                                  <div class="invalid-feedback">Email Port is required.</div>
                                             </div>
                                               <div class="form-group">
                                                 <label for="emailName">From Email Name:</label>
-                                            <input type="text" class="form-control" id="emailName" required data-bind="value: emailName">
+                                            <input type="text" class="form-control"  required data-bind="value: emailName">
                                                 <div class="invalid-feedback">Email Name is required.</div>
                                             </div>
                                             <div class="form-group">
                                                 <label for="emailaddress">From Email:</label>
-                                            <input type="email" class="form-control" id="emailaddress" required name="emailaddress" data-bind="value: emailAddress">
+                                            <input type="email" class="form-control"  required  data-bind="value: emailAddress">
                                                 <div class="invalid-feedback">From Email is required.</div>
                                             </div>
                                         </div>
                                 </div>
-                                <button type="button" id="saveSettings" class="btn btn-primary" data-bind="click: saveSettings">Save</button>
+                                <button type="button" id="saveAppSettings" class="btn btn-primary" data-bind="click: saveAppSettings">Save</button>
                             </form>
                         </div>
                     </div>

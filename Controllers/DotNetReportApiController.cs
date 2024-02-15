@@ -67,6 +67,38 @@ namespace ReportBuilder.Web.Controllers
             return settings;
         }
 
+        private AppSettingModel GetAppSettings()
+        {
+            var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+            if (!System.IO.File.Exists(_configFilePath))
+            {
+                var emptyConfig = new JObject();
+                System.IO.File.WriteAllText(_configFilePath, emptyConfig.ToString(Newtonsoft.Json.Formatting.Indented));
+            }
+
+            string configContent = System.IO.File.ReadAllText(_configFilePath);
+
+            var config = JObject.Parse(configContent);
+            // Extract the AppSetting section
+            var appSetting = config["dotNetReport"]?["AppSetting"];
+
+            // Create an instance of ApiSettingModel and populate its properties
+            var settings = new AppSettingModel
+            {
+                emailAddress = appSetting?["email"]?["fromemail"]?.ToString(),
+                emailName = appSetting?["email"]?["fromname"]?.ToString(),
+                emailServer = appSetting?["email"]?["server"]?.ToString(),
+                emailPort = appSetting?["email"]?["port"]?.ToString(),
+                emailUserName = appSetting?["email"]?["username"]?.ToString(),
+                emailPassword = appSetting?["email"]?["password"]?.ToString(),
+                backendApiUrl = appSetting?["BaseApiUrl"]?.ToString(),
+                timeZone = appSetting?["TimeZone"]?.ToString(),
+                appThemes = appSetting?["AppTheme"]?.ToString()
+            };
+
+            return settings;
+        }
+
         public class GetLookupListParameters
         {
             public string lookupSql { get; set; }
@@ -863,7 +895,7 @@ namespace ReportBuilder.Web.Controllers
 
             }
         }
-        public class SettingAccessModel
+        public class AppSettingModel
         {
             public string account { get; set; } = "";
             public string dataConnect { get; set; } = "";
@@ -877,7 +909,7 @@ namespace ReportBuilder.Web.Controllers
             public string timeZone { get; set; } = "";
             public string appThemes { get; set; } = "";
         }
-        public async Task<IActionResult> SaveSettingAccess(SettingAccessModel model)
+        public async Task<IActionResult> SaveAppSettings(AppSettingModel model)
         {
             try
             {
@@ -938,6 +970,23 @@ namespace ReportBuilder.Web.Controllers
 
             }
         }
+        public async Task<IActionResult> AppSettings(AppSettingModel model)
+        {
+            try
+            {
+                var settings = GetAppSettings();
+                return new JsonResult(settings, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+            }
+            catch (Exception ex)
+            {
+                return new JsonResult(new
+                {
+                    success = false,
+                    message = ex.Message
+                }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+            }
+        }
+
         public class SearchProcCall { 
             public string value { get; set; } 
             public string accountKey { get; set; } 

@@ -1678,11 +1678,11 @@ var settingPageViewModel = function (options) {
 		{ displayName: '(UTC+4:00) Asia/Dubai', value: 4 },
 		{ displayName: '(UTC+4:00) Asia/Baku', value: 4 }
 	]);
-	self.saveSettings = function () {
+	self.saveAppSettings = function () {
 
-		if (this.isValidforSettingAccess()) {
+		if (this.isValidforAppSetting()) {
 			ajaxcall({
-				url: options.saveSettingAccessUrl,
+				url: options.saveAppSettingUrl,
 				type: 'POST',
 				data: JSON.stringify({
 					account: apiKey,
@@ -1712,9 +1712,40 @@ var settingPageViewModel = function (options) {
 		};
 
 	}
-	self.isValidforSettingAccess = function () {
-		var valid = validator.validateForm('#settingsAccessForm');
+	self.getAppSettings = function () {
+		ajaxcall({
+			url: options.getAppSettingUrl,
+			type: 'POST',
+			data: JSON.stringify({
+				account: apiKey,
+				dataConnect: dbKey,
+			})
+		}).done(function (response) {
+
+			if (response) {
+					var settings = response; // Assuming the response contains the settings object
+					self.backendApiUrl(settings.backendApiUrl);
+					self.emailServer(settings.emailServer);
+					self.emailPort(settings.emailPort);
+					self.emailUsername(settings.emailUserName);
+					self.emailPassword(settings.emailPassword);
+					self.emailName(settings.emailName);
+					self.emailAddress(settings.emailAddress);
+					self.selectedAppTheme(settings.appThemes);
+					self.selectedTimeZone(settings.timeZone);
+
+					//// Optionally, you can manually trigger change event for select elements
+					$('#themeSelect').trigger('change');
+					$('#timezoneSelect').trigger('change');
+			} else {
+				toastr.error('Connection Error');
+				return false;
+			}
+		});
+	};
+	self.isValidforAppSetting = function () {
+		var valid = validator.validateForm('#appSettingsForm');
 		return valid;
 	};
-// Apply Knockout bindings
+		 self.getAppSettings();
 }
