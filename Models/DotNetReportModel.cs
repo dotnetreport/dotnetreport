@@ -1882,6 +1882,7 @@ namespace ReportBuilder.Web.Models
             OleDbConnectionStringBuilder OleDbConnectionStringBuilder = new OleDbConnectionStringBuilder();
 
             // Set other OleDb connection properties
+            OleDbConnectionStringBuilder.Provider = model.providerName;
             OleDbConnectionStringBuilder.DataSource = model.dbServer;
             OleDbConnectionStringBuilder.Add("Initial Catalog", model.dbName);
             if (model.dbAuthType.ToLower() == "username")

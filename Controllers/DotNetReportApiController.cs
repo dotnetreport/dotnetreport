@@ -715,6 +715,7 @@ namespace ReportBuilder.Web.Controllers
             public string dbAuthType { get; set; }
             public string dbUsername { get; set; }
             public string dbPassword { get; set; }
+            public string providerName { get; set; } = "";
             public bool isDefault { get; set; }
             public bool testOnly { get; set; }
         }
@@ -796,6 +797,7 @@ namespace ReportBuilder.Web.Controllers
                         dataConnectSection["DatabasePort"] = model.dbPort;
                         dataConnectSection["DatabaseName"] = model.dbName;
                         dataConnectSection["Username"] = model.dbUsername;
+                        dataConnectSection["Password"] = model.dbPassword;
                         dataConnectSection["AuthenticationType"] = model.dbAuthType;
 
                     }

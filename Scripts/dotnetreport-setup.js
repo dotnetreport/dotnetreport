@@ -1064,6 +1064,7 @@ var dbConnectionViewModel = function(options) {
 	self.DatabaseHost = ko.observable(dbconfig.DatabaseHost);
 	self.DatabasePort = ko.observable(dbconfig.DatabasePort);
 	self.DatabaseName = ko.observable(dbconfig.DatabaseName);
+	self.ProviderName = ko.observable(dbconfig.ProviderName);
 	self.Username = ko.observable(dbconfig.Username);
 	self.Password = ko.observable("");
 	self.AuthenticationType = ko.observable(dbconfig.AuthenticationType || "Username");
@@ -1086,8 +1087,9 @@ var dbConnectionViewModel = function(options) {
 			connectionString = `Server=${self.DatabaseHost()}`;
 		} else if (self.DatabaseType() === "Postgre Sql") {
 			connectionString = `Host=${self.DatabaseHost()}`;
+		} else if (self.DatabaseType() === "OleDB") {
+			connectionString = `Provider=${self.ProviderName()};Server = ${ self.DatabaseHost() }`;
 		}
-
 		if (self.DatabasePort() !== "") {
 			connectionString += `;Port=${self.DatabasePort()}`;
 		}
@@ -1114,6 +1116,7 @@ var dbConnectionViewModel = function(options) {
 					connectionType: self.ConnectionType(),
 					connectionString: self.connectionString(),
 					connectionKey: self.ConnectionKey(),
+					providerName: self.ProviderName() || '',
 					dbServer: self.DatabaseHost() || '',
 					dbPort: self.DatabasePort() || '',
 					dbName: self.DatabaseName() || '',
