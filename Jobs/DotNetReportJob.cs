@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using Quartz;
 using Quartz.Impl;
+using ReportBuilder.Web.Controllers;
 using ReportBuilder.Web.Models;
 using System.Net.Mail;
 
@@ -60,11 +61,13 @@ namespace ReportBuilder.Web.Jobs
             var accountApiKey = Startup.StaticConfig.GetValue<string>("dotNetReport:accountApiToken");
             var databaseApiKey = Startup.StaticConfig.GetValue<string>("dotNetReport:dataconnectApiToken");
 
-            var fromEmail = Startup.StaticConfig.GetValue<string>("email:fromemail");
-            var fromName = Startup.StaticConfig.GetValue<string>("email:fromname");
-            var mailServer = Startup.StaticConfig.GetValue<string>("email:server");
-            var mailUserName = Startup.StaticConfig.GetValue<string>("email:username");
-            var mailPassword = Startup.StaticConfig.GetValue<string>("email:password");
+            var appsetting = DotNetReportApiController.GetAppSettings();
+            var fromEmail = appsetting.emailAddress;
+            var fromName = appsetting.emailName;
+            var mailServer = appsetting.emailServer;
+            var mailUserName =appsetting.emailUserName;
+            var mailPassword = appsetting.emailPassword;
+            var emailport = appsetting.emailPort;
 
             var clientId = ""; // you can specify client id here if needed
 
@@ -142,7 +145,7 @@ namespace ReportBuilder.Web.Jobs
 
                                 using (var smtpServer = new SmtpClient(mailServer))
                                 {
-                                    smtpServer.Port = 587;
+                                    smtpServer.Port = Convert.ToInt32(emailport);// 587
                                     smtpServer.Credentials = new System.Net.NetworkCredential(mailUserName, mailPassword);
                                     //smtpServer.EnableSsl = true;
                                     smtpServer.Send(mail);

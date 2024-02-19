@@ -67,7 +67,7 @@ namespace ReportBuilder.Web.Controllers
             return settings;
         }
 
-        private AppSettingModel GetAppSettings()
+        public static AppSettingModel GetAppSettings()
         {
             var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
             if (!System.IO.File.Exists(_configFilePath))
