@@ -815,6 +815,8 @@ var reportViewModel = function (options) {
 	self.HideReportHeader = ko.observable(false);
 	self.maxRecords = ko.observable(false);
 	self.OnlyTop = ko.observable();
+	self.barChartHorizontal = ko.observable();
+	self.barChartStacked = ko.observable();
 
 	self.FilterGroups = ko.observableArray();
 	self.FilterGroups.subscribe(function (newArray) {
@@ -1481,6 +1483,8 @@ var reportViewModel = function (options) {
 		self.OnlyTop(null);
 		self.lastPickedField(null);
 		self.OuterGroupColumns([]);
+		self.barChartHorizontal(false);
+		self.barChartStacked(false);
 	};
 
 	self.SelectedProc.subscribe(function (proc) {
@@ -2196,7 +2200,9 @@ var reportViewModel = function (options) {
 			ReportSettings: JSON.stringify({
 				ShowExpandOption: self.ShowExpandOption(),
 				SelectedStyle: self.selectedStyle(),
-				DontExecuteOnRun: self.DontExecuteOnRun()
+				DontExecuteOnRun: self.DontExecuteOnRun(),
+				barChartStacked: self.barChartStacked(),
+				barChartHorizontal: self.barChartHorizontal()
 			}),
 			OnlyTop: self.maxRecords() ? self.OnlyTop() : null,
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : self.AggregateReport(),
@@ -2981,7 +2987,10 @@ var reportViewModel = function (options) {
 		}
 
 		if (self.ReportType() == "Bar") {
-			chart = new google.visualization.ColumnChart(chartDiv);
+			chart = self.barChartHorizontal() === true
+						? new google.visualization.BarChart(chartDiv)
+						: new google.visualization.ColumnChart(chartDiv);
+			chartOptions.isStacked = self.barChartStacked() === true;
 		}
 
 		if (self.ReportType() == "Line") {
@@ -3256,7 +3265,8 @@ var reportViewModel = function (options) {
 		self.selectedStyle(reportSettings.SelectedStyle || 'default');
 		self.ShowExpandOption(reportSettings.ShowExpandOption === true ? true : false);
 		self.DontExecuteOnRun(reportSettings.DontExecuteOnRun === true ? true : false);
-
+		self.barChartHorizontal(reportSettings.barChartHorizontal === true ? true : false);
+		self.barChartStacked(reportSettings.barChartStacked === true ? true : false);
 
 		if (self.ReportMode() == "execute") {
 			if (self.useReportHeader()) {
