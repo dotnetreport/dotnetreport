@@ -788,6 +788,91 @@ namespace ReportBuilder.Web.Models
             return modifiedSql;
         }
 
+        public async static Task<DataSet> GetDrillDownData(OleDbConnection conn, DataTable dt, List<string> sqlFields, string reportDataJson)
+        {
+            var drilldownRow = new List<string>();
+            var dr = dt.Rows[0];
+            int i = 0;
+            foreach (DataColumn dc in dt.Columns)
+            {
+                var col = sqlFields[i++]; //columns.FirstOrDefault(x => x.fieldName == dc.ColumnName) ?? new ReportHeaderColumn();
+                drilldownRow.Add($@"
+                                    {{
+                                        ""Value"":""{dr[dc]}"",
+                                        ""FormattedValue"":""{dr[dc]}"",
+                                        ""LabelValue"":""'{dr[dc]}'"",
+                                        ""NumericValue"":null,
+                                        ""Column"":{{
+                                            ""SqlField"":""{col.Substring(0, col.LastIndexOf(" AS "))}"",
+                                            ""ColumnName"":""{dc.ColumnName}"",
+                                            ""DataType"":""{dc.DataType.ToString()}"",
+                                            ""IsNumeric"":{(dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal" ? "true" : "false")},
+                                            ""FormatType"":""""
+                                        }}
+                                     }}
+                                ");
+            }
+
+            var reportData = reportDataJson.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
+            var drilldownSql = await RunReportApiCall(reportData);
+
+            var dts = new DataSet();
+            var combinedSqls = "";
+            if (!string.IsNullOrEmpty(drilldownSql))
+            {
+                foreach (DataRow ddr in dt.Rows)
+                {
+                    i = 0;
+                    var filteredSql = drilldownSql;
+                    foreach (DataColumn dc in dt.Columns)
+                    {
+                        var value = ddr[dc].ToString().Replace("'", "''");
+                        filteredSql = filteredSql.Replace($"<{dc.ColumnName}>", value);
+                    }
+
+                    combinedSqls += filteredSql += ";\n";
+                }
+                
+                using (var cmd = new OleDbCommand(combinedSqls, conn))
+                using (var adp = new OleDbDataAdapter(cmd))
+                {
+                    adp.Fill(dts);
+                }
+            }
+
+            return dts;
+        }
+
+        public static DataTable PushDatasetIntoDataTable(DataTable tbl, DataSet dts, string pivotColumnName)
+        {
+            var dt = tbl.Copy();
+            foreach (DataRow row in dt.Rows)
+            {
+                int rowIndex = dt.Rows.IndexOf(row);
+                DataTable dtsTable = dts.Tables[rowIndex];
+
+                if (dtsTable.Columns.Contains(pivotColumnName))
+                {
+                    int pivotColumnIndex = dtsTable.Columns[pivotColumnName].Ordinal;
+
+                    foreach (DataRow dtsRow in dtsTable.Rows)
+                    {
+                        string newColumnName = dtsRow[pivotColumnName].ToString();
+                        if (!dt.Columns.Contains(newColumnName))
+                        {
+                            dt.Columns.Add(newColumnName, typeof(int));
+                        }
+
+                        if (pivotColumnIndex + 1 < dtsTable.Columns.Count)
+                            row[newColumnName] = (string.IsNullOrEmpty(row[newColumnName].ToString()) ? 0 : Convert.ToInt32(row[newColumnName])) + (string.IsNullOrEmpty(dtsRow[pivotColumnIndex + 1].ToString()) ? 0 : Convert.ToInt32(dtsRow[pivotColumnIndex + 1]));
+                    }
+                }
+            }
+
+            return dt;
+        }
+
+
         public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, bool allExpanded = false,
                 string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
         {
@@ -1088,7 +1173,7 @@ namespace ReportBuilder.Web.Models
                 {
                     // Draw column headers
                     var columnFormatting = columns[k];
-                    var columnName = dt.Columns[k].ColumnName;
+                        var columnName = !string.IsNullOrEmpty(columns[k].customfieldLabel) ? columns[k].customfieldLabel : columns[k].fieldName;
                     
                     rect = new XRect(currentXPosition, currentYPosition, columnWidth, 20);
 
@@ -1434,10 +1519,11 @@ namespace ReportBuilder.Web.Models
 
                 //Build the CSV file data as a Comma separated string.
                 string csv = string.Empty;
-                foreach (DataColumn column in dt.Columns)
+                for (int i = 0; i < dt.Columns.Count; i++)
                 {
-                    //Add the Header row for CSV file.
-                    csv += column.ColumnName + ',';
+                    DataColumn column = dt.Columns[i];
+                    var columnName = !string.IsNullOrEmpty(columns[i].customfieldLabel) ? columns[i].customfieldLabel : columns[i].fieldName;
+                    csv += columnName + ',';
                 }
 
                 //Add new line.
