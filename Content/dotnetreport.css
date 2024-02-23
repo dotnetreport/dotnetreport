@@ -1080,3 +1080,6 @@ h2 {
     height: 10px; /* Sets a different fixed height for each cell, making it rectangular */
 }
 
+.dropdown-option-selected {
+    border: 2px solid #37a000;
+}
