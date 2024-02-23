@@ -1312,10 +1312,10 @@
                     </div>
                 </div>
                 <br />
-                <div data-bind="if: SaveReport" class="card card-body">
+                <div data-bind="visible: SaveReport" class="card card-body">
                     <h5><span class="fa fa-hourglass"></span>&nbsp;Choose Schedule</h5>
 
-                    <div style="padding: 10px 10px">
+                    <div style="padding: 10px 10px" data-bind="if: SaveReport">
                         <div data-bind="template: {name: 'report-schedule'}"></div>
                     </div>
                 </div>
