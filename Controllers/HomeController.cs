@@ -116,9 +116,20 @@ namespace ReportBuilder.Web.Controllers
                     Message = "Could not Login, please try again."
                 };
 
+                var accountkey = _configuration.GetValue<string>("dotNetReport:accountApiToken");
+                if (loginResult.Success && loginResult.AccountKey.ToUpper() != accountkey.ToUpper() && accountkey != "Your Account API Key")
+                {
+                    loginResult = new LoginResult
+                    {
+                        Success = false,
+                        Message = "Could not Login, Account does not match settings."
+                    };
+                }
+
                 if (loginResult.Success)
                 {
                     await LoginUser(model.Email, loginResult.PrimaryContact, true);
+                    UpdateConfigurationFile(loginResult.AccountKey, loginResult.PrivateKey, loginResult.DataConnect, true);
 
                     if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
                     {
@@ -215,7 +226,7 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        public void UpdateConfigurationFile(string accountApiKey, string privateApiKey, string dataConnectKey)
+        public void UpdateConfigurationFile(string accountApiKey, string privateApiKey, string dataConnectKey, bool onlyIfEmpty = false)
         {
             var _configFileName = "appsettings.json";
             var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
@@ -226,11 +237,14 @@ namespace ReportBuilder.Web.Controllers
                 existingConfig = JObject.Parse(System.IO.File.ReadAllText(_configFilePath));
                 if (existingConfig["dotNetReport"] is JObject dotNetReportObject)
                 {
-                    dotNetReportObject["accountApiToken"] = accountApiKey;
-                    dotNetReportObject["privateApiToken"] = privateApiKey;
-                    dotNetReportObject["dataconnectApiToken"] = dataConnectKey;
+                    if (!onlyIfEmpty || (onlyIfEmpty && dotNetReportObject["accountApiToken"] != null && dotNetReportObject["accountApiToken"].ToString() == "Your Account API Key"))
+                    {
+                        dotNetReportObject["accountApiToken"] = accountApiKey;
+                        dotNetReportObject["privateApiToken"] = privateApiKey;
+                        dotNetReportObject["dataconnectApiToken"] = dataConnectKey;
+                        System.IO.File.WriteAllText(_configFilePath, existingConfig.ToString(Formatting.Indented));
+                    }
                 }
-                System.IO.File.WriteAllText(_configFilePath, existingConfig.ToString(Newtonsoft.Json.Formatting.Indented));
             }
         }
 

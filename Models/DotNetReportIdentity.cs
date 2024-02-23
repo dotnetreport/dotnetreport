@@ -225,6 +225,8 @@ namespace ReportBuilder.Web.Models
         public bool Success { get; set; }
         public string Message { get; set; }
         public string AccountKey { get; set; }
+        public string PrivateKey { get; set; }
+        public string DataConnect { get; set; }
         public string PrimaryContact { get; set; }
     }
 
