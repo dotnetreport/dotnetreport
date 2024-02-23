@@ -47,18 +47,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
 
 <asp:Content ID="Content2" ContentPlaceHolderID="body" runat="server">
 
+
 <div class="container-fluid">
-    <div class="row">
-        <div class="col-md-6">
-            <p>
-            </p>
-        </div>
-        <div class="col-md-6">
-            <div class="pull-right">
-            <a href="/DotnetReport/Dashboard.aspx">View Dashboard</a> | Learn how to <a href="https://dotnetreport.com/getting-started-with-dotnet-report/" target="_blank">Integrate in your App here</a>.
-            </div>
-        </div>
-    </div>
+   
 
     <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
 
@@ -100,7 +91,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <a class="dropdown-item" href="#" data-bind="click: ManageFolder.deleteFolder">Delete Selected Folder</a>
                                 </div>
                             </li>
-                            <li class="nav-item active">
+                            <li class="nav-item active" data-bind="visible: adminMode">
                                 <a href="#" class="nav-link" data-bind="click: function(){ initHeaderDesigner(); }">
                                     <span class="fa fa-arrow-up"></span> Report Header
                                 </a>
@@ -108,7 +99,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         </ul>
                         <form class="form-inline my-5 my-md-0">
                             <div data-bind="with: searchFieldsInReport">
-                                <select id="search-report" class="form-control" data-bind="select2: {placeholder: 'Search Report by Name, Description or Data Field...', ajax: { url: url, dataType: 'json', contentType: 'application/json; charset=utf-8', data: query, processResults: processResults, type: 'POST' }, minimumInputLength: 0, language: language, allowClear: true }, value: selectedOption"></select>
+                                <select id="search-report" class="form-control" data-bind="select2: {placeholder: 'Search Report by Name, Description or Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults }, minimumInputLength: 0, language: language, allowClear: true }, value: selectedOption"></select>
                             </div>
                         </form>
                     </div>
@@ -219,7 +210,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             <div data-bind="if: $parent.adminMode">
                                                 <div class="small">
                                                     <b>Report Access</b><br />
-                                                    Manage by User <span class="badge badge-info" data-bind="text: userId ? userId : 'No User'"></span>
+                                                    Manage by User <span class="badge badge-info" data-bind="text: userId ? userId : 'Any User'"></span>
                                                     <br />
                                                     View only by User <span class="badge badge-info" data-bind="text: (viewOnlyUserId ? viewOnlyUserId : (userId ? userId : 'Any User'))"></span>
                                                     <br />
@@ -228,7 +219,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                         <br />
                                                     </div>
                                                     <div data-bind="if: userRole">
-                                                        Manage by Role <span class="badge badge-info" data-bind="text: userRole ? userRole : 'No Role'"></span>
+                                                        Manage by Role <span class="badge badge-info" data-bind="text: userRole ? userRole : 'Any Role'"></span>
                                                         <br />
                                                     </div>
                                                     <div data-bind="if: viewOnlyUserRole">
@@ -244,8 +235,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                         <br />
                                                     </div>
                                                     <div>
-                                                        Direct Link to Run Report: <a data-bind="attr: {href: '/DotNetReport/Report.aspx?linkedreport=true&noparent=true&reportId=' + reportId }" target="_blank"><span class="fa fa-link"></span></a>
-                                                        &nbsp;<a href="#" data-bind="click: navigator.clipboard.writeText(window.location.href + '/Report.aspx?linkedreport=true&noparent=true&reportId=' + reportId )"><span class="fa fa-copy" title="Click to Copy Link"></span></a>
+                                                        Direct Link to Run Report: <a data-bind="attr: {href: '/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + reportId }" target="_blank"><span class="fa fa-link"></span></a>
+                                                        &nbsp;<a href="#" data-bind="click: navigator.clipboard.writeText(window.location.href + '/Report?linkedreport=true&noparent=true&reportId=' + reportId )"><span class="fa fa-copy" title="Click to Copy Link"></span></a>
                                                     </div>
                                                 </div>
                                             </div>
@@ -268,7 +259,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                     <button type="button" class="btn btn-sm btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" style="margin-left: -4px;">
                                                         <span class="sr-only"></span>
                                                     </button>
-                                                    <div class="dropdown-menu">
+                                                    <div class="dropdown-menu dropdown-menu-right">
                                                         <a class="dropdown-item" href="#" data-bind="click: function() {exportReport('excel');}">
                                                             <span class="fa fa-file-excel-o"></span> Download Excel
                                                         </a>
@@ -307,7 +298,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                             <span class="fa fa-file-excel-o"></span> Download Excel
                                                         </a>
                                                         <a class="dropdown-item" href="#" data-bind="visible: hasDrilldown, click: function() {exportReport('excel-sub');}">
-                                                            <span class="fa fa-file-excel-o"></span> Download Excel (Expanded)
+                                                            <span class="fa fa-file-excel-o"></span> Download Excel with inner rows
                                                         </a>
                                                     </div>
                                                 </div>
@@ -368,26 +359,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
             </div>
         </div>
     </div>
-
-    <div class="modal" id="noaccountModal" tabindex="-1" role="dialog" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                    <h4 class="modal-title">Account not Setup</h4>
-                </div>
-                <div class="modal-body">
-                    <p class="alert alert-danger">dotnet Report Account Configuration missing!</p>
-                    <p>You do not have the neccessary initial configuration completed to use dotnet Report.</p>
-                    <p>Please view the <a href="https://dotnetreport.com/blogs/getting-started-with-dotnet-report/" target="_blank">Getting Started Guide</a> to correctly configure dotnet Report.</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
+    
     <div data-bind="if: ReportMode() == 'execute' || ReportMode() == 'Linked'">
 
          <div class="card">
@@ -411,6 +383,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             <a href="#" class="btn btn-primary" data-bind="visible: $root.CanEdit()" data-toggle="modal" data-target="#modal-reportbuilder">
                                 Edit Report
                             </a>
+                            <button class="btn btn-primary" data-bind="visible: CanSaveReports(), click: SaveWithoutRun">Save Report</button>
 
                             <div class="btn-group">
                                 <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -458,11 +431,11 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <div class="card-header">
                                         <h5 class="card-title">
                                             <a data-toggle="collapse" data-target="#filter-panel" href="#">
-                                                <i class="fa fa-filter"></i>Choose filter options
+                                                <i class="fa fa-filter"></i>Choose Filters
                                             </a>
                                         </h5>
                                     </div>
-                                    <div id="filter-panel" class="card-body">
+                                    <div id="filter-panel" class="card-body collapse">
                                         <div data-bind="if: useStoredProc">
                                             <div class="row">
                                                 <div data-bind="template: {name: 'filter-parameters'}" class="col-md-12"></div>
@@ -492,7 +465,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             <div class="report-render" data-bind="css: { 'report-expanded': isExpanded }">
                                 <div class="report-menubar">
                                     <div class="col-xs-12 col-centered" data-bind="with: pager">
-                                        <div class="form-inline" data-bind="visible: pages()">
+                                        <div class="form-inline pull-left" data-bind="visible: pages()">
                                             <div class="form-group pull-left total-records">
                                                 <span data-bind="text: ' Total Records: ' + totalRecords()"></span><br />
                                             </div>
@@ -501,12 +474,38 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                     <span class="fa fa-file-excel-o"></span>
                                                 </button>
                                                 <button class="btn btn-secondary btn-sm" data-bind="click: $parent.toggleExpand">
-                                                    <span class="fa" data-bind="css: {'fa-expand': !$parent.isExpanded(), 'fa-minus': $parent.isExpanded() }"></span>
+                                                    <span class="fa" data-bind="css: {'fa-expand': !$parent.isExpanded(), 'fa-compress': $parent.isExpanded() }"></span>
+                                                </button>      
+                                                <button class="btn btn-secondary btn-sm" data-bind="visible: $parent.canDrilldown, click: $parent.ExpandAll" title="Expand all rows">
+                                                    <span class="fa fa-plus"></span>
                                                 </button>
+                                                <button class="btn btn-secondary btn-sm" data-bind="visible: $parent.canDrilldown, click: $parent.CollapseAll" title="Collapse all rows">
+                                                    <span class="fa fa-minus"></span>
+                                                </button>
+                                                <div data-bind="with: $parent" class="pull-left">
+                                                    <div class="dropdown-selected" data-bind="click: toggleDropdown">
+                                                        <div data-bind="with: selectedTableStyle" class="btn btn-sm btn-secondary" title="Format Table">
+                                                            <span class="fa fa- fa-paint-brush"></span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="dropdown-content" style="position: absolute;" data-bind="visible: dropdownOpen">
+                                                        <!-- ko foreach: tableStyles -->
+                                                        <div class="dropdown-option" data-bind="title: $data.name, click: $parent.selectStyle">
+                                                            <div class="mini-table-preview" data-bind="foreach: new Array(5)">
+                                                                <div class="mini-table-row" data-bind="foreach: new Array(5)">
+                                                                    <div class="mini-table-cell" data-bind="style: { backgroundColor: $parentContext.$index() === 0 ? $parents[1].headerBg : ($parentContext.$index() % 2 === 0 ? $parents[1].altRowBg : $parents[1].rowBg), color: $parents[1].textColor }"></div>
+
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <!-- /ko -->
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div class="form-group pull-right">
-                                                <div data-bind="template: 'pager-template', data: $data"></div>
-                                            </div>
+                                            
+                                        </div>
+                                        <div class="form-inline pull-right">
+                                            <div data-bind="template: 'pager-template', data: $data"></div>
                                         </div>
                                     </div>
                                 </div>

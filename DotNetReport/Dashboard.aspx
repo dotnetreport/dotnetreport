@@ -118,37 +118,31 @@
 <asp:Content ID="Content2" ContentPlaceHolderID="body" runat="server">
 
 <div class="row">
-    <div class="col-8" data-bind="with: currentDashboard">
-        <h2 data-bind="text: name ? name : 'Dashboard'">Dashboard</h2>
+    <div class="col-4" data-bind="with: currentDashboard">
+        <h2 title="Switch Dashboard">
+            <select class="form-control select-as-text" title="Switch Dashboard" data-bind="select2: {minimumResultsForSearch: Infinity}, options: $parent.dashboards, optionsText: 'name', optionsValue: 'id', value: $parent.selectDashboard"></select>
+        </h2>
         <p data-bind="text: description"></p>
     </div>
-
-    <div class="col-4 right-align" style="display: none;" data-bind="visible: dashboards().length > 0 ">
-        <div class="row">
-            <label class="col">Switch Dashboard</label>
-            <select class="col form-control" data-bind="options: dashboards, optionsText: 'name', optionsValue: 'id', value: selectDashboard"></select>
-        </div>
+    <div class="col-4">
+        &nbsp;
     </div>
 </div>
 <div class="clearfix"></div>
-
-<div class="pull-right">
-    <a href="/DotnetReport/Index.aspx">Manage Reports</a> | Learn how to <a href="https://dotnetreport.com/getting-started-with-dotnet-report/" target="_blank">Integrate in your App here</a>.
-</div>
 
 <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
 
 <div class="row padded-top">
     <div class="col-md-12">
-        <button class="btn btn-primary btn-sm" onclick="return false;" data-toggle="modal" data-target="#add-dashboard-modal" title="Edit Dashboard Settings" data-bind="click: editDashboard">Edit this Dashboard</button>
-        <button class="btn btn-primary btn-sm" onclick="return false;" data-toggle="modal" data-target="#add-dashboard-modal" title="Add a New Dashboard" data-bind="click: newDashboard">Add a new Dashboard</button>
+        <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Edit Dashboard Settings" data-bind="click: editDashboard">Edit this Dashboard</button>
+        <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Add a New Dashboard" data-bind="click: newDashboard">Add a new Dashboard</button>
     </div>
 </div>
 <div class="padded-top"></div>
 
 <div class="centered" style="display: none;" data-bind="visible: dashboards().length == 0 ">
     No Dashboards yet. Click below to Start<br />
-    <button onclick="return false;" class="btn btn-lg btn-primary" data-toggle="modal" data-target="#add-dashboard-modal"><i class="fa fa-dashboard"></i> Create a New Dashboard</button>
+    <button class="btn btn-lg btn-primary" data-toggle="modal" data-target="#add-dashboard-modal"><i class="fa fa-dashboard"></i> Create a New Dashboard</button>
 </div>
 
 <div class="modal modal-fullscreen" id="add-dashboard-modal" role="dialog">
@@ -156,7 +150,7 @@
         <div class="modal-content" data-bind="with: dashboard">
             <div class="modal-header">
                 <h4 class="modal-title"><span data-bind="text: Id() ? 'Edit' : 'Add'"></span> Dashboard</h4>
-                <button onclick="return false;" type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
             </div>
             <div class="modal-body">
                 <div class="form-horizontal">
@@ -205,8 +199,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button onclick="return false;" type="button" class="btn btn-danger" data-bind="click: $root.deleteDashboard, visible: Id">Delete Dashboard</button>
-                <button onclick="return false;" type="button" class="btn btn-primary" data-bind="click: $root.saveDashboard">Save Dashboard</button>
+                <button type="button" class="btn btn-danger" data-bind="click: $root.deleteDashboard, visible: Id">Delete Dashboard</button>
+                <button type="button" class="btn btn-primary" data-bind="click: $root.saveDashboard">Save Dashboard</button>
             </div>
         </div>
     </div>
@@ -251,7 +245,7 @@
                             </a>
                         </li>
                         <li class="dropdown-item">
-                            <a data-bind="attr: {href: '/DotNetReport/Report.aspx?linkedreport=true&noparent=true&reportId=' + ReportID() }" target="_blank">
+                            <a data-bind="attr: {href: '/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + ReportID() }" target="_blank">
                                 <span class="fa fa-file"></span> Report
                             </a>
                         </li>
@@ -306,4 +300,5 @@
 <div class="modal" id="linkModal" tabindex="-1" role="dialog" aria-hidden="true" data-bind="with: selectedReport">
     <div data-bind="template: {name: 'report-link-edit', data: $data}"></div>
 </div>
+
 </asp:Content>

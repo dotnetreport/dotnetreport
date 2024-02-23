@@ -70,9 +70,10 @@
     <div data-bind="template: {name: 'report-link-edit', data: $data}"></div>
 </div>
 
+
 <div class="report-view">
 <div class="pull-right">
-    <a href="/DotNetReport/Index.aspx?folderId=<%= Model.SelectedFolder %>" class="btn btn-primary">
+ <a href="/DotNetReport/Index.aspx?folderId=<%= Model.SelectedFolder %>" class="btn btn-primary">
         Back to Reports
     </a>
     <button onclick="history.back()" class="btn btn-primary" data-bind="visible: ReportMode()=='linked'">
@@ -81,6 +82,7 @@
     <a href="/DotNetReport/Index.aspx?reportId=<%= Model.ReportId %>&folderId=<%= Model.SelectedFolder%>" class="btn btn-primary" data-bind="visible: $root.CanEdit()">
         Edit Report
     </a>
+    <button class="btn btn-primary" data-bind="visible: CanSaveReports(), click: SaveWithoutRun">Save Report</button>
 
     <div class="btn-group">
         <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -124,13 +126,11 @@
             <div data-bind="if: EditFiltersOnReport">
                 <div class="card">
                     <div class="card-header">
-                        <h5 class="card-title">
-                            <a data-toggle="collapse" data-target="#filter-panel" href="#">
-                                <i class="fa fa-filter"></i>Choose filter options
-                            </a>
-                        </h5>
+                        <a data-toggle="collapse" data-target="#filter-panel" href="#">
+                            <i class="fa fa-filter"></i>Choose Filters
+                        </a>
                     </div>
-                    <div id="filter-panel" class="card-body">
+                    <div id="filter-panel" class="card-body collapse">
                          <div data-bind="if: useStoredProc">
                             <div class="row">
                                 <div data-bind="template: {name: 'filter-parameters'}" class="col-md-12"></div>
@@ -160,7 +160,7 @@
             <div class="report-render" data-bind="css: { 'report-expanded': isExpanded }">
                 <div class="report-menubar">
                     <div class="col-xs-12 col-centered" data-bind="with: pager">
-                        <div class="form-inline" data-bind="visible: pages()">
+                        <div class="form-inline pull-left" data-bind="visible: pages()">
                             <div class="form-group pull-left total-records">
                                 <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
                             </div>
@@ -168,13 +168,38 @@
                                 <button class="btn btn-secondary btn-sm" data-bind="visible: !$root.isChart() || $root.ShowDataWithGraph(), click: $root.downloadExcel" title="Export to Excel">
                                     <span class="fa fa-file-excel-o"></span>
                                 </button>
-                                    <button class="btn btn-secondary btn-sm" data-bind="click: $parent.toggleExpand">
-                                        <span class="fa" data-bind="css: {'fa-expand': !$parent.isExpanded(), 'fa-minus': $parent.isExpanded() }"></span>
-                                    </button>
-                            </div>
-                            <div class="form-group pull-right">
-                                <div data-bind="template: 'pager-template', data: $data"></div>
-                            </div>
+                                <button class="btn btn-secondary btn-sm" data-bind="click: $parent.toggleExpand">
+                                    <span class="fa" data-bind="css: {'fa-expand': !$parent.isExpanded(), 'fa-compress': $parent.isExpanded() }"></span>
+                                </button>
+                                <button class="btn btn-secondary btn-sm" data-bind="visible: $parent.canDrilldown, click: $parent.ExpandAll" title="Expand all rows">
+                                    <span class="fa fa-plus"></span>
+                                </button>
+                                <button class="btn btn-secondary btn-sm" data-bind="visible: $parent.canDrilldown, click: $parent.CollapseAll" title="Collapse all rows">
+                                    <span class="fa fa-minus"></span>
+                                </button>
+                                <div data-bind="with: $parent" class="pull-left">
+                                    <div class="dropdown-selected" data-bind="click: toggleDropdown">
+                                        <div data-bind="with: selectedTableStyle" class="btn btn-sm btn-secondary" title="Format Table">
+                                            <span class="fa fa- fa-paint-brush"></span>
+                                        </div>
+                                    </div>
+                                    <div class="dropdown-content" style="position: absolute;" data-bind="visible: dropdownOpen">
+                                        <!-- ko foreach: tableStyles -->
+                                        <div class="dropdown-option" data-bind="click: $parent.selectStyle">
+                                            <div class="mini-table-preview" data-bind="foreach: new Array(5)">
+                                                <div class="mini-table-row" data-bind="foreach: new Array(5)">
+                                                    <div class="mini-table-cell" data-bind="style: { backgroundColor: $parentContext.$index() === 0 ? $parents[1].headerBg : ($parentContext.$index() % 2 === 0 ? $parents[1].altRowBg : $parents[1].rowBg), color: $parents[1].textColor }"></div>
+
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- /ko -->
+                                    </div>
+                                </div>
+                            </div>                            
+                        </div>
+                        <div class="form-inline pull-right">
+                            <div data-bind="template: 'pager-template', data: $data"></div>
                         </div>
                     </div>
                 </div>
@@ -213,9 +238,9 @@
         <h3>An unexpected error occured while running the Report</h3>
         <hr />
         <b>Error Details</b>
-        <div>
+        <p>
             <div data-bind="text: Exception"></div>
-        </div>
+        </p>
 
     </div>
     <div data-bind="if: ReportDebug() || HasError()">
