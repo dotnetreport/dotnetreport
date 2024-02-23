@@ -67,7 +67,25 @@ var manageViewModel = function (options) {
 		if (self.canSwitchConnection()) {
 			bootbox.confirm("Are you sure you would like to switch your Database Connection?", function (r) {
 				if (r) {
-					window.location.href = window.location.pathname + "?" + $.param({ 'databaseApiKey': self.currentConnectionKey() })
+					ajaxcall({
+						url: options.switchDbConnectionUrl,
+						type: 'POST',
+						data: JSON.stringify(self.currentConnectionKey())
+					}).done(function (response) {
+						if (response) {
+							if (response.success) {
+								toastr.success('DB Connection switched successfully');
+								window.location.href = window.location.pathname + "?" + $.param({ 'databaseApiKey': self.currentConnectionKey() });
+							} else {
+								toastr.error(response.message || 'Could not switch DB Connection');
+								return false;
+							}
+						} else {
+							toastr.error('Could not switch DB Connection');
+							return false;
+						}
+					});
+
 				}
 			});
 		}

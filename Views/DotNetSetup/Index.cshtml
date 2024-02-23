@@ -70,6 +70,7 @@
                     searchProcUrl: '@Url.Action("SearchProcedure", "DotNetReportApi")',
                     getSchemaFromSql: '@Url.Action("GetSchemaFromSql", "DotNetReportApi")',
                     updateDbConnectionUrl: '@Url.Action("UpdateDbConnection", "DotNetReportApi")',
+                    switchDbConnectionUrl: '@Url.Action("SwitchDbConnection", "DotNetReportApi")',
                     apiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")',
                     getAppSettingUrl: '@Url.Action("AppSettings", "DotNetReportApi")',
                     onlyApi: queryParams.onlyApi !== 'false'
@@ -183,14 +184,21 @@
 
                         </div>
                     </div>
+                    <br />
+                    <br />
+                    <div class="boxed">
+                        <p><b>Database: </b><span data-bind="text: DbConfig.DatabaseType"></span></p>
+                        <p><b>Selected Tables: </b><span data-bind="text: Tables.availableTables().length"></span></p>
+                        <p><b>Joins Setup: </b><span data-bind="text: Joins().length"></span></p>
+                    </div>
                 </div>
             </div>
         </div>
         <div role="tabpanel" class="tab-pane" id="tablesfields">
-            <b data-bind="text: customTableMode() ? 'Custom Datasets' : 'DB Tables and Views'"></b>
+            <b data-bind="text: customTableMode() ? 'Custom Tables' : 'DB Tables and Views'"></b>
             <p>
                 <span data-bind="visible: $root.customTableMode">
-                    Define Datasets using SQL Select Query to use in DNR for Reporting and Analytics.
+                    Define Tables using SQL Select Query to use in DNR for Reporting and Analytics.
                 </span>
                 <span data-bind="hidden: $root.customTableMode">
                     Select Tables or Views from your Database to use in DNR for Reporting and Analytics.

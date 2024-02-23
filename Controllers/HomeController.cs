@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using ReportBuilder.Web.Models;
 using System.Security.Claims;
 using System.Text.Json;
@@ -129,7 +128,7 @@ namespace ReportBuilder.Web.Controllers
                 if (loginResult.Success)
                 {
                     await LoginUser(model.Email, loginResult.PrimaryContact, true);
-                    UpdateConfigurationFile(loginResult.AccountKey, loginResult.PrivateKey, loginResult.DataConnect, true);
+                    DotNetReportApiController.UpdateConfigurationFile(loginResult.AccountKey, loginResult.PrivateKey, loginResult.DataConnect, true);
 
                     if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
                     {
@@ -200,7 +199,7 @@ namespace ReportBuilder.Web.Controllers
                         string accountApiKey = root.GetProperty("AccountApiKey").GetString();
                         string privateApiKey = root.GetProperty("PrivateApiKey").GetString();
                         string dataConnectKey = root.GetProperty("DataConnectKey").GetString();
-                        UpdateConfigurationFile(accountApiKey, privateApiKey, dataConnectKey);
+                        DotNetReportApiController.UpdateConfigurationFile(accountApiKey, privateApiKey, dataConnectKey);
 
                         await LoginUser(model.Email, model.PrimaryContact, true);
 
@@ -223,28 +222,6 @@ namespace ReportBuilder.Web.Controllers
                 ModelState.AddModelError(string.Empty, "Account could not be created. Please try again");
                 errors.ForEach(e => ModelState.AddModelError(string.Empty, e));
                 return View(model);
-            }
-        }
-
-        public void UpdateConfigurationFile(string accountApiKey, string privateApiKey, string dataConnectKey, bool onlyIfEmpty = false)
-        {
-            var _configFileName = "appsettings.json";
-            var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
-
-            JObject existingConfig;
-            if (System.IO.File.Exists(_configFilePath))
-            {
-                existingConfig = JObject.Parse(System.IO.File.ReadAllText(_configFilePath));
-                if (existingConfig["dotNetReport"] is JObject dotNetReportObject)
-                {
-                    if (!onlyIfEmpty || (onlyIfEmpty && dotNetReportObject["accountApiToken"] != null && dotNetReportObject["accountApiToken"].ToString() == "Your Account API Key"))
-                    {
-                        dotNetReportObject["accountApiToken"] = accountApiKey;
-                        dotNetReportObject["privateApiToken"] = privateApiKey;
-                        dotNetReportObject["dataconnectApiToken"] = dataConnectKey;
-                        System.IO.File.WriteAllText(_configFilePath, existingConfig.ToString(Formatting.Indented));
-                    }
-                }
             }
         }
 

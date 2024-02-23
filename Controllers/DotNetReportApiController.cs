@@ -924,6 +924,9 @@ namespace ReportBuilder.Web.Controllers
             public string timeZone { get; set; } = "";
             public string appThemes { get; set; } = "";
         }
+
+        [Authorize(Roles = DotNetReportRoles.DotNetReportAdmin)]
+        [HttpPost]
         public async Task<IActionResult> SaveAppSettings(AppSettingModel model)
         {
             try
@@ -933,12 +936,12 @@ namespace ReportBuilder.Web.Controllers
                 {
                     throw new Exception("Not Authorized to access this Resource");
                 }
-                    var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
-                    if (!System.IO.File.Exists(_configFilePath))
-                    {
-                        var emptyConfig = new JObject();
-                        System.IO.File.WriteAllText(_configFilePath, emptyConfig.ToString(Newtonsoft.Json.Formatting.Indented));
-                    }
+                var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+                if (!System.IO.File.Exists(_configFilePath))
+                {
+                    var emptyConfig = new JObject();
+                    System.IO.File.WriteAllText(_configFilePath, emptyConfig.ToString(Newtonsoft.Json.Formatting.Indented));
+                }
 
                 //// Get the existing JSON configuration
                 var config = JObject.Parse(System.IO.File.ReadAllText(_configFilePath));
@@ -973,7 +976,7 @@ namespace ReportBuilder.Web.Controllers
                     success = true,
                     message = $"Settings Access Saved Successfully"
                 }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
-        }
+            }
             catch (Exception ex)
             {
 
@@ -985,6 +988,66 @@ namespace ReportBuilder.Web.Controllers
 
             }
         }
+
+        [Authorize(Roles = DotNetReportRoles.DotNetReportAdmin)]
+        [HttpPost]
+        public async Task<IActionResult> SwitchDbConnection([FromBody] string dataConnection)
+        {
+            try
+            {
+                var settings = GetSettings();
+                if (!settings.CanUseAdminMode)
+                {
+                    throw new Exception("Not Authorized to access this Resource");
+                }
+               
+                if (!string.IsNullOrEmpty(dataConnection))
+                {
+                    UpdateConfigurationFile(settings.AccountApiToken, "", dataConnection);
+                }
+                return new JsonResult(new
+                {
+                    success = true,
+                    message = $"Connection Switched Successfully"
+                }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+            }
+            catch (Exception ex)
+            {
+
+                return new JsonResult(new
+                {
+                    success = false,
+                    message = ex.Message
+                }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+
+            }
+        }
+
+        public static void UpdateConfigurationFile(string accountApiKey, string privateApiKey, string dataConnectKey, bool onlyIfEmpty = false)
+        {
+            var _configFileName = "appsettings.json";
+            var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+
+            JObject existingConfig;
+            if (System.IO.File.Exists(_configFilePath))
+            {
+                existingConfig = JObject.Parse(System.IO.File.ReadAllText(_configFilePath));
+                if (existingConfig["dotNetReport"] is JObject dotNetReportObject)
+                {
+                    if (!onlyIfEmpty || (onlyIfEmpty && dotNetReportObject["accountApiToken"] != null && dotNetReportObject["accountApiToken"].ToString() == "Your Account API Key"))
+                    {
+                        dotNetReportObject["accountApiToken"] = accountApiKey;
+                        dotNetReportObject["dataconnectApiToken"] = dataConnectKey;
+
+                        if (!string.IsNullOrEmpty(privateApiKey))
+                            dotNetReportObject["privateApiToken"] = privateApiKey;
+
+                        System.IO.File.WriteAllText(_configFilePath, existingConfig.ToString(Newtonsoft.Json.Formatting.Indented));
+                    }
+                }
+            }
+        }
+
         public async Task<IActionResult> AppSettings()
         {
             try
