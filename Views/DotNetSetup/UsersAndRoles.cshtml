@@ -168,13 +168,13 @@
                         <div class="card-body">
                             <div class="form-check font-weight-bold error">
                                 <input type="checkbox" id="not-managed" class="form-check-input" data-bind="checked: _selectedUserConfig, click: function() { confirmUpdate('not-managed'); return true; }, checkedValue: 'not-managed'">
-                                <label class="form-check-label" for="not-managed">No Login Required</label>
+                                <label class="form-check-label" for="not-managed">No Users or Roles</label>
                             </div>
                             <div class="card-text">
-                                Use DNR openly, and allow any user with a link to directly access the system and Create/Manage/Run any Report or Dashboard.
+                                Use DNR with just your own Account login.
                                 <div class="padded-top"></div>
                                 <div class="padded-div small alert alert-danger">
-                                    <i class="fa fa-lightbulb-o"></i> This option is NOT recommended. It will make DNR publicly available without Authentication or Login, as long as a user has the working URL to the system. There are limited options to prevent unauthorized users from editing existing reports, and the admin section will still require login.
+                                    <i class="fa fa-lightbulb-o"></i> This option is NOT recommended as it can be used only with a single user login. You will not be able to add other users or give access to your Reports and Dashboards to other users. 
                                 </div>
                             </div>
                         </div>
