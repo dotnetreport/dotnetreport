@@ -2300,7 +2300,9 @@ var reportViewModel = function (options) {
 				ReportJson: JSON.stringify(self.BuildReportData()),
 				adminMode: self.adminMode(),
 				userIdForFilter: self.userIdForFilter,
-				SubTotalMode: false
+				SubTotalMode: false,
+				reportData: '',
+				pivotColumn: ''
 			})
 		}).done(function () {
 			self.RunReport(false);
@@ -2520,10 +2522,10 @@ var reportViewModel = function (options) {
 				e.fontBold = col.fontBold || ko.observable();
 				e.headerFontBold = col.headerFontBold || ko.observable();
 				e.headerFontColor = col.headerFontColor || ko.observable();
-				e.headerBackColor = ko.observable(e.headerBackColor == '#ffffff' ? null : e.headerBackColor);
+				e.headerBackColor = col.headerBackColor || ko.observable();
 				e.fieldId = col.fieldId;
 				e.fontColor = col.fontColor || ko.observable();
-				e.backColor = ko.observable(e.backColor == '#ffffff' ? null : e.backColor);
+				e.backColor = col.backColor || ko.observable();
 				e.groupInGraph = col.groupInGraph || ko.observable();
 				e.dontSubTotal = col.dontSubTotal || ko.observable();
 				e.fieldType = col.fieldType;
@@ -2769,7 +2771,9 @@ var reportViewModel = function (options) {
 					SaveReport: self.CanSaveReports() ? self.SaveReport() : false,
 					ReportJson: JSON.stringify(self.BuildReportData()),
 					adminMode: self.adminMode(),
-					SubTotalMode: true
+					SubTotalMode: true,
+					reportData: '',
+					pivotColumn: ''
 				})
 			}).done(function (subtotalsqlResult) {
 				if (subtotalsqlResult.d) { subtotalsqlResult = subtotalsqlResult.d; }
@@ -2785,7 +2789,9 @@ var reportViewModel = function (options) {
 						pageSize: 1,
 						sortBy: '',
 						desc: false,
-						reportSeries: ''
+						reportSeries: '',
+						reportData: '',
+						pivotColumn: ''
 					})
 				}).done(function (subtotalResult) {
 					if (subtotalResult.d) { subtotalResult = subtotalResult.d; }
@@ -3855,6 +3861,7 @@ var dashboardViewModel = function (options) {
 	self.procs = [];
 	self.folders = [];
 	self.ChartDrillDownData = ko.observable();
+	self.DontExecuteOnRun = ko.observable(false);
 
 	var currentDash = options.dashboardId > 0
 		? (_.find(self.dashboards(), { id: options.dashboardId }) || { name: '', description: '' })
@@ -4223,7 +4230,10 @@ var dashboardViewModel = function (options) {
 			}
 		});
 	};
-
+	self.ExecuteReport = function () {
+		self.executingReport = true;
+		self.RunReport();
+	}
 	self.RunReport = function () {
 		_.forEach(self.reports(), function (report) {
 			var filterApplied = false;
