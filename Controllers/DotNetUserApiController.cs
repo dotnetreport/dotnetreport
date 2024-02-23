@@ -116,7 +116,7 @@ namespace ReportBuilder.Web.Controllers
             }
             catch (Exception ex)
             {
-                return new JsonResult(new { message = ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null }) { StatusCode = (int)HttpStatusCode.InternalServerError };
+                return new JsonResult(new { ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null }) { StatusCode = (int)HttpStatusCode.InternalServerError };
             }
         }
         public IActionResult ExistingRoleTable([FromBody] UserModel model)
@@ -142,7 +142,7 @@ namespace ReportBuilder.Web.Controllers
             }
             catch (Exception ex)
             {
-                return new JsonResult(new { message = ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null }) { StatusCode = (int)HttpStatusCode.InternalServerError };
+                return new JsonResult(new { ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null }) { StatusCode = (int)HttpStatusCode.InternalServerError };
             }
         }
         public IActionResult ExistingUserRoleTable([FromBody] UserModel model)
@@ -168,7 +168,7 @@ namespace ReportBuilder.Web.Controllers
             }
             catch (Exception ex)
             {
-                return new JsonResult(new { message = ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null }) { StatusCode = (int)HttpStatusCode.InternalServerError };
+                return new JsonResult(new { ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null }) { StatusCode = (int)HttpStatusCode.InternalServerError };
             }
         }
         public async Task<IActionResult> CreateandInsertUser([FromBody] UserModel model)
@@ -215,7 +215,7 @@ namespace ReportBuilder.Web.Controllers
             }
             catch (Exception ex)
             {
-                return new JsonResult(new { message = ex.Message }) { StatusCode = (int)HttpStatusCode.InternalServerError };
+                return new JsonResult(new { ex.Message }) { StatusCode = (int)HttpStatusCode.InternalServerError };
             }
         }
         public IActionResult CreateandInsertRole([FromBody] UserModel model)
@@ -260,7 +260,7 @@ namespace ReportBuilder.Web.Controllers
             }
             catch (Exception ex)
             {
-                return new JsonResult(new { message = ex.Message }) { StatusCode = (int)HttpStatusCode.InternalServerError };
+                return new JsonResult(new { ex.Message }) { StatusCode = (int)HttpStatusCode.InternalServerError };
             }
         }
         public IActionResult CreateandInsertUserRole([FromBody] UserModel model)
@@ -309,7 +309,7 @@ namespace ReportBuilder.Web.Controllers
             }
             catch (Exception ex)
             {
-                return new JsonResult(new { message = ex.Message }) { StatusCode = (int)HttpStatusCode.InternalServerError };
+                return new JsonResult(new { ex.Message }) { StatusCode = (int)HttpStatusCode.InternalServerError };
             }
         }
 
@@ -341,7 +341,7 @@ namespace ReportBuilder.Web.Controllers
             }
             catch (Exception ex)
             {
-                return new JsonResult(new { message = ex.Message }) { StatusCode = (int)HttpStatusCode.InternalServerError };
+                return new JsonResult(new { ex.Message }) { StatusCode = (int)HttpStatusCode.InternalServerError };
             }
         }
         public IActionResult UpdateRole([FromBody] UserModel model)
@@ -373,7 +373,7 @@ namespace ReportBuilder.Web.Controllers
             }
             catch (Exception ex)
             {
-                return new JsonResult(new { message = ex.Message }) { StatusCode = (int)HttpStatusCode.InternalServerError };
+                return new JsonResult(new { ex.Message }) { StatusCode = (int)HttpStatusCode.InternalServerError };
             }
         }
         public IActionResult UpdateUserRole([FromBody] UserModel model)
@@ -405,7 +405,7 @@ namespace ReportBuilder.Web.Controllers
             }
             catch (Exception ex)
             {
-                return new JsonResult(new { message = ex.Message }) { StatusCode = (int)HttpStatusCode.InternalServerError };
+                return new JsonResult(new { ex.Message }) { StatusCode = (int)HttpStatusCode.InternalServerError };
             }
         }
         public IActionResult DeleteUser([FromBody] UserModel model)
@@ -435,7 +435,7 @@ namespace ReportBuilder.Web.Controllers
             }
             catch (Exception ex)
             {
-                return new JsonResult(new { message = ex.Message }) { StatusCode = (int)HttpStatusCode.InternalServerError };
+                return new JsonResult(new { ex.Message }) { StatusCode = (int)HttpStatusCode.InternalServerError };
             }
         }
         public IActionResult DeleteRole([FromBody] UserModel model)
@@ -465,7 +465,7 @@ namespace ReportBuilder.Web.Controllers
             }
             catch (Exception ex)
             {
-                return new JsonResult(new { message = ex.Message }) { StatusCode = (int)HttpStatusCode.InternalServerError };
+                return new JsonResult(new { ex.Message }) { StatusCode = (int)HttpStatusCode.InternalServerError };
             }
         }
         public IActionResult DeleteUserRole([FromBody] UserModel model)
@@ -496,7 +496,7 @@ namespace ReportBuilder.Web.Controllers
             }
             catch (Exception ex)
             {
-                return new JsonResult(new { message = ex.Message }) { StatusCode = (int)HttpStatusCode.InternalServerError };
+                return new JsonResult(new { ex.Message }) { StatusCode = (int)HttpStatusCode.InternalServerError };
             }
         }
         public IActionResult LoadRolesData([FromBody] UserModel model)
@@ -528,7 +528,7 @@ namespace ReportBuilder.Web.Controllers
             catch (Exception ex)
             {
 
-                return new JsonResult(new { message = ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null }) { StatusCode = (int)HttpStatusCode.InternalServerError };
+                return new JsonResult(new { ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null }) { StatusCode = (int)HttpStatusCode.InternalServerError };
             }
         }
 
