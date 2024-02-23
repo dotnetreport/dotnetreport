@@ -1485,6 +1485,7 @@ var reportViewModel = function (options) {
 		self.OuterGroupColumns([]);
 		self.barChartHorizontal(false);
 		self.barChartStacked(false);
+		self.selectedStyle('default');
 	};
 
 	self.SelectedProc.subscribe(function (proc) {
@@ -2976,6 +2977,12 @@ var reportViewModel = function (options) {
 		if (options.chartSize) {
 			chartOptions.width = options.chartSize.width;
 			chartOptions.height = options.chartSize.height;
+		}
+
+		if (self.colorScheme() != null && self.colorScheme().length > 0) {
+			chartOptions.colors = self.colorScheme().slice(1);
+			chartOptions.backgroundColor = self.colorScheme()[0], // Set the background color here
+				chartOptions.chartArea = { backgroundColor: self.colorScheme()[0] }
 		}
 
 		var chartDiv = document.getElementById('chart_div_' + self.ReportID());

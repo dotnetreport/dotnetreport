@@ -499,7 +499,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                     </div>
                                                     <div class="dropdown-content" style="position: absolute;" data-bind="visible: dropdownOpen">
                                                         <!-- ko foreach: tableStyles -->
-                                                        <div class="dropdown-option" data-bind="click: $parent.selectStyle">
+                                                        <div class="dropdown-option" data-bind="title: $data.name, click: $parent.selectStyle">
                                                             <div class="mini-table-preview" data-bind="foreach: new Array(5)">
                                                                 <div class="mini-table-row" data-bind="foreach: new Array(5)">
                                                                     <div class="mini-table-cell" data-bind="style: { backgroundColor: $parentContext.$index() === 0 ? $parents[1].headerBg : ($parentContext.$index() % 2 === 0 ? $parents[1].altRowBg : $parents[1].rowBg), color: $parents[1].textColor }"></div>
