@@ -91,9 +91,9 @@ namespace ReportBuilder.Web.Controllers
                 emailPort = appSetting?["email"]?["port"]?.ToString(),
                 emailUserName = appSetting?["email"]?["username"]?.ToString(),
                 emailPassword = appSetting?["email"]?["password"]?.ToString(),
-                backendApiUrl = appSetting?["BaseApiUrl"]?.ToString(),
-                timeZone = appSetting?["TimeZone"]?.ToString(),
-                appThemes = appSetting?["AppTheme"]?.ToString()
+                backendApiUrl = appSetting?["BaseApiUrl"]?.ToString() ?? "https://dotnetreport.com/api",
+                timeZone = appSetting?["TimeZone"]?.ToString() ?? "-6",
+                appThemes = appSetting?["AppTheme"]?.ToString() ?? "default"
             };
 
             return settings;
