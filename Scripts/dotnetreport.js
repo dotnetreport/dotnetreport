@@ -2522,10 +2522,10 @@ var reportViewModel = function (options) {
 				e.fontBold = col.fontBold || ko.observable();
 				e.headerFontBold = col.headerFontBold || ko.observable();
 				e.headerFontColor = col.headerFontColor || ko.observable();
-				e.headerBackColor = ko.observable(e.headerBackColor == '#ffffff' ? null : e.headerBackColor);
+				e.headerBackColor = col.headerBackColor || ko.observable();
 				e.fieldId = col.fieldId;
 				e.fontColor = col.fontColor || ko.observable();
-				e.backColor = ko.observable(e.backColor == '#ffffff' ? null : e.backColor);
+				e.backColor = col.backColor || ko.observable();
 				e.groupInGraph = col.groupInGraph || ko.observable();
 				e.dontSubTotal = col.dontSubTotal || ko.observable();
 				e.fieldType = col.fieldType;
