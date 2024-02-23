@@ -226,10 +226,13 @@ namespace ReportBuilder.Web.Controllers
             public string sortBy { get; set; }
             public bool desc { get; set; }
             public string ReportSeries { get; set; }
+
+            public string pivotColumn { get; set; }
+            public string reportData { get; set; }
         }
 
         [HttpPost]
-        public IActionResult RunReport(RunReportParameters data)
+        public async Task<IActionResult> RunReport(RunReportParameters data)
         {
             string reportSql = data.reportSql;
             string connectKey = data.connectKey;
@@ -239,6 +242,8 @@ namespace ReportBuilder.Web.Controllers
             string sortBy = data.sortBy;
             bool desc = data.desc;
             string reportSeries = data.ReportSeries;
+            string pivotColumn = data.pivotColumn;
+            string reportData = data.reportData;
 
             var sql = "";
             var sqlCount = "";
@@ -322,18 +327,26 @@ namespace ReportBuilder.Web.Controllers
                         foreach (DataColumn c in dtPagedRun.Columns) { sqlFields.Add($"{c.ColumnName} AS {c.ColumnName}"); }
                     }
 
-                    string[] series = { };
-                    if (i == 0)
-                    {
-                        dtPaged = dtPagedRun;
-                        dtCols = dtPagedRun.Columns.Count;
-                        fields.AddRange(sqlFields);
-                    }
-                    else if (i > 0)
-                    {
-                        // merge in to dt
-                        if (!string.IsNullOrEmpty(reportSeries))
-                            series = reportSeries.Split(new string[] { "%2C", "," }, StringSplitOptions.RemoveEmptyEntries);
+                        string[] series = { };
+                        if (i == 0)
+                        {
+                            fields.AddRange(sqlFields);
+
+                            if (!string.IsNullOrEmpty(pivotColumn))
+                            {
+                                var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dtPagedRun, sqlFields, reportData);
+                                dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn);
+                                fields.AddRange(dtPagedRun.Columns.Cast<DataColumn>().Skip(fields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
+                            }
+
+                            dtPaged = dtPagedRun;
+                            dtCols = dtPagedRun.Columns.Count;
+                        }
+                        else if (i > 0)
+                        {
+                            // merge in to dt
+                            if (!string.IsNullOrEmpty(reportSeries))
+                                series = reportSeries.Split(new string[] { "%2C", "," }, StringSplitOptions.RemoveEmptyEntries);
 
                         var j = 1;
                         while (j < dtPagedRun.Columns.Count)
