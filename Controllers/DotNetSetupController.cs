@@ -35,14 +35,17 @@ namespace ReportBuilder.Web.Controllers
        
         public static async Task<string> GetConnectionString(ConnectViewModel connect, bool addOledbProvider = true)
         {
-            if (connect.AccountApiKey == "Your Account API Key" || string.IsNullOrEmpty(connect.AccountApiKey))
+            if (connect.AccountApiKey == "Your Account API Key" || string.IsNullOrEmpty(connect.AccountApiKey) || string.IsNullOrEmpty(connect.DatabaseApiKey))
                 return "";
 
             using (var client = new HttpClient())
             {
                 var response = await client.GetAsync(String.Format("{0}/ReportApi/GetDataConnectKey?account={1}&dataConnect={2}", connect.ApiUrl, connect.AccountApiKey, connect.DatabaseApiKey));
 
-                response.EnsureSuccessStatusCode();
+                if (!response.IsSuccessStatusCode)
+                {
+                    return "";
+                }
 
                 var content = await response.Content.ReadAsStringAsync();
                 return DotNetReportHelper.GetConnectionString(content.Replace("\"", ""), addOledbProvider);

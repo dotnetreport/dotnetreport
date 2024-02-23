@@ -71,6 +71,7 @@
                     getSchemaFromSql: '@Url.Action("GetSchemaFromSql", "DotNetReportApi")',
                     updateDbConnectionUrl: '@Url.Action("UpdateDbConnection", "DotNetReportApi")',
                     apiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")',
+                    getAppSettingUrl: '@Url.Action("AppSettings", "DotNetReportApi")',
                     onlyApi: queryParams.onlyApi !== 'false'
                 };
 
@@ -128,13 +129,6 @@
         <div class="d-flex w-100 justify-content-start align-items-center">
             <span class="fa fa-users fa-fw mr-3"></span>
             <span class="menu-collapsed">Users and Roles</span>
-        </div>
-    </a>
-
-    <a href="#" class="bg-dark list-group-item list-group-item-action">
-        <div class="d-flex w-100 justify-content-start align-items-center">
-            <span class="fa fa-gears fa-fw mr-3"></span>
-            <span class="menu-collapsed">System Settings</span>
         </div>
     </a>
 }
