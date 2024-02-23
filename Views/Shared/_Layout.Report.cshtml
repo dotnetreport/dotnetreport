@@ -94,5 +94,12 @@
             });
         }
     </script>
+
+    @if (User.Identity.IsAuthenticated)
+    {
+        <script type="text/javascript">
+            getThemeFromAppSettings()
+        </script>
+    }
 </body>
 </html>

@@ -558,4 +558,3 @@ function changeTheme(theme) {
         document.getElementById('theme-css').href = '/css/dotnetreport-' + theme.toLowerCase() + '.css';
     }
 }
-getThemeFromAppSettings()
