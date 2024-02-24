@@ -1652,34 +1652,16 @@ var settingPageViewModel = function (options) {
 	]);
 	// Define an observable array to hold the list of timezones
 	self.timeZones = ko.observableArray([
-		{ displayName: '(UTC-11:00) Pacific/Midway', value: -11 },
-		{ displayName: '(UTC-10:00) Pacific/Honolulu', value: -10 },
-		{ displayName: '(UTC-9:00) America/Anchorage', value: -9 },
-		{ displayName: '(UTC-8:00) America/Los_Angeles', value: -8 },
-		{ displayName: '(UTC-7:00) America/Denver', value: -7 },
-		{ displayName: '(UTC-6:00) America/Chicago', value: -6 },
-		{ displayName: '(UTC-5:00) America/New_York', value: -5 },
-		{ displayName: '(UTC-4:30) America/Caracas', value: -4.5 },
-		{ displayName: '(UTC-4:00) America/Halifax', value: -4 },
-		{ displayName: '(UTC-3:00) America/Sao_Paulo', value: -3 },
-		{ displayName: '(UTC-3:30) America/St_Johns', value: -3.5 },
-		{ displayName: '(UTC-3:00) America/Argentina/Buenos_Aires', value: -3 },
-		{ displayName: '(UTC-2:00) Atlantic/South_Georgia', value: -2 },
-		{ displayName: '(UTC-1:00) Atlantic/Azores', value: -1 },
-		{ displayName: '(UTC-1:00) Atlantic/Cape_Verde', value: -1 },
-		{ displayName: '(UTC+0:00) Africa/Casablanca', value: 0 },
-		{ displayName: '(UTC+0:00) Europe/London', value: 0 },
-		{ displayName: '(UTC+1:00) Europe/Paris', value: 1 },
-		{ displayName: '(UTC+2:00) Europe/Istanbul', value: 2 },
-		{ displayName: '(UTC+2:00) Africa/Johannesburg', value: 2 },
-		{ displayName: '(UTC+2:00) Asia/Damascus', value: 2 },
-		{ displayName: '(UTC+2:00) Asia/Amman', value: 2 },
-		{ displayName: '(UTC+2:00) Asia/Beirut', value: 2 },
-		{ displayName: '(UTC+2:00) Asia/Jerusalem', value: 2 },
-		{ displayName: '(UTC+3:00) Asia/Riyadh', value: 3 },
-		{ displayName: '(UTC+3:30) Asia/Tehran', value: 3.5 },
-		{ displayName: '(UTC+4:00) Asia/Dubai', value: 4 },
-		{ displayName: '(UTC+4:00) Asia/Baku', value: 4 }
+		{ displayName: '(GMT+05:00) Karachi, Islamabad, Tashkent', value: 'Pakistan Standard Time' },
+		{ displayName: '(GMT-12:00) International Date Line West', value: 'Dateline Standard Time' },
+		{ displayName: '(GMT-11:00) Midway Island, Samoa', value: 'Samoa Standard Time' },
+		{ displayName: '(GMT-10:00) Hawaii', value: 'Hawaiian Standard Time' },
+		{ displayName: '(GMT-09:00) Alaska', value: 'Alaskan Standard Time' },
+		{ displayName: '(GMT-08:00) Pacific Time (US & Canada)', value: 'Pacific Standard Time' },
+		{ displayName: '(GMT-07:00) Mountain Time (US & Canada)', value: 'Mountain Standard Time' },
+		{ displayName: '(GMT-06:00) Central Time (US & Canada)', value: 'Central Standard Time' },
+		{ displayName: '(GMT-05:00) Eastern Time (US & Canada)', value: 'Eastern Standard Time' },
+		// Add more time zones as needed
 	]);
 	self.saveAppSettings = function () {
 

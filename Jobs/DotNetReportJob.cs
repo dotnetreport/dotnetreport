@@ -90,7 +90,16 @@ namespace ReportBuilder.Web.Jobs
                             var chron = new CronExpression(schedule.Schedule);
                             var lastRun = !String.IsNullOrEmpty(schedule.LastRun) ? Convert.ToDateTime(schedule.LastRun) : DateTimeOffset.UtcNow.AddMinutes(-10);
                             var nextRun = chron.GetTimeAfter(lastRun);
-
+                            string userTimeZone = appsetting.timeZone;
+                            if (userTimeZone != null)
+                            {
+                                TimeZoneInfo timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById(userTimeZone);
+                                // convert last run to user's local time zone
+                                lastRun = TimeZoneInfo.ConvertTimeFromUtc(lastRun.UtcDateTime, timeZoneInfo);
+                                nextRun = chron.GetTimeAfter(lastRun);
+                                // get current time in user's time zone
+                                DateTime currentTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.Now.ToUniversalTime(), timeZoneInfo);
+                            }
                             schedule.NextRun = (nextRun.HasValue ? nextRun.Value.ToLocalTime().DateTime : (DateTime?)null);
 
                             if (schedule.NextRun.HasValue && DateTime.Now >= schedule.NextRun && (!String.IsNullOrEmpty(schedule.LastRun) || lastRun <= schedule.NextRun))
