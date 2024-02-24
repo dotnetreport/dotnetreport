@@ -19,6 +19,7 @@ using System.Web;
 using Npgsql;
 using MySql.Data.MySqlClient;
 using static ReportBuilder.Web.Controllers.DotNetReportApiController;
+using ReportBuilder.Web.Controllers;
 
 namespace ReportBuilder.Web.Models
 {
@@ -383,11 +384,24 @@ namespace ReportBuilder.Web.Models
     }
 
 
-    public class DotNetReportHelper
+    public static class DotNetReportHelper
     {
+        private static readonly IConfigurationRoot _configuration;
+
+        static DotNetReportHelper()
+        {
+            var builder = new ConfigurationBuilder()
+                           .SetBasePath(Directory.GetCurrentDirectory())
+                           .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+
+            _configuration = builder.Build();
+        }
+
+        public static IConfigurationRoot StaticConfig => _configuration;
+
         public static string GetConnectionString(string key, bool addOledbProvider = true)
         {
-            var connString = Startup.StaticConfig.GetConnectionString(key);
+            var connString = StaticConfig.GetConnectionString(key);
             if (connString == null)
             {
                 return "";
@@ -402,6 +416,37 @@ namespace ReportBuilder.Web.Models
 
             return connString;
         }
+
+        public static ConnectViewModel GetConnection(string databaseApiKey = "")
+        {
+            return new ConnectViewModel
+            {
+                ApiUrl = StaticConfig.GetValue<string>("dotNetReport:apiUrl"),
+                AccountApiKey = StaticConfig.GetValue<string>("dotNetReport:accountApiToken"),
+                DatabaseApiKey = string.IsNullOrEmpty(databaseApiKey) ? StaticConfig.GetValue<string>("dotNetReport:dataconnectApiToken") : databaseApiKey
+            };
+        }
+
+        public static async Task<string> GetConnectionString(ConnectViewModel connect, bool addOledbProvider = true)
+        {
+            if (connect.AccountApiKey == "Your Account API Key" || string.IsNullOrEmpty(connect.AccountApiKey) || string.IsNullOrEmpty(connect.DatabaseApiKey))
+                return "";
+
+            using (var client = new HttpClient())
+            {
+                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetDataConnectKey?account={1}&dataConnect={2}", connect.ApiUrl, connect.AccountApiKey, connect.DatabaseApiKey));
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    return "";
+                }
+
+                var content = await response.Content.ReadAsStringAsync();
+                return DotNetReportHelper.GetConnectionString(content.Replace("\"", ""), addOledbProvider);
+            }
+
+        }
+
         public static bool IsNumericType(Type type)
         {
 
@@ -678,9 +723,9 @@ namespace ReportBuilder.Web.Models
             {
                 var settings = new DotNetReportSettings
                 {
-                    ApiUrl = Startup.StaticConfig.GetValue<string>("dotNetReport:apiUrl"),
-                    AccountApiToken = Startup.StaticConfig.GetValue<string>("dotNetReport:accountApiToken"), // Your Account Api Token from your http://dotnetreport.com Account
-                    DataConnectApiToken = Startup.StaticConfig.GetValue<string>("dotNetReport:dataconnectApiToken") // Your Data Connect Api Token from your http://dotnetreport.com Account
+                    ApiUrl = StaticConfig.GetValue<string>("dotNetReport:apiUrl"),
+                    AccountApiToken = StaticConfig.GetValue<string>("dotNetReport:accountApiToken"), // Your Account Api Token from your http://dotnetreport.com Account
+                    DataConnectApiToken = StaticConfig.GetValue<string>("dotNetReport:dataconnectApiToken") // Your Data Connect Api Token from your http://dotnetreport.com Account
                 };
                 var keyvalues = new List<KeyValuePair<string, string>>
                 {
@@ -1524,7 +1569,7 @@ namespace ReportBuilder.Web.Models
             int keysize = 256;
 
             byte[] cipherTextBytes = Convert.FromBase64String(encryptedText.Replace("%3D", "="));
-            var passPhrase = Startup.StaticConfig.GetValue<string>("dotNetReport:privateApiToken").ToLower();
+            var passPhrase = StaticConfig.GetValue<string>("dotNetReport:privateApiToken").ToLower();
             using (PasswordDeriveBytes password = new PasswordDeriveBytes(passPhrase, null))
             {
                 byte[] keyBytes = password.GetBytes(keysize / 8);
@@ -1629,6 +1674,306 @@ namespace ReportBuilder.Web.Models
                 //return csv;
             }
         }
+
+        public static dynamic GetDbConnectionSettings(string account, string dataConnect, bool addOledbProvider = true)
+        {
+            var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+            if (!System.IO.File.Exists(_configFilePath))
+            {
+                var emptyConfig = new JObject();
+                System.IO.File.WriteAllText(_configFilePath, emptyConfig.ToString(Newtonsoft.Json.Formatting.Indented));
+            }
+
+            string configContent = System.IO.File.ReadAllText(_configFilePath);
+
+            var config = JObject.Parse(configContent);
+            var dotNetReportSection = config[$"dotNetReport"] as JObject;
+
+            // First try to get connection from the dotnetreport appsettings file
+            if (dotNetReportSection != null && !string.IsNullOrEmpty(dataConnect))
+            {
+                var dataConnectSection = dotNetReportSection[dataConnect] as JObject;
+                if (dataConnectSection != null)
+                {
+                    return dataConnectSection.ToObject<dynamic>();
+                }
+            }
+            else
+            {
+                // Next try to get config from appsettings (original method)
+                var connection = DotNetReportHelper.GetConnection();
+                var connectionString = DotNetReportHelper.GetConnectionString(connection, addOledbProvider).Result;
+
+                if (!string.IsNullOrEmpty(connectionString))
+                {
+                    var dbConfig = new JObject
+                    {
+                        ["DatabaseType"] = "MS Sql",
+                        ["ConnectionKey"] = "Default",
+                        ["ConnectionString"] = connectionString
+                    };
+                    return dbConfig.ToObject<dynamic>();
+                }
+            }
+
+            return null;
+        }
+
+        public static void UpdateDbConnection(UpdateDbConnectionModel model)
+        {
+            // Use dependency injection to get the appropriate implementation based on the database type
+            var databaseConnection = DatabaseConnectionFactory.GetConnection(model.dbType);
+
+            var connectionString = "";
+            if (model.connectionType == "Build")
+            {
+                connectionString = databaseConnection.CreateConnection(model);
+            }
+            else
+            {
+                connectionString = DotNetReportHelper.GetConnectionString(model.connectionKey, false);
+
+                if (string.IsNullOrEmpty(connectionString))
+                {
+                    throw new Exception($"Connection string with key '{model.connectionKey}' was not found in App Config");
+                }
+            }
+
+            try
+            {
+                // Test the database connection
+                if (!databaseConnection.TestConnection(connectionString))
+                {
+                    throw new Exception("Could not connect to the Database.");
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Could not connect to the Database. Error: {ex.Message}");
+            }
+
+            if (!model.testOnly)
+            {
+                var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+                if (!System.IO.File.Exists(_configFilePath))
+                {
+                    var emptyConfig = new JObject();
+                    System.IO.File.WriteAllText(_configFilePath, emptyConfig.ToString(Newtonsoft.Json.Formatting.Indented));
+                }
+
+                // Get the existing JSON configuration
+                var config = JObject.Parse(System.IO.File.ReadAllText(_configFilePath));
+                if (config["dotNetReport"] == null)
+                {
+                    config["dotNetReport"] = new JObject();
+                }
+
+                // Update the specified properties within the "dotNetReport" and "dataConfig" section
+                var dotNetReportSection = config["dotNetReport"] as JObject;
+                if (dotNetReportSection[model.dataConnect] == null)
+                {
+                    dotNetReportSection[model.dataConnect] = new JObject();
+                }
+
+                var dataConnectSection = dotNetReportSection[model.dataConnect] as JObject;
+
+                dataConnectSection["DatabaseType"] = model.dbType;
+                dataConnectSection["ConnectionType"] = model.connectionType;
+                if (model.connectionType == "Build")
+                {
+                    dataConnectSection["ConnectionKey"] = "Default";
+                    dataConnectSection["ConnectionString"] = connectionString;
+                    dataConnectSection["DatabaseHost"] = model.dbServer;
+                    dataConnectSection["DatabasePort"] = model.dbPort;
+                    dataConnectSection["DatabaseName"] = model.dbName;
+                    dataConnectSection["Username"] = model.dbUsername;
+                    dataConnectSection["Password"] = model.dbPassword;
+                    dataConnectSection["AuthenticationType"] = model.dbAuthType;
+
+                }
+                else if (model.connectionType == "Key")
+                {
+                    dataConnectSection["ConnectionKey"] = model.connectionKey;
+                    dataConnectSection["ConnectionString"] = connectionString;
+                }
+
+                if (model.isDefault)
+                {
+                    dotNetReportSection["DefaultConnection"] = model.dataConnect;
+                }
+
+                // Save the updated JSON back to the file
+                File.WriteAllText(_configFilePath, config.ToString());                
+            }
+
+        }
+
+        public static void UpdateUserConfigSetting(UpdateUserConfigModel model)
+        {
+            var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+            if (!System.IO.File.Exists(_configFilePath))
+            {
+                var emptyConfig = new JObject();
+                System.IO.File.WriteAllText(_configFilePath, emptyConfig.ToString(Newtonsoft.Json.Formatting.Indented));
+            }
+
+            // Get the existing JSON configuration
+            var config = JObject.Parse(System.IO.File.ReadAllText(_configFilePath));
+            if (config["dotNetReport"] == null)
+            {
+                config["dotNetReport"] = new JObject();
+            }
+
+            // Update the specified properties within the "dotNetReport" and "dataConfig" section
+            var dotNetReportSection = config["dotNetReport"] as JObject;
+            if (dotNetReportSection[model.dataConnect] == null)
+            {
+                dotNetReportSection[model.dataConnect] = new JObject();
+            }
+
+            var dataConnectSection = dotNetReportSection[model.dataConnect] as JObject;
+            dataConnectSection["UserConfig"] = model.userConfig;
+
+            // Save the updated JSON back to the file
+            System.IO.File.WriteAllText(_configFilePath, config.ToString());
+
+        }
+
+        public static void UpdateConfigurationFile(string accountApiKey, string privateApiKey, string dataConnectKey, bool onlyIfEmpty = false)
+        {
+            var _configFileName = "appsettings.json";
+            var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+
+            JObject existingConfig;
+            if (System.IO.File.Exists(_configFilePath))
+            {
+                existingConfig = JObject.Parse(System.IO.File.ReadAllText(_configFilePath));
+                if (existingConfig["dotNetReport"] is JObject dotNetReportObject)
+                {
+                    if (!onlyIfEmpty || (onlyIfEmpty && dotNetReportObject["accountApiToken"] != null && dotNetReportObject["accountApiToken"].ToString() == "Your Account API Key"))
+                    {
+                        dotNetReportObject["accountApiToken"] = accountApiKey;
+                        dotNetReportObject["dataconnectApiToken"] = dataConnectKey;
+
+                        if (!string.IsNullOrEmpty(privateApiKey))
+                            dotNetReportObject["privateApiToken"] = privateApiKey;
+
+                        System.IO.File.WriteAllText(_configFilePath, existingConfig.ToString(Newtonsoft.Json.Formatting.Indented));
+                    }
+                }
+            }
+        }
+
+        public static AppSettingModel GetAppSettings()
+        {
+            var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+            if (!System.IO.File.Exists(_configFilePath))
+            {
+                var emptyConfig = new JObject();
+                System.IO.File.WriteAllText(_configFilePath, emptyConfig.ToString(Newtonsoft.Json.Formatting.Indented));
+            }
+
+            string configContent = System.IO.File.ReadAllText(_configFilePath);
+
+            var config = JObject.Parse(configContent);
+            // Extract the AppSetting section
+            var appSetting = config["dotNetReport"]?["AppSetting"];
+
+            // Create an instance of ApiSettingModel and populate its properties
+            var settings = new AppSettingModel
+            {
+                emailAddress = appSetting?["email"]?["fromemail"]?.ToString(),
+                emailName = appSetting?["email"]?["fromname"]?.ToString(),
+                emailServer = appSetting?["email"]?["server"]?.ToString(),
+                emailPort = appSetting?["email"]?["port"]?.ToString(),
+                emailUserName = appSetting?["email"]?["username"]?.ToString(),
+                emailPassword = appSetting?["email"]?["password"]?.ToString(),
+                backendApiUrl = appSetting?["BaseApiUrl"]?.ToString() ?? "https://dotnetreport.com/api",
+                timeZone = appSetting?["TimeZone"]?.ToString() ?? "-6",
+                appThemes = appSetting?["AppTheme"]?.ToString() ?? "default"
+            };
+
+            return settings;
+        }
+
+        public static void SaveAppSettings(AppSettingModel model)
+        {
+            var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+            if (!System.IO.File.Exists(_configFilePath))
+            {
+                var emptyConfig = new JObject();
+                System.IO.File.WriteAllText(_configFilePath, emptyConfig.ToString(Newtonsoft.Json.Formatting.Indented));
+            }
+
+            //// Get the existing JSON configuration
+            var config = JObject.Parse(System.IO.File.ReadAllText(_configFilePath));
+            if (config["dotNetReport"] == null)
+            {
+                config["dotNetReport"] = new JObject();
+            }
+            var appsetting = config["dotNetReport"]["AppSetting"] ?? new JObject();
+            appsetting["email"] = new JObject
+            {
+                ["fromemail"] = model.emailAddress,
+                ["fromname"] = model.emailName,
+                ["server"] = model.emailServer,
+                ["port"] = model.emailPort,
+                ["username"] = model.emailUserName,
+                ["password"] = model.emailPassword
+            };
+
+            appsetting["BaseApiUrl"] = model.backendApiUrl;
+            appsetting["TimeZone"] = model.timeZone;
+            appsetting["AppTheme"] = model.appThemes;
+
+            config["dotNetReport"]["AppSetting"] = appsetting;
+
+            // Save the updated JSON back to the file
+            System.IO.File.WriteAllText(_configFilePath, config.ToString());
+
+        }
+
+    }
+
+    public class UpdateUserConfigModel
+    {
+        public string account { get; set; }
+        public string dataConnect { get; set; }
+        public string userConfig { get; set; }
+    }
+
+    public class UpdateDbConnectionModel
+    {
+        public string account { get; set; } = "";
+        public string dataConnect { get; set; } = "";
+        public string dbType { get; set; } = "";
+        public string connectionType { get; set; } = "";
+        public string connectionKey { get; set; } = "";
+        public string connectionString { get; set; } = "";
+        public string dbServer { get; set; } = "";
+        public string dbPort { get; set; } = "";
+        public string dbName { get; set; } = "";
+        public string dbAuthType { get; set; } = "";
+        public string dbUsername { get; set; } = "";
+        public string dbPassword { get; set; } = "";
+        public string providerName { get; set; } = "";
+        public bool isDefault { get; set; }
+        public bool testOnly { get; set; }
+    }
+
+    public class AppSettingModel
+    {
+        public string account { get; set; } = "";
+        public string dataConnect { get; set; } = "";
+        public string emailUserName { get; set; } = "";
+        public string emailPassword { get; set; } = "";
+        public string emailServer { get; set; } = "";
+        public string emailPort { get; set; } = "";
+        public string emailName { get; set; } = "";
+        public string emailAddress { get; set; } = "";
+        public string backendApiUrl { get; set; } = "";
+        public string timeZone { get; set; } = "";
+        public string appThemes { get; set; } = "";
     }
 
     public static class DatabaseConnectionFactory

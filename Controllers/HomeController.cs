@@ -128,7 +128,7 @@ namespace ReportBuilder.Web.Controllers
                 if (loginResult.Success)
                 {
                     await LoginUser(model.Email, loginResult.PrimaryContact, true);
-                    DotNetReportApiController.UpdateConfigurationFile(loginResult.AccountKey, loginResult.PrivateKey, loginResult.DataConnect, true);
+                    DotNetReportHelper.UpdateConfigurationFile(loginResult.AccountKey, loginResult.PrivateKey, loginResult.DataConnect, true);
 
                     if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
                     {
@@ -199,7 +199,7 @@ namespace ReportBuilder.Web.Controllers
                         string accountApiKey = root.GetProperty("AccountApiKey").GetString();
                         string privateApiKey = root.GetProperty("PrivateApiKey").GetString();
                         string dataConnectKey = root.GetProperty("DataConnectKey").GetString();
-                        DotNetReportApiController.UpdateConfigurationFile(accountApiKey, privateApiKey, dataConnectKey);
+                        DotNetReportHelper.UpdateConfigurationFile(accountApiKey, privateApiKey, dataConnectKey);
 
                         await LoginUser(model.Email, model.PrimaryContact, true);
 

@@ -61,7 +61,7 @@ namespace ReportBuilder.Web.Jobs
             var accountApiKey = Startup.StaticConfig.GetValue<string>("dotNetReport:accountApiToken");
             var databaseApiKey = Startup.StaticConfig.GetValue<string>("dotNetReport:dataconnectApiToken");
 
-            var appsetting = DotNetReportApiController.GetAppSettings();
+            var appsetting = DotNetReportHelper.GetAppSettings();
             var fromEmail = appsetting.emailAddress;
             var fromName = appsetting.emailName;
             var mailServer = appsetting.emailServer;

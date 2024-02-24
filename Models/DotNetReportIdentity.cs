@@ -19,7 +19,7 @@ namespace ReportBuilder.Web.Models
 
         public static string GetConnection(string account, string dataConnect)
         {
-            var dbConfig = DotNetReportApiController.GetDbConnectionSettings(account, dataConnect, false);
+            var dbConfig = DotNetReportHelper.GetDbConnectionSettings(account, dataConnect, false);
             if (dbConfig != null && dbConfig["ConnectionString"] != null)
             {
                 return dbConfig["ConnectionString"].ToString(); 
