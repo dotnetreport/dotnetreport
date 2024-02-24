@@ -546,7 +546,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         <b>Error Details</b>
                         <div data-bind="text: Exception"></div>
                     </div>
-                    <div data-bind="if: ReportDebug() || HasError()">
+                    <div data-bind="if: $root.adminMode()">
                         <br />
                         <br />
                         <hr />

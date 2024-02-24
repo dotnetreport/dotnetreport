@@ -155,7 +155,7 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
             <div data-bind="ifnot: EditFiltersOnReport">
                 <div data-bind="template: {name: 'fly-filter-template'}"></div>
                 <br />
-            </div>            
+            </div>
             <div class="report-render" data-bind="css: { 'report-expanded': isExpanded }">
                 <div class="report-menubar">
                     <div class="col-xs-12 col-centered" data-bind="with: pager">
@@ -242,7 +242,7 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
         </p>
 
     </div>
-    <div data-bind="if: ReportDebug() || HasError()">
+        <div data-bind="if: $root.adminMode()">
         <br />
         <br />
         <hr />
