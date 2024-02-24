@@ -16,30 +16,6 @@ namespace ReportBuilder.Web.Controllers
 
         #region "Private Methods"
 
-        public static ConnectViewModel GetConnection(string databaseApiKey)
-        {
-            return new ConnectViewModel
-            {
-                ApiUrl = Startup.StaticConfig.GetValue<string>("dotNetReport:apiUrl"),
-                AccountApiKey = Startup.StaticConfig.GetValue<string>("dotNetReport:accountApiToken"),
-                DatabaseApiKey = string.IsNullOrEmpty(databaseApiKey) ? Startup.StaticConfig.GetValue<string>("dotNetReport:dataconnectApiToken") : databaseApiKey
-            };
-        }
-       
-        public static async Task<string> GetConnectionString(ConnectViewModel connect)
-        {
-            using (var client = new HttpClient())
-            {
-                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetDataConnectKey?account={1}&dataConnect={2}", connect.ApiUrl, connect.AccountApiKey, connect.DatabaseApiKey));
-
-                response.EnsureSuccessStatusCode();
-
-                var content = await response.Content.ReadAsStringAsync();
-                return DotNetReportHelper.GetConnectionString(content.Replace("\"", ""));
-            }
-            
-        }
-
         public static FieldTypes ConvertToJetDataType(int oleDbDataType)
         {
             switch (((OleDbType)oleDbDataType))
@@ -236,7 +212,7 @@ namespace ReportBuilder.Web.Controllers
                 currentTables = await GetApiTables(accountKey, dataConnectKey, true);
             }
 
-            var connString = await GetConnectionString(GetConnection(dataConnectKey));
+            var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey));
             using (OleDbConnection conn = new OleDbConnection(connString))
             {
                 // open the connection to the database 

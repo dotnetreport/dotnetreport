@@ -13,6 +13,9 @@
 	  <PackageReference Include="PuppeteerSharp" Version="11.0.5" />
 	  <PackageReference Include="Quartz" Version="3.5.0" />
 	  <PackageReference Include="System.Data.OleDb" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.1.1" />
+    <PackageReference Include="MySql.Data" Version="8.1.0" />
+    <PackageReference Include="Npgsql" Version="7.0.4" />
 	</ItemGroup>
 
 </Project>

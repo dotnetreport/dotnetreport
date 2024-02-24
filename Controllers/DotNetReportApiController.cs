@@ -14,14 +14,25 @@ namespace ReportBuilder.Web.Controllers
     [ApiController]
     public class DotNetReportApiController : ControllerBase
     {
+        private readonly IConfigurationRoot _configuration;
+        public readonly static string _configFileName = "appsettings.dotnetreport.json";
+        public readonly static string dbtype = "Other";
+        public DotNetReportApiController()
+        {
+            var builder = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+
+            _configuration = builder.Build();
+        }
 
         private DotNetReportSettings GetSettings()
         {
             var settings = new DotNetReportSettings
             {
-                ApiUrl = Startup.StaticConfig.GetValue<string>("dotNetReport:apiUrl"),
-                AccountApiToken = Startup.StaticConfig.GetValue<string>("dotNetReport:accountApiToken"), // Your Account Api Token from your http://dotnetreport.com Account
-                DataConnectApiToken = Startup.StaticConfig.GetValue<string>("dotNetReport:dataconnectApiToken") // Your Data Connect Api Token from your http://dotnetreport.com Account            };
+                ApiUrl = _configuration.GetValue<string>("dotNetReport:apiUrl"),
+                AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken"), // Your Account Api Token from your http://dotnetreport.com Account
+                DataConnectApiToken = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken") // Your Data Connect Api Token from your http://dotnetreport.com Account            };
             };
 
             // Populate the values below using your Application Roles/Claims if applicable
@@ -57,14 +68,11 @@ namespace ReportBuilder.Web.Controllers
 
             var json = new StringBuilder();
             var dt = new DataTable();
-            using (var conn = new OleDbConnection(DotNetReportHelper.GetConnectionString(connectKey)))
-            {
-                conn.Open();
-                var command = new OleDbCommand(sql, conn);
-                var adapter = new OleDbDataAdapter(command);
 
-                adapter.Fill(dt);
-            }
+            var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
+            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+
+            dt = databaseConnection.ExecuteQuery(connectionString, sql);
 
             var data = new List<object>();
             foreach (DataRow dr in dt.Rows)
@@ -88,9 +96,9 @@ namespace ReportBuilder.Web.Controllers
         {
             var settings = new DotNetReportSettings
             {
-                ApiUrl = Startup.StaticConfig.GetValue<string>("dotNetReport:apiUrl"),
-                AccountApiToken = Startup.StaticConfig.GetValue<string>("dotNetReport:accountApiToken"), // Your Account Api Token from your http://dotnetreport.com Account
-                DataConnectApiToken = Startup.StaticConfig.GetValue<string>("dotNetReport:dataconnectApiToken") // Your Data Connect Api Token from your http://dotnetreport.com Account            };
+                ApiUrl = _configuration.GetValue<string>("dotNetReport:apiUrl"),
+                AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken"), // Your Account Api Token from your http://dotnetreport.com Account
+                DataConnectApiToken = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken") // Your Data Connect Api Token from your http://dotnetreport.com Account            };
             };
 
             return await ExecuteCallReportApi(method, model, settings);
@@ -234,85 +242,82 @@ namespace ReportBuilder.Web.Controllers
                             sql = sql.Replace("__jsonc__", "");
                     }
                     // Execute sql
+                    var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
+                    IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+
                     var dtPagedRun = new DataTable();
-                    using (var conn = new OleDbConnection(DotNetReportHelper.GetConnectionString(connectKey)))
+
+                    totalRecords = databaseConnection.GetTotalRecords(connectionString, sqlCount, sql);
+                    dtPagedRun = databaseConnection.ExecuteQuery(connectionString, sql);
+
+                    if (sql.StartsWith("EXEC"))
                     {
-                        conn.Open();
-                        var command = new OleDbCommand(sqlCount, conn);
-                        if (!sql.StartsWith("EXEC")) totalRecords = (int)command.ExecuteScalar();
+                        totalRecords = dtPagedRun.Rows.Count;
+                        if (dtPagedRun.Rows.Count > 0)
+                            dtPagedRun = dtPagedRun.AsEnumerable().Skip((pageNumber - 1) * pageSize).Take(pageSize).CopyToDataTable();
+                    }
+                    if (!sqlFields.Any())
+                    {
+                        foreach (DataColumn c in dtPagedRun.Columns) { sqlFields.Add($"{c.ColumnName} AS {c.ColumnName}"); }
+                    }
 
-                        command = new OleDbCommand(sql, conn);
-                        var adapter = new OleDbDataAdapter(command);
-                        adapter.Fill(dtPagedRun);
-                        if (sql.StartsWith("EXEC"))
+                    string[] series = { };
+                    if (i == 0)
+                    {
+                        fields.AddRange(sqlFields);
+
+                        if (!string.IsNullOrEmpty(pivotColumn))
                         {
-                            totalRecords = dtPagedRun.Rows.Count;
-                            if (dtPagedRun.Rows.Count > 0)
-                                dtPagedRun = dtPagedRun.AsEnumerable().Skip((pageNumber - 1) * pageSize).Take(pageSize).CopyToDataTable();
+                            var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dtPagedRun, sqlFields, reportData);
+                            dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn);
+                            fields.AddRange(dtPagedRun.Columns.Cast<DataColumn>().Skip(fields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
                         }
-                        if (!sqlFields.Any())
+
+                        dtPaged = dtPagedRun;
+                        dtCols = dtPagedRun.Columns.Count;
+                    }
+                    else if (i > 0)
+                    {
+                        // merge in to dt
+                        if (!string.IsNullOrEmpty(reportSeries))
+                            series = reportSeries.Split(new string[] { "%2C", "," }, StringSplitOptions.RemoveEmptyEntries);
+
+                        var j = 1;
+                        while (j < dtPagedRun.Columns.Count)
                         {
-                            foreach (DataColumn c in dtPagedRun.Columns) { sqlFields.Add($"{c.ColumnName} AS {c.ColumnName}"); }
+                            var col = dtPagedRun.Columns[j++];
+                            dtPaged.Columns.Add($"{col.ColumnName} ({series[i - 1]})", col.DataType);
+                            fields.Add(sqlFields[j - 1]);
                         }
 
-                        string[] series = { };
-                        if (i == 0)
+                        foreach (DataRow dr in dtPaged.Rows)
                         {
-                            fields.AddRange(sqlFields);
-
-                            if (!string.IsNullOrEmpty(pivotColumn))
+                            DataRow match = null;
+                            if (fields[0].ToUpper().StartsWith("CONVERT(VARCHAR(10)")) // group by day
                             {
-                                var ds = await DotNetReportHelper.GetDrillDownData(conn, dtPagedRun, sqlFields, reportData);
-                                dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn);
-                                fields.AddRange(dtPagedRun.Columns.Cast<DataColumn>().Skip(fields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
+                                match = dtPagedRun.AsEnumerable().Where(r => !string.IsNullOrEmpty(r.Field<string>(0)) && !string.IsNullOrEmpty((string)dr[0]) && Convert.ToDateTime(r.Field<string>(0)).Day == Convert.ToDateTime((string)dr[0]).Day).FirstOrDefault();
                             }
-
-                            dtPaged = dtPagedRun;
-                            dtCols = dtPagedRun.Columns.Count;
-                        }
-                        else if (i > 0)
-                        {
-                            // merge in to dt
-                            if (!string.IsNullOrEmpty(reportSeries))
-                                series = reportSeries.Split(new string[] { "%2C", "," }, StringSplitOptions.RemoveEmptyEntries);
-
-                            var j = 1;
-                            while (j < dtPagedRun.Columns.Count)
+                            else if (fields[0].ToUpper().StartsWith("CONVERT(VARCHAR(3)")) // group by month/year
                             {
-                                var col = dtPagedRun.Columns[j++];
-                                dtPaged.Columns.Add($"{col.ColumnName} ({series[i - 1]})", col.DataType);
-                                fields.Add(sqlFields[j - 1]);
+
                             }
-
-                            foreach (DataRow dr in dtPaged.Rows)
+                            else
                             {
-                                DataRow match = null;
-                                if (fields[0].ToUpper().StartsWith("CONVERT(VARCHAR(10)")) // group by day
+                                match = dtPagedRun.AsEnumerable().Where(r => r.Field<string>(0) == (string)dr[0]).FirstOrDefault();
+                            }
+                            if (match != null)
+                            {
+                                j = 1;
+                                while (j < dtCols)
                                 {
-                                    match = dtPagedRun.AsEnumerable().Where(r => !string.IsNullOrEmpty(r.Field<string>(0)) && !string.IsNullOrEmpty((string)dr[0]) && Convert.ToDateTime(r.Field<string>(0)).Day == Convert.ToDateTime((string)dr[0]).Day).FirstOrDefault();
-                                }
-                                else if (fields[0].ToUpper().StartsWith("CONVERT(VARCHAR(3)")) // group by month/year
-                                {
-
-                                }
-                                else
-                                {
-                                    match = dtPagedRun.AsEnumerable().Where(r => r.Field<string>(0) == (string)dr[0]).FirstOrDefault();
-                                }
-                                if (match != null)
-                                {
-                                    j = 1;
-                                    while (j < dtCols)
-                                    {
-                                        dr[j + i + dtCols - 2] = match[j];
-                                        j++;
-                                    }
+                                    dr[j + i + dtCols - 2] = match[j];
+                                    j++;
                                 }
                             }
                         }
                     }
                 }
-
+        
                 sql = DotNetReportHelper.Decrypt(HttpUtility.HtmlDecode(allSqls[0]));
                 var model = new DotNetReportResultModel
                 {
@@ -481,7 +486,7 @@ namespace ReportBuilder.Web.Controllers
 
                 table.CustomTableSql = data.value;
 
-                var connString = await DotNetSetupController.GetConnectionString(DotNetSetupController.GetConnection(data.dataConnectKey));
+                var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(data.dataConnectKey));
                 using (OleDbConnection conn = new OleDbConnection(connString))
                 {
                     // open the connection to the database 
@@ -550,7 +555,7 @@ namespace ReportBuilder.Web.Controllers
                 throw new Exception("Not Authorized to access this Resource");
             }
 
-            var connect = DotNetSetupController.GetConnection(databaseApiKey);
+            var connect = DotNetReportHelper.GetConnection(databaseApiKey);
             var tables = new List<TableViewModel>();
             var procedures = new List<TableViewModel>();
             if (onlyApi)
@@ -563,7 +568,7 @@ namespace ReportBuilder.Web.Controllers
                 tables.AddRange(await DotNetSetupController.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
             }
             procedures.AddRange(await DotNetSetupController.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
-
+            
             var model = new ManageViewModel
             {
                 ApiUrl = connect.ApiUrl,
@@ -596,7 +601,7 @@ namespace ReportBuilder.Web.Controllers
         private async Task<List<TableViewModel>> GetSearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
         {
             var tables = new List<TableViewModel>();
-            var connString = await DotNetSetupController.GetConnectionString(DotNetSetupController.GetConnection(dataConnectKey));
+            var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey));
             using (OleDbConnection conn = new OleDbConnection(connString))
             {
                 // open the connection to the database 
@@ -671,39 +676,6 @@ namespace ReportBuilder.Web.Controllers
                 conn.Dispose();
             }
             return tables;
-        }
-
-        private async Task<DataTable> GetStoreProcedureResult(TableViewModel model, string accountKey = null, string dataConnectKey = null)
-        {
-            DataTable dt = new DataTable();
-            var connString = await DotNetSetupController.GetConnectionString(DotNetSetupController.GetConnection(dataConnectKey));
-            using (OleDbConnection conn = new OleDbConnection(connString))
-            {
-                // open the connection to the database 
-                conn.Open();
-                OleDbCommand cmd = new OleDbCommand(model.TableName, conn);
-                cmd.CommandType = CommandType.StoredProcedure;
-                foreach (var para in model.Parameters)
-                {
-                    if (string.IsNullOrEmpty(para.ParameterValue))
-                    {
-                        if (para.ParamterDataTypeOleDbType == OleDbType.DBTimeStamp || para.ParamterDataTypeOleDbType == OleDbType.DBDate)
-                        {
-                            para.ParameterValue = DateTime.Now.ToShortDateString();
-                        }
-                    }
-                    cmd.Parameters.AddWithValue("@" + para.ParameterName, para.ParameterValue);
-                    //cmd.Parameters.Add(new OleDbParameter { 
-                    //    Value =  string.IsNullOrEmpty(para.ParameterValue) ? DBNull.Value : (object)para.ParameterValue , 
-                    //    ParameterName = para.ParameterName, 
-                    //    Direction = ParameterDirection.Input, 
-                    //    IsNullable = true });
-                }
-                dt.Load(cmd.ExecuteReader());
-                conn.Close();
-                conn.Dispose();
-            }
-            return dt;
         }
 
     }
