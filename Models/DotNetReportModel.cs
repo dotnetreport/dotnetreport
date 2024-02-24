@@ -887,6 +887,61 @@ namespace ReportBuilder.Web.Models
             return modifiedSql;
         }
 
+        public async static Task<DataSet> GetDrillDownData(OleDbConnection conn, DataTable dt, List<string> sqlFields, string reportDataJson)
+        {
+            var drilldownRow = new List<string>();
+            var dr = dt.Rows[0];
+            int i = 0;
+            foreach (DataColumn dc in dt.Columns)
+            {
+                var col = sqlFields[i++]; //columns.FirstOrDefault(x => x.fieldName == dc.ColumnName) ?? new ReportHeaderColumn();
+                drilldownRow.Add($@"
+                                    {{
+                                        ""Value"":""{dr[dc]}"",
+                                        ""FormattedValue"":""{dr[dc]}"",
+                                        ""LabelValue"":""'{dr[dc]}'"",
+                                        ""NumericValue"":null,
+                                        ""Column"":{{
+                                            ""SqlField"":""{col.Substring(0, col.LastIndexOf(" AS "))}"",
+                                            ""ColumnName"":""{dc.ColumnName}"",
+                                            ""DataType"":""{dc.DataType.ToString()}"",
+                                            ""IsNumeric"":{(dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal" ? "true" : "false")},
+                                            ""FormatType"":""""
+                                        }}
+                                     }}
+                                ");
+            }
+
+            var reportData = reportDataJson.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(',', drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
+            var drilldownSql = await RunReportApiCall(reportData);
+
+            var dts = new DataSet();
+            var combinedSqls = "";
+            if (!string.IsNullOrEmpty(drilldownSql))
+            {
+                foreach (DataRow ddr in dt.Rows)
+                {
+                    i = 0;
+                    var filteredSql = drilldownSql;
+                    foreach (DataColumn dc in dt.Columns)
+                    {
+                        var value = ddr[dc].ToString().Replace("'", "''");
+                        filteredSql = filteredSql.Replace($"<{dc.ColumnName}>", value);
+                    }
+
+                    combinedSqls += filteredSql += ";\n";
+                }
+
+                using (var cmd = new OleDbCommand(combinedSqls, conn))
+                using (var adp = new OleDbDataAdapter(cmd))
+                {
+                    adp.Fill(dts);
+                }
+            }
+
+            return dts;
+        }
+
         public async static Task<DataSet> GetDrillDownData(IDatabaseConnection databaseConnection, string connectionString, DataTable dt, List<string> sqlFields, string reportDataJson)
         {
             var drilldownRow = new List<string>();
@@ -932,14 +987,7 @@ namespace ReportBuilder.Web.Models
                     combinedSqls += filteredSql += ";\n";
                 }
 
-
-
-                using (var conn = new OleDbConnection(connectionString))
-                using (var cmd = new OleDbCommand(combinedSqls, conn))
-                using (var adp = new OleDbDataAdapter(cmd))
-                {
-                    adp.Fill(dts);
-                }
+                dts = databaseConnection.ExecuteDataSetQuery(connectionString, combinedSqls);
             }
 
             return dts;
@@ -2008,6 +2056,7 @@ namespace ReportBuilder.Web.Models
         string CreateConnection(UpdateDbConnectionModel model);
         int GetTotalRecords(string connectionString, string sqlCount, string sql);
         DataTable ExecuteQuery(string connectionString, string sql);
+        DataSet ExecuteDataSetQuery(string connectionString, string combinedSqls);
     }
     public class SqlServerDatabaseConnection : IDatabaseConnection
     {
@@ -2104,6 +2153,25 @@ namespace ReportBuilder.Web.Models
 
             return dataTable;
         }
+
+        public DataSet ExecuteDataSetQuery(string connectionString, string combinedSqls)
+        {
+            var dts = new DataSet();
+            try
+            {
+                using (var conn = new SqlConnection(connectionString))
+                using (var cmd = new SqlCommand(combinedSqls, conn))
+                using (var adp = new SqlDataAdapter(cmd))
+                {
+                    adp.Fill(dts);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error executing SQL query: {ex.Message}", ex);
+            }
+            return dts;
+        }
     }
     public class MySqlDatabaseConnection : IDatabaseConnection
     {
@@ -2194,6 +2262,24 @@ namespace ReportBuilder.Web.Models
             }
 
             return dataTable;
+        }
+        public DataSet ExecuteDataSetQuery(string connectionString, string combinedSqls)
+        {
+            var dts = new DataSet();
+            try
+            {
+                using (var conn = new MySqlConnection(connectionString))
+                using (var cmd = new MySqlCommand(combinedSqls, conn))
+                using (var adp = new MySqlDataAdapter(cmd))
+                {
+                    adp.Fill(dts);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error executing SQL query: {ex.Message}", ex);
+            }
+            return dts;
         }
     }
     public class PostgresDatabaseConnection : IDatabaseConnection
@@ -2287,7 +2373,24 @@ namespace ReportBuilder.Web.Models
 
             return dataTable;
         }
-
+        public DataSet ExecuteDataSetQuery(string connectionString, string combinedSqls)
+        {
+            var dts = new DataSet();
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                using (var cmd = new NpgsqlCommand(combinedSqls, conn))
+                using (var adp = new NpgsqlDataAdapter(cmd))
+                {
+                    adp.Fill(dts);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error executing SQL query: {ex.Message}", ex);
+            }
+            return dts;
+        }
     }
 
     public class OleDbDatabaseConnection : IDatabaseConnection
@@ -2384,6 +2487,24 @@ namespace ReportBuilder.Web.Models
             }
 
             return dataTable;
+        }
+        public DataSet ExecuteDataSetQuery(string connectionString, string combinedSqls)
+        {
+            var dts = new DataSet();
+            try
+            {
+                using (var conn = new OleDbConnection(connectionString))
+                using (var cmd = new OleDbCommand(combinedSqls, conn))
+                using (var adp = new OleDbDataAdapter(cmd))
+                {
+                    adp.Fill(dts);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error executing SQL query: {ex.Message}", ex);
+            }
+            return dts;
         }
     }
 
