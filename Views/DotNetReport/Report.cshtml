@@ -157,12 +157,6 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
                 <div data-bind="template: {name: 'fly-filter-template'}"></div>
                 <br />
             </div>
-            <div data-bind="if: canDrilldown">
-                <button class="btn btn-secondary btn-xs" data-bind="click: ExpandAll">Expand All</button>
-                <button class="btn btn-secondary btn-xs" data-bind="click: CollapseAll">Collapse All</button>
-                <br />
-                <br />
-            </div>
             <div class="report-render" data-bind="css: { 'report-expanded': isExpanded }">
                 <div class="report-menubar">
                     <div class="col-xs-12 col-centered" data-bind="with: pager">
@@ -249,7 +243,7 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
         </p>
 
     </div>
-    <div data-bind="if: ReportDebug() || HasError()">
+        <div data-bind="if: $root.adminMode()">
         <br />
         <br />
         <hr />
