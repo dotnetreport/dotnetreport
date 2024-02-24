@@ -18,8 +18,6 @@ using System.Text.RegularExpressions;
 using System.Web;
 using Npgsql;
 using MySql.Data.MySqlClient;
-using static ReportBuilder.Web.Controllers.DotNetReportApiController;
-using ReportBuilder.Web.Controllers;
 
 namespace ReportBuilder.Web.Models
 {
@@ -387,6 +385,8 @@ namespace ReportBuilder.Web.Models
     public static class DotNetReportHelper
     {
         private static readonly IConfigurationRoot _configuration;
+        private readonly static string _configFileName = "appsettings.dotnetreport.json";
+
 
         static DotNetReportHelper()
         {
