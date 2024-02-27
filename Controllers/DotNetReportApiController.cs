@@ -144,11 +144,13 @@ namespace ReportBuilder.Web.Controllers
 
         [AllowAnonymous]
         [HttpPost]
-        public JsonResult RunReportUnAuth(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, bool desc = false, string reportSeries = null)
+        public async Task<JsonResult> RunReportUnAuth(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, 
+            bool desc = false, string reportSeries = null, string pivotColumn = null, string reportData = null)
         {
-            return RunReport(reportSql, connectKey, reportType, pageNumber, pageSize, sortBy, desc, reportSeries);
+            return await RunReport(reportSql, connectKey, reportType, pageNumber, pageSize, sortBy, desc, reportSeries, pivotColumn, reportData);
         }
-        public JsonResult RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, bool desc = false, string reportSeries = null)
+        public async Task<JsonResult> RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, 
+            bool desc = false, string reportSeries = null, string pivotColumn = null, string reportData = null)
         {
             var sql = "";
             var sqlCount = "";
@@ -228,9 +230,17 @@ namespace ReportBuilder.Web.Controllers
                         string[] series = { };
                         if (i == 0)
                         {
+                            fields.AddRange(sqlFields);
+
+                            if (!string.IsNullOrEmpty(pivotColumn))
+                            {
+                                var ds = await DotNetReportHelper.GetDrillDownData(conn, dtPagedRun, sqlFields, reportData);
+                                dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn);
+                                fields.AddRange(dtPagedRun.Columns.Cast<DataColumn>().Skip(fields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
+                            }
+
                             dtPaged = dtPagedRun;
                             dtCols = dtPagedRun.Columns.Count;
-                            fields.AddRange(sqlFields);
                         }
                         else if (i > 0)
                         {
