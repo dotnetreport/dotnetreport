@@ -34,6 +34,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
                     reportId: queryParams.reportId || 0,
                     userSettings: data,
                     dataFilters: data.dataFilters,
+                    runLinkReportUrl: svc + "RunReportLink",
+                    runExportUrl: svc,
                     samePageOnRun: true
                 });
 
