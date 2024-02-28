@@ -26,6 +26,28 @@
             -moz-osx-font-smoothing: grayscale;
         }
     </style>
+
+    <!-- CodeMirror Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css" />
+
+    <!-- CodeMirror Language Mode -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/clike/clike.min.js"></script>
+
+    <!-- JSHint Library (for JavaScript validation) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jshint/2.12.0/jshint.min.js"></script>
+
+    <!-- CodeMirror JSHint addon -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/lint/lint.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/lint/lint.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/lint/javascript-lint.min.js"></script>
+
+    <!-- Show-Hint Addon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/show-hint.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/show-hint.min.js"></script>
+
+
 }
 @section scripts{
     <script src="~/lib/tributejs/tribute.min.js"></script>
@@ -70,7 +92,7 @@
 
                 var vm = new manageViewModel(options);
                 vm.LoadJoins();
-                vm.setupManageAccess();
+                vm.setupManageAccess();            
                 ko.applyBindings(vm);
                 vm.LoadDataConnections();
 
@@ -101,6 +123,7 @@
             <li role="presentation" class="nav-item"><a class="nav-link" href="#relations" aria-controls="profile" role="tab" data-toggle="tab">Relations</a></li>
             <li role="presentation" class="nav-item"><a class="nav-link" href="#procedure" aria-controls="procedure" role="tab" data-toggle="tab">Stored Procs</a></li>
             <li role="presentation" class="nav-item"><a class="nav-link" href="#manageaccess" aria-controls="manageaccess" role="tab" data-toggle="tab">Manage Reports Access</a></li>
+            <li role="presentation" class="nav-item"><a class="nav-link" href="#functions" aria-controls="functions" role="tab" data-toggle="tab">Custom Functions</a></li>
             <li role="presentation" class="nav-item"><a class="nav-link" href="#connection" aria-controls="home" role="tab" data-toggle="tab">Data Connection</a></li>
         </ul>
     </div>
@@ -112,7 +135,7 @@
         <div role="tabpanel" class="tab-pane" id="connection">
             <b>Manage Database Connection</b>
             <p>
-                Select and manage Data you would like to allow access to in DNR to use in building Reports and Dashboards
+                Select and manage Data you would like to allow access to in Dotnet Report to use in building Reports and Dashboards
             </p>
             <div class="form-row" data-bind="visible: true">
                 <div class="form-group">
@@ -147,10 +170,10 @@
             <b data-bind="text: customTableMode() ? 'Custom Tables' : 'Database Tables'"></b>
             <p>
                 <span data-bind="visible: $root.customTableMode">
-                    Define Custom Tables using SQL Select Query to use in DNR for Reporting and Analytics.
+                    Define Custom Tables using SQL Select Query to use in Dotnet Report for Reporting and Analytics.
                 </span>
                 <span data-bind="hidden: $root.customTableMode">
-                    Select Tables or Views from your Database to use in DNR for Reporting and Analytics.
+                    Select Tables or Views from your Database to use in Dotnet Report for Reporting and Analytics.
                 </span>
             </p>
 
@@ -246,7 +269,7 @@
         <div role="tabpanel" class="tab-pane" id="relations">
             <b>Relations</b>
             <p>
-                Setup your Database Relations for DNR to produce dynamic queries
+                Setup your Database Relations for Dotnet Report to produce dynamic queries
             </p>
             <button class="btn btn-sm btn-primary" data-bind="click: AddJoin">Add new Join</button>&nbsp;
             <button class="btn btn-sm btn-primary" data-bind="click: SaveJoins">Save Joins</button>
@@ -328,7 +351,7 @@
         <div id="procedure" class="tab-pane">
             <b>Stored Procedures</b>
             <p>
-                Select and manage Stored Procedures to use in DNR for more complex and coded Reports
+                Select and manage Stored Procedures to use in Dotnet Report for more complex and coded Reports
             </p>
             <hr />
             <button class="btn btn-sm btn-primary" data-toggle="modal" data-target="#procedure-modal">Add Stored Procs from database</button>
@@ -402,7 +425,7 @@
             </div>
         </div>
         <div id="manageaccess" class="tab-pane">
-            <div data-bind="foreach: reportsAndFolders" class="card" style="margin-left: 20px;">
+            <div data-bind="foreach: reportsAndFolders" class="card">
                 <div class="card-body">
                     <a class="btn btn-link" role="button" data-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }">
                         <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: folder"></span>
@@ -471,6 +494,93 @@
                     </div>
                 </div>
             </div>
+        </div>
+        <div role="tabpanel" class="tab-pane" id="functions" data-bind="with: Functions">
+            <b>Custom Functions</b>
+            <p>
+                Create and manage Custom Function that you can use in building Reports and Dashboards
+            </p>
+            <button class="btn btn-sm btn-primary" data-bind="click: createNewFunction">Add new Function</button>
+            <br />
+            <hr />
+
+            <div class="container-fluid card card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <input id="searchInput" class="form-control mb-2" type="text" placeholder="Search..." data-bind="value: search, valueUpdate: 'input', visible: functions().length > 0">
+                        <ul class="list-group" data-bind="foreach: filteredFunctions">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span data-bind="text: name"></span>
+                                <div>
+                                    <button class="btn btn-primary btn-sm" data-bind="click: $parent.selectFunction">Edit</button>
+                                    <button class="btn btn-danger btn-sm" data-bind="click: function() { $parent.deleteFunction($data) }">Delete</button>
+                                </div>
+                            </li>
+                        </ul>
+                        <div data-bind="if: functions().length == 0">
+                            No Functions found
+                        </div>
+                    </div>
+                    <div class="col-md-9" data-bind="with: selectedFunction">
+                        <div style="border-left: 1px solid; padding-left: 10px;">
+                            <div class="mb-3" data-bind="validationElement: functionName">
+                                <label for="functionName" class="form-label">Function Name</label>
+                                <input id="functionName" class="form-control" required data-bind="value: name, valueUpdate: 'input'" />
+                                <div class="invalid-feedback">Function Name is required.</div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="functionType" class="form-label">Function Type</label>
+                                <select id="functionType" class="form-control" data-bind="value: functionType, event: { change: $parent.updateCodeEditorMode }">
+                                    <option value="javascript">JavaScript</option>
+                                    <option value="csharp">C#</option>
+                                    <option value="sql">SQL</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="functionDescription" class="form-label">Description</label>
+                                <textarea id="functionDescription" class="form-control" data-bind="value: description, valueUpdate: 'input'" placeholder="Add any helpful description here for the user..."></textarea>
+                            </div>
+
+                            <div>
+                                <h4>Parameters</h4>
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Display Name</th>
+                                            <th>Description</th>
+                                            <th>Optional</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody data-bind="foreach: parameters">
+                                        <tr>
+                                            <td>
+                                                <input class="form-control" data-bind="value: name, valueUpdate: 'input'" />
+                                                <span class="text-danger" data-bind="visible: name.hasError, text: name.validationMessage"></span>
+                                            </td>
+                                            <td><input class="form-control" data-bind="value: display, valueUpdate: 'input'" /></td>
+                                            <td><input class="form-control" data-bind="value: description, valueUpdate: 'input'" placeholder="Friendly description for user..." /></td>
+                                            <td><input type="checkbox" data-bind="checked: optional" /></td>
+                                            <td><button class="btn btn-sm btn-danger" data-bind="click: $parent.removeParameter">Remove</button></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <button class="btn btn-sm btn-primary" data-bind="click: addParameter">Add Parameter</button>
+                            </div>
+                            <br />
+                            <div class="mb-3">
+                                <label for="codeEditor" class="form-label">Write the <b>Code</b> for the function below:</label>
+                                <div style="border: 1px solid">
+                                    <textarea id="codeEditor" class="code-editor form-control" data-bind="value: code"></textarea>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" data-bind="click: $parent.saveFunction">Save</button>
+                            <button class="btn btn-secondary" data-bind="click: $parent.cancelEdit">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div> 
         </div>
     </div>
 </div>

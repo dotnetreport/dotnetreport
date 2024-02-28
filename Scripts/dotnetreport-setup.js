@@ -15,6 +15,7 @@ var manageViewModel = function (options) {
 	self.Procedures = new proceduresViewModel(options);
 	self.DbConfig = {};
 	self.UserAndRolesConfig = {};
+	self.Functions = new customFunctionManageModel(options);
 	self.pager = new pagerViewModel({autoPage: true});
 	self.pager.totalRecords(self.Tables.model().length);
 	self.onlyApi = ko.observable(options.onlyApi);
@@ -872,6 +873,7 @@ var validation = function () {
 
 }
 
+
 var customSqlModel = function (options, keys, tables) {
 	var self = this;
 	self.customTableName = ko.observable();
@@ -1030,4 +1032,220 @@ var customSqlModel = function (options, keys, tables) {
 
 		return false;
     }
+}
+
+var customFunctionManageModel = function (options) {
+	var self = this;
+
+	var codeEditor;
+	var validator = new validation();
+	function updateCodeEditor(code) {
+		if (codeEditor) {
+			codeEditor.setValue(code)
+		}
+	}
+	self.updateCodeEditorMode = function (functionModel) {
+		var mode = functionModel.functionType() === "javascript" ? "javascript" : "text/x-csharp";
+		codeEditor.setOption("mode", mode);
+	};
+
+	self.functions = ko.observableArray([]);
+	self.search = ko.observable('');
+
+	self.filteredFunctions = ko.computed(function () {
+		var search = self.search().toLowerCase();
+		return ko.utils.arrayFilter(self.functions(), function (functionModel) {
+			return functionModel.name().toLowerCase().indexOf(search) >= 0;
+		});
+	});
+
+	self.selectedFunction = ko.observable();
+
+	self.selectFunction = function (functionModel) {
+		validator.clearForm('#custom-sql-modal');
+		self.selectedFunction(functionModel);
+		setTimeout(function () {
+			if (codeEditor) {
+				codeEditor.toTextArea(); 
+			}
+			// Create a new CodeMirror instance
+			codeEditor = CodeMirror.fromTextArea(document.getElementById("codeEditor"), {
+				lineNumbers: true,
+				mode: functionModel.functionType() === "javascript" ? "text/javascript" : "text/x-csharp",
+				theme: 'default', // Replace 'default' with the theme you've chosen
+				lint: {
+					esversion: 6, // Enable ES6 
+				},
+				gutters: ["CodeMirror-lint-markers"], // Add gutters for lint markers
+			});
+			codeEditor.setValue(functionModel.code()); 
+		}, 500);
+	};
+
+	self.createNewFunction = function () {
+		validator.clearForm('#custom-sql-modal');
+		var newFunction = new customFunctionModel();
+		var newFunctionCount = self.functions().length + 1;
+		newFunction.name("New Function " + newFunctionCount);
+		self.selectFunction(newFunction);
+	};
+
+	self.saveFunction = function () {
+		var valid = validator.validateForm('#functions');
+
+		if (!self.selectedFunction().name()) {
+			toastr.error("Function name is required");
+			valid=false;
+		}
+
+		var existingFunctionIndex = self.functions().findIndex(function (func) {
+			return func.name() === self.selectedFunction().name();
+		});
+
+		if (existingFunctionIndex !== -1 && self.functions()[existingFunctionIndex] !== self.selectedFunction()) {
+			toastr.error("Function name is already in use");
+			valid = false;
+		}
+		// Validate parameters
+		var parameterErrors = [];
+		self.selectedFunction().parameters().forEach(function (param) {
+			var errors = param.validate();
+			if (errors.length > 0) {
+				parameterErrors = parameterErrors.concat(errors);
+			}
+		});
+
+		if (parameterErrors.length > 0) {
+			// Handle the parameter errors, e.g., display them using toastr
+			parameterErrors.forEach(function (error) {
+				toastr.error(error);
+			});
+			isValid = false;
+		}
+
+		if (self.selectedFunction().functionType() === 'javascript') {
+			// Validate JavaScript code using JSHint
+			var _valid = JSHINT(currentCode);
+			if (!_valid) {
+				var error = JSHINT.errors[0];
+				toastr.error("JavaScript Error: " + error.reason + " on line " + error.line);
+				valid = false;
+			}
+		} 
+
+		if (!valid) {
+			return;
+		}
+
+		var currentCode = codeEditor.getValue();
+		self.selectedFunction().code(currentCode);
+
+		if (existingFunctionIndex !== -1) {
+			// Update existing function
+			self.functions.splice(existingFunctionIndex, 1, self.selectedFunction());
+		} else {
+			// Add new function
+			self.functions.push(self.selectedFunction());
+		}
+
+		toastr.success('Function saved successfully');
+		self.selectedFunction(null);
+	};
+
+
+	self.deleteFunction = function (functionModel) {
+		bootbox.confirm("Are you sure you want to delete this function?", function (result) {
+			if (result) {
+				self.functions.remove(functionModel);
+				if (self.selectedFunction() === functionModel) {
+					self.selectedFunction(null);
+				}
+			}
+		});
+	}
+
+	self.cancelEdit = function () {
+		bootbox.confirm("Are you sure you want to cancel your changes?", function (result) {
+			if (result) {
+				self.selectedFunction(null);
+			}
+		});
+	};
+
+	ko.computed(function () {
+		var selectedFunction = ko.unwrap(self.selectedFunction);
+		if (selectedFunction) {
+			var code = selectedFunction.code();
+			if (code) updateCodeEditor(selectedFunction.code());
+		}
+	});
+};
+
+var customFunctionParameterModel = function (options, parentParameters) {
+	var self = this;
+	options = options || {};
+
+	self.name = ko.observable(options.name || '');
+	self.display = ko.observable(options.display || '').extend({ required: true });
+	self.description = ko.observable(options.description || '');
+	self.optional = ko.observable(options.optional || false);
+	self.isValid = ko.observable(true);
+	self.errorMessage = ko.observable();
+
+	self.validate = function () {
+		var errors = [];
+
+		// Required
+		if (!self.name().trim()) {
+			errors.push("Parameter name is required.");
+		}
+
+		// Format
+		if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(self.name())) {
+			errors.push("Parameter name must start with a letter and can only contain alphanumeric characters and underscores.");
+		}
+
+		// Unique
+		var isUnique = parentParameters().every(function (param) {
+			return param === self || param.name() !== self.name();
+		});
+		if (!isUnique) {
+			errors.push("Parameter name must be unique.");
+		}
+
+		self.isValid(errors.length === 0);
+		self.errorMessage(errors.join(','));
+		return errors;
+	};
+};
+
+var customFunctionModel = function (options) {
+	var self = this;
+
+	self.id = ko.observable(0);
+	self.name = ko.observable();
+	self.namespace = ko.observable();
+	self.description = ko.observable();
+	self.functionType = ko.observable(); // js or c#
+	self.resultDataType = ko.observable();
+	self.code = ko.observable('');
+	self.parameters = ko.observableArray();
+
+	self.addParameter = function () {
+		var nextValueNumber = self.parameters().length + 1;
+		var defaultParameterName = "param_" + nextValueNumber;
+		self.parameters.push(new customFunctionParameterModel({
+			name: defaultParameterName,
+			display: "Parameter " + nextValueNumber
+		}, self.parameters));
+	};
+
+	self.removeParameter = function (parameter) {
+		bootbox.confirm("Are you sure you want to delete this parameter?", function (result) {
+			if (result) {
+				self.parameters.remove(parameter);
+			}
+		});
+	};
+
 }
