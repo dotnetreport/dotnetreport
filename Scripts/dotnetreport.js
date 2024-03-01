@@ -972,7 +972,12 @@ var reportViewModel = function (options) {
 	self.fieldFormatTypes = ['Auto', 'Number', 'Decimal', 'Currency', 'Percentage', 'Date', 'Date and Time', 'Time', 'String'];
 	self.decimalFormatTypes = ['Number', 'Decimal', 'Currency', 'Percentage'];
 	self.dateFormats = ['United States', 'United Kingdom', 'France', 'German', 'Spanish', 'Chinese', 'Custom'];
-	self.currenyFormats = ['USD ($)', 'EUR (€)', 'Pound (£)', 'Rupee (Rs)'];
+	self.currenyFormats = [
+		{ value: '$', display: 'USD ($)' },
+		{ value: '€', display: 'EUR (€)' },
+		{ value: '£', display: 'Pound (£)' },
+		{ value: 'Rs', display: 'Rupee (Rs)' }
+	];
 	self.dateFormatTypes = ['Date', 'Date and Time', 'Time'];
 	self.fieldAlignments = ['Auto', 'Left', 'Right', 'Center'];
 	self.designingHeader = ko.observable(false);
@@ -2509,6 +2514,9 @@ var reportViewModel = function (options) {
 					e.linkField = false;
 				}
 				col = col || { fieldName: e.ColumnName };
+				col.currencySymbol = col.currenyFormat() || null;
+				col.decimalPlacesDigit = col.decimalPlaces();
+				col.fieldFormating = col.fieldFormat();
 				if (skipColDetails !== true) self.columnDetails.push(col);
 
 				e.decimalPlaces = col.decimalPlaces || ko.observable();
@@ -2608,12 +2616,11 @@ var reportViewModel = function (options) {
 							case 'Percentage': r.FormattedValue = r.FormattedValue + '%'; break;
 						}
 					}
-					if (self.decimalFormatTypes.indexOf(col.fieldFormat()) == 2) {
-						r.FormattedValue = self.formatNumber(r.Value, col.decimalPlaces());
+					if (col.fieldFormat()==='Currency') {
 						switch (col.currenyFormat()) {
-							case 'EUR (€)': r.FormattedValue = '€' + r.FormattedValue; break;
-							case 'Pound (£)': r.FormattedValue = '£' + r.FormattedValue; break;
-							case 'Rupee (Rs)': r.FormattedValue = 'Rs' + r.FormattedValue; break;
+							case '€': r.FormattedValue = '€' + r.FormattedValue; break;
+							case '£': r.FormattedValue = '£' + r.FormattedValue; break;
+							case 'Rs': r.FormattedValue = 'Rs' + r.FormattedValue; break;
 							default: r.FormattedValue = '$' + r.FormattedValue; break;
 						}
 					}
