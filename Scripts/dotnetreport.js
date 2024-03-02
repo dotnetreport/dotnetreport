@@ -972,7 +972,7 @@ var reportViewModel = function (options) {
 	self.fieldFormatTypes = ['Auto', 'Number', 'Decimal', 'Currency', 'Percentage', 'Date', 'Date and Time', 'Time', 'String'];
 	self.decimalFormatTypes = ['Number', 'Decimal', 'Currency', 'Percentage'];
 	self.dateFormats = ['United States', 'United Kingdom', 'France', 'German', 'Spanish', 'Chinese', 'Custom'];
-	self.currenyFormats = [
+	self.currencyFormats = [
 		{ value: '$', display: 'USD ($)' },
 		{ value: '€', display: 'EUR (€)' },
 		{ value: '£', display: 'Pound (£)' },
@@ -1855,6 +1855,7 @@ var reportViewModel = function (options) {
 					self.formulaFieldLabel(field.fieldName);
 					self.formulaDataFormat(field.fieldFormat());
 					self.formulaDecimalPlaces(field.decimalPlaces());
+
 				});
 			}
 		}
@@ -2251,7 +2252,7 @@ var reportViewModel = function (options) {
 					LinkFieldItem: x.linkField() ? x.linkFieldItem.toJs() : null,
 					FieldLabel: x.fieldLabel(),
 					DecimalPlaces: x.decimalPlaces(),
-					CurrenyFormat: x.currenyFormat(),
+					CurrencyFormat: x.currencyFormat(),
 					FieldSettings: JSON.stringify({
 						dateFormat: x.dateFormat(),
 						customDateFormat: x.customDateFormat()
@@ -2514,13 +2515,13 @@ var reportViewModel = function (options) {
 					e.linkField = false;
 				}
 				col = col || { fieldName: e.ColumnName };
-				col.currencySymbol = col.currenyFormat() || null;
+				col.currencySymbol = col.currencyFormat() || null;
 				col.decimalPlacesDigit = col.decimalPlaces();
 				col.fieldFormating = col.fieldFormat();
 				if (skipColDetails !== true) self.columnDetails.push(col);
 
 				e.decimalPlaces = col.decimalPlaces || ko.observable();
-				e.currenyFormat = col.currenyFormat || ko.observable();
+				e.currencyFormat = col.currencyFormat || ko.observable();
 				e.dateFormat = col.dateFormat || ko.observable();
 				e.customDateFormat = col.customDateFormat || ko.observable();
 				e.fieldAlign = col.fieldAlign || ko.observable();
@@ -2617,7 +2618,7 @@ var reportViewModel = function (options) {
 						}
 					}
 					if (col.fieldFormat()==='Currency') {
-						switch (col.currenyFormat()) {
+						switch (col.currencyFormat()) {
 							case '€': r.FormattedValue = '€' + r.FormattedValue; break;
 							case '£': r.FormattedValue = '£' + r.FormattedValue; break;
 							case 'Rs': r.FormattedValue = 'Rs' + r.FormattedValue; break;
@@ -3108,7 +3109,7 @@ var reportViewModel = function (options) {
 		e.fieldFormat = ko.observable(e.fieldFormat);
 		e.fieldLabel = ko.observable(e.fieldLabel);
 		e.decimalPlaces = ko.observable(e.decimalPlaces);
-		e.currenyFormat= ko.observable(e.currenyFormat);
+		e.currencyFormat = ko.observable(e.currencyFormat);
 		e.dateFormat = ko.observable(e.fieldSettings.dateFormat || '');
 		e.customDateFormat = ko.observable(e.fieldSettings.customDateFormat || '');
 		e.fieldAlign = ko.observable(e.fieldAlign);
@@ -3190,7 +3191,7 @@ var reportViewModel = function (options) {
 				fieldLabel: e.fieldLabel(),
 				decimalPlaces: e.decimalPlaces(),
 				dateFormat: e.dateFormat(),
-				currenyFormat: e.currenyFormat(),
+				currencyFormat: e.currencyFormat(),
 				customDateFormat: e.customDateFormat(),
 				fieldAlign: e.fieldAlign(),
 				fontColor: e.fontColor(),
@@ -3225,7 +3226,7 @@ var reportViewModel = function (options) {
 			e.fieldLabel(self.currentFieldOptions.fieldLabel);
 			e.fieldAlign(self.currentFieldOptions.fieldAlign);
 			e.decimalPlaces(self.currentFieldOptions.decimalPlaces);
-			e.currenyFormat(self.currentFieldOptions.currenyFormat);
+			e.currencyFormat(self.currentFieldOptions.currencyFormat);
 			e.dateFormat(self.currentFieldOptions.dateFormat);
 			e.customDateFormat(self.currentFieldOptions.customDateFormat);
 			e.fontColor(self.currentFieldOptions.fontColor);

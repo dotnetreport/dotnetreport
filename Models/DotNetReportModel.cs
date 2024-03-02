@@ -553,7 +553,7 @@ namespace ReportBuilder.Web.Models
                     }
                     else
                     {
-                        ws.Column(i).Style.Numberformat.Format = "###,###,##0.00";
+                        ws.Column(i).Style.Numberformat.Format = "###,###,###";
                     }
                     isNumeric = true;
                 }
@@ -568,7 +568,7 @@ namespace ReportBuilder.Web.Models
                     }
                     else if (formatColumn.currencySymbol != null)
                     {
-                        ws.Column(i).Style.Numberformat.Format = formatColumn.currencySymbol + "###,###,##0.00";
+                        ws.Column(i).Style.Numberformat.Format = formatColumn.currencySymbol + "###,###,###";
                     }
                     else
                     {
@@ -1015,17 +1015,35 @@ namespace ReportBuilder.Web.Models
             var isCurrency = false;
             var isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
             var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
-
+            string decimalFormat = new string('0', formatColumn.decimalPlacesDigit.GetValueOrDefault());
             try
             {
                 if (dc.DataType == typeof(decimal) || (formatColumn != null && (formatColumn.fieldFormating == "Decimal" || formatColumn.fieldFormating == "Double")))
                 {
+                    if (formatColumn.decimalPlacesDigit != null)
+                    {
+                        value = Convert.ToDecimal(value).ToString("###,###,##0." + decimalFormat);
+                    }
+                    else
+                    {
+                        value = Convert.ToDecimal(value).ToString("###,###,##0.00");
+                    }
                     isNumeric = true;
-                    value = Convert.ToDecimal(value).ToString("###,###,##0.00");
                 }
                 if (formatColumn != null && formatColumn.fieldFormating == "Currency")
                 {
-                    value = Convert.ToDecimal(value).ToString("C");
+                    if (formatColumn.currencySymbol != null && formatColumn.decimalPlacesDigit != null)
+                    {
+                        value = Convert.ToDecimal(value).ToString(formatColumn.currencySymbol + "###,###,##0." + decimalFormat);
+                    }
+                    else if (formatColumn.currencySymbol != null)
+                    {
+                        value = Convert.ToDecimal(value).ToString(formatColumn.currencySymbol + "###,###,###");
+                    }
+                    else
+                    {
+                        value = Convert.ToDecimal(value).ToString("C");
+                    }
                     isCurrency = true;
                 }
                 if (formatColumn != null && (formatColumn.fieldFormating == "Date" || formatColumn.fieldFormating == "Date and Time" || formatColumn.fieldFormating == "Time") && dc.DataType.Name == "DateTime")
