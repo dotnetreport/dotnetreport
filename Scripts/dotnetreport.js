@@ -2253,10 +2253,10 @@ var reportViewModel = function (options) {
 					LinkFieldItem: x.linkField() ? x.linkFieldItem.toJs() : null,
 					FieldLabel: x.fieldLabel(),
 					DecimalPlaces: x.decimalPlaces(),
-					CurrencyFormat: x.currencyFormat(),
 					FieldSettings: JSON.stringify({
 						dateFormat: x.dateFormat(),
-						customDateFormat: x.customDateFormat()
+						customDateFormat: x.customDateFormat(),
+						currencyFormat: x.currencyFormat(),
 					}),
 					FieldAlign: x.fieldAlign(),
 					FontColor: x.fontColor(),
@@ -3110,7 +3110,7 @@ var reportViewModel = function (options) {
 		e.fieldFormat = ko.observable(e.fieldFormat);
 		e.fieldLabel = ko.observable(e.fieldLabel);
 		e.decimalPlaces = ko.observable(e.decimalPlaces);
-		e.currencyFormat = ko.observable(e.currencyFormat);
+		e.currencyFormat = ko.observable(e.fieldSettings.currencyFormat || '');
 		e.dateFormat = ko.observable(e.fieldSettings.dateFormat || '');
 		e.customDateFormat = ko.observable(e.fieldSettings.customDateFormat || '');
 		e.fieldAlign = ko.observable(e.fieldAlign);
