@@ -2565,8 +2565,10 @@ var reportViewModel = function (options) {
 							remove: function () {
 								e.outerGroup(false);
 								self.OuterGroupColumns.remove(this);
+								col.selectedAggregate = ko.observable("Group");
 							}
 						});
+						col.selectedAggregate = ko.observable("Outer Group");
 					}
 				}
 
@@ -2574,7 +2576,7 @@ var reportViewModel = function (options) {
 					col.setupFieldOptions();
 				}
 
-				if (col.selectedAggregate == 'Outer Group' && !_.find(self.OuterGroupColumns(), {fieldId: e.fieldId})) {
+				if (col.selectedAggregate() == 'Outer Group' && !_.find(self.OuterGroupColumns(), {fieldId: e.fieldId})) {
 					e.toggleOuterGroup()
 				}
 			});
