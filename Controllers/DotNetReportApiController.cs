@@ -161,10 +161,13 @@ namespace ReportBuilder.Web.Controllers
             public string sortBy { get; set; }
             public bool desc { get; set; }
             public string ReportSeries { get; set; }
+
+            public string pivotColumn { get; set; }
+            public string reportData { get; set; }
         }
 
         [HttpPost]
-        public IActionResult RunReport(RunReportParameters data)
+        public async Task<IActionResult> RunReport(RunReportParameters data)
         {
             string reportSql = data.reportSql;
             string connectKey = data.connectKey;
@@ -174,6 +177,8 @@ namespace ReportBuilder.Web.Controllers
             string sortBy = data.sortBy;
             bool desc = data.desc;
             string reportSeries = data.ReportSeries;
+            string pivotColumn = data.pivotColumn;
+            string reportData = data.reportData;
 
             var sql = "";
             var sqlCount = "";
@@ -185,7 +190,7 @@ namespace ReportBuilder.Web.Controllers
                 {
                     throw new Exception("Query not found");
                 }
-                var allSqls = reportSql.Split(new string[] { "%2C" }, StringSplitOptions.RemoveEmptyEntries);
+                var allSqls = reportSql.Split(new string[] { "%2C", "," }, StringSplitOptions.RemoveEmptyEntries);
                 var dtPaged = new DataTable();
                 var dtCols = 0;
 
@@ -253,9 +258,17 @@ namespace ReportBuilder.Web.Controllers
                         string[] series = { };
                         if (i == 0)
                         {
+                            fields.AddRange(sqlFields);
+
+                            if (!string.IsNullOrEmpty(pivotColumn))
+                            {
+                                var ds = await DotNetReportHelper.GetDrillDownData(conn, dtPagedRun, sqlFields, reportData);
+                                dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn);
+                                fields.AddRange(dtPagedRun.Columns.Cast<DataColumn>().Skip(fields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
+                            }
+
                             dtPaged = dtPagedRun;
                             dtCols = dtPagedRun.Columns.Count;
-                            fields.AddRange(sqlFields);
                         }
                         else if (i > 0)
                         {
@@ -523,9 +536,15 @@ namespace ReportBuilder.Web.Controllers
 
         //[Authorize(Roles="Administrator")]
         [HttpGet]
-        public async Task<IActionResult> LoadSetupSchema(string? databaseApiKey = "")
+        public async Task<IActionResult> LoadSetupSchema(string? databaseApiKey = "", bool onlyApi = true)
         {
             var settings = GetSettings();
+
+            if (string.IsNullOrEmpty(settings.AccountApiToken))
+            {
+                return Ok(new { noAccount = true });
+            }
+
             if (!settings.CanUseAdminMode)
             {
                 throw new Exception("Not Authorized to access this Resource");
@@ -534,9 +553,17 @@ namespace ReportBuilder.Web.Controllers
             var connect = DotNetSetupController.GetConnection(databaseApiKey);
             var tables = new List<TableViewModel>();
             var procedures = new List<TableViewModel>();
-            tables.AddRange(await DotNetSetupController.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
-            tables.AddRange(await DotNetSetupController.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
+            if (onlyApi)
+            {
+                tables.AddRange(await DotNetSetupController.GetApiTables(connect.AccountApiKey, connect.DatabaseApiKey, true));
+            }
+            else
+            {
+                tables.AddRange(await DotNetSetupController.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
+                tables.AddRange(await DotNetSetupController.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
+            }
             procedures.AddRange(await DotNetSetupController.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
+
             var model = new ManageViewModel
             {
                 ApiUrl = connect.ApiUrl,
@@ -574,7 +601,7 @@ namespace ReportBuilder.Web.Controllers
             {
                 // open the connection to the database 
                 conn.Open();
-                string spQuery = "SELECT ROUTINE_NAME, ROUTINE_DEFINITION, ROUTINE_SCHEMA FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_DEFINITION LIKE '%" + value + "%' AND ROUTINE_TYPE = 'PROCEDURE'";
+                string spQuery = "SELECT ROUTINE_NAME, ROUTINE_DEFINITION, ROUTINE_SCHEMA FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_NAME LIKE '%" + value + "%' AND ROUTINE_TYPE = 'PROCEDURE'";
                 OleDbCommand cmd = new OleDbCommand(spQuery, conn);
                 cmd.CommandType = CommandType.Text;
                 DataTable dtProcedures = new DataTable();

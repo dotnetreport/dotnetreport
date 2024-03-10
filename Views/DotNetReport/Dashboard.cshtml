@@ -34,6 +34,11 @@
             var adminMode = queryParams.adminMode == 'true' ? 'true' : 'false';
 
             ajaxcall({ url: '@Url.Action("GetDashboards", "DotNetReportApi")' + '?adminMode=' + adminMode }).done(function (dashboardData) {
+                if (dashboardData && dashboardData.noAccount === true) {
+                    $("#noaccountModal").modal('show');
+                    return;
+                }
+
                 _.forEach(dashboardData, function (d) {
                     dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles });
                 });
@@ -120,30 +125,27 @@
 }
 
 <div class="row">
-    <div class="col-8" data-bind="with: currentDashboard">
-        <h2 data-bind="text: name ? name : 'Dashboard'">Dashboard</h2>
+    <div class="col-4" data-bind="with: currentDashboard">
+        <h2 title="Switch Dashboard">
+            <select class="form-control select-as-text" title="Switch Dashboard" data-bind="select2: {minimumResultsForSearch: Infinity}, options: $parent.dashboards, optionsText: 'name', optionsValue: 'id', value: $parent.selectDashboard"></select>
+        </h2>
         <p data-bind="text: description"></p>
     </div>
-
-    <div class="col-4 right-align" style="display: none;" data-bind="visible: dashboards().length > 0 ">
-        <div class="row">
-
-            <label class="col">Switch Dashboard</label>
-            <select class="col form-control" data-bind="options: dashboards, optionsText: 'name', optionsValue: 'id', value: selectDashboard"></select>
-            <div class="col">
-                <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Edit Dashboard Settings" data-bind="click: editDashboard">Edit</button>
-                <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Add a New Dashboard" data-bind="click: newDashboard">Add</button>
-            </div>
-        </div>
+    <div class="col-4">
+        &nbsp;
     </div>
 </div>
 <div class="clearfix"></div>
 
-<div class="pull-right">
-    <a href="@Url.Action("Index","DotNetReport")">Manage Reports</a> | Learn how to <a href="https://dotnetreport.com/getting-started-with-dotnet-report/" target="_blank">Integrate in your App here</a>.
-</div>
-
 <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
+
+<div class="row padded-top">
+    <div class="col-md-12">
+        <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Edit Dashboard Settings" data-bind="click: editDashboard">Edit this Dashboard</button>
+        <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Add a New Dashboard" data-bind="click: newDashboard">Add a new Dashboard</button>
+    </div>
+</div>
+<div class="padded-top"></div>
 
 <div class="centered" style="display: none;" data-bind="visible: dashboards().length == 0 ">
     No Dashboards yet. Click below to Start<br />
@@ -249,6 +251,12 @@
                                 <span class="fa fa-file-pdf-o"></span> PDF
                             </a>
                         </li>
+                        <li class="dropdown-item">
+                            <a data-bind="attr: {href: '/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + ReportID() }" target="_blank">
+                                <span class="fa fa-file"></span> Report
+                            </a>
+                        </li>
+
                         <li class="dropdown-item">
                             <a href="#" data-bind="click: function() { $parent.removeReportFromDashboard(ReportID()); }">
                                 <span class="fa fa-close"></span> Remove
