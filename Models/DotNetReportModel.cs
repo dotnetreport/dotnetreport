@@ -553,7 +553,7 @@ namespace ReportBuilder.Web.Models
                     }
                     else
                     {
-                        ws.Column(i).Style.Numberformat.Format = "###,###,###";
+                        ws.Column(i).Style.Numberformat.Format = "###,###,##0.00";
                     }
                     isNumeric = true;
                 }
@@ -568,7 +568,7 @@ namespace ReportBuilder.Web.Models
                     }
                     else if (formatColumn.currencySymbol != null)
                     {
-                        ws.Column(i).Style.Numberformat.Format = formatColumn.currencySymbol + "###,###,###";
+                        ws.Column(i).Style.Numberformat.Format = formatColumn.currencySymbol + "###,###,##0.00";
                     }
                     else
                     {
@@ -1038,11 +1038,7 @@ namespace ReportBuilder.Web.Models
                     }
                     else if (formatColumn.currencySymbol != null)
                     {
-                        value = Convert.ToDecimal(value).ToString(formatColumn.currencySymbol + "###,###,###");
-                    }
-                    else
-                    {
-                        value = Convert.ToDecimal(value).ToString("C");
+                        value = Convert.ToDecimal(value).ToString(formatColumn.currencySymbol + "###,###,##0.00");
                     }
                     isCurrency = true;
                 }
