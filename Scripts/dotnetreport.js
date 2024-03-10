@@ -2600,7 +2600,7 @@ var reportViewModel = function (options) {
 
 				r.formattedVal = ko.computed(function () {
 
-					if (self.decimalFormatTypes.indexOf(col.fieldFormat()) >= 0) {
+					if (self.decimalFormatTypes.indexOf(col.fieldFormat()) >= 0 && !isNaN(r.Value)) {
 						r.FormattedValue = self.formatNumber(r.Value, col.decimalPlaces());
 						switch (col.fieldFormat()) {
 							case 'Currency': r.FormattedValue = '$' + r.FormattedValue; break;
