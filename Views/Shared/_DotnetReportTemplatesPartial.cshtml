@@ -1013,10 +1013,10 @@
                 <div class="card card-body">
                     <h5 class="pull-left"><span class="fa fa-database"></span>&nbsp;Choose Data for Report</h5>
                     <div class="pull-right" role="group" data-bind="if: ReportID() <= 0">
-                        <label class="btn btn-primary active" style="margin-right: 0px;" title="You can change the Data source only when creating a new report, changing this will clear all selections">
+                        <label class="btn btn-sm btn-primary active" style="margin-right: 0px;" title="You can change the Data source only when creating a new report, changing this will clear all selections">
                             <input type="radio" name="dataoption" id="table" checked data-bind="checked: useStoredProc, checkedValue: false"> Dynamic
                         </label>
-                        <label class="btn btn-primary">
+                        <label class="btn btn-sm btn-primary">
                             <input type="radio" name="dataoption" id="proc" value="1" data-bind="checked: useStoredProc, checkedValue: true"> Predefined
                         </label>
                     </div>

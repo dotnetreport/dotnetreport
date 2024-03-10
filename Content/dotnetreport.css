@@ -40,7 +40,6 @@
         font-size: 12px;
         line-height: 1.4;
         text-align: center;
-        background-color: #f9f9f9;
         border: 1px solid #fff;
         cursor: pointer;
     }
@@ -62,14 +61,10 @@
         word-wrap: break-word;
     }
 
-/* .modal-fullscreen */
-
 .modal-fullscreen {
-    background: transparent;
 }
 
     .modal-fullscreen .modal-content {
-        background: transparent;
         border: 0;
         -webkit-box-shadow: none;
         box-shadow: none;
@@ -85,7 +80,6 @@
     }
 
 .modal-fullscreen {
-    /*width: 80%;*/
     margin: 0;
     margin-left: auto;
     padding-right: 0px !important;
@@ -95,7 +89,6 @@
     .modal-fullscreen .modal-dialog {
         background: #ffffff;
         margin: 0;
-        /*margin-right: auto;*/
         margin-left: auto;
         width: 100%;
         height: 100%;
@@ -134,52 +127,20 @@
     box-shadow: 1000px 0 0 #f9f9f9,0 2px 80px rgba(0,0,0,.5);
 }
 
-
 .form-group .button-box {
     margin-top: 0;
     margin-bottom: 0;
 }
-
 
 .folder-list {
     padding-left: 0;
     list-style: none;
 }
 
-    .folder-list li {
-        float: left;
-        width: 95px;
-        height: 95px;
-        padding: 10px;
-        font-size: 12px;
-        line-height: 1.4;
-        text-align: center;
-        background-color: #f9f9f9;
-        border: 1px solid #fff;
-        cursor: pointer;
-    }
-
-        .folder-list li:hover {
-            background-color: #ddd;
-        }
-
-    .folder-list .glyphicon {
-        margin-top: 5px;
-        margin-bottom: 10px;
-        font-size: 34px;
-        color: #ffd800;
-    }
-
-    .folder-list .desc {
-        display: block;
-        text-align: center;
-        word-wrap: break-word;
-    }
-
-
 .button-box:hover {
     color: #37a000;
-    border-bottom-color: #37a000;
+    border-color: #b7dda3;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .button-box .glyphicon {
@@ -195,14 +156,13 @@
 
 .button-box.active {
     color: #37a000;
-    border-bottom-color: #37a000;
+    border-color: #37a000;
+    background-color: #f0f0f0;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
 .button-box {
     cursor: pointer;
-}
-
-.button-box {
     position: relative;
     vertical-align: top;
     text-align: center;
@@ -213,6 +173,7 @@
     padding: 18px;
     margin-top: 10px;
     margin-bottom: 20px;
+    transition: all 0.3s ease;
 }
 
     .button-box.no-padding {
@@ -280,7 +241,7 @@
 
 .report-view {
     margin: 0 auto;
-    max-width: 1200px;
+    /*max-width: 1200px;*/
 }
 
 @media(max-width: 992px) {
@@ -323,10 +284,7 @@
 }
 
 .report-menubar {
-    padding-top: 8px;
-    padding-bottom: 8px;
     z-index: 2;
-    height: 42px;
     width: 100%;
     overflow: hidden;
     background-color: #ddd;
@@ -404,16 +362,12 @@
     position: fixed;
     top: 50%;
     left: 50%;
-    /* bring your own prefixes */
     transform: translate(-50%, -50%);
 }
 
 .validation-summary-errors ul {
     list-style-type: none;
 }
-
-
-/* styles for validation helpers */
 
 .field-validation-error {
     color: #b94a48;
@@ -465,7 +419,6 @@ input[type="checkbox"].input-validation-error {
 }
 
     .canvas-container canvas {
-        /*border: solid 1px;*/
         width: 100%;
     }
 
@@ -490,7 +443,6 @@ select.is-invalid ~ span .select2-selection {
     border: 1px solid #eee;
     width: 100%;
 }
-
 
 .query-builder .rules-group-container {
     padding: 10px;
@@ -522,7 +474,6 @@ select.is-invalid ~ span .select2-selection {
     list-style: none;
     padding: 0 0 0 15px;
     margin: 0;
-    background-color: #fff;
 }
 
     .query-builder .rules-list > ::after, .query-builder .rules-list > ::before {
@@ -585,14 +536,14 @@ select.is-invalid ~ span .select2-selection {
         cursor: pointer;
     }
 
-
 .report-layout-footer {
+    font-size: 10pt;
     position: fixed;
     padding: 15px 15px;
     left: 0;
     bottom: 0;
     width: 100%;
-    height: 50px; /* adjust as needed for your footer height */
+    height: 50px;
     background-color: #f5f5f5;
 }
 
@@ -662,7 +613,6 @@ select.is-invalid ~ span .select2-selection {
     right: 10px;
     border-color: transparent transparent transparent #999;
 }
-
 
     .ui-datepicker-prev span,
     .ui-datepicker-next span {
@@ -840,7 +790,7 @@ h2 {
 
     /* Adjust the font size of the default text */
     .blockUI.blockMsg.blockPage h1 {
-        display:none;
+        display: none;
         font-size: 14px;
         position: absolute; /* Position the text absolutely */
         top: 110px; /* Adjust the top value as needed */
@@ -873,27 +823,163 @@ h2 {
     }
 }
 
-
-.styled-select {
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
+.color-table {
+    display: flex;
+    align-items: center;
+    margin: 5px;
 }
 
-.style1-option {
-    background-color: #f2f2f2;
+.color-cell {
+    width: 20px; /* Set a fixed width */
+    height: 20px; /* Set a fixed height */
 }
 
-.style2-option {
-    background-color: #d9ead3;
+/* Style Gray */
+.style-gray tbody tr:nth-child(odd) {
+    background-color: #d1d1d1;
 }
 
-.style3-option {
-    background-color: #cfe2f3;
+.style-gray tbody tr:nth-child(even) {
+    background-color: #e0e0e0;
 }
 
-.style4-option {
-    background-color: #f4cccc;
+.style-gray thead th {
+    background-color: #b3b3b3;
+    color: #333333;
+    padding: 10px;
+    border-bottom: 2px solid #868686;
+}
+
+.style-gray a {
+    color: #1a1a1a;
+}
+
+/* Style Blue */
+.style-blue tbody tr:nth-child(odd) {
+    background-color: #DEEBF7;
+}
+
+.style-blue tbody tr:nth-child(even) {
+}
+
+.style-blue thead th {
+    background-color: #CFE2F3;
+    color: #000000;
+    padding: 10px;
+    border-bottom: 1px solid #4dc3ff;
+}
+
+.style-blue a {
+    color: #005c99;
+}
+
+/* Style Green */
+.style-green tbody tr:nth-child(odd) {
+    background-color: #bde6bd;
+}
+
+.style-green tbody tr:nth-child(even) {
+    background-color: #d3efd3;
+}
+
+.style-green thead th {
+    background-color: #90d690;
+    color: #333333;
+    padding: 10px;
+    border-bottom: 2px solid #64c764;
+}
+
+.style-green a {
+    color: #2d862d;
+}
+
+/* Style Red */
+.style-red tbody tr:nth-child(odd) {
+    background-color: #ffb3b3;
+}
+
+.style-red tbody tr:nth-child(even) {
+    background-color: #ffcccc;
+}
+
+.style-red thead th {
+    background-color: #ff8080;
+    color: #333333;
+    padding: 10px;
+    border-bottom: 2px solid #ff4d4d;
+}
+
+.style-red a {
+    color: #b30000;
+}
+
+/* Style Yellow */
+.style-yellow tbody tr:nth-child(odd) {
+    background-color: #ffffb3;
+}
+
+.style-yellow tbody tr:nth-child(even) {
+    background-color: #ffffcc;
+}
+
+.style-yellow thead th {
+    background-color: #ffff80;
+    color: #333333;
+    padding: 10px;
+    border-bottom: 2px solid #ffff4d;
+}
+
+.style-yellow a {
+    color: #cc9900;
+}
+
+/* Style Orange */
+.style-orange tbody tr:nth-child(odd) {
+    background-color: #FCE5CD;
+}
+
+.style-orange tbody tr:nth-child(even) {
+}
+
+.style-orange thead th {
+    background-color: #F9CB9C;
+    color: #333333;
+    padding: 10px;
+    border-bottom: 1px solid #ffb84d;
+}
+
+.style-orange a {
+    color: #cc6600;
+}
+
+/* Style Mixed */
+.style-mixed tbody tr:nth-child(odd) {
+    background-color: #c8d8d8;
+}
+
+.style-mixed tbody tr:nth-child(even) {
+    background-color: #d8e4e4;
+}
+
+.style-mixed thead th {
+    background-color: #c8d8e4;
+    color: #333333;
+    padding: 10px;
+    border-bottom: 2px solid #c8e4d8;
+}
+
+    .style-mixed thead th a {
+        color: #8a6755; /* A complementary yet distinct color */
+        text-decoration: none;
+    }
+
+        .style-mixed thead th a:hover {
+            text-decoration: underline;
+        }
+
+
+.style-mixed-bright tbody tr:nth-child(odd) {
+    background-color: #D5A6BD;
 }
 
 /* Style Blue */
@@ -1034,8 +1120,12 @@ h2 {
     border-bottom: 1px solid #d9d9d9;
 }
 
-.style4 tbody tr:nth-child(even) {
-    background-color: #ea9999;
+.mini-table-cell {
+    flex-grow: 1; /* Allows cells to expand, maintaining the flex layout */
+    border: 1px solid #ddd; /* Adds a border to each cell */
+    box-sizing: border-box; /* Ensures the border is included in the cell's dimensions */
+    width: 15px; /* Sets a fixed width for each cell */
+    height: 10px; /* Sets a different fixed height for each cell, making it rectangular */
 }
 
 
