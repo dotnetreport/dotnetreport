@@ -1644,6 +1644,7 @@ var reportViewModel = function (options) {
 					x.isJsonColumn = true;
 					x.jsonColumnName = key;
 					x.selectedFieldName += (" > " + key);
+					x.isSelected = _.find(self.SelectedFields(), function (f) { return f.fieldId == x.fieldId && f.fieldType == 'Json' && f.jsonColumnName == x.jsonColumnName }) != null;
 					return x;
 				});
 
@@ -1666,7 +1667,7 @@ var reportViewModel = function (options) {
 			if (fields.d) { fields = fields.d; }
 			if (fields.result) { fields = fields.result; }
 			var flds = _.map(fields, function (e, i) {
-				var match = _.filter(self.SelectedFields(), function (x) { return x.fieldId == e.fieldId; });
+				var match = _.filter(self.SelectedFields(), function (x) { return x.fieldId == e.fieldId && (e.fieldType != 'Json' || !x.jsonColumnName); });
 				if (match.length > 0) {
 					return match[0];
 				}
@@ -2599,7 +2600,7 @@ var reportViewModel = function (options) {
 
 				r.formattedVal = ko.computed(function () {
 
-					if (self.decimalFormatTypes.indexOf(col.fieldFormat()) >= 0) {
+					if (self.decimalFormatTypes.indexOf(col.fieldFormat()) >= 0 && !isNaN(r.Value)) {
 						r.FormattedValue = self.formatNumber(r.Value, col.decimalPlaces());
 						switch (col.fieldFormat()) {
 							case 'Currency': r.FormattedValue = '$' + r.FormattedValue; break;
@@ -3074,7 +3075,9 @@ var reportViewModel = function (options) {
 	self.editFieldOptions = ko.observable();
 
 	self.setupField = function (e) {
-		e.fieldSettings = JSON.parse(e.fieldSettings || "{}");
+		if (typeof e.fieldSettings !== 'object' || e.fieldSettings === null) {
+			e.fieldSettings = JSON.parse(e.fieldSettings || "{}");
+		}
 		e.selectedFieldName = e.tableName + " > " + e.fieldName + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
 		e.selectedFilterName = e.tableName + " > " + (e.fieldLabel || e.fieldName) + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
 		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail').concat('Group in Detail').concat('Pivot').concat('Csv');
