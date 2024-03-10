@@ -451,7 +451,7 @@ namespace ReportBuilder.WebForms.DotNetReport
             Context.Response.ClearContent();
 
             Context.Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".xml");
-            Context.Response.ContentType = "application/xml";
+            Context.Response.ContentType = "text/txt";
             Context.Response.Write(xml);
             Context.Response.End();
 
