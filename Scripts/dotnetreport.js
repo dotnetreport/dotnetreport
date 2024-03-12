@@ -1927,6 +1927,15 @@ var reportViewModel = function (options) {
 		self.formulaFields.push(constval);
 	};
 
+	self.addFormulaDateToday = function () {
+		var field = self.getEmptyFormulaField();
+
+		var constval = self.setupField(Object.assign({}, field));
+		constval.setupFormula.isConstantValue(true);
+		constval.setupFormula.constantValue('|Today|');
+		self.formulaFields.push(constval);
+	};
+
 	self.isFieldValidForYAxis = function (i, fieldType, aggregate) {
 		if (i > 0) {
 			if (self.ReportType() == "Bar" && ["Int", "Double", "Money"].indexOf(fieldType) < 0 && aggregate != "Count") {
