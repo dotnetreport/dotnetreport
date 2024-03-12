@@ -558,6 +558,7 @@ namespace ReportBuilder.Web.Controllers
             var connect = DotNetReportHelper.GetConnection(databaseApiKey);
             var tables = new List<TableViewModel>();
             var procedures = new List<TableViewModel>();
+            var functions = new List<CustomFunctionModel>();
             if (onlyApi)
             {
                 tables.AddRange(await DotNetSetupController.GetApiTables(connect.AccountApiKey, connect.DatabaseApiKey, true));
@@ -568,14 +569,16 @@ namespace ReportBuilder.Web.Controllers
                 tables.AddRange(await DotNetSetupController.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
             }
             procedures.AddRange(await DotNetSetupController.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
-            
+            functions.AddRange(await DotNetSetupController.GetApiFunctions(connect.AccountApiKey, connect.DatabaseApiKey));
+
             var model = new ManageViewModel
             {
                 ApiUrl = connect.ApiUrl,
                 AccountApiKey = connect.AccountApiKey,
                 DatabaseApiKey = connect.DatabaseApiKey,
                 Tables = tables,
-                Procedures = procedures
+                Procedures = procedures,
+                Functions = functions
             };
 
             return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });

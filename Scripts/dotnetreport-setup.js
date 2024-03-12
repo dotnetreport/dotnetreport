@@ -15,7 +15,7 @@ var manageViewModel = function (options) {
 	self.Procedures = new proceduresViewModel(options);
 	self.DbConfig = {};
 	self.UserAndRolesConfig = {};
-	self.Functions = new customFunctionManageModel(options);
+	self.Functions = new customFunctionManageModel(options, self.keys);
 	self.pager = new pagerViewModel({autoPage: true});
 	self.pager.totalRecords(self.Tables.model().length);
 	self.onlyApi = ko.observable(options.onlyApi);
@@ -1034,9 +1034,9 @@ var customSqlModel = function (options, keys, tables) {
     }
 }
 
-var customFunctionManageModel = function (options) {
+var customFunctionManageModel = function (options, keys) {
 	var self = this;
-
+	self.keys = keys;
 	var codeEditor;
 	var validator = new validation();
 	function updateCodeEditor(code) {
@@ -1051,6 +1051,14 @@ var customFunctionManageModel = function (options) {
 
 	self.functions = ko.observableArray([]);
 	self.search = ko.observable('');
+
+	_.forEach(options.model.Functions, function (x) {
+		self.functions.push(new customFunctionModel(x));
+	});
+
+	self.savedProcedures = ko.mapping.fromJS(options.model.Procedures, {
+		'ignore': ["TableName"]
+	});
 
 	self.filteredFunctions = ko.computed(function () {
 		var search = self.search().toLowerCase();
@@ -1120,8 +1128,10 @@ var customFunctionManageModel = function (options) {
 			parameterErrors.forEach(function (error) {
 				toastr.error(error);
 			});
-			isValid = false;
+			valid = false;
 		}
+
+		var currentCode = codeEditor.getValue();
 
 		if (self.selectedFunction().functionType() === 'javascript') {
 			// Validate JavaScript code using JSHint
@@ -1137,19 +1147,38 @@ var customFunctionManageModel = function (options) {
 			return;
 		}
 
-		var currentCode = codeEditor.getValue();
 		self.selectedFunction().code(currentCode);
 
-		if (existingFunctionIndex !== -1) {
-			// Update existing function
-			self.functions.splice(existingFunctionIndex, 1, self.selectedFunction());
-		} else {
-			// Add new function
-			self.functions.push(self.selectedFunction());
-		}
+		var e = ko.mapping.toJS(self.selectedFunction(), {
+			'ignore': []
+		});
 
-		toastr.success('Function saved successfully');
-		self.selectedFunction(null);
+		ajaxcall({
+			url: options.saveCustomFuncUrl,
+			type: 'POST',
+			data: JSON.stringify({
+				model: e,
+				account: self.keys.AccountApiKey,
+				dataConnect: self.keys.DatabaseApiKey
+			})
+		}).done(function (result) {
+			if (!result) {
+				toastr.error('Error saving Function: ' + result.Message);
+				return false;
+			}
+
+			self.selectedFunction().id(result);
+			if (existingFunctionIndex !== -1) {
+				// Update existing function
+				self.functions.splice(existingFunctionIndex, 1, self.selectedFunction());
+			} else {
+				// Add new function
+				self.functions.push(self.selectedFunction());
+			}
+
+			toastr.success('Function saved successfully');
+			self.selectedFunction(null);
+		});
 	};
 
 
@@ -1185,10 +1214,10 @@ var customFunctionParameterModel = function (options, parentParameters) {
 	var self = this;
 	options = options || {};
 
-	self.name = ko.observable(options.name || '');
-	self.display = ko.observable(options.display || '').extend({ required: true });
-	self.description = ko.observable(options.description || '');
-	self.optional = ko.observable(options.optional || false);
+	self.parameterName = ko.observable(options.ParameterName || '');
+	self.displayName = ko.observable(options.DisplayName || '').extend({ required: true });
+	self.description = ko.observable(options.Description || '');
+	self.required = ko.observable(options.Required || true);
 	self.isValid = ko.observable(true);
 	self.errorMessage = ko.observable();
 
@@ -1196,18 +1225,18 @@ var customFunctionParameterModel = function (options, parentParameters) {
 		var errors = [];
 
 		// Required
-		if (!self.name().trim()) {
+		if (!self.parameterName().trim()) {
 			errors.push("Parameter name is required.");
 		}
 
 		// Format
-		if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(self.name())) {
+		if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(self.parameterName())) {
 			errors.push("Parameter name must start with a letter and can only contain alphanumeric characters and underscores.");
 		}
 
 		// Unique
 		var isUnique = parentParameters().every(function (param) {
-			return param === self || param.name() !== self.name();
+			return param === self || param.parameterName() !== self.parameterName();
 		});
 		if (!isUnique) {
 			errors.push("Parameter name must be unique.");
@@ -1221,22 +1250,26 @@ var customFunctionParameterModel = function (options, parentParameters) {
 
 var customFunctionModel = function (options) {
 	var self = this;
+	options = options || {};
+	self.id = ko.observable(options.Id || 0);
+	self.name = ko.observable(options.Name || '');
+	self.namespace = ko.observable(options.Namespace || '');
+	self.description = ko.observable(options.Description || '');
+	self.functionType = ko.observable(options.FunctionType || ''); // js or c#
+	self.resultDataType = ko.observable(options.ResultDataType || '');
+	self.code = ko.observable(options.Code || '');
+	self.parameters = ko.observableArray([]);
 
-	self.id = ko.observable(0);
-	self.name = ko.observable();
-	self.namespace = ko.observable();
-	self.description = ko.observable();
-	self.functionType = ko.observable(); // js or c#
-	self.resultDataType = ko.observable();
-	self.code = ko.observable('');
-	self.parameters = ko.observableArray();
+	_.forEach(options.Parameters, function (x) {
+		self.parameters.push(new customFunctionParameterModel(x, self.parameters));
+	});
 
 	self.addParameter = function () {
 		var nextValueNumber = self.parameters().length + 1;
 		var defaultParameterName = "param_" + nextValueNumber;
 		self.parameters.push(new customFunctionParameterModel({
-			name: defaultParameterName,
-			display: "Parameter " + nextValueNumber
+			ParameterName: defaultParameterName,
+			DisplayName: "Parameter " + nextValueNumber
 		}, self.parameters));
 	};
 

@@ -18,7 +18,6 @@ using System.Text.RegularExpressions;
 using System.Web;
 using Npgsql;
 using MySql.Data.MySqlClient;
-using Microsoft.Extensions.Configuration;
 
 namespace ReportBuilder.Web.Models
 {
@@ -143,8 +142,8 @@ namespace ReportBuilder.Web.Models
         public string ForeignKeyField { get; set; }
         public string ForeignValueField { get; set; }
         public bool Hidden { get; set; }
-
     }
+
     public class RelationModel
     {
         public int Id { get; set; }
@@ -154,6 +153,38 @@ namespace ReportBuilder.Web.Models
         public string FieldName { get; set; }
         public string JoinFieldName { get; set; }
     }
+
+
+    public class CustomFunctionModel
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = "";
+        public string DisplayName { get; set; } = "";
+        public string Description { get; set; } = "";
+        public int DataConnectionId { get; set; } 
+        public int DisplayOrder { get; set; } 
+
+        public string FunctionType { get; set; } = "";
+        public string References { get; set; } = "";
+        public string ResultDataType { get; set; } = "";
+        public string Code { get; set; } = "";
+        public List<CustomFunctionParameterModel> Parameters { get; set; } = new List<CustomFunctionParameterModel>();
+        public List<string> AllowedRoles { get; set; } = new List<string>();
+    }
+
+    public class CustomFunctionParameterModel
+    {
+        public int Id { get; set; }
+        public int CustomFunctionId { get; set; }
+        public string ParameterName { get; set; } = "";
+        public string DisplayName { get; set; } = "";
+  
+        public string Description { get; set; } = "";
+
+        public bool Required { get; set; }
+        public string DefaultValue { get; set; } = "";
+    }
+
 
     public enum FieldTypes
     {
@@ -224,6 +255,7 @@ namespace ReportBuilder.Web.Models
 
         public List<TableViewModel> Tables { get; set; }
         public List<TableViewModel> Procedures { get; set; }
+        public List<CustomFunctionModel> Functions { get; set; }
 
         public dynamic DbConfig { get; set; }
         public UserRolesConfig UserAndRolesConfig { get; set; }

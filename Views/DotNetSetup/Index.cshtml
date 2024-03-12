@@ -82,6 +82,8 @@
                     addDataConnectionUrl: model.ApiUrl + '/ReportApi/AddDataConnection',
                     saveProcUrl: model.ApiUrl + '/ReportApi/SaveProcedure',
                     deleteProcUrl: model.ApiUrl + '/ReportApi/DeleteProcedure',
+                    saveCustomFuncUrl: model.ApiUrl + '/ReportApi/SaveCustomFunction',
+                    deleteCustomFuncUrl: model.ApiUrl + '/ReportApi/DeleteCustomFunction',
                     reportsApiUrl: model.ApiUrl,
                     getUsersAndRoles: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")',
                     searchProcUrl: '@Url.Action("SearchProcedure", "DotNetReportApi")',
@@ -549,19 +551,19 @@
                                             <th>Name</th>
                                             <th>Display Name</th>
                                             <th>Description</th>
-                                            <th>Optional</th>
+                                            <th>Required</th>
                                             <th></th>
                                         </tr>
                                     </thead>
                                     <tbody data-bind="foreach: parameters">
                                         <tr>
                                             <td>
-                                                <input class="form-control" data-bind="value: name, valueUpdate: 'input'" />
+                                                <input class="form-control" data-bind="value: parameterName, valueUpdate: 'input'" />
                                                 <span class="text-danger" data-bind="visible: name.hasError, text: name.validationMessage"></span>
                                             </td>
-                                            <td><input class="form-control" data-bind="value: display, valueUpdate: 'input'" /></td>
+                                            <td><input class="form-control" data-bind="value: displayName, valueUpdate: 'input'" /></td>
                                             <td><input class="form-control" data-bind="value: description, valueUpdate: 'input'" placeholder="Friendly description for user..." /></td>
-                                            <td><input type="checkbox" data-bind="checked: optional" /></td>
+                                            <td><input type="checkbox" data-bind="checked: required" /></td>
                                             <td><button class="btn btn-sm btn-danger" data-bind="click: $parent.removeParameter">Remove</button></td>
                                         </tr>
                                     </tbody>
