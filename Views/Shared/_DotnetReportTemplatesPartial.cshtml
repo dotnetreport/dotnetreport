@@ -182,7 +182,7 @@
 
 <script type="text/html" id="report-table">
     <div class="table-responsive" >
-        <table class="table table-hover table-condensed" data-bind="attr: {class: 'table table-striped table-hover table-condensed ' + $parents[2].selectedStyle()}">        
+        <table class="table table-hover table-condensed" data-bind="attr: {class: 'table table-striped table-hover table-condensed ' + $parents[2].selectedStyle()}">
             <thead data-bind="if: $parents[2].ReportType() != 'Single'">
                 <tr class="no-highlight">
                     <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !IsDrillDown() && !CanExpandOption() -->
@@ -541,13 +541,13 @@
                         <div class="col-md-3">
                             <div class="form-group">
                                 <select class="form-control" style="width: 100%;" data-bind="
-                                        options: $parents[$parents.length-2].selectedFieldsCanFilter != undefined 
+                                        options: $parents[$parents.length-2].selectedFieldsCanFilter != undefined
                                                     ? $parents[$parents.length-2].selectedFieldsCanFilter
                                                     : $parents[$parents.length-1].selectedFieldsCanFilter,
-                                        optionsText: 'selectedFieldName', 
-                                        optionsCaption: 'Please Choose', 
-                                        value: Field, 
-                                        attr: {required: Field()==null?'required':false}, 
+                                        optionsText: 'selectedFieldName',
+                                        optionsCaption: 'Please Choose',
+                                        value: Field,
+                                        attr: {required: Field()==null?'required':false},
                                         disable: Field() && Field().forced"></select>
                                 </div>
                         </div>
@@ -1038,7 +1038,8 @@
                                 Check the fields you would like to use in the Report
                             </div>
                             <div class="pull-right btn-toolbar">
-                                <a href="#" class="btn btn-sm" title="Custom Field using Formula" data-bind="click: function(){isFormulaField(!isFormulaField())}, text: isFormulaField()? 'Cancel': 'Customize', css: {'btn-primary': !isFormulaField(), 'btn-danger': isFormulaField}"></a>
+                                <a href="#" class="btn btn-sm" title="Custom Field using Formula" data-bind="hidden: isFunctionField, click: function(){isFormulaField(!isFormulaField())}, text: isFormulaField()? 'Cancel': 'Customize', css: {'btn-primary': !isFormulaField(), 'btn-danger': isFormulaField}"></a>
+                                <a href="#" class="btn btn-sm" title="Custom Field using Function" data-bind="hidden: isFormulaField, click: function(){isFunctionField(!isFunctionField())}, text: isFunctionField()? 'Cancel': 'Function', css: {'btn-primary': !isFunctionField(), 'btn-danger': isFunctionField}"></a>
 
                                 <a href="#" class="btn btn-secondary btn-sm" data-bind="click: MoveAllFields, visible: !isFormulaField()">Select all</a>
                                 <a href="#" class="btn btn-secondary btn-sm" data-bind="click: RemoveSelectedFields, visible: !isFormulaField()">Remove all</a>
@@ -1056,6 +1057,88 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    <div data-bind="if: isFunctionField" id="function-field-design">
+                        <br />
+                        <br />
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-12 pull-right">
+                                        <a href="#" class="btn btn-primary btn-sm" title="Save Custom Function Field" data-bind="click: saveFunctionField, visible: isFunctionField">Save</a>
+                                        <a href="#" class="btn btn-sm" title="Custom Field using Function" data-bind="click: function(){isFunctionField(!isFunctionField())}, text: isFunctionField()? 'Cancel': 'Function', css: {'btn-primary': !isFunctionField(), 'btn-danger': isFunctionField}"></a>
+
+                                    </div>
+                                    <div class="col-md-12 padded-div" data-bind="visible: ChooseFields().length>0 && isFunctionField()">
+                                        <div class="alert alert-info">
+                                            You are now creating a Customized Field using Functions available.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <label class="col-sm-2 control-label">Field Label</label>
+                                    <div class="col-sm-10">
+                                        <input type="text" class="form-control form-control-sm" data-bind="value: formulaFieldLabel" required placeholder="Custom Field Label" />
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-2 control-label">Data Format</label>
+                                    <div class="col-sm-10">
+                                        <select class="form-control form-control-sm" data-bind="value: formulaDataFormat" required>
+                                            <option>String</option>
+                                            <option>Integer</option>
+                                            <option>Decimal</option>
+                                            <option>Currency</option>
+                                            <option>Date</option>
+                                            <option value="DateTime">Date and Time</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group row" data-bind="visible: formulaDataFormat() == 'Decimal' || formulaDataFormat() == 'Currency'">
+                                    <label class="col-sm-2 control-label">Round to Decimal Places</label>
+                                    <div class="col-sm-10">
+                                        <input type="number" class="form-control" data-bind="value: formulaDecimalPlaces" placeholder="Choose Decimal places (leave blank to not use rounding)" title="Choose Decimal places (leave blank to not use rounding)" />
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <label class="col-sm-2 control-label">Select Function</label>
+                                    <div class="col-sm-10" >
+                                        <div data-bind="with: textQuery.searchFunctions">
+                                            <select id="search-function" class="form-control" data-bind="select2: {placeholder: 'Search for a Function...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults, headers: headers}, templateResult: templateResult, minimumInputLength: 2, allowClear: true }, select2Value: selectedOption"></select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div data-bind="with: selectedFunction">
+                                    <div class="form-group row" >
+                                        <label class="col-sm-2 control-label"></label>
+                                        <div class="col-sm-10" >
+                                            <p data-bind="text: description"></p>
+                                            <p>
+                                                <b>Pick values to pass for Parameters below</b>
+                                            </p>
+                                            <!-- ko foreach: parameters -->
+                                            <div class="form-group row" >
+                                                <label class="col-sm-6 control-label">
+                                                    <span data-bind="text: DisplayName"></span><span data-bind="visble: Required"> (Required)</span><br />
+                                                    <span data-bind="text: Description"></span>
+
+                                                </label>
+                                                <div class="col-sm-6" >
+                                                    <select class="form-control" data-bind="required: Required, options: $parentContext.$parent.ChooseFields, optionsText: 'fieldName', optionsValue: 'fieldId', value: selectedField, optionsCaption: 'Pick a field...'"></select>
+                                                </div>
+                                            </div>
+                                            <!-- /ko -->
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                        <div class="clearfix"></div>
                     </div>
 
                     <div data-bind="if: lastPickedField() && lastPickedField().fieldType == 'Json'">
@@ -1473,7 +1556,7 @@
                             <!-- ko foreach: Columns -->
                             <th data-bind="attr: { id: fieldId }, css: {'right-align': IsNumeric}, style: {'width': fieldWidth, 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
                                 <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
-                               
+
                             </th>
                             <!-- /ko -->
                         </tr>
@@ -1498,7 +1581,7 @@
                                 </div>
                             </td>
                             <!-- /ko-->
-                        </tr> 
+                        </tr>
                         <!-- /ko -->
                     </tbody>
                 </table>

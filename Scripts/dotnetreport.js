@@ -1164,6 +1164,10 @@ var reportViewModel = function (options) {
 		}
 	});
 
+	self.textQuery.searchFunctions.selectedOption.subscribe(function (newValue) {
+		self.selectedFunction(newValue);
+	});
+
 	self.columnDetails = ko.observableArray([]);
 
 	self.useStoredProc.subscribe(function () {
@@ -1479,6 +1483,8 @@ var reportViewModel = function (options) {
 		self.scheduleBuilder.clear();
 		self.SortFields([]);
 		self.isFormulaField(false);
+		self.isFunctionField(false);
+		self.selectedFunction(null);
 		self.maxRecords(false);
 		self.OnlyTop(null);
 		self.lastPickedField(null);
@@ -1502,6 +1508,7 @@ var reportViewModel = function (options) {
 			var match = ko.toJS(proc.SelectedFields && proc.SelectedFields.length ? _.find(proc.SelectedFields, { fieldName: e.DisplayName }) : null);
 			var field = match || self.getEmptyFormulaField();
 			field.isFormulaField = false;
+			field.isFunctionField = false;
 			field.fieldName = e.DisplayName;
 			field.tableName = proc.DisplayName;
 			field.procColumnId = e.Id;
@@ -1722,10 +1729,12 @@ var reportViewModel = function (options) {
 	};
 
 	self.isFormulaField = ko.observable(false);
+	self.isFunctionField = ko.observable(false);
 	self.formulaFields = ko.observableArray([]);
 	self.formulaFieldLabel = ko.observable('');
 	self.formulaDataFormat = ko.observable('')
 	self.formulaDecimalPlaces = ko.observable();
+	self.selectedFunction = ko.observable();
 
 	self.formulaOnlyHasDateFields = ko.computed(function () {
 		var allFields = self.formulaFields();
@@ -1825,6 +1834,26 @@ var reportViewModel = function (options) {
 	self.isFormulaField.subscribe(function () {
 		self.clearFormulaField();
 	});
+
+	self.saveFunctionField = function () {
+		if (!self.selectedFunction()) {
+			toastr.error("Please select a function to use");
+			return;
+		}
+
+		if (!self.validateReport(true)) {
+			toastr.error("Please correct validation issues");
+			return;
+		}
+
+		var field = self.getEmptyFormulaField();
+
+
+		self.SelectedFields.push(self.setupField(field));
+		self.selectedFunction(null);
+
+		self.isFunctionField(false);
+	}
 
 	self.editFormulaField = function (field) {
 		self.isFormulaField(true);
@@ -3099,6 +3128,7 @@ var reportViewModel = function (options) {
 		e.linkField = ko.observable(e.linkField);
 		e.linkFieldItem = new linkFieldViewModel(e.linkFieldItem, options);
 		e.isFormulaField = ko.observable(e.isFormulaField);
+		e.isFunctionField = ko.observable(e.isFunctionField);
 		e.fieldFormat = ko.observable(e.fieldFormat);
 		e.fieldLabel = ko.observable(e.fieldLabel);
 		e.decimalPlaces = ko.observable(e.decimalPlaces);
@@ -3390,6 +3420,7 @@ var reportViewModel = function (options) {
 	self.LoadReport = function (reportId, filterOnFly, reportSeries) {
 		self.SelectedTable(null);
 		self.isFormulaField(false);
+		self.isFunctionField(false);
 		return ajaxcall({
 			url: options.apiUrl,
 			data: {
@@ -3597,7 +3628,7 @@ var reportViewModel = function (options) {
 
 	self.validateReport = function (validateCustomOnly) {
 		if (options.reportWizard == null) return;
-		var curInputs = options.reportWizard.find(validateCustomOnly === true ? "#custom-field-design input, #custom-field-design select" : "input, select"),
+		var curInputs = options.reportWizard.find(validateCustomOnly === true ? ".custom-field-design input, .custom-field-design select" : "input, select"),
 			isValid = true;
 
 		$(".needs-validation").removeClass("was-validated");

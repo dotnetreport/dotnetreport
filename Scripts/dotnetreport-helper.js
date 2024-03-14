@@ -161,6 +161,31 @@ ko.bindingHandlers.select2 = {
     }
 };
 
+ko.bindingHandlers.select2Value = {
+    init: function (element, valueAccessor, allBindingsAccessor) {
+        var allBindings = allBindingsAccessor();
+        var value = ko.unwrap(valueAccessor());
+
+        // Initialize select2
+        $(element).select2(allBindings.select2);
+
+        // When an item is selected, update the observable with the full item object
+        $(element).on('select2:select', function (e) {
+            var selectedItem = e.params.data;
+            valueAccessor()(selectedItem); // Update the observable with the full object
+        });
+
+        // Handle clearing the selection
+        $(element).on('select2:unselect', function () {
+            valueAccessor()(null);
+        });
+    },
+    update: function (element, valueAccessor) {
+        var value = ko.unwrap(valueAccessor());
+        $(element).val(value ? value.id : null).trigger('change');
+    }
+};
+
 ko.bindingHandlers.highlightedText = {
     update: function (element, valueAccessor) {
         var options = valueAccessor();
@@ -450,6 +475,62 @@ var textQuery = function (options) {
             return {
                 results: items
             };
+        }
+    }
+
+    self.searchFunctions = {
+        selectedOption: ko.observable(),
+        url: options.apiUrl,
+        headers: { "Authorization": "Bearer " + token },
+        query: function (params) {
+            return params.term ? {
+                method: "/ReportApi/SearchFunction",
+                model: JSON.stringify({
+                    token: params.term,
+                    text: ''
+                })
+            } : null;
+        },
+        processResults: function (data) {
+            if (data.d) results = data.d;
+            var items = _.map(data, function (x) {
+                x.Parameters.forEach(function (p) {
+                    p.selectedField = ko.observable();
+                });
+                return { id: x.Id, text: x.DisplayName || x.Name, type: 'Field', description: x.Description, functionType: x.functionType, name: x.Name, parameters: x.Parameters };
+            });
+
+            return {
+                results: items
+            };
+        },
+        templateResult: function (item) {
+            if (!item.id) {
+                return item.text;
+            }
+
+            var $result = $(
+                '<div class="select2-result-repository clearfix">' +
+                '   <div class="select2-result-repository__meta">' +
+                '       <div class="select2-result-repository__title"><strong>' + item.text + '</strong></div>' +
+                '       <div class="select2-result-repository__description"><small style="font-size:smaller;">' + item.description + '</small></div>' +
+                '       <div class="select2-result-repository__description"><small style="font-size:smaller;">Parameters: ' + '</small></div>' +
+                '   </div>' +
+                '</div>'
+            );
+
+            if (item.parameters && item.parameters.length) {
+                var $parametersList = $('<ul style="font-size:smaller;"></ul>'); // Making the list small
+                item.parameters.forEach(function (param) {
+                    var requiredText = param.Required ? ' (Required)' : '';
+                    $parametersList.append('<li>' + param.DisplayName + ': ' + (param.Description || '') + requiredText + '</li>');
+                });
+                $result.append($parametersList); // Appending the list to the result
+            }
+
+            $result.append('</div></div>'); // Closing the main structure
+
+            return $result;
         }
     }
 
