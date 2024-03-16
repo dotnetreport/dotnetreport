@@ -13,6 +13,7 @@ function formulaFieldViewModel(args) {
 	self.formulaOperation = ko.observable(args.formulaOperation);
 	self.isConstantValue = ko.observable(!!args.constantValue);
 	self.constantValue = ko.observable(args.constantValue);
+	self.parameterId = ko.observable(args.parameterId);
 }
 
 function linkFieldViewModel(args, options) {
@@ -1846,8 +1847,17 @@ var reportViewModel = function (options) {
 			return;
 		}
 
-		var field = self.getEmptyFormulaField();
+		self.formulaFields([]);
+		var func = self.selectedFunction();
+		func.parameters.forEach(function (x) {
+			var f = x.selectedField();
+			f.setupFormula.parameterId(x.Id);
+			self.formulaFields.push(f);
+		});
 
+		var field = self.getEmptyFormulaField();
+		field.functionId = func.id;
+		field.functionName = func.text;		
 
 		self.SelectedFields.push(self.setupField(field));
 		self.selectedFunction(null);
@@ -1856,7 +1866,12 @@ var reportViewModel = function (options) {
 	}
 
 	self.editFormulaField = function (field) {
-		self.isFormulaField(true);
+		if (field.functionId) {
+			self.isFunctionField(true);
+		} 
+		else
+			self.isFormulaField(true);
+
 		self.formulaFields([]);
 
 		if (field.formulaItems().length > 0) {
@@ -2277,9 +2292,11 @@ var reportViewModel = function (options) {
 							IsParenthesesStart: f.isParenthesesStart() || false,
 							IsParenthesesEnd: f.isParenthesesEnd() || false,
 							Operation: f.formulaOperation(),
-							ConstantValue: f.constantValue()
+							ConstantValue: f.constantValue(),
+							ParameterId: f.parameterId()
 						};
 					}),
+					FunctionId: x.functionId(),
 					LinkField: x.linkField(),
 					LinkFieldItem: x.linkField() ? x.linkFieldItem.toJs() : null,
 					FieldLabel: x.fieldLabel(),
@@ -3128,7 +3145,7 @@ var reportViewModel = function (options) {
 		e.linkField = ko.observable(e.linkField);
 		e.linkFieldItem = new linkFieldViewModel(e.linkFieldItem, options);
 		e.isFormulaField = ko.observable(e.isFormulaField);
-		e.isFunctionField = ko.observable(e.isFunctionField);
+		e.functionId = ko.observable(e.functionId);
 		e.fieldFormat = ko.observable(e.fieldFormat);
 		e.fieldLabel = ko.observable(e.fieldLabel);
 		e.decimalPlaces = ko.observable(e.decimalPlaces);
@@ -3173,7 +3190,8 @@ var reportViewModel = function (options) {
 				isParenthesesStart: e.setupFormula ? e.setupFormula.isParenthesesStart() : e.isParenthesesStart,
 				isParenthesesEnd: e.setupFormula ? e.setupFormula.isParenthesesEnd() : e.isParenthesesEnd,
 				formulaOperation: e.setupFormula ? e.setupFormula.formulaOperation() : e.formulaOperation,
-				constantValue: e.setupFormula ? e.setupFormula.constantValue() : e.constantValue
+				constantValue: e.setupFormula ? e.setupFormula.constantValue() : e.constantValue,
+				parameterId: e.setupFormula ? e.setupFormula.parameterId() : e.parameterId
 			}));
 		});
 

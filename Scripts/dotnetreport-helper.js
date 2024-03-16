@@ -497,7 +497,7 @@ var textQuery = function (options) {
                 x.Parameters.forEach(function (p) {
                     p.selectedField = ko.observable();
                 });
-                return { id: x.Id, text: x.DisplayName || x.Name, type: 'Field', description: x.Description, functionType: x.functionType, name: x.Name, parameters: x.Parameters };
+                return { id: x.Id, text: x.DisplayName || x.Name, type: 'Field', description: x.Description, functionType: x.functionType, name: x.Name, parameters: x.Parameters || []};
             });
 
             return {

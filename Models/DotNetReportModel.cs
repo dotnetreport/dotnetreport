@@ -2496,7 +2496,7 @@ namespace ReportBuilder.Web.Models
             return totalRecords;
         }
 
-        public DataTable ExecuteQuery(string connectionString, string OleDb)
+        public DataTable ExecuteQuery(string connectionString, string sql)
         {
             DataTable dataTable = new DataTable();
 
@@ -2506,7 +2506,7 @@ namespace ReportBuilder.Web.Models
                 {
                     conn.Open();
 
-                    using (OleDbCommand command = new OleDbCommand(OleDb, conn))
+                    using (OleDbCommand command = new OleDbCommand(sql, conn))
                     {
                         using (OleDbDataAdapter adapter = new OleDbDataAdapter(command))
                         {
