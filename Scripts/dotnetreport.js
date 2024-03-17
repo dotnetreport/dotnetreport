@@ -121,7 +121,7 @@ function linkFieldViewModel(args, options) {
 
 		return isValid;
 	};
-
+	
 	self.clear = function () {
 		self.LinksToReport(true);
 		self.selectedLinkType('Report');
@@ -468,7 +468,7 @@ function filterGroupViewModel(args) {
 		addingFilter = false;
 		return filter;
 	};
-
+	 
 	self.RemoveFilter = function (filter) {
 		self.Filters.remove(filter);
 	};
@@ -3114,6 +3114,7 @@ var reportViewModel = function (options) {
 		e.applyAllBackColor = ko.observable(false);
 		e.applyAllBold = ko.observable(false);
 		e.applyAllHeaderBold = ko.observable(false);
+		e.formatConditional = ko.observable(false);
 
 		e.toggleDisable = function () {
 			if (!e.disabled() && self.enabledFields().length < 2) return;
@@ -3186,11 +3187,23 @@ var reportViewModel = function (options) {
 				fieldConditionOp: e.fieldConditionOp(),
 				fieldConditionVal: e.fieldConditionVal()
 			}
-			self.editFieldOptions(e);
+
+			var filter = new filterGroupViewModel({ isRoot: true, parent: self, options: options });
+			filter.AddFilter({
+				Operator: '',
+				Value1: '',
+				Value2: ''
+			});
+			filter.Filters()[0].Field(e);
+			self.editFieldOptions(filter);
 			if (options.fieldOptionsModal) options.fieldOptionsModal.modal('show');
 		}
 
 		e.saveFieldOptions = function () {
+			if (!self.validateFieldOptions()) {
+				toastr.error("Please correct validation issues");
+				return;
+			}
 			_.forEach(self.SelectedFields(), function (f) {
 				if (e.applyAllHeaderFontColor()) f.headerFontColor(e.headerFontColor());
 				if (e.applyAllHeaderBackColor()) f.headerBackColor(e.headerBackColor());
@@ -3584,6 +3597,23 @@ var reportViewModel = function (options) {
 			return false;
 
 		return true;
+	};
+	self.validateFieldOptions = function () {
+		if (options.fieldOptionsModal == null) return;
+		var curInputs = options.fieldOptionsModal.find("input[required], select[required]"),
+    	isValid = true;
+
+		$(".needs-validation").removeClass("was-validated");
+		for (var i = 0; i < curInputs.length; i++) {
+			$(curInputs[i]).removeClass("is-invalid");
+			if (!self.isInputValid(curInputs[i])) {
+				isValid = false;
+				$(".needs-validation").addClass("was-validated");
+				$(curInputs[i]).addClass("is-invalid");
+			}
+		}
+
+		return isValid;
 	};
 
 	self.validateReport = function (validateCustomOnly) {

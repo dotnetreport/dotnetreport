@@ -746,8 +746,8 @@
 </script>
 
 <script type="text/html" id="report-field-options">
-    <div class="modal-dialog" style="max-width: 750px;">
-        <div class="modal-content" data-bind="with: editFieldOptions">
+    <div class="modal-dialog" style="max-width: 750px;"data-bind="with: editFieldOptions">
+        <div class="modal-content" data-bind="with: Filters()[0].Field">
             <div class="modal-header">
                 <h5 class="modal-title"><span data-bind="text: fieldName"></span> - Setup Additional Field Options</h5>
             </div>
@@ -757,19 +757,19 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-md-5 control-label">Pick Data Format</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-control" required data-bind="options: $parent.fieldFormatTypes, value: fieldFormat"></select>
+                            <select class="form-control" data-bind="options: $parent.fieldFormatTypes, value: fieldFormat"></select>
                         </div>
                     </div>
-                    <div class="form-group row" data-bind="visible: $parent.decimalFormatTypes.indexOf($data.fieldFormat())>=0">
+                    <div class="form-group row" data-bind="visible: $parents[1].decimalFormatTypes.indexOf($data.fieldFormat())>=0">
                         <label class="col-sm-5 col-md-5 control-label">Pick Decimal Places</label>
                         <div class="col-sm-7 col-md-7">
                             <input type="number" class="form-control" data-bind="value: decimalPlaces" placeholder="" />
                         </div>
                     </div>
-                      <div class="form-group row" data-bind="visible: $parent.dateFormatTypes.indexOf($data.fieldFormat())>=0">
+                      <div class="form-group row" data-bind="visible: $parents[1].dateFormatTypes.indexOf($data.fieldFormat())>=0">
                         <label class="col-sm-5 col-md-5 control-label">Pick Date Format</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-control" required data-bind="options: $parent.dateFormats, value: dateFormat"></select>
+                            <select class="form-control" data-bind="options: $parent.dateFormats, value: dateFormat"></select>
                         </div>
                     </div>
                        <div class="form-group row" data-bind="visible: dateFormat()==='Custom'">
@@ -781,33 +781,36 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-md-5 control-label">Choose Column Label</label>
                         <div class="col-sm-7 col-md-7">
-                            <input type="text" class="form-control" required data-bind="value: fieldLabel" />
+                            <input type="text" class="form-control" data-bind="value: fieldLabel" />
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-md-5 control-label">Choose Text Alignment</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-control" required data-bind="options: $parent.fieldAlignments, value: fieldAlign"></select>
+                            <select class="form-control" data-bind="options: $parents[1].fieldAlignments, value: fieldAlign"></select>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-md-5 control-label">Choose Width (leave blank for auto)</label>
                         <div class="col-sm-7 col-md-7">
-                            <input type="text" class="form-control" required data-bind="value: fieldWidth" />
+                            <input type="text" class="form-control" data-bind="value: fieldWidth" />
                         </div>
                     </div>
                 </div>
                 <br />
                 <div class="card card-body">
-                    <b>Header Settings</b>
-
+                    <div class="form-row align-items-center">
+                        <div class="col-auto">
+                            <b>Header Settings</b>
+                        </div>
+                    </div>
                     <div class="form-row">
                         <div class="col"> 
                             <div class="form-group">
                                 <label class="control-label">Pick Text Color</label>
                                 <div>
-                                    <input type="color" style="width: 50px" class="form-control pull-left" required data-bind="value: headerFontColor" />
-                                    <input type="text" style="width: 100px" class="form-control pull-left" required data-bind="value: headerFontColor" />
+                                    <input type="color" style="width: 50px" class="form-control pull-left" data-bind="value: headerFontColor" />
+                                    <input type="text" style="width: 100px" class="form-control pull-left" data-bind="value: headerFontColor" />
                                     <button class="btn btn-sm pull-left" title="Apply to all columns" data-bind="click: function(){applyAllHeaderFontColor(!applyAllHeaderFontColor()); }">
                                         <span class="fa" data-bind="css: applyAllHeaderFontColor() ? 'fa-check' : 'fa-paste'"></span>
                                     </button>
@@ -818,8 +821,8 @@
                             <div class="form-group">
                                 <label class="control-label">Pick Background Color</label>
                                 <div>
-                                    <input type="color" style="width: 50px" class="form-control pull-left" required data-bind="value: headerBackColor" />
-                                    <input type="text" style="width: 100px" class="form-control pull-left" required data-bind="value: headerBackColor" />
+                                    <input type="color" style="width: 50px" class="form-control pull-left" data-bind="value: headerBackColor" />
+                                    <input type="text" style="width: 100px" class="form-control pull-left" data-bind="value: headerBackColor" />
                                     <button class="btn btn-sm pull-left" title="Apply to all columns" data-bind="click: function(){applyAllHeaderBackColor(!applyAllHeaderBackColor()); }">
                                         <span class="fa" data-bind="css: applyAllHeaderBackColor() ? 'fa-check' : 'fa-paste'"></span>
                                     </button>
@@ -842,14 +845,17 @@
                 </div>
                 <br />
                 <div class="card card-body">
-                    <b>Text Settings</b>
-
+                    <div class="form-row align-items-center">
+                        <div class="col-auto">
+                            <b>Text Settings</b>
+                        </div>
+                    </div>
                     <div class="form-row">
                         <div class="col">
                             <div class="form-group">
                                 <label class="control-label">Pick Text Color</label>
                                 <div>
-                                    <input type="color" style="width: 50px" class="form-control pull-left" required data-bind="value: fontColor" />
+                                    <input type="color" style="width: 50px" class="form-control pull-left" data-bind="value: fontColor" />
                                     <input type="text" style="width: 100px" class="form-control pull-left" data-bind="value: fontColor" />
                                     <button class="btn btn-sm pull-left" title="Apply to all columns" data-bind="click: function(){applyAllFontColor(!applyAllFontColor()); }">
                                         <span class="fa" data-bind="css: applyAllFontColor() ? 'fa-check' : 'fa-paste'"></span>
@@ -861,7 +867,7 @@
                             <div class="form-group">
                                 <label class="control-label">Pick Background Color</label>
                                 <div>
-                                    <input type="color" style="width: 50px" class="form-control pull-left" required data-bind="value: backColor" />
+                                    <input type="color" style="width: 50px" class="form-control pull-left" data-bind="value: backColor" />
                                     <input type="text" style="width: 100px" class="form-control pull-left" data-bind="value: backColor" />
                                     <button class="btn btn-sm pull-left" title="Apply to all columns" data-bind="click: function(){applyAllBackColor(!applyAllBackColor()); }">
                                         <span class="fa" data-bind="css: applyAllBackColor() ? 'fa-check' : 'fa-paste'"></span>
@@ -882,9 +888,34 @@
                             </div>
                         </div>
                     </div>
+
+                    <div class="checkbox" style="padding-top: 8px;">
+                        <label title="Make settings apply only when conditions are met">
+                            <input type="checkbox" data-bind="checked: formatConditional" /> Conditional Formatting
+                        </label>
+                    </div>
+                    <div data-bind="if: formatConditional">
+                    <div class="row" data-bind="foreach: $parent.Filters">
+                        <div class="col-md-2">
+                             Value
+                        </div>
+                        <div class="col-md-4">
+                            <div data-bind="with: Field">
+                                <div class="form-group">
+                                    <select class="form-control" style="width: 100%;" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div data-bind="with: Field">
+                                <div data-bind="template: 'report-filter', data: $data"></div>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
                 </div>
                 <br />
-                <div class="form-group row" data-bind="if: $parent.useStoredProc()">
+                <div class="form-group row" data-bind="if: $parents[1].useStoredProc()">
                     <div class="col-sm-12">
                         <div class="checkbox pull-left" style="padding-top: 5px;">
                             <label>
