@@ -2568,6 +2568,84 @@ var reportViewModel = function (options) {
 			});
 		}
 
+		function getDateRange(compareTo, n) {
+			var start, end;
+			var today = new Date();
+			today.setHours(0, 0, 0, 0); 
+			var dayOfWeek = today.getDay(); // Day of week (0-6, Sunday is 0)
+			var dayOfMonth = today.getDate(); // Day of month (1-31)
+			var month = today.getMonth(); 
+			var year = today.getFullYear(); 
+
+			switch (compareTo) {
+				case 'Today':
+					start = end = today;
+					break;
+				case 'Today +':
+					start = today;
+					end = new Date(today);
+					end.setDate(today.getDate() + n); // End is next day
+					break;
+				case 'Today -':
+					start = new Date(today);
+					start.setDate(today.getDate() - n); // Start is previous day
+					end = today;
+					break;
+				case 'Yesterday':
+					start = end = new Date(today);
+					start.setDate(today.getDate() - 1);
+					break;
+				case 'This Week':
+					start = new Date(today);
+					start.setDate(today.getDate() - dayOfWeek); // Adjust to the start of the week (Sunday)
+					end = new Date(start);
+					end.setDate(start.getDate() + 6); // End of the week (Saturday)
+					break;
+				case 'Last Week':
+					start = new Date(today);
+					start.setDate(today.getDate() - dayOfWeek - 7); // Adjust to the start of last week
+					end = new Date(start);
+					end.setDate(start.getDate() + 6); // End of last week
+					break;
+				case 'This Month':
+					start = new Date(year, month, 1); // First day of this month
+					end = new Date(year, month + 1, 0); // Last day of this month
+					break;
+				case 'Last Month':
+					start = new Date(year, month - 1, 1); // First day of last month
+					end = new Date(year, month, 0); // Last day of last month
+					break;
+				case 'This Year':
+					start = new Date(year, 0, 1); // First day of this year
+					end = new Date(year, 11, 31); // Last day of this year
+					break;
+				case 'Last Year':
+					start = new Date(year - 1, 0, 1); // First day of last year
+					end = new Date(year - 1, 11, 31); // Last day of last year
+					break;
+				case 'This Week To Date':
+					start = new Date(today);
+					start.setDate(today.getDate() - dayOfWeek);
+					end = today;
+					break;
+				case 'This Month To Date':
+					start = new Date(year, month, 1);
+					end = today;
+					break;
+				case 'This Year To Date':
+					start = new Date(year, 0, 1);
+					end = today;
+					break;
+				case 'Last 30 Days':
+					start = new Date(today);
+					start.setDate(today.getDate() - 30);
+					end = today;
+					break;
+				// Add more cases as needed
+			}
+			return { start, end };
+		}
+
 		function processRow(row, columns) {
 			_.forEach(row, function (r, i) {
 				r.LinkTo = '';
@@ -2597,6 +2675,7 @@ var reportViewModel = function (options) {
 				r.outerGroup = col.outerGroup;
 				r.jsonColumnName = col.jsonColumnName;
 				r.isJsonColumn = col.isJsonColumn;
+				r._backColor = ''; r._fontBold = ''; r._fontColor = '';
 
 				r.formattedVal = ko.computed(function () {
 
@@ -2626,6 +2705,72 @@ var reportViewModel = function (options) {
 								case 'Date and Time': r.FormattedValue = (new Date(r.Value)).toLocaleDateString(dtFormat, { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
 								case 'Time': r.FormattedValue = (new Date(r.Value)).toLocaleTimeString(dtFormat, { hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
 							}
+						}
+					}
+
+					var operation = col.fieldConditionOp();
+					if (operation) {
+						var conditionTrue = false;
+						var value = r.Value;
+						var compareTo = col.fieldConditionVal().value;
+						var compareTo2 = col.fieldConditionVal().value2;
+						var dataIsNumeric = !isNaN(r.Value);
+						var dataIsDate = !isNaN(new Date(r.Value).getTime());
+
+						switch (operation) {
+							case '=':
+								conditionTrue = value == compareTo;
+								break;
+							case 'like':
+								conditionTrue = dataIsNumeric ? false : value.includes(compareTo);
+								break;
+							case 'not like':
+								conditionTrue = dataIsNumeric ? false : !value.includes(compareTo);
+								break;
+							case 'not equal':
+								conditionTrue = value != compareTo;
+								break;
+							case 'is blank':
+								conditionTrue = !value;
+								break;
+							case 'is not blank':
+								conditionTrue = !!value;
+								break;
+							case '>':
+								conditionTrue = dataIsNumeric && value > parseFloat(compareTo);
+								break;
+							case '<':
+								conditionTrue = dataIsNumeric && value < parseFloat(compareTo);
+								break;
+							case '>=':
+								conditionTrue = dataIsNumeric && value >= parseFloat(compareTo);
+								break;
+							case '<=':
+								conditionTrue = dataIsNumeric && value <= parseFloat(compareTo);
+								break;
+							case 'between':
+								if (dataIsNumeric) {
+									conditionTrue = value >= parseFloat(compareTo) && value <= parseFloat(compareTo2);
+								} else if (dataIsDate) {
+									var dateValue = new Date(value).getTime();
+									var startDate = new Date(compareTo).getTime();
+									var endDate = new Date(compareTo2).getTime();
+									conditionTrue = dateValue >= startDate && dateValue <= endDate;
+								}
+								break;
+							case 'range':
+								if (dataIsDate) {
+									var { start, end } = getDateRange(compareTo, compareTo2);
+									var dateValue = new Date(value).getTime();
+									conditionTrue = dateValue >= start.getTime() && dateValue <= end.getTime();
+								}
+								break;
+						}
+
+						if (!conditionTrue) {
+							r._backColor = 'none';
+							r._fontColor = 'none';
+							r._fontBold = 'none';
 						}
 					}
 
