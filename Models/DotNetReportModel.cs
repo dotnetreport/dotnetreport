@@ -1401,6 +1401,7 @@ namespace ReportBuilder.Web.Models
 
             var pdfOptions = new PdfOptions
             {
+                PrintBackground = true,
                 PreferCSSPageSize = false,
                 MarginOptions = new MarginOptions() { Top = "0.75in", Bottom = "0.75in", Left = "0.1in", Right = "0.1in" }
             };
