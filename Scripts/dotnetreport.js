@@ -2259,7 +2259,7 @@ var reportViewModel = function (options) {
 					HeaderFontBold: x.headerFontBold(),
 					FieldWidth: x.fieldWidth(),
 					FieldConditionOp: x.fieldConditionOp(),
-					FieldConditionVal: x.fieldConditionVal(),
+					FieldConditionVal: JSON.stringify(x.fieldConditionVal()),
 					JsonColumnName: x.isJsonColumn && x.jsonColumnName ? x.jsonColumnName : ''
 				};
 			}),
@@ -3104,7 +3104,7 @@ var reportViewModel = function (options) {
 		e.headerFontBold = ko.observable(e.headerFontBold);
 		e.fieldWidth = ko.observable(e.fieldWidth);
 		e.fieldConditionOp = ko.observable(e.fieldConditionOp);
-		e.fieldConditionVal = ko.observable(e.fieldConditionVal);
+		e.fieldConditionVal = ko.observable(JSON.parse(e.fieldConditionVal || "{}"));
 		e.jsonColumnName = e.jsonColumnName;
 		e.isJsonColumn = e.jsonColumnName ? true : false;
 
@@ -3114,7 +3114,7 @@ var reportViewModel = function (options) {
 		e.applyAllBackColor = ko.observable(false);
 		e.applyAllBold = ko.observable(false);
 		e.applyAllHeaderBold = ko.observable(false);
-		e.formatConditional = ko.observable(false);
+		e.formatConditional = ko.observable(!!e.fieldConditionOp());
 
 		e.toggleDisable = function () {
 			if (!e.disabled() && self.enabledFields().length < 2) return;
@@ -3190,11 +3190,11 @@ var reportViewModel = function (options) {
 
 			var filter = new filterGroupViewModel({ isRoot: true, parent: self, options: options });
 			filter.AddFilter({
-				Operator: '',
-				Value1: '',
-				Value2: ''
+				FieldId: e.fieldId,
+				Operator: e.fieldConditionOp(),
+				Value1: e.fieldConditionVal().value,
+				Value2: e.fieldConditionVal().value2
 			});
-			filter.Filters()[0].Field(e);
 			self.editFieldOptions(filter);
 			if (options.fieldOptionsModal) options.fieldOptionsModal.modal('show');
 		}
@@ -3213,6 +3213,18 @@ var reportViewModel = function (options) {
 				if (e.applyAllHeaderBold()) f.headerFontBold(e.headerFontBold());
 			});
 
+			if (e.formatConditional()) {
+				var f = self.editFieldOptions().Filters()[0];
+				e.fieldConditionOp(f.Operator());
+				e.fieldConditionVal({
+					value: f.Operator() == "in" || f.Operator() == "not in" ? f.ValueIn().join(",") : (f.Operator().indexOf("blank") >= 0 || f.Operator() == 'all' ? "blank" : f.Value()),
+					value2: f.Value2(),
+					valueIn: f.ValueIn()
+				});
+			} else {
+				e.fieldConditionOp('');
+				e.fieldConditionVal({});
+			}
 			if (options.fieldOptionsModal) options.fieldOptionsModal.modal('hide');
 		}
 
