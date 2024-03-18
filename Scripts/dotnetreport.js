@@ -817,7 +817,7 @@ var reportViewModel = function (options) {
 	self.OnlyTop = ko.observable();
 	self.barChartHorizontal = ko.observable();
 	self.barChartStacked = ko.observable();
-
+	self.DefaultPageSize = ko.observable();
 	self.FilterGroups = ko.observableArray();
 	self.FilterGroups.subscribe(function (newArray) {
 		if (newArray && newArray.length == 0) {
@@ -972,6 +972,12 @@ var reportViewModel = function (options) {
 	self.fieldFormatTypes = ['Auto', 'Number', 'Decimal', 'Currency', 'Percentage', 'Date', 'Date and Time', 'Time', 'String'];
 	self.decimalFormatTypes = ['Number', 'Decimal', 'Currency', 'Percentage'];
 	self.dateFormats = ['United States', 'United Kingdom', 'France', 'German', 'Spanish', 'Chinese', 'Custom'];
+	self.currencyFormats = [
+		{ value: '$', display: 'USD ($)' },
+		{ value: '€', display: 'EUR (€)' },
+		{ value: '£', display: 'Pound (£)' },
+		{ value: 'Rs', display: 'Rupee (Rs)' }
+	];
 	self.dateFormatTypes = ['Date', 'Date and Time', 'Time'];
 	self.fieldAlignments = ['Auto', 'Left', 'Right', 'Center'];
 	self.designingHeader = ko.observable(false);
@@ -1199,7 +1205,7 @@ var reportViewModel = function (options) {
 	});
 
 	self.pager.pageSize.subscribe(function () {
-		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey(), self.ReportSeries);
+		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey(), self.ReportSeries, true);
 	});
 
 	self.createNewReport = function () {
@@ -1850,6 +1856,7 @@ var reportViewModel = function (options) {
 					self.formulaFieldLabel(field.fieldName);
 					self.formulaDataFormat(field.fieldFormat());
 					self.formulaDecimalPlaces(field.decimalPlaces());
+
 				});
 			}
 		}
@@ -2204,7 +2211,8 @@ var reportViewModel = function (options) {
 				SelectedStyle: self.selectedStyle(),
 				DontExecuteOnRun: self.DontExecuteOnRun(),
 				barChartStacked: self.barChartStacked(),
-				barChartHorizontal: self.barChartHorizontal()
+				barChartHorizontal: self.barChartHorizontal(),
+				DefaultPageSize: self.DefaultPageSize() || 10,
 			}),
 			OnlyTop: self.maxRecords() ? self.OnlyTop() : null,
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : self.AggregateReport(),
@@ -2249,6 +2257,7 @@ var reportViewModel = function (options) {
 					FieldSettings: JSON.stringify({
 						dateFormat: x.dateFormat(),
 						customDateFormat: x.customDateFormat(),
+						currencyFormat: x.currencyFormat(),
 						fieldLabel2: x.fieldLabel2()
 					}),
 					FieldAlign: x.fieldAlign(),
@@ -2509,9 +2518,13 @@ var reportViewModel = function (options) {
 					e.linkField = false;
 				}
 				col = col || { fieldName: e.ColumnName };
+				col.currencySymbol = col.currencyFormat() || null;
+				col.decimalPlacesDigit = col.decimalPlaces();
+				col.fieldFormating = col.fieldFormat();
 				if (skipColDetails !== true) self.columnDetails.push(col);
 
 				e.decimalPlaces = col.decimalPlaces || ko.observable();
+				e.currencyFormat = col.currencyFormat || ko.observable();
 				e.dateFormat = col.dateFormat || ko.observable();
 				e.customDateFormat = col.customDateFormat || ko.observable();
 				e.fieldLabel2 = col.fieldLabel2 || ko.observable();
@@ -2555,8 +2568,10 @@ var reportViewModel = function (options) {
 							remove: function () {
 								e.outerGroup(false);
 								self.OuterGroupColumns.remove(this);
+								col.selectedAggregate = ko.observable("Group");
 							}
 						});
+						col.selectedAggregate = ko.observable("Outer Group");
 					}
 				}
 
@@ -2564,7 +2579,7 @@ var reportViewModel = function (options) {
 					col.setupFieldOptions();
 				}
 
-				if (col.selectedAggregate == 'Outer Group' && !_.find(self.OuterGroupColumns(), {fieldId: e.fieldId})) {
+				if (col.selectedAggregate() == 'Outer Group' && !_.find(self.OuterGroupColumns(), {fieldId: e.fieldId})) {
 					e.toggleOuterGroup()
 				}
 			});
@@ -2684,8 +2699,15 @@ var reportViewModel = function (options) {
 					if (self.decimalFormatTypes.indexOf(col.fieldFormat()) >= 0 && !isNaN(r.Value)) {
 						r.FormattedValue = self.formatNumber(r.Value, col.decimalPlaces());
 						switch (col.fieldFormat()) {
-							case 'Currency': r.FormattedValue = '$' + r.FormattedValue; break;
 							case 'Percentage': r.FormattedValue = r.FormattedValue + '%'; break;
+						}
+					}
+					if (col.fieldFormat()==='Currency') {
+						switch (col.currencyFormat()) {
+							case '€': r.FormattedValue = '€' + r.FormattedValue; break;
+							case '£': r.FormattedValue = '£' + r.FormattedValue; break;
+							case 'Rs': r.FormattedValue = 'Rs' + r.FormattedValue; break;
+							default: r.FormattedValue = '$' + r.FormattedValue; break;
 						}
 					}
 					if (self.dateFormatTypes.indexOf(col.fieldFormat()) >= 0 && !isNaN(new Date(r.Value).getTime())) {
@@ -2791,7 +2813,7 @@ var reportViewModel = function (options) {
 		result.ReportData.CanExpandOption = ko.computed(function () { return self.ShowExpandOption(); });
 		_.forEach(result.ReportData.Rows, function (e) {
 			e.DrillDownData = ko.observable(null);
-			e.pager = new pagerViewModel({ pageSize: 10 });
+			e.pager = new pagerViewModel({ pageSize: self.DefaultPageSize() });
 			e.sql = "";
 			e.connectKey = "";
 			e.changeSort = function (sort) {
@@ -2968,7 +2990,7 @@ var reportViewModel = function (options) {
 	}
 	self.ChartDrillDownData = ko.observable();
 
-	self.ExecuteReportQuery = function (reportSql, connectKey, reportSeries) {
+	self.ExecuteReportQuery = function (reportSql, connectKey, reportSeries,isPageSizeClick=false) {
 		if (!reportSql || !connectKey) return;
 		self.ChartData('');
 		self.ReportResult().ReportData(null);
@@ -2983,7 +3005,7 @@ var reportViewModel = function (options) {
 		var pivotColumn = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' });
 		var reportData = pivotColumn != null ? self.BuildReportData() : '';
 		if (pivotColumn) reportData.DrillDownRowUsePlaceholders = true;
-
+		if (!isPageSizeClick) self.pager.pageSize(self.DefaultPageSize());
 		return ajaxcall({
 			url: options.execReportUrl,
 			type: "POST",
@@ -2992,7 +3014,7 @@ var reportViewModel = function (options) {
 				connectKey: connectKey,
 				reportType: self.ReportType(),
 				pageNumber: self.pager.currentPage(),
-				pageSize: self.pager.pageSize(),
+				pageSize: isPageSizeClick ? self.pager.pageSize() : self.DefaultPageSize(),
 				sortBy: self.pager.sortColumn() || '',
 				desc: self.pager.sortDescending() || false,
 				reportSeries: reportSeries || "",
@@ -3240,6 +3262,7 @@ var reportViewModel = function (options) {
 		e.fieldFormat = ko.observable(e.fieldFormat);
 		e.fieldLabel = ko.observable(e.fieldLabel);
 		e.decimalPlaces = ko.observable(e.decimalPlaces);
+		e.currencyFormat = ko.observable(e.fieldSettings.currencyFormat || '');
 		e.dateFormat = ko.observable(e.fieldSettings.dateFormat || '');
 		e.customDateFormat = ko.observable(e.fieldSettings.customDateFormat || '');
 		e.fieldLabel2 = ko.observable(e.fieldSettings.fieldLabel2 || '');
@@ -3323,6 +3346,7 @@ var reportViewModel = function (options) {
 				fieldLabel: e.fieldLabel(),
 				decimalPlaces: e.decimalPlaces(),
 				dateFormat: e.dateFormat(),
+				currencyFormat: e.currencyFormat(),
 				customDateFormat: e.customDateFormat(),
 				fieldLabel2: e.fieldLabel2(),
 				fieldAlign: e.fieldAlign(),
@@ -3382,6 +3406,7 @@ var reportViewModel = function (options) {
 			e.fieldLabel(self.currentFieldOptions.fieldLabel);
 			e.fieldAlign(self.currentFieldOptions.fieldAlign);
 			e.decimalPlaces(self.currentFieldOptions.decimalPlaces);
+			e.currencyFormat(self.currentFieldOptions.currencyFormat);
 			e.dateFormat(self.currentFieldOptions.dateFormat);
 			e.customDateFormat(self.currentFieldOptions.customDateFormat);
 			e.fieldLabel2(self.currentFieldOptions.fieldLabel2);
@@ -3458,6 +3483,7 @@ var reportViewModel = function (options) {
 		self.DontExecuteOnRun(reportSettings.DontExecuteOnRun === true ? true : false);
 		self.barChartHorizontal(reportSettings.barChartHorizontal === true ? true : false);
 		self.barChartStacked(reportSettings.barChartStacked === true ? true : false);
+		self.DefaultPageSize(reportSettings.DefaultPageSize);
 
 		if (self.ReportMode() == "execute") {
 			if (self.useReportHeader()) {
