@@ -757,7 +757,7 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-md-5 control-label">Pick Data Format</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-control" data-bind="options: $parent.fieldFormatTypes, value: fieldFormat"></select>
+                            <select class="form-control" data-bind="options: $parents[1].fieldFormatTypes, value: fieldFormat"></select>
                         </div>
                     </div>
                     <div class="form-group row" data-bind="visible: $parents[1].decimalFormatTypes.indexOf($data.fieldFormat())>=0">
@@ -766,16 +766,16 @@
                             <input type="number" class="form-control" data-bind="value: decimalPlaces" placeholder="" />
                         </div>
                     </div>
-                     <div class="form-group row" data-bind="visible: $parent.decimalFormatTypes.indexOf($data.fieldFormat())==2">
+                     <div class="form-group row" data-bind="visible: fieldFormat()=='Currency'">
                         <label class="col-sm-5 col-md-5 control-label">Pick Currency Format</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-control" required data-bind="options: $parent.currencyFormats, optionsText: 'display',optionsValue: 'value', value: currencyFormat"></select>
+                            <select class="form-control" required data-bind="options: $parents[1].currencyFormats, optionsText: 'display',optionsValue: 'value', value: currencyFormat"></select>
                         </div>
                     </div>                
-                      <div class="form-group row" data-bind="visible: $parents[1].dateFormatTypes.indexOf($data.fieldFormat())>=0">
+                      <div class="form-group row" data-bind="visible: fieldFormat()=='Date'">
                         <label class="col-sm-5 col-md-5 control-label">Pick Date Format</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-control" data-bind="options: $parent.dateFormats, value: dateFormat"></select>
+                            <select class="form-control" data-bind="options: $parents[1].dateFormats, value: dateFormat"></select>
                         </div>
                     </div>
                        <div class="form-group row" data-bind="visible: dateFormat()==='Custom'">
@@ -1493,12 +1493,13 @@
                             </div>
                             <div class="form-group row">
                                 <div class="checkbox col-md-4">
-                                    <label>
-                                        Default PageSize
+                                   <label>
+                                        <input type="checkbox" data-bind="checked: changePageSize" />
+                                        Change Page Size
                                     </label>
                                 </div>
-                                <div class="col-md-6">
-                                    <select class="form-control form-control-sm" data-bind="options: [10,30,50,100,150,200,500], value: DefaultPageSize"></select>
+                                <div class="col-md-6" data-bind="visible: changePageSize">
+                                    <select style="width: 150px;" class="form-control" data-bind="options: [10,30,50,100,150,200,500], value: DefaultPageSize"></select>
                                 </div>
                             </div>
                         </div>

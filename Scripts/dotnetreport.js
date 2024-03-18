@@ -814,6 +814,7 @@ var reportViewModel = function (options) {
 	self.UseReportHeader = ko.observable(false);
 	self.HideReportHeader = ko.observable(false);
 	self.maxRecords = ko.observable(false);
+	self.changePageSize = ko.observable(false);
 	self.OnlyTop = ko.observable();
 	self.barChartHorizontal = ko.observable();
 	self.barChartStacked = ko.observable();
@@ -1486,6 +1487,7 @@ var reportViewModel = function (options) {
 		self.SortFields([]);
 		self.isFormulaField(false);
 		self.maxRecords(false);
+		self.changePageSize(false);
 		self.OnlyTop(null);
 		self.lastPickedField(null);
 		self.OuterGroupColumns([]);
