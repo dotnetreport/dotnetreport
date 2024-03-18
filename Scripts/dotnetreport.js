@@ -2248,7 +2248,8 @@ var reportViewModel = function (options) {
 					DecimalPlaces: x.decimalPlaces(),
 					FieldSettings: JSON.stringify({
 						dateFormat: x.dateFormat(),
-						customDateFormat: x.customDateFormat()
+						customDateFormat: x.customDateFormat(),
+						fieldLabel2: x.fieldLabel2()
 					}),
 					FieldAlign: x.fieldAlign(),
 					FontColor: x.fontColor(),
@@ -2513,6 +2514,7 @@ var reportViewModel = function (options) {
 				e.decimalPlaces = col.decimalPlaces || ko.observable();
 				e.dateFormat = col.dateFormat || ko.observable();
 				e.customDateFormat = col.customDateFormat || ko.observable();
+				e.fieldLabel2 = col.fieldLabel2 || ko.observable();
 				e.fieldAlign = col.fieldAlign || ko.observable();
 				e.fieldConditionOp = col.fieldConditionOp || ko.observable();
 				e.fieldConditionVal = col.fieldConditionVal || ko.observable();
@@ -3240,6 +3242,7 @@ var reportViewModel = function (options) {
 		e.decimalPlaces = ko.observable(e.decimalPlaces);
 		e.dateFormat = ko.observable(e.fieldSettings.dateFormat || '');
 		e.customDateFormat = ko.observable(e.fieldSettings.customDateFormat || '');
+		e.fieldLabel2 = ko.observable(e.fieldSettings.fieldLabel2 || '');
 		e.fieldAlign = ko.observable(e.fieldAlign);
 		e.fontColor = ko.observable(e.fontColor);
 		e.backColor = ko.observable(e.backColor);
@@ -3321,6 +3324,7 @@ var reportViewModel = function (options) {
 				decimalPlaces: e.decimalPlaces(),
 				dateFormat: e.dateFormat(),
 				customDateFormat: e.customDateFormat(),
+				fieldLabel2: e.fieldLabel2(),
 				fieldAlign: e.fieldAlign(),
 				fontColor: e.fontColor(),
 				backColor: e.backColor(),
@@ -3380,6 +3384,7 @@ var reportViewModel = function (options) {
 			e.decimalPlaces(self.currentFieldOptions.decimalPlaces);
 			e.dateFormat(self.currentFieldOptions.dateFormat);
 			e.customDateFormat(self.currentFieldOptions.customDateFormat);
+			e.fieldLabel2(self.currentFieldOptions.fieldLabel2);
 			e.fontColor(self.currentFieldOptions.fontColor);
 			e.backColor(self.currentFieldOptions.backColor);
 			e.headerFontColor(self.currentFieldOptions.headerFontColor);

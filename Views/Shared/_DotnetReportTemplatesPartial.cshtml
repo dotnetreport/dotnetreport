@@ -104,7 +104,7 @@
         <!-- /ko -->
         <!-- ko ifnot: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false)  -->
         <a href="" data-bind="click: function(){ $parents[pagerIndex($parents)].changeSort(SqlField) }, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}">
-            <span data-bind="text: fieldLabel() ? fieldLabel() : ColumnName"></span>
+            <span data-bind="text: $parent.IsDrillDown() && fieldLabel2() ? fieldLabel2() : (fieldLabel() ? fieldLabel() : fieldName)"></span>
             <span data-bind="text: $parents[pagerIndex($parents)].pager.sortColumn() === SqlField ? ($parents[pagerIndex($parents)].pager.sortDescending() ? '&#9660;' : '&#9650;') : ''"></span>
         </a>
         <!-- /ko -->
@@ -782,6 +782,12 @@
                         <label class="col-sm-5 col-md-5 control-label">Choose Column Label</label>
                         <div class="col-sm-7 col-md-7">
                             <input type="text" class="form-control" data-bind="value: fieldLabel" />
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-5 col-md-5 control-label">Inner Column Label</label>
+                        <div class="col-sm-7 col-md-7">
+                            <input type="text" class="form-control" data-bind="value: fieldLabel2" />
                         </div>
                     </div>
                     <div class="form-group row">
@@ -1525,8 +1531,7 @@
                         <tr class="no-highlight">
                             <!-- ko foreach: Columns -->
                             <th data-bind="attr: { id: fieldId }, css: {'right-align': IsNumeric}, style: {'width': fieldWidth, 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
-                                <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
-
+                                <span data-bind="text: fieldLabel2() ? fieldLabel2() : (fieldLabel() ? fieldLabel() : fieldName), style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
                             </th>
                             <!-- /ko -->
                         </tr>
