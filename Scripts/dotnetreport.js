@@ -121,7 +121,7 @@ function linkFieldViewModel(args, options) {
 
 		return isValid;
 	};
-
+	
 	self.clear = function () {
 		self.LinksToReport(true);
 		self.selectedLinkType('Report');
@@ -468,7 +468,7 @@ function filterGroupViewModel(args) {
 		addingFilter = false;
 		return filter;
 	};
-
+	 
 	self.RemoveFilter = function (filter) {
 		self.Filters.remove(filter);
 	};
@@ -1644,6 +1644,7 @@ var reportViewModel = function (options) {
 					x.isJsonColumn = true;
 					x.jsonColumnName = key;
 					x.selectedFieldName += (" > " + key);
+					x.isSelected = _.find(self.SelectedFields(), function (f) { return f.fieldId == x.fieldId && f.fieldType == 'Json' && f.jsonColumnName == x.jsonColumnName }) != null;
 					return x;
 				});
 
@@ -1666,7 +1667,7 @@ var reportViewModel = function (options) {
 			if (fields.d) { fields = fields.d; }
 			if (fields.result) { fields = fields.result; }
 			var flds = _.map(fields, function (e, i) {
-				var match = _.filter(self.SelectedFields(), function (x) { return x.fieldId == e.fieldId; });
+				var match = _.filter(self.SelectedFields(), function (x) { return x.fieldId == e.fieldId && (e.fieldType != 'Json' || !x.jsonColumnName); });
 				if (match.length > 0) {
 					return match[0];
 				}
@@ -2247,7 +2248,8 @@ var reportViewModel = function (options) {
 					DecimalPlaces: x.decimalPlaces(),
 					FieldSettings: JSON.stringify({
 						dateFormat: x.dateFormat(),
-						customDateFormat: x.customDateFormat()
+						customDateFormat: x.customDateFormat(),
+						fieldLabel2: x.fieldLabel2()
 					}),
 					FieldAlign: x.fieldAlign(),
 					FontColor: x.fontColor(),
@@ -2258,7 +2260,7 @@ var reportViewModel = function (options) {
 					HeaderFontBold: x.headerFontBold(),
 					FieldWidth: x.fieldWidth(),
 					FieldConditionOp: x.fieldConditionOp(),
-					FieldConditionVal: x.fieldConditionVal(),
+					FieldConditionVal: JSON.stringify(x.fieldConditionVal()),
 					JsonColumnName: x.isJsonColumn && x.jsonColumnName ? x.jsonColumnName : ''
 				};
 			}),
@@ -2512,6 +2514,7 @@ var reportViewModel = function (options) {
 				e.decimalPlaces = col.decimalPlaces || ko.observable();
 				e.dateFormat = col.dateFormat || ko.observable();
 				e.customDateFormat = col.customDateFormat || ko.observable();
+				e.fieldLabel2 = col.fieldLabel2 || ko.observable();
 				e.fieldAlign = col.fieldAlign || ko.observable();
 				e.fieldConditionOp = col.fieldConditionOp || ko.observable();
 				e.fieldConditionVal = col.fieldConditionVal || ko.observable();
@@ -2567,6 +2570,84 @@ var reportViewModel = function (options) {
 			});
 		}
 
+		function getDateRange(compareTo, n) {
+			var start, end;
+			var today = new Date();
+			today.setHours(0, 0, 0, 0); 
+			var dayOfWeek = today.getDay(); // Day of week (0-6, Sunday is 0)
+			var dayOfMonth = today.getDate(); // Day of month (1-31)
+			var month = today.getMonth(); 
+			var year = today.getFullYear(); 
+
+			switch (compareTo) {
+				case 'Today':
+					start = end = today;
+					break;
+				case 'Today +':
+					start = today;
+					end = new Date(today);
+					end.setDate(today.getDate() + n); // End is next day
+					break;
+				case 'Today -':
+					start = new Date(today);
+					start.setDate(today.getDate() - n); // Start is previous day
+					end = today;
+					break;
+				case 'Yesterday':
+					start = end = new Date(today);
+					start.setDate(today.getDate() - 1);
+					break;
+				case 'This Week':
+					start = new Date(today);
+					start.setDate(today.getDate() - dayOfWeek); // Adjust to the start of the week (Sunday)
+					end = new Date(start);
+					end.setDate(start.getDate() + 6); // End of the week (Saturday)
+					break;
+				case 'Last Week':
+					start = new Date(today);
+					start.setDate(today.getDate() - dayOfWeek - 7); // Adjust to the start of last week
+					end = new Date(start);
+					end.setDate(start.getDate() + 6); // End of last week
+					break;
+				case 'This Month':
+					start = new Date(year, month, 1); // First day of this month
+					end = new Date(year, month + 1, 0); // Last day of this month
+					break;
+				case 'Last Month':
+					start = new Date(year, month - 1, 1); // First day of last month
+					end = new Date(year, month, 0); // Last day of last month
+					break;
+				case 'This Year':
+					start = new Date(year, 0, 1); // First day of this year
+					end = new Date(year, 11, 31); // Last day of this year
+					break;
+				case 'Last Year':
+					start = new Date(year - 1, 0, 1); // First day of last year
+					end = new Date(year - 1, 11, 31); // Last day of last year
+					break;
+				case 'This Week To Date':
+					start = new Date(today);
+					start.setDate(today.getDate() - dayOfWeek);
+					end = today;
+					break;
+				case 'This Month To Date':
+					start = new Date(year, month, 1);
+					end = today;
+					break;
+				case 'This Year To Date':
+					start = new Date(year, 0, 1);
+					end = today;
+					break;
+				case 'Last 30 Days':
+					start = new Date(today);
+					start.setDate(today.getDate() - 30);
+					end = today;
+					break;
+				// Add more cases as needed
+			}
+			return { start, end };
+		}
+
 		function processRow(row, columns) {
 			_.forEach(row, function (r, i) {
 				r.LinkTo = '';
@@ -2596,10 +2677,11 @@ var reportViewModel = function (options) {
 				r.outerGroup = col.outerGroup;
 				r.jsonColumnName = col.jsonColumnName;
 				r.isJsonColumn = col.isJsonColumn;
+				r._backColor = ''; r._fontBold = ''; r._fontColor = '';
 
 				r.formattedVal = ko.computed(function () {
 
-					if (self.decimalFormatTypes.indexOf(col.fieldFormat()) >= 0) {
+					if (self.decimalFormatTypes.indexOf(col.fieldFormat()) >= 0 && !isNaN(r.Value)) {
 						r.FormattedValue = self.formatNumber(r.Value, col.decimalPlaces());
 						switch (col.fieldFormat()) {
 							case 'Currency': r.FormattedValue = '$' + r.FormattedValue; break;
@@ -2625,6 +2707,72 @@ var reportViewModel = function (options) {
 								case 'Date and Time': r.FormattedValue = (new Date(r.Value)).toLocaleDateString(dtFormat, { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
 								case 'Time': r.FormattedValue = (new Date(r.Value)).toLocaleTimeString(dtFormat, { hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
 							}
+						}
+					}
+
+					var operation = col.fieldConditionOp();
+					if (operation) {
+						var conditionTrue = false;
+						var value = r.Value;
+						var compareTo = col.fieldConditionVal().value;
+						var compareTo2 = col.fieldConditionVal().value2;
+						var dataIsNumeric = !isNaN(r.Value);
+						var dataIsDate = !isNaN(new Date(r.Value).getTime());
+
+						switch (operation) {
+							case '=':
+								conditionTrue = value == compareTo;
+								break;
+							case 'like':
+								conditionTrue = dataIsNumeric ? false : value.includes(compareTo);
+								break;
+							case 'not like':
+								conditionTrue = dataIsNumeric ? false : !value.includes(compareTo);
+								break;
+							case 'not equal':
+								conditionTrue = value != compareTo;
+								break;
+							case 'is blank':
+								conditionTrue = !value;
+								break;
+							case 'is not blank':
+								conditionTrue = !!value;
+								break;
+							case '>':
+								conditionTrue = dataIsNumeric && value > parseFloat(compareTo);
+								break;
+							case '<':
+								conditionTrue = dataIsNumeric && value < parseFloat(compareTo);
+								break;
+							case '>=':
+								conditionTrue = dataIsNumeric && value >= parseFloat(compareTo);
+								break;
+							case '<=':
+								conditionTrue = dataIsNumeric && value <= parseFloat(compareTo);
+								break;
+							case 'between':
+								if (dataIsNumeric) {
+									conditionTrue = value >= parseFloat(compareTo) && value <= parseFloat(compareTo2);
+								} else if (dataIsDate) {
+									var dateValue = new Date(value).getTime();
+									var startDate = new Date(compareTo).getTime();
+									var endDate = new Date(compareTo2).getTime();
+									conditionTrue = dateValue >= startDate && dateValue <= endDate;
+								}
+								break;
+							case 'range':
+								if (dataIsDate) {
+									var { start, end } = getDateRange(compareTo, compareTo2);
+									var dateValue = new Date(value).getTime();
+									conditionTrue = dateValue >= start.getTime() && dateValue <= end.getTime();
+								}
+								break;
+						}
+
+						if (!conditionTrue) {
+							r._backColor = 'none';
+							r._fontColor = 'none';
+							r._fontBold = 'none';
 						}
 					}
 
@@ -3074,7 +3222,9 @@ var reportViewModel = function (options) {
 	self.editFieldOptions = ko.observable();
 
 	self.setupField = function (e) {
-		e.fieldSettings = JSON.parse(e.fieldSettings || "{}");
+		if (typeof e.fieldSettings !== 'object' || e.fieldSettings === null) {
+			e.fieldSettings = JSON.parse(e.fieldSettings || "{}");
+		}
 		e.selectedFieldName = e.tableName + " > " + e.fieldName + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
 		e.selectedFilterName = e.tableName + " > " + (e.fieldLabel || e.fieldName) + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
 		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail').concat('Group in Detail').concat('Pivot').concat('Csv');
@@ -3092,6 +3242,7 @@ var reportViewModel = function (options) {
 		e.decimalPlaces = ko.observable(e.decimalPlaces);
 		e.dateFormat = ko.observable(e.fieldSettings.dateFormat || '');
 		e.customDateFormat = ko.observable(e.fieldSettings.customDateFormat || '');
+		e.fieldLabel2 = ko.observable(e.fieldSettings.fieldLabel2 || '');
 		e.fieldAlign = ko.observable(e.fieldAlign);
 		e.fontColor = ko.observable(e.fontColor);
 		e.backColor = ko.observable(e.backColor);
@@ -3101,7 +3252,7 @@ var reportViewModel = function (options) {
 		e.headerFontBold = ko.observable(e.headerFontBold);
 		e.fieldWidth = ko.observable(e.fieldWidth);
 		e.fieldConditionOp = ko.observable(e.fieldConditionOp);
-		e.fieldConditionVal = ko.observable(e.fieldConditionVal);
+		e.fieldConditionVal = ko.observable(JSON.parse(e.fieldConditionVal || "{}"));
 		e.jsonColumnName = e.jsonColumnName;
 		e.isJsonColumn = e.jsonColumnName ? true : false;
 
@@ -3111,6 +3262,7 @@ var reportViewModel = function (options) {
 		e.applyAllBackColor = ko.observable(false);
 		e.applyAllBold = ko.observable(false);
 		e.applyAllHeaderBold = ko.observable(false);
+		e.formatConditional = ko.observable(!!e.fieldConditionOp());
 
 		e.toggleDisable = function () {
 			if (!e.disabled() && self.enabledFields().length < 2) return;
@@ -3172,6 +3324,7 @@ var reportViewModel = function (options) {
 				decimalPlaces: e.decimalPlaces(),
 				dateFormat: e.dateFormat(),
 				customDateFormat: e.customDateFormat(),
+				fieldLabel2: e.fieldLabel2(),
 				fieldAlign: e.fieldAlign(),
 				fontColor: e.fontColor(),
 				backColor: e.backColor(),
@@ -3183,11 +3336,23 @@ var reportViewModel = function (options) {
 				fieldConditionOp: e.fieldConditionOp(),
 				fieldConditionVal: e.fieldConditionVal()
 			}
-			self.editFieldOptions(e);
+
+			var filter = new filterGroupViewModel({ isRoot: true, parent: self, options: options });
+			filter.AddFilter({
+				FieldId: e.fieldId,
+				Operator: e.fieldConditionOp(),
+				Value1: e.fieldConditionVal().value,
+				Value2: e.fieldConditionVal().value2
+			});
+			self.editFieldOptions(filter);
 			if (options.fieldOptionsModal) options.fieldOptionsModal.modal('show');
 		}
 
 		e.saveFieldOptions = function () {
+			if (!self.validateFieldOptions()) {
+				toastr.error("Please correct validation issues");
+				return;
+			}
 			_.forEach(self.SelectedFields(), function (f) {
 				if (e.applyAllHeaderFontColor()) f.headerFontColor(e.headerFontColor());
 				if (e.applyAllHeaderBackColor()) f.headerBackColor(e.headerBackColor());
@@ -3197,6 +3362,18 @@ var reportViewModel = function (options) {
 				if (e.applyAllHeaderBold()) f.headerFontBold(e.headerFontBold());
 			});
 
+			if (e.formatConditional()) {
+				var f = self.editFieldOptions().Filters()[0];
+				e.fieldConditionOp(f.Operator());
+				e.fieldConditionVal({
+					value: f.Operator() == "in" || f.Operator() == "not in" ? f.ValueIn().join(",") : (f.Operator().indexOf("blank") >= 0 || f.Operator() == 'all' ? "blank" : f.Value()),
+					value2: f.Value2(),
+					valueIn: f.ValueIn()
+				});
+			} else {
+				e.fieldConditionOp('');
+				e.fieldConditionVal({});
+			}
 			if (options.fieldOptionsModal) options.fieldOptionsModal.modal('hide');
 		}
 
@@ -3207,6 +3384,7 @@ var reportViewModel = function (options) {
 			e.decimalPlaces(self.currentFieldOptions.decimalPlaces);
 			e.dateFormat(self.currentFieldOptions.dateFormat);
 			e.customDateFormat(self.currentFieldOptions.customDateFormat);
+			e.fieldLabel2(self.currentFieldOptions.fieldLabel2);
 			e.fontColor(self.currentFieldOptions.fontColor);
 			e.backColor(self.currentFieldOptions.backColor);
 			e.headerFontColor(self.currentFieldOptions.headerFontColor);
@@ -3581,6 +3759,23 @@ var reportViewModel = function (options) {
 			return false;
 
 		return true;
+	};
+	self.validateFieldOptions = function () {
+		if (options.fieldOptionsModal == null) return;
+		var curInputs = options.fieldOptionsModal.find("input[required], select[required]"),
+    	isValid = true;
+
+		$(".needs-validation").removeClass("was-validated");
+		for (var i = 0; i < curInputs.length; i++) {
+			$(curInputs[i]).removeClass("is-invalid");
+			if (!self.isInputValid(curInputs[i])) {
+				isValid = false;
+				$(".needs-validation").addClass("was-validated");
+				$(curInputs[i]).addClass("is-invalid");
+			}
+		}
+
+		return isValid;
 	};
 
 	self.validateReport = function (validateCustomOnly) {
