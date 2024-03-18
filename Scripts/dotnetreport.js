@@ -2214,7 +2214,7 @@ var reportViewModel = function (options) {
 				DontExecuteOnRun: self.DontExecuteOnRun(),
 				barChartStacked: self.barChartStacked(),
 				barChartHorizontal: self.barChartHorizontal(),
-				DefaultPageSize: self.DefaultPageSize() || 10,
+				DefaultPageSize: self.DefaultPageSize() || 30,
 			}),
 			OnlyTop: self.maxRecords() ? self.OnlyTop() : null,
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : self.AggregateReport(),
@@ -3485,7 +3485,7 @@ var reportViewModel = function (options) {
 		self.DontExecuteOnRun(reportSettings.DontExecuteOnRun === true ? true : false);
 		self.barChartHorizontal(reportSettings.barChartHorizontal === true ? true : false);
 		self.barChartStacked(reportSettings.barChartStacked === true ? true : false);
-		self.DefaultPageSize(reportSettings.DefaultPageSize);
+		self.DefaultPageSize(reportSettings.DefaultPageSize || 30);
 
 		if (self.ReportMode() == "execute") {
 			if (self.useReportHeader()) {
