@@ -36,7 +36,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
                     dataFilters: data.dataFilters,
                     runLinkReportUrl: svc + "RunReportLink",
                     runExportUrl: svc,
-                    samePageOnRun: true
+                    samePageOnRun: true,
+                    printReportUrl: window.location.protocol + "//" + window.location.host + "/DotnetReport/ReportPrint.aspx"
                 });
 
                 vm.init(queryParams.folderid || 0, data.noAccount);
