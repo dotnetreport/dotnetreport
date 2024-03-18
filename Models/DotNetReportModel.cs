@@ -1018,7 +1018,7 @@ namespace ReportBuilder.Web.Models
         {
             var isCurrency = false;
             var isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
-            var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
+            var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName)) ?? new ReportHeaderColumn();
             string decimalFormat = new string('0', formatColumn.decimalPlacesDigit.GetValueOrDefault());
             try
             {
@@ -1105,7 +1105,7 @@ namespace ReportBuilder.Web.Models
         public static byte[] GetPdfFileAlt(string reportSql, string connectKey, string reportName, string chartData = null,
                     List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
         {
-            var sql = Decrypt(reportSql); 
+            var sql = Decrypt(reportSql);
             var sqlFields = SplitSqlColumns(sql);
 
             var dt = new DataTable();
@@ -1117,7 +1117,7 @@ namespace ReportBuilder.Web.Models
 
                 adapter.Fill(dt);
             }
-            
+
             var document = new PdfDocument();
             var page = document.AddPage();
             var gfx = XGraphics.FromPdfPage(page);
@@ -1202,8 +1202,8 @@ namespace ReportBuilder.Web.Models
                 {
                     // Draw column headers
                     var columnFormatting = columns[k];
-                        var columnName = !string.IsNullOrEmpty(columns[k].customfieldLabel) ? columns[k].customfieldLabel : columns[k].fieldName;
-                    
+                    var columnName = !string.IsNullOrEmpty(columns[k].customfieldLabel) ? columns[k].customfieldLabel : columns[k].fieldName;
+
                     rect = new XRect(currentXPosition, currentYPosition, columnWidth, 20);
 
                     gfx.DrawRectangle(XPens.LightGray, rect);
@@ -1224,7 +1224,7 @@ namespace ReportBuilder.Web.Models
                 // Draw table rows
                 for (int i = 0; i < dt.Rows.Count; i++)
                 {
-                    
+
                     // Check if we need to add a new page
                     if (currentYPosition > pageHeight)
                     {
@@ -1264,14 +1264,14 @@ namespace ReportBuilder.Web.Models
                     currentXPosition = leftMargin;
 
                     for (int j = 0; j < dt.Columns.Count; j++)
-                    {   
+                    {
                         var value = dt.Rows[i][j].ToString();
                         var dc = dt.Columns[j];
                         var formatColumn = GetColumnFormatting(dc, columns, ref value);
 
                         var lines = WrapText(gfx, value, rect, fontNormal, XStringFormats.Center);
                         maxLines = Math.Max(maxLines, lines.Count);
-                        
+
                         rect = new XRect(currentXPosition, currentYPosition, columnWidth, 20 * maxLines);
                         gfx.DrawRectangle(XPens.WhiteSmoke, rect);
 
@@ -1303,7 +1303,7 @@ namespace ReportBuilder.Web.Models
                     {
                         currentYPosition += 10;
                     }
-                }
+                }            
 
                 if (includeSubtotal)
                 {
@@ -1345,124 +1345,6 @@ namespace ReportBuilder.Web.Models
             }
         }
 
-        public static async Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
-                    string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false)
-        {
-            var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
-            await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
-            var executablePath = "";
-            foreach (var d in Directory.GetDirectories(installPath))
-            {
-                executablePath = $"{d}\\chrome-win\\chrome.exe";
-                if (File.Exists(executablePath)) break;
-            }
-
-            var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = true, ExecutablePath = executablePath });
-            var page = await browser.NewPageAsync();
-            await page.SetRequestInterceptionAsync(true);
-
-            var sql = Decrypt(reportSql);
-            var sqlFields = SplitSqlColumns(sql);
-
-            var dt = new DataTable();
-            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
-            {
-                conn.Open();
-                var command = new OleDbCommand(sql, conn);
-                var adapter = new OleDbDataAdapter(command);
-
-                adapter.Fill(dt);
-            }
-
-            var model = new DotNetReportResultModel
-            {
-                ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dt, sqlFields, false),
-                Warnings = "",
-                ReportSql = sql,
-                ReportDebug = false,
-                Pager = new DotNetReportPagerModel
-                {
-                    CurrentPage = 1,
-                    PageSize = 100000,
-                    TotalRecords = dt.Rows.Count,
-                    TotalPages = 1
-                }
-            };
-
-            var formPosted = false;
-            var formData = new StringBuilder();
-            formData.AppendLine("<html><body>");
-            formData.AppendLine($"<form action=\"{printUrl}\" method=\"post\">");
-            formData.AppendLine($"<input name=\"reportSql\" value=\"{HttpUtility.HtmlEncode(reportSql)}\" />");
-            formData.AppendLine($"<input name=\"connectKey\" value=\"{HttpUtility.HtmlEncode(connectKey)}\" />");
-            formData.AppendLine($"<input name=\"reportId\" value=\"{reportId}\" />");
-            formData.AppendLine($"<input name=\"pageNumber\" value=\"{1}\" />");
-            formData.AppendLine($"<input name=\"pageSize\" value=\"{99999}\" />");
-            formData.AppendLine($"<input name=\"userId\" value=\"{userId}\" />");
-            formData.AppendLine($"<input name=\"clientId\" value=\"{clientId}\" />");
-            formData.AppendLine($"<input name=\"currentUserRole\" value=\"{currentUserRole}\" />");
-            formData.AppendLine($"<input name=\"expandAll\" value=\"{expandAll}\" />");
-            formData.AppendLine($"<input name=\"dataFilters\" value=\"{HttpUtility.HtmlEncode(dataFilters)}\" />");
-            formData.AppendLine($"<input name=\"reportData\" value=\"{HttpUtility.HtmlEncode(JsonConvert.SerializeObject(model))}\" />");
-            formData.AppendLine($"</form>");
-            formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");
-            formData.AppendLine("</body></html>");
-
-            page.Request += async (sender, e) =>
-            {
-                if (formPosted)
-                {
-                    await e.Request.ContinueAsync();
-                    return;
-                }
-
-                await e.Request.RespondAsync(new ResponseData
-                {
-                    Status = System.Net.HttpStatusCode.OK,
-                    Body = formData.ToString()
-                });
-
-                formPosted = true;
-            };
-
-            await page.GoToAsync(printUrl, new NavigationOptions
-            {
-                WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
-            });
-
-            await page.WaitForSelectorAsync(".report-inner", new WaitForSelectorOptions { Visible = true });
-
-            int height = await page.EvaluateExpressionAsync<int>("document.body.offsetHeight");
-            int width = await page.EvaluateExpressionAsync<int>("$('table').width()");
-            var pdfFile = Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
-
-            var pdfOptions = new PdfOptions
-            {
-                PrintBackground = true,
-                PreferCSSPageSize = false,
-                MarginOptions = new MarginOptions() { Top = "0.75in", Bottom = "0.75in", Left = "0.1in", Right = "0.1in" }
-            };
-
-            if (width < 900)
-            {
-                pdfOptions.Format = PaperFormat.Letter;
-                pdfOptions.Landscape = false;
-            }
-            else
-            {
-                await page.SetViewportAsync(new ViewPortOptions { Width = width });
-                await page.AddStyleTagAsync(new AddTagOptions { Content = "@page {size: landscape }" });
-                pdfOptions.Width = $"{width}px";
-            }
-
-
-        private static byte[] Combine(byte[] a, byte[] b)
-        {
-            byte[] c = new byte[a.Length + b.Length];
-            System.Buffer.BlockCopy(a, 0, c, 0, a.Length);
-            System.Buffer.BlockCopy(b, 0, c, a.Length, b.Length);
-            return c;
-        }
         public static string GetXmlFile(string reportSql, string connectKey, string reportName)
         {
             var sql = Decrypt(reportSql);
