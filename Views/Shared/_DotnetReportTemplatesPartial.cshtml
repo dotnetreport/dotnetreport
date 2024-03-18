@@ -104,7 +104,7 @@
         <!-- /ko -->
         <!-- ko ifnot: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false)  -->
         <a href="" data-bind="click: function(){ $parents[pagerIndex($parents)].changeSort(SqlField) }, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}">
-            <span data-bind="text: fieldLabel() ? fieldLabel() : ColumnName"></span>
+            <span data-bind="text: $parent.IsDrillDown() && fieldLabel2() ? fieldLabel2() : (fieldLabel() ? fieldLabel() : fieldName)"></span>
             <span data-bind="text: $parents[pagerIndex($parents)].pager.sortColumn() === SqlField ? ($parents[pagerIndex($parents)].pager.sortDescending() ? '&#9660;' : '&#9650;') : ''"></span>
         </a>
         <!-- /ko -->
@@ -135,7 +135,7 @@
 
 <script type="text/html" id="report-column">
     <!-- ko foreach: Items -->
-    <td data-bind="hidden: outerGroup, style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '48px' : ''}">
+    <td data-bind="hidden: outerGroup, style: {'background-color': _backColor != 'none' ? backColor() : '', 'color': _fontColor != 'none' ? fontColor() : '', 'font-weight': fontBold() && _fontBold != 'none' ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '48px' : ''}">
         <div data-bind="style: {'width': fieldWidth }">
         <!-- ko if: LinkTo-->
         <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: formattedVal"></span></a>
@@ -746,121 +746,188 @@
 </script>
 
 <script type="text/html" id="report-field-options">
-    <div class="modal-dialog" style="max-width: 750px;">
-        <div class="modal-content" data-bind="with: editFieldOptions">
+    <div class="modal-dialog" style="max-width: 750px;"data-bind="with: editFieldOptions">
+        <div class="modal-content" data-bind="with: Filters()[0].Field">
             <div class="modal-header">
                 <h5 class="modal-title"><span data-bind="text: fieldName"></span> - Setup Additional Field Options</h5>
             </div>
             <div class="modal-body needs-validation">
-                <div class="form-group row">
-                    <label class="col-sm-5 col-md-5 control-label">Pick Data Format</label>
-                    <div class="col-sm-7 col-md-7">
-                        <select class="form-control" required data-bind="options: $parent.fieldFormatTypes, value: fieldFormat"></select>
-                    </div>
-                </div>
-                <div class="form-group row" data-bind="visible: $parent.decimalFormatTypes.indexOf($data.fieldFormat())>=0">
-                    <label class="col-sm-5 col-md-5 control-label">Pick Decimal Places</label>
-                    <div class="col-sm-7 col-md-7">
-                        <input type="number" class="form-control" data-bind="value: decimalPlaces" placeholder="" />
-                    </div>
-                </div>
-                  <div class="form-group row" data-bind="visible: $parent.dateFormatTypes.indexOf($data.fieldFormat())>=0">
-                    <label class="col-sm-5 col-md-5 control-label">Pick Date Format</label>
-                    <div class="col-sm-7 col-md-7">
-                        <select class="form-control" required data-bind="options: $parent.dateFormats, value: dateFormat"></select>
-                    </div>
-                </div>
-                   <div class="form-group row" data-bind="visible: dateFormat()==='Custom'">
-                     <label class="col-sm-5 col-md-5 control-label">Enter Custom Date Format</label>
-                    <div class="col-sm-7 col-md-7">
-                        <input type="text" class="form-control" data-bind="value: customDateFormat" placeholder="dd/mm/yyyy" />
-                    </div>
-                 </div>
-                <div class="form-group row">
-                    <label class="col-sm-5 col-md-5 control-label">Choose Column Label</label>
-                    <div class="col-sm-7 col-md-7">
-                        <input type="text" class="form-control" required data-bind="value: fieldLabel" />
-                    </div>
-                </div>
-                <div class="form-group row">
-                    <label class="col-sm-5 col-md-5 control-label">Choose Text Alignment</label>
-                    <div class="col-sm-7 col-md-7">
-                        <select class="form-control" required data-bind="options: $parent.fieldAlignments, value: fieldAlign"></select>
-                    </div>
-                </div>
-                <div class="form-group row">
-                    <label class="col-sm-5 col-md-5 control-label">Pick Header Text Color</label>
-                    <div class="col-sm-7 col-md-7">
-                        <input type="color" style="width: 50px" class="form-control pull-left" required data-bind="value: headerFontColor" />
-                        <input type="text" style="width: 100px" class="form-control pull-left" required data-bind="value: headerFontColor" />
-                        <button class="btn btn-sm pull-left" title="Apply to all columns" data-bind="click: function(){applyAllHeaderFontColor(!applyAllHeaderFontColor()); }">
-                            <span class="fa" data-bind="css: applyAllHeaderFontColor() ? 'fa-check' : 'fa-paste'"></span>
-                        </button>
-                    </div>
-                </div>
-                <div class="form-group row">
-                    <label class="col-sm-5 col-md-5 control-label">Pick Header Background Color</label>
-                    <div class="col-sm-7 col-md-7">
-                        <input type="color" style="width: 50px" class="form-control pull-left" required data-bind="value: headerBackColor" />
-                        <input type="text" style="width: 100px" class="form-control pull-left" required data-bind="value: headerBackColor" />
-                        <button class="btn btn-sm pull-left" title="Apply to all columns" data-bind="click: function(){applyAllHeaderBackColor(!applyAllHeaderBackColor()); }">
-                            <span class="fa" data-bind="css: applyAllHeaderBackColor() ? 'fa-check' : 'fa-paste'"></span>
-                        </button>
-                    </div>
-                </div>
-                <div class="form-group row">
-                    <label class="col-sm-5 col-md-5 control-label">Pick Text Color</label>
-                    <div class="col-sm-7 col-md-7">
-                        <input type="color" style="width: 50px" class="form-control pull-left" required data-bind="value: fontColor" />
-                        <input type="text" style="width: 100px" class="form-control pull-left" data-bind="value: fontColor" />
-                        <button class="btn btn-sm pull-left" title="Apply to all columns" data-bind="click: function(){applyAllFontColor(!applyAllFontColor()); }">
-                            <span class="fa" data-bind="css: applyAllFontColor() ? 'fa-check' : 'fa-paste'"></span>
-                        </button>
-                    </div>
-                </div>
-                <div class="form-group row">
-                    <label class="col-sm-5 col-md-5 control-label">Pick Background Color</label>
-                    <div class="col-sm-7 col-md-7">
-                        <input type="color" style="width: 50px" class="form-control pull-left" required data-bind="value: backColor" />
-                        <input type="text" style="width: 100px" class="form-control pull-left" data-bind="value: backColor" />
-                        <button class="btn btn-sm pull-left" title="Apply to all columns" data-bind="click: function(){applyAllBackColor(!applyAllBackColor()); }">
-                            <span class="fa" data-bind="css: applyAllBackColor() ? 'fa-check' : 'fa-paste'"></span>
-                        </button>
-                    </div>
-                </div>
-                <div class="form-group row">
-                    <label class="col-sm-5 col-md-5 control-label">Choose Width (leave blank for auto)</label>
-                    <div class="col-sm-7 col-md-7">
-                        <input type="text" class="form-control" required data-bind="value: fieldWidth" />
-                    </div>
-                </div>
-                <div class="form-group row">
-                    <div class="col-sm-12">
-                        <div class="checkbox pull-left" style="padding-top: 5px;">
-                            <label>
-                                <input type="checkbox" data-bind="checked: headerFontBold" />
-                                Make Header Text Bold
-                            </label>
+                 <div class="card card-body">
+                     <b>Column Format Settings</b>
+                    <div class="form-group row">
+                        <label class="col-sm-5 col-md-5 control-label">Pick Data Format</label>
+                        <div class="col-sm-7 col-md-7">
+                            <select class="form-control" data-bind="options: $parents[1].fieldFormatTypes, value: fieldFormat"></select>
                         </div>
-                        <button class="btn btn-sm pull-left" title="Apply to all columns" data-bind="click: function(){applyAllHeaderBold(!applyAllHeaderBold()); }">
-                            <span class="fa" data-bind="css: applyAllHeaderBold() ? 'fa-check' : 'fa-paste'"></span>
-                        </button>
                     </div>
-                </div>
-                <div class="form-group row">
-                    <div class="col-sm-12">
-                        <div class="checkbox pull-left" style="padding-top: 5px;">
-                            <label>
-                                <input type="checkbox" data-bind="checked: fontBold" />
-                                Make Text Bold
-                            </label>
+                    <div class="form-group row" data-bind="visible: $parents[1].decimalFormatTypes.indexOf($data.fieldFormat())>=0">
+                        <label class="col-sm-5 col-md-5 control-label">Pick Decimal Places</label>
+                        <div class="col-sm-7 col-md-7">
+                            <input type="number" class="form-control" data-bind="value: decimalPlaces" placeholder="" />
                         </div>
-                        <button class="btn btn-sm pull-left" title="Apply to all columns" data-bind="click: function(){applyAllBold(!applyAllBold()); }">
-                            <span class="fa" data-bind="css: applyAllBold() ? 'fa-check' : 'fa-paste'"></span>
-                        </button>
+                    </div>
+                     <div class="form-group row" data-bind="visible: fieldFormat()=='Currency'">
+                        <label class="col-sm-5 col-md-5 control-label">Pick Currency Format</label>
+                        <div class="col-sm-7 col-md-7">
+                            <select class="form-control" required data-bind="options: $parents[1].currencyFormats, optionsText: 'display',optionsValue: 'value', value: currencyFormat"></select>
+                        </div>
+                    </div>                
+                      <div class="form-group row" data-bind="visible: fieldFormat()=='Date'">
+                        <label class="col-sm-5 col-md-5 control-label">Pick Date Format</label>
+                        <div class="col-sm-7 col-md-7">
+                            <select class="form-control" data-bind="options: $parents[1].dateFormats, value: dateFormat"></select>
+                        </div>
+                    </div>
+                       <div class="form-group row" data-bind="visible: dateFormat()==='Custom'">
+                         <label class="col-sm-5 col-md-5 control-label">Enter Custom Date Format</label>
+                        <div class="col-sm-7 col-md-7">
+                            <input type="text" class="form-control" data-bind="value: customDateFormat" placeholder="dd/mm/yyyy" />
+                        </div>
+                     </div>
+                    <div class="form-group row">
+                        <label class="col-sm-5 col-md-5 control-label">Choose Column Label</label>
+                        <div class="col-sm-7 col-md-7">
+                            <input type="text" class="form-control" data-bind="value: fieldLabel" />
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-5 col-md-5 control-label">Inner Column Label</label>
+                        <div class="col-sm-7 col-md-7">
+                            <input type="text" class="form-control" data-bind="value: fieldLabel2" />
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-5 col-md-5 control-label">Choose Text Alignment</label>
+                        <div class="col-sm-7 col-md-7">
+                            <select class="form-control" data-bind="options: $parents[1].fieldAlignments, value: fieldAlign"></select>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-5 col-md-5 control-label">Choose Width (leave blank for auto)</label>
+                        <div class="col-sm-7 col-md-7">
+                            <input type="text" class="form-control" data-bind="value: fieldWidth" />
+                        </div>
                     </div>
                 </div>
-                <div class="form-group row" data-bind="if: $parent.useStoredProc()">
+                <br />
+                <div class="card card-body">
+                    <div class="form-row align-items-center">
+                        <div class="col-auto">
+                            <b>Header Settings</b>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="col"> 
+                            <div class="form-group">
+                                <label class="control-label">Pick Text Color</label>
+                                <div>
+                                    <input type="color" style="width: 50px" class="form-control pull-left" data-bind="value: headerFontColor" />
+                                    <input type="text" style="width: 100px" class="form-control pull-left" data-bind="value: headerFontColor" />
+                                    <button class="btn btn-sm pull-left" title="Apply to all columns" data-bind="click: function(){applyAllHeaderFontColor(!applyAllHeaderFontColor()); }">
+                                        <span class="fa" data-bind="css: applyAllHeaderFontColor() ? 'fa-check' : 'fa-paste'"></span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="form-group">
+                                <label class="control-label">Pick Background Color</label>
+                                <div>
+                                    <input type="color" style="width: 50px" class="form-control pull-left" data-bind="value: headerBackColor" />
+                                    <input type="text" style="width: 100px" class="form-control pull-left" data-bind="value: headerBackColor" />
+                                    <button class="btn btn-sm pull-left" title="Apply to all columns" data-bind="click: function(){applyAllHeaderBackColor(!applyAllHeaderBackColor()); }">
+                                        <span class="fa" data-bind="css: applyAllHeaderBackColor() ? 'fa-check' : 'fa-paste'"></span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col d-flex align-items-center"> 
+                            <div class="form-group d-flex align-items-center"> 
+                                <div class="checkbox" style="padding-top: 5px; margin-right: 10px;">
+                                    <label>
+                                        <input type="checkbox" data-bind="checked: headerFontBold" /> Bold Text
+                                    </label>
+                                </div>
+                                <button class="btn btn-sm" title="Apply to all columns" data-bind="click: function(){applyAllHeaderBold(!applyAllHeaderBold()); }">
+                                    <span class="fa" data-bind="css: applyAllHeaderBold() ? 'fa-check' : 'fa-paste'"></span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <br />
+                <div class="card card-body">
+                    <div class="form-row align-items-center">
+                        <div class="col-auto">
+                            <b>Text Settings</b>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="col">
+                            <div class="form-group">
+                                <label class="control-label">Pick Text Color</label>
+                                <div>
+                                    <input type="color" style="width: 50px" class="form-control pull-left" data-bind="value: fontColor" />
+                                    <input type="text" style="width: 100px" class="form-control pull-left" data-bind="value: fontColor" />
+                                    <button class="btn btn-sm pull-left" title="Apply to all columns" data-bind="click: function(){applyAllFontColor(!applyAllFontColor()); }">
+                                        <span class="fa" data-bind="css: applyAllFontColor() ? 'fa-check' : 'fa-paste'"></span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="form-group">
+                                <label class="control-label">Pick Background Color</label>
+                                <div>
+                                    <input type="color" style="width: 50px" class="form-control pull-left" data-bind="value: backColor" />
+                                    <input type="text" style="width: 100px" class="form-control pull-left" data-bind="value: backColor" />
+                                    <button class="btn btn-sm pull-left" title="Apply to all columns" data-bind="click: function(){applyAllBackColor(!applyAllBackColor()); }">
+                                        <span class="fa" data-bind="css: applyAllBackColor() ? 'fa-check' : 'fa-paste'"></span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col d-flex align-items-center">
+                            <div class="form-group d-flex align-items-center">
+                                <div class="checkbox" style="padding-top: 5px; margin-right: 10px;">
+                                    <label>
+                                        <input type="checkbox" data-bind="checked: fontBold" /> Bold Text
+                                    </label>
+                                </div>
+                                <button class="btn btn-sm" title="Apply to all columns" data-bind="click: function(){applyAllBold(!applyAllBold()); }">
+                                    <span class="fa" data-bind="css: applyAllBold() ? 'fa-check' : 'fa-paste'"></span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="checkbox" style="padding-top: 8px;">
+                        <label title="Make settings apply only when conditions are met">
+                            <input type="checkbox" data-bind="checked: formatConditional" /> Conditional Formatting
+                        </label>
+                    </div>
+                    <div data-bind="if: formatConditional">
+                    <div class="row" data-bind="foreach: $parent.Filters">
+                        <div class="col-md-2">
+                             Value
+                        </div>
+                        <div class="col-md-4">
+                            <div data-bind="with: Field">
+                                <div class="form-group">
+                                    <select class="form-control" style="width: 100%;" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div data-bind="with: Field">
+                                <div data-bind="template: 'report-filter', data: $data"></div>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+                <br />
+                <div class="form-group row" data-bind="if: $parents[1].useStoredProc()">
                     <div class="col-sm-12">
                         <div class="checkbox pull-left" style="padding-top: 5px;">
                             <label>
@@ -1509,6 +1576,17 @@
                                     <input type="number" style="width: 150px;" class="form-control" required placeholder="Only top n..." data-bind="value: OnlyTop, visible: maxRecords">
                                 </div>
                             </div>
+                            <div class="form-group row">
+                                <div class="checkbox col-md-4">
+                                   <label>
+                                        <input type="checkbox" data-bind="checked: changePageSize" />
+                                        Change Page Size
+                                    </label>
+                                </div>
+                                <div class="col-md-6" data-bind="visible: changePageSize">
+                                    <select style="width: 150px;" class="form-control" data-bind="options: [10,30,50,100,150,200,500], value: DefaultPageSize"></select>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <h5><span class="fa fa-paint-brush"></span>&nbsp;Pick Report Format</h5>
@@ -1555,8 +1633,7 @@
                         <tr class="no-highlight">
                             <!-- ko foreach: Columns -->
                             <th data-bind="attr: { id: fieldId }, css: {'right-align': IsNumeric}, style: {'width': fieldWidth, 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
-                                <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
-
+                                <span data-bind="text: fieldLabel2() ? fieldLabel2() : (fieldLabel() ? fieldLabel() : fieldName), style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
                             </th>
                             <!-- /ko --> 
                         </tr>
