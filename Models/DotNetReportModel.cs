@@ -319,11 +319,11 @@ namespace ReportBuilder.Web.Models
         public string fieldLabel { get; set; }
         public string customfieldLabel { get; set; }
         public bool hideStoredProcColumn { get; set; }
-        public int? decimalPlaces { get; set; }
+        public int? decimalPlacesDigit { get; set; }
         public string fieldAlign { get; set; }
-        public string fieldFormat { get; set; }
+        public string fieldFormating { get; set; }
         public bool dontSubTotal { get; set; }
-
+        public string currencySymbol { get; set; }
         public bool isNumeric { get; set; }
         public bool isCurrency { get; set; }
         public bool isJsonColumn { get; set; }
@@ -546,19 +546,38 @@ namespace ReportBuilder.Web.Models
             int i = colstart; var isNumeric = false;
             foreach (DataColumn dc in dt.Columns)
             {
+                var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
+                string decimalFormat = new string('0', formatColumn.decimalPlacesDigit.GetValueOrDefault());
                 isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
-                if (dc.DataType == typeof(decimal))
+                if (dc.DataType == typeof(decimal) || (formatColumn != null && formatColumn.fieldFormating=="Decimal"))
                 {
-                    ws.Column(i).Style.Numberformat.Format = "###,###,##0.00";
+                    if (formatColumn != null && formatColumn.decimalPlacesDigit != null)
+                    {
+                        ws.Column(i).Style.Numberformat.Format = "###,###,##0." + decimalFormat;
+                    }
+                    else
+                    {
+                        ws.Column(i).Style.Numberformat.Format = "###,###,##0.00";
+                    }
                     isNumeric = true;
                 }
                 if (dc.DataType == typeof(DateTime))
                     ws.Column(i).Style.Numberformat.Format = "mm/dd/yyyy";
 
-                var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
-                if (formatColumn != null && formatColumn.fieldFormat == "Currency")
+                if (formatColumn != null && formatColumn.fieldFormating == "Currency")
                 {
-                    ws.Column(i).Style.Numberformat.Format = "$###,###,##0.00";
+                    if (formatColumn.currencySymbol != null && formatColumn.decimalPlacesDigit != null)
+                    {
+                        ws.Column(i).Style.Numberformat.Format = formatColumn.currencySymbol + "###,###,##0." + decimalFormat;
+                    }
+                    else if (formatColumn.currencySymbol != null)
+                    {
+                        ws.Column(i).Style.Numberformat.Format = formatColumn.currencySymbol + "###,###,##0.00";
+                    }
+                    else
+                    {
+                        ws.Column(i).Style.Numberformat.Format = "$###,###,##0.00";
+                    }
                     isNumeric = true;
                 }
                 if (formatColumn != null && formatColumn.isJsonColumn)
@@ -1000,24 +1019,38 @@ namespace ReportBuilder.Web.Models
             var isCurrency = false;
             var isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
             var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
-
+            string decimalFormat = new string('0', formatColumn.decimalPlacesDigit.GetValueOrDefault());
             try
             {
-                if (dc.DataType == typeof(decimal) || (formatColumn != null && (formatColumn.fieldFormat == "Decimal" || formatColumn.fieldFormat == "Double")))
+                if (dc.DataType == typeof(decimal) || (formatColumn != null && (formatColumn.fieldFormating == "Decimal" || formatColumn.fieldFormating == "Double")))
                 {
+                    if (formatColumn.decimalPlacesDigit != null)
+                    {
+                        value = Convert.ToDecimal(value).ToString("###,###,##0." + decimalFormat);
+                    }
+                    else
+                    {
+                        value = Convert.ToDecimal(value).ToString("###,###,##0.00");
+                    }
                     isNumeric = true;
-                    value = Convert.ToDecimal(value).ToString("###,###,##0.00");
                 }
-                if (formatColumn != null && formatColumn.fieldFormat == "Currency")
+                if (formatColumn != null && formatColumn.fieldFormating == "Currency")
                 {
-                    value = Convert.ToDecimal(value).ToString("C");
+                    if (formatColumn.currencySymbol != null && formatColumn.decimalPlacesDigit != null)
+                    {
+                        value = Convert.ToDecimal(value).ToString(formatColumn.currencySymbol + "###,###,##0." + decimalFormat);
+                    }
+                    else if (formatColumn.currencySymbol != null)
+                    {
+                        value = Convert.ToDecimal(value).ToString(formatColumn.currencySymbol + "###,###,##0.00");
+                    }
                     isCurrency = true;
                 }
-                if (formatColumn != null && (formatColumn.fieldFormat == "Date" || formatColumn.fieldFormat == "Date and Time" || formatColumn.fieldFormat == "Time") && dc.DataType.Name == "DateTime")
+                if (formatColumn != null && (formatColumn.fieldFormating == "Date" || formatColumn.fieldFormating == "Date and Time" || formatColumn.fieldFormating == "Time") && dc.DataType.Name == "DateTime")
                 {
                     var date = Convert.ToDateTime(value);
-                    value = formatColumn.fieldFormat.StartsWith("Date") ? date.ToShortDateString() + " " : "";
-                    value += formatColumn.fieldFormat.EndsWith("Time") ? date.ToShortTimeString() : "";
+                    value = formatColumn.fieldFormating.StartsWith("Date") ? date.ToShortDateString() + " " : "";
+                    value += formatColumn.fieldFormating.EndsWith("Time") ? date.ToShortTimeString() : "";
                     value = value.Trim();
                 }
             } catch (Exception ex)
@@ -1311,6 +1344,116 @@ namespace ReportBuilder.Web.Models
                 return ms.ToArray();
             }
         }
+
+        public static async Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
+                    string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false)
+        {
+            var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
+            await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
+            var executablePath = "";
+            foreach (var d in Directory.GetDirectories(installPath))
+            {
+                executablePath = $"{d}\\chrome-win\\chrome.exe";
+                if (File.Exists(executablePath)) break;
+            }
+
+            var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = true, ExecutablePath = executablePath });
+            var page = await browser.NewPageAsync();
+            await page.SetRequestInterceptionAsync(true);
+
+            var sql = Decrypt(reportSql);
+            var sqlFields = SplitSqlColumns(sql);
+
+            var dt = new DataTable();
+            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
+            {
+                conn.Open();
+                var command = new OleDbCommand(sql, conn);
+                var adapter = new OleDbDataAdapter(command);
+
+                adapter.Fill(dt);
+            }
+
+            var model = new DotNetReportResultModel
+            {
+                ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dt, sqlFields, false),
+                Warnings = "",
+                ReportSql = sql,
+                ReportDebug = false,
+                Pager = new DotNetReportPagerModel
+                {
+                    CurrentPage = 1,
+                    PageSize = 100000,
+                    TotalRecords = dt.Rows.Count,
+                    TotalPages = 1
+                }
+            };
+
+            var formPosted = false;
+            var formData = new StringBuilder();
+            formData.AppendLine("<html><body>");
+            formData.AppendLine($"<form action=\"{printUrl}\" method=\"post\">");
+            formData.AppendLine($"<input name=\"reportSql\" value=\"{HttpUtility.HtmlEncode(reportSql)}\" />");
+            formData.AppendLine($"<input name=\"connectKey\" value=\"{HttpUtility.HtmlEncode(connectKey)}\" />");
+            formData.AppendLine($"<input name=\"reportId\" value=\"{reportId}\" />");
+            formData.AppendLine($"<input name=\"pageNumber\" value=\"{1}\" />");
+            formData.AppendLine($"<input name=\"pageSize\" value=\"{99999}\" />");
+            formData.AppendLine($"<input name=\"userId\" value=\"{userId}\" />");
+            formData.AppendLine($"<input name=\"clientId\" value=\"{clientId}\" />");
+            formData.AppendLine($"<input name=\"currentUserRole\" value=\"{currentUserRole}\" />");
+            formData.AppendLine($"<input name=\"expandAll\" value=\"{expandAll}\" />");
+            formData.AppendLine($"<input name=\"dataFilters\" value=\"{HttpUtility.HtmlEncode(dataFilters)}\" />");
+            formData.AppendLine($"<input name=\"reportData\" value=\"{HttpUtility.HtmlEncode(JsonConvert.SerializeObject(model))}\" />");
+            formData.AppendLine($"</form>");
+            formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");
+            formData.AppendLine("</body></html>");
+
+            page.Request += async (sender, e) =>
+            {
+                if (formPosted)
+                {
+                    await e.Request.ContinueAsync();
+                    return;
+                }
+
+                await e.Request.RespondAsync(new ResponseData
+                {
+                    Status = System.Net.HttpStatusCode.OK,
+                    Body = formData.ToString()
+                });
+
+                formPosted = true;
+            };
+
+            await page.GoToAsync(printUrl, new NavigationOptions
+            {
+                WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
+            });
+
+            await page.WaitForSelectorAsync(".report-inner", new WaitForSelectorOptions { Visible = true });
+
+            int height = await page.EvaluateExpressionAsync<int>("document.body.offsetHeight");
+            int width = await page.EvaluateExpressionAsync<int>("$('table').width()");
+            var pdfFile = Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
+
+            var pdfOptions = new PdfOptions
+            {
+                PrintBackground = true,
+                PreferCSSPageSize = false,
+                MarginOptions = new MarginOptions() { Top = "0.75in", Bottom = "0.75in", Left = "0.1in", Right = "0.1in" }
+            };
+
+            if (width < 900)
+            {
+                pdfOptions.Format = PaperFormat.Letter;
+                pdfOptions.Landscape = false;
+            }
+            else
+            {
+                await page.SetViewportAsync(new ViewPortOptions { Width = width });
+                await page.AddStyleTagAsync(new AddTagOptions { Content = "@page {size: landscape }" });
+                pdfOptions.Width = $"{width}px";
+            }
 
 
         private static byte[] Combine(byte[] a, byte[] b)
