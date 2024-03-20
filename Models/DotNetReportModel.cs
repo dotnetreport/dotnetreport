@@ -328,11 +328,11 @@ namespace ReportBuilder.Web.Models
         public string fieldLabel { get; set; }
         public string customfieldLabel { get; set; }
         public bool hideStoredProcColumn { get; set; }
-        public int? decimalPlaces { get; set; }
+        public int? decimalPlacesDigit { get; set; }
         public string fieldAlign { get; set; }
-        public string fieldFormat { get; set; }
+        public string fieldFormating { get; set; }
         public bool dontSubTotal { get; set; }
-
+        public string currencySymbol { get; set; }
         public bool isNumeric { get; set; }
         public bool isCurrency { get; set; }
         public bool isJsonColumn { get; set; }
@@ -649,19 +649,38 @@ namespace ReportBuilder.Web.Models
             int i = colstart; var isNumeric = false;
             foreach (DataColumn dc in dt.Columns)
             {
+                var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
+                string decimalFormat = new string('0', formatColumn.decimalPlacesDigit.GetValueOrDefault());
                 isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
-                if (dc.DataType == typeof(decimal))
+                if (dc.DataType == typeof(decimal) || (formatColumn != null && formatColumn.fieldFormating=="Decimal"))
                 {
-                    ws.Column(i).Style.Numberformat.Format = "###,###,##0.00";
+                    if (formatColumn != null && formatColumn.decimalPlacesDigit != null)
+                    {
+                        ws.Column(i).Style.Numberformat.Format = "###,###,##0." + decimalFormat;
+                    }
+                    else
+                    {
+                        ws.Column(i).Style.Numberformat.Format = "###,###,##0.00";
+                    }
                     isNumeric = true;
                 }
                 if (dc.DataType == typeof(DateTime))
                     ws.Column(i).Style.Numberformat.Format = "mm/dd/yyyy";
 
-                var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
-                if (formatColumn != null && formatColumn.fieldFormat == "Currency")
+                if (formatColumn != null && formatColumn.fieldFormating == "Currency")
                 {
-                    ws.Column(i).Style.Numberformat.Format = "$###,###,##0.00";
+                    if (formatColumn.currencySymbol != null && formatColumn.decimalPlacesDigit != null)
+                    {
+                        ws.Column(i).Style.Numberformat.Format = formatColumn.currencySymbol + "###,###,##0." + decimalFormat;
+                    }
+                    else if (formatColumn.currencySymbol != null)
+                    {
+                        ws.Column(i).Style.Numberformat.Format = formatColumn.currencySymbol + "###,###,##0.00";
+                    }
+                    else
+                    {
+                        ws.Column(i).Style.Numberformat.Format = "$###,###,##0.00";
+                    }
                     isNumeric = true;
                 }
                 if (formatColumn != null && formatColumn.isJsonColumn)
@@ -1154,24 +1173,38 @@ namespace ReportBuilder.Web.Models
             var isCurrency = false;
             var isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
             var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
-
+            string decimalFormat = new string('0', formatColumn.decimalPlacesDigit.GetValueOrDefault());
             try
             {
-                if (dc.DataType == typeof(decimal) || (formatColumn != null && (formatColumn.fieldFormat == "Decimal" || formatColumn.fieldFormat == "Double")))
+                if (dc.DataType == typeof(decimal) || (formatColumn != null && (formatColumn.fieldFormating == "Decimal" || formatColumn.fieldFormating == "Double")))
                 {
+                    if (formatColumn.decimalPlacesDigit != null)
+                    {
+                        value = Convert.ToDecimal(value).ToString("###,###,##0." + decimalFormat);
+                    }
+                    else
+                    {
+                        value = Convert.ToDecimal(value).ToString("###,###,##0.00");
+                    }
                     isNumeric = true;
-                    value = Convert.ToDecimal(value).ToString("###,###,##0.00");
                 }
-                if (formatColumn != null && formatColumn.fieldFormat == "Currency")
+                if (formatColumn != null && formatColumn.fieldFormating == "Currency")
                 {
-                    value = Convert.ToDecimal(value).ToString("C");
+                    if (formatColumn.currencySymbol != null && formatColumn.decimalPlacesDigit != null)
+                    {
+                        value = Convert.ToDecimal(value).ToString(formatColumn.currencySymbol + "###,###,##0." + decimalFormat);
+                    }
+                    else if (formatColumn.currencySymbol != null)
+                    {
+                        value = Convert.ToDecimal(value).ToString(formatColumn.currencySymbol + "###,###,##0.00");
+                    }
                     isCurrency = true;
                 }
-                if (formatColumn != null && (formatColumn.fieldFormat == "Date" || formatColumn.fieldFormat == "Date and Time" || formatColumn.fieldFormat == "Time") && dc.DataType.Name == "DateTime")
+                if (formatColumn != null && (formatColumn.fieldFormating == "Date" || formatColumn.fieldFormating == "Date and Time" || formatColumn.fieldFormating == "Time") && dc.DataType.Name == "DateTime")
                 {
                     var date = Convert.ToDateTime(value);
-                    value = formatColumn.fieldFormat.StartsWith("Date") ? date.ToShortDateString() + " " : "";
-                    value += formatColumn.fieldFormat.EndsWith("Time") ? date.ToShortTimeString() : "";
+                    value = formatColumn.fieldFormating.StartsWith("Date") ? date.ToShortDateString() + " " : "";
+                    value += formatColumn.fieldFormating.EndsWith("Time") ? date.ToShortTimeString() : "";
                     value = value.Trim();
                 }
             } catch (Exception ex)
@@ -1559,6 +1592,7 @@ namespace ReportBuilder.Web.Models
 
             var pdfOptions = new PdfOptions
             {
+                PrintBackground = true,
                 PreferCSSPageSize = false,
                 MarginOptions = new MarginOptions() { Top = "0.75in", Bottom = "0.75in", Left = "0.1in", Right = "0.1in" }
             };
