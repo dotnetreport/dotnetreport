@@ -178,9 +178,43 @@
                     </div>
                 </div>
                 <hr />
-                <h5><span class="fa fa-paperclip"></span> Choose Reports for the Dashboard</h5>
-                <div data-bind="foreach: $parent.reportsAndFolders" class="card" style="margin-left: 20px;">
-                    <div class="card-body">
+                <div class="control-group row m-2">
+                    <div class="col-md-6 col-sm-6">
+                        <h5><span class="fa fa-paperclip"></span> Choose Reports for the Dashboard </h5>
+                    </div>
+                    <div class="col-md-6 col-sm-6">
+                        <input type="text" class="form-control text-box" style="width: 100%;" placeholder="Search Report by Name, Description or Data Field..." data-bind="textInput: $parent.searchReports" />
+                    </div>
+                </div>
+                <div data-bind="if: $parent.searchReports() &&  $parent.reportsInSearch().length==0">
+                    <div class="card">
+                        <div class="card-body">
+                                No Reports found matching your Search
+                        </div>
+                    </div>
+                </div>
+                <div data-bind="if: $parent.searchReports() &&  $parent.reportsInSearch().length>0">
+                    <div  class="card" style="margin-left: 20px;">
+                        <div class="card-body">
+                            <div>
+                                <ul class="list-group" data-bind="foreach: $parent.reportsInSearch">
+                                    <li class="list-group-item">
+                                        <div class="checkbox">
+                                            <label class="list-group-item-heading">
+                                                <input type="checkbox" data-bind="checked: selected">
+                                                <span class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map'}" style="font-size: 14pt; color: #808080"></span>
+                                                <span data-bind="highlightedText: { text: reportName, highlight: $parent.searchReports, css: 'highlight' }"></span>
+                                            </label>
+                                        </div>
+                                        <p class="list-group-item-text small" data-bind="text: reportDescription"></p>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div data-bind="if: !$parent.searchReports() " class="card" style="margin-left: 20px;">
+                    <div class="card-body" data-bind="foreach: $parent.reportsAndFolders">
                         <a class="btn btn-link" role="button" data-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }">
                             <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: folder"></span>
                         </a>

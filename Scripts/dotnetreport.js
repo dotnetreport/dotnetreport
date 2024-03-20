@@ -4080,7 +4080,6 @@ var reportViewModel = function (options) {
 var dashboardViewModel = function (options) {
 	var self = this;
 	options.isDashboard = true;
-
 	self.dashboards = ko.observableArray(options.dashboards || []);
 	self.adminMode = ko.observable(false);
 	self.currentUserId = options.userId;
@@ -4094,7 +4093,7 @@ var dashboardViewModel = function (options) {
 	self.folders = [];
 	self.ChartDrillDownData = ko.observable();
 	self.DontExecuteOnRun = ko.observable(false);
-
+	self.searchReports = ko.observable('');
 	var currentDash = options.dashboardId > 0
 		? (_.find(self.dashboards(), { id: options.dashboardId }) || { name: '', description: '' })
 		: (self.dashboards().length > 0 ? self.dashboards()[0] : { name: '', description: '' });
@@ -4142,6 +4141,20 @@ var dashboardViewModel = function (options) {
 		if (newValue != self.currentDashboard().id) {
 			self.loadDashboard(newValue);
 		}
+	});
+	self.reportsInSearch = ko.observableArray([]);
+	self.searchReports.subscribe(function (searchReports) {
+		var filteredReports = [];
+		self.reportsAndFolders().forEach(function (folder) {
+			var filterReports = folder.reports.filter(function (report) {
+				var reportNameLower = report.reportName.toLowerCase();
+				var reportDescriptionLower = report.reportDescription.toLowerCase();
+				var searchReportsLower = searchReports.toLowerCase();
+				return reportNameLower.includes(searchReportsLower) || reportDescriptionLower.includes(searchReportsLower);
+			});
+			filteredReports = filteredReports.concat(filterReports);
+		});
+		self.reportsInSearch(filteredReports);
 	});
 
 	self.newDashboard = function () {
