@@ -4565,4 +4565,17 @@ var dashboardViewModel = function (options) {
 		if (localStorage) localStorage.setItem('reportAdminMode', newValue);
 
 	});
+
+	self.arrangeDashboard = ko.observable(false);
+	self.arrangeDashboard.subscribe(function (newValue) {		
+		var grid = $('.grid-stack').data("gridstack");
+		if (grid) {
+			if (newValue) {
+				grid.enable();
+			}
+			else {
+				grid.disable();
+			}
+		}
+	});
 };
