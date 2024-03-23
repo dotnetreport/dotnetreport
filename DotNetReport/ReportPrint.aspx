@@ -1,4 +1,6 @@
-﻿<!DOCTYPE html>
+﻿<%@ Page Title="" Language="C#" AutoEventWireup="true" CodeBehind="ReportPrint.aspx.cs" Inherits="ReportBuilder.WebForms.DotNetReport.ReportPrint" Async="false" %>
+
+<!DOCTYPE html>
 <html>
 
 <head>
@@ -50,12 +52,8 @@
 </head>
 
 <body>
-    
     <form id="form1" runat="server">
     <div data-bind="with: ReportResult">
-
-        <!-- ko ifnot: HasError -->
-
         <div class="report-view" data-bind="with: $root">
             <div class="report-inner" style="display: none;">
                 <canvas id="report-header" width="1100" height="120" data-bind="visible: useReportHeader"></canvas>
@@ -63,32 +61,15 @@
                 <p data-bind="html: ReportDescription">
                 </p>
 
-
                 <div data-bind="with: ReportResult">
                     <div data-bind="template: 'report-template', data: $data"></div>
                 </div>
             </div>
             <br />
-            <span>Report ran on: @DateTime.Now.ToShortDateString() @DateTime.Now.ToShortTimeString()</span>
+            <span>Report ran on: <%=DateTime.Now.ToShortDateString() %> <%=DateTime.Now.ToShortTimeString() %></span>        
         </div>
-        <!-- /ko -->
-        <!-- ko if: HasError -->
-        <h2>@Model.ReportName</h2>
-        <p>
-            @Model.ReportDescription
-        </p>
-
-        <h3>An unexpected error occured while running the Report</h3>
-        <hr />
-        <b>Error Details</b>
-        <p>
-            <div data-bind="text: Exception"></div>
-        </p>
-
-        <!-- /ko -->
-
     </div>
-
+    </form>
     <script type="text/html" id="report-template">
 
         <div class="report-chart" data-bind="attr: {id: 'chart_div_' + $parent.ReportID()}, visible: $parent.isChart"></div>
@@ -205,10 +186,10 @@
 
         $(document).ready(function () {
             var data = {
-                currentUserId: '<%= @Model.UserId %>',
-                currentUserRoles: ('<%= @Model.CurrentUserRoles %>' || '').split(','),
-                dataFilters: '<%= @Model.DataFilters %>',
-                clientId: '<%= @Model.ClientId %>'
+                currentUserId: '<%= Model.UserId %>',
+                currentUserRoles: ('<%= Model.CurrentUserRoles %>' || '').split(','),
+                dataFilters: '<%= Model.DataFilters %>',
+                clientId: '<%= Model.ClientId %>'
             };
 
             function decodeHTMLEntities(text) {
@@ -219,7 +200,6 @@
                 // Remove new lines and carriage returns
                 return decodedText.replace(/[\n\r]/g, '');
             }
-
 
             var svc = "/DotNetReport/ReportService.asmx/";
             var vm = new reportViewModel({
@@ -233,19 +213,19 @@
                 runReportApiUrl: svc + "RunReportApi",
                 reportFilter: htmlDecode('<%= Model.ReportFilter %>'),
                 reportMode: "execute",
-                reportSql: "<%= Model.ReportSql %>",
+                reportSql: '<%= Model.ReportSql %>',
                 reportConnect: "<%= Model.ConnectKey %>",
-                reportSeries: "<%= Model.ReportSeries %>",
-                AllSqlQuries: "<%= Model.ReportSql %>",
+                reportSeries: '<%= Model.ReportSeries %>',
+                AllSqlQuries: '<%= Model.ReportSql %>',
                 reportHeader: 'report-header',
                 userSettings: data,
                 dataFilters: data.dataFilters,
-                reportData: JSON.parse(decodeHTMLEntities("<%= Model.ReportData %>")),
+                reportData: JSON.parse(decodeHTMLEntities('<%= Model.ReportData.Replace("'", "\\'") %>')),
                 chartSize: { width: 1000, height: 450 }
             });
             vm.pager.pageSize(10000);
             ko.applyBindings(vm);
-            vm.LoadReport((<%= Model.ReportId %>, true,"<%= Model.ReportSeries %>").done(function () {
+            vm.LoadReport(<%= Model.ReportId %>, true,'<%= Model.ReportSeries %>').done(function () {
                 if (vm.useReportHeader()) {
                     vm.headerDesigner.init(true);
                     vm.headerDesigner.loadCanvas(true);
@@ -268,12 +248,12 @@
                 }, 15000);
             });
 
-        $(window).resize(function () {
-            vm.DrawChart();
-            vm.headerDesigner.resizeCanvas();
-        });
+            $(window).resize(function () {
+                vm.DrawChart();
+                vm.headerDesigner.resizeCanvas();
+            });
 
-    });
+        });
 
     </script>
 
