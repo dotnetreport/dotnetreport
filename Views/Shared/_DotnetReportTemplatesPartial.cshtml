@@ -69,7 +69,7 @@
         <select multiple class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.ParentList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ParentIn"></select>
         <!-- /ko -->
         <!-- ko if: $parent.Operator()=='='-->
-        <select required class="form-control" data-bind="options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', value: $parent.Value, optionsCaption: 'Please Choose'"></select>
+        <select required class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', value: $parent.Value, optionsCaption: 'Please Choose'"></select>
         <!-- /ko -->
         <!-- ko if: $parent.Operator()=='in' || $parent.Operator()=='not in'-->
         <select required multiple class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ValueIn"></select>
@@ -217,6 +217,9 @@
                 <tr>
                     <td style="width: 30px;"></td>
                     <td data-bind="attr:{colspan: $parent.Columns.length }" style="padding-left: 0px;">
+                        <div data-bind="visible: !DrillDownData()">
+                            <div class="report-spinner"></div>
+                        </div>
                         <!-- ko if: DrillDownData -->
                         <table class="table table-striped table-hover table-condensed" data-bind="with: DrillDownData">
                             <thead>

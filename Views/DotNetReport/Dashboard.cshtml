@@ -29,12 +29,15 @@
     <script type="text/javascript" src='//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.jQueryUI.min.js'></script>
     <script type="text/javascript">
         $(document).ready(function () {
+            if ($.blockUI) {
+                $.blockUI({ baseZ: 500 });
+            }
             var reports = [];
             var dashboards = [];
             var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
             var adminMode = queryParams.adminMode == 'true' ? 'true' : 'false';
 
-            ajaxcall({ url: '@Url.Action("GetDashboards", "DotNetReportApi")' + '?adminMode=' + adminMode }).done(function (dashboardData) {
+            ajaxcall({ url: '@Url.Action("GetDashboards", "DotNetReportApi")' + '?adminMode=' + adminMode, noBlocking: true }).done(function (dashboardData) {
                 if (dashboardData && dashboardData.noAccount === true) {
                     $("#noaccountModal").modal('show');
                     return;
@@ -47,12 +50,12 @@
                 var dashboardId = parseInt(queryParams.id || 0);
                 if (!dashboardId && dashboards.length > 0) { dashboardId = dashboards[0].id; }
 
-                ajaxcall({ url: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")' + '?id=' + dashboardId + '&adminMode=' + adminMode }).done(function (reportsData) {
+                ajaxcall({ url: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")' + '?id=' + dashboardId + '&adminMode=' + adminMode, noBlocking: true }).done(function (reportsData) {
                     _.forEach(reportsData, function (r) {
                         reports.push({ reportSql: r.ReportSql, reportId: r.ReportId, reportFilter: r.ReportFilter, connectKey: r.ConnectKey, x: r.X, y: r.Y, width: r.Width, height: r.Height });
                     });
 
-                    ajaxcall({ url: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")' }).done(function (data) {
+                    ajaxcall({ url: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")', noBlocking: true }).done(function (data) {
                         var vm = new dashboardViewModel({
                             runReportUrl: "@Url.Action("Report")",
                             execReportUrl: "@Url.Action("RunReport", "DotNetReportApi")",
@@ -77,6 +80,9 @@
                         });
 
                         vm.init().done(function () {
+                            if ($.unblockUI) {
+                                $.unblockUI();
+                            }
                             ko.applyBindings(vm);
                             $(function () {
                                 var options = {
@@ -128,7 +134,7 @@
     </script>
 }
 
-<div class="row">
+<div class="row" style="display: none" data-bind="visible: currentDashboard">
     <div class="col-4" data-bind="with: currentDashboard">
         <h2 title="Switch Dashboard">
             <select class="form-control select-as-text" title="Switch Dashboard" data-bind="select2: {minimumResultsForSearch: Infinity}, options: $parent.dashboards, optionsText: 'name', optionsValue: 'id', value: $parent.selectDashboard"></select>
@@ -177,7 +183,7 @@
                         <div class="form-group row">
                             <label class="col-md-3 col-sm-3 control-label">Name</label>
                             <div class="col-md-6 col-sm-6">
-                                <input class="form-control text-box" style="width: 100%;" data-val="true" data-val-required="Dashboard Name is required." type="text" data-bind="value: Name" placeholder="Dashboard Name, ex Sales, Accounting" id="add-dash-name" />
+                                <input class="form-control text-box" style="width: 100%;" data-val="true" data-val-required="Dashboard Name is required." type="text" data-bind="value: Name" placeholder="Dashboard Name, ex Sales, Accounting" id="add-dash-name" required />
                             </div>
                         </div>
                         <div class="form-group row">
@@ -195,7 +201,7 @@
                         <h5><span class="fa fa-paperclip"></span> Choose Reports for the Dashboard </h5>
                     </div>
                     <div class="col-md-6 col-sm-6">
-                        <input type="text" class="form-control text-box" style="width: 100%;" placeholder="Search Report by Name, Description or Data Field..." data-bind="textInput: $parent.searchReports" />
+                        <input type="text" class="form-control text-box" style="width: 100%;" placeholder="Search Report by Name or Description..." data-bind="textInput: $parent.searchReports" />
                     </div>
                 </div>
                 <div data-bind="if: $parent.searchReports() &&  $parent.reportsInSearch().length==0">
@@ -316,10 +322,13 @@
                     <a class="btn btn-link" data-bind="click: toggleExpand"><span class="fa" data-bind="css: {'fa-expand': !isExpanded(), 'fa-minus': isExpanded() }, visible: ReportType() != 'Single'"></span></a>
                 </div>
             </div>
-            <div class="card-body list-overflow-auto" style="padding-top: 0; margin-top: 0;">
+            <div class="card-body list-overflow-auto" style="padding-top: 0; margin-top: 0;">               
                 <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
                 <div data-bind="template: {name: 'fly-filter-template'}, visible: showFlyFilters"></div>
                 <div data-bind="with: ReportResult" class="small">
+                    <div data-bind="visible: !ReportData()">
+                        <div class="report-spinner"></div>
+                    </div>
                     <div data-bind="template: 'report-template', data: $data"></div>
                 </div>
             </div>
