@@ -546,7 +546,7 @@ namespace ReportBuilder.Web.Models
             int i = colstart; var isNumeric = false;
             foreach (DataColumn dc in dt.Columns)
             {
-                var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
+                var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName)) ?? new ReportHeaderColumn();
                 string decimalFormat = new string('0', formatColumn.decimalPlacesDigit.GetValueOrDefault());
                 isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
                 if (dc.DataType == typeof(decimal) || (formatColumn != null && formatColumn.fieldFormating=="Decimal"))
@@ -633,7 +633,7 @@ namespace ReportBuilder.Web.Models
             return dtNew;
         }
 
-        public static async Task<string> RunReportApiCall(string postData)
+        public static string RunReportApiCall(string postData)
         {
             using (var client = new HttpClient())
             {
@@ -659,8 +659,8 @@ namespace ReportBuilder.Web.Models
                 var encodedItems = keyvalues.Select(i => WebUtility.UrlEncode(i.Key) + "=" + WebUtility.UrlEncode(i.Value));
                 var encodedContent = new StringContent(String.Join("&", encodedItems), null, "application/x-www-form-urlencoded");
 
-                var response = await client.PostAsync(new Uri(settings.ApiUrl + "/ReportApi/RunDrillDownReport"), encodedContent);
-                var stringContent = await response.Content.ReadAsStringAsync();
+                var response = client.PostAsync(new Uri(settings.ApiUrl + "/ReportApi/RunDrillDownReport"), encodedContent).Result;
+                var stringContent = response.Content.ReadAsStringAsync().Result;
                 var sql = "";
                 if (stringContent.Contains("\"sql\":"))
                 {
@@ -803,7 +803,7 @@ namespace ReportBuilder.Web.Models
             return modifiedSql;
         }
 
-        public async static Task<DataSet> GetDrillDownData(OleDbConnection conn, DataTable dt, List<string> sqlFields, string reportDataJson)
+        public static DataSet GetDrillDownData(OleDbConnection conn, DataTable dt, List<string> sqlFields, string reportDataJson)
         {
             var drilldownRow = new List<string>();
             var dr = dt.Rows[0];
@@ -829,7 +829,7 @@ namespace ReportBuilder.Web.Models
             }
 
             var reportData = reportDataJson.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
-            var drilldownSql = await RunReportApiCall(reportData);
+            var drilldownSql = RunReportApiCall(reportData);
 
             var dts = new DataSet();
             var combinedSqls = "";
@@ -917,7 +917,7 @@ namespace ReportBuilder.Web.Models
                         else if (!String.IsNullOrWhiteSpace(col.customfieldLabel))
                         {
                             dt.Columns[col.fieldName].ColumnName = col.customfieldLabel;
-                        }
+                        }                       
                     }
                 }
 
@@ -971,7 +971,7 @@ namespace ReportBuilder.Web.Models
                             }
 
                             var reportData = expandSqls.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
-                            var drilldownSql = await RunReportApiCall(reportData);
+                            var drilldownSql = RunReportApiCall(reportData);
 
                             var combinedSqls = "";
                             if (!string.IsNullOrEmpty(drilldownSql))
