@@ -2849,7 +2849,8 @@ var reportViewModel = function (options) {
 						reportSeries: reportSeries || '',
 						pivotColumn: '',
 						reportData: ''
-					})
+					}),
+					noBlocking: true
 				}).done(function (ddData) {
 					if (ddData.d) { ddData = ddData.d; }
 					if (ddData.result) { ddData = ddData.result; }
@@ -2884,7 +2885,8 @@ var reportViewModel = function (options) {
 						ReportJson: JSON.stringify(self.BuildReportData(e.Items)),
 						adminMode: self.adminMode(),
 						SubTotalMode: false
-					})
+					}),
+					noBlocking: true
 				}).done(function (ddResult) {
 					if (ddResult.d) { ddResult = ddResult.d; }
 					if (ddResult.result) { ddResult = ddResult.result; }
@@ -3031,7 +3033,8 @@ var reportViewModel = function (options) {
 				reportSeries: reportSeries || "",
 				pivotColumn: pivotColumn ? pivotColumn.fieldName : '',
 				reportData: pivotColumn ? JSON.stringify(reportData) : ''
-			})
+			}),
+			noBlocking: self.ReportMode() == 'dashboard'
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
 			if (result.result) { result = result.result; }
@@ -3075,7 +3078,7 @@ var reportViewModel = function (options) {
 		if (!self.isChart() || self.skipDraw === true) return;
 		// Create the data table.
 		var reportData = self.ReportResult().ReportData();
-		if (!reportData) return;
+		if (!reportData || !google.visualization.DataTable) return;
 		var data = new google.visualization.DataTable();
 
 		var subGroups = [];
@@ -3590,7 +3593,7 @@ var reportViewModel = function (options) {
 		}
 	}
 
-	self.LoadReport = function (reportId, filterOnFly, reportSeries) {
+	self.LoadReport = function (reportId, filterOnFly, reportSeries, dontBlock) {
 		self.SelectedTable(null);
 		self.isFormulaField(false);
 		return ajaxcall({
@@ -3602,7 +3605,8 @@ var reportViewModel = function (options) {
 					adminMode: self.adminMode(),
 					userIdForSchedule: self.userIdForSchedule
 				})
-			}
+			},
+			noBlocking: dontBlock === true
 		}).done(function (report) {
 			if (report.d) { report = report.d; }
 			if (report.result) { report = report.result; }
@@ -4110,7 +4114,8 @@ var dashboardViewModel = function (options) {
 	self.loadDashboard = function (dashboardId) {
 		ajaxcall({
 			url: options.loadSavedDashbordUrl,
-			data: { id: dashboardId, adminMode: self.adminMode() }
+			data: { id: dashboardId, adminMode: self.adminMode() },
+			noBlocking: true
 		}).done(function (reportsData) {
 			if (reportsData.d) reportsData = reportsData.d;
 			var reports = [];
@@ -4381,16 +4386,12 @@ var dashboardViewModel = function (options) {
 				self.ChartDrillDownData(e);
 			});
 			allreports.push(report);
-			promises.push(report.LoadReport(x.reportId, true, ''));
+			promises.push(report.LoadReport(x.reportId, true, '', true));
 		});
 
 		self.reports(allreports);
 		$.when(promises).done(function () {
-			setTimeout(function () {
-				if ($.unblockUI) {
-					$.unblockUI();
-				}
-
+			setTimeout(function () {				
 				self.FlyFilters([]);
 				_.forEach(self.reports(), function (report) {
 					_.forEach(report.FilterGroups(), function (fg) {
@@ -4518,7 +4519,8 @@ var dashboardViewModel = function (options) {
 				data: {
 					method: "/ReportApi/GetSavedReports",
 					model: JSON.stringify({ adminMode: self.adminMode() })
-				}
+				},
+				noBlocking: true
 			});
 		};
 
@@ -4530,7 +4532,8 @@ var dashboardViewModel = function (options) {
 					model: JSON.stringify({
 						adminMode: self.adminMode()
 					})
-				}
+				},
+				noBlocking: true
 			});
 		};
 

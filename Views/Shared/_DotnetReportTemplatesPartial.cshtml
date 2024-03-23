@@ -217,6 +217,9 @@
                 <tr>
                     <td style="width: 30px;"></td>
                     <td data-bind="attr:{colspan: $parent.Columns.length }" style="padding-left: 0px;">
+                        <div data-bind="visible: !DrillDownData()">
+                            <div class="report-spinner"></div>
+                        </div>
                         <!-- ko if: DrillDownData -->
                         <table class="table table-striped table-hover table-condensed" data-bind="with: DrillDownData">
                             <thead>
