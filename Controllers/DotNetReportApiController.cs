@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
-using System.Data.OleDb;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -59,14 +58,13 @@ namespace ReportBuilder.Web.Controllers
                 adapter.Fill(dt);
             }
 
-            int i = 0;
+            var data = new List<object>();
             foreach (DataRow dr in dt.Rows)
             {
-                json.AppendFormat("{{\"id\": \"{0}\", \"text\": \"{1}\"}}{2}", dr[0], dr[1], i != dt.Rows.Count - 1 ? "," : "");
-                i += 1;
+                data.Add(new { id = dr[0], text = dr[1] });
             }
 
-            return Json((new JavaScriptSerializer()).DeserializeObject("[" + json.ToString() + "]"), JsonRequestBehavior.AllowGet);
+            return Json(data, JsonRequestBehavior.AllowGet);
         }
 
         public class PostReportApiCallMode
