@@ -1172,6 +1172,7 @@
                                     </div>
                                     <div class="col-sm-6 right-align">
                                         <a href="#" class="btn btn-secondary btn-sm" data-bind="click: addFormulaParentheses">Add ( )</a>
+                                        <a href="#" class="btn btn-secondary btn-sm" title="Add Today" data-bind="visible: formulaOnlyHasDateFields() || formulaFields().length == 0, click: addFormulaDateToday">Add Today</a>
                                         <a href="#" class="btn btn-secondary btn-sm" title="Add a Constant Value" data-bind="click: addFormulaConstantValue">Add Value</a>
                                         <a href="#" class="btn btn-secondary btn-sm" data-bind="click: clearFormulaField">Clear</a>
                                     </div>
@@ -1224,7 +1225,8 @@
                                                 <div class="list-group-item pull-left" style="margin-left: 15px; padding: 5px 15px">
                                                     <span data-bind="text: fieldName, visible: !setupFormula.isConstantValue()"></span>
                                                     <div data-bind="if: setupFormula.isConstantValue">
-                                                        <input data-bind="value: setupFormula.constantValue" class="form-control form-control-sm" required />
+                                                        <input data-bind="value: setupFormula.constantValue, visible: setupFormula.constantValue()!='|Today|'" class="form-control form-control-sm" required />
+                                                        <span data-bind="visible: setupFormula.constantValue() == '|Today|'"><b>Today</b></span>
                                                     </div>
                                                 </div>
                                             </div>
