@@ -397,7 +397,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 </button>
                                 <ul class="dropdown-menu">
                                     <li class="dropdown-item">
-                                        <a href="#" data-bind="click: downloadPdfAlt">
+                                        <a href="#" data-bind="click: downloadPdf">
                                             <span class="fa fa-file-pdf-o"></span> Pdf
                                         </a>
                                     </li>
