@@ -182,7 +182,7 @@
                         <div class="form-group row">
                             <label class="col-md-3 col-sm-3 control-label">Name</label>
                             <div class="col-md-6 col-sm-6">
-                                <input class="form-control text-box" style="width: 100%;" data-val="true" data-val-required="Dashboard Name is required." type="text" data-bind="value: Name" placeholder="Dashboard Name, ex Sales, Accounting" id="add-dash-name" />
+                                <input class="form-control text-box" style="width: 100%;" data-val="true" data-val-required="Dashboard Name is required." type="text" data-bind="value: Name" placeholder="Dashboard Name, ex Sales, Accounting" id="add-dash-name" required />
                             </div>
                         </div>
                         <div class="form-group row">
@@ -200,7 +200,7 @@
                         <h5><span class="fa fa-paperclip"></span> Choose Reports for the Dashboard </h5>
                     </div>
                     <div class="col-md-6 col-sm-6">
-                        <input type="text" class="form-control text-box" style="width: 100%;" placeholder="Search Report by Name, Description or Data Field..." data-bind="textInput: $parent.searchReports" />
+                        <input type="text" class="form-control text-box" style="width: 100%;" placeholder="Search Report by Name or Description..." data-bind="textInput: $parent.searchReports" />
                     </div>
                 </div>
                 <div data-bind="if: $parent.searchReports() &&  $parent.reportsInSearch().length==0">
