@@ -1,5 +1,4 @@
 ﻿using Newtonsoft.Json;
-using ReportBuilder.Web.Controllers;
 using ReportBuilder.Web.Models;
 using System;
 using System.Collections.Generic;
@@ -12,7 +11,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web;
-using System.Web.Mvc;
 using System.Web.Script.Serialization;
 using System.Web.Script.Services;
 using System.Web.Services;
@@ -167,7 +165,7 @@ namespace ReportBuilder.WebForms.DotNetReport
 
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
-        public DotNetReportResultModel RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, bool desc = false, string reportSeries = null)
+        public DotNetReportResultModel RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, bool desc = false, string reportSeries = null, string pivotColumn = null, string reportData = null)
         {
             var sql = "";
             var sqlCount = "";
@@ -179,7 +177,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                 {
                     throw new Exception("Query not found");
                 }
-                var allSqls = reportSql.Split(new string[] { "%2C" }, StringSplitOptions.RemoveEmptyEntries);
+                var allSqls = reportSql.Split(new string[] { "%2C", "," }, StringSplitOptions.RemoveEmptyEntries);
                 var dtPaged = new DataTable();
                 var dtCols = 0;
 
@@ -190,14 +188,10 @@ namespace ReportBuilder.WebForms.DotNetReport
                     sql = DotNetReportHelper.Decrypt(HttpUtility.HtmlDecode(allSqls[i]));
                     if (!sql.StartsWith("EXEC"))
                     {
+                        var fromIndex = DotNetReportHelper.FindFromIndex(sql);
+                        sqlFields = DotNetReportHelper.SplitSqlColumns(sql);
 
-                        var sqlSplit = sql.Substring(0, sql.LastIndexOf("FROM")).Replace("SELECT", "").Trim();
-                        sqlFields = Regex.Split(sqlSplit, "], (?![^\\(]*?\\))").Where(x => x != "CONVERT(VARCHAR(3)")
-                            .Select(x => x.EndsWith("]") ? x : x + "]")
-                            .Select(x => x.StartsWith("DISTINCT ") ? x.Replace("DISTINCT ", "") : x)
-                            .ToList();
-
-                        var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(sql.LastIndexOf("FROM"))}";
+                        var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(fromIndex)}";
                         sqlCount = $"SELECT COUNT(*) FROM ({(sqlFrom.Contains("ORDER BY") ? sqlFrom.Substring(0, sqlFrom.IndexOf("ORDER BY")) : sqlFrom)}) as countQry";
 
                         if (!String.IsNullOrEmpty(sortBy))
@@ -222,6 +216,9 @@ namespace ReportBuilder.WebForms.DotNetReport
 
                         if (sql.Contains("ORDER BY") && !sql.Contains(" TOP "))
                             sql = sql + $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
+
+                        if (sql.Contains("__jsonc__"))
+                            sql = sql.Replace("__jsonc__", "");
                     }
                     // Execute sql
                     var dtPagedRun = new DataTable();
@@ -248,9 +245,17 @@ namespace ReportBuilder.WebForms.DotNetReport
                         string[] series = { };
                         if (i == 0)
                         {
+                            fields.AddRange(sqlFields);
+
+                            if (!string.IsNullOrEmpty(pivotColumn))
+                            {
+                                var ds = DotNetReportHelper.GetDrillDownData(conn, dtPagedRun, sqlFields, reportData);
+                                dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn);
+                                fields.AddRange(dtPagedRun.Columns.Cast<DataColumn>().Skip(fields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
+                            }
+
                             dtPaged = dtPagedRun;
                             dtCols = dtPagedRun.Columns.Count;
-                            fields.AddRange(sqlFields);
                         }
                         else if (i > 0)
                         {
@@ -322,7 +327,8 @@ namespace ReportBuilder.WebForms.DotNetReport
                     ReportData = new DotNetReportDataModel(),
                     ReportSql = sql,
                     HasError = true,
-                    Exception = ex.Message
+                    Exception = ex.Message,
+                    ReportDebug = Context.Request.Url.Host.Contains("localhost"),
                 };
 
                 return model;

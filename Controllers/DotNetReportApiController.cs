@@ -234,7 +234,7 @@ namespace ReportBuilder.Web.Controllers
 
                             if (!string.IsNullOrEmpty(pivotColumn))
                             {
-                                var ds = await DotNetReportHelper.GetDrillDownData(conn, dtPagedRun, sqlFields, reportData);
+                                var ds = DotNetReportHelper.GetDrillDownData(conn, dtPagedRun, sqlFields, reportData);
                                 dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn);
                                 fields.AddRange(dtPagedRun.Columns.Cast<DataColumn>().Skip(fields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
                             }

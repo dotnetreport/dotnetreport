@@ -550,7 +550,7 @@ namespace ReportBuilder.Web.Models
             int i = colstart; var isNumeric = false;
             foreach (DataColumn dc in dt.Columns)
             {
-                var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
+                var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName)) ?? new ReportHeaderColumn();
                 string decimalFormat = new string('0', formatColumn.decimalPlacesDigit.GetValueOrDefault());
                 isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
                 if (dc.DataType == typeof(decimal) || (formatColumn != null && formatColumn.fieldFormating=="Decimal"))
@@ -637,7 +637,7 @@ namespace ReportBuilder.Web.Models
             return dtNew;
         }
 
-        public static async Task<string> RunReportApiCall(string postData)
+        public static string RunReportApiCall(string postData)
         {
             using (var client = new HttpClient())
             {
@@ -663,8 +663,8 @@ namespace ReportBuilder.Web.Models
                 var encodedItems = keyvalues.Select(i => WebUtility.UrlEncode(i.Key) + "=" + WebUtility.UrlEncode(i.Value));
                 var encodedContent = new StringContent(String.Join("&", encodedItems), null, "application/x-www-form-urlencoded");
 
-                var response = await client.PostAsync(new Uri(settings.ApiUrl + "/ReportApi/RunDrillDownReport"), encodedContent);
-                var stringContent = await response.Content.ReadAsStringAsync();
+                var response = client.PostAsync(new Uri(settings.ApiUrl + "/ReportApi/RunDrillDownReport"), encodedContent).Result;
+                var stringContent = response.Content.ReadAsStringAsync().Result;
                 var sql = "";
                 if (stringContent.Contains("\"sql\":"))
                 {
@@ -807,7 +807,7 @@ namespace ReportBuilder.Web.Models
             return modifiedSql;
         }
 
-        public async static Task<DataSet> GetDrillDownData(OleDbConnection conn, DataTable dt, List<string> sqlFields, string reportDataJson)
+        public static DataSet GetDrillDownData(OleDbConnection conn, DataTable dt, List<string> sqlFields, string reportDataJson)
         {
             var drilldownRow = new List<string>();
             var dr = dt.Rows[0];
@@ -833,7 +833,7 @@ namespace ReportBuilder.Web.Models
             }
 
             var reportData = reportDataJson.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
-            var drilldownSql = await RunReportApiCall(reportData);
+            var drilldownSql = RunReportApiCall(reportData);
 
             var dts = new DataSet();
             var combinedSqls = "";
@@ -921,7 +921,7 @@ namespace ReportBuilder.Web.Models
                         else if (!String.IsNullOrWhiteSpace(col.customfieldLabel))
                         {
                             dt.Columns[col.fieldName].ColumnName = col.customfieldLabel;
-                        }
+                        }                       
                     }
                 }
 
@@ -975,7 +975,7 @@ namespace ReportBuilder.Web.Models
                             }
 
                             var reportData = expandSqls.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
-                            var drilldownSql = await RunReportApiCall(reportData);
+                            var drilldownSql = RunReportApiCall(reportData);
 
                             var combinedSqls = "";
                             if (!string.IsNullOrEmpty(drilldownSql))
@@ -1022,7 +1022,7 @@ namespace ReportBuilder.Web.Models
         {
             var isCurrency = false;
             var isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
-            var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
+            var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName)) ?? new ReportHeaderColumn();
             string decimalFormat = new string('0', formatColumn.decimalPlacesDigit.GetValueOrDefault());
             try
             {
@@ -1109,7 +1109,7 @@ namespace ReportBuilder.Web.Models
         public static byte[] GetPdfFileAlt(string reportSql, string connectKey, string reportName, string chartData = null,
                     List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
         {
-            var sql = Decrypt(reportSql); 
+            var sql = Decrypt(reportSql);
             var sqlFields = SplitSqlColumns(sql);
 
             var dt = new DataTable();
@@ -1121,7 +1121,7 @@ namespace ReportBuilder.Web.Models
 
                 adapter.Fill(dt);
             }
-            
+
             var document = new PdfDocument();
             var page = document.AddPage();
             var gfx = XGraphics.FromPdfPage(page);
@@ -1206,8 +1206,8 @@ namespace ReportBuilder.Web.Models
                 {
                     // Draw column headers
                     var columnFormatting = columns[k];
-                        var columnName = !string.IsNullOrEmpty(columns[k].customfieldLabel) ? columns[k].customfieldLabel : columns[k].fieldName;
-                    
+                    var columnName = !string.IsNullOrEmpty(columns[k].customfieldLabel) ? columns[k].customfieldLabel : columns[k].fieldName;
+
                     rect = new XRect(currentXPosition, currentYPosition, columnWidth, 20);
 
                     gfx.DrawRectangle(XPens.LightGray, rect);
@@ -1228,7 +1228,7 @@ namespace ReportBuilder.Web.Models
                 // Draw table rows
                 for (int i = 0; i < dt.Rows.Count; i++)
                 {
-                    
+
                     // Check if we need to add a new page
                     if (currentYPosition > pageHeight)
                     {
@@ -1268,14 +1268,14 @@ namespace ReportBuilder.Web.Models
                     currentXPosition = leftMargin;
 
                     for (int j = 0; j < dt.Columns.Count; j++)
-                    {   
+                    {
                         var value = dt.Rows[i][j].ToString();
                         var dc = dt.Columns[j];
                         var formatColumn = GetColumnFormatting(dc, columns, ref value);
 
                         var lines = WrapText(gfx, value, rect, fontNormal, XStringFormats.Center);
                         maxLines = Math.Max(maxLines, lines.Count);
-                        
+
                         rect = new XRect(currentXPosition, currentYPosition, columnWidth, 20 * maxLines);
                         gfx.DrawRectangle(XPens.WhiteSmoke, rect);
 
@@ -1307,7 +1307,7 @@ namespace ReportBuilder.Web.Models
                     {
                         currentYPosition += 10;
                     }
-                }
+                }            
 
                 if (includeSubtotal)
                 {
