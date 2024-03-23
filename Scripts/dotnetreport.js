@@ -2529,9 +2529,9 @@ var reportViewModel = function (options) {
 					e.linkField = false;
 				}
 				col = col || { fieldName: e.ColumnName };
-				col.currencySymbol = col.currencyFormat() || null;
-				col.decimalPlacesDigit = col.decimalPlaces();
-				col.fieldFormating = col.fieldFormat();
+				col.currencySymbol = col.currencyFormat ? col.currencyFormat() : null;
+				col.decimalPlacesDigit = col.decimalPlaces ? col.decimalPlaces() : null;
+				col.fieldFormating = col.fieldFormat ? col.fieldFormat() : null;
 				if (skipColDetails !== true) self.columnDetails.push(col);
 
 				e.decimalPlaces = col.decimalPlaces || ko.observable();
@@ -2590,7 +2590,7 @@ var reportViewModel = function (options) {
 					col.setupFieldOptions();
 				}
 
-				if (col.selectedAggregate() == 'Outer Group' && !_.find(self.OuterGroupColumns(), {fieldId: e.fieldId})) {
+				if (col.selectedAggregate && col.selectedAggregate() == 'Outer Group' && !_.find(self.OuterGroupColumns(), {fieldId: e.fieldId})) {
 					e.toggleOuterGroup()
 				}
 			});
