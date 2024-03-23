@@ -1349,11 +1349,11 @@ namespace ReportBuilder.Web.Models
             }
         }
 
-        public static async Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
+        public static byte[] GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
                     string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false)
         {
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
-            await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
+            new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
             var executablePath = "";
             foreach (var d in Directory.GetDirectories(installPath))
             {
@@ -1363,107 +1363,114 @@ namespace ReportBuilder.Web.Models
 
             try
             {
-                var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = true, ExecutablePath = executablePath });
-                var page = await browser.NewPageAsync();
-                await page.SetRequestInterceptionAsync(true);
-
-                var sql = Decrypt(reportSql);
-                var sqlFields = SplitSqlColumns(sql);
-
-                var dt = new DataTable();
-                using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
+                var file = Task.Run(async () =>
                 {
-                    conn.Open();
-                    var command = new OleDbCommand(sql, conn);
-                    var adapter = new OleDbDataAdapter(command);
+                    var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = true, ExecutablePath = executablePath });
+                    var page = await browser.NewPageAsync();
+                    await page.SetRequestInterceptionAsync(true);
 
-                    adapter.Fill(dt);
-                }
+                    var sql = Decrypt(reportSql);
+                    var sqlFields = SplitSqlColumns(sql);
 
-                var model = new DotNetReportResultModel
-                {
-                    ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dt, sqlFields, false),
-                    Warnings = "",
-                    ReportSql = sql,
-                    ReportDebug = false,
-                    Pager = new DotNetReportPagerModel
+                    var dt = new DataTable();
+                    using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
                     {
-                        CurrentPage = 1,
-                        PageSize = 100000,
-                        TotalRecords = dt.Rows.Count,
-                        TotalPages = 1
-                    }
-                };
+                        conn.Open();
+                        var command = new OleDbCommand(sql, conn);
+                        var adapter = new OleDbDataAdapter(command);
 
-                var formPosted = false;
-                var formData = new StringBuilder();
-                formData.AppendLine("<html><body>");
-                formData.AppendLine($"<form action=\"{printUrl}\" method=\"post\">");
-                formData.AppendLine($"<input name=\"reportSql\" value=\"{HttpUtility.HtmlEncode(reportSql)}\" />");
-                formData.AppendLine($"<input name=\"connectKey\" value=\"{HttpUtility.HtmlEncode(connectKey)}\" />");
-                formData.AppendLine($"<input name=\"reportId\" value=\"{reportId}\" />");
-                formData.AppendLine($"<input name=\"pageNumber\" value=\"{1}\" />");
-                formData.AppendLine($"<input name=\"pageSize\" value=\"{99999}\" />");
-                formData.AppendLine($"<input name=\"userId\" value=\"{userId}\" />");
-                formData.AppendLine($"<input name=\"clientId\" value=\"{clientId}\" />");
-                formData.AppendLine($"<input name=\"currentUserRole\" value=\"{currentUserRole}\" />");
-                formData.AppendLine($"<input name=\"expandAll\" value=\"{expandAll}\" />");
-                formData.AppendLine($"<input name=\"dataFilters\" value=\"{HttpUtility.HtmlEncode(dataFilters)}\" />");
-                formData.AppendLine($"<input name=\"reportData\" value=\"{HttpUtility.HtmlEncode(JsonConvert.SerializeObject(model))}\" />");
-                formData.AppendLine($"</form>");
-                formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");
-                formData.AppendLine("</body></html>");
-
-                page.Request += async (sender, e) =>
-                {
-                    if (formPosted)
-                    {
-                        await e.Request.ContinueAsync();
-                        return;
+                        adapter.Fill(dt);
                     }
 
-                    await e.Request.RespondAsync(new ResponseData
+                    var model = new DotNetReportResultModel
                     {
-                        Status = System.Net.HttpStatusCode.OK,
-                        Body = formData.ToString()
+                        ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dt, sqlFields, false),
+                        Warnings = "",
+                        ReportSql = sql,
+                        ReportDebug = false,
+                        Pager = new DotNetReportPagerModel
+                        {
+                            CurrentPage = 1,
+                            PageSize = 100000,
+                            TotalRecords = dt.Rows.Count,
+                            TotalPages = 1
+                        }
+                    };
+
+                    var formPosted = false;
+                    var formData = new StringBuilder();
+                    formData.AppendLine("<html><body>");
+                    formData.AppendLine($"<form action=\"{printUrl}\" method=\"post\">");
+                    formData.AppendLine($"<input name=\"reportSql\" value=\"{HttpUtility.HtmlEncode(reportSql)}\" />");
+                    formData.AppendLine($"<input name=\"connectKey\" value=\"{HttpUtility.HtmlEncode(connectKey)}\" />");
+                    formData.AppendLine($"<input name=\"reportId\" value=\"{reportId}\" />");
+                    formData.AppendLine($"<input name=\"pageNumber\" value=\"{1}\" />");
+                    formData.AppendLine($"<input name=\"pageSize\" value=\"{99999}\" />");
+                    formData.AppendLine($"<input name=\"userId\" value=\"{userId}\" />");
+                    formData.AppendLine($"<input name=\"clientId\" value=\"{clientId}\" />");
+                    formData.AppendLine($"<input name=\"currentUserRole\" value=\"{currentUserRole}\" />");
+                    formData.AppendLine($"<input name=\"expandAll\" value=\"{expandAll}\" />");
+                    formData.AppendLine($"<input name=\"dataFilters\" value=\"{HttpUtility.HtmlEncode(dataFilters)}\" />");
+                    formData.AppendLine($"<input name=\"reportData\" value=\"{HttpUtility.HtmlEncode(JsonConvert.SerializeObject(model))}\" />");
+                    formData.AppendLine($"</form>");
+                    formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");
+                    formData.AppendLine("</body></html>");
+
+                    page.Request += async (sender, e) =>
+                    {
+                        if (formPosted)
+                        {
+                            await e.Request.ContinueAsync();
+                            return;
+                        }
+
+                        await e.Request.RespondAsync(new ResponseData
+                        {
+                            Status = System.Net.HttpStatusCode.OK,
+                            Body = formData.ToString()
+                        });
+
+                        formPosted = true;
+                    };
+
+                    await page.GoToAsync(printUrl, new NavigationOptions
+                    {
+                        WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
                     });
 
-                    formPosted = true;
-                };
+                    await page.WaitForSelectorAsync(".report-inner", new WaitForSelectorOptions { Visible = true });
 
-                await page.GoToAsync(printUrl, new NavigationOptions
-                {
-                    WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
-                });
+                    int height = await page.EvaluateExpressionAsync<int>("document.body.offsetHeight");
+                    int width = await page.EvaluateExpressionAsync<int>("$('table').width()");
+                    var pdfFile = Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
 
-                await page.WaitForSelectorAsync(".report-inner", new WaitForSelectorOptions { Visible = true });
+                    var pdfOptions = new PdfOptions
+                    {
+                        PrintBackground = true,
+                        PreferCSSPageSize = false,
+                        MarginOptions = new MarginOptions() { Top = "0.75in", Bottom = "0.75in", Left = "0.1in", Right = "0.1in" }
+                    };
 
-                int height = await page.EvaluateExpressionAsync<int>("document.body.offsetHeight");
-                int width = await page.EvaluateExpressionAsync<int>("$('table').width()");
-                var pdfFile = Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
+                    if (width < 900)
+                    {
+                        pdfOptions.Format = PaperFormat.Letter;
+                        pdfOptions.Landscape = false;
+                    }
+                    else
+                    {
+                        await page.SetViewportAsync(new ViewPortOptions { Width = width });
+                        await page.AddStyleTagAsync(new AddTagOptions { Content = "@page {size: landscape }" });
+                        pdfOptions.Width = $"{width}px";
+                    }
 
-                var pdfOptions = new PdfOptions
-                {
-                    PrintBackground = true,
-                    PreferCSSPageSize = false,
-                    MarginOptions = new MarginOptions() { Top = "0.75in", Bottom = "0.75in", Left = "0.1in", Right = "0.1in" }
-                };
+                    await page.PdfAsync(pdfFile, pdfOptions);
+                    return File.ReadAllBytes(pdfFile);
 
-                if (width < 900)
-                {
-                    pdfOptions.Format = PaperFormat.Letter;
-                    pdfOptions.Landscape = false;
-                }
-                else
-                {
-                    await page.SetViewportAsync(new ViewPortOptions { Width = width });
-                    await page.AddStyleTagAsync(new AddTagOptions { Content = "@page {size: landscape }" });
-                    pdfOptions.Width = $"{width}px";
-                }
+                }).GetAwaiter().GetResult();
 
-                await page.PdfAsync(pdfFile, pdfOptions);
-                return File.ReadAllBytes(pdfFile);
-            }catch(Exception ex)
+                return file;
+            }
+            catch (Exception ex)
             {
                 throw ex;
             }

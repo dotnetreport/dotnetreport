@@ -464,11 +464,11 @@ namespace ReportBuilder.WebForms.DotNetReport
         }
 
         [WebMethod(EnableSession = true)]
-        public async Task DownloadPdf(string printUrl, int reportId, string reportSql, string connectKey, string reportName, bool expandAll,
+        public void DownloadPdf(string printUrl, int reportId, string reportSql, string connectKey, string reportName, bool expandAll,
                                                        string clientId = null, string userId = null, string userRoles = null, string dataFilters = "")
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            var pdf = await DotNetReportHelper.GetPdfFile(HttpUtility.UrlDecode(printUrl), reportId, reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName),
+            var pdf = DotNetReportHelper.GetPdfFile(HttpUtility.UrlDecode(printUrl), reportId, reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName),
                                 userId, clientId, userRoles, dataFilters, expandAll);
 
             Context.Response.AddHeader("content-disposition", "attachment; filename=" + reportName + ".pdf");
