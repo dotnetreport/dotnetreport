@@ -862,6 +862,7 @@
                             <b>Text Settings</b>
                         </div>
                     </div>
+                    <div data-bind="foreach: fieldConditionVal">
                     <div class="form-row">
                         <div class="col">
                             <div class="form-group">
@@ -901,13 +902,7 @@
                         </div>
                     </div>
 
-                    <div class="checkbox" style="padding-top: 8px;">
-                        <label title="Make settings apply only when conditions are met">
-                            <input type="checkbox" data-bind="checked: formatConditional" /> Conditional Formatting
-                        </label>
-                    </div>
-                    <div data-bind="if: formatConditional">
-                    <div class="row" data-bind="foreach: $parent.Filters">
+                    <div class="row m-2" data-bind="foreach: $parents[1].Filters">
                         <div class="col-md-2">
                              Value
                         </div>
@@ -918,13 +913,18 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div data-bind="with: Field">
                                 <div data-bind="template: 'report-filter', data: $data"></div>
                             </div>
                         </div>
+                         <div class="col-md-2">
+                            <button class="btn btn-sm btn-secondary" data-bind="click: $parent.removeSetting">Remove</button>
+                        </div>
+                    
                     </div>
-                    </div>
+                     </div>
+                    <button class="btn btn-primary m-2" data-bind="click: conditionalFormatSetting">Add Conditional Formatting Settings</button>
                 </div>
                 <br />
                 <div class="form-group row" data-bind="if: $parents[1].useStoredProc()">

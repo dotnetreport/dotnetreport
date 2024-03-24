@@ -2541,7 +2541,7 @@ var reportViewModel = function (options) {
 				e.fieldLabel2 = col.fieldLabel2 || ko.observable();
 				e.fieldAlign = col.fieldAlign || ko.observable();
 				e.fieldConditionOp = col.fieldConditionOp || ko.observable();
-				e.fieldConditionVal = col.fieldConditionVal || ko.observable();
+				e.fieldConditionVal = col.fieldConditionVal || ko.observableArray([{}]);
 				e.fieldFormat = col.fieldFormat || ko.observable();
 				e.fieldLabel = col.fieldLabel || ko.observable();
 				e.fieldName = col.fieldName;
@@ -3286,7 +3286,17 @@ var reportViewModel = function (options) {
 		e.headerFontBold = ko.observable(e.headerFontBold);
 		e.fieldWidth = ko.observable(e.fieldWidth);
 		e.fieldConditionOp = ko.observable(e.fieldConditionOp);
-		e.fieldConditionVal = ko.observable(JSON.parse(e.fieldConditionVal || "{}"));
+		e.fieldConditionVal = ko.observableArray(e.fieldConditionVal ||
+			[
+			{
+				fontColor: ko.observable(''),
+				backColor: ko.observable(''),
+				fontBold: ko.observable(false),
+				applyAllFontColor: ko.observable(false),
+				applyAllBackColor: ko.observable(false),
+				applyAllBold: ko.observable(false)
+			}
+			]);
 		e.jsonColumnName = e.jsonColumnName;
 		e.isJsonColumn = e.jsonColumnName ? true : false;
 
@@ -3297,7 +3307,19 @@ var reportViewModel = function (options) {
 		e.applyAllBold = ko.observable(false);
 		e.applyAllHeaderBold = ko.observable(false);
 		e.formatConditional = ko.observable(!!e.fieldConditionOp());
-
+		e.conditionalFormatSetting = function () {
+			e.fieldConditionVal.push({
+				fontColor: ko.observable(''),
+				backColor: ko.observable(''),
+				fontBold: ko.observable(false),
+				applyAllFontColor: ko.observable(false),
+				applyAllBackColor: ko.observable(false),
+				applyAllBold: ko.observable(false)
+			});
+		};
+		e.removeSetting = function (setting) {
+			e.fieldConditionVal.remove(setting);
+		};
 		e.toggleDisable = function () {
 			if (!e.disabled() && self.enabledFields().length < 2) return;
 			e.disabled(!e.disabled());
@@ -3350,7 +3372,7 @@ var reportViewModel = function (options) {
 			e.linkField(true);
 			if (options.linkModal) options.linkModal.modal('hide');
 		}
-
+	
 		e.setupFieldOptions = function () {
 			self.currentFieldOptions = {
 				fieldFormat: e.fieldFormat(),
@@ -3394,20 +3416,22 @@ var reportViewModel = function (options) {
 				if (e.applyAllFontColor()) f.fontColor(e.fontColor());
 				if (e.applyAllBackColor()) f.backColor(e.backColor());
 				if (e.applyAllBold()) f.fontBold(e.fontBold());
-				if (e.applyAllHeaderBold()) f.headerFontBold(e.headerFontBold());
 			});
 
 			if (e.formatConditional()) {
 				var f = self.editFieldOptions().Filters()[0];
 				e.fieldConditionOp(f.Operator());
-				e.fieldConditionVal({
+				e.fieldConditionVal([{
 					value: f.Operator() == "in" || f.Operator() == "not in" ? f.ValueIn().join(",") : (f.Operator().indexOf("blank") >= 0 || f.Operator() == 'all' ? "blank" : f.Value()),
 					value2: f.Value2(),
-					valueIn: f.ValueIn()
-				});
+					valueIn: f.ValueIn(),
+					fontColor: '',
+					backColor: '',
+					fontBold: false
+				}]);
 			} else {
 				e.fieldConditionOp('');
-				e.fieldConditionVal({});
+				e.fieldConditionVal([{}]);
 			}
 			if (options.fieldOptionsModal) options.fieldOptionsModal.modal('hide');
 		}
