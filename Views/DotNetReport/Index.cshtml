@@ -517,6 +517,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             <p data-bind="html: ReportDescription">
                                             </p>
                                             <div data-bind="with: ReportResult" class="report-expanded-scroll">
+                                                <div data-bind="visible: !ReportData()">
+                                                    <div class="report-spinner"></div>
+                                                </div>
                                                 <div data-bind="template: 'report-template', data: $data"></div>
                                             </div>
                                         </div>
