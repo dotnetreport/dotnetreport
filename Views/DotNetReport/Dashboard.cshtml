@@ -20,6 +20,12 @@
             height: 100% !important;
             z-index: 99993 !important;
         }
+     @@media (max-width: 767px) {
+    .small-pagination {
+        display: flex;
+        flex-direction: column;
+    }
+}
     </style>
 }
 
@@ -323,7 +329,7 @@
                 </div>
             </div>
             <div class="form-inline">
-                <div class="small" data-bind="with: pager">
+                <div class="small small-pagination" data-bind="with: pager">
                     <div class="form-group pull-left total-records" data-bind="if: totalRecords()>1">
                         <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
                     </div>
