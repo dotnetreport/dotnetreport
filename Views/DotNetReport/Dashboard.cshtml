@@ -160,6 +160,8 @@
 
         <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Edit Dashboard Settings" data-bind="click: editDashboard">Edit this Dashboard</button>
         <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Add a New Dashboard" data-bind="click: newDashboard">Add a new Dashboard</button>
+        <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#create-modal-reportbuilder" title="Add a New Report">Add a new Report</button>
+        <button class="btn btn-primary btn-sm" title="Refresh to Load All Reports" data-bind="click: RunReport">Refresh</button>
     </div>
 </div>
 <div class="padded-top"></div>
@@ -346,6 +348,11 @@
 
 <!-- Report Builder -->
 <div class="modal modal-fullscreen" id="modal-reportbuilder" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="padding-right: 0px !important;" data-bind="with: selectedReport">
+    <div data-bind="template: {name: 'report-designer', data: $data}"></div>
+</div>
+
+<!--Create New Report Builder -->
+<div class="modal modal-fullscreen" id="create-modal-reportbuilder" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="padding-right: 0px !important;" data-bind="with: createNewReport">
     <div data-bind="template: {name: 'report-designer', data: $data}"></div>
 </div>
 

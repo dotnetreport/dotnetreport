@@ -4297,6 +4297,7 @@ var dashboardViewModel = function (options) {
 	};
 
 	self.selectedReport = ko.observable(null);
+	self.createNewReport = ko.observable(null);
 	self.skipGridRefresh = false;
 
 	self.loadDashboardReports = function (reports, skipGridRefresh) {
@@ -4503,6 +4504,24 @@ var dashboardViewModel = function (options) {
 			}
 		});
 	}
+	var report = new reportViewModel({
+		runReportUrl: options.runReportUrl,
+		runExportUrl: options.runExportUrl,
+		execReportUrl: options.execReportUrl,
+		reportWizard: options.reportWizard,
+		fieldOptionsModal: options.fieldOptionsModal,
+		linkModal: options.linkModal,
+		lookupListUrl: options.lookupListUrl,
+		runReportApiUrl: options.runReportApiUrl,
+		apiUrl: options.apiUrl,
+		reportMode: "dashboard",
+		users: options.users,
+		userRoles: options.userRoles,
+		skipDraw: true,
+		printReportUrl: options.printReportUrl,
+		dataFilters: options.dataFilters
+	});
+	self.createNewReport(report);
 
 	self.init = function () {
 		var adminMode = false;
