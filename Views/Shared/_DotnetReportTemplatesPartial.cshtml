@@ -1109,7 +1109,7 @@
                             </div>
                             <div class="pull-right btn-toolbar">
                                 <a href="#" class="btn btn-sm" title="Custom Field using Formula" data-bind="hidden: isFunctionField, click: function(){isFormulaField(!isFormulaField())}, text: isFormulaField()? 'Cancel': 'Customize', css: {'btn-primary': !isFormulaField(), 'btn-danger': isFormulaField}"></a>
-                                <a href="#" class="btn btn-sm" title="Custom Field using Function" data-bind="hidden: isFormulaField, click: function(){isFunctionField(!isFunctionField())}, text: isFunctionField()? 'Cancel': 'Function', css: {'btn-primary': !isFunctionField(), 'btn-danger': isFunctionField}"></a>
+                                <a href="#" class="btn btn-sm" title="Custom Field using Function" data-bind="hidden: isFormulaField, click: function(){designFunctionField()}, text: isFunctionField()? 'Cancel': 'Function', css: {'btn-primary': !isFunctionField(), 'btn-danger': isFunctionField}"></a>
 
                                 <a href="#" class="btn btn-secondary btn-sm" data-bind="click: MoveAllFields, visible: !isFormulaField()">Select all</a>
                                 <a href="#" class="btn btn-secondary btn-sm" data-bind="click: RemoveSelectedFields, visible: !isFormulaField()">Remove all</a>
@@ -1173,6 +1173,18 @@
                                     </div>
                                 </div>
 
+                                <div class="checkbox">
+                                    <label>
+                                        <input type="checkbox" data-bind="checked: simpleFunction"> Simple Mode
+                                    </label>
+                                </div>
+
+                                <div data-bind="visible: !simpleFunction()">
+                                    Define your Function:
+                                    <textarea id="function-code"></textarea>
+                                </div>
+
+                                <div data-bind="visible: simpleFunction()">
                                 <div class="form-group row">
                                     <label class="col-sm-2 control-label">Select Function</label>
                                     <div class="col-sm-10" >
@@ -1181,7 +1193,6 @@
                                         </div>
                                     </div>
                                 </div>
-
                                 <div data-bind="with: selectedFunction">
                                     <div class="form-group row" >
                                         <label class="col-sm-2 control-label"></label>
@@ -1205,6 +1216,7 @@
                                         </div>
                                     </div>
 
+                                </div>
                                 </div>
                             </div>
                         </div>

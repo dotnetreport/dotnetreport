@@ -1739,11 +1739,24 @@ var reportViewModel = function (options) {
 
 	self.isFormulaField = ko.observable(false);
 	self.isFunctionField = ko.observable(false);
+	self.simpleFunction = ko.observable(false);
 	self.formulaFields = ko.observableArray([]);
 	self.formulaFieldLabel = ko.observable('');
 	self.formulaDataFormat = ko.observable('')
 	self.formulaDecimalPlaces = ko.observable();
 	self.selectedFunction = ko.observable();
+
+	var codeEditor;
+	self.designFunctionField = function () {
+		if (self.isFunctionField()) {
+			codeEditor = null;
+			self.isFunctionField(false);
+		} else {
+			codeEditor = null;
+			self.isFunctionField(true);
+			codeEditor = new functionEditor(options);
+		}
+	}
 
 	self.formulaOnlyHasDateFields = ko.computed(function () {
 		var allFields = self.formulaFields();
@@ -4129,6 +4142,171 @@ var reportViewModel = function (options) {
 	}
 
 };
+
+var functionEditor = function (options) {
+	var editor = CodeMirror.fromTextArea(document.getElementById("function-code"), {
+		mode: 'text',
+		gutters: ["CodeMirror-lint-markers"],
+		lineNumbers: false,
+		lineWrapping: false,
+		matchBrackets: true,
+		autoCloseBrackets: true,
+		extraKeys: {
+			"Ctrl-Space": "autocomplete",
+			"Enter": function (cm) { return false; },
+			"Shift-Enter": function (cm) { return false; },
+			"Ctrl-Enter": function (cm) { }
+		}
+	});
+	editor.getWrapperElement().classList.add("single-line-codemirror");
+
+	// Sample function list with names, summaries, and parameters
+	var functionList = [
+		{ name: "SUM", summary: "Calculates the sum", params: ["number1", "number2"] },
+		{ name: "AVERAGE", summary: "Calculates the average", params: ["number1", "number2", "..."] },
+		{ name: "MIN", summary: "Finds the smallest value", params: ["number1", "number2", "..."] },
+		{ name: "MAX", summary: "Finds the largest value", params: ["number1", "number2", "..."] },
+		{ name: "COUNT", summary: "Counts the number of values", params: ["value1", "value2", "..."] },
+		{ name: "IF", summary: "Checks a condition and returns a value", params: ["condition", "value_if_true", "value_if_false"] },
+		{ name: "CONCAT", summary: "Concatenates two strings", params: ["string1", "string2"] },
+		{ name: "TRIM", summary: "Trims whitespace from a string", params: ["string"] },
+		{ name: "UPPER", summary: "Converts a string to uppercase", params: ["string"] },
+		{ name: "LOWER", summary: "Converts a string to lowercase", params: ["string"] }
+	];
+
+	// Sample data fields list with table name and field name
+	var dataFields = [
+		{ id: 1, name: 'Name', tablename: 'Users' },
+		{ id: 2, name: 'Email', tablename: 'Users' },
+		{ id: 3, name: 'CreatedAt', tablename: 'Users' },
+		{ id: 4, name: 'LastName', tablename: 'Users' },
+		{ id: 5, name: 'FirstName', tablename: 'Users' },
+		{ id: 6, name: 'Title', tablename: 'Projects' },
+		{ id: 7, name: 'Budget', tablename: 'Projects' },
+		{ id: 8, name: 'StartDate', tablename: 'Projects' },
+		{ id: 9, name: 'EndDate', tablename: 'Projects' },
+		{ id: 10, name: 'Status', tablename: 'Projects' }
+	];
+
+	function highlightText(editor) {
+		editor.getAllMarks().forEach(mark => mark.clear());
+		var content = editor.getValue();
+
+		var functionPattern = /[a-zA-Z_]+\(/g;
+		var fieldPattern = /\{[a-zA-Z_]+\.[a-zA-Z_]+\}/g;
+
+		var match;
+		while ((match = functionPattern.exec(content)) != null) {
+			var from = editor.posFromIndex(match.index);
+			var to = editor.posFromIndex(match.index + match[0].length);
+			editor.markText(from, to, { className: 'cm-function-hint-text' });
+		}
+
+
+		while ((match = fieldPattern.exec(content)) != null) {
+			var from = editor.posFromIndex(match.index);
+			var to = editor.posFromIndex(match.index + match[0].length);
+			editor.markText(from, to, { className: 'cm-field-hint-text' });
+		}
+	}
+
+	CodeMirror.registerHelper("hint", "custom", function (editor) {
+		var cur = editor.getCursor();
+		var token = editor.getTokenAt(cur);
+		var start = token.start;
+		var end = token.end;
+		var currentWord = token.string;
+
+		var list = functionList.concat(dataFields)
+			.filter(function (item) {
+				return item.name.toLowerCase().indexOf(currentWord.toLowerCase()) >= 0;
+			})
+			.map(function (item) {
+				if (item.params) {
+					// For functions, show the function parameters
+					return {
+						text: item.name + "(" + item.params.join(", ") + ")",
+						displayText: item.name + " - " + item.summary,
+						className: 'cm-function-hint'
+					};
+				} else {
+					// For data fields, show the tablename.fieldname format
+					return {
+						text: "{" + item.tablename + "." + item.fieldname + "}",
+						displayText: "{" + item.tablename + "." + item.fieldname + "}",
+						className: 'cm-field-hint'
+					};
+				}
+			});
+
+		return {
+			list: list,
+			from: CodeMirror.Pos(cur.line, start),
+			to: CodeMirror.Pos(cur.line, end)
+		};
+	});
+
+	editor.on("change", function () {
+		highlightText(editor);
+	});
+
+	editor.on("inputRead", function (cm, event) {
+		if (event.text.length === 1 || event.text[event.text.length - 1] === " ") {
+			//CodeMirror.commands.autocomplete(editor, null, { completeSingle: false });
+			setTimeout(function () {
+				// Trigger the hint manually
+				cm.showHint({
+					completeSingle: false,
+					autoSelect: false,
+					hint: function (cm) {
+						// Custom hint logic
+						var cursor = cm.getCursor();
+						var token = cm.getTokenAt(cursor);
+						var line = cm.getLine(cursor.line);
+						var start = cursor.ch;
+						while (start && /\w/.test(line.charAt(start - 1))) {
+							--start;
+						}
+						var currentWord = line.slice(start, cursor.ch);
+						var end = token.end;
+
+						var list = functionList.concat(dataFields)
+							.filter(function (item) {
+								return item.name.toLowerCase().indexOf(currentWord.toLowerCase()) >= 0;
+							})
+							.map(function (item) {
+								if (item.params) {
+									// For functions, show the function parameters
+									return {
+										text: item.name + "(" + item.params.join(", ") + ")",
+										displayText: item.name + " - " + item.summary,
+										className: 'cm-function-hint'
+									};
+								} else {
+									// For data fields, show the tablename.fieldname format
+									return {
+										text: "{" + item.tablename + "." + item.name + "}",
+										displayText: "{" + item.tablename + "." + item.name + "}",
+										className: 'cm-field-hint'
+									};
+								}
+							});
+
+
+						return {
+							list: list,
+							from: CodeMirror.Pos(cursor.line, start),
+							to: CodeMirror.Pos(cursor.line, cursor.ch)
+						};
+					}
+				});
+			}, 100);
+		}
+	});
+
+	return editor;
+
+}
 
 var dashboardViewModel = function (options) {
 	var self = this;
