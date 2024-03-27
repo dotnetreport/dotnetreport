@@ -3749,13 +3749,7 @@ var reportViewModel = function (options) {
 						_.forEach(self.manageAccess.viewOnlyUserRoles, function (x) { x.selected(false); });
 						_.forEach(self.manageAccess.deleteOnlyUserRoles, function (x) { x.selected(false); });
 
-						var _access = _.find(self.manageAccess.users, { value: self.currentUserId });
-						if (_access) { _access.selected(true); }
-						_access = _.find(self.manageAccess.viewOnlyUsers, { value: self.currentUserId });
-						if (_access) { _access.selected(true); }
-						_access = _.find(self.manageAccess.deleteOnlyUsers, { value: self.currentUserId });
-						if (_access) { _access.selected(true); }
-
+						self.manageAccess.applyDefaultSettings();
 					});
 				};
 
