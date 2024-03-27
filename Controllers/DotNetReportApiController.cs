@@ -30,8 +30,8 @@ namespace ReportBuilder.Web.Controllers
             settings.UserName = "";
             settings.CurrentUserRole = new List<string>(); // Populate your current authenticated user's roles
 
-            settings.Users = new List<dynamic>(); // Populate all your application's user, ex  { "Jane", "John" } or { new { id="1", text="Jane" }, new { id="2", text="John" }}
-            settings.UserRoles = new List<string>(); // Populate all your application's user roles, ex  { "Admin", "Normal" }       
+            settings.Users = new List<dynamic>() { "Jane", "John" }; // Populate all your application's user, ex  { "Jane", "John" } or { new { id="1", text="Jane" }, new { id="2", text="John" }}
+            settings.UserRoles = new List<string>() { "Admin", "Normal" }; // Populate all your application's user roles, ex  { "Admin", "Normal" }       
             settings.CanUseAdminMode = true; // Set to true only if current user can use Admin mode to setup reports, dashboard and schema
             settings.DataFilters = new { }; // add global data filters to apply as needed https://dotnetreport.com/kb/docs/advance-topics/global-filters/
 
@@ -450,6 +450,13 @@ namespace ReportBuilder.Web.Controllers
         [HttpGet]
         public IActionResult GetUsersAndRoles()
         {
+            // These report permission settings will be applied by default to any new report user creates, leave black to allow access to all
+            var newReportClientId = "5,3"; // comma separated client ids to set report permission when new report is created
+            var newReportEditUserId = "John"; // comma separated user ids for report edit permission when new report is created
+            var newReportViewUserId = ""; // comma separated user ids for report view permission when new report is created
+            var newReportEditUserRoles = ""; // comma separated user roles for report edit permission when new report is created
+            var newReportViewUserRoles = "Admin,Any,Normal"; // comma separated user roles for report view permission when new report is created
+
             var settings = GetSettings();
             return Ok(new
             {
@@ -462,7 +469,13 @@ namespace ReportBuilder.Web.Controllers
                 allowAdminMode = settings.CanUseAdminMode,
                 userIdForSchedule = settings.UserIdForSchedule,
                 dataFilters = settings.DataFilters,
-                clientId = settings.ClientId
+                clientId = settings.ClientId,
+
+                newReportClientId,
+                newReportEditUserId,
+                newReportViewUserId,
+                newReportEditUserRoles,
+                newReportViewUserRoles
             });
         }
 
