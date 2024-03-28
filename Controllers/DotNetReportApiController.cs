@@ -493,11 +493,11 @@ namespace ReportBuilder.Web.Controllers
         public IActionResult GetUsersAndRoles()
         {
             // These report permission settings will be applied by default to any new report user creates, leave black to allow access to all
-            var newReportClientId = "5,3"; // comma separated client ids to set report permission when new report is created
-            var newReportEditUserId = "John"; // comma separated user ids for report edit permission when new report is created
+            var newReportClientId = ""; // comma separated client ids to set report permission when new report is created
+            var newReportEditUserId = ""; // comma separated user ids for report edit permission when new report is created
             var newReportViewUserId = ""; // comma separated user ids for report view permission when new report is created
             var newReportEditUserRoles = ""; // comma separated user roles for report edit permission when new report is created
-            var newReportViewUserRoles = "Admin,Any,Normal"; // comma separated user roles for report view permission when new report is created
+            var newReportViewUserRoles = ""; // comma separated user roles for report view permission when new report is created
 
             var settings = GetSettings();
             return Ok(new
