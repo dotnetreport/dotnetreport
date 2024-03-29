@@ -161,7 +161,7 @@
         <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Edit Dashboard Settings" data-bind="click: editDashboard">Edit this Dashboard</button>
         <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Add a New Dashboard" data-bind="click: newDashboard">Add a new Dashboard</button>
         <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#create-modal-reportbuilder" title="Add a New Report">Add a new Report</button>
-        <button class="btn btn-primary btn-sm" title="Refresh to Load All Reports" data-bind="click: RunReport">Refresh</button>
+        <button class="btn btn-primary btn-sm" title="Refresh to Load All Reports" data-bind="click: RefreshAllReports">Refresh</button>
     </div>
 </div>
 <div class="padded-top"></div>
@@ -313,6 +313,12 @@
                         <li class="dropdown-item">
                             <a href="#" data-bind="click: function() { $parent.removeReportFromDashboard(ReportID()); }">
                                 <span class="fa fa-close"></span> Remove
+                            </a>
+                        </li>
+
+                         <li class="dropdown-item">
+                            <a href="#"  data-bind="click: function() { RefreshReport(ReportID()); }">
+                                <span class="fa fa-refresh"></span> Refresh
                             </a>
                         </li>
                     </ul>

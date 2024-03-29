@@ -4377,7 +4377,10 @@ var dashboardViewModel = function (options) {
 					}, 1000);
 				});
 			};
-
+			
+			report.RefreshReport = function (reportId) {
+				report.LoadReport(reportId, true, '');
+			};
 			report.ChartDrillDownData.subscribe(function (e) {
 				self.ChartDrillDownData(e);
 			});
@@ -4480,6 +4483,9 @@ var dashboardViewModel = function (options) {
 		self.executingReport = true;
 		self.RunReport();
 	}
+	self.RefreshAllReports = function () {
+		self.loadDashboardReports(options.reports, true);
+	}
 	self.RunReport = function () {
 		_.forEach(self.reports(), function (report) {
 			var filterApplied = false;
@@ -4521,6 +4527,37 @@ var dashboardViewModel = function (options) {
 		printReportUrl: options.printReportUrl,
 		dataFilters: options.dataFilters
 	});
+	var promises = [];
+	if (self.tables.length == 0) {
+		promises.push(report.loadTables().done(function (x) {
+			if (x.d) x = x.d;
+			self.tables = x;
+			report.Tables(self.tables);
+		}));
+		promises.push(report.loadProcs().done(function (x) {
+			if (x.d) x = x.d;
+			self.procs = x;
+			report.Procs(self.procs);
+		}));
+		promises.push(report.loadFolders().done(function (x) {
+			if (x.d) x = x.d;
+			self.folders = x;
+			report.Folders(self.folders);
+		}));
+	}
+	$.when(promises).done(function () {
+		// Load report
+		report.Tables(self.tables);
+		report.Procs(self.procs);
+		report.Folders(self.folders);
+		report.SaveReport(true);
+		setTimeout(function () {
+			if ($.unblockUI) {
+				$.unblockUI();
+			}
+		}, 1000);
+	});
+
 	self.createNewReport(report);
 
 	self.init = function () {
