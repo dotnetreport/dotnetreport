@@ -2280,7 +2280,7 @@ var reportViewModel = function (options) {
 					HeaderFontBold: x.headerFontBold(),
 					FieldWidth: x.fieldWidth(),
 					FieldConditionOp: x.fieldConditionOp(),
-					FieldConditionVal: JSON.stringify(x.fieldConditionVal()),
+					FieldConditionVal: JSON.stringify(x.fieldConditionVal),
 					JsonColumnName: x.isJsonColumn && x.jsonColumnName ? x.jsonColumnName : ''
 				};
 			}),
@@ -2541,7 +2541,7 @@ var reportViewModel = function (options) {
 				e.fieldLabel2 = col.fieldLabel2 || ko.observable();
 				e.fieldAlign = col.fieldAlign || ko.observable();
 				e.fieldConditionOp = col.fieldConditionOp || ko.observable();
-				e.fieldConditionVal = col.fieldConditionVal || ko.observableArray([{}]);
+				e.fieldConditionVal = col.fieldConditionVal || [];
 				e.fieldFormat = col.fieldFormat || ko.observable();
 				e.fieldLabel = col.fieldLabel || ko.observable();
 				e.fieldName = col.fieldName;
@@ -3286,17 +3286,8 @@ var reportViewModel = function (options) {
 		e.headerFontBold = ko.observable(e.headerFontBold);
 		e.fieldWidth = ko.observable(e.fieldWidth);
 		e.fieldConditionOp = ko.observable(e.fieldConditionOp);
-		e.fieldConditionVal = ko.observableArray(e.fieldConditionVal ||
-			[
-			{
-				fontColor: ko.observable(''),
-				backColor: ko.observable(''),
-				fontBold: ko.observable(false),
-				applyAllFontColor: ko.observable(false),
-				applyAllBackColor: ko.observable(false),
-				applyAllBold: ko.observable(false)
-			}
-			]);
+		e.fieldConditionVal = JSON.parse(e.fieldConditionVal || '[]');
+		e.fieldCondtionalFormats = ko.observableArray([]);
 		e.jsonColumnName = e.jsonColumnName;
 		e.isJsonColumn = e.jsonColumnName ? true : false;
 
@@ -3306,19 +3297,24 @@ var reportViewModel = function (options) {
 		e.applyAllBackColor = ko.observable(false);
 		e.applyAllBold = ko.observable(false);
 		e.applyAllHeaderBold = ko.observable(false);
-		e.formatConditional = ko.observable(!!e.fieldConditionOp());
-		e.conditionalFormatSetting = function () {
-			e.fieldConditionVal.push({
-				fontColor: ko.observable(''),
-				backColor: ko.observable(''),
-				fontBold: ko.observable(false),
-				applyAllFontColor: ko.observable(false),
-				applyAllBackColor: ko.observable(false),
-				applyAllBold: ko.observable(false)
+		e.addConditionalFormatSetting = function (f) {
+			f = f || {};
+			var filter = new filterGroupViewModel({ isRoot: true, parent: self, options: options });
+			filter.AddFilter({
+				FieldId: e.fieldId,
+				Operator: f.operator || '',
+				Value1: f.value || '',
+				Value2: f.value2 || ''
+			});
+			e.fieldCondtionalFormats.push({
+				fontColor: ko.observable(f.fontColor || ''),
+				backColor: ko.observable(f.backColor || ''),
+				fontBold: ko.observable(f.fontBold === true ? true : false),
+				filter: filter
 			});
 		};
 		e.removeSetting = function (setting) {
-			e.fieldConditionVal.remove(setting);
+			e.fieldCondtionalFormats.remove(setting);
 		};
 		e.toggleDisable = function () {
 			if (!e.disabled() && self.enabledFields().length < 2) return;
@@ -3391,17 +3387,15 @@ var reportViewModel = function (options) {
 				headerFontBold: e.headerFontBold(),
 				fieldWidth: e.fieldWidth(),
 				fieldConditionOp: e.fieldConditionOp(),
-				fieldConditionVal: e.fieldConditionVal()
+				fieldConditionVal: e.fieldConditionVal
 			}
 
-			var filter = new filterGroupViewModel({ isRoot: true, parent: self, options: options });
-			filter.AddFilter({
-				FieldId: e.fieldId,
-				Operator: e.fieldConditionOp(),
-				Value1: e.fieldConditionVal().value,
-				Value2: e.fieldConditionVal().value2
+			e.fieldCondtionalFormats([]);
+			e.fieldConditionVal.forEach(function (f) {
+				e.addConditionalFormatSetting(f);
 			});
-			self.editFieldOptions(filter);
+
+			self.editFieldOptions(e);
 			if (options.fieldOptionsModal) options.fieldOptionsModal.modal('show');
 		}
 
@@ -3418,21 +3412,20 @@ var reportViewModel = function (options) {
 				if (e.applyAllBold()) f.fontBold(e.fontBold());
 			});
 
-			if (e.formatConditional()) {
-				var f = self.editFieldOptions().Filters()[0];
-				e.fieldConditionOp(f.Operator());
-				e.fieldConditionVal([{
+			e.fieldConditionVal = [];
+			e.fieldCondtionalFormats().forEach(function (fmt) {
+				var f = fmt.filter.Filters()[0];
+				e.fieldConditionVal.push({
 					value: f.Operator() == "in" || f.Operator() == "not in" ? f.ValueIn().join(",") : (f.Operator().indexOf("blank") >= 0 || f.Operator() == 'all' ? "blank" : f.Value()),
 					value2: f.Value2(),
 					valueIn: f.ValueIn(),
-					fontColor: '',
-					backColor: '',
-					fontBold: false
-				}]);
-			} else {
-				e.fieldConditionOp('');
-				e.fieldConditionVal([{}]);
-			}
+					fontColor: fmt.fontColor(),
+					backColor: fmt.backColor(),
+					fontBold: fmt.fontBold(),
+					operator: f.Operator()
+				});
+			});
+
 			if (options.fieldOptionsModal) options.fieldOptionsModal.modal('hide');
 		}
 
@@ -3453,7 +3446,7 @@ var reportViewModel = function (options) {
 			e.headerFontBold(self.currentFieldOptions.headerFontBold);
 			e.fieldWidth(self.currentFieldOptions.fieldWidth);
 			e.fieldConditionOp(self.currentFieldOptions.fieldConditionOp);
-			e.fieldConditionVal(self.currentFieldOptions.fieldConditionVal);
+			e.fieldConditionVal = self.currentFieldOptions.fieldConditionVal;
 			if (options.fieldOptionsModal) options.fieldOptionsModal.modal('hide');
 		}
 
