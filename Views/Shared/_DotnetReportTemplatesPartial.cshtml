@@ -652,32 +652,52 @@
              </label>
         </div>
         <div data-bind="if: hasSchedule">
-                <div class="form-inline form-group">
-                   <div class="row col-sm-12">
+                  <div class="form-inline form-group">
+                    <div class="row col-sm-12">
                         <span data-bind="text: selectedOption() != 'once' ? 'Every ' : ''"></span>&nbsp;
                         <select class="form-control" required data-bind="options: options, value: selectedOption"></select>
                         <div data-bind="if: selectedOption() == 'once'">
-                            &nbsp;on&nbsp;<input data-bind="datepicker: selectedDate" class="form-control" required />
+                            <div class="form-inline">
+                                &nbsp;on&nbsp;<input data-bind="datepicker: selectedDate" class="form-control" required />
+                            </div>
                         </div>
-                        <div data-bind="if: showDays">
-                           &nbsp;on&nbsp;<select multiple class="form-control" required data-bind="select2: { placeholder: 'Choose Days', allowClear: true }, options: days, selectedOptions: selectedDays"></select>
-                        </div>
-                        <div data-bind="if: showDates">
-                           &nbsp;on&nbsp;<select multiple class="form-control" required data-bind="select2: { placeholder: 'Choose Dates', allowClear: true }, options: dates, selectedOptions: selectedDates"></select>
-                        </div>
-                        <div data-bind="if: showMonths">
-                          &nbsp;of&nbsp;<select multiple class="form-control" required data-bind="select2: { placeholder: 'Choose Months', allowClear: true }, options: months, selectedOptions: selectedMonths"></select>
-                        </div>
+                        <p>
+                            <div class="form-inline" data-bind="if: showDays">
+                                &nbsp;on&nbsp;
+                            </div>
+                            <div class="form-inline" data-bind="if: showDays">
+                                <select multiple class="form-control" required data-bind="select2: { placeholder: 'Choose Days', allowClear: true }, options: days, selectedOptions: selectedDays"></select>
+                            </div>
+                        </p>
+                        <p>
+                            <div class="form-inline" data-bind="if: showDates">
+                                &nbsp;on&nbsp;
+                            </div>
+                            <div class="form-inline" data-bind="if: showDates">
+                                <select multiple class="form-control" required data-bind="select2: { placeholder: 'Choose Dates', allowClear: true }, options: dates, selectedOptions: selectedDates"></select>
+                            </div>
+                        </p>
+                        <p>
+                            <div class="form-inline" data-bind="if: showMonths">
+                                &nbsp;of&nbsp;
+                            </div>
+                            <div class="form-inline" data-bind="if: showMonths">
+                                <select multiple class="form-control" required data-bind="select2: { placeholder: 'Choose Months', allowClear: true }, options: months, selectedOptions: selectedMonths"></select>
+                            </div>
+                        </p>
                         <div data-bind="if: showAtTime">
-                            &nbsp;at&nbsp;<select class="form-control" data-bind="options: hours, value: selectedHour"></select>
-                            <select class="form-control" data-bind="options: minutes, value: selectedMinute"></select>
-                            <select class="form-control" data-bind="value: selectedAmPm">
-                                <option>AM</option>
-                                <option>PM</option>
-                            </select>
+                            <div class="form-inline">
+                                &nbsp;at&nbsp;<select class="form-control" data-bind="options: hours, value: selectedHour"></select>
+                                <select class="form-control" data-bind="options: minutes, value: selectedMinute"></select>
+                                <select class="form-control" data-bind="value: selectedAmPm">
+                                    <option>AM</option>
+                                    <option>PM</option>
+                                </select>
+                            </div>
                         </div>
-                   </div>
-               </div>
+                    </div>
+                </div>
+
               <div class="alert alert-info">
                   Report will be run and emailed <span data-bind="text: selectedOption() != 'once' ? 'every' : ''"></span> <span data-bind="text: selectedOption"></span>
                  <span data-bind="if: selectedOption() == 'once'">
@@ -688,7 +708,7 @@
                   </span>
                   <span data-bind="if: showDates">
                      on <span class="error" data-bind="visible: selectedDates().length == 0">Please pick Date(s)</span>
-                     <span data-bind="foreach: selectedDates"><span data-bind="visible: $index()>0">, </span><span data-bind="text: $data == 1 ? '1st': ($data == 2 ? '2nd' : ($data == 3 ? '3rd' : $data+'th'))"></span></span>
+                     <span data-bind="foreach: selectedDates"><span data-bind="visible: $index()>0">, </span><span data-bind="text: $data == 1 ? '1st': ($data == 2 ? '2nd' : ($data == 3 ? '3rd' : ($data == 31 ? '31st' : $data+'th')))"></span></span>
                 </span>
                 <span data-bind="if: showMonths">
                         of <span class="error" data-bind="visible: selectedMonths().length == 0">Please pick Month(s)</span> <span data-bind="text: selectedMonths"></span>
@@ -774,7 +794,7 @@
                         <div class="col-sm-7 col-md-7">
                             <select class="form-control" required data-bind="options: $parents[1].currencyFormats, optionsText: 'display',optionsValue: 'value', value: currencyFormat"></select>
                         </div>
-                    </div>                
+                    </div>
                       <div class="form-group row" data-bind="visible: fieldFormat()=='Date'">
                         <label class="col-sm-5 col-md-5 control-label">Pick Date Format</label>
                         <div class="col-sm-7 col-md-7">
@@ -820,7 +840,7 @@
                         </div>
                     </div>
                     <div class="form-row">
-                        <div class="col"> 
+                        <div class="col">
                             <div class="form-group">
                                 <label class="control-label">Pick Text Color</label>
                                 <div>
@@ -844,8 +864,8 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col d-flex align-items-center"> 
-                            <div class="form-group d-flex align-items-center"> 
+                        <div class="col d-flex align-items-center">
+                            <div class="form-group d-flex align-items-center">
                                 <div class="checkbox" style="padding-top: 5px; margin-right: 10px;">
                                     <label>
                                         <input type="checkbox" data-bind="checked: headerFontBold" /> Bold Text
@@ -923,7 +943,7 @@
                                     <label class="control-label">Pick Text Color</label>
                                     <div>
                                         <input type="color" style="width: 50px" class="form-control pull-left" data-bind="value: fontColor" />
-                                        <input type="text" style="width: 100px" class="form-control pull-left" data-bind="value: fontColor" />                                    
+                                        <input type="text" style="width: 100px" class="form-control pull-left" data-bind="value: fontColor" />
                                     </div>
                                 </div>
                             </div>
@@ -962,7 +982,7 @@
                                 <div data-bind="with: Field">
                                     <div data-bind="template: 'report-filter', data: $data"></div>
                                 </div>
-                            </div>                    
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1056,7 +1076,7 @@
                 <h5 class="modal-title" id="myModalLabel">
                     <a title="Need help setting up a report?" target="_blank" href="https://dotnetreport.com/blogs/docs/designing-reports">
                         <span class="fa fa-question-circle"></span>
-                    </a>Design your Report
+                    </a> Design your Report
                 </h5>
                 <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
             </div>
