@@ -1149,6 +1149,7 @@ var reportViewModel = function (options) {
 		self.ReportResult().ReportData(null);
 		self.ReportResult().HasError(false);
 		self.ReportResult().ReportSql(null);
+		self.ReportResult().SubTotals([]);
 	}
 
 	self.openDesigner = function () {
@@ -3016,6 +3017,7 @@ var reportViewModel = function (options) {
 		if (!reportSql || !connectKey) return;
 		self.ChartData('');
 		self.ReportResult().ReportData(null);
+		self.ReportResult().SubTotals([]);
 		if (self.DontExecuteOnRun() && !self.executingReport) return;
 		if (self.ReportMode() != "dashboard") {
 			setTimeout(function () {
