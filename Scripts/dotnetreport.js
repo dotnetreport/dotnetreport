@@ -181,21 +181,25 @@ function scheduleBuilder(userId) {
 				self.showDays(false);
 				self.showDates(false);
 				self.showMonths(false);
+				self.showAtTime(true);
 				break;
 			case 'week':
 				self.showDays(true);
 				self.showDates(false);
 				self.showMonths(false);
+				self.showAtTime(true);
 				break;
 			case 'month':
 				self.showDays(false);
 				self.showDates(true);
 				self.showMonths(false);
+				self.showAtTime(true);
 				break;
 			case 'year':
 				self.showDays(false);
 				self.showDates(true);
 				self.showMonths(true);
+				self.showAtTime(true);
 				break;
 			case 'hour':
 				self.showDays(false);
