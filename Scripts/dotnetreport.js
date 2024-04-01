@@ -2343,6 +2343,7 @@ var reportViewModel = function (options) {
 		skipValidation = skipValidation === true ? true : false;
 
 		self.TotalSeries(self.AdditionalSeries().length);
+		if (self.TotalSeries() > 1) self.ReportMode('start');
 
 		if (self.ReportType() == 'Single') {
 			if (self.enabledFields().length != 1) {
@@ -2365,7 +2366,6 @@ var reportViewModel = function (options) {
 		do {
 			if (i > 0) {
 				isComparison = true;
-				self.CanSaveReports(false);
 			}
 
 			promises.push(ajaxcall({
@@ -2548,7 +2548,7 @@ var reportViewModel = function (options) {
 				e.fieldConditionVal = col.fieldConditionVal || ko.observable();
 				e.fieldFormat = col.fieldFormat || ko.observable();
 				e.fieldLabel = col.fieldLabel || ko.observable();
-				e.fieldName = col.fieldName;
+				e.fieldName = e.ColumnName || col.fieldName;
 				e.fieldWidth = col.fieldWidth || ko.observable();
 				e.fontBold = col.fontBold || ko.observable();
 				e.headerFontBold = col.headerFontBold || ko.observable();
