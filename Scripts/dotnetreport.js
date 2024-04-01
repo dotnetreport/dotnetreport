@@ -2703,7 +2703,7 @@ var reportViewModel = function (options) {
 				r.outerGroup = col.outerGroup;
 				r.jsonColumnName = col.jsonColumnName;
 				r.isJsonColumn = col.isJsonColumn;
-				r._backColor = ''; r._fontBold = ''; r._fontColor = '';
+				r._backColor = null; r._fontBold = null; r._fontColor = null;
 
 				r.formattedVal = ko.computed(function () {
 
@@ -2743,12 +2743,13 @@ var reportViewModel = function (options) {
 						}
 					}
 
-					var operation = col.fieldConditionOp();
-					if (operation) {
+					var conditions = col.fieldConditionVal || [];
+					conditions.forEach(function (c) {
 						var conditionTrue = false;
 						var value = r.Value;
-						var compareTo = col.fieldConditionVal().value;
-						var compareTo2 = col.fieldConditionVal().value2;
+						var operation = c.operator;
+						var compareTo = c.value;
+						var compareTo2 = c.value2;
 						var dataIsNumeric = !isNaN(r.Value);
 						var dataIsDate = !isNaN(new Date(r.Value).getTime());
 
@@ -2802,12 +2803,16 @@ var reportViewModel = function (options) {
 								break;
 						}
 
-						if (!conditionTrue) {
-							r._backColor = 'none';
-							r._fontColor = 'none';
-							r._fontBold = 'none';
+						if (conditionTrue) {
+							r._backColor = c.backColor;
+							r._fontColor = c.fontColor;
+							r._fontBold = c.fontBold;
+						} else {
+							r._backColor = r.backColor();
+							r._fontColor = r.fontColor();
+							r._fontBold = r.fontBold();
 						}
-					}
+					});
 
 					return r.FormattedValue;
 				});
