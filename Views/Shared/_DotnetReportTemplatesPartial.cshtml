@@ -135,7 +135,7 @@
 
 <script type="text/html" id="report-column">
     <!-- ko foreach: Items -->
-    <td data-bind="hidden: outerGroup, style: {'background-color': _backColor != 'none' ? backColor() : '', 'color': _fontColor != 'none' ? fontColor() : '', 'font-weight': fontBold() && _fontBold != 'none' ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '48px' : ''}">
+    <td data-bind="hidden: outerGroup, style: {'background-color': _backColor ?? backColor(), 'color': _fontColor ?? fontColor(), 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '48px' : ''}">
         <div data-bind="style: {'width': fieldWidth }">
         <!-- ko if: LinkTo-->
         <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: formattedVal"></span></a>
@@ -749,8 +749,8 @@
 </script>
 
 <script type="text/html" id="report-field-options">
-    <div class="modal-dialog" style="max-width: 750px;"data-bind="with: editFieldOptions">
-        <div class="modal-content" data-bind="with: Filters()[0].Field">
+    <div class="modal-dialog" style="max-width: 750px;">
+        <div class="modal-content" data-bind="with: editFieldOptions">
             <div class="modal-header">
                 <h5 class="modal-title"><span data-bind="text: fieldName"></span> - Setup Additional Field Options</h5>
             </div>
@@ -865,7 +865,7 @@
                             <b>Text Settings</b>
                         </div>
                     </div>
-                    <div class="form-row">
+                     <div class="form-row">
                         <div class="col">
                             <div class="form-group">
                                 <label class="control-label">Pick Text Color</label>
@@ -903,30 +903,67 @@
                             </div>
                         </div>
                     </div>
-
-                    <div class="checkbox" style="padding-top: 8px;">
-                        <label title="Make settings apply only when conditions are met">
-                            <input type="checkbox" data-bind="checked: formatConditional" /> Conditional Formatting
-                        </label>
-                    </div>
-                    <div data-bind="if: formatConditional">
-                    <div class="row" data-bind="foreach: $parent.Filters">
-                        <div class="col-md-2">
-                             Value
+                </div>
+                <div class="padded-div">
+                    <button class="btn btn-sm btn-primary" data-bind="click: function() {addConditionalFormatSetting(null)}">Add Conditional Formatting</button>
+                </div>
+                <div data-bind="foreach: fieldCondtionalFormats" style="padding-left: 40px;">
+                    <div class="card card-body">
+                        <div class="row m-2">
+                            <div class="col d-flex justify-content-start">
+                                <b>Conditional Format #<span data-bind="text: $index()+1"></span></b>
+                            </div>
+                            <div class="col d-flex justify-content-end">
+                                <button class="btn btn-sm btn-secondary" data-bind="click: $parent.removeSetting">Remove</button>
+                            </div>
                         </div>
-                        <div class="col-md-4">
-                            <div data-bind="with: Field">
+                        <div class="form-row">
+                            <div class="col">
                                 <div class="form-group">
-                                    <select class="form-control" style="width: 100%;" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
+                                    <label class="control-label">Pick Text Color</label>
+                                    <div>
+                                        <input type="color" style="width: 50px" class="form-control pull-left" data-bind="value: fontColor" />
+                                        <input type="text" style="width: 100px" class="form-control pull-left" data-bind="value: fontColor" />                                    
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="form-group">
+                                    <label class="control-label">Pick Background Color</label>
+                                    <div>
+                                        <input type="color" style="width: 50px" class="form-control pull-left" data-bind="value: backColor" />
+                                        <input type="text" style="width: 100px" class="form-control pull-left" data-bind="value: backColor" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col d-flex align-items-center">
+                                <div class="form-group d-flex align-items-center">
+                                    <div class="checkbox" style="padding-top: 5px; margin-right: 10px;">
+                                        <label>
+                                            <input type="checkbox" data-bind="checked: fontBold" /> Bold Text
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div data-bind="with: Field">
-                                <div data-bind="template: 'report-filter', data: $data"></div>
+
+                        <div class="row m-2" data-bind="foreach: filter.Filters">
+                            <div class="col-md-2">
+                                 Value
                             </div>
+                            <div class="col-md-4">
+                                <div data-bind="with: Field">
+                                    <div class="form-group">
+                                        <select class="form-control" style="width: 100%;" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div data-bind="with: Field">
+                                    <div data-bind="template: 'report-filter', data: $data"></div>
+                                </div>
+                            </div>                    
                         </div>
-                    </div>
                     </div>
                 </div>
                 <br />
