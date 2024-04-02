@@ -181,21 +181,25 @@ function scheduleBuilder(userId) {
 				self.showDays(false);
 				self.showDates(false);
 				self.showMonths(false);
+				self.showAtTime(true);
 				break;
 			case 'week':
 				self.showDays(true);
 				self.showDates(false);
 				self.showMonths(false);
+				self.showAtTime(true);
 				break;
 			case 'month':
 				self.showDays(false);
 				self.showDates(true);
 				self.showMonths(false);
+				self.showAtTime(true);
 				break;
 			case 'year':
 				self.showDays(false);
 				self.showDates(true);
 				self.showMonths(true);
+				self.showAtTime(true);
 				break;
 			case 'hour':
 				self.showDays(false);
@@ -1145,6 +1149,7 @@ var reportViewModel = function (options) {
 		self.ReportResult().ReportData(null);
 		self.ReportResult().HasError(false);
 		self.ReportResult().ReportSql(null);
+		self.ReportResult().SubTotals([]);
 	}
 
 	self.openDesigner = function () {
@@ -2280,7 +2285,7 @@ var reportViewModel = function (options) {
 					HeaderFontBold: x.headerFontBold(),
 					FieldWidth: x.fieldWidth(),
 					FieldConditionOp: x.fieldConditionOp(),
-					FieldConditionVal: JSON.stringify(x.fieldConditionVal()),
+					FieldConditionVal: JSON.stringify(x.fieldConditionVal),
 					JsonColumnName: x.isJsonColumn && x.jsonColumnName ? x.jsonColumnName : ''
 				};
 			}),
@@ -2339,6 +2344,7 @@ var reportViewModel = function (options) {
 		skipValidation = skipValidation === true ? true : false;
 
 		self.TotalSeries(self.AdditionalSeries().length);
+		if (self.TotalSeries() > 1) self.ReportMode('start');
 
 		if (self.ReportType() == 'Single') {
 			if (self.enabledFields().length != 1) {
@@ -2361,7 +2367,6 @@ var reportViewModel = function (options) {
 		do {
 			if (i > 0) {
 				isComparison = true;
-				self.CanSaveReports(false);
 			}
 
 			promises.push(ajaxcall({
@@ -2541,10 +2546,10 @@ var reportViewModel = function (options) {
 				e.fieldLabel2 = col.fieldLabel2 || ko.observable();
 				e.fieldAlign = col.fieldAlign || ko.observable();
 				e.fieldConditionOp = col.fieldConditionOp || ko.observable();
-				e.fieldConditionVal = col.fieldConditionVal || ko.observable();
+				e.fieldConditionVal = col.fieldConditionVal || [];
 				e.fieldFormat = col.fieldFormat || ko.observable();
 				e.fieldLabel = col.fieldLabel || ko.observable();
-				e.fieldName = col.fieldName;
+				e.fieldName = e.ColumnName || col.fieldName;
 				e.fieldWidth = col.fieldWidth || ko.observable();
 				e.fontBold = col.fontBold || ko.observable();
 				e.headerFontBold = col.headerFontBold || ko.observable();
@@ -2703,7 +2708,7 @@ var reportViewModel = function (options) {
 				r.outerGroup = col.outerGroup;
 				r.jsonColumnName = col.jsonColumnName;
 				r.isJsonColumn = col.isJsonColumn;
-				r._backColor = ''; r._fontBold = ''; r._fontColor = '';
+				r._backColor = null; r._fontBold = null; r._fontColor = null;
 
 				r.formattedVal = ko.computed(function () {
 
@@ -2743,12 +2748,13 @@ var reportViewModel = function (options) {
 						}
 					}
 
-					var operation = col.fieldConditionOp();
-					if (operation) {
+					var conditions = col.fieldConditionVal || [];
+					conditions.forEach(function (c) {
 						var conditionTrue = false;
 						var value = r.Value;
-						var compareTo = col.fieldConditionVal().value;
-						var compareTo2 = col.fieldConditionVal().value2;
+						var operation = c.operator;
+						var compareTo = c.value;
+						var compareTo2 = c.value2;
 						var dataIsNumeric = !isNaN(r.Value);
 						var dataIsDate = !isNaN(new Date(r.Value).getTime());
 
@@ -2802,12 +2808,16 @@ var reportViewModel = function (options) {
 								break;
 						}
 
-						if (!conditionTrue) {
-							r._backColor = 'none';
-							r._fontColor = 'none';
-							r._fontBold = 'none';
+						if (conditionTrue) {
+							r._backColor = c.backColor;
+							r._fontColor = c.fontColor;
+							r._fontBold = c.fontBold;
+						} else {
+							r._backColor = r.backColor();
+							r._fontColor = r.fontColor();
+							r._fontBold = r.fontBold();
 						}
-					}
+					});
 
 					return r.FormattedValue;
 				});
@@ -3007,6 +3017,7 @@ var reportViewModel = function (options) {
 		if (!reportSql || !connectKey) return;
 		self.ChartData('');
 		self.ReportResult().ReportData(null);
+		self.ReportResult().SubTotals([]);
 		if (self.DontExecuteOnRun() && !self.executingReport) return;
 		if (self.ReportMode() != "dashboard") {
 			setTimeout(function () {
@@ -3289,7 +3300,8 @@ var reportViewModel = function (options) {
 		e.headerFontBold = ko.observable(e.headerFontBold);
 		e.fieldWidth = ko.observable(e.fieldWidth);
 		e.fieldConditionOp = ko.observable(e.fieldConditionOp);
-		e.fieldConditionVal = ko.observable(JSON.parse(e.fieldConditionVal || "{}"));
+		e.fieldConditionVal = JSON.parse(e.fieldConditionVal || '[]');
+		e.fieldCondtionalFormats = ko.observableArray([]);
 		e.jsonColumnName = e.jsonColumnName;
 		e.isJsonColumn = e.jsonColumnName ? true : false;
 
@@ -3299,8 +3311,25 @@ var reportViewModel = function (options) {
 		e.applyAllBackColor = ko.observable(false);
 		e.applyAllBold = ko.observable(false);
 		e.applyAllHeaderBold = ko.observable(false);
-		e.formatConditional = ko.observable(!!e.fieldConditionOp());
-
+		e.addConditionalFormatSetting = function (f) {
+			f = f || {};
+			var filter = new filterGroupViewModel({ isRoot: true, parent: self, options: options });
+			filter.AddFilter({
+				FieldId: e.fieldId,
+				Operator: f.operator || '',
+				Value1: f.value || '',
+				Value2: f.value2 || ''
+			});
+			e.fieldCondtionalFormats.push({
+				fontColor: ko.observable(f.fontColor || ''),
+				backColor: ko.observable(f.backColor || ''),
+				fontBold: ko.observable(f.fontBold === true ? true : false),
+				filter: filter
+			});
+		};
+		e.removeSetting = function (setting) {
+			e.fieldCondtionalFormats.remove(setting);
+		};
 		e.toggleDisable = function () {
 			if (!e.disabled() && self.enabledFields().length < 2) return;
 			e.disabled(!e.disabled());
@@ -3353,7 +3382,7 @@ var reportViewModel = function (options) {
 			e.linkField(true);
 			if (options.linkModal) options.linkModal.modal('hide');
 		}
-
+	
 		e.setupFieldOptions = function () {
 			self.currentFieldOptions = {
 				fieldFormat: e.fieldFormat(),
@@ -3372,17 +3401,15 @@ var reportViewModel = function (options) {
 				headerFontBold: e.headerFontBold(),
 				fieldWidth: e.fieldWidth(),
 				fieldConditionOp: e.fieldConditionOp(),
-				fieldConditionVal: e.fieldConditionVal()
+				fieldConditionVal: e.fieldConditionVal
 			}
 
-			var filter = new filterGroupViewModel({ isRoot: true, parent: self, options: options });
-			filter.AddFilter({
-				FieldId: e.fieldId,
-				Operator: e.fieldConditionOp(),
-				Value1: e.fieldConditionVal().value,
-				Value2: e.fieldConditionVal().value2
+			e.fieldCondtionalFormats([]);
+			e.fieldConditionVal.forEach(function (f) {
+				e.addConditionalFormatSetting(f);
 			});
-			self.editFieldOptions(filter);
+
+			self.editFieldOptions(e);
 			if (options.fieldOptionsModal) options.fieldOptionsModal.modal('show');
 		}
 
@@ -3397,21 +3424,22 @@ var reportViewModel = function (options) {
 				if (e.applyAllFontColor()) f.fontColor(e.fontColor());
 				if (e.applyAllBackColor()) f.backColor(e.backColor());
 				if (e.applyAllBold()) f.fontBold(e.fontBold());
-				if (e.applyAllHeaderBold()) f.headerFontBold(e.headerFontBold());
 			});
 
-			if (e.formatConditional()) {
-				var f = self.editFieldOptions().Filters()[0];
-				e.fieldConditionOp(f.Operator());
-				e.fieldConditionVal({
+			e.fieldConditionVal = [];
+			e.fieldCondtionalFormats().forEach(function (fmt) {
+				var f = fmt.filter.Filters()[0];
+				e.fieldConditionVal.push({
 					value: f.Operator() == "in" || f.Operator() == "not in" ? f.ValueIn().join(",") : (f.Operator().indexOf("blank") >= 0 || f.Operator() == 'all' ? "blank" : f.Value()),
 					value2: f.Value2(),
-					valueIn: f.ValueIn()
+					valueIn: f.ValueIn(),
+					fontColor: fmt.fontColor(),
+					backColor: fmt.backColor(),
+					fontBold: fmt.fontBold(),
+					operator: f.Operator()
 				});
-			} else {
-				e.fieldConditionOp('');
-				e.fieldConditionVal({});
-			}
+			});
+
 			if (options.fieldOptionsModal) options.fieldOptionsModal.modal('hide');
 		}
 
@@ -3432,7 +3460,7 @@ var reportViewModel = function (options) {
 			e.headerFontBold(self.currentFieldOptions.headerFontBold);
 			e.fieldWidth(self.currentFieldOptions.fieldWidth);
 			e.fieldConditionOp(self.currentFieldOptions.fieldConditionOp);
-			e.fieldConditionVal(self.currentFieldOptions.fieldConditionVal);
+			e.fieldConditionVal = self.currentFieldOptions.fieldConditionVal;
 			if (options.fieldOptionsModal) options.fieldOptionsModal.modal('hide');
 		}
 
@@ -3687,13 +3715,7 @@ var reportViewModel = function (options) {
 						_.forEach(self.manageAccess.viewOnlyUserRoles, function (x) { x.selected(false); });
 						_.forEach(self.manageAccess.deleteOnlyUserRoles, function (x) { x.selected(false); });
 
-						var _access = _.find(self.manageAccess.users, { value: self.currentUserId });
-						if (_access) { _access.selected(true); }
-						_access = _.find(self.manageAccess.viewOnlyUsers, { value: self.currentUserId });
-						if (_access) { _access.selected(true); }
-						_access = _.find(self.manageAccess.deleteOnlyUsers, { value: self.currentUserId });
-						if (_access) { _access.selected(true); }
-
+						self.manageAccess.applyDefaultSettings();
 					});
 				};
 

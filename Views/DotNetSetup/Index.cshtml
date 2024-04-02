@@ -112,7 +112,7 @@
         <div role="tabpanel" class="tab-pane" id="connection">
             <b>Manage Database Connection</b>
             <p>
-                Select and manage Data you would like to allow access to in DNR to use in building Reports and Dashboards
+                Select and manage Data you would like to allow access to in Dotnet Report to use in building Reports and Dashboards
             </p>
             <div class="form-row" data-bind="visible: true">
                 <div class="form-group">
@@ -147,10 +147,10 @@
             <b data-bind="text: customTableMode() ? 'Custom Tables' : 'Database Tables'"></b>
             <p>
                 <span data-bind="visible: $root.customTableMode">
-                    Define Custom Tables using SQL Select Query to use in DNR for Reporting and Analytics.
+                    Define Custom Tables using SQL Select Query to use in Dotnet Report for Reporting and Analytics.
                 </span>
                 <span data-bind="hidden: $root.customTableMode">
-                    Select Tables or Views from your Database to use in DNR for Reporting and Analytics.
+                    Select Tables or Views from your Database to use in Dotnet Report for Reporting and Analytics.
                 </span>
             </p>
 
@@ -246,7 +246,7 @@
         <div role="tabpanel" class="tab-pane" id="relations">
             <b>Relations</b>
             <p>
-                Setup your Database Relations for DNR to produce dynamic queries
+                Setup your Database Relations for Dotnet Report to produce dynamic queries
             </p>
             <button class="btn btn-sm btn-primary" data-bind="click: AddJoin">Add new Join</button>&nbsp;
             <button class="btn btn-sm btn-primary" data-bind="click: SaveJoins">Save Joins</button>
@@ -328,7 +328,7 @@
         <div id="procedure" class="tab-pane">
             <b>Stored Procedures</b>
             <p>
-                Select and manage Stored Procedures to use in DNR for more complex and coded Reports
+                Select and manage Stored Procedures to use in Dotnet Report for more complex and coded Reports
             </p>
             <hr />
             <button class="btn btn-sm btn-primary" data-toggle="modal" data-target="#procedure-modal">Add Stored Procs from database</button>
