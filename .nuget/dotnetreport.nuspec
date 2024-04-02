@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
   <metadata>
     <id>dotNetReport.mvc</id>
-    <version>5.4.0</version>
+    <version>5.4.1-beta</version>
     <authors>dotnetReport Builder</authors>
     <owners>dotnetReport Builder</owners>
     <projectUrl>https://dotnetreport.com/</projectUrl>
@@ -64,6 +64,5 @@
     <file src="..\Views\shared\_DotnetReportTemplatesPartial.cshtml" target="Content\Views\shared\_DotnetReportTemplatesPartial.cshtml" />
     <file src="..\Views\web.config.transform" target="Content\Views\web.config.transform" />
     <file src="..\web.config.install.xdt" target="Content\web.config.install.xdt" />
-    <file src="..\index.html" target="Content\default.html" />
   </files>
 </package>
