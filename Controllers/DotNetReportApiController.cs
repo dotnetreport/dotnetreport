@@ -60,14 +60,13 @@ namespace ReportBuilder.Web.Controllers
                 adapter.Fill(dt);
             }
 
-            int i = 0;
+            var data = new List<object>();
             foreach (DataRow dr in dt.Rows)
             {
-                json.AppendFormat("{{\"id\": \"{0}\", \"text\": \"{1}\"}}{2}", dr[0], dr[1], i != dt.Rows.Count - 1 ? "," : "");
-                i += 1;
+                data.Add(new { id = dr[0], text = dr[1] });
             }
 
-            return Json((new JavaScriptSerializer()).DeserializeObject("[" + json.ToString() + "]"), JsonRequestBehavior.AllowGet);
+            return Json(data, JsonRequestBehavior.AllowGet);
         }
 
         public class PostReportApiCallMode
@@ -145,11 +144,13 @@ namespace ReportBuilder.Web.Controllers
 
         [AllowAnonymous]
         [HttpPost]
-        public JsonResult RunReportUnAuth(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, bool desc = false, string reportSeries = null)
+        public async Task<JsonResult> RunReportUnAuth(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, 
+            bool desc = false, string reportSeries = null, string pivotColumn = null, string reportData = null)
         {
-            return RunReport(reportSql, connectKey, reportType, pageNumber, pageSize, sortBy, desc, reportSeries);
+            return await RunReport(reportSql, connectKey, reportType, pageNumber, pageSize, sortBy, desc, reportSeries, pivotColumn, reportData);
         }
-        public JsonResult RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, bool desc = false, string reportSeries = null)
+        public async Task<JsonResult> RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, 
+            bool desc = false, string reportSeries = null, string pivotColumn = null, string reportData = null)
         {
             var sql = "";
             var sqlCount = "";
@@ -229,9 +230,17 @@ namespace ReportBuilder.Web.Controllers
                         string[] series = { };
                         if (i == 0)
                         {
+                            fields.AddRange(sqlFields);
+
+                            if (!string.IsNullOrEmpty(pivotColumn))
+                            {
+                                var ds = await DotNetReportHelper.GetDrillDownData(conn, dtPagedRun, sqlFields, reportData);
+                                dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn);
+                                fields.AddRange(dtPagedRun.Columns.Cast<DataColumn>().Skip(fields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
+                            }
+
                             dtPaged = dtPagedRun;
                             dtCols = dtPagedRun.Columns.Count;
-                            fields.AddRange(sqlFields);
                         }
                         else if (i > 0)
                         {
@@ -416,6 +425,13 @@ namespace ReportBuilder.Web.Controllers
 
         public JsonResult GetUsersAndRoles()
         {
+            // These report permission settings will be applied by default to any new report user creates, leave black to allow access to all
+            var newReportClientId = ""; // comma separated client ids to set report permission when new report is created
+            var newReportEditUserId = ""; // comma separated user ids for report edit permission when new report is created
+            var newReportViewUserId = ""; // comma separated user ids for report view permission when new report is created
+            var newReportEditUserRoles = ""; // comma separated user roles for report edit permission when new report is created
+            var newReportViewUserRoles = ""; // comma separated user roles for report view permission when new report is created
+
             var settings = GetSettings();
             return Json(new
             {
@@ -427,8 +443,15 @@ namespace ReportBuilder.Web.Controllers
                 currentUserName = settings.UserName,
                 allowAdminMode = settings.CanUseAdminMode,
                 userIdForSchedule = settings.UserIdForSchedule,
-                dataFilters = settings.DataFilters
-            }, JsonRequestBehavior.AllowGet);
+                dataFilters = settings.DataFilters,
+                clientId = settings.ClientId,
+
+                newReportClientId,
+                newReportEditUserId,
+                newReportViewUserId,
+                newReportEditUserRoles,
+                newReportViewUserRoles
+            });
         }
 
         [HttpPost]
@@ -502,7 +525,7 @@ namespace ReportBuilder.Web.Controllers
 
         //[Authorize(Roles="Administrator")]
         [HttpPost]
-        public async Task<JsonResult> LoadSetupSchema(string databaseApiKey = "")
+        public async Task<JsonResult> LoadSetupSchema(string databaseApiKey = "", bool onlyApi = false)
         {
             var settings = GetSettings();
             if (!settings.CanUseAdminMode)
@@ -513,9 +536,17 @@ namespace ReportBuilder.Web.Controllers
             var connect = DotNetSetupController.GetConnection(databaseApiKey);
             var tables = new List<TableViewModel>();
             var procedures = new List<TableViewModel>();
-            tables.AddRange(await DotNetSetupController.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
-            tables.AddRange(await DotNetSetupController.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
+            if (onlyApi)
+            {
+                tables.AddRange(await DotNetSetupController.GetApiTables(connect.AccountApiKey, connect.DatabaseApiKey, true));
+            }
+            else
+            {
+                tables.AddRange(await DotNetSetupController.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
+                tables.AddRange(await DotNetSetupController.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
+            }
             procedures.AddRange(await DotNetSetupController.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
+
             var model = new ManageViewModel
             {
                 ApiUrl = connect.ApiUrl,
@@ -553,7 +584,7 @@ namespace ReportBuilder.Web.Controllers
             {
                 // open the connection to the database 
                 conn.Open();
-                string spQuery = "SELECT ROUTINE_NAME, ROUTINE_DEFINITION, ROUTINE_SCHEMA FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_DEFINITION LIKE '%" + value + "%' AND ROUTINE_TYPE = 'PROCEDURE'";
+                string spQuery = "SELECT ROUTINE_NAME, ROUTINE_DEFINITION, ROUTINE_SCHEMA FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_NAME LIKE '%" + value + "%' AND ROUTINE_TYPE = 'PROCEDURE'";
                 OleDbCommand cmd = new OleDbCommand(spQuery, conn);
                 cmd.CommandType = CommandType.Text;
                 DataTable dtProcedures = new DataTable();

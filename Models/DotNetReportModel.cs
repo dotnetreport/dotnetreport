@@ -321,12 +321,13 @@ namespace ReportBuilder.Web.Models
     {
         public string fieldName { get; set; }
         public string fieldLabel { get; set; }
+        public string customfieldLabel { get; set; }
         public bool hideStoredProcColumn { get; set; }
-        public int? decimalPlaces { get; set; }
+        public int? decimalPlacesDigit { get; set; }
         public string fieldAlign { get; set; }
-        public string fieldFormat { get; set; }
+        public string fieldFormating { get; set; }
         public bool dontSubTotal { get; set; }
-
+        public string currencySymbol { get; set; }
         public bool isNumeric { get; set; }
         public bool isCurrency { get; set; }
         public bool isJsonColumn { get; set; }
@@ -549,19 +550,38 @@ namespace ReportBuilder.Web.Models
             int i = colstart; var isNumeric = false;
             foreach (DataColumn dc in dt.Columns)
             {
+                var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
+                string decimalFormat = new string('0', formatColumn.decimalPlacesDigit.GetValueOrDefault());
                 isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
-                if (dc.DataType == typeof(decimal))
+                if (dc.DataType == typeof(decimal) || (formatColumn != null && formatColumn.fieldFormating=="Decimal"))
                 {
-                    ws.Column(i).Style.Numberformat.Format = "###,###,##0.00";
+                    if (formatColumn != null && formatColumn.decimalPlacesDigit != null)
+                    {
+                        ws.Column(i).Style.Numberformat.Format = "###,###,##0." + decimalFormat;
+                    }
+                    else
+                    {
+                        ws.Column(i).Style.Numberformat.Format = "###,###,##0.00";
+                    }
                     isNumeric = true;
                 }
                 if (dc.DataType == typeof(DateTime))
                     ws.Column(i).Style.Numberformat.Format = "mm/dd/yyyy";
 
-                var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
-                if (formatColumn != null && formatColumn.fieldFormat == "Currency")
+                if (formatColumn != null && formatColumn.fieldFormating == "Currency")
                 {
-                    ws.Column(i).Style.Numberformat.Format = "$###,###,##0.00";
+                    if (formatColumn.currencySymbol != null && formatColumn.decimalPlacesDigit != null)
+                    {
+                        ws.Column(i).Style.Numberformat.Format = formatColumn.currencySymbol + "###,###,##0." + decimalFormat;
+                    }
+                    else if (formatColumn.currencySymbol != null)
+                    {
+                        ws.Column(i).Style.Numberformat.Format = formatColumn.currencySymbol + "###,###,##0.00";
+                    }
+                    else
+                    {
+                        ws.Column(i).Style.Numberformat.Format = "$###,###,##0.00";
+                    }
                     isNumeric = true;
                 }
                 if (formatColumn != null && formatColumn.isJsonColumn)
@@ -762,7 +782,118 @@ namespace ReportBuilder.Web.Models
             return model;
         }
 
-        public async static Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, bool allExpanded = false,
+        private static string GetWhereClause(string sql)
+        {
+
+            int whereIndex = sql.IndexOf("WHERE ", StringComparison.OrdinalIgnoreCase);
+            int nextClauseIndex = sql.IndexOf("GROUP BY ", whereIndex, StringComparison.OrdinalIgnoreCase);
+            if (nextClauseIndex < 0)
+            {
+                nextClauseIndex = sql.IndexOf("ORDER BY ", whereIndex, StringComparison.OrdinalIgnoreCase);
+            }
+            nextClauseIndex = nextClauseIndex < 0 ? sql.Length : nextClauseIndex;
+            var modifiedSql = sql.Substring(0, whereIndex) + sql.Substring(nextClauseIndex);
+            var whereClause = sql.Substring(whereIndex, nextClauseIndex-whereIndex);
+
+            return whereClause;
+        }
+
+        private static string ReplaceWhereClause(string sql, string where)
+        {
+            int whereIndex = sql.IndexOf("WHERE ", StringComparison.OrdinalIgnoreCase);
+            int nextClauseIndex = sql.IndexOf("ORDER BY ", whereIndex, StringComparison.OrdinalIgnoreCase);
+            nextClauseIndex = nextClauseIndex < 0 ? sql.Length : nextClauseIndex;
+            var modifiedSql = sql.Substring(0, whereIndex) + where + sql.Substring(nextClauseIndex);
+            return modifiedSql;
+        }
+
+        public async static Task<DataSet> GetDrillDownData(OleDbConnection conn, DataTable dt, List<string> sqlFields, string reportDataJson)
+        {
+            var drilldownRow = new List<string>();
+            var dr = dt.Rows[0];
+            int i = 0;
+            foreach (DataColumn dc in dt.Columns)
+            {
+                var col = sqlFields[i++]; //columns.FirstOrDefault(x => x.fieldName == dc.ColumnName) ?? new ReportHeaderColumn();
+                drilldownRow.Add($@"
+                                    {{
+                                        ""Value"":""{dr[dc]}"",
+                                        ""FormattedValue"":""{dr[dc]}"",
+                                        ""LabelValue"":""'{dr[dc]}'"",
+                                        ""NumericValue"":null,
+                                        ""Column"":{{
+                                            ""SqlField"":""{col.Substring(0, col.LastIndexOf(" AS "))}"",
+                                            ""ColumnName"":""{dc.ColumnName}"",
+                                            ""DataType"":""{dc.DataType.ToString()}"",
+                                            ""IsNumeric"":{(dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal" ? "true" : "false")},
+                                            ""FormatType"":""""
+                                        }}
+                                     }}
+                                ");
+            }
+
+            var reportData = reportDataJson.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
+            var drilldownSql = await RunReportApiCall(reportData);
+
+            var dts = new DataSet();
+            var combinedSqls = "";
+            if (!string.IsNullOrEmpty(drilldownSql))
+            {
+                foreach (DataRow ddr in dt.Rows)
+                {
+                    i = 0;
+                    var filteredSql = drilldownSql;
+                    foreach (DataColumn dc in dt.Columns)
+                    {
+                        var value = ddr[dc].ToString().Replace("'", "''");
+                        filteredSql = filteredSql.Replace($"<{dc.ColumnName}>", value);
+                    }
+
+                    combinedSqls += filteredSql += ";\n";
+                }
+                
+                using (var cmd = new OleDbCommand(combinedSqls, conn))
+                using (var adp = new OleDbDataAdapter(cmd))
+                {
+                    adp.Fill(dts);
+                }
+            }
+
+            return dts;
+        }
+
+        public static DataTable PushDatasetIntoDataTable(DataTable tbl, DataSet dts, string pivotColumnName)
+        {
+            var dt = tbl.Copy();
+            foreach (DataRow row in dt.Rows)
+            {
+                int rowIndex = dt.Rows.IndexOf(row);
+                DataTable dtsTable = dts.Tables[rowIndex];
+
+                if (dtsTable.Columns.Contains(pivotColumnName))
+                {
+                    int pivotColumnIndex = dtsTable.Columns[pivotColumnName].Ordinal;
+
+                    foreach (DataRow dtsRow in dtsTable.Rows)
+                    {
+                        string newColumnName = dtsRow[pivotColumnName].ToString();
+                        if (string.IsNullOrEmpty(newColumnName)) newColumnName = "(Blank)";
+                        if (!dt.Columns.Contains(newColumnName))
+                        {
+                            dt.Columns.Add(newColumnName, typeof(int));
+                        }
+
+                        if (pivotColumnIndex + 1 < dtsTable.Columns.Count)
+                            row[newColumnName] = (string.IsNullOrEmpty(row[newColumnName].ToString()) ? 0 : Convert.ToInt32(row[newColumnName])) + (string.IsNullOrEmpty(dtsRow[pivotColumnIndex + 1].ToString()) ? 0 : Convert.ToInt32(dtsRow[pivotColumnIndex + 1]));
+                    }
+                }
+            }
+
+            return dt;
+        }
+
+
+        public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, bool allExpanded = false,
                 string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
         {
             var sql = Decrypt(reportSql);
@@ -788,9 +919,9 @@ namespace ReportBuilder.Web.Models
                         {
                             dt.Columns.Remove(col.fieldName);
                         }
-                        else if (!String.IsNullOrWhiteSpace(col.fieldLabel) && dt.Columns.Contains(col.fieldName))
+                        else if (!String.IsNullOrWhiteSpace(col.customfieldLabel))
                         {
-                            dt.Columns[col.fieldName].ColumnName = col.fieldLabel;
+                            dt.Columns[col.fieldName].ColumnName = col.customfieldLabel;
                         }
                     }
                 }
@@ -804,23 +935,24 @@ namespace ReportBuilder.Web.Models
                     int rowend = rowstart;
                     int colend = dt.Columns.Count;
 
-                    ws.Cells[rowstart, colstart, rowend, colend].Merge = true;
-                    ws.Cells[rowstart, colstart, rowend, colend].Value = reportName;
-                    ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Bold = true;
-                    ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Size = 14;
-
-                    rowstart += 2;
-                    rowend = rowstart + dt.Rows.Count;
-
-                    DataTableToDotNetReportDataModel(dt, sqlFields, false);
-                    FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeSubtotal);
-
-                    if (allExpanded)
+                    if (dt.Rows.Count > 0)
                     {
-                        var insertRowIndex = 3;
-                        foreach (DataRow dr in dt.Rows)
+                        ws.Cells[rowstart, colstart, rowend, colend].Merge = true;
+                        ws.Cells[rowstart, colstart, rowend, colend].Value = reportName;
+                        ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Bold = true;
+                        ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Size = 14;
+
+                        rowstart += 2;
+                        rowend = rowstart + dt.Rows.Count;
+
+                        FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeSubtotal);
+
+                        if (allExpanded)
                         {
+                            var insertRowIndex = 3;
+
                             var drilldownRow = new List<string>();
+                            var dr = dt.Rows[0];
 
                             int i = 0;
                             foreach (DataColumn dc in dt.Columns)
@@ -845,22 +977,42 @@ namespace ReportBuilder.Web.Models
 
                             var reportData = expandSqls.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
                             var drilldownSql = await RunReportApiCall(reportData);
+
+                            var combinedSqls = "";
                             if (!string.IsNullOrEmpty(drilldownSql))
-                            {                                
-                                var ddt = new DataTable();
-                                var cmd = new OleDbCommand(drilldownSql, conn);
-                                var adp = new OleDbDataAdapter(cmd);
-                                adp.Fill(ddt);
+                            {
+                                foreach (DataRow ddr in dt.Rows)
+                                {
+                                    i = 0;
+                                    var filteredSql = drilldownSql;
+                                    foreach (DataColumn dc in dt.Columns)
+                                    {
+                                        var value = ddr[dc].ToString().Replace("'", "''");
+                                        filteredSql = filteredSql.Replace($"<{dc.ColumnName}>", value);
+                                    }
 
-                                ws.InsertRow(insertRowIndex + 2, ddt.Rows.Count);
+                                    combinedSqls += filteredSql += ";\n";
+                                }
 
-                                FormatExcelSheet(ddt, ws, insertRowIndex == 3 ? 3 : (insertRowIndex + 1), ddt.Columns.Count + 1, columns, false, insertRowIndex == 3);
+                                using (var dts = new DataSet()) {
+                                    using (var cmd = new OleDbCommand(combinedSqls, conn))
+                                    using (var adp = new OleDbDataAdapter(cmd))
+                                    {
+                                        adp.Fill(dts);
+                                    }
 
-                                insertRowIndex += ddt.Rows.Count + 1;
+                                    foreach (DataTable ddt in dts.Tables)
+                                    {
+                                        ws.InsertRow(insertRowIndex + 2, ddt.Rows.Count);
+
+                                        FormatExcelSheet(ddt, ws, insertRowIndex == 3 ? 3 : (insertRowIndex + 1), ddt.Columns.Count + 1, columns, false, insertRowIndex == 3);
+
+                                        insertRowIndex += ddt.Rows.Count + 1;
+                                    }
+                                }
                             }
                         }
                     }
-
                     ws.View.FreezePanes(4, 1);
                     return xp.GetAsByteArray();
                 }
@@ -872,24 +1024,38 @@ namespace ReportBuilder.Web.Models
             var isCurrency = false;
             var isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
             var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
-
+            string decimalFormat = new string('0', formatColumn.decimalPlacesDigit.GetValueOrDefault());
             try
             {
-                if (dc.DataType == typeof(decimal) || (formatColumn != null && (formatColumn.fieldFormat == "Decimal" || formatColumn.fieldFormat == "Double")))
+                if (dc.DataType == typeof(decimal) || (formatColumn != null && (formatColumn.fieldFormating == "Decimal" || formatColumn.fieldFormating == "Double")))
                 {
+                    if (formatColumn.decimalPlacesDigit != null)
+                    {
+                        value = Convert.ToDecimal(value).ToString("###,###,##0." + decimalFormat);
+                    }
+                    else
+                    {
+                        value = Convert.ToDecimal(value).ToString("###,###,##0.00");
+                    }
                     isNumeric = true;
-                    value = Convert.ToDecimal(value).ToString("###,###,##0.00");
                 }
-                if (formatColumn != null && formatColumn.fieldFormat == "Currency")
+                if (formatColumn != null && formatColumn.fieldFormating == "Currency")
                 {
-                    value = Convert.ToDecimal(value).ToString("C");
+                    if (formatColumn.currencySymbol != null && formatColumn.decimalPlacesDigit != null)
+                    {
+                        value = Convert.ToDecimal(value).ToString(formatColumn.currencySymbol + "###,###,##0." + decimalFormat);
+                    }
+                    else if (formatColumn.currencySymbol != null)
+                    {
+                        value = Convert.ToDecimal(value).ToString(formatColumn.currencySymbol + "###,###,##0.00");
+                    }
                     isCurrency = true;
                 }
-                if (formatColumn != null && (formatColumn.fieldFormat == "Date" || formatColumn.fieldFormat == "Date and Time" || formatColumn.fieldFormat == "Time") && dc.DataType.Name == "DateTime")
+                if (formatColumn != null && (formatColumn.fieldFormating == "Date" || formatColumn.fieldFormating == "Date and Time" || formatColumn.fieldFormating == "Time") && dc.DataType.Name == "DateTime")
                 {
                     var date = Convert.ToDateTime(value);
-                    value = formatColumn.fieldFormat.StartsWith("Date") ? date.ToShortDateString() + " " : "";
-                    value += formatColumn.fieldFormat.EndsWith("Time") ? date.ToShortTimeString() : "";
+                    value = formatColumn.fieldFormating.StartsWith("Date") ? date.ToShortDateString() + " " : "";
+                    value += formatColumn.fieldFormating.EndsWith("Time") ? date.ToShortTimeString() : "";
                     value = value.Trim();
                 }
             } catch (Exception ex)
@@ -1041,7 +1207,7 @@ namespace ReportBuilder.Web.Models
                 {
                     // Draw column headers
                     var columnFormatting = columns[k];
-                    var columnName = dt.Columns[k].ColumnName;
+                        var columnName = !string.IsNullOrEmpty(columns[k].customfieldLabel) ? columns[k].customfieldLabel : columns[k].fieldName;
                     
                     rect = new XRect(currentXPosition, currentYPosition, columnWidth, 20);
 
@@ -1277,6 +1443,7 @@ namespace ReportBuilder.Web.Models
 
             var pdfOptions = new PdfOptions
             {
+                PrintBackground = true,
                 PreferCSSPageSize = false,
                 MarginOptions = new MarginOptions() { Top = "0.75in", Bottom = "0.75in", Left = "0.1in", Right = "0.1in" }
             };
@@ -1387,10 +1554,11 @@ namespace ReportBuilder.Web.Models
 
                 //Build the CSV file data as a Comma separated string.
                 string csv = string.Empty;
-                foreach (DataColumn column in dt.Columns)
+                for (int i = 0; i < dt.Columns.Count; i++)
                 {
-                    //Add the Header row for CSV file.
-                    csv += column.ColumnName + ',';
+                    DataColumn column = dt.Columns[i];
+                    var columnName = !string.IsNullOrEmpty(columns[i].customfieldLabel) ? columns[i].customfieldLabel : columns[i].fieldName;
+                    csv += columnName + ',';
                 }
 
                 //Add new line.
