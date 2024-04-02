@@ -102,6 +102,9 @@
                                 });
 
                                 vm.drawChart();
+                                var grid = $('.grid-stack').data("gridstack");
+                                grid.disable();
+
                             }, 1000);
                         });
 
@@ -117,29 +120,31 @@
 </asp:Content>
 <asp:Content ID="Content2" ContentPlaceHolderID="body" runat="server">
 
-<div class="row">
-    <div class="col-8" data-bind="with: currentDashboard">
-        <h2 data-bind="text: name ? name : 'Dashboard'">Dashboard</h2>
+<div class="row" style="display: none" data-bind="visible: currentDashboard">
+    <div class="col-4" data-bind="with: currentDashboard">
+        <h2 title="Switch Dashboard">
+            <select class="form-control select-as-text" title="Switch Dashboard" data-bind="select2: {minimumResultsForSearch: Infinity}, options: $parent.dashboards, optionsText: 'name', optionsValue: 'id', value: $parent.selectDashboard"></select>
+        </h2>
         <p data-bind="text: description"></p>
     </div>
-
-    <div class="col-4 right-align" style="display: none;" data-bind="visible: dashboards().length > 0 ">
-        <div class="row">
-            <label class="col">Switch Dashboard</label>
-            <select class="col form-control" data-bind="options: dashboards, optionsText: 'name', optionsValue: 'id', value: selectDashboard"></select>
-        </div>
+    <div class="col-4">
+        &nbsp;
     </div>
 </div>
 <div class="clearfix"></div>
-
-<div class="pull-right">
-    <a href="/DotnetReport/Index.aspx">Manage Reports</a> | Learn how to <a href="https://dotnetreport.com/getting-started-with-dotnet-report/" target="_blank">Integrate in your App here</a>.
-</div>
 
 <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
 
 <div class="row padded-top">
     <div class="col-md-12">
+        <div style="padding: 10px 10px">
+            <div class="material-switch pull-right">
+                <input id="arrange-mode" type="checkbox" data-bind="checked: arrangeDashboard" />
+                <label for="arrange-mode" class="label-primary"></label>
+            </div>
+            <div class="pull-right">Arrange this Dashboard</div>
+        </div>
+
         <button class="btn btn-primary btn-sm" onclick="return false;" data-toggle="modal" data-target="#add-dashboard-modal" title="Edit Dashboard Settings" data-bind="click: editDashboard">Edit this Dashboard</button>
         <button class="btn btn-primary btn-sm" onclick="return false;" data-toggle="modal" data-target="#add-dashboard-modal" title="Add a New Dashboard" data-bind="click: newDashboard">Add a new Dashboard</button>
     </div>
@@ -164,7 +169,7 @@
                         <div class="form-group row">
                             <label class="col-md-3 col-sm-3 control-label">Name</label>
                             <div class="col-md-6 col-sm-6">
-                                <input class="form-control text-box" style="width: 100%;" data-val="true" data-val-required="Dashboard Name is required." type="text" data-bind="value: Name" placeholder="Dashboard Name, ex Sales, Accounting" id="add-dash-name" />
+                                <input class="form-control text-box" style="width: 100%;" data-val="true" data-val-required="Dashboard Name is required." type="text" data-bind="value: Name" placeholder="Dashboard Name, ex Sales, Accounting" id="add-dash-name" required />
                             </div>
                         </div>
                         <div class="form-group row">
@@ -177,9 +182,43 @@
                     </div>
                 </div>
                 <hr />
-                <h5><span class="fa fa-paperclip"></span> Choose Reports for the Dashboard</h5>
-                <div data-bind="foreach: $parent.reportsAndFolders" class="card" style="margin-left: 20px;">
-                    <div class="card-body">
+                <div class="control-group row m-2">
+                    <div class="col-md-6 col-sm-6">
+                        <h5><span class="fa fa-paperclip"></span> Choose Reports for the Dashboard </h5>
+                    </div>
+                    <div class="col-md-6 col-sm-6">
+                        <input type="text" class="form-control text-box" style="width: 100%;" placeholder="Search Report by Name or Description..." data-bind="textInput: $parent.searchReports" />
+                    </div>
+                </div>
+                <div data-bind="if: $parent.searchReports() &&  $parent.reportsInSearch().length==0">
+                    <div class="card">
+                        <div class="card-body">
+                                No Reports found matching your Search
+                        </div>
+                    </div>
+                </div>
+                <div data-bind="if: $parent.searchReports() &&  $parent.reportsInSearch().length>0">
+                    <div  class="card" style="margin-left: 20px;">
+                        <div class="card-body">
+                            <div>
+                                <ul class="list-group" data-bind="foreach: $parent.reportsInSearch">
+                                    <li class="list-group-item">
+                                        <div class="checkbox">
+                                            <label class="list-group-item-heading">
+                                                <input type="checkbox" data-bind="checked: selected">
+                                                <span class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map'}" style="font-size: 14pt; color: #808080"></span>
+                                                <span data-bind="highlightedText: { text: reportName, highlight: $parent.searchReports, css: 'highlight' }"></span>
+                                            </label>
+                                        </div>
+                                        <p class="list-group-item-text small" data-bind="text: reportDescription"></p>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div data-bind="if: !$parent.searchReports() " class="card" style="margin-left: 20px;">
+                    <div class="card-body" data-bind="foreach: $parent.reportsAndFolders">
                         <a class="btn btn-link" role="button" data-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }">
                             <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: folder"></span>
                         </a>
@@ -224,7 +263,7 @@
     <div class="grid-stack-item" data-bind="attr: {'data-gs-x': x, 'data-gs-y': y, 'data-gs-width': width, 'data-gs-height': height, 'data-gs-auto-position': true, 'data-gs-id': ReportID}">
 
         <div class="card" data-bind="attr: {class: 'card ' + panelStyle + ' grid-stack-item-content'}, css: { expanded: isExpanded }" style="overflow-y: hidden;">
-            <div class="padded-div">
+            <div class="padded-div" style="padding-bottom: 0; margin-bottom: 0;">
                 <div class="pull-left">
                     <button type="button" class="btn" data-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
                         <span class="fa fa-ellipsis-v"></span>
@@ -269,10 +308,13 @@
                     <a class="btn btn-link" data-bind="click: toggleExpand"><span class="fa" data-bind="css: {'fa-expand': !isExpanded(), 'fa-minus': isExpanded() }, visible: ReportType() != 'Single'"></span></a>
                 </div>
             </div>
-            <div class="card-body list-overflow-auto">
+            <div class="card-body list-overflow-auto" style="padding-top: 0; margin-top: 0;">               
                 <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
                 <div data-bind="template: {name: 'fly-filter-template'}, visible: showFlyFilters"></div>
                 <div data-bind="with: ReportResult" class="small">
+                    <div data-bind="visible: !ReportData()">
+                        <div class="report-spinner"></div>
+                    </div>
                     <div data-bind="template: 'report-template', data: $data"></div>
                 </div>
             </div>
@@ -306,4 +348,5 @@
 <div class="modal" id="linkModal" tabindex="-1" role="dialog" aria-hidden="true" data-bind="with: selectedReport">
     <div data-bind="template: {name: 'report-link-edit', data: $data}"></div>
 </div>
+
 </asp:Content>

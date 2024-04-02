@@ -8,7 +8,6 @@ using System.Data.OleDb;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web;
 using System.Web.Script.Serialization;
@@ -69,14 +68,13 @@ namespace ReportBuilder.WebForms.DotNetReport
                 adapter.Fill(dt);
             }
 
-            int i = 0;
+            var data = new List<object>();
             foreach (DataRow dr in dt.Rows)
             {
-                json.AppendFormat("{{\"id\": \"{0}\", \"text\": \"{1}\"}}{2}", dr[0], dr[1], i != dt.Rows.Count - 1 ? "," : "");
-                i += 1;
+                data.Add(new { id = dr[0], text = dr[1] });
             }
 
-            return ((new JavaScriptSerializer()).DeserializeObject("[" + json.ToString() + "]"));
+            return (data);
         }
 
         public class PostReportApiCallMode
@@ -496,7 +494,14 @@ namespace ReportBuilder.WebForms.DotNetReport
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
         public object GetUsersAndRoles()
-        {
+        { 
+            // These report permission settings will be applied by default to any new report user creates, leave black to allow access to all
+            var newReportClientId = ""; // comma separated client ids to set report permission when new report is created
+            var newReportEditUserId = ""; // comma separated user ids for report edit permission when new report is created
+            var newReportViewUserId = ""; // comma separated user ids for report view permission when new report is created
+            var newReportEditUserRoles = ""; // comma separated user roles for report edit permission when new report is created
+            var newReportViewUserRoles = ""; // comma separated user roles for report view permission when new report is created
+
             var settings = GetSettings();
             return new
             {
@@ -508,7 +513,14 @@ namespace ReportBuilder.WebForms.DotNetReport
                 currentUserName = settings.UserName,
                 allowAdminMode = settings.CanUseAdminMode,
                 userIdForSchedule = settings.UserIdForSchedule,
-                dataFilters = settings.DataFilters
+                dataFilters = settings.DataFilters,
+                clientId = settings.ClientId,
+
+                newReportClientId,
+                newReportEditUserId,
+                newReportViewUserId,
+                newReportEditUserRoles,
+                newReportViewUserRoles
             };
         }
 
