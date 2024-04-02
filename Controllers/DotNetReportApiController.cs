@@ -425,6 +425,13 @@ namespace ReportBuilder.Web.Controllers
 
         public JsonResult GetUsersAndRoles()
         {
+            // These report permission settings will be applied by default to any new report user creates, leave black to allow access to all
+            var newReportClientId = ""; // comma separated client ids to set report permission when new report is created
+            var newReportEditUserId = ""; // comma separated user ids for report edit permission when new report is created
+            var newReportViewUserId = ""; // comma separated user ids for report view permission when new report is created
+            var newReportEditUserRoles = ""; // comma separated user roles for report edit permission when new report is created
+            var newReportViewUserRoles = ""; // comma separated user roles for report view permission when new report is created
+
             var settings = GetSettings();
             return Json(new
             {
@@ -436,8 +443,15 @@ namespace ReportBuilder.Web.Controllers
                 currentUserName = settings.UserName,
                 allowAdminMode = settings.CanUseAdminMode,
                 userIdForSchedule = settings.UserIdForSchedule,
-                dataFilters = settings.DataFilters
-            }, JsonRequestBehavior.AllowGet);
+                dataFilters = settings.DataFilters,
+                clientId = settings.ClientId,
+
+                newReportClientId,
+                newReportEditUserId,
+                newReportViewUserId,
+                newReportEditUserRoles,
+                newReportViewUserRoles
+            });
         }
 
         [HttpPost]
