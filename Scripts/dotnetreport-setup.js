@@ -1,6 +1,6 @@
-﻿/// dotnet Report Builder view model v5.0.0
+﻿/// dotnet Report Builder view model v5.3.1
 /// License must be purchased for commercial use
-/// 2022 (c) www.dotnetreport.com
+/// 2024 (c) www.dotnetreport.com
 
 var manageViewModel = function (options) {
 	var self = this;
@@ -13,17 +13,42 @@ var manageViewModel = function (options) {
 	self.DataConnections = ko.observableArray([]);
 	self.Tables = new tablesViewModel(options);
 	self.Procedures = new proceduresViewModel(options);
+	self.DbConfig = {};
+	self.UserAndRolesConfig = {};
 	self.pager = new pagerViewModel({autoPage: true});
-
 	self.pager.totalRecords(self.Tables.model().length);
+	self.onlyApi = ko.observable(options.onlyApi);
+	self.ChartDrillDownData = null;
+
+	self.loadFromDatabase = function() {
+		bootbox.confirm("Confirm loading all Tables and Views from the database? Note: This action will discard unsaved changes and it may take some time.", function (r) {
+			if (r) {
+				window.location.href = window.location.pathname + "?onlyApi=false&" + $.param({ 'databaseApiKey': self.currentConnectionKey() })
+			}
+		});
+
+	}
 
 	self.Tables.filteredTables.subscribe(function (x) {		
 		self.pager.totalRecords(x.length);
 		self.pager.currentPage(1);
 	});
 
+	self.customSql = new customSqlModel(options, self.keys, self.Tables);
+	self.customTableMode = ko.observable(false);
+
 	self.pagedTables = ko.computed(function () {
 		var tables = self.Tables.filteredTables();
+		var usedOnly = self.Tables.usedOnly();
+
+		if (self.customTableMode()) {
+			tables = _.filter(tables, function(x) { return x.CustomTable(); });
+		}
+
+		if (usedOnly) {
+			tables = _.filter(tables, function (x) { return x.Selected(); });
+		}
+
 		var pageNumber = self.pager.currentPage();
 		var pageSize = self.pager.pageSize();
 
@@ -219,7 +244,7 @@ var manageViewModel = function (options) {
 		}
 
 		ajaxcall({
-			url: "/DotNetSetup/SearchProcedure",
+			url: options.searchProcUrl,
 			type: 'POST',
 			data: JSON.stringify({
 				value: self.searchProcedureTerm(),
@@ -227,6 +252,7 @@ var manageViewModel = function (options) {
 				dataConnectKey: self.keys.DatabaseApiKey
 			})
 		}).done(function (result) {
+			if (result.d) result = result.d;
 			_.forEach(result, function (s) {
 				_.forEach(s.Columns, function (c) {
 					c.DisplayName = ko.observable(c.DisplayName);
@@ -528,15 +554,15 @@ var manageViewModel = function (options) {
 
 			self.reportsAndFolders(setup);
 		});
-    }
+	}
+
 }
 
 var tablesViewModel = function (options) {
 	var self = this;
-	self.model = ko.mapping.fromJS(options.model.Tables);
+	self.model = ko.mapping.fromJS(_.sortBy(options.model.Tables, ['TableName']));
 
-	_.forEach(self.model(), function (t) {
-
+	self.processTable = function (t) {
 		t.availableColumns = ko.computed(function () {
 			return _.filter(t.Columns(), function (e) {
 				return e.Id() > 0 && e.Selected();
@@ -571,7 +597,7 @@ var tablesViewModel = function (options) {
 					e.RestrictedDateRange('');
 				} else {
 					e.RestrictedDateRange(e.restrictDateRangeNumber() + ' ' + e.restrictDateRangeValue());
-                }
+				}
 			});
 
 			e.restrictDateRangeNumber.subscribe(function () {
@@ -581,6 +607,22 @@ var tablesViewModel = function (options) {
 			e.restrictDateRangeValue.subscribe(function () {
 				e.RestrictedDateRange(e.restrictDateRangeNumber() + ' ' + e.restrictDateRangeValue());
 			});
+
+			e.JsonStructure.subscribe(function (newValue) {
+				if (newValue) {
+					try {
+						var data = JSON.parse(newValue);
+						if (typeof data !== 'object' || Array.isArray(data)) {
+							toastr.error('Invalid JSON data. Please enter a valid JSON object (Arrays are not allowed)');
+							e.JsonStructure('');
+
+						}
+					} catch (ex) {
+						toastr.error('Invalid JSON format. Please enter a valid JSON object (Arrays are not allowed)');
+						e.JsonStructure('')
+					}
+				}
+			})
 
 		});
 
@@ -593,6 +635,23 @@ var tablesViewModel = function (options) {
 		t.unselectAllColumns = function (e) {
 			_.forEach(t.Columns(), function (c) {
 				c.Selected(false);
+			});
+		}
+
+		t.autoFormat = function (e) {
+			_.forEach(t.Columns(), function (c) {
+				var displayName = c.DisplayName();
+				displayName = displayName.replace(/_/g, ' ');
+
+				// Split PascalCase into two separate words
+				displayName = displayName.replace(/([a-z])([A-Z])/g, '$1 $2');
+
+				// Capitalize the first letter of each word
+				displayName = displayName.split(' ').map(function (word) {
+					return word.charAt(0).toUpperCase() + word.slice(1);
+				}).join(' ');
+
+				c.DisplayName(displayName);
 			});
 		}
 
@@ -635,11 +694,21 @@ var tablesViewModel = function (options) {
 					dataConnect: dbKey,
 					table: e
 				})
-			}).done(function () {
-				toastr.success("Saved table " + e.DisplayName);
+			}).done(function (x) {
+				if (x.success && x.tableId) {
+					t.Id(x.tableId)
+					toastr.success("Saved table " + e.DisplayName);
+				} else {
+					toastr.error("Error saving table " + e.DisplayName);
+                }
 			});
 		}
 
+		return t;
+    }
+
+	_.forEach(self.model(), function (t) {
+		self.processTable(t);
 	});
 
 	self.availableTables = ko.computed(function () {
@@ -684,6 +753,11 @@ var tablesViewModel = function (options) {
 			});
 		});
 	}	
+
+	self.usedOnly = ko.observable(false);
+	self.toggleShowAll = function () {
+		self.usedOnly(!self.usedOnly());
+	}
 
 	self.columnSorted = function (args) {
 		_.forEach(args.targetParent(), function (e) {
@@ -743,4 +817,217 @@ var proceduresViewModel = function (options) {
 		self.setupProcedure(p);
 	});
 
+}
+
+var validation = function () {
+	var self = this;
+	// ui-validation
+	self.isInputValid = function (ctl) {
+		// first check for custom validation
+		if ($(ctl).attr("data-notempty") != null) {
+			if ($(ctl).children("option").length == 0)
+				return false;
+		}
+
+		// next try html5 validation if availble
+		if (ctl.validity) {
+			return ctl.validity.valid;
+		}
+
+		// finally just check for required attr
+		if ($(ctl).attr("required") != null && $(ctl).val() == "")
+			return false;
+
+		return true;
+	};
+
+
+	self.clearForm = function (formSelector) {
+		var curInputs = $(formSelector).find("input, select, textarea"),
+			isValid = true;
+
+		$(".needs-validation").removeClass("was-validated");
+		for (var i = 0; i < curInputs.length; i++) {
+			$(curInputs[i]).removeClass("is-invalid");
+		}
+
+	};
+
+	self.validateForm = function (formSelector) {
+		var curInputs = $(formSelector).find("input, select, textarea"),
+			isValid = true;
+
+		$(".needs-validation").removeClass("was-validated");
+		for (var i = 0; i < curInputs.length; i++) {
+			$(curInputs[i]).removeClass("is-invalid");
+			if (!self.isInputValid(curInputs[i])) {
+				isValid = false;
+				$(".needs-validation").addClass("was-validated");
+				$(curInputs[i]).addClass("is-invalid");
+			}
+		}
+
+		return isValid;
+	};
+
+}
+
+var customSqlModel = function (options, keys, tables) {
+	var self = this;
+	self.customTableName = ko.observable();
+	self.customSql = ko.observable();
+	self.useAi = ko.observable(false);
+	self.textQuery = new textQuery(options);
+	self.selectedTable = null;
+	var validator = new validation();
+	self.addNewCustomSqlTable = function () {	
+		self.selectedTable = null;
+		self.textQuery.resetQuery();
+		validator.clearForm('#custom-sql-modal');
+		self.customTableName('');
+		self.customSql('');
+		$('#custom-sql-modal').modal('show');
+	}
+
+	self.viewCustomSql = function (e) {
+		self.selectedTable = ko.mapping.toJS(e);
+		self.textQuery.resetQuery();
+		validator.clearForm('#custom-sql-modal');
+		self.customTableName(e.TableName());
+		self.customSql(e.CustomTableSql());
+		$('#custom-sql-modal').modal('show');
+	}
+	
+	self.buildSqlUsingAi = function () {
+		var queryText = document.getElementById("query-input").innerText;
+
+		var fieldIds = _.filter(self.textQuery.queryItems, { type: 'Field' }).map(function (x) { return x.value });
+		if (fieldIds.length == 0) fieldIds.push(0);
+		ajaxcall({
+			url: options.apiUrl,
+			data: {
+				method: "/ReportApi/GetFieldsByIds",
+				model: JSON.stringify({
+					fieldIds: fieldIds.join(",")
+				})
+			}
+		}).done(function (result) {
+			if (result.d) result = result.d;
+			ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/RunQueryAi",
+					model: JSON.stringify({
+						query: queryText,
+						fieldIds: fieldIds.join(","),
+						dontEncrypt: true
+					})
+				}
+			}).done(function (result) {
+				if (result.d) result = result.d;
+				if (result.success === false) {
+					toastr.error(result.message || 'Could not process this correctly, please try again');
+					return;
+				}
+
+				self.customSql(beautifySql(result.sql, false));
+			});
+		});
+	}
+
+	self.beautifySql = function () {
+		self.customSql(beautifySql(self.customSql(), false));
+    }
+
+	self.executeSql = function () {
+		var valid = validator.validateForm('#custom-sql-modal');
+		
+		if (!self.customTableName()) {
+			toastr.error("Custom Table Name is required");
+			valid = false;
+		}
+
+		if (self.customTableName().indexOf(' ') > -1) {
+			toastr.error("Custom Table Name cannot have spaces");
+			valid = false;
+		}
+
+		if (!self.customSql() || self.customSql().toLowerCase().indexOf('select') != 0) {
+			toastr.error("Custom SELECT SQL is required, and it must start with SELECT");
+			valid = false;
+		}
+
+		var matchTable = _.find(tables.model(), function (x) {
+			return x.TableName() == self.customTableName() && (!self.selectedTable || self.selectedTable.Id != x.Id());
+		});
+
+		if (matchTable) {
+			toastr.error("Table " + self.customTableName() + " already exists, please choose a different name.");
+			valid = false;
+        }
+
+		if (!valid) {
+			return false;
+        }
+
+		return ajaxcall({
+			url: options.getSchemaFromSql,
+			type: 'POST',
+			data: JSON.stringify({
+				value: self.customSql(),
+				accountKey: keys.AccountApiKey,
+				dataConnectKey: keys.DatabaseApiKey
+			})
+		}).done(function (result) {
+			if (result.d) result = result.d;
+
+			if (result.errorMessage) {
+				toastr.error("Could not execute Query. Please check your query and try again. Error: " + result.errorMessage);
+				return;
+			}
+			
+			if (!self.selectedTable) {
+				result.TableName = self.customTableName();
+				result.DisplayName = self.customTableName();
+				var t = ko.mapping.fromJS(result);
+
+				tables.model.push(tables.processTable(t));
+
+			} else {
+				var table = _.find(tables.model(), function (x) { return x.Id() == self.selectedTable.Id; });
+				table.TableName(self.customTableName());
+				table.CustomTableSql(self.customSql());
+
+				_.forEach(result.Columns, function (c) {
+					// if column id matches, update display name and data type, otherwise add it
+					var column = _.find(table.Columns(), function (x) {
+						return c.ColumnName.toLowerCase() == x.ColumnName().toLowerCase();
+					});
+
+					if (column) {
+						column.DisplayName(c.DisplayName);
+						column.FieldType(c.FieldType);
+					} else {
+						table.Columns.push(ko.mapping.fromJS(c));
+					}
+				});
+
+				// remove all columns not in list
+				const keep = _.map(result.Columns, function (c) {
+					return c.ColumnName.toLowerCase();
+				});
+
+				table.Columns.remove(function (x) {
+					return !_.includes(keep, x.ColumnName().toLowerCase());
+				});
+			}
+
+			toastr.info("Query loaded successfully, please configure and then Save to add or update the custom table to commit changes");
+
+			self.selectedTable = null;
+			$('#custom-sql-modal').modal('hide');
+		});
+
+		return false;
+    }
 }

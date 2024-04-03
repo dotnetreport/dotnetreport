@@ -1,5 +1,4 @@
 ﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using ReportBuilder.Web.Models;
 using System;
 using System.Collections.Generic;
@@ -9,12 +8,10 @@ using System.Data.OleDb;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web;
 using System.Web.Mvc;
 using System.Web.Script.Serialization;
-using System.Web.Security;
 
 namespace ReportBuilder.Web.Controllers
 {
@@ -62,14 +59,13 @@ namespace ReportBuilder.Web.Controllers
                 adapter.Fill(dt);
             }
 
-            int i = 0;
+            var data = new List<object>();
             foreach (DataRow dr in dt.Rows)
             {
-                json.AppendFormat("{{\"id\": \"{0}\", \"text\": \"{1}\"}}{2}", dr[0], dr[1], i != dt.Rows.Count - 1 ? "," : "");
-                i += 1;
+                data.Add(new { id = dr[0], text = dr[1] });
             }
 
-            return Json((new JavaScriptSerializer()).DeserializeObject("[" + json.ToString() + "]"), JsonRequestBehavior.AllowGet);
+            return Json(data, JsonRequestBehavior.AllowGet);
         }
 
         public class PostReportApiCallMode
@@ -108,7 +104,7 @@ namespace ReportBuilder.Web.Controllers
 
         public async Task<JsonResult> CallReportApi(string method, string model)
         {
-            return await ExecuteCallReportApi(method, model);
+            return string.IsNullOrEmpty(method) || string.IsNullOrEmpty(model) ? Json(new { }) : await ExecuteCallReportApi(method, model);
         }
 
         private async Task<JsonResult> ExecuteCallReportApi(string method, string model, DotNetReportSettings settings = null)
@@ -139,13 +135,6 @@ namespace ReportBuilder.Web.Controllers
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + method), content);
                 var stringContent = await response.Content.ReadAsStringAsync();
 
-                if (stringContent.Contains("\"sql\":"))
-                {
-                    var sqlqeuery = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(stringContent);
-                    object value;
-                    var keyValuePair = sqlqeuery.TryGetValue("sql", out value);
-                    var sql = DotNetReportHelper.Decrypt(value.ToString());
-                }
                 Response.StatusCode = (int)response.StatusCode;
                 return Json((new JavaScriptSerializer()).Deserialize<dynamic>(stringContent), JsonRequestBehavior.AllowGet);
             }
@@ -154,11 +143,13 @@ namespace ReportBuilder.Web.Controllers
 
         [AllowAnonymous]
         [HttpPost]
-        public JsonResult RunReportUnAuth(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, bool desc = false, string reportSeries = null)
+        public async Task<JsonResult> RunReportUnAuth(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, 
+            bool desc = false, string reportSeries = null, string pivotColumn = null, string reportData = null)
         {
-            return RunReport(reportSql, connectKey, reportType, pageNumber, pageSize, sortBy, desc, reportSeries);
+            return await RunReport(reportSql, connectKey, reportType, pageNumber, pageSize, sortBy, desc, reportSeries, pivotColumn, reportData);
         }
-        public JsonResult RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, bool desc = false, string reportSeries = null)
+        public async Task<JsonResult> RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, 
+            bool desc = false, string reportSeries = null, string pivotColumn = null, string reportData = null)
         {
             var sql = "";
             var sqlCount = "";
@@ -170,7 +161,7 @@ namespace ReportBuilder.Web.Controllers
                 {
                     throw new Exception("Query not found");
                 }
-                var allSqls = reportSql.Split(new string[] { "%2C" }, StringSplitOptions.RemoveEmptyEntries);
+                var allSqls = reportSql.Split(new string[] { "%2C", "," }, StringSplitOptions.RemoveEmptyEntries);
                 var dtPaged = new DataTable();
                 var dtCols = 0;
 
@@ -181,14 +172,10 @@ namespace ReportBuilder.Web.Controllers
                     sql = DotNetReportHelper.Decrypt(HttpUtility.HtmlDecode(allSqls[i]));
                     if (!sql.StartsWith("EXEC"))
                     {
+                        var fromIndex = DotNetReportHelper.FindFromIndex(sql);
+                        sqlFields = DotNetReportHelper.SplitSqlColumns(sql);
 
-                        var sqlSplit = sql.Substring(0, sql.LastIndexOf("FROM")).Replace("SELECT", "").Trim();
-                        sqlFields = Regex.Split(sqlSplit, "], (?![^\\(]*?\\))").Where(x => x != "CONVERT(VARCHAR(3)")
-                            .Select(x => x.EndsWith("]") ? x : x + "]")
-                            .Select(x => x.StartsWith("DISTINCT ") ? x.Replace("DISTINCT ", "") : x)
-                            .ToList();
-
-                        var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(sql.LastIndexOf("FROM"))}";
+                        var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(fromIndex)}";
                         sqlCount = $"SELECT COUNT(*) FROM ({(sqlFrom.Contains("ORDER BY") ? sqlFrom.Substring(0, sqlFrom.IndexOf("ORDER BY")) : sqlFrom)}) as countQry";
 
                         if (!String.IsNullOrEmpty(sortBy))
@@ -211,8 +198,11 @@ namespace ReportBuilder.Web.Controllers
                             }
                         }
 
-                        if (sql.Contains("ORDER BY"))
+                        if (sql.Contains("ORDER BY") && !sql.Contains(" TOP "))
                             sql = sql + $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
+
+                        if (sql.Contains("__jsonc__"))
+                            sql = sql.Replace("__jsonc__", "");
                     }
                     // Execute sql
                     var dtPagedRun = new DataTable();
@@ -239,9 +229,17 @@ namespace ReportBuilder.Web.Controllers
                         string[] series = { };
                         if (i == 0)
                         {
+                            fields.AddRange(sqlFields);
+
+                            if (!string.IsNullOrEmpty(pivotColumn))
+                            {
+                                var ds = await DotNetReportHelper.GetDrillDownData(conn, dtPagedRun, sqlFields, reportData);
+                                dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn);
+                                fields.AddRange(dtPagedRun.Columns.Cast<DataColumn>().Skip(fields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
+                            }
+
                             dtPaged = dtPagedRun;
                             dtCols = dtPagedRun.Columns.Count;
-                            fields.AddRange(sqlFields);
                         }
                         else if (i > 0)
                         {
@@ -289,7 +287,7 @@ namespace ReportBuilder.Web.Controllers
                 sql = DotNetReportHelper.Decrypt(HttpUtility.HtmlDecode(allSqls[0]));
                 var model = new DotNetReportResultModel
                 {
-                    ReportData = DataTableToDotNetReportDataModel(dtPaged, fields),
+                    ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dtPaged, fields),
                     Warnings = GetWarnings(sql),
                     ReportSql = sql,
                     ReportDebug = Request.Url.Host.Contains("localhost"),
@@ -318,14 +316,15 @@ namespace ReportBuilder.Web.Controllers
                     ReportData = new DotNetReportDataModel(),
                     ReportSql = sql,
                     HasError = true,
-                    Exception = ex.Message
+                    Exception = ex.Message,
+                    ReportDebug = Request.Url.Host.Contains("localhost"),
                 };
 
                 return Json(model, JsonRequestBehavior.AllowGet);
             }
         }
 
-        [HttpGet]
+        [HttpPost]
         public async Task<JsonResult> RunReportLink(int reportId, int? filterId = null, string filterValue = "", bool adminMode = false)
         {
             var model = new DotNetReportModel();
@@ -425,6 +424,13 @@ namespace ReportBuilder.Web.Controllers
 
         public JsonResult GetUsersAndRoles()
         {
+            // These report permission settings will be applied by default to any new report user creates, leave black to allow access to all
+            var newReportClientId = ""; // comma separated client ids to set report permission when new report is created
+            var newReportEditUserId = ""; // comma separated user ids for report edit permission when new report is created
+            var newReportViewUserId = ""; // comma separated user ids for report view permission when new report is created
+            var newReportEditUserRoles = ""; // comma separated user roles for report edit permission when new report is created
+            var newReportViewUserRoles = ""; // comma separated user roles for report view permission when new report is created
+
             var settings = GetSettings();
             return Json(new
             {
@@ -436,8 +442,73 @@ namespace ReportBuilder.Web.Controllers
                 currentUserName = settings.UserName,
                 allowAdminMode = settings.CanUseAdminMode,
                 userIdForSchedule = settings.UserIdForSchedule,
-                dataFilters = settings.DataFilters
-            }, JsonRequestBehavior.AllowGet);
+                dataFilters = settings.DataFilters,
+                clientId = settings.ClientId,
+
+                newReportClientId,
+                newReportEditUserId,
+                newReportViewUserId,
+                newReportEditUserRoles,
+                newReportViewUserRoles
+            });
+        }
+
+        [HttpPost]
+        public async Task<JsonResult> GetSchemaFromSql(SchemaFromSqlCall data)
+        {
+            try
+            {
+                var table = new TableViewModel
+                {
+                    AllowedRoles = new List<string>(),
+                    Columns = new List<ColumnViewModel>(),
+                    CustomTable = true,
+                    Selected = true
+                };
+
+                table.CustomTableSql = data.value;
+
+                var connString = await DotNetSetupController.GetConnectionString(DotNetSetupController.GetConnection(data.dataConnectKey));
+                using (OleDbConnection conn = new OleDbConnection(connString))
+                {
+                    // open the connection to the database 
+                    conn.Open();
+                    OleDbCommand cmd = new OleDbCommand(data.value, conn);
+                    cmd.CommandType = CommandType.Text;
+                    using (OleDbDataReader reader = cmd.ExecuteReader())
+                    {
+                        // Get the column metadata using schema.ini file
+                        DataTable schemaTable = new DataTable();
+                        schemaTable = reader.GetSchemaTable();
+                        var idx = 0;
+
+                        foreach (DataRow dr in schemaTable.Rows)
+                        {
+                            var column = new ColumnViewModel
+                            {
+                                ColumnName = dr["ColumnName"].ToString(),
+                                DisplayName = dr["ColumnName"].ToString(),
+                                PrimaryKey = dr["ColumnName"].ToString().ToLower().EndsWith("id") && idx == 0,
+                                DisplayOrder = idx,
+                                FieldType = DotNetSetupController.ConvertToJetDataType((int)dr["ProviderType"]).ToString(),
+                                AllowedRoles = new List<string>(),
+                                Selected = true
+                            };
+
+                            idx++;
+                            table.Columns.Add(column);
+                        }
+                        table.Columns = table.Columns.OrderBy(x => x.DisplayOrder).ToList();
+                    }
+
+                    return Json(table, JsonRequestBehavior.AllowGet);
+                }
+            }
+            catch (Exception ex)
+            {
+
+                return Json(new { errorMessage = ex.Message}, JsonRequestBehavior.AllowGet);
+            }
         }
 
         private string GetWarnings(string sql)
@@ -451,54 +522,172 @@ namespace ReportBuilder.Web.Controllers
             return warning;
         }
 
-        private DotNetReportDataModel DataTableToDotNetReportDataModel(DataTable dt, List<string> sqlFields)
+        //[Authorize(Roles="Administrator")]
+        [HttpPost]
+        public async Task<JsonResult> LoadSetupSchema(string databaseApiKey = "", bool onlyApi = false)
         {
-            var model = new DotNetReportDataModel
+            var settings = GetSettings();
+            if (!settings.CanUseAdminMode)
             {
-                Columns = new List<DotNetReportDataColumnModel>(),
-                Rows = new List<DotNetReportDataRowModel>()
+                throw new Exception("Not Authorized to access this Resource");
+            }
+
+            var connect = DotNetSetupController.GetConnection(databaseApiKey);
+            var tables = new List<TableViewModel>();
+            var procedures = new List<TableViewModel>();
+            if (onlyApi)
+            {
+                tables.AddRange(await DotNetSetupController.GetApiTables(connect.AccountApiKey, connect.DatabaseApiKey, true));
+            }
+            else
+            {
+                tables.AddRange(await DotNetSetupController.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
+                tables.AddRange(await DotNetSetupController.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
+            }
+            procedures.AddRange(await DotNetSetupController.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
+
+            var model = new ManageViewModel
+            {
+                ApiUrl = connect.ApiUrl,
+                AccountApiKey = connect.AccountApiKey,
+                DatabaseApiKey = connect.DatabaseApiKey,
+                Tables = tables,
+                Procedures = procedures
             };
 
-            int i = 0;
-            foreach (DataColumn col in dt.Columns)
-            {
-                var sqlField = sqlFields[i++];
-                model.Columns.Add(new DotNetReportDataColumnModel
-                {
-                    SqlField = sqlField.Substring(0, sqlField.IndexOf("AS")).Trim(),
-                    ColumnName = col.ColumnName,
-                    DataType = col.DataType.ToString(),
-                    IsNumeric = DotNetReportHelper.IsNumericType(col.DataType)
-                });
-
-            }
-
-            foreach (DataRow row in dt.Rows)
-            {
-                i = 0;
-                var items = new List<DotNetReportDataRowItemModel>();
-
-                foreach (DataColumn col in dt.Columns)
-                {
-
-                    items.Add(new DotNetReportDataRowItemModel
-                    {
-                        Column = model.Columns[i],
-                        Value = row[col] != null ? row[col].ToString() : null,
-                        FormattedValue = DotNetReportHelper.GetFormattedValue(col, row),
-                        LabelValue = DotNetReportHelper.GetLabelValue(col, row)
-                    });
-                    i += 1;
-                }
-
-                model.Rows.Add(new DotNetReportDataRowModel
-                {
-                    Items = items.ToArray()
-                });
-            }
-
-            return model;
+            return new JsonResult { Data = model, MaxJsonLength = int.MaxValue };
         }
+
+        public class SearchProcCall { 
+            public string value { get; set; } 
+            public string accountKey { get; set; } 
+            public string dataConnectKey { get; set; } 
+        }
+
+        public class SchemaFromSqlCall : SearchProcCall
+        {
+        }
+
+        [HttpPost]
+        public async Task<JsonResult> SearchProcedure(SearchProcCall data)
+        {
+            string value = data.value; string accountKey = data.accountKey; string dataConnectKey = data.dataConnectKey;
+            return Json(await GetSearchProcedure(value, accountKey, dataConnectKey), JsonRequestBehavior.AllowGet);
+        }
+
+        private async Task<List<TableViewModel>> GetSearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
+        {
+            var tables = new List<TableViewModel>();
+            var connString = await DotNetSetupController.GetConnectionString(DotNetSetupController.GetConnection(dataConnectKey));
+            using (OleDbConnection conn = new OleDbConnection(connString))
+            {
+                // open the connection to the database 
+                conn.Open();
+                string spQuery = "SELECT ROUTINE_NAME, ROUTINE_DEFINITION, ROUTINE_SCHEMA FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_NAME LIKE '%" + value + "%' AND ROUTINE_TYPE = 'PROCEDURE'";
+                OleDbCommand cmd = new OleDbCommand(spQuery, conn);
+                cmd.CommandType = CommandType.Text;
+                DataTable dtProcedures = new DataTable();
+                dtProcedures.Load(cmd.ExecuteReader());
+                int count = 1;
+                foreach (DataRow dr in dtProcedures.Rows)
+                {
+                    var procName = dr["ROUTINE_NAME"].ToString();
+                    var procSchema = dr["ROUTINE_SCHEMA"].ToString();
+                    cmd = new OleDbCommand(procName, conn);
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    // Get the parameters.
+                    OleDbCommandBuilder.DeriveParameters(cmd);
+                    List<ParameterViewModel> parameterViewModels = new List<ParameterViewModel>();
+                    foreach (OleDbParameter param in cmd.Parameters)
+                    {
+                        if (param.Direction == ParameterDirection.Input)
+                        {
+                            var parameter = new ParameterViewModel
+                            {
+                                ParameterName = param.ParameterName,
+                                DisplayName = param.ParameterName,
+                                ParameterValue = param.Value != null ? param.Value.ToString() : "",
+                                ParamterDataTypeOleDbTypeInteger = Convert.ToInt32(param.OleDbType),
+                                ParamterDataTypeOleDbType = param.OleDbType,
+                                ParameterDataTypeString = DotNetSetupController.GetType(DotNetSetupController.ConvertToJetDataType(Convert.ToInt32(param.OleDbType))).Name
+                            };
+                            if (parameter.ParameterDataTypeString.StartsWith("Int")) parameter.ParameterDataTypeString = "Int";
+                            parameterViewModels.Add(parameter);
+                        }
+                    }
+                    DataTable dt = new DataTable();
+                    cmd = new OleDbCommand($"[{procSchema}].[{procName}]", conn);
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    foreach (var data in parameterViewModels)
+                    {
+                        cmd.Parameters.Add(new OleDbParameter { Value = DBNull.Value, ParameterName = data.ParameterName, Direction = ParameterDirection.Input, IsNullable = true });
+                    }
+                    OleDbDataReader reader = cmd.ExecuteReader();
+                    dt = reader.GetSchemaTable();
+
+                    if (dt == null) continue;
+
+                    // Store the table names in the class scoped array list of table names
+                    List<ColumnViewModel> columnViewModels = new List<ColumnViewModel>();
+                    for (int i = 0; i < dt.Rows.Count; i++)
+                    {
+                        var column = new ColumnViewModel
+                        {
+                            ColumnName = dt.Rows[i].ItemArray[0].ToString(),
+                            DisplayName = dt.Rows[i].ItemArray[0].ToString(),
+                            FieldType = DotNetSetupController.ConvertToJetDataType((int)dt.Rows[i]["ProviderType"]).ToString()
+                        };
+                        columnViewModels.Add(column);
+                    }
+                    tables.Add(new TableViewModel
+                    {
+                        TableName = procName,
+                        SchemaName = dr["ROUTINE_SCHEMA"].ToString(),
+                        DisplayName = procName,
+                        Parameters = parameterViewModels,
+                        Columns = columnViewModels
+                    });
+                    count++;
+                }
+                conn.Close();
+                conn.Dispose();
+            }
+            return tables;
+        }
+
+        private async Task<DataTable> GetStoreProcedureResult(TableViewModel model, string accountKey = null, string dataConnectKey = null)
+        {
+            DataTable dt = new DataTable();
+            var connString = await DotNetSetupController.GetConnectionString(DotNetSetupController.GetConnection(dataConnectKey));
+            using (OleDbConnection conn = new OleDbConnection(connString))
+            {
+                // open the connection to the database 
+                conn.Open();
+                OleDbCommand cmd = new OleDbCommand(model.TableName, conn);
+                cmd.CommandType = CommandType.StoredProcedure;
+                foreach (var para in model.Parameters)
+                {
+                    if (string.IsNullOrEmpty(para.ParameterValue))
+                    {
+                        if (para.ParamterDataTypeOleDbType == OleDbType.DBTimeStamp || para.ParamterDataTypeOleDbType == OleDbType.DBDate)
+                        {
+                            para.ParameterValue = DateTime.Now.ToShortDateString();
+                        }
+                    }
+                    cmd.Parameters.AddWithValue("@" + para.ParameterName, para.ParameterValue);
+                    //cmd.Parameters.Add(new OleDbParameter { 
+                    //    Value =  string.IsNullOrEmpty(para.ParameterValue) ? DBNull.Value : (object)para.ParameterValue , 
+                    //    ParameterName = para.ParameterName, 
+                    //    Direction = ParameterDirection.Input, 
+                    //    IsNullable = true });
+                }
+                dt.Load(cmd.ExecuteReader());
+                conn.Close();
+                conn.Dispose();
+            }
+            return dt;
+        }
+
     }
 
 }

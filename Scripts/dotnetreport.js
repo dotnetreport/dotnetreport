@@ -1,6 +1,6 @@
-﻿/// dotnet Report Builder view model v5.0.0
+﻿/// dotnet Report Builder view model v5.3.0
 /// License must be purchased for commercial use
-/// 2022 (c) www.dotnetreport.com
+/// 2024 (c) www.dotnetreport.com
 
 function formulaFieldViewModel(args) {
 	args = args || {};
@@ -121,7 +121,7 @@ function linkFieldViewModel(args, options) {
 
 		return isValid;
 	};
-
+	
 	self.clear = function () {
 		self.LinksToReport(true);
 		self.selectedLinkType('Report');
@@ -137,7 +137,7 @@ function linkFieldViewModel(args, options) {
 function scheduleBuilder(userId) {
 	var self = this;
 
-	self.options = ['day', 'week', 'month', 'year', 'once'];
+	self.options = ['day', 'week', 'month', 'year', 'once', 'hour'];
 	self.showAtTime = ko.observable(true);
 	self.showDays = ko.observable(false);
 	self.showMonths = ko.observable(false);
@@ -181,22 +181,31 @@ function scheduleBuilder(userId) {
 				self.showDays(false);
 				self.showDates(false);
 				self.showMonths(false);
+				self.showAtTime(true);
 				break;
 			case 'week':
 				self.showDays(true);
 				self.showDates(false);
 				self.showMonths(false);
+				self.showAtTime(true);
 				break;
 			case 'month':
 				self.showDays(false);
 				self.showDates(true);
 				self.showMonths(false);
+				self.showAtTime(true);
 				break;
 			case 'year':
 				self.showDays(false);
 				self.showDates(true);
 				self.showMonths(true);
+				self.showAtTime(true);
 				break;
+			case 'hour':
+				self.showDays(false);
+				self.showDates(false);
+				self.showMonths(false);
+				self.showAtTime(false);
 		}
 	});
 
@@ -285,7 +294,7 @@ function filterGroupViewModel(args) {
 		return found;
 	}
 
-	self.AddFilter = function (e, isFilterOnFly) {
+	self.AddFilter = function (e, isFilterOnFly, printMode) {
 		e = e || {};
 		var lookupList = ko.observableArray([]);
 		var parentList = ko.observableArray([]);
@@ -307,7 +316,7 @@ function filterGroupViewModel(args) {
 			lookupList.push({ id: e.Value2, text: e.Value2 });
 		}
 
-		var field = ko.observable();
+		var field = ko.observable();	
 		var valueIn = e.Operator == 'in' || e.Operator == 'not in' ? (e.Value1 || '').split(',') : [];
 		var filter = {
 			AndOr: ko.observable(isFilterOnFly ? ' AND ' : e.AndOr),
@@ -330,6 +339,7 @@ function filterGroupViewModel(args) {
 		});
 
 		function loadLookupList(fieldId, dataFilters) {
+			if (printMode === true) return;
 			ajaxcall({
 				url: args.options.apiUrl,
 				data: {
@@ -347,7 +357,7 @@ function filterGroupViewModel(args) {
 					if (list.d) { list = list.d; }
 					if (list.result) { list = list.result; }
 					var value = filter.Value();
-					lookupList(list);
+					lookupList(_.sortBy(list, 'text'));
 					if (value && !filter.Value()) {
 						filter.Value(value);
 					}
@@ -378,6 +388,7 @@ function filterGroupViewModel(args) {
 
 					var existingParentFilter = self.GetValuesInFilterGroupForFieldAndTable(newField.foreignParentTable, newField.foreignParentKeyField);
 					if (!existingParentFilter) {
+						if (printMode === true) return;
 						ajaxcall({
 							url: args.options.apiUrl,
 							data: {
@@ -394,7 +405,7 @@ function filterGroupViewModel(args) {
 							}).done(function (list) {
 								if (list.d) { list = list.d; }
 								if (list.result) { list = list.result; }
-								parentList(list);
+								parentList(_.sortBy(list, 'text'));
 							});
 						});
 
@@ -461,7 +472,7 @@ function filterGroupViewModel(args) {
 		addingFilter = false;
 		return filter;
 	};
-
+	 
 	self.RemoveFilter = function (filter) {
 		self.Filters.remove(filter);
 	};
@@ -531,7 +542,7 @@ var headerDesigner = function (options) {
 	self.UseReportHeader = ko.observable(options.useReportHeader === true ? true : false)
 
 	self.init = function (displayOnly) {
-		if (self.initiated) return;
+		if (self.initiated && !displayOnly) return;
 		self.initiated = true;
 		self.canvas = new fabric.Canvas(options.canvasId);
 		if (displayOnly === true) return;
@@ -587,11 +598,18 @@ var headerDesigner = function (options) {
 	}
 
 	self.resizeCanvas = function (width) {
+		if (options.isExpanded() && $('.report-expanded-scroll').offset()) {
+			document.body.scrollTop = document.documentElement.scrollTop = 0;
+			var windowHeight = $(window).height();
+			var scrollContainerHeight = windowHeight - $('.report-expanded-scroll').offset().top;
+			$('.report-expanded-scroll').css('height', scrollContainerHeight + 'px');
+		}
+
 		var canvas = self.canvas;
 		if (canvas == null) return;
 		width = isNaN(width) ? $("#" + options.canvasId).parent().parent().width() : width;
 		if (width > 100) canvas.setWidth(width);
-		canvas.renderAll();
+		canvas.renderAll();	
 	}
 
 	self.dispose = function () {
@@ -746,192 +764,6 @@ var headerDesigner = function (options) {
 	};
 }
 
-
-var textQuery = function (options) {
-	var self = this;
-	self.queryItems = [];
-	self.filterItems = [];
-
-	self.ParseQuery = function (token, text) {
-		return ajaxcall({
-			noBlocking: true,
-			url: options.apiUrl,
-			data: {
-				method: "/ReportApi/ParseQuery",
-				model: JSON.stringify({
-					token: token,
-					text: text
-				})
-			}
-		});
-	}
-
-	self.QueryMethods = [
-		{ value: 'Sum', key: '<span class="fa fa-flash"></span> Sum of', type: 'Function' },
-		{ value: 'Avg', key: '<span class="fa fa-flash"></span> Average of', type: 'Function' },
-		{ value: 'Sum', key: '<span class="fa fa-flash"></span> Total of', type: 'Function' },
-		{ value: 'Count', key: '<span class="fa fa-flash"></span> Count of', type: 'Function' },
-		{ value: 'Percent', key: '<span class="fa fa-flash"></span> Percentage of', type: 'Function' },
-		{ value: 'OrderBy', key: '<span class="fa fa-gear"></span> Order by', type: 'Order' },		
-		{ value: 'Bar', key: '<span class="fa fa-bar-chart"></span> as Bar Chart', type: 'ReportType' },
-		{ value: 'Pie', key: '<span class="fa fa-pie-chart"></span> as Pie Chart', type: 'ReportType' },
-	];
-
-	self.FilterMethods = [
-		{ value: 'Today', key: '<span class="fa fa-filter"></span> for Today', type: 'DateFilter' },
-		{ value: 'Yesterday', key: '<span class="fa fa-filter"></span> for Yesterday', type: 'DateFilter' },
-		{ value: 'This Month', key: '<span class="fa fa-filter"></span> for This Month', type: 'DateFilter' },
-		{ value: 'Last Month', key: '<span class="fa fa-filter"></span> for Last Month', type: 'DateFilter' },
-	];
-
-	self.getAggregate = function (columnId) {
-		var func = 'Group';
-		_.forEach(self.queryItems, function (x, i) {
-			if (x.value == columnId) {
-				if (i > 0 && self.queryItems[i - 1].type == 'Function') {
-					func = self.queryItems[i - 1].value;
-                }
-				return false;
-            }
-		});
-
-		return func;
-    }
-
-	self.getReportType = function () {
-		var reportType = _.find(self.queryItems, { type: 'ReportType' });
-		if (reportType) {
-			return reportType.value;
-		}
-
-		return (_.find(self.queryItems, { type: 'Function' })) ? 'Summary' : 'List';
-    }
-
-	self.resetQuery = function () {
-		self.queryItems = [];
-		self.filterItems = [];
-		document.getElementById("query-input").innerHTML = "Show me&nbsp;";
-		document.getElementById("filter-input").innerHTML = "Filter by&nbsp;";
-	}
-
-	self.searchFields = {
-		selectedOption: ko.observable(),
-		url: options.apiUrl,
-		query: function (params) {
-			return params.term ? {
-				method: "/ReportApi/ParseQuery",
-				model: JSON.stringify({
-					token: params.term,
-					text: ''
-				})
-			} : null;
-		},
-		processResults: function (data) {
-			if (data.d) results = data.d;
-			var items = _.map(data, function (x) {
-				return { id: x.fieldId, text: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey };
-			});
-
-			return {
-				results: items
-			};
-        }
-    }
-
-	self.setupQuery = function () {
-		var tributeAttributes = {
-			allowSpaces: true,
-			autocompleteMode: true,
-			noMatchTemplate: "",
-			values: function (token, callback) {
-				if (token == "=" || token == ">" || token == "<") return;
-				self.ParseQuery(token, "").done(function (results) {
-					if (results.d) results = results.d;
-					var items = _.map(results, function (x) {
-						return { value: x.fieldId, key: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey };
-					});
-
-					items = items.concat(self.QueryMethods)
-
-					callback(items);
-				});
-			},
-			selectTemplate: function (item) {
-				if (typeof item === "undefined") return null;
-				if (this.range.isContentEditable(this.current.element)) {
-					return (
-						'<span contenteditable="false"><a>' +
-						item.original.key +
-						"</a></span>"
-					);
-				}
-
-				return item.original.value;
-			},
-			menuItemTemplate: function (item) {
-				return item.string;
-			}
-		};
-
-		var tribute = new Tribute(tributeAttributes);
-		tribute.attach(document.getElementById("query-input"));
-
-		document.getElementById("query-input")
-			.addEventListener("tribute-replaced", function (e) {
-				self.queryItems.push(e.detail.item.original);
-			});
-
-		document.getElementById("query-input")
-			.addEventListener("menuItemRemoved", function (e) {
-				self.queryItems.remove(e.detail.item.original);
-			});
-
-		var tributeFilterAttributes = {
-			allowSpaces: true,
-			autocompleteMode: true,
-			noMatchTemplate: "",
-			values: function (token, callback) {
-				if (token == "=" || token == ">" || token == "<") return;
-				self.ParseQuery(token, "").done(function (results) {
-					if (results.d) results = results.d;
-					var items = _.map(results, function (x) {
-						return { value: x.fieldId, key: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field' };
-					});
-
-					items = items.concat(self.QueryMethods)
-					 
-					callback(items);
-				});
-			},
-			selectTemplate: function (item) {
-				if (typeof item === "undefined") return null;
-				if (this.range.isContentEditable(this.current.element)) {
-					return (
-						'<span contenteditable="false"><a>' +
-						item.original.key +
-						"</a></span>"
-					);
-				}
-
-				return item.original.value;
-			},
-			menuItemTemplate: function (item) {
-				return item.string;
-			}
-		};
-
-		var filterTribute = new Tribute(tributeFilterAttributes);
-		filterTribute.attach(document.getElementById("filter-input"));
-
-
-		document.getElementById("filter-input")
-			.addEventListener("tribute-replaced", function (e) {
-				self.queryItems.push(e.detail.item.original);
-			});
-
-	}
-}
-
 var reportViewModel = function (options) {
 	var self = this;
 
@@ -977,13 +809,20 @@ var reportViewModel = function (options) {
 
 	self.IncludeSubTotal = ko.observable(false);
 	self.ShowUniqueRecords = ko.observable(false);
+	self.ShowExpandOption = ko.observable(false);
+	self.DontExecuteOnRun = ko.observable(false);
 	self.AggregateReport = ko.observable(false);
 	self.SortByField = ko.observable();
 	self.SortDesc = ko.observable(false);
 	self.EditFiltersOnReport = ko.observable(false);
 	self.UseReportHeader = ko.observable(false);
 	self.HideReportHeader = ko.observable(false);
-
+	self.maxRecords = ko.observable(false);
+	self.changePageSize = ko.observable(false);
+	self.OnlyTop = ko.observable();
+	self.barChartHorizontal = ko.observable();
+	self.barChartStacked = ko.observable();
+	self.DefaultPageSize = ko.observable();
 	self.FilterGroups = ko.observableArray();
 	self.FilterGroups.subscribe(function (newArray) {
 		if (newArray && newArray.length == 0) {
@@ -1018,21 +857,139 @@ var reportViewModel = function (options) {
 	self.useReportHeader = ko.observable(false);
 	self.searchReports = ko.observable();
 
+	const styleMixed = ["#c8d8e4", "#e4d8c8", "#d8e4c8", "#e4c8d8", "#c8e4d8","#d8c8e4", "#e4c8c8", "#c8e4e4", "#e4e4c8", "#d8e4e4","#c8d8d8", "#d8c8c8", "#c8c8e4", "#e4d8d8", "#d8d8c8","#c8d8e4", "#e4c8e4", "#d8e4d8", "#e4d8e4", "#d8d8e4","#e4e4d8", "#c8e4c8", "#e4c8d8", "#d8c8d8", "#c8e4e4"];
+	const styleMixedBright = ["#fff", "#ff9999", "#99ff99", "#9999ff", "#ffff99", "#99ffff", "#ff99ff", "#d9d9d9", "#b3b3ff", "#ffb3b3", "#b3ffb3", "#ffcc66", "#ccff66", "#66ffcc", "#66ccff", "#cc66ff", "#ff6666", "#66ff66", "#6666ff", "#ffff66", "#66ffff"];
+	const styleGray = ["#f0f0f0", "#e0e0e0", "#d1d1d1", "#c2c2c2", "#b3b3b3","#a4a4a4", "#959595", "#868686", "#777777", "#686868","#595959", "#4a4a4a", "#3b3b3b", "#2c2c2c", "#1d1d1d","#0e0e0e", "#0f0f0f", "#1e1e1e", "#2d2d2d", "#3c3c3c","#4b4b4b", "#5a5a5a", "#696969", "#787878", "#878787"];
+	const styleBlue = ["#e6f7ff", "#cceeff", "#b3e6ff", "#99ddff", "#80d4ff","#66ccff", "#4dc3ff", "#33bbff", "#1ab2ff", "#00aaff","#0099e6", "#0088cc", "#0077b3", "#006699", "#005580","#004466", "#00334d", "#002233", "#00111a", "#000000","#0033ff", "#0044ff", "#0055ff", "#0066ff", "#0077ff"];
+	const styleGreen = ["#e9f7e9", "#d3efd3", "#bde6bd", "#a7dea7", "#90d690","#7acf7a", "#64c764", "#4dbf4d", "#36b736", "#20b020","#1fa01f", "#1e8f1e", "#1d7f1d", "#1c6e1c", "#1b5e1b","#1a4d1a", "#194d19", "#183c18", "#172c17", "#161b16","#150a15", "#140014", "#130013", "#120012", "#110011"];
+	const styleRed = ["#ffe6e6", "#ffcccc", "#ffb3b3", "#ff9999", "#ff8080", "#ff6666", "#ff4d4d", "#ff3333", "#ff1a1a", "#ff0000", "#e60000", "#cc0000", "#b30000", "#990000", "#800000", "#660000", "#4d0000", "#330000", "#1a0000", "#000000", "#ff3333", "#ff4040", "#ff4d4d", "#ff5959", "#ff6666"];
+	const styleYellow = ["#ffffe6", "#ffffcc", "#ffffb3", "#ffff99", "#ffff80", "#ffff66", "#ffff4d", "#ffff33", "#ffff1a", "#ffff00", "#ffff33", "#ffff47", "#ffff5c", "#ffff70", "#ffff85"];
+	const styleOrange = ["#fff5e6", "#ffebcc", "#ffe0b3", "#ffd699", "#ffcc80", "#ffc266", "#ffb84d", "#ffad33", "#ffa31a", "#ff9900", "#e68a00", "#cc7a00", "#b36b00", "#995c00", "#804d00", "#664000", "#4d3300", "#332600", "#1a1900", "#000000", "#ffad33", "#ffb347", "#ffb85c", "#ffbd70", "#ffc285"];
+
+	self.tableStyles = ko.observableArray([
+		{ name: 'Default', headerBg: '#fff', rowBg: '#FFFFFF', altRowBg: '#F4F4F4', textColor: '#000000', colorscheme: 'default' },
+		{ name: 'Modern', headerBg: '#CFE2F3', rowBg: '#FFFFFF', altRowBg: '#DEEBF7', textColor: '#000000', colorscheme: 'style-blue' },
+		{ name: 'Warm', headerBg: '#F9CB9C', rowBg: '#FFFFFF', altRowBg: '#FCE5CD', textColor: '#000000', colorscheme: 'style-orange' },
+		{ name: 'Cool', headerBg: '#A2C4C9', rowBg: '#c8d8d8', altRowBg: '#d8e4e4', textColor: '#000000', colorscheme: 'style-mixed' },
+		{ name: 'Vibrant', headerBg: '#C27BA0', rowBg: '#FFFFFF', altRowBg: '#D5A6BD', textColor: '#FFFFFF', colorscheme: 'style-mixed-bright' }
+	]);
+
+	self.colorScheme = ko.observableArray([]);
+	self.selectedStyle = ko.observable('default');
+	self.selectedTableStyle = ko.observable(self.tableStyles()[0]);
+	self.dropdownOpen = ko.observable(false);
+
+	self.toggleDropdown = function () {
+		self.dropdownOpen(!self.dropdownOpen());
+	};
+
+	self.selectStyle = function (style) {
+		self.selectedTableStyle(style);
+		self.selectedStyle(style.colorscheme);
+		self.dropdownOpen(false);
+	};
+
+	self.colorSchemeDisplay = function (colorScheme, name) {
+		var $table = $('<div class="color-table">'+ name + '&nbsp;</div>');
+		colorScheme.slice(1, 10).forEach(function (color) {
+			$table.append('<div class="color-cell" style="background-color:' + color + ';"></div>');
+		});
+		return $table;
+	}
+
+	self.colorSchemes = [{
+		id: 'default',
+		text: 'Default',
+		colors: [],
+		html: '<div class="color-table">Default</div>'
+	}, {
+		id: 'style-mixed',
+		text: 'Mixed',
+		colors: styleMixed,
+		html: this.colorSchemeDisplay(styleMixed, 'Mixed')
+	}, {
+		id: 'style-mixed-bright',
+		text: 'Bright',
+		colors: styleMixedBright,
+		html: this.colorSchemeDisplay(styleMixedBright, 'Bright')
+	}, {
+		id: 'style-gray',
+		text: 'Gray',
+		colors: styleGray,
+		html: this.colorSchemeDisplay(styleGray, 'Gray')
+	}, {
+		id: 'style-blue',
+		text: 'Blue',
+		colors: styleBlue,
+		html: this.colorSchemeDisplay(styleBlue, 'Blue')
+	}, {
+		id: 'style-green',
+		text: 'Green',
+		colors: styleGreen,
+		html: this.colorSchemeDisplay(styleGreen, 'Green')
+	}, {
+		id: 'style-red',
+		text: 'Red',
+		colors: styleRed,
+		html: this.colorSchemeDisplay(styleRed, 'Red')
+	}, {
+		id: 'style-orange',
+		text: 'Orange',
+		colors: styleOrange,
+		html: this.colorSchemeDisplay(styleOrange, 'Orange')
+	}];
+
+	self.selectedStyle.subscribe(function (x) {
+		switch (x) {
+			case 'style-gray': self.colorScheme(styleGray); break;
+			case 'style-blue': self.colorScheme(styleBlue); break;
+			case 'style-red': self.colorScheme(styleRed); break;
+			case 'style-orange': self.colorScheme(styleOrange); break;
+			case 'style-green': self.colorScheme(styleGreen); break;
+			case 'style-yellow': self.colorScheme(styleYellow); break;
+			case 'style-mixed': self.colorScheme(styleMixed); break;
+			case 'style-mixed-bright': self.colorScheme(styleMixedBright); break;
+			default: self.colorScheme([]);
+		}
+	});
+
+	self.colorScheme.subscribe(function (x) {
+		self.DrawChart();
+	});
+
 	self.SavedReports.subscribe(function (x) {
 		if (self.ReportID()) {
 			var match = _.find(x, { reportId: self.ReportID() }) || { canEdit: false };
 			self.CanEdit(match.canEdit || self.adminMode());
 		}
 	});
+	self.isExpanded = ko.observable(false);
+	self.toggleExpand = function () {
+		self.isExpanded(!self.isExpanded());
+
+		if (self.isExpanded()) {
+			self.headerDesigner.resizeCanvas();
+		} else {
+			$('.report-expanded-scroll').css('height', 'auto');
+		}
+	}
 
 	self.fieldFormatTypes = ['Auto', 'Number', 'Decimal', 'Currency', 'Percentage', 'Date', 'Date and Time', 'Time', 'String'];
 	self.decimalFormatTypes = ['Number', 'Decimal', 'Currency', 'Percentage'];
+	self.dateFormats = ['United States', 'United Kingdom', 'France', 'German', 'Spanish', 'Chinese', 'Custom'];
+	self.currencyFormats = [
+		{ value: '$', display: 'USD ($)' },
+		{ value: '€', display: 'EUR (€)' },
+		{ value: '£', display: 'Pound (£)' },
+		{ value: 'Rs', display: 'Rupee (Rs)' }
+	];
 	self.dateFormatTypes = ['Date', 'Date and Time', 'Time'];
 	self.fieldAlignments = ['Auto', 'Left', 'Right', 'Center'];
 	self.designingHeader = ko.observable(false);
 	self.headerDesigner = new headerDesigner({
 		canvasId: options.reportHeader,
-		apiUrl: options.apiUrl
+		apiUrl: options.apiUrl,
+		isExpanded: self.isExpanded
 	});
 
 	self.initHeaderDesigner = function () {
@@ -1041,7 +998,7 @@ var reportViewModel = function (options) {
 		self.designingHeader(true);
 	}
 
-	self.buildCombinations = function(arrays, combine, finalList) {
+	self.buildCombinations = function (arrays, combine, finalList) {
 		var _this = this;
 		combine = combine || [];
 		finalList = finalList || [];
@@ -1082,8 +1039,8 @@ var reportViewModel = function (options) {
 		var computedGroups = [];
 		var options = [];
 		_.forEach(groupColumns, function (c) {
-			options.push(_.map(c.rowData, function (x) { return  { fieldId: c.fieldId, fieldIndex: c.fieldIndex, fieldName: c.fieldName, formattedValue: x }; }));
-        })
+			options.push(_.map(c.rowData, function (x) { return { fieldId: c.fieldId, fieldIndex: c.fieldIndex, fieldName: c.fieldName, formattedValue: x }; }));
+		})
 
 		var rows = self.buildCombinations(options);
 
@@ -1123,12 +1080,17 @@ var reportViewModel = function (options) {
 	self.y = ko.observable(0);
 	self.width = ko.observable(3);
 	self.height = ko.observable(2);
+	var tokenKey = '';
+	var token = JSON.parse(localStorage.getItem(tokenKey));
 
 	self.textQuery = new textQuery(options);
 
 	self.runQuery = function (useAi) {
 		self.SelectedFields([]);
+		self.resetQuery(false);
+
 		var fieldIds = _.filter(self.textQuery.queryItems, { type: 'Field' }).map(function (x) { return x.value });
+		if (fieldIds.length == 0) fieldIds.push(0);
 		ajaxcall({
 			url: options.apiUrl,
 			data: {
@@ -1167,19 +1129,31 @@ var reportViewModel = function (options) {
 					}
 				}).done(function (result) {
 					if (result.d) result = result.d;
+					if (result.success === false) {
+						toastr.error(result.message || 'Could not process this correctly, please try again');
+						return;
+					}
 					self.ExecuteReportQuery(result.sql, result.connectKey);
 				});
 			}
 			else {
-				self.RunReport(false);
+				self.RunReport(false, true);
 			}
 		});
 	}
 
-	self.resetQuery = function () {
-		self.textQuery.resetQuery();
+	self.resetQuery = function (resetText = true) {
+		if (resetText !== false) {
+			self.textQuery.resetQuery();
+		}
 		self.ReportResult().ReportData(null);
 		self.ReportResult().HasError(false);
+		self.ReportResult().ReportSql(null);
+		self.ReportResult().SubTotals([]);
+	}
+
+	self.openDesigner = function () {
+		options.reportWizard.modal('show');
 	}
 
 	self.textQuery.searchFields.selectedOption.subscribe(function (newValue) {
@@ -1212,7 +1186,13 @@ var reportViewModel = function (options) {
 	});
 
 	self.adminMode.subscribe(function (newValue) {
-		self.LoadAllSavedReports();
+
+		if (self.ReportMode() != "dashboard") {
+			self.loadFolders().done(function () {
+				self.LoadAllSavedReports();
+			});
+		}
+
 		if (newValue) {
 			self._cansavereports = self.CanSaveReports();
 			self.SaveReport(true);
@@ -1231,7 +1211,7 @@ var reportViewModel = function (options) {
 	});
 
 	self.pager.pageSize.subscribe(function () {
-		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey(), self.ReportSeries);
+		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey(), self.ReportSeries, true);
 	});
 
 	self.createNewReport = function () {
@@ -1255,9 +1235,14 @@ var reportViewModel = function (options) {
 	self.cancelCreateReport = function () {
 		bootbox.confirm("Are you sure you would like to cancel editing this Report?", function (r) {
 			if (r) {
-				self.clearReport();
 				options.reportWizard.modal('hide');
+
+				if (self.ReportMode() == 'dashboard') {
+					report.SaveReport(false);
+					return;
+				}
 				self.ReportMode("start");
+				self.clearReport();
 			}
 		});
 	};
@@ -1332,6 +1317,7 @@ var reportViewModel = function (options) {
 					self.Folders.remove(self.SelectedFolder());
 					folderToUpdate.FolderName = self.ManageFolder.FolderName();
 					self.Folders.push(folderToUpdate);
+					self.allFolders = self.Folders();
 					self.SelectedFolder(null);
 				}
 				$("#folderModal").modal("hide");
@@ -1359,6 +1345,7 @@ var reportViewModel = function (options) {
 						},
 					}).done(function () {
 						self.Folders.remove(self.SelectedFolder());
+						self.allFolders = self.Folders();
 						self.SelectedFolder(null);
 					});
 				}
@@ -1371,18 +1358,107 @@ var reportViewModel = function (options) {
 			return [];
 		}
 
-		return _.filter(self.SavedReports(), function (x) {
-			return x.folderId == self.SelectedFolder().Id;
-		});
+		return _.chain(self.SavedReports())
+			.filter(function (x) {
+				return x.folderId == self.SelectedFolder().Id;
+			})
+			.sortBy(function (x) {
+				return x.reportName.toLowerCase();
+			})
+			.value();
 	});
 
-	self.reportsInSearch = ko.computed(function () {
-		var searchReports = self.searchReports();
-		if (!searchReports) return [];
+	var tokenKey = '';
+	var token = JSON.parse(localStorage.getItem(tokenKey));
+	self.searchFieldsInReport = {
+		language: {
+			noResults: function () {
+				return 'Search for text or select a field';
+			},
+			searching: function () {
+				return 'Search for text or select a field';
+			},
+			errorLoading: function () {
+				return 'Search for text or select a field';
+			}
+		},
+		headers: { "Authorization": "Bearer " + token },
+		selectedOption: ko.observable(),
+		url: options.apiUrl,
+		query: function (params) {
+			self.searchReports(params.term);
+			$('.select2-selection__placeholder').text(params.term);
+			if (params.term && params.term.length <= 2) return;
+			return params.term ? {
+				method: "/ReportApi/ParseQuery",
+				model: JSON.stringify({
+					token: params.term,
+					text: '',
+					onlyInReports: true
+				})
+			} : null;
+		},
+		processResults: function (data) {
+			if (data.d) data = data.d;
+			var items = _.map(data, function (x) {
+				return { id: x.fieldId, text: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey };
+			});
 
-		return _.filter(self.SavedReports(), function (x) {
-			return x.reportName.toLowerCase().indexOf(searchReports.toLowerCase()) >= 0 || x.reportDescription.toLowerCase().indexOf(searchReports.toLowerCase()) >= 0;
-		});
+			return {
+				results: items
+			};
+		}
+	}
+
+	self.searchFieldsInReport.selectedOption.subscribe(function (x) {
+		if (!x) {
+			self.searchReports('');
+		}
+	});
+
+	self.reportsInSearch = ko.observableArray([]);
+	self.reportsInSearchCompute = ko.computed(function () {
+		var searchReports = self.searchReports();
+		var searchFieldId = self.searchFieldsInReport.selectedOption();
+
+		if (!searchReports) {
+			$('.select2-selection__placeholder').text('Search for text or select a field');
+			$('#search-report').val([]).trigger('change'); 
+		}
+
+		if (!searchReports && !searchFieldId) {
+			self.reportsInSearch([]);
+			return;
+		}
+
+		if (searchFieldId) {
+			ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/FindReportsByFieldId",
+					model: JSON.stringify({
+						fieldId: parseInt(searchFieldId),
+					})
+				}
+			}).done(function (reports) {
+				if (reports.d) { reports = reports.d; }
+				if (reports.length == 0) {
+					self.reportsInSearch([]);
+				}
+				else {
+					var foundReportIds = _.map(reports, function (x) { return x.reportId });
+					self.reportsInSearch(_.filter(self.SavedReports(), function (x) {
+						return foundReportIds.indexOf(x.reportId) >= 0;
+					}));
+				}
+			});
+
+		}
+		else {
+			self.reportsInSearch(_.filter(self.SavedReports(), function (x) {
+				return x.reportName.toLowerCase().indexOf(searchReports.toLowerCase()) >= 0 || x.reportDescription.toLowerCase().indexOf(searchReports.toLowerCase()) >= 0;
+			}));
+		}
 	});
 
 	self.clearReport = function () {
@@ -1390,6 +1466,8 @@ var reportViewModel = function (options) {
 		self.ReportDescription("");
 		self.ReportType("List");
 		self.FolderID(self.SelectedFolder() == null ? 0 : self.SelectedFolder().Id);
+		self.pager.sortColumn('');
+		self.pager.currentPage(1);
 
 		self.ChosenFields([]);
 
@@ -1402,6 +1480,8 @@ var reportViewModel = function (options) {
 		self.IncludeSubTotal(false);
 		self.EditFiltersOnReport(false);
 		self.ShowUniqueRecords(false);
+		self.ShowExpandOption(false);
+		self.DontExecuteOnRun(false);
 		self.AggregateReport(false);
 		self.SortByField(null);
 		self.SortDesc(false);
@@ -1411,6 +1491,14 @@ var reportViewModel = function (options) {
 		self.scheduleBuilder.clear();
 		self.SortFields([]);
 		self.isFormulaField(false);
+		self.maxRecords(false);
+		self.changePageSize(false);
+		self.OnlyTop(null);
+		self.lastPickedField(null);
+		self.OuterGroupColumns([]);
+		self.barChartHorizontal(false);
+		self.barChartStacked(false);
+		self.selectedStyle('default');
 	};
 
 	self.SelectedProc.subscribe(function (proc) {
@@ -1441,6 +1529,8 @@ var reportViewModel = function (options) {
 		var parameters = _.map(proc.Parameters, function (e) {
 			var match = ko.toJS(proc.SelectedParameters && proc.SelectedParameters.length ? _.find(proc.SelectedParameters, { ParameterName: e.ParameterName }) : null);
 			e.operators = ['='];
+			if (e.ForeignKey) e.operators.push('in');
+
 			if (e.ParameterValue) e.operators.push('is default');
 			if (!e.Required) e.operators.push('is blank');
 			if (!e.Required) e.operators.push('is null');
@@ -1517,12 +1607,14 @@ var reportViewModel = function (options) {
 		return found;
 	}
 
+	self.lastPickedField = ko.observable();
 	self.SelectedFields.subscribe(function (fields) {
 		setTimeout(function () {
 			self.RemoveInvalidFilters(self.FilterGroups());
 		}, 500);
 
-		var newField = fields && fields.length > 0 ? fields[fields.length - 1] : null;
+		var newField = fields.length > 0 ? fields[fields.length - 1] : null;
+		if (newField && newField.isJsonColumn === true) return;
 		if (newField && (newField.forceFilter || newField.forceFilterForTable)) {
 			if (!self.FindInFilterGroup(newField.fieldId)) {
 				var group = self.FilterGroups()[0];
@@ -1535,6 +1627,8 @@ var reportViewModel = function (options) {
 		}
 
 		if (newField) {
+			self.lastPickedField(newField);
+
 			// go through and see if we need to add forced by Table filters
 			var forcedFiltersByTable = _.filter(self.selectedTableFields, function (x) { return x.forceFilterForTable == true });
 			var otherFieldIds = _.filter(self.selectedTableFields, function (x) { return x.forceFilterForTable == false }).map(function (x) { return x.fieldId });
@@ -1552,6 +1646,26 @@ var reportViewModel = function (options) {
 		}
 	});
 
+	self.jsonFields = ko.observableArray([]);
+	self.lastPickedField.subscribe(function (newValue) {
+		self.jsonFields([]);
+		if (newValue) {
+			if (newValue.fieldType == 'Json' && newValue.jsonStructure) {
+				var jsonData = JSON.parse(newValue.jsonStructure);
+				var jsonFields = _.map(Object.keys(jsonData), function (key) {
+					var x = self.setupField(ko.toJS(newValue));
+					x.isJsonColumn = true;
+					x.jsonColumnName = key;
+					x.selectedFieldName += (" > " + key);
+					x.isSelected = _.find(self.SelectedFields(), function (f) { return f.fieldId == x.fieldId && f.fieldType == 'Json' && f.jsonColumnName == x.jsonColumnName }) != null;
+					return x;
+				});
+
+				self.jsonFields(jsonFields);
+            }
+        }
+	});
+
 	self.loadTableFields = function (table) {
 		return ajaxcall({
 			url: options.apiUrl,
@@ -1566,7 +1680,7 @@ var reportViewModel = function (options) {
 			if (fields.d) { fields = fields.d; }
 			if (fields.result) { fields = fields.result; }
 			var flds = _.map(fields, function (e, i) {
-				var match = _.filter(self.SelectedFields(), function (x) { return x.fieldId == e.fieldId; });
+				var match = _.filter(self.SelectedFields(), function (x) { return x.fieldId == e.fieldId && (e.fieldType != 'Json' || !x.jsonColumnName); });
 				if (match.length > 0) {
 					return match[0];
 				}
@@ -1584,6 +1698,8 @@ var reportViewModel = function (options) {
 
 	self.SelectedTable.subscribe(function (table) {
 		self.SelectedProc(null);
+		self.lastPickedField(null);
+		self.jsonFields([]);
 		if (table == null) {
 			self.ChooseFields([]);
 			self.selectedTableFields = [];
@@ -1643,7 +1759,7 @@ var reportViewModel = function (options) {
 		if (!value) return;
 		var result = self.formulaOnlyHasDateFields();
 		if (result && ['Days', 'Hours', 'Minutes', 'Seconds'].indexOf(self.formulaDataFormat()) < 0) self.formulaDataFormat('Days');
-		if (!result && ['String', 'Integer', 'Double'].indexOf(self.formulaDataFormat()) < 0) self.formulaDataFormat('String');
+		if (!result && ['String', 'Integer', 'Double', 'Decimal', 'Currency'].indexOf(self.formulaDataFormat()) < 0) self.formulaDataFormat('String');
 	});
 
 	self.formulaHasConstantValue = ko.computed(function () {
@@ -1747,6 +1863,7 @@ var reportViewModel = function (options) {
 					self.formulaFieldLabel(field.fieldName);
 					self.formulaDataFormat(field.fieldFormat());
 					self.formulaDecimalPlaces(field.decimalPlaces());
+
 				});
 			}
 		}
@@ -1815,6 +1932,15 @@ var reportViewModel = function (options) {
 		self.formulaFields.push(constval);
 	};
 
+	self.addFormulaDateToday = function () {
+		var field = self.getEmptyFormulaField();
+
+		var constval = self.setupField(Object.assign({}, field));
+		constval.setupFormula.isConstantValue(true);
+		constval.setupFormula.constantValue('|Today|');
+		self.formulaFields.push(constval);
+	};
+
 	self.isFieldValidForYAxis = function (i, fieldType, aggregate) {
 		if (i > 0) {
 			if (self.ReportType() == "Bar" && ["Int", "Double", "Money"].indexOf(fieldType) < 0 && aggregate != "Count") {
@@ -1845,10 +1971,10 @@ var reportViewModel = function (options) {
 		return _.filter(self.SelectedFields(), function (x) { return x.fieldType == "DateTime"; });
 	});
 	self.TotalSeries = ko.observable(0);
-	self.AllSqlQuries = ko.observable("");
+	self.allSqlQueries = ko.observable("");
 
 	self.canAddSeries = ko.computed(function () {
-		var c1 = self.dateFields().length > 0 && ['Group', 'Bar', 'Line'].indexOf(self.ReportType()) >= 0 && self.SelectedFields()[0].fieldType == 'DateTime';
+		var c1 = self.dateFields().length > 0 && ['Summary', 'Bar', 'Line', 'Single'].indexOf(self.ReportType()) >= 0 && self.SelectedFields()[0].fieldType == 'DateTime';
 		var c2 = _.filter(self.FilterGroups(), function (g) { return _.filter(g.Filters(), function (x) { return x.Operator() == 'range' && x.Value() && x.Value().indexOf('This') == 0; }).length > 0; }).length > 0;
 		return c1 && c2;
 	});
@@ -1876,7 +2002,7 @@ var reportViewModel = function (options) {
 			if (newValue === 'This Year') {
 				range(['Last Year', '2 Years ago', '3 Years ago', '4 Years ago', '5 Years ago']);
 			} else if (newValue === 'This Month') {
-				range(['Last Month', '2 Months ago', '3 Months ago', '4 Months ago', '5 Months ago']);
+				range(['Last Month', '2 Months ago', '3 Months ago', '4 Months ago', '5 Months ago', '6 Months ago', '12 Months ago']);
 			} else if (newValue === 'This Week') {
 				range(['Last Week', '2 Weeks ago', '3 Weeks ago', '4 Weeks ago', '5 Weeks ago']);
 			} else {
@@ -2012,7 +2138,7 @@ var reportViewModel = function (options) {
 					FieldId: e.Field().fieldId,
 					AndOr: i == 0 ? g.AndOr() : e.AndOr(),
 					Operator: e.Operator(),
-					Value1: e.Operator() == "in" || e.Operator() == "not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 ? "blank" : e.Value()),
+					Value1: e.Operator() == "in" || e.Operator() == "not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' ? "blank" : e.Value()),
 					Value2: e.Value2(),
 					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
 				} : null;
@@ -2071,7 +2197,10 @@ var reportViewModel = function (options) {
 	};
 	self.BuildReportData = function (drilldown, isComparison, index) {
 
-		drilldown = drilldown || [];
+		drilldown = _.compact(_.map(drilldown || [], function (x) {
+			if (x.isJsonColumn || x.isRuleSet || x.Column.FormatType == 'Csv' || x.Column.FormatType == 'Json' || x.Value.indexOf('/>') >= 0 || x.Column.SqlField == '__') return;
+			return x;
+		}));		
 		var hasGroupInDetail = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Group in Detail' }) != null;
 		var filters = isComparison ? self.SeriesDataIntoFilter(self.FilterGroups(), index) : self.BuildFilterData(self.FilterGroups());
 
@@ -2093,6 +2222,15 @@ var reportViewModel = function (options) {
 			IncludeSubTotals: self.IncludeSubTotal(),
 			EditFiltersOnReport: self.EditFiltersOnReport(),
 			ShowUniqueRecords: self.ShowUniqueRecords(),
+			ReportSettings: JSON.stringify({
+				ShowExpandOption: self.ShowExpandOption(),
+				SelectedStyle: self.selectedStyle(),
+				DontExecuteOnRun: self.DontExecuteOnRun(),
+				barChartStacked: self.barChartStacked(),
+				barChartHorizontal: self.barChartHorizontal(),
+				DefaultPageSize: self.DefaultPageSize() || 30,
+			}),
+			OnlyTop: self.maxRecords() ? self.OnlyTop() : null,
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : self.AggregateReport(),
 			ShowDataWithGraph: self.ShowDataWithGraph(),
 			ShowOnDashboard: self.ShowOnDashboard(),
@@ -2132,6 +2270,12 @@ var reportViewModel = function (options) {
 					LinkFieldItem: x.linkField() ? x.linkFieldItem.toJs() : null,
 					FieldLabel: x.fieldLabel(),
 					DecimalPlaces: x.decimalPlaces(),
+					FieldSettings: JSON.stringify({
+						dateFormat: x.dateFormat(),
+						customDateFormat: x.customDateFormat(),
+						currencyFormat: x.currencyFormat(),
+						fieldLabel2: x.fieldLabel2()
+					}),
 					FieldAlign: x.fieldAlign(),
 					FontColor: x.fontColor(),
 					BackColor: x.backColor(),
@@ -2141,7 +2285,8 @@ var reportViewModel = function (options) {
 					HeaderFontBold: x.headerFontBold(),
 					FieldWidth: x.fieldWidth(),
 					FieldConditionOp: x.fieldConditionOp(),
-					FieldConditionVal: x.fieldConditionVal()
+					FieldConditionVal: JSON.stringify(x.fieldConditionVal),
+					JsonColumnName: x.isJsonColumn && x.jsonColumnName ? x.jsonColumnName : ''
 				};
 			}),
 			Schedule: self.scheduleBuilder.toJs(),
@@ -2159,7 +2304,7 @@ var reportViewModel = function (options) {
 					UseDefault: x.Operator() == 'is default',
 					ParameterId: x.Id,
 					ParameterName: x.ParameterName,
-					Value: x.Value(),
+					Value: x.Operator() == 'in' ? x.ValueIn.join(",") : x.Value(),
 					Operator: x.Operator()
 				}
 			}) : []
@@ -2182,7 +2327,9 @@ var reportViewModel = function (options) {
 				ReportJson: JSON.stringify(self.BuildReportData()),
 				adminMode: self.adminMode(),
 				userIdForFilter: self.userIdForFilter,
-				SubTotalMode: false
+				SubTotalMode: false,
+				reportData: '',
+				pivotColumn: ''
 			})
 		}).done(function () {
 			self.RunReport(false);
@@ -2197,6 +2344,7 @@ var reportViewModel = function (options) {
 		skipValidation = skipValidation === true ? true : false;
 
 		self.TotalSeries(self.AdditionalSeries().length);
+		if (self.TotalSeries() > 1) self.ReportMode('start');
 
 		if (self.ReportType() == 'Single') {
 			if (self.enabledFields().length != 1) {
@@ -2214,11 +2362,11 @@ var reportViewModel = function (options) {
 		var isExecuteReportQuery = false;
 		var _result = null;
 		var seriesCount = self.AdditionalSeries().length;
+		self.allSqlQueries('');
 		var promises = [];
 		do {
 			if (i > 0) {
 				isComparison = true;
-				self.CanSaveReports(false);
 			}
 
 			promises.push(ajaxcall({
@@ -2226,7 +2374,7 @@ var reportViewModel = function (options) {
 				type: "POST",
 				data: JSON.stringify({
 					method: "/ReportApi/RunReport",
-					SaveReport: self.CanSaveReports() ? self.SaveReport() : false,
+					SaveReport: self.CanSaveReports() ? (saveOnly || self.SaveReport()) : false,
 					ReportJson: JSON.stringify(self.BuildReportData([], isComparison, i - 1)),
 					adminMode: self.adminMode(),
 					userIdForFilter: self.userIdForFilter,
@@ -2237,15 +2385,15 @@ var reportViewModel = function (options) {
 				if (result.d) { result = result.d; }
 				if (result.result) { result = result.result; }
 				_result = result;
-				self.AllSqlQuries(self.AllSqlQuries() + (result.sql + ","));
+				self.allSqlQueries(self.allSqlQueries() + (self.allSqlQueries() ? ',' : '') + result.sql);
 
 				self.ReportID(result.reportId);
-				if (self.SaveReport()) {
+				if (self.SaveReport() || saveOnly) {
 
 					if (saveOnly && seriesCount === 0) {
 						//SeriesCount = 0;
 						toastr.success("Report Saved");
-						self.AllSqlQuries("");
+						self.allSqlQueries("");
 						self.LoadAllSavedReports(true);
 					}
 				}
@@ -2262,16 +2410,46 @@ var reportViewModel = function (options) {
 		}
 		while (i < seriesCount + 1);
 		$.when.apply($, promises).done(function () {
+			options.reportWizard.modal('hide');
+
 			if (isExecuteReportQuery === false) {
 				if (saveOnly) {
 					return;
 				}
 
-				if (options.samePageOnRun) {
-					options.reportWizard.modal('hide');
+				if (self.ReportMode().indexOf('export-') == 0) {
+
 					self.ReportID(_result.reportId);
-					self.ExecuteReportQuery(_result.sql, _result.connectKey);
+					self.currentSql(_result.sql);
+					self.currentConnectKey(_result.connectKey);
+					switch (self.ReportMode()) {
+						case 'export-pdf':
+							self.downloadPdf(); break;
+						case 'export-pdfalt':
+							self.downloadPdfAlt(); break;
+						case 'export-excel':
+							self.downloadExcel(); break;
+						case 'export-excel-sub':
+							self.downloadExcelWithDrilldown(); break;
+						case 'export-csv':
+							self.downloadCsv(); break;
+					}
+
+					self.ReportMode('start');
+					return;
+				}
+
+				if (options.samePageOnRun) {
+					self.ReportID(_result.reportId);
+					self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, _.map(self.AdditionalSeries(), function (e, i) {
+						return e.Value();
+					}).join(','));
 					self.ReportMode("execute");
+
+					if (self.useReportHeader()) {
+						self.headerDesigner.init(true);
+						self.headerDesigner.loadCanvas(true);
+					}
 				}
 				else {
 					redirectToReport(options.runReportUrl, {
@@ -2282,7 +2460,7 @@ var reportViewModel = function (options) {
 						showUniqueRecords: self.ShowUniqueRecords(),
 						aggregateReport: self.AggregateReport(),
 						showDataWithGraph: self.ShowDataWithGraph(),
-						reportSql: self.AllSqlQuries(),
+						reportSql: self.allSqlQueries(),
 						connectKey: _result.connectKey,
 						reportFilter: JSON.stringify(_.map(self.FlyFilters(), function (x) { return ko.toJS(x); })),
 						reportType: self.ReportType(),
@@ -2296,10 +2474,562 @@ var reportViewModel = function (options) {
 		});
 	};
 
-	self.ExecuteReportQuery = function (reportSql, connectKey, reportSeries) {
+	self.printReport = function () {
+		self.processReportResult(options.reportData, options.reportSql, options.reportConnect, options.ReportSeries);
+	}
 
+	self.processReportResult = function (result, reportSql, connectKey, reportSeries) {
+
+		var reportResult = self.ReportResult();
+		reportResult.HasError(result.HasError);
+		reportResult.Exception(result.Exception);
+		reportResult.Warnings(result.Warnings);
+		reportResult.ReportDebug(result.ReportDebug);
+		reportResult.ReportSql(beautifySql(result.ReportSql));
+		self.ReportSeries = reportSeries;
+		if (result.HasError) return;
+
+		function matchColumnName(src, dst, dbSrc, dbDst, agg) {
+			if (src == dst) return true;
+			if (dbSrc && dbDst && dbSrc == dbDst) return true;
+
+			if (agg && dbSrc && dbDst && agg + '(' + dbSrc + ')' == dbDst) return true;
+
+			if (dst.indexOf('(Count)') < 0 && dst.indexOf("(Avg)") < 0 && dst.indexOf("(Sum)") < 0 && dst.indexOf("(Average)") < 0)
+				return false;
+
+			dst = (dst || "")
+				.replace("(Count)", "")
+				.replace("(Avg)", "")
+				.replace("(Average)", "")
+				.replace("(Sum)", "")
+				.trim();
+
+			src = (src || "").trim()
+			src = (src.endsWith("Id") || src.endsWith("ID") ? src.slice(0, -2) : src).trim();
+
+			return src == dst;
+		}
+
+		function processCols(cols, skipColDetails = false) {
+			if (skipColDetails !== true) self.columnDetails([]);
+			_.forEach(cols, function (e, i) {
+				var col;
+				if (self.useStoredProc()) {
+					col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.procColumnName, e.ColumnName); });
+					e.hideStoredProcColumn = (col ? col.disabled() : true);
+				}
+				else if (e.FormatType == 'Json') {
+					col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.jsonColumnName, e.ColumnName); });
+				}
+				else {
+					col = _.find(self.SelectedFields(), function (x) { return x.dbField == e.SqlField; });
+					if (!col) col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.fieldName, e.ColumnName, x.dbField, e.SqlField, x.aggregateFunction); });
+				}
+				if (col && col.linkField()) {
+					e.linkItem = col.linkFieldItem.toJs();
+					e.linkField = true;
+				} else {
+					e.linkItem = {};
+					e.linkField = false;
+				}
+				col = col || { fieldName: e.ColumnName };
+				col.currencySymbol = col.currencyFormat ? col.currencyFormat() : null;
+				col.decimalPlacesDigit = col.decimalPlaces ? col.decimalPlaces() : null;
+				col.fieldFormating = col.fieldFormat ? col.fieldFormat() : null;
+				if (skipColDetails !== true) self.columnDetails.push(col);
+
+				e.decimalPlaces = col.decimalPlaces || ko.observable();
+				e.currencyFormat = col.currencyFormat || ko.observable();
+				e.dateFormat = col.dateFormat || ko.observable();
+				e.customDateFormat = col.customDateFormat || ko.observable();
+				e.fieldLabel2 = col.fieldLabel2 || ko.observable();
+				e.fieldAlign = col.fieldAlign || ko.observable();
+				e.fieldConditionOp = col.fieldConditionOp || ko.observable();
+				e.fieldConditionVal = col.fieldConditionVal || [];
+				e.fieldFormat = col.fieldFormat || ko.observable();
+				e.fieldLabel = col.fieldLabel || ko.observable();
+				e.fieldName = e.ColumnName || col.fieldName;
+				e.fieldWidth = col.fieldWidth || ko.observable();
+				e.fontBold = col.fontBold || ko.observable();
+				e.headerFontBold = col.headerFontBold || ko.observable();
+				e.headerFontColor = col.headerFontColor || ko.observable();
+				e.headerBackColor = col.headerBackColor || ko.observable();
+				e.fieldId = col.fieldId;
+				e.fontColor = col.fontColor || ko.observable();
+				e.backColor = col.backColor || ko.observable();
+				e.groupInGraph = col.groupInGraph || ko.observable();
+				e.dontSubTotal = col.dontSubTotal || ko.observable();
+				e.fieldType = col.fieldType;
+				e.jsonColumnName = col.jsonColumnName;
+				e.isJsonColumn = col.fieldType == 'Json';
+				e.outerGroup = ko.observable(false);
+				e.colIndex = i;
+				e.pagerIndex = function ($parents) {
+					return $parents[1].pager ? 1
+						: $parents[3].pager ? 3 : 5;
+				}
+
+				e.toggleOuterGroup = function () {
+					e.outerGroup(!e.outerGroup());
+
+					if (e.outerGroup()) {
+						self.OuterGroupColumns.push({
+							fieldId: col.fieldId,
+							fieldName: col.fieldName,
+							fieldIndex: e.colIndex,
+							rowData: _.uniq(_.map(result.ReportData.Rows, function (r) {
+								return r.Items[e.colIndex].FormattedValue;
+							})).sort(),
+							remove: function () {
+								e.outerGroup(false);
+								self.OuterGroupColumns.remove(this);
+								col.selectedAggregate = ko.observable("Group");
+							}
+						});
+						col.selectedAggregate = ko.observable("Outer Group");
+					}
+				}
+
+				e.setupFieldOptions = function () {
+					col.setupFieldOptions();
+				}
+
+				if (col.selectedAggregate && col.selectedAggregate() == 'Outer Group' && !_.find(self.OuterGroupColumns(), {fieldId: e.fieldId})) {
+					e.toggleOuterGroup()
+				}
+			});
+		}
+
+		function getDateRange(compareTo, n) {
+			var start, end;
+			var today = new Date();
+			today.setHours(0, 0, 0, 0); 
+			var dayOfWeek = today.getDay(); // Day of week (0-6, Sunday is 0)
+			var dayOfMonth = today.getDate(); // Day of month (1-31)
+			var month = today.getMonth(); 
+			var year = today.getFullYear(); 
+
+			switch (compareTo) {
+				case 'Today':
+					start = end = today;
+					break;
+				case 'Today +':
+					start = today;
+					end = new Date(today);
+					end.setDate(today.getDate() + n); // End is next day
+					break;
+				case 'Today -':
+					start = new Date(today);
+					start.setDate(today.getDate() - n); // Start is previous day
+					end = today;
+					break;
+				case 'Yesterday':
+					start = end = new Date(today);
+					start.setDate(today.getDate() - 1);
+					break;
+				case 'This Week':
+					start = new Date(today);
+					start.setDate(today.getDate() - dayOfWeek); // Adjust to the start of the week (Sunday)
+					end = new Date(start);
+					end.setDate(start.getDate() + 6); // End of the week (Saturday)
+					break;
+				case 'Last Week':
+					start = new Date(today);
+					start.setDate(today.getDate() - dayOfWeek - 7); // Adjust to the start of last week
+					end = new Date(start);
+					end.setDate(start.getDate() + 6); // End of last week
+					break;
+				case 'This Month':
+					start = new Date(year, month, 1); // First day of this month
+					end = new Date(year, month + 1, 0); // Last day of this month
+					break;
+				case 'Last Month':
+					start = new Date(year, month - 1, 1); // First day of last month
+					end = new Date(year, month, 0); // Last day of last month
+					break;
+				case 'This Year':
+					start = new Date(year, 0, 1); // First day of this year
+					end = new Date(year, 11, 31); // Last day of this year
+					break;
+				case 'Last Year':
+					start = new Date(year - 1, 0, 1); // First day of last year
+					end = new Date(year - 1, 11, 31); // Last day of last year
+					break;
+				case 'This Week To Date':
+					start = new Date(today);
+					start.setDate(today.getDate() - dayOfWeek);
+					end = today;
+					break;
+				case 'This Month To Date':
+					start = new Date(year, month, 1);
+					end = today;
+					break;
+				case 'This Year To Date':
+					start = new Date(year, 0, 1);
+					end = today;
+					break;
+				case 'Last 30 Days':
+					start = new Date(today);
+					start.setDate(today.getDate() - 30);
+					end = today;
+					break;
+				// Add more cases as needed
+			}
+			return { start, end };
+		}
+
+		function processRow(row, columns) {
+			_.forEach(row, function (r, i) {
+				r.LinkTo = '';
+				var col = columns[i];
+				if (col && col.linkField) {
+					var linkItem = col.linkItem;
+					var link = '';
+					if (linkItem.LinksToReport) {
+						link = options.runReportUrl + '?linkedreport=true&reportId=' + linkItem.LinkedToReportId;
+						if (linkItem.SendAsFilterParameter && r.Value) {
+							link += '&filterId=' + linkItem.SelectedFilterId + '&filterValue=' + r.Value.replace(/['"]+/g, '');
+						}
+					}
+					else {
+						link = linkItem.LinkToUrl + (linkItem.SendAsQueryParameter ? ('?' + linkItem.QueryParameterName + '=' + (r.LabelValue ? r.LabelValue.replace(/['"]+/g, '') : '')) : '');
+					}
+					r.LinkTo = link;
+				}
+
+				col = col || {};
+				r.backColor = col.backColor;
+				r.fieldAlign = col.fieldAlign;
+				r.fieldWidth = col.fieldWidth;
+				r.fontBold = col.fontBold;
+				r.fontColor = col.fontColor;
+				r.fieldId = col.fieldId;
+				r.outerGroup = col.outerGroup;
+				r.jsonColumnName = col.jsonColumnName;
+				r.isJsonColumn = col.isJsonColumn;
+				r._backColor = null; r._fontBold = null; r._fontColor = null;
+
+				r.formattedVal = ko.computed(function () {
+
+					if (self.decimalFormatTypes.indexOf(col.fieldFormat()) >= 0 && !isNaN(r.Value)) {
+						r.FormattedValue = self.formatNumber(r.Value, col.decimalPlaces());
+						switch (col.fieldFormat()) {
+							case 'Percentage': r.FormattedValue = r.FormattedValue + '%'; break;
+						}
+					}
+					if (col.fieldFormat()==='Currency') {
+						switch (col.currencyFormat()) {
+							case '€': r.FormattedValue = '€' + r.FormattedValue; break;
+							case '£': r.FormattedValue = '£' + r.FormattedValue; break;
+							case 'Rs': r.FormattedValue = 'Rs' + r.FormattedValue; break;
+							default: r.FormattedValue = '$' + r.FormattedValue; break;
+						}
+					}
+					if (self.dateFormatTypes.indexOf(col.fieldFormat()) >= 0 && !isNaN(new Date(r.Value).getTime())) {
+						var dtFormat = "en-US";
+						switch (col.dateFormat()) {
+							case 'United Kingdom': dtFormat = 'en-GB'; break;
+							case 'France': dtFormat = 'fr-FR'; break;
+							case 'German': dtFormat = 'de-DE'; break;
+							case 'Spanish': dtFormat = 'es-ES'; break;
+							case 'Chinese': dtFormat = 'zn-CN'; break;
+						}
+
+						if (col.dateFormat() == 'Custom' && col.customDateFormat()) {
+							r.FormattedValue = self.formatDate(new Date(r.Value), col.customDateFormat());
+						}
+						else {
+							switch (col.fieldFormat()) {
+								case 'Date': r.FormattedValue = (new Date(r.Value)).toLocaleDateString(dtFormat, { year: 'numeric', month: 'numeric', day: 'numeric' }); break;
+								case 'Date and Time': r.FormattedValue = (new Date(r.Value)).toLocaleDateString(dtFormat, { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
+								case 'Time': r.FormattedValue = (new Date(r.Value)).toLocaleTimeString(dtFormat, { hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
+							}
+						}
+					}
+
+					var conditions = col.fieldConditionVal || [];
+					conditions.forEach(function (c) {
+						var conditionTrue = false;
+						var value = r.Value;
+						var operation = c.operator;
+						var compareTo = c.value;
+						var compareTo2 = c.value2;
+						var dataIsNumeric = !isNaN(r.Value);
+						var dataIsDate = !isNaN(new Date(r.Value).getTime());
+
+						switch (operation) {
+							case '=':
+								conditionTrue = value == compareTo;
+								break;
+							case 'like':
+								conditionTrue = dataIsNumeric ? false : value.includes(compareTo);
+								break;
+							case 'not like':
+								conditionTrue = dataIsNumeric ? false : !value.includes(compareTo);
+								break;
+							case 'not equal':
+								conditionTrue = value != compareTo;
+								break;
+							case 'is blank':
+								conditionTrue = !value;
+								break;
+							case 'is not blank':
+								conditionTrue = !!value;
+								break;
+							case '>':
+								conditionTrue = dataIsNumeric && value > parseFloat(compareTo);
+								break;
+							case '<':
+								conditionTrue = dataIsNumeric && value < parseFloat(compareTo);
+								break;
+							case '>=':
+								conditionTrue = dataIsNumeric && value >= parseFloat(compareTo);
+								break;
+							case '<=':
+								conditionTrue = dataIsNumeric && value <= parseFloat(compareTo);
+								break;
+							case 'between':
+								if (dataIsNumeric) {
+									conditionTrue = value >= parseFloat(compareTo) && value <= parseFloat(compareTo2);
+								} else if (dataIsDate) {
+									var dateValue = new Date(value).getTime();
+									var startDate = new Date(compareTo).getTime();
+									var endDate = new Date(compareTo2).getTime();
+									conditionTrue = dateValue >= startDate && dateValue <= endDate;
+								}
+								break;
+							case 'range':
+								if (dataIsDate) {
+									var { start, end } = getDateRange(compareTo, compareTo2);
+									var dateValue = new Date(value).getTime();
+									conditionTrue = dateValue >= start.getTime() && dateValue <= end.getTime();
+								}
+								break;
+						}
+
+						if (conditionTrue) {
+							r._backColor = c.backColor;
+							r._fontColor = c.fontColor;
+							r._fontBold = c.fontBold;
+						} else {
+							r._backColor = r.backColor();
+							r._fontColor = r.fontColor();
+							r._fontBold = r.fontBold();
+						}
+					});
+
+					return r.FormattedValue;
+				});
+
+			});
+		}
+
+		processCols(result.ReportData.Columns);
+		if (self.useStoredProc()) {
+			result.ReportData.Columns = _.filter(result.ReportData.Columns, function (x) { return x.hideStoredProcColumn == false; });
+		}
+		var validFieldNames = _.map(result.ReportData.Columns, 'SqlField');
+		result.ReportData.IsDrillDown = ko.observable(false);
+		result.ReportData.CanExpandOption = ko.computed(function () { return self.ShowExpandOption(); });
+		_.forEach(result.ReportData.Rows, function (e) {
+			e.DrillDownData = ko.observable(null);
+			e.pager = new pagerViewModel({ pageSize: self.DefaultPageSize() });
+			e.sql = "";
+			e.connectKey = "";
+			e.changeSort = function (sort) {
+				e.pager.changeSort(sort);
+				e.execute();
+				return false;
+			};
+			e.isExpanded = ko.observable(false);
+			e.execute = function () {
+				if (e.sql == '') return;
+				ajaxcall({
+					url: options.execReportUrl,
+					type: "POST",
+					data: JSON.stringify({
+						reportSql: e.sql,
+						connectKey: e.connectKey,
+						reportType: 'List',
+						pageNumber: e.pager.currentPage(),
+						pageSize: e.pager.pageSize(),
+						sortBy: e.pager.sortColumn() || '',
+						desc: e.pager.sortDescending() || false,
+						reportSeries: reportSeries || '',
+						pivotColumn: '',
+						reportData: ''
+					}),
+					noBlocking: true
+				}).done(function (ddData) {
+					if (ddData.d) { ddData = ddData.d; }
+					if (ddData.result) { ddData = ddData.result; }
+					ddData.ReportData.IsDrillDown = ko.observable(true);
+					ddData.ReportData.CanExpandOption = ko.computed(function () { return self.ShowExpandOption(); });
+					if (ddData.HasError) {
+						toastr.error(ddData.Exception || 'Error occured in drill down');
+						e.isExpanded(false);
+						return;
+					}
+
+					processCols(ddData.ReportData.Columns, true);
+					_.forEach(ddData.ReportData.Rows, function (dr) {
+						processRow(dr.Items, ddData.ReportData.Columns);
+					});
+
+					self.ChartDrillDownData(e);
+					e.DrillDownData(ddData.ReportData);
+					e.pager.totalRecords(ddData.Pager.TotalRecords);
+					e.pager.pages(ddData.Pager.TotalPages);
+				});
+			};
+
+			e.expand = function (index) {
+				// load drill down data
+				ajaxcall({
+					url: options.runReportApiUrl,
+					type: "POST",
+					data: JSON.stringify({
+						method: "/ReportApi/RunDrillDownReport",
+						SaveReport: false,
+						ReportJson: JSON.stringify(self.BuildReportData(e.Items)),
+						adminMode: self.adminMode(),
+						SubTotalMode: false
+					}),
+					noBlocking: true
+				}).done(function (ddResult) {
+					if (ddResult.d) { ddResult = ddResult.d; }
+					if (ddResult.result) { ddResult = ddResult.result; }
+					e.sql = ddResult.sql;
+					e.connectKey = ddResult.connectKey;
+					self.expandSqls.push({ index: index, sql: e.sql });
+					e.execute();
+				});
+
+				e.isExpanded(true);
+			};
+
+			e.pager.currentPage.subscribe(function () {
+				e.execute();
+			});
+			e.collapse = function () {
+				e.isExpanded(false);
+			};
+
+			e.toggle = function () {
+				if (e.isExpanded()) e.collapse(); else e.expand();
+			};
+
+			e.exportExcel = function () {
+				self.downloadExport("DownloadExcel", {
+					reportSql: e.sql,
+					connectKey: self.currentConnectKey(),
+					reportName: 'Sub Report for ' + self.ReportName(),
+					allExpanded: false,
+					expandSqls: '',
+					columnDetails: self.getColumnDetails(),
+					includeSubTotals: false
+				}, 'xlsx');
+			}
+
+			if (self.useStoredProc()) {
+				e.Items = _.filter(e.Items, function (x) { return _.includes(validFieldNames, x.Column.SqlField); });
+			}
+			processRow(e.Items, result.ReportData.Columns);
+		});
+
+		reportResult.ReportData(result.ReportData);
+
+		self.pager.totalRecords(result.Pager.TotalRecords);
+		self.pager.pages(result.Pager.TotalPages);
+
+		self.currentSql(reportSql);
+		self.currentConnectKey(connectKey);
+
+		if (result.Warnings) {
+			toastr.info('Note: ' + result.Warnings);
+		}
+
+		if (self.isChart()) {
+			google.charts.load('current', { packages: ['corechart', 'geochart'] });
+			google.charts.setOnLoadCallback(self.DrawChart);
+		}
+
+		if (self.IncludeSubTotal()) {
+			ajaxcall({
+				url: options.runReportApiUrl,
+				type: "POST",
+				data: JSON.stringify({
+					method: "/ReportApi/RunReport",
+					SaveReport: self.CanSaveReports() ? self.SaveReport() : false,
+					ReportJson: JSON.stringify(self.BuildReportData()),
+					adminMode: self.adminMode(),
+					SubTotalMode: true,
+					reportData: '',
+					pivotColumn: ''
+				})
+			}).done(function (subtotalsqlResult) {
+				if (subtotalsqlResult.d) { subtotalsqlResult = subtotalsqlResult.d; }
+				if (subtotalsqlResult.result) { subtotalsqlResult = subtotalsqlResult.result; }
+				ajaxcall({
+					url: options.execReportUrl,
+					type: "POST",
+					data: JSON.stringify({
+						reportSql: subtotalsqlResult.sql,
+						connectKey: subtotalsqlResult.connectKey,
+						reportType: self.ReportType(),
+						pageNumber: 1,
+						pageSize: 1,
+						sortBy: '',
+						desc: false,
+						reportSeries: '',
+						reportData: '',
+						pivotColumn: ''
+					})
+				}).done(function (subtotalResult) {
+					if (subtotalResult.d) { subtotalResult = subtotalResult.d; }
+					if (subtotalResult.result) { subtotalResult = subtotalResult.result }
+
+					processCols(subtotalResult.ReportData.Columns, true);
+					_.forEach(subtotalResult.ReportData.Rows, function (dr) {
+						processRow(dr.Items, subtotalResult.ReportData.Columns);
+					});
+
+					self.ReportResult().SubTotals(subtotalResult.ReportData.Rows);
+				});
+			});
+		}
+
+		setTimeout(function () {
+			self.allowTableResize();
+		}, 2000);
+	}
+
+	self.executingReport = false;
+	self.ExecuteReport = function () {
+		self.executingReport = true;
+		self.SaveReport(false);
+		self.RunReport();
+	}
+	self.ChartDrillDownData = ko.observable();
+
+	self.ExecuteReportQuery = function (reportSql, connectKey, reportSeries,isPageSizeClick=false) {
 		if (!reportSql || !connectKey) return;
-
+		self.ChartData('');
+		self.ReportResult().ReportData(null);
+		self.ReportResult().SubTotals([]);
+		if (self.DontExecuteOnRun() && !self.executingReport) return;
+		if (self.ReportMode() != "dashboard") {
+			setTimeout(function () {
+				if ($.blockUI) {
+					$.blockUI({ baseZ: 500 });
+				}
+			}, options.samePageOnRun ? 1000 : 500);
+		}
+		var pivotColumn = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' });
+		var reportData = pivotColumn != null ? self.BuildReportData() : '';
+		if (pivotColumn) reportData.DrillDownRowUsePlaceholders = true;
+		if (!isPageSizeClick) self.pager.pageSize(self.DefaultPageSize());
 		return ajaxcall({
 			url: options.execReportUrl,
 			type: "POST",
@@ -2308,316 +3038,18 @@ var reportViewModel = function (options) {
 				connectKey: connectKey,
 				reportType: self.ReportType(),
 				pageNumber: self.pager.currentPage(),
-				pageSize: self.pager.pageSize(),
+				pageSize: isPageSizeClick ? self.pager.pageSize() : self.DefaultPageSize(),
 				sortBy: self.pager.sortColumn() || '',
 				desc: self.pager.sortDescending() || false,
-				reportSeries: reportSeries ||''
-			})
+				reportSeries: reportSeries || "",
+				pivotColumn: pivotColumn ? pivotColumn.fieldName : '',
+				reportData: pivotColumn ? JSON.stringify(reportData) : ''
+			}),
+			noBlocking: self.ReportMode() == 'dashboard'
 		}).done(function (result) {
-
 			if (result.d) { result = result.d; }
 			if (result.result) { result = result.result; }
-			var reportResult = self.ReportResult();
-			reportResult.HasError(result.HasError);
-			reportResult.Exception(result.Exception);
-			reportResult.Warnings(result.Warnings);
-			reportResult.ReportDebug(result.ReportDebug);
-			reportResult.ReportSql(result.ReportSql);
-			self.ReportSeries = reportSeries;
-
-			function matchColumnName(src, dst, dbSrc, dbDst) {
-				if (src == dst) return true;
-				if (dbSrc && dbDst && dbSrc == dbDst) return true;
-
-				if (dst.indexOf('(Count)') < 0 && dst.indexOf("(Avg)") < 0 && dst.indexOf("(Sum)") < 0 && dst.indexOf("(Average)") < 0)
-					return false;
-
-				dst = (dst || "")
-					.replace("(Count)", "")
-					.replace("(Avg)", "")
-					.replace("(Average)", "")
-					.replace("(Sum)", "")
-					.trim();
-
-				src = (src || "").trim()
-				src = (src.endsWith("Id") || src.endsWith("ID") ? src.slice(0, -2) : src).trim();
-
-				return src == dst;
-			}
-
-			function processCols(cols) {
-				self.columnDetails([]);
-				_.forEach(cols, function (e, i) {
-					var col;
-					if (self.useStoredProc()) {
-						col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.procColumnName, e.ColumnName); });
-						e.hideStoredProcColumn = (col ? col.disabled() : true);
-					}
-					else
-						col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.fieldName, e.ColumnName, x.dbField, e.SqlField); });
-					if (col && col.linkField()) {
-						e.linkItem = col.linkFieldItem.toJs();
-						e.linkField = true;
-					} else {
-						e.linkItem = {};
-						e.linkField = false;
-					}
-					col = ko.toJS(col || { fieldName: e.ColumnName });
-
-					self.columnDetails.push(col);
-
-					e.decimalPlaces = col.decimalPlaces;
-					e.fieldAlign = col.fieldAlign;
-					e.fieldConditionOp = col.fieldConditionOp;
-					e.fieldConditionVal = col.fieldConditionVal;
-					e.fieldFormat = col.fieldFormat;
-					e.fieldLabel = col.fieldLabel;
-					e.fieldName = col.fieldName;
-					e.fieldWidth = col.fieldWidth;
-					e.fontBold = col.fontBold;
-					e.headerFontBold = col.headerFontBold;
-					e.headerFontColor = col.headerFontColor;
-					e.headerBackColor = col.headerBackColor;
-					e.fieldId = col.fieldId;
-					e.fontColor = col.fontColor;
-					e.backColor = col.backColor;
-					e.groupInGraph = col.groupInGraph;
-					e.dontSubTotal = col.dontSubTotal;
-					e.outerGroup = ko.observable(false);
-					e.colIndex = i;
-
-					e.toggleOuterGroup = function () {
-						e.outerGroup(!e.outerGroup());
-
-						if (e.outerGroup()) {
-							self.OuterGroupColumns.push({
-								fieldId: col.fieldId,
-								fieldName: col.fieldName,
-								fieldIndex: e.colIndex,
-								rowData: _.uniq(_.map(result.ReportData.Rows, function (r) {
-									return r.Items[e.colIndex].FormattedValue;
-								})).sort(),
-								remove: function () {
-									e.outerGroup(false);
-									self.OuterGroupColumns.remove(this);
-                                }
-                            });
-						} 
-					}
-
-					if (col.selectedAggregate == 'Outer Group' && !_.find(self.OuterGroupColumns(), {fieldId: e.fieldId})) {
-						e.toggleOuterGroup()
-					}
-				});
-			}
-
-			function processRow(row, columns) {
-				_.forEach(row, function (r, i) {
-					r.LinkTo = '';
-					var col = columns[i];
-					if (col && col.linkField) {
-						var linkItem = col.linkItem;
-						var link = '';
-						if (linkItem.LinksToReport) {
-							link = options.runReportUrl + '?linkedreport=true&reportId=' + linkItem.LinkedToReportId;
-							if (linkItem.SendAsFilterParameter) {
-								link += '&filterId=' + linkItem.SelectedFilterId + '&filterValue=' + r.Value;
-							}
-						}
-						else {
-							link = linkItem.LinkToUrl + (linkItem.SendAsQueryParameter ? ('?' + linkItem.QueryParameterName + '=' + r.LabelValue) : '');
-						}
-						r.LinkTo = link;
-					}
-
-					col = col || {};
-					r.backColor = col.backColor;
-					r.fieldAlign = col.fieldAlign;
-					r.fieldWidth = col.fieldWidth;
-					r.fontBold = col.fontBold;
-					r.fontColor = col.fontColor;
-					r.fieldId = col.fieldId;
-					r.outerGroup = col.outerGroup
-
-					if (self.decimalFormatTypes.indexOf(col.fieldFormat) >= 0) {
-						r.FormattedValue = self.formatNumber(r.Value, col.decimalPlaces);
-						switch (col.fieldFormat) {
-							case 'Currency': r.FormattedValue = '$' + r.FormattedValue; break;
-							case 'Percentage': r.FormattedValue = r.FormattedValue + '%'; break;
-						}
-					}
-					if (self.dateFormatTypes.indexOf(col.fieldFormat) >= 0) {
-						switch (col.fieldFormat) {
-							case 'Date': r.FormattedValue = (new Date(r.Value)).toLocaleDateString("en-US", { year: 'numeric', month: 'numeric', day: 'numeric' }); break;
-							case 'Date and Time': r.FormattedValue = (new Date(r.Value)).toLocaleDateString("en-US", { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
-							case 'Time': r.FormattedValue = (new Date(r.Value)).toLocaleTimeString("en-US", { hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
-						}
-					}
-				});
-			}
-
-			processCols(result.ReportData.Columns);
-			if (self.useStoredProc()) {
-				result.ReportData.Columns = _.filter(result.ReportData.Columns, function (x) { return x.hideStoredProcColumn == false; });
-			}
-			var validFieldNames = _.map(result.ReportData.Columns, 'SqlField');
-			result.ReportData.IsDrillDown = ko.observable(false);
-			_.forEach(result.ReportData.Rows, function (e) {
-				e.DrillDownData = ko.observable(null);
-				e.pager = new pagerViewModel({ pageSize: 10 });
-				e.sql = "";
-				e.connectKey = "";
-				e.changeSort = function (sort) {
-					e.pager.changeSort(sort);
-					e.execute();
-					return false;
-				};
-				e.isExpanded = ko.observable(false);
-				e.execute = function () {
-					if (e.sql == '') return;
-					ajaxcall({
-						url: options.execReportUrl,
-						type: "POST",
-						data: JSON.stringify({
-							reportSql: e.sql,
-							connectKey: e.connectKey,
-							reportType: 'List',
-							pageNumber: e.pager.currentPage(),
-							pageSize: e.pager.pageSize(),
-							sortBy: e.pager.sortColumn() || '',
-							desc: e.pager.sortDescending() || false,
-							reportSeries: reportSeries || ''
-						})
-					}).done(function (ddData) {
-						if (ddData.d) { ddData = ddData.d; }
-						if (ddData.result) { ddData = ddData.result; }
-						ddData.ReportData.IsDrillDown = ko.observable(true);
-
-						processCols(ddData.ReportData.Columns);
-						_.forEach(ddData.ReportData.Rows, function (dr) {
-							processRow(dr.Items, ddData.ReportData.Columns);
-						});
-
-						e.DrillDownData(ddData.ReportData);
-						e.pager.totalRecords(ddData.Pager.TotalRecords);
-						e.pager.pages(ddData.Pager.TotalPages);
-					});
-				};
-
-				e.expand = function (index) {
-					// load drill down data
-					ajaxcall({
-						url: options.runReportApiUrl,
-						type: "POST",
-						data: JSON.stringify({
-							method: "/ReportApi/RunDrillDownReport",
-							SaveReport: false,
-							ReportJson: JSON.stringify(self.BuildReportData(e.Items)),
-							adminMode: self.adminMode(),
-							SubTotalMode: false
-						})
-					}).done(function (ddResult) {
-						if (ddResult.d) { ddResult = ddResult.d; }
-						if (ddResult.result) { ddResult = ddResult.result; }
-						e.sql = ddResult.sql;
-						e.connectKey = ddResult.connectKey;
-						self.expandSqls.push({ index: index, sql: e.sql });
-						e.execute();
-					});
-
-					e.isExpanded(true);
-				};
-
-				e.pager.currentPage.subscribe(function () {
-					e.execute();
-				});
-				e.collapse = function () {
-					e.isExpanded(false);
-				};
-
-				e.toggle = function () {
-					if (e.isExpanded()) e.collapse(); else e.expand();
-				};
-
-				e.exportExcel = function () {
-					self.downloadExport("/DotNetReport/DownloadExcel", {
-						reportSql: e.sql,
-						connectKey: self.currentConnectKey(),
-						reportName: 'Sub Report for ' + self.ReportName(),
-						allExpanded: false,
-						expandSqls: '',
-						columnDetails: self.getColumnDetails(),
-						includeSubTotals: false
-					}, 'xlsx');
-				}
-
-				if (self.useStoredProc()) {
-					e.Items = _.filter(e.Items, function (x) { return _.includes(validFieldNames, x.Column.SqlField); });
-				}
-				processRow(e.Items, result.ReportData.Columns);
-			});
-
-			reportResult.ReportData(result.ReportData);
-
-			self.pager.totalRecords(result.Pager.TotalRecords);
-			self.pager.pages(result.Pager.TotalPages);
-
-			self.currentSql(reportSql);
-			self.currentConnectKey(connectKey);
-
-			if (result.Warnings) {
-				toastr.info('Note: ' + result.Warnings);
-			}
-
-			if (self.isChart()) {
-				google.charts.load('current', { packages: ['corechart', 'geochart'] });
-				google.charts.setOnLoadCallback(self.DrawChart);
-			}
-
-			if (self.IncludeSubTotal()) {
-				ajaxcall({
-					url: options.runReportApiUrl,
-					type: "POST",
-					data: JSON.stringify({
-						method: "/ReportApi/RunReport",
-						SaveReport: self.CanSaveReports() ? self.SaveReport() : false,
-						ReportJson: JSON.stringify(self.BuildReportData()),
-						adminMode: self.adminMode(),
-						SubTotalMode: true
-					})
-				}).done(function (subtotalsqlResult) {
-					if (subtotalsqlResult.d) { subtotalsqlResult = subtotalsqlResult.d; }
-					if (subtotalsqlResult.result) { subtotalsqlResult = subtotalsqlResult.result; }
-					ajaxcall({
-						url: options.execReportUrl,
-						type: "POST",
-						data: JSON.stringify({
-							reportSql: subtotalsqlResult.sql,
-							connectKey: subtotalsqlResult.connectKey,
-							reportType: self.ReportType(),
-							pageNumber: 1,
-							pageSize: 1,
-							sortBy: '',
-							desc: false,
-							reportSeries: ''
-						})
-					}).done(function (subtotalResult) {
-						if (subtotalResult.d) { subtotalResult = subtotalResult.d; }
-						if (subtotalResult.result) { subtotalResult = subtotalResult.result }
-
-						processCols(subtotalResult.ReportData.Columns);
-						_.forEach(subtotalResult.ReportData.Rows, function (dr) {
-							processRow(dr.Items, subtotalResult.ReportData.Columns);
-						});
-
-						self.ReportResult().SubTotals(subtotalResult.ReportData.Rows);
-					});
-				});
-			}
-
-			setTimeout(function () {
-				self.allowTableResize();
-			}, 2000);
+			self.processReportResult(result, reportSql, connectKey, reportSeries);
 		});
 	};
 
@@ -2657,6 +3089,7 @@ var reportViewModel = function (options) {
 		if (!self.isChart() || self.skipDraw === true) return;
 		// Create the data table.
 		var reportData = self.ReportResult().ReportData();
+		if (!reportData || !google.visualization || !google.visualization.DataTable) return;
 		var data = new google.visualization.DataTable();
 
 		var subGroups = [];
@@ -2664,18 +3097,18 @@ var reportViewModel = function (options) {
 		_.forEach(reportData.Columns, function (e, i) {
 			var field = self.SelectedFields()[i];
 			if (i == 0) {
-				data.addColumn(e.IsNumeric ? 'number' : 'string', e.fieldLabel || e.ColumnName);
+				data.addColumn('string', e.fieldLabel() || e.ColumnName);
 				//} else if (typeof field !== "undefined" && field.groupInGraph()) {
 				//	subGroups.push({ index: i, column: e.fieldLabel || e.ColumnName });
-			} else if (e.IsNumeric && !e.groupInGraph) {
-				valColumns.push({ index: i, column: e.fieldLabel || e.ColumnName });
+			} else if (e.IsNumeric && !e.groupInGraph()) {
+				valColumns.push({ index: i, column: e.fieldLabel() || e.ColumnName });
 			}
 		});
 
 		if (subGroups.length == 0) {
 			_.forEach(reportData.Columns, function (e, i) {
-				if (i > 0 && e.IsNumeric && !e.groupInGraph) {
-					data.addColumn(e.IsNumeric ? 'number' : 'string', e.fieldLabel || e.ColumnName);
+				if (i > 0 && e.IsNumeric && !e.groupInGraph()) {
+					data.addColumn(e.IsNumeric ? 'number' : 'string', e.fieldLabel() || e.ColumnName);
 				}
 			});
 		}
@@ -2699,7 +3132,7 @@ var reportViewModel = function (options) {
 							itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.FormattedValue) || (r.Column.IsNumeric ? 0 : ''));
 						}
 					} else {
-						itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.FormattedValue) || (r.Column.IsNumeric ? 0 : ''));
+						itemArray.push(r.FormattedValue || '');
 					}
 				} else if (subGroups.length > 0) {
 					var subgroup = _.filter(subGroups, function (x) { return x.index == n; });
@@ -2710,12 +3143,11 @@ var reportViewModel = function (options) {
 							_.forEach(valColumns, function (j) {
 								data.addColumn('number', r.Value + (j == 0 ? '' : '-' + j));
 							});
-
 						}
 					} else if (r.Column.IsNumeric) {
 						itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.FormattedValue) || (r.Column.IsNumeric ? 0 : ''));
 					}
-				} else if (r.Column.IsNumeric && !column.groupInGraph) {
+				} else if (r.Column.IsNumeric && !column.groupInGraph()) {
 					itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.FormattedValue) || (r.Column.IsNumeric ? 0 : ''));
 				}
 			});
@@ -2734,7 +3166,7 @@ var reportViewModel = function (options) {
 		data.addRows(rowArray);
 
 		// Set chart options
-		var options = {
+		var chartOptions = {
 			'title': self.ReportName(),
 			animation: {
 				startup: true,
@@ -2743,15 +3175,30 @@ var reportViewModel = function (options) {
 			}
 		};
 
+		if (options.chartSize) {
+			chartOptions.width = options.chartSize.width;
+			chartOptions.height = options.chartSize.height;
+		}
+
+		if (self.colorScheme() != null && self.colorScheme().length > 0) {
+			chartOptions.colors = self.colorScheme().slice(1);
+			chartOptions.backgroundColor = self.colorScheme()[0], // Set the background color here
+				chartOptions.chartArea = { backgroundColor: self.colorScheme()[0] }
+		}
+
 		var chartDiv = document.getElementById('chart_div_' + self.ReportID());
 		var chart = null;
+		if (!chartDiv) return;
 
 		if (self.ReportType() == "Pie") {
 			chart = new google.visualization.PieChart(chartDiv);
 		}
 
 		if (self.ReportType() == "Bar") {
-			chart = new google.visualization.ColumnChart(chartDiv);
+			chart = self.barChartHorizontal() === true
+						? new google.visualization.BarChart(chartDiv)
+						: new google.visualization.ColumnChart(chartDiv);
+			chartOptions.isStacked = self.barChartStacked() === true;
 		}
 
 		if (self.ReportType() == "Line") {
@@ -2762,18 +3209,18 @@ var reportViewModel = function (options) {
 			chart = new google.visualization.GeoChart(chartDiv);
 			// Refer to for full list of regions https://developers.google.com/chart/interactive/docs/gallery/geochart#Continent_Hierarchy
 			if (self.mapRegion() == 'US States') {
-				options.displayMode = 'regions';
-				options.region = 'US';
-				options.resolution = 'provinces';
+				chartOptions.displayMode = 'regions';
+				chartOptions.region = 'US';
+				chartOptions.resolution = 'provinces';
 			}
 			if (self.mapRegion() == 'US Metro') {
-				options.displayMode = 'regions';
-				options.region = 'US';
-				options.resolution = 'metros';
+				chartOptions.displayMode = 'regions';
+				chartOptions.region = 'US';
+				chartOptions.resolution = 'metros';
 			}
 			if (self.mapRegion() == 'North America') {
-				options.displayMode = 'regions';
-				options.region = '021';
+				chartOptions.displayMode = 'regions';
+				chartOptions.region = '021';
 			}
 		}
 
@@ -2781,7 +3228,17 @@ var reportViewModel = function (options) {
 			self.ChartData(chart.getImageURI());
 		});
 
-		chart.draw(data, options);
+		// Add click event listener
+		google.visualization.events.addListener(chart, 'select', function () {
+			var selectedItem = chart.getSelection()[0];
+			if (selectedItem && selectedItem.row) {
+				self.ChartDrillDownData(null);
+				self.ReportResult().ReportData().Rows[selectedItem.row].expand();
+				$("#drilldownModal").modal('show');
+			}
+		});
+
+		chart.draw(data, chartOptions);
 	};
 
 	self.loadFolders = function (folderId) {
@@ -2797,7 +3254,6 @@ var reportViewModel = function (options) {
 		}).done(function (folders) {
 			if (folders.d) { folders = folders.d; }
 			if (folders.result) { folders = folders.result; }
-			self.Folders(folders);
 			self.SelectedFolder(null);
 			if (folderId) {
 				var match = _.filter(folders, function (x) { return x.Id == folderId; });
@@ -2805,6 +3261,7 @@ var reportViewModel = function (options) {
 					self.SelectedFolder(match[0]);
 				}
 			}
+			self.allFolders = folders;
 		});
 	};
 
@@ -2812,8 +3269,12 @@ var reportViewModel = function (options) {
 	self.editFieldOptions = ko.observable();
 
 	self.setupField = function (e) {
-		e.selectedFieldName = e.tableName + " > " + e.fieldName;
-		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail').concat('Group in Detail').concat('Csv');
+		if (typeof e.fieldSettings !== 'object' || e.fieldSettings === null) {
+			e.fieldSettings = JSON.parse(e.fieldSettings || "{}");
+		}
+		e.selectedFieldName = e.tableName + " > " + e.fieldName + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
+		e.selectedFilterName = e.tableName + " > " + (e.fieldLabel || e.fieldName) + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
+		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail').concat('Group in Detail').concat('Pivot').concat('Csv');
 		e.selectedAggregate = ko.observable(e.aggregateFunction);
 		e.filterOnFly = ko.observable(e.filterOnFly);
 		e.disabled = ko.observable(e.disabled);
@@ -2826,16 +3287,23 @@ var reportViewModel = function (options) {
 		e.fieldFormat = ko.observable(e.fieldFormat);
 		e.fieldLabel = ko.observable(e.fieldLabel);
 		e.decimalPlaces = ko.observable(e.decimalPlaces);
+		e.currencyFormat = ko.observable(e.fieldSettings.currencyFormat || '');
+		e.dateFormat = ko.observable(e.fieldSettings.dateFormat || '');
+		e.customDateFormat = ko.observable(e.fieldSettings.customDateFormat || '');
+		e.fieldLabel2 = ko.observable(e.fieldSettings.fieldLabel2 || '');
 		e.fieldAlign = ko.observable(e.fieldAlign);
 		e.fontColor = ko.observable(e.fontColor);
-		e.backColor = ko.observable(e.backColor || '#ffffff');
+		e.backColor = ko.observable(e.backColor);
 		e.headerFontColor = ko.observable(e.headerFontColor);
-		e.headerBackColor = ko.observable(e.headerBackColor || '#ffffff');
+		e.headerBackColor = ko.observable(e.headerBackColor);
 		e.fontBold = ko.observable(e.fontBold);
 		e.headerFontBold = ko.observable(e.headerFontBold);
 		e.fieldWidth = ko.observable(e.fieldWidth);
 		e.fieldConditionOp = ko.observable(e.fieldConditionOp);
-		e.fieldConditionVal = ko.observable(e.fieldConditionVal);
+		e.fieldConditionVal = JSON.parse(e.fieldConditionVal || '[]');
+		e.fieldCondtionalFormats = ko.observableArray([]);
+		e.jsonColumnName = e.jsonColumnName;
+		e.isJsonColumn = e.jsonColumnName ? true : false;
 
 		e.applyAllHeaderFontColor = ko.observable(false);
 		e.applyAllHeaderBackColor = ko.observable(false);
@@ -2843,7 +3311,25 @@ var reportViewModel = function (options) {
 		e.applyAllBackColor = ko.observable(false);
 		e.applyAllBold = ko.observable(false);
 		e.applyAllHeaderBold = ko.observable(false);
-
+		e.addConditionalFormatSetting = function (f) {
+			f = f || {};
+			var filter = new filterGroupViewModel({ isRoot: true, parent: self, options: options });
+			filter.AddFilter({
+				FieldId: e.fieldId,
+				Operator: f.operator || '',
+				Value1: f.value || '',
+				Value2: f.value2 || ''
+			});
+			e.fieldCondtionalFormats.push({
+				fontColor: ko.observable(f.fontColor || ''),
+				backColor: ko.observable(f.backColor || ''),
+				fontBold: ko.observable(f.fontBold === true ? true : false),
+				filter: filter
+			});
+		};
+		e.removeSetting = function (setting) {
+			e.fieldCondtionalFormats.remove(setting);
+		};
 		e.toggleDisable = function () {
 			if (!e.disabled() && self.enabledFields().length < 2) return;
 			e.disabled(!e.disabled());
@@ -2896,12 +3382,16 @@ var reportViewModel = function (options) {
 			e.linkField(true);
 			if (options.linkModal) options.linkModal.modal('hide');
 		}
-
+	
 		e.setupFieldOptions = function () {
 			self.currentFieldOptions = {
 				fieldFormat: e.fieldFormat(),
 				fieldLabel: e.fieldLabel(),
 				decimalPlaces: e.decimalPlaces(),
+				dateFormat: e.dateFormat(),
+				currencyFormat: e.currencyFormat(),
+				customDateFormat: e.customDateFormat(),
+				fieldLabel2: e.fieldLabel2(),
 				fieldAlign: e.fieldAlign(),
 				fontColor: e.fontColor(),
 				backColor: e.backColor(),
@@ -2911,20 +3401,43 @@ var reportViewModel = function (options) {
 				headerFontBold: e.headerFontBold(),
 				fieldWidth: e.fieldWidth(),
 				fieldConditionOp: e.fieldConditionOp(),
-				fieldConditionVal: e.fieldConditionVal()
+				fieldConditionVal: e.fieldConditionVal
 			}
+
+			e.fieldCondtionalFormats([]);
+			e.fieldConditionVal.forEach(function (f) {
+				e.addConditionalFormatSetting(f);
+			});
+
 			self.editFieldOptions(e);
 			if (options.fieldOptionsModal) options.fieldOptionsModal.modal('show');
 		}
 
 		e.saveFieldOptions = function () {
+			if (!self.validateFieldOptions()) {
+				toastr.error("Please correct validation issues");
+				return;
+			}
 			_.forEach(self.SelectedFields(), function (f) {
 				if (e.applyAllHeaderFontColor()) f.headerFontColor(e.headerFontColor());
 				if (e.applyAllHeaderBackColor()) f.headerBackColor(e.headerBackColor());
 				if (e.applyAllFontColor()) f.fontColor(e.fontColor());
 				if (e.applyAllBackColor()) f.backColor(e.backColor());
 				if (e.applyAllBold()) f.fontBold(e.fontBold());
-				if (e.applyAllHeaderBold()) f.headerFontBold(e.headerFontBold());
+			});
+
+			e.fieldConditionVal = [];
+			e.fieldCondtionalFormats().forEach(function (fmt) {
+				var f = fmt.filter.Filters()[0];
+				e.fieldConditionVal.push({
+					value: f.Operator() == "in" || f.Operator() == "not in" ? f.ValueIn().join(",") : (f.Operator().indexOf("blank") >= 0 || f.Operator() == 'all' ? "blank" : f.Value()),
+					value2: f.Value2(),
+					valueIn: f.ValueIn(),
+					fontColor: fmt.fontColor(),
+					backColor: fmt.backColor(),
+					fontBold: fmt.fontBold(),
+					operator: f.Operator()
+				});
 			});
 
 			if (options.fieldOptionsModal) options.fieldOptionsModal.modal('hide');
@@ -2935,6 +3448,10 @@ var reportViewModel = function (options) {
 			e.fieldLabel(self.currentFieldOptions.fieldLabel);
 			e.fieldAlign(self.currentFieldOptions.fieldAlign);
 			e.decimalPlaces(self.currentFieldOptions.decimalPlaces);
+			e.currencyFormat(self.currentFieldOptions.currencyFormat);
+			e.dateFormat(self.currentFieldOptions.dateFormat);
+			e.customDateFormat(self.currentFieldOptions.customDateFormat);
+			e.fieldLabel2(self.currentFieldOptions.fieldLabel2);
 			e.fontColor(self.currentFieldOptions.fontColor);
 			e.backColor(self.currentFieldOptions.backColor);
 			e.headerFontColor(self.currentFieldOptions.headerFontColor);
@@ -2943,7 +3460,7 @@ var reportViewModel = function (options) {
 			e.headerFontBold(self.currentFieldOptions.headerFontBold);
 			e.fieldWidth(self.currentFieldOptions.fieldWidth);
 			e.fieldConditionOp(self.currentFieldOptions.fieldConditionOp);
-			e.fieldConditionVal(self.currentFieldOptions.fieldConditionVal);
+			e.fieldConditionVal = self.currentFieldOptions.fieldConditionVal;
 			if (options.fieldOptionsModal) options.fieldOptionsModal.modal('hide');
 		}
 
@@ -2963,6 +3480,8 @@ var reportViewModel = function (options) {
 			self.ReportType(report.ReportType);
 		}
 
+		self.OuterGroupColumns([]);
+		self.AdditionalSeries([]);
 		self.ReportName(report.ReportName);
 		self.ReportDescription(report.ReportDescription);
 		self.FolderID(report.FolderID);
@@ -2982,11 +3501,14 @@ var reportViewModel = function (options) {
 		self.IncludeSubTotal(report.IncludeSubTotals);
 		self.EditFiltersOnReport(report.EditFiltersOnReport);
 		self.ShowUniqueRecords(report.ShowUniqueRecords);
+		self.OnlyTop(report.OnlyTop);
+		self.maxRecords(report.OnlyTop != null);
 		self.AggregateReport(report.IsAggregateReport);
 		self.ShowDataWithGraph(report.ShowDataWithGraph);
 		self.ShowOnDashboard(report.ShowOnDashboard);
 		self.SortByField(report.SortBy);
 		self.SortDesc(report.SortDesc);
+		self.pager.sortColumn('');
 		self.pager.sortDescending(report.SortDesc);
 		var match = _.find(self.SavedReports(), { reportId: report.ReportID }) || { canEdit: false };
 		self.CanEdit(report.canEdit || match.canEdit || self.adminMode());
@@ -2996,6 +3518,14 @@ var reportViewModel = function (options) {
 		self.scheduleBuilder.fromJs(report.Schedule);
 		self.HideReportHeader(report.HideReportHeader);
 		self.useReportHeader(report.UseReportHeader && !report.HideReportHeader);
+
+		var reportSettings = JSON.parse(report.ReportSettings || "{}");
+		self.selectedStyle(reportSettings.SelectedStyle || 'default');
+		self.ShowExpandOption(reportSettings.ShowExpandOption === true ? true : false);
+		self.DontExecuteOnRun(reportSettings.DontExecuteOnRun === true ? true : false);
+		self.barChartHorizontal(reportSettings.barChartHorizontal === true ? true : false);
+		self.barChartStacked(reportSettings.barChartStacked === true ? true : false);
+		self.DefaultPageSize(reportSettings.DefaultPageSize || 30);
 
 		if (self.ReportMode() == "execute") {
 			if (self.useReportHeader()) {
@@ -3019,7 +3549,7 @@ var reportViewModel = function (options) {
 					if (onFly) filterFieldsOnFly.push({ fieldId: e.FieldId });
 
 					if (group == null) group = self.FilterGroups()[0];
-					group.AddFilter(e, onFly);
+					group.AddFilter(e, onFly, self.ReportMode() === 'print');
 				}
 
 				addSavedFilters(e.Filters, group);
@@ -3036,7 +3566,7 @@ var reportViewModel = function (options) {
 						e.FieldId = e.Field.fieldId;
 						e.Value1 = e.Value;
 						filterFieldsOnFly.push(match[0]);
-						self.FilterGroups()[0].AddFilter(e, true);
+						self.FilterGroups()[0].AddFilter(e, true, self.ReportMode()==='print');
 					}
 				});
 			}
@@ -3080,6 +3610,8 @@ var reportViewModel = function (options) {
 				}).done(function (linkedReport) {
 					if (linkedReport.d) { linkedReport = linkedReport.d; }
 					if (linkedReport.result) { linkedReport = linkedReport.result; }
+					if (queryParams.noparent == 'true') self.ReportMode('execute');
+
 					return self.ExecuteReportQuery(linkedReport.ReportSql, linkedReport.ConnectKey, reportSeries);
 				});
 			}
@@ -3089,7 +3621,7 @@ var reportViewModel = function (options) {
 		}
 	}
 
-	self.LoadReport = function (reportId, filterOnFly, reportSeries) {
+	self.LoadReport = function (reportId, filterOnFly, reportSeries, dontBlock) {
 		self.SelectedTable(null);
 		self.isFormulaField(false);
 		return ajaxcall({
@@ -3101,7 +3633,8 @@ var reportViewModel = function (options) {
 					adminMode: self.adminMode(),
 					userIdForSchedule: self.userIdForSchedule
 				})
-			}
+			},
+			noBlocking: dontBlock === true
 		}).done(function (report) {
 			if (report.d) { report = report.d; }
 			if (report.result) { report = report.result; }
@@ -3132,6 +3665,7 @@ var reportViewModel = function (options) {
 				});
 
 				self.SelectedFields(report.SelectedFields);
+				self.lastPickedField(null);
 				return self.PopulateReport(report, filterOnFly, reportSeries);
 			}
 		});
@@ -3152,13 +3686,15 @@ var reportViewModel = function (options) {
 			_.forEach(reports, function (e) {
 				e.runMode = false;
 				e.openReport = function () {
+					var saveReportFlag = self.SaveReport();
 					// Load report
 					return self.LoadReport(e.reportId).done(function () {
 						if (!e.runMode) {
+							self.SaveReport(true);
 							self.ReportMode("generate");
 						}
 						else {
-							self.SaveReport(false);
+							self.SaveReport(saveReportFlag);
 							self.RunReport(false, true);
 							e.runMode = false;
 						}
@@ -3171,14 +3707,30 @@ var reportViewModel = function (options) {
 						self.ReportName('Copy of ' + self.ReportName());
 						self.CanEdit(true);
 						self.SaveReport(true);
+
+						_.forEach(self.manageAccess.users, function (x) { x.selected(false); });
+						_.forEach(self.manageAccess.viewOnlyUsers, function (x) { x.selected(false); });
+						_.forEach(self.manageAccess.deleteOnlyUsers, function (x) { x.selected(false); });
+						_.forEach(self.manageAccess.userRoles, function (x) { x.selected(false); });
+						_.forEach(self.manageAccess.viewOnlyUserRoles, function (x) { x.selected(false); });
+						_.forEach(self.manageAccess.deleteOnlyUserRoles, function (x) { x.selected(false); });
+
+						self.manageAccess.applyDefaultSettings();
 					});
 				};
 
+				e.exportReport = function (format) {
+					self.ReportMode('export-' + format);
+					e.runReport();
+				}
+
 				e.runReport = function () {
+					self.SaveReport(false);
 					e.runMode = true;
 					e.openReport();
 				};
 
+				e.hasDrilldown = ["List", "Pivot"].indexOf(e.reportType) < 0;
 				e.deleteReport = function () {
 					bootbox.confirm("Are you sure you would like to Delete this Report?", function (r) {
 						if (r) {
@@ -3187,7 +3739,8 @@ var reportViewModel = function (options) {
 								data: {
 									method: "/ReportApi/DeleteReport",
 									model: JSON.stringify({
-										reportId: e.reportId
+										reportId: e.reportId,
+										adminMode: self.adminMode()
 									})
 								}
 							}).done(function () {
@@ -3208,31 +3761,16 @@ var reportViewModel = function (options) {
 				}
 			});
 
+			if (!self.adminMode()) {
+				var foldersInUse = _.uniqBy(reports, 'folderId').map(function (r) { return r.folderId });
+				self.Folders(_.filter(self.allFolders, function (folder) { return foldersInUse.includes(folder.Id) || folder.Id == 0 }));
+			} else {
+				self.Folders(self.allFolders);
+			}
+
 			self.SavedReports(reports);
 		});
-	};
-
-	if (self.ReportMode() != "dashboard") {
-		self.loadFolders().done(function () {
-			self.LoadAllSavedReports();
-			ajaxcall({
-				url: options.apiUrl,
-				data: {
-					method: "/ReportApi/CanSaveReports",
-					model: "{}"
-				}
-			}).done(function (x) {
-				if (x.d) { x = x.d; }
-				if (x.result) { x = x.result; }
-				x = x || {
-					allowUsersToCreateReports: true,
-					allowUsersToManageFolders: true
-				};
-				self.CanSaveReports(x.allowUsersToCreateReports);
-				self.CanManageFolders(x.allowUsersToManageFolders);
-			});
-		});
-	}
+	};	
 
 	self.changeSort = function (sort) {
 		self.pager.changeSort(sort);
@@ -3243,7 +3781,27 @@ var reportViewModel = function (options) {
 	self.formatNumber = function (number, decPlaces) {
 		if (decPlaces === null) decPlaces = 2;
 		decPlaces = isNaN(decPlaces = Math.abs(decPlaces)) ? 2 : decPlaces;
-		return parseFloat(number).toFixed(decPlaces).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+		const parts = parseFloat(number).toFixed(decPlaces).split('.');
+		parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+		return parts.join('.');
+	}
+
+	self.formatDate = function(date, format) {
+		const pad = (n) => n < 10 ? '0' + n : n;
+		const monthNamesShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+		let day = date.getDate(),
+			month = date.getMonth(), // Months are zero-based
+			year = date.getFullYear();
+
+		return format
+			.replace('yyyy', year)
+			.replace('yy', year.toString().slice(-2))
+			.replace('MM', monthNamesShort[month])
+			.replace('mm', pad(month + 1))
+			.replace('m', month + 1)
+			.replace('dd', pad(day))
+			.replace('d', day);
 	}
 
 	// ui-validation
@@ -3264,6 +3822,23 @@ var reportViewModel = function (options) {
 			return false;
 
 		return true;
+	};
+	self.validateFieldOptions = function () {
+		if (options.fieldOptionsModal == null) return;
+		var curInputs = options.fieldOptionsModal.find("input[required], select[required]"),
+    	isValid = true;
+
+		$(".needs-validation").removeClass("was-validated");
+		for (var i = 0; i < curInputs.length; i++) {
+			$(curInputs[i]).removeClass("is-invalid");
+			if (!self.isInputValid(curInputs[i])) {
+				isValid = false;
+				$(".needs-validation").addClass("was-validated");
+				$(curInputs[i]).addClass("is-invalid");
+			}
+		}
+
+		return isValid;
 	};
 
 	self.validateReport = function (validateCustomOnly) {
@@ -3310,7 +3885,7 @@ var reportViewModel = function (options) {
 
 	self.loadTables = function () {
 		// Load tables
-		ajaxcall({
+		return ajaxcall({
 			url: options.apiUrl,
 			data: {
 				method: "/ReportApi/GetTables",
@@ -3333,15 +3908,36 @@ var reportViewModel = function (options) {
 			return;
 		}
 
-		self.loadFolders(folderId);
-		self.loadTables();
-		self.loadProcs();
-
 		var adminMode = false;
 		if (localStorage) adminMode = localStorage.getItem('reportAdminMode');
 
-		if (adminMode === 'true') {
+		if (adminMode === 'true' && self.allowAdmin()) {
 			self.adminMode(true);
+		}
+		
+		self.loadTables();
+		self.loadProcs();	
+
+		if (self.ReportMode() != "dashboard") {
+			self.loadFolders().done(function () {
+				self.LoadAllSavedReports();
+				ajaxcall({
+					url: options.apiUrl,
+					data: {
+						method: "/ReportApi/CanSaveReports",
+						model: "{}"
+					}
+				}).done(function (x) {
+					if (x.d) { x = x.d; }
+					if (x.result) { x = x.result; }
+					x = x || {
+						allowUsersToCreateReports: true,
+						allowUsersToManageFolders: true
+					};
+					self.CanSaveReports(x.allowUsersToCreateReports);
+					self.CanManageFolders(x.allowUsersToManageFolders);
+				});
+			});
 		}
 	};
 
@@ -3404,12 +4000,13 @@ var reportViewModel = function (options) {
 			$.blockUI({ baseZ: 500 });
 		}
 
-		$.ajax({
+		ajaxcall({
 			type: 'POST',
 			url: (options.runExportUrl || '/DotNetReport/') + url,
 			xhrFields: {
 				responseType: 'blob'
 			},
+			contentType: "application/x-www-form-urlencoded; charset=UTF-8",
 			data: data,
 			success: function (data) {
 				var a = document.createElement('a');
@@ -3438,7 +4035,7 @@ var reportViewModel = function (options) {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
-			chartData: self.ChartData(),
+			chartData: self.ChartData() || '',
 			columnDetails: self.getColumnDetails(),
 			includeSubTotal: self.IncludeSubTotal(),
 			pivot: self.ReportType() == 'Pivot'
@@ -3460,17 +4057,30 @@ var reportViewModel = function (options) {
 		}, 'pdf');
 	}
 
-	self.downloadExcel = function () {
+	self.runExcelDownload = function (expand) {
+		var reportData = self.BuildReportData();
+		reportData.DrillDownRowUsePlaceholders = true;
+		var pivotColumn = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' });
+
 		self.downloadExport("DownloadExcel", {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
-			allExpanded: self.allExpanded(),
-			expandSqls: self.getExpandSqls().join(',') || '',
+			allExpanded: expand === true ? true : false,
+			expandSqls: JSON.stringify(reportData),
 			columnDetails: self.getColumnDetails(),
 			includeSubTotal: self.IncludeSubTotal(),
-			pivot: self.ReportType() == 'Pivot'
+			pivot: self.ReportType() == 'Pivot',
+			pivotColumn: pivotColumn ? pivotColumn.fieldName : ''
 		}, 'xlsx');
+	}
+
+	self.downloadExcel = function () {
+		self.runExcelDownload(false);
+	}
+
+	self.downloadExcelWithDrilldown = function () {
+		self.runExcelDownload(true);
 	}
 
 	self.downloadCsv = function () {
@@ -3496,14 +4106,20 @@ var reportViewModel = function (options) {
 var dashboardViewModel = function (options) {
 	var self = this;
 	options.isDashboard = true;
-
 	self.dashboards = ko.observableArray(options.dashboards || []);
 	self.adminMode = ko.observable(false);
 	self.currentUserId = options.userId;
 	self.currentUserRole = (options.currentUserRole || []).join();
 	self.reportsAndFolders = ko.observableArray([]);
 	self.allowAdmin = ko.observable(options.allowAdmin);
-
+	self.FlyFilters = ko.observableArray([]);
+	self.ReportID = ko.observable(0);
+	self.tables = [];
+	self.procs = [];
+	self.folders = [];
+	self.ChartDrillDownData = ko.observable();
+	self.DontExecuteOnRun = ko.observable(false);
+	self.searchReports = ko.observable('');
 	var currentDash = options.dashboardId > 0
 		? (_.find(self.dashboards(), { id: options.dashboardId }) || { name: '', description: '' })
 		: (self.dashboards().length > 0 ? self.dashboards()[0] : { name: '', description: '' });
@@ -3517,14 +4133,59 @@ var dashboardViewModel = function (options) {
 
 	self.currentDashboard = ko.observable(currentDash);
 	self.selectDashboard = ko.observable(currentDash.id);
+	self.loadDashboard = function (dashboardId) {
+		ajaxcall({
+			url: options.loadSavedDashbordUrl,
+			data: { id: dashboardId, adminMode: self.adminMode() },
+			noBlocking: true
+		}).done(function (reportsData) {
+			if (reportsData.d) reportsData = reportsData.d;
+			var reports = [];
+			_.forEach(reportsData, function (r) {
+				reports.push({ reportSql: r.ReportSql, reportId: r.ReportId, reportFilter: r.ReportFilter, connectKey: r.ConnectKey, x: r.X, y: r.Y, width: r.Width, height: r.Height });
+			});
+
+			var currentDash = dashboardId > 0
+				? (_.find(self.dashboards(), { id: dashboardId }))
+				: (self.dashboards().length > 0 ? self.dashboards()[0] : null);
+
+			if (currentDash == null) {
+				currentDash = { id: dashboardId, name: self.dashboard.Name(), description: self.dashboard.Description() };
+				if (dashboardId > 0) {
+				  self.dashboards.push(currentDash);
+				}
+			}
+
+			self.dashboard.Id(currentDash.id);
+			self.dashboard.Name(currentDash.name);
+			self.dashboard.Description(currentDash.description);
+			self.currentDashboard(currentDash);
+			self.loadDashboardReports(reports);
+		});
+	}
 
 	self.selectDashboard.subscribe(function (newValue) {
 		if (newValue != self.currentDashboard().id) {
-			window.location = window.location.href.split("?")[0] + "?id=" + newValue;
+			self.loadDashboard(newValue);
 		}
+	});
+	self.reportsInSearch = ko.observableArray([]);
+	self.searchReports.subscribe(function (searchReports) {
+		var filteredReports = [];
+		self.reportsAndFolders().forEach(function (folder) {
+			var filterReports = folder.reports.filter(function (report) {
+				var reportNameLower = report.reportName.toLowerCase();
+				var reportDescriptionLower = report.reportDescription.toLowerCase();
+				var searchReportsLower = searchReports.toLowerCase();
+				return reportNameLower.includes(searchReportsLower) || reportDescriptionLower.includes(searchReportsLower);
+			});
+			filteredReports = filteredReports.concat(filterReports);
+		});
+		self.reportsInSearch(filteredReports);
 	});
 
 	self.newDashboard = function () {
+		$("#add-dash-name").removeClass("is-invalid");
 		self.dashboard.Id(0);
 		self.dashboard.Name('');
 		self.dashboard.Description('');
@@ -3534,6 +4195,7 @@ var dashboardViewModel = function (options) {
 		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.viewOnlyUsers, '');
 		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.deleteOnlyUserRoles, '');
 		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.deleteOnlyUsers, '');
+		self.dashboard.manageAccess.clientId('');
 
 		_.forEach(self.reportsAndFolders(), function (f) {
 			_.forEach(f.reports, function (r) {
@@ -3543,6 +4205,7 @@ var dashboardViewModel = function (options) {
 	};
 
 	self.editDashboard = function () {
+		$("#add-dash-name").removeClass("is-invalid");
 		self.dashboard.Id(self.currentDashboard().id);
 		self.dashboard.Name(self.currentDashboard().name);
 		self.dashboard.Description(self.currentDashboard().description);
@@ -3552,6 +4215,7 @@ var dashboardViewModel = function (options) {
 		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.viewOnlyUsers, self.currentDashboard().viewOnlyUserId || '');
 		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.deleteOnlyUserRoles, self.currentDashboard().deleteOnlyUserRoles || '');
 		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.deleteOnlyUsers, self.currentDashboard().deleteOnlyUserId || '');
+		self.dashboard.manageAccess.clientId(self.currentDashboard().clientId || '');
 
 		var selectedReports = (self.currentDashboard().selectedReports || '').split(',');
 		_.forEach(self.reportsAndFolders(), function (f) {
@@ -3587,9 +4251,11 @@ var dashboardViewModel = function (options) {
 	}
 
 	self.saveDashboard = function () {
-		$(".form-group").removeClass("needs-validation");
+		$("#add-dash-name").removeClass("is-invalid");
+
 		if (!self.dashboard.Name()) {
-			$("#add-dash-name").closest(".form-group").addClass("needs-validation");
+			toastr.error('Dashboard name is required');
+			$("#add-dash-name").addClass("is-invalid");
 			return false;
 		}
 
@@ -3611,6 +4277,7 @@ var dashboardViewModel = function (options) {
 			userRolesAccess: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.userRoles),
 			viewOnlyUserRoles: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.viewOnlyUserRoles),
 			deleteOnlyUserRoles: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.deleteOnlyUserRoles),
+			clientIdToUpdate: self.dashboard.manageAccess.clientId(),
 			adminMode: self.adminMode()
 		};
 
@@ -3624,8 +4291,9 @@ var dashboardViewModel = function (options) {
 			if (result.d) { result = result.d; }
 			if (result.result) { result = result.result; }
 			toastr.success("Dashboard saved successfully");
+			$('#add-dashboard-modal').modal('hide');
 			setTimeout(function () {
-				window.location = window.location.href.split("?")[0] + "?id=" + result.id;
+				self.loadDashboard(result.id);
 			}, 500);
 		});
 
@@ -3643,6 +4311,7 @@ var dashboardViewModel = function (options) {
 					}
 				}).done(function (result) {
 					toastr.success("Dashboard deleted successfully");
+					$('#add-dashboard-modal').modal('hide');
 					setTimeout(function () {
 						window.location = window.location.href.split("?")[0];
 					}, 500);
@@ -3652,45 +4321,6 @@ var dashboardViewModel = function (options) {
 	};
 
 	self.reports = ko.observableArray([]);
-	var i = 0;
-	_.forEach(options.reports, function (x) {
-		var report = new reportViewModel({
-			runReportUrl: options.runReportUrl,
-			execReportUrl: options.execReportUrl,
-			reportWizard: options.reportWizard,
-			lookupListUrl: options.lookupListUrl,
-			runReportApiUrl: options.runReportApiUrl,
-			apiUrl: options.apiUrl,
-			reportFilter: x.reportFilter,
-			reportMode: "dashboard",
-			reportSql: x.reportSql,
-			reportId: x.reportId,
-			reportConnect: x.connectKey,
-			users: options.users,
-			userRoles: options.userRoles,
-			skipDraw: true,
-			printReportUrl: options.printReportUrl,
-			dataFilters: options.dataFilters
-		});
-
-		report.isExpanded = ko.observable(false);
-		report.toggleExpand = function () {
-			report.isExpanded(!report.isExpanded());
-		}
-		report.x = ko.observable(x.x);
-		report.y = ko.observable(x.y);
-		report.width = ko.observable(x.width);
-		report.height = ko.observable(x.height);
-		report.panelStyle = 'panel-' + (i == 0 ? 'default' : (i == 1 ? 'info' : (i == 2 ? 'warning' : 'danger')));
-		i = i == 3 ? 0 : i + 1;
-		self.reports.push(report);
-		report.LoadReport(x.reportId, true, '');
-
-		report.showFlyFilters = ko.observable(false);
-		report.toggleFlyFilters = function () {
-			report.showFlyFilters(!report.showFlyFilters());
-		};
-	});
 
 	self.drawChart = function () {
 		_.forEach(self.reports(), function (x) {
@@ -3699,8 +4329,168 @@ var dashboardViewModel = function (options) {
 		});
 	};
 
+	self.selectedReport = ko.observable(null);
+	self.skipGridRefresh = false;
+
+	self.loadDashboardReports = function (reports, skipGridRefresh) {
+		self.reports([]);
+		var allreports = [];
+		var promises = [];
+		var i = 0;
+		self.skipGridRefresh = true;
+		reports = _.orderBy(reports, ['y', 'x']);
+
+		_.forEach(reports, function (x) {
+			var report = new reportViewModel({
+				runReportUrl: options.runReportUrl,
+				runExportUrl: options.runExportUrl,
+				execReportUrl: options.execReportUrl,
+				reportWizard: options.reportWizard,
+				fieldOptionsModal: options.fieldOptionsModal,
+				linkModal: options.linkModal,
+				lookupListUrl: options.lookupListUrl,
+				runReportApiUrl: options.runReportApiUrl,
+				apiUrl: options.apiUrl,
+				reportFilter: x.reportFilter,
+				reportMode: "dashboard",
+				reportSql: x.reportSql,
+				reportId: x.reportId,
+				reportConnect: x.connectKey,
+				users: options.users,
+				userRoles: options.userRoles,
+				skipDraw: true,
+				printReportUrl: options.printReportUrl,
+				dataFilters: options.dataFilters
+			});
+
+			report.x = ko.observable(x.x);
+			report.y = ko.observable(x.y);
+			report.width = ko.observable(x.width);
+			report.height = ko.observable(x.height);
+			report.panelStyle = 'panel-' + (i == 0 ? 'default' : (i == 1 ? 'info' : (i == 2 ? 'warning' : 'danger')));
+			i = i == 3 ? 0 : i + 1;
+
+			report.showFlyFilters = ko.observable(false);
+			report.toggleFlyFilters = function () {
+				report.showFlyFilters(!report.showFlyFilters());
+			};
+			report.openReport = function () {
+				var promises = [];
+				if (self.tables.length == 0) {
+					promises.push(report.loadTables().done(function (x) {
+						if (x.d) x = x.d;
+						self.tables = x;
+						report.Tables(self.tables);
+					}));
+					promises.push(report.loadProcs().done(function (x) {
+						if (x.d) x = x.d;
+						self.procs = x;
+						report.Procs(self.procs);
+					}));
+					promises.push(report.loadFolders().done(function (x) {
+						if (x.d) x = x.d;
+						self.folders = x;
+						report.Folders(self.folders);
+					}));
+				}
+
+				$.when(promises).done(function () {
+					// Load report
+					report.Tables(self.tables);
+					report.Procs(self.procs);
+					report.Folders(self.folders);
+					report.SaveReport(true);
+					self.selectedReport(report);
+					setTimeout(function () {
+						options.reportWizard.modal('show');
+						if ($.unblockUI) {
+							$.unblockUI();
+						}
+					}, 1000);
+				});
+			};
+
+			report.ChartDrillDownData.subscribe(function (e) {
+				self.ChartDrillDownData(e);
+			});
+			allreports.push(report);
+			promises.push(report.LoadReport(x.reportId, true, '', true));
+		});
+
+		self.reports(allreports);
+		$.when(promises).done(function () {
+			setTimeout(function () {				
+				self.FlyFilters([]);
+				_.forEach(self.reports(), function (report) {
+					_.forEach(report.FilterGroups(), function (fg) {
+						_.forEach(fg.Filters(), function (f) {
+							if (f.IsFilterOnFly
+								//&& f.Field().fieldType == 'DateTime'
+								&& _.filter(self.FlyFilters(), function (x) { return f.Field().fieldId == x.Field().fieldId; }).length == 0
+							) {
+								var filter = {
+									AndOr: ko.observable(' AND '),
+									Field: ko.observable(f.Field()),
+									Operator: ko.observable(f.Operator()),
+									Value: ko.observable(f.Value()),
+									Value2: ko.observable(f.Value2()),
+									ValueIn: ko.observable(f.ValueIn()),
+									LookupList: ko.observable(f.LookupList()),
+									Apply: ko.observable(true),
+									IsFilterOnFly: true,
+									showParentFilter: ko.observable(f.showParentFilter())
+								};
+								self.FlyFilters.push(filter);
+
+								if (f.Field().hasForeignKey) {
+									f.LookupList.subscribe(function (x) {
+										filter.LookupList(x);
+										filter.Value(f.Value());
+										filter.Value2(f.Value2());
+										filter.ValueIn(f.ValueIn());
+									});
+								}
+							}
+						});
+					});
+				});
+
+				if (skipGridRefresh === true) return;
+				
+				var grid = $('.grid-stack').data("gridstack");
+				grid.removeAll();
+
+				// Reload the grid items from the screen
+				var gridItems = $('.grid-stack-item');
+				i = 0;
+				gridItems.each(function () {
+					var item = $(this);
+					var x = parseInt(item.attr('data-gs-x'));
+					var y = parseInt(item.attr('data-gs-y'));
+					var width = parseInt(item.attr('data-gs-width'));
+					var height = parseInt(item.attr('data-gs-height'));
+					var id = reports[i++].reportId;
+					item.attr('data-gs-id', id);
+
+					// Add the grid item to the GridStack
+					grid.addWidget(item, x, y, width, height);
+				});
+
+				if (!self.arrangeDashboard())
+					grid.disable();
+
+				self.skipGridRefresh = false;
+
+			}, 1000);
+
+			self.drawChart();
+		});		
+	}
+
+	self.loadDashboardReports(options.reports, true);
+
 	self.updatePosition = function (item) {
-		if (!item || !item.id) return;
+		if (!item || !item.id || self.skipGridRefresh) return;
 		ajaxcall({
 			url: options.apiUrl,
 			noBlocking: true,
@@ -3717,6 +4507,34 @@ var dashboardViewModel = function (options) {
 			}
 		});
 	};
+	self.ExecuteReport = function () {
+		self.executingReport = true;
+		self.RunReport();
+	}
+	self.RunReport = function () {
+		_.forEach(self.reports(), function (report) {
+			var filterApplied = false;
+			_.forEach(self.FlyFilters(), function (combinedFilter) {
+				_.forEach(report.FilterGroups(), function (fg) {
+					_.forEach(fg.Filters(), function (f) {
+						if (f.IsFilterOnFly && combinedFilter.Field().fieldId == f.Field().fieldId) {
+							f.Operator(combinedFilter.Operator());
+							f.Value(combinedFilter.Value());
+							f.Value2(combinedFilter.Value2());
+							f.ValueIn(combinedFilter.ValueIn());
+							f.LookupList(combinedFilter.LookupList());
+
+							filterApplied = true;
+						}
+					});
+				});
+			});
+
+			if (filterApplied) {
+				report.RunReport();
+			}
+		});
+	}
 
 	self.init = function () {
 		var adminMode = false;
@@ -3732,7 +4550,8 @@ var dashboardViewModel = function (options) {
 				data: {
 					method: "/ReportApi/GetSavedReports",
 					model: JSON.stringify({ adminMode: self.adminMode() })
-				}
+				},
+				noBlocking: true
 			});
 		};
 
@@ -3744,7 +4563,8 @@ var dashboardViewModel = function (options) {
 					model: JSON.stringify({
 						adminMode: self.adminMode()
 					})
-				}
+				},
+				noBlocking: true
 			});
 		};
 
@@ -3778,5 +4598,18 @@ var dashboardViewModel = function (options) {
 	self.adminMode.subscribe(function (newValue) {
 		if (localStorage) localStorage.setItem('reportAdminMode', newValue);
 
+	});
+
+	self.arrangeDashboard = ko.observable(false);
+	self.arrangeDashboard.subscribe(function (newValue) {		
+		var grid = $('.grid-stack').data("gridstack");
+		if (grid) {
+			if (newValue) {
+				grid.enable();
+			}
+			else {
+				grid.disable();
+			}
+		}
 	});
 };
