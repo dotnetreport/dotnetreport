@@ -2344,7 +2344,7 @@ var reportViewModel = function (options) {
 		skipValidation = skipValidation === true ? true : false;
 
 		self.TotalSeries(self.AdditionalSeries().length);
-		if (self.TotalSeries() > 1) self.ReportMode('start');
+		if (self.TotalSeries() > 0) self.ReportMode('start');
 
 		if (self.ReportType() == 'Single') {
 			if (self.enabledFields().length != 1) {
@@ -2374,7 +2374,7 @@ var reportViewModel = function (options) {
 				type: "POST",
 				data: JSON.stringify({
 					method: "/ReportApi/RunReport",
-					SaveReport: self.CanSaveReports() ? (saveOnly || self.SaveReport()) : false,
+					SaveReport: self.CanSaveReports() && !isComparison ? (saveOnly || self.SaveReport()) : false,
 					ReportJson: JSON.stringify(self.BuildReportData([], isComparison, i - 1)),
 					adminMode: self.adminMode(),
 					userIdForFilter: self.userIdForFilter,
@@ -2494,6 +2494,7 @@ var reportViewModel = function (options) {
 			if (dbSrc && dbDst && dbSrc == dbDst) return true;
 
 			if (agg && dbSrc && dbDst && agg + '(' + dbSrc + ')' == dbDst) return true;
+			if (agg == 'Count Distinct' && dbSrc && dbDst && 'Count(Distinct ' + dbSrc + ')' == dbDst) return true;
 
 			if (dst.indexOf('(Count)') < 0 && dst.indexOf("(Avg)") < 0 && dst.indexOf("(Sum)") < 0 && dst.indexOf("(Average)") < 0)
 				return false;
@@ -2525,6 +2526,11 @@ var reportViewModel = function (options) {
 				else {
 					col = _.find(self.SelectedFields(), function (x) { return x.dbField == e.SqlField; });
 					if (!col) col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.fieldName, e.ColumnName, x.dbField, e.SqlField, x.aggregateFunction); });
+				}
+				if (col && col.fieldLabel && col.fieldLabel() && (e.ColumnName.indexOf('(Last ') > -1 || e.ColumnName.indexOf('Months ago)') > -1 || e.ColumnName.indexOf('Years ago)') > -1)) {
+					const match = e.ColumnName.match(/\((Last Year|Last Month|\d+ Years? ago|\d+ Months? ago)\)$/);
+					e.ColumnName = col.fieldLabel() + ' ' + (match ? match[0] : '');
+					col = null;
 				}
 				if (col && col.linkField()) {
 					e.linkItem = col.linkFieldItem.toJs();
@@ -2748,7 +2754,7 @@ var reportViewModel = function (options) {
 						}
 					}
 
-					var conditions = col.fieldConditionVal || [];
+					var conditions = col.fieldConditionVal && col.fieldConditionVal.length ? col.fieldConditionVal : [];
 					conditions.forEach(function (c) {
 						var conditionTrue = false;
 						var value = r.Value;
@@ -2812,10 +2818,6 @@ var reportViewModel = function (options) {
 							r._backColor = c.backColor;
 							r._fontColor = c.fontColor;
 							r._fontBold = c.fontBold;
-						} else {
-							r._backColor = r.backColor();
-							r._fontColor = r.fontColor();
-							r._fontBold = r.fontBold();
 						}
 					});
 
@@ -3405,9 +3407,12 @@ var reportViewModel = function (options) {
 			}
 
 			e.fieldCondtionalFormats([]);
-			e.fieldConditionVal.forEach(function (f) {
-				e.addConditionalFormatSetting(f);
-			});
+
+			if (e.fieldConditionVal && e.fieldConditionVal.length) {
+				e.fieldConditionVal.forEach(function (f) {
+					e.addConditionalFormatSetting(f);
+				});
+			}
 
 			self.editFieldOptions(e);
 			if (options.fieldOptionsModal) options.fieldOptionsModal.modal('show');
