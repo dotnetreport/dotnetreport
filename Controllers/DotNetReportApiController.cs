@@ -258,7 +258,10 @@ namespace ReportBuilder.Web.Controllers
                             foreach (DataRow dr in dtPagedRun.Rows)
                             {
                                 DataRow match = dtPaged.AsEnumerable().FirstOrDefault(drun => Convert.ToString(drun[0]) == Convert.ToString(dr[0]));
-
+                                if (fields[0].ToUpper().StartsWith("CONVERT(VARCHAR(10)")) // group by day
+                                {
+                                    match = dtPaged.AsEnumerable().Where(r => !string.IsNullOrEmpty(r.Field<string>(0)) && !string.IsNullOrEmpty((string)dr[0]) && Convert.ToDateTime(r.Field<string>(0)).Day == Convert.ToDateTime((string)dr[0]).Day).FirstOrDefault();
+                                }
                                 if (match != null)
                                 {
                                     // If a matching row is found, merge the data
