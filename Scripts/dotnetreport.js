@@ -2344,7 +2344,7 @@ var reportViewModel = function (options) {
 		skipValidation = skipValidation === true ? true : false;
 
 		self.TotalSeries(self.AdditionalSeries().length);
-		if (self.TotalSeries() > 1) self.ReportMode('start');
+		if (self.TotalSeries() > 0) self.ReportMode('start');
 
 		if (self.ReportType() == 'Single') {
 			if (self.enabledFields().length != 1) {
@@ -2526,6 +2526,11 @@ var reportViewModel = function (options) {
 				else {
 					col = _.find(self.SelectedFields(), function (x) { return x.dbField == e.SqlField; });
 					if (!col) col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.fieldName, e.ColumnName, x.dbField, e.SqlField, x.aggregateFunction); });
+				}
+				if (col && col.fieldLabel && col.fieldLabel() && (e.ColumnName.indexOf('(Last ') > -1 || e.ColumnName.indexOf('Months ago)') > -1 || e.ColumnName.indexOf('Years ago)') > -1)) {
+					const match = e.ColumnName.match(/\((Last Year|Last Month|\d+ Years? ago|\d+ Months? ago)\)$/);
+					e.ColumnName = col.fieldLabel() + ' ' + (match ? match[0] : '');
+					col = null;
 				}
 				if (col && col.linkField()) {
 					e.linkItem = col.linkFieldItem.toJs();
