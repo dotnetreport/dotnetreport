@@ -2748,7 +2748,7 @@ var reportViewModel = function (options) {
 						}
 					}
 
-					var conditions = col.fieldConditionVal || [];
+					var conditions = col.fieldConditionVal && col.fieldConditionVal.length ? col.fieldConditionVal : [];
 					conditions.forEach(function (c) {
 						var conditionTrue = false;
 						var value = r.Value;
@@ -2812,10 +2812,6 @@ var reportViewModel = function (options) {
 							r._backColor = c.backColor;
 							r._fontColor = c.fontColor;
 							r._fontBold = c.fontBold;
-						} else {
-							r._backColor = r.backColor();
-							r._fontColor = r.fontColor();
-							r._fontBold = r.fontBold();
 						}
 					});
 
@@ -3405,9 +3401,12 @@ var reportViewModel = function (options) {
 			}
 
 			e.fieldCondtionalFormats([]);
-			e.fieldConditionVal.forEach(function (f) {
-				e.addConditionalFormatSetting(f);
-			});
+
+			if (e.fieldConditionVal && e.fieldConditionVal.length) {
+				e.fieldConditionVal.forEach(function (f) {
+					e.addConditionalFormatSetting(f);
+				});
+			}
 
 			self.editFieldOptions(e);
 			if (options.fieldOptionsModal) options.fieldOptionsModal.modal('show');
