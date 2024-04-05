@@ -2167,8 +2167,9 @@ var reportViewModel = function (options) {
 			var seriesFilter = [];
 			seriesFilter.push(self.AdditionalSeries()[index]);
 			var filters = [];
+			var fieldIdToSkip = 0;
 			_.forEach(seriesFilter, function (e, i) {
-
+				fieldIdToSkip = e.Field().fieldId;
 				var f = {
 					SavedReportId: self.ReportID(),
 					FieldId: e.Field().fieldId,
@@ -2177,6 +2178,24 @@ var reportViewModel = function (options) {
 					Value1: e.Operator() == "in" || e.Operator() == "not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 ? "blank" : e.Value()),
 					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
 				};
+
+				if (f != null && !f.Value1 && !f.Value2) {
+					f = null;
+				}
+				if (f) filters.push(f);
+			});
+
+			_.forEach(g.Filters(), function (e, i) {
+
+				var f = e.Field().fieldId != fieldIdToSkip && ((e.Apply() && e.IsFilterOnFly) || !e.IsFilterOnFly) ? {
+					SavedReportId: self.ReportID(),
+					FieldId: e.Field().fieldId,
+					AndOr: i == 0 ? g.AndOr() : e.AndOr(),
+					Operator: e.Operator(),
+					Value1: e.Operator() == "in" || e.Operator() == "not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' ? "blank" : e.Value()),
+					Value2: e.Value2(),
+					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
+				} : null;
 
 				if (f != null && !f.Value1 && !f.Value2) {
 					f = null;
