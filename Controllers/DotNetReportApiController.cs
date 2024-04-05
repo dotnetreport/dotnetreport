@@ -210,7 +210,7 @@ namespace ReportBuilder.Web.Controllers
                     {
                         conn.Open();
                         var command = new OleDbCommand(sqlCount, conn);
-                        if (!sql.StartsWith("EXEC")) totalRecords = (int)command.ExecuteScalar();
+                        if (!sql.StartsWith("EXEC")) totalRecords = Math.Max(totalRecords, (int)command.ExecuteScalar());
 
                         command = new OleDbCommand(sql, conn);
                         var adapter = new OleDbDataAdapter(command);

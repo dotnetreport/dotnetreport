@@ -2847,6 +2847,7 @@ var reportViewModel = function (options) {
 			e.isExpanded = ko.observable(false);
 			e.execute = function () {
 				if (e.sql == '') return;
+				e.DrillDownData(null);
 				ajaxcall({
 					url: options.execReportUrl,
 					type: "POST",
@@ -2887,24 +2888,42 @@ var reportViewModel = function (options) {
 			};
 
 			e.expand = function (index) {
-				// load drill down data
-				ajaxcall({
-					url: options.runReportApiUrl,
-					type: "POST",
-					data: JSON.stringify({
-						method: "/ReportApi/RunDrillDownReport",
-						SaveReport: false,
-						ReportJson: JSON.stringify(self.BuildReportData(e.Items)),
-						adminMode: self.adminMode(),
-						SubTotalMode: false
-					}),
-					noBlocking: true
-				}).done(function (ddResult) {
-					if (ddResult.d) { ddResult = ddResult.d; }
-					if (ddResult.result) { ddResult = ddResult.result; }
-					e.sql = ddResult.sql;
-					e.connectKey = ddResult.connectKey;
-					self.expandSqls.push({ index: index, sql: e.sql });
+				var i = 0;
+				var isComparison = false;
+				var seriesCount = self.AdditionalSeries().length;
+				var allSqlQueries = '';
+				var promises = [];
+				e.DrillDownData(null);
+				do {
+					if (i > 0) {
+						isComparison = true;
+					}
+
+					// load drill down data
+					promises.push(ajaxcall({
+						url: options.runReportApiUrl,
+						type: "POST",
+						data: JSON.stringify({
+							method: "/ReportApi/RunDrillDownReport",
+							SaveReport: false,
+							ReportJson: JSON.stringify(self.BuildReportData(e.Items,isComparison, i - 1)),
+							adminMode: self.adminMode(),
+							SubTotalMode: false
+						}),
+						noBlocking: true
+					}).done(function (ddResult) {
+						if (ddResult.d) { ddResult = ddResult.d; }
+						if (ddResult.result) { ddResult = ddResult.result; }
+						e.connectKey = ddResult.connectKey;
+						self.expandSqls.push({ index: index, sql: e.sql });
+
+						allSqlQueries = allSqlQueries + (allSqlQueries ? ',' : '') + ddResult.sql;						
+					}));
+					i++;
+				}
+				while (i < seriesCount + 1);
+				$.when.apply($, promises).done(function () {
+					e.sql = allSqlQueries;
 					e.execute();
 				});
 
