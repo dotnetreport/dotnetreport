@@ -476,10 +476,10 @@ namespace ReportBuilder.Web.Controllers
             return Ok(new
             {
                 noAccount = string.IsNullOrEmpty(settings.AccountApiToken) || settings.AccountApiToken == "Your Public Account Api Token",
-                users = settings.CanUseAdminMode ? settings.Users : new List<dynamic>(),
-                userRoles = settings.CanUseAdminMode ? settings.UserRoles : new List<string>(),
+                users = settings.Users,
+                userRoles = settings.UserRoles,
                 currentUserId = settings.UserId,
-                currentUserRoles = settings.UserRoles,
+                currentUserRoles = settings.CurrentUserRole,
                 currentUserName = settings.UserName,
                 allowAdminMode = settings.CanUseAdminMode,
                 userIdForSchedule = settings.UserIdForSchedule,
