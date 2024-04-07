@@ -2182,8 +2182,8 @@ namespace ReportBuilder.Web.Models
 
                     using (SqlCommand command = new SqlCommand(sqlCount, conn))
                     {
-                        if (!sql.StartsWith("EXEC"))
-                            totalRecords = (int)command.ExecuteScalar();
+                        if (!sql.StartsWith("EXEC")) totalRecords = Math.Max(totalRecords, (int)command.ExecuteScalar());
+
                     }
                 }
             }
@@ -2292,8 +2292,7 @@ namespace ReportBuilder.Web.Models
 
                     using (MySqlCommand command = new MySqlCommand(sqlCount, conn))
                     {
-                        if (!sql.StartsWith("EXEC"))
-                            totalRecords = (int)command.ExecuteScalar();
+                        if (!sql.StartsWith("EXEC")) totalRecords = Math.Max(totalRecords, (int)command.ExecuteScalar());
                     }
                 }
             }
@@ -2402,8 +2401,7 @@ namespace ReportBuilder.Web.Models
 
                     using (NpgsqlCommand command = new NpgsqlCommand(sqlCount, conn))
                     {
-                        if (!sql.StartsWith("EXEC"))
-                            totalRecords = (int)command.ExecuteScalar();
+                        if (!sql.StartsWith("EXEC")) totalRecords = Math.Max(totalRecords, (int)command.ExecuteScalar());
                     }
                 }
             }
@@ -2505,7 +2503,7 @@ namespace ReportBuilder.Web.Models
             return OleDbConnectionStringBuilder.ConnectionString;
         }
 
-        public int GetTotalRecords(string connectionString, string OleDbCount, string OleDb)
+        public int GetTotalRecords(string connectionString, string sqlCount, string sql)
         {
             int totalRecords = 0;
 
@@ -2515,10 +2513,9 @@ namespace ReportBuilder.Web.Models
                 {
                     conn.Open();
 
-                    using (OleDbCommand command = new OleDbCommand(OleDbCount, conn))
+                    using (OleDbCommand command = new OleDbCommand(sqlCount, conn))
                     {
-                        if (!OleDb.StartsWith("EXEC"))
-                            totalRecords = (int)command.ExecuteScalar();
+                        if (!sql.StartsWith("EXEC")) totalRecords = Math.Max(totalRecords, (int)command.ExecuteScalar());
                     }
                 }
             }
