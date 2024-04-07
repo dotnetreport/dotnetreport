@@ -1248,3 +1248,8 @@ h2 {
     z-index: 9999 !important;
     position: fixed;
 }
+
+tfoot tr.sub-total {
+    border-top: double 4px #dee2e6;
+    border-bottom: double 4px #dee2e6;
+}
