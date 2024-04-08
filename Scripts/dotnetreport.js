@@ -1863,41 +1863,84 @@ var reportViewModel = function (options) {
 	});
 
 	self.saveFunctionField = function () {
-		if (!self.selectedFunction()) {
-			toastr.error("Please select a function to use");
-			return;
-		}
 
 		if (!self.validateReport(true)) {
 			toastr.error("Please correct validation issues");
 			return;
 		}
 
-		self.formulaFields([]);
-		var func = self.selectedFunction();
-		func.parameters.forEach(function (x) {
-			var f = x.selectedField();
-			f.setupFormula.parameterId(x.Id);
-			self.formulaFields.push(f);
-		});
+		if (self.simpleFunction()) {
+			if (!self.selectedFunction()) {
+				toastr.error("Please select a function to use");
+				return;
+			}
 
-		var field = self.getEmptyFormulaField();
-		field.functionId = func.id;
-		field.functionName = func.text;		
 
-		self.SelectedFields.push(self.setupField(field));
-		self.selectedFunction(null);
+			self.formulaFields([]);
+			var func = self.selectedFunction();
+			func.parameters.forEach(function (x) {
+				var f = x.selectedField();
+				f.setupFormula.parameterId(x.Id);
+				self.formulaFields.push(f);
+			});
 
-		self.isFunctionField(false);
+			var field = self.getEmptyFormulaField();
+			field.functionId = func.id;
+			field.functionName = func.text;
+
+			self.SelectedFields.push(self.setupField(field));
+			self.selectedFunction(null);
+
+			self.isFunctionField(false);
+		} else {
+			var input = codeEditor.getValue();
+			if (!input) {
+				toastr.error("Please define your function");
+				return;
+			}
+			ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/ValidateFunction",
+					model: JSON.stringify({
+						input: input
+					})
+				},
+				noBlocking: true
+			}).done(function (result) {
+				if (result.d) result = result.d;
+				result = result.processed;
+				var field = self.getEmptyFormulaField();
+				field.functionId = result.FunctionId;
+				field.functionName = result.FunctionName;
+				result.input = input;
+				field.fieldSettings = { functionConfig: result };
+				self.SelectedFields.push(self.setupField(field));
+				self.selectedFunction(null);
+
+				self.isFunctionField(false);
+			});
+		}
 	}
 
 	self.editFormulaField = function (field) {
 		if (field.functionId) {
-			self.isFunctionField(true);
-		} 
-		else
-			self.isFormulaField(true);
+			self.simpleFunction(field.fieldSettings && !field.fieldSettings.functionConfig);
 
+			if (!self.simpleFunction()) {
+				self.designFunctionField();
+				codeEditor.setValue(field.fieldSettings.functionConfig.input);
+			} else {
+				self.isFunctionField(true);
+			}
+		}
+		else {
+			self.isFormulaField(true);
+		}
+
+		self.formulaFieldLabel(field.fieldName);
+		self.formulaDataFormat(field.fieldFormat());
+		self.formulaDecimalPlaces(field.decimalPlaces());
 		self.formulaFields([]);
 
 		if (field.formulaItems().length > 0) {
@@ -1916,10 +1959,6 @@ var reportViewModel = function (options) {
 						fieldMatch.setupFormula = e;
 						self.formulaFields.push(fieldMatch);
 					});
-
-					self.formulaFieldLabel(field.fieldName);
-					self.formulaDataFormat(field.fieldFormat());
-					self.formulaDecimalPlaces(field.decimalPlaces());
 
 				});
 			}
@@ -2352,7 +2391,8 @@ var reportViewModel = function (options) {
 						dateFormat: x.dateFormat(),
 						customDateFormat: x.customDateFormat(),
 						currencyFormat: x.currencyFormat(),
-						fieldLabel2: x.fieldLabel2()
+						fieldLabel2: x.fieldLabel2(),
+						functionConfig: x.functionConfig
 					}),
 					FieldAlign: x.fieldAlign(),
 					FontColor: x.fontColor(),
@@ -2647,6 +2687,7 @@ var reportViewModel = function (options) {
 				e.fieldType = col.fieldType;
 				e.jsonColumnName = col.jsonColumnName;
 				e.isJsonColumn = col.fieldType == 'Json';
+				e.functionConfig = col.functionConfig;
 				e.outerGroup = ko.observable(false);
 				e.colIndex = i;
 				e.pagerIndex = function ($parents) {
@@ -3384,6 +3425,7 @@ var reportViewModel = function (options) {
 		e.linkFieldItem = new linkFieldViewModel(e.linkFieldItem, options);
 		e.isFormulaField = ko.observable(e.isFormulaField);
 		e.functionId = ko.observable(e.functionId);
+		e.functionConfig = e.fieldSettings.functionConfig || {};
 		e.fieldFormat = ko.observable(e.fieldFormat);
 		e.fieldLabel = ko.observable(e.fieldLabel);
 		e.decimalPlaces = ko.observable(e.decimalPlaces);
@@ -4225,6 +4267,14 @@ var functionEditor = function (options) {
 	});
 	editor.getWrapperElement().classList.add("single-line-codemirror");
 
+	function getValue() {
+		return editor.getValue();
+	}
+
+	function setValue(text) {
+		return editor.setValue(text);
+	}
+
 	function highlightText(editor) {
 		editor.getAllMarks().forEach(mark => mark.clear());
 		var content = editor.getValue();
@@ -4290,6 +4340,7 @@ var functionEditor = function (options) {
 										// For functions, show the function parameters
 										return {
 											text: item.Name + "(" + prms + ")",
+											item: item,
 											displayText: (item.DisplayName ?? item.Name) + " - " + (item.Description ?? "") + " (" + prms + ")",
 											className: 'cm-function-hint'
 										};
@@ -4297,6 +4348,7 @@ var functionEditor = function (options) {
 										// For data fields, show the tablename.fieldname format
 										return {
 											text: "{" + item.Name + "}",
+											item: item,
 											displayText: "{" + item.Name + "}",
 											className: 'cm-field-hint'
 										};
