@@ -98,7 +98,7 @@
 
 <script type="text/html" id="report-column-header">
     <!-- ko foreach: Columns -->
-    <th data-bind="attr: { id: fieldId }, css: {'right-align': IsNumeric}, style: {'width': fieldWidth, 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
+    <th data-bind="attr: { id: fieldId }, style: {'text-align': fieldAlign ? fieldAlign : (IsNumeric ? 'right' : 'left'), 'width': fieldWidth, 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
         <!-- ko if: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false) -->
         <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
         <!-- /ko -->
@@ -111,9 +111,9 @@
 
         <div class="pull-right" data-bind="if: !$parent.IsDrillDown() && !IsNumeric">
             <div class="dropup">
-            <a href="#" data-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
-                <span class="fa fa-ellipsis-v"></span>
-            </a>
+                <a href="#" data-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
+                    <span class="fa fa-ellipsis-v"></span>
+                </a>
                 <ul class="dropdown-menu" style="z-index: 1001;">
                     <li class="dropdown-item small">
                         <a href="#" data-bind="click: toggleOuterGroup">
@@ -135,7 +135,7 @@
 
 <script type="text/html" id="report-column">
     <!-- ko foreach: Items -->
-    <td data-bind="hidden: outerGroup, style: {'background-color': _backColor != 'none' ? backColor() : '', 'color': _fontColor != 'none' ? fontColor() : '', 'font-weight': fontBold() && _fontBold != 'none' ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '48px' : ''}">
+    <td data-bind="hidden: outerGroup, style: {'background-color': _backColor ?? backColor(), 'color': _fontColor ?? fontColor(), 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '48px' : ''}">
         <div data-bind="style: {'width': fieldWidth }">
         <!-- ko if: LinkTo-->
         <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: formattedVal"></span></a>
@@ -263,7 +263,7 @@
             </tbody>
             <!-- ko if: $parentContext.$parent.SubTotals().length == 1 && $parentContext.$parentContext.$parent.OuterGroupColumns().length == 0 -->
             <tfoot data-bind="foreach: $parentContext.$parent.SubTotals">
-                <tr>
+                <tr class="sub-total">
                     <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() -->
                     <td></td>
                     <!-- /ko -->
@@ -652,32 +652,52 @@
              </label>
         </div>
         <div data-bind="if: hasSchedule">
-                <div class="form-inline form-group">
-                   <div class="row col-sm-12">
+                  <div class="form-inline form-group">
+                    <div class="row col-sm-12">
                         <span data-bind="text: selectedOption() != 'once' ? 'Every ' : ''"></span>&nbsp;
                         <select class="form-control" required data-bind="options: options, value: selectedOption"></select>
                         <div data-bind="if: selectedOption() == 'once'">
-                            &nbsp;on&nbsp;<input data-bind="datepicker: selectedDate" class="form-control" required />
+                            <div class="form-inline">
+                                &nbsp;on&nbsp;<input data-bind="datepicker: selectedDate" class="form-control" required />
+                            </div>
                         </div>
-                        <div data-bind="if: showDays">
-                           &nbsp;on&nbsp;<select multiple class="form-control" required data-bind="select2: { placeholder: 'Choose Days', allowClear: true }, options: days, selectedOptions: selectedDays"></select>
-                        </div>
-                        <div data-bind="if: showDates">
-                           &nbsp;on&nbsp;<select multiple class="form-control" required data-bind="select2: { placeholder: 'Choose Dates', allowClear: true }, options: dates, selectedOptions: selectedDates"></select>
-                        </div>
-                        <div data-bind="if: showMonths">
-                          &nbsp;of&nbsp;<select multiple class="form-control" required data-bind="select2: { placeholder: 'Choose Months', allowClear: true }, options: months, selectedOptions: selectedMonths"></select>
-                        </div>
+                        <p>
+                            <div class="form-inline" data-bind="if: showDays">
+                                &nbsp;on&nbsp;
+                            </div>
+                            <div class="form-inline" data-bind="if: showDays">
+                                <select multiple class="form-control" required data-bind="select2: { placeholder: 'Choose Days', allowClear: true }, options: days, selectedOptions: selectedDays"></select>
+                            </div>
+                        </p>
+                        <p>
+                            <div class="form-inline" data-bind="if: showDates">
+                                &nbsp;on&nbsp;
+                            </div>
+                            <div class="form-inline" data-bind="if: showDates">
+                                <select multiple class="form-control" required data-bind="select2: { placeholder: 'Choose Dates', allowClear: true }, options: dates, selectedOptions: selectedDates"></select>
+                            </div>
+                        </p>
+                        <p>
+                            <div class="form-inline" data-bind="if: showMonths">
+                                &nbsp;of&nbsp;
+                            </div>
+                            <div class="form-inline" data-bind="if: showMonths">
+                                <select multiple class="form-control" required data-bind="select2: { placeholder: 'Choose Months', allowClear: true }, options: months, selectedOptions: selectedMonths"></select>
+                            </div>
+                        </p>
                         <div data-bind="if: showAtTime">
-                            &nbsp;at&nbsp;<select class="form-control" data-bind="options: hours, value: selectedHour"></select>
-                            <select class="form-control" data-bind="options: minutes, value: selectedMinute"></select>
-                            <select class="form-control" data-bind="value: selectedAmPm">
-                                <option>AM</option>
-                                <option>PM</option>
-                            </select>
+                            <div class="form-inline">
+                                &nbsp;at&nbsp;<select class="form-control" data-bind="options: hours, value: selectedHour"></select>
+                                <select class="form-control" data-bind="options: minutes, value: selectedMinute"></select>
+                                <select class="form-control" data-bind="value: selectedAmPm">
+                                    <option>AM</option>
+                                    <option>PM</option>
+                                </select>
+                            </div>
                         </div>
-                   </div>
-               </div>
+                    </div>
+                </div>
+
               <div class="alert alert-info">
                   Report will be run and emailed <span data-bind="text: selectedOption() != 'once' ? 'every' : ''"></span> <span data-bind="text: selectedOption"></span>
                  <span data-bind="if: selectedOption() == 'once'">
@@ -688,7 +708,7 @@
                   </span>
                   <span data-bind="if: showDates">
                      on <span class="error" data-bind="visible: selectedDates().length == 0">Please pick Date(s)</span>
-                     <span data-bind="foreach: selectedDates"><span data-bind="visible: $index()>0">, </span><span data-bind="text: $data == 1 ? '1st': ($data == 2 ? '2nd' : ($data == 3 ? '3rd' : $data+'th'))"></span></span>
+                     <span data-bind="foreach: selectedDates"><span data-bind="visible: $index()>0">, </span><span data-bind="text: $data == 1 ? '1st': ($data == 2 ? '2nd' : ($data == 3 ? '3rd' : ($data == 31 ? '31st' : $data+'th')))"></span></span>
                 </span>
                 <span data-bind="if: showMonths">
                         of <span class="error" data-bind="visible: selectedMonths().length == 0">Please pick Month(s)</span> <span data-bind="text: selectedMonths"></span>
@@ -749,8 +769,8 @@
 </script>
 
 <script type="text/html" id="report-field-options">
-    <div class="modal-dialog" style="max-width: 750px;"data-bind="with: editFieldOptions">
-        <div class="modal-content" data-bind="with: Filters()[0].Field">
+    <div class="modal-dialog" style="max-width: 750px;">
+        <div class="modal-content" data-bind="with: editFieldOptions">
             <div class="modal-header">
                 <h5 class="modal-title"><span data-bind="text: fieldName"></span> - Setup Additional Field Options</h5>
             </div>
@@ -774,7 +794,7 @@
                         <div class="col-sm-7 col-md-7">
                             <select class="form-control" required data-bind="options: $parents[1].currencyFormats, optionsText: 'display',optionsValue: 'value', value: currencyFormat"></select>
                         </div>
-                    </div>                
+                    </div>
                       <div class="form-group row" data-bind="visible: fieldFormat()=='Date'">
                         <label class="col-sm-5 col-md-5 control-label">Pick Date Format</label>
                         <div class="col-sm-7 col-md-7">
@@ -820,7 +840,7 @@
                         </div>
                     </div>
                     <div class="form-row">
-                        <div class="col"> 
+                        <div class="col">
                             <div class="form-group">
                                 <label class="control-label">Pick Text Color</label>
                                 <div>
@@ -844,8 +864,8 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col d-flex align-items-center"> 
-                            <div class="form-group d-flex align-items-center"> 
+                        <div class="col d-flex align-items-center">
+                            <div class="form-group d-flex align-items-center">
                                 <div class="checkbox" style="padding-top: 5px; margin-right: 10px;">
                                     <label>
                                         <input type="checkbox" data-bind="checked: headerFontBold" /> Bold Text
@@ -865,7 +885,7 @@
                             <b>Text Settings</b>
                         </div>
                     </div>
-                    <div class="form-row">
+                     <div class="form-row">
                         <div class="col">
                             <div class="form-group">
                                 <label class="control-label">Pick Text Color</label>
@@ -903,30 +923,67 @@
                             </div>
                         </div>
                     </div>
-
-                    <div class="checkbox" style="padding-top: 8px;">
-                        <label title="Make settings apply only when conditions are met">
-                            <input type="checkbox" data-bind="checked: formatConditional" /> Conditional Formatting
-                        </label>
-                    </div>
-                    <div data-bind="if: formatConditional">
-                    <div class="row" data-bind="foreach: $parent.Filters">
-                        <div class="col-md-2">
-                             Value
+                </div>
+                <div class="padded-div">
+                    <button class="btn btn-sm btn-primary" data-bind="click: function() {addConditionalFormatSetting(null)}">Add Conditional Formatting</button>
+                </div>
+                <div data-bind="foreach: fieldCondtionalFormats" style="padding-left: 40px;">
+                    <div class="card card-body">
+                        <div class="row m-2">
+                            <div class="col d-flex justify-content-start">
+                                <b>Conditional Format #<span data-bind="text: $index()+1"></span></b>
+                            </div>
+                            <div class="col d-flex justify-content-end">
+                                <button class="btn btn-sm btn-secondary" data-bind="click: $parent.removeSetting">Remove</button>
+                            </div>
                         </div>
-                        <div class="col-md-4">
-                            <div data-bind="with: Field">
+                        <div class="form-row">
+                            <div class="col">
                                 <div class="form-group">
-                                    <select class="form-control" style="width: 100%;" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
+                                    <label class="control-label">Pick Text Color</label>
+                                    <div>
+                                        <input type="color" style="width: 50px" class="form-control pull-left" data-bind="value: fontColor" />
+                                        <input type="text" style="width: 100px" class="form-control pull-left" data-bind="value: fontColor" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="form-group">
+                                    <label class="control-label">Pick Background Color</label>
+                                    <div>
+                                        <input type="color" style="width: 50px" class="form-control pull-left" data-bind="value: backColor" />
+                                        <input type="text" style="width: 100px" class="form-control pull-left" data-bind="value: backColor" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col d-flex align-items-center">
+                                <div class="form-group d-flex align-items-center">
+                                    <div class="checkbox" style="padding-top: 5px; margin-right: 10px;">
+                                        <label>
+                                            <input type="checkbox" data-bind="checked: fontBold" /> Bold Text
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div data-bind="with: Field">
-                                <div data-bind="template: 'report-filter', data: $data"></div>
+
+                        <div class="row m-2" data-bind="foreach: filter.Filters">
+                            <div class="col-md-2">
+                                 Value
+                            </div>
+                            <div class="col-md-4">
+                                <div data-bind="with: Field">
+                                    <div class="form-group">
+                                        <select class="form-control" style="width: 100%;" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div data-bind="with: Field">
+                                    <div data-bind="template: 'report-filter', data: $data"></div>
+                                </div>
                             </div>
                         </div>
-                    </div>
                     </div>
                 </div>
                 <br />
@@ -1019,7 +1076,7 @@
                 <h5 class="modal-title" id="myModalLabel">
                     <a title="Need help setting up a report?" target="_blank" href="https://dotnetreport.com/blogs/docs/designing-reports">
                         <span class="fa fa-question-circle"></span>
-                    </a>Design your Report
+                    </a> Design your Report
                 </h5>
                 <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
             </div>

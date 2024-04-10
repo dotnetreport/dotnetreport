@@ -1027,6 +1027,7 @@ namespace ReportBuilder.Web.Models
                     foreach (DataRow dtsRow in dtsTable.Rows)
                     {
                         string newColumnName = dtsRow[pivotColumnName].ToString();
+                        if (string.IsNullOrEmpty(newColumnName)) newColumnName = "(Blank)";
                         if (!dt.Columns.Contains(newColumnName))
                         {
                             dt.Columns.Add(newColumnName, typeof(int));
