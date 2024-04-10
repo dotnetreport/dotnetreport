@@ -2002,7 +2002,7 @@ var reportViewModel = function (options) {
 			if (newValue === 'This Year') {
 				range(['Last Year', '2 Years ago', '3 Years ago', '4 Years ago', '5 Years ago']);
 			} else if (newValue === 'This Month') {
-				range(['Last Month', '2 Months ago', '3 Months ago', '4 Months ago', '5 Months ago']);
+				range(['Last Month', '2 Months ago', '3 Months ago', '4 Months ago', '5 Months ago', '6 Months ago', '12 Months ago']);
 			} else if (newValue === 'This Week') {
 				range(['Last Week', '2 Weeks ago', '3 Weeks ago', '4 Weeks ago', '5 Weeks ago']);
 			} else {
@@ -2167,8 +2167,9 @@ var reportViewModel = function (options) {
 			var seriesFilter = [];
 			seriesFilter.push(self.AdditionalSeries()[index]);
 			var filters = [];
+			var fieldIdToSkip = 0;
 			_.forEach(seriesFilter, function (e, i) {
-
+				fieldIdToSkip = e.Field().fieldId;
 				var f = {
 					SavedReportId: self.ReportID(),
 					FieldId: e.Field().fieldId,
@@ -2177,6 +2178,24 @@ var reportViewModel = function (options) {
 					Value1: e.Operator() == "in" || e.Operator() == "not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 ? "blank" : e.Value()),
 					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
 				};
+
+				if (f != null && !f.Value1 && !f.Value2) {
+					f = null;
+				}
+				if (f) filters.push(f);
+			});
+
+			_.forEach(g.Filters(), function (e, i) {
+
+				var f = e.Field().fieldId != fieldIdToSkip && ((e.Apply() && e.IsFilterOnFly) || !e.IsFilterOnFly) ? {
+					SavedReportId: self.ReportID(),
+					FieldId: e.Field().fieldId,
+					AndOr: i == 0 ? g.AndOr() : e.AndOr(),
+					Operator: e.Operator(),
+					Value1: e.Operator() == "in" || e.Operator() == "not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' ? "blank" : e.Value()),
+					Value2: e.Value2(),
+					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
+				} : null;
 
 				if (f != null && !f.Value1 && !f.Value2) {
 					f = null;
@@ -2344,7 +2363,7 @@ var reportViewModel = function (options) {
 		skipValidation = skipValidation === true ? true : false;
 
 		self.TotalSeries(self.AdditionalSeries().length);
-		if (self.TotalSeries() > 1) self.ReportMode('start');
+		if (self.TotalSeries() > 0) self.ReportMode('start');
 
 		if (self.ReportType() == 'Single') {
 			if (self.enabledFields().length != 1) {
@@ -2526,6 +2545,11 @@ var reportViewModel = function (options) {
 				else {
 					col = _.find(self.SelectedFields(), function (x) { return x.dbField == e.SqlField; });
 					if (!col) col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.fieldName, e.ColumnName, x.dbField, e.SqlField, x.aggregateFunction); });
+				}
+				if (col && col.fieldLabel && col.fieldLabel() && (e.ColumnName.indexOf('(Last ') > -1 || e.ColumnName.indexOf('Months ago)') > -1 || e.ColumnName.indexOf('Years ago)') > -1)) {
+					const match = e.ColumnName.match(/\((Last Year|Last Month|\d+ Years? ago|\d+ Months? ago)\)$/);
+					e.ColumnName = col.fieldLabel() + ' ' + (match ? match[0] : '');
+					col = null;
 				}
 				if (col && col.linkField()) {
 					e.linkItem = col.linkFieldItem.toJs();
@@ -2842,6 +2866,7 @@ var reportViewModel = function (options) {
 			e.isExpanded = ko.observable(false);
 			e.execute = function () {
 				if (e.sql == '') return;
+				e.DrillDownData(null);
 				ajaxcall({
 					url: options.execReportUrl,
 					type: "POST",
@@ -2882,24 +2907,42 @@ var reportViewModel = function (options) {
 			};
 
 			e.expand = function (index) {
-				// load drill down data
-				ajaxcall({
-					url: options.runReportApiUrl,
-					type: "POST",
-					data: JSON.stringify({
-						method: "/ReportApi/RunDrillDownReport",
-						SaveReport: false,
-						ReportJson: JSON.stringify(self.BuildReportData(e.Items)),
-						adminMode: self.adminMode(),
-						SubTotalMode: false
-					}),
-					noBlocking: true
-				}).done(function (ddResult) {
-					if (ddResult.d) { ddResult = ddResult.d; }
-					if (ddResult.result) { ddResult = ddResult.result; }
-					e.sql = ddResult.sql;
-					e.connectKey = ddResult.connectKey;
-					self.expandSqls.push({ index: index, sql: e.sql });
+				var i = 0;
+				var isComparison = false;
+				var seriesCount = self.AdditionalSeries().length;
+				var allSqlQueries = '';
+				var promises = [];
+				e.DrillDownData(null);
+				do {
+					if (i > 0) {
+						isComparison = true;
+					}
+
+					// load drill down data
+					promises.push(ajaxcall({
+						url: options.runReportApiUrl,
+						type: "POST",
+						data: JSON.stringify({
+							method: "/ReportApi/RunDrillDownReport",
+							SaveReport: false,
+							ReportJson: JSON.stringify(self.BuildReportData(e.Items,isComparison, i - 1)),
+							adminMode: self.adminMode(),
+							SubTotalMode: false
+						}),
+						noBlocking: true
+					}).done(function (ddResult) {
+						if (ddResult.d) { ddResult = ddResult.d; }
+						if (ddResult.result) { ddResult = ddResult.result; }
+						e.connectKey = ddResult.connectKey;
+						self.expandSqls.push({ index: index, sql: e.sql });
+
+						allSqlQueries = allSqlQueries + (allSqlQueries ? ',' : '') + ddResult.sql;						
+					}));
+					i++;
+				}
+				while (i < seriesCount + 1);
+				$.when.apply($, promises).done(function () {
+					e.sql = allSqlQueries;
 					e.execute();
 				});
 
