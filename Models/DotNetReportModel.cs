@@ -854,7 +854,7 @@ namespace ReportBuilder.Web.Models
             return dts;
         }
 
-        public static DataTable PushDatasetIntoDataTable(DataTable tbl, DataSet dts, string pivotColumnName)
+        public static DataTable PushDatasetIntoDataTable(DataTable tbl, DataSet dts, string pivotColumnName, string pivotFunction)
         {
             var dt = tbl.Copy();
             foreach (DataRow row in dt.Rows)
@@ -865,6 +865,16 @@ namespace ReportBuilder.Web.Models
                 if (dtsTable.Columns.Contains(pivotColumnName))
                 {
                     int pivotColumnIndex = dtsTable.Columns[pivotColumnName].Ordinal;
+                    int dtColumnIndex = (pivotColumnIndex + 1 < dtsTable.Columns.Count) ? pivotColumnIndex + 1 : pivotColumnIndex;
+
+                    bool isInt = dtsTable.Columns[dtColumnIndex].DataType == typeof(int) ||
+                                     dtsTable.Columns[dtColumnIndex].DataType == typeof(long);
+                    
+                    bool isDecimal = dtsTable.Columns[dtColumnIndex].DataType == typeof(decimal) ||
+                                     dtsTable.Columns[dtColumnIndex].DataType == typeof(double) ||
+                                     dtsTable.Columns[dtColumnIndex].DataType == typeof(float);
+
+                    bool isDate = dtsTable.Columns[dtColumnIndex].DataType == typeof(DateTime);
 
                     foreach (DataRow dtsRow in dtsTable.Rows)
                     {
@@ -872,11 +882,34 @@ namespace ReportBuilder.Web.Models
                         if (string.IsNullOrEmpty(newColumnName)) newColumnName = "(Blank)";
                         if (!dt.Columns.Contains(newColumnName))
                         {
-                            dt.Columns.Add(newColumnName, typeof(int));
+                            dt.Columns.Add(newColumnName, typeof(string));
                         }
 
                         if (pivotColumnIndex + 1 < dtsTable.Columns.Count)
-                            row[newColumnName] = (string.IsNullOrEmpty(row[newColumnName].ToString()) ? 0 : Convert.ToInt32(row[newColumnName])) + (string.IsNullOrEmpty(dtsRow[pivotColumnIndex + 1].ToString()) ? 0 : Convert.ToInt32(dtsRow[pivotColumnIndex + 1]));
+                        {
+                            if (pivotFunction == "Count")
+                            {
+                                row[newColumnName] = (string.IsNullOrEmpty(row[newColumnName].ToString()) ? 0 : Convert.ToInt32(row[newColumnName])) + 1;
+                            }
+                            else if (isInt)
+                            {
+                                row[newColumnName] = (string.IsNullOrEmpty(row[newColumnName].ToString()) ? 0 : Convert.ToInt32(row[newColumnName])) + (string.IsNullOrEmpty(dtsRow[pivotColumnIndex + 1].ToString()) ? 0 : Convert.ToInt32(dtsRow[pivotColumnIndex + 1]));
+
+                            }
+                            else if (isDecimal)
+                            {
+                                row[newColumnName] = (string.IsNullOrEmpty(row[newColumnName].ToString()) ? 0 : Convert.ToDecimal(row[newColumnName])) + (string.IsNullOrEmpty(dtsRow[pivotColumnIndex + 1].ToString()) ? 0 : Convert.ToDecimal(dtsRow[pivotColumnIndex + 1]));
+
+                            }
+                            else if (isDate)
+                            {
+                                row[newColumnName] = (string.IsNullOrEmpty(row[newColumnName].ToString()) ? "" : Convert.ToDateTime(row[newColumnName]).ToShortDateString()) + " " + (string.IsNullOrEmpty(dtsRow[pivotColumnIndex + 1].ToString()) ? "" : Convert.ToDateTime(dtsRow[pivotColumnIndex + 1]).ToShortDateString());
+                            }
+                            else
+                            {
+                                row[newColumnName] = row[newColumnName].ToString() + " " + dtsRow[pivotColumnIndex + 1].ToString();
+                            }
+                        }
                     }
                 }
             }

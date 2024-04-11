@@ -163,6 +163,7 @@ namespace ReportBuilder.Web.Controllers
             public string ReportSeries { get; set; }
 
             public string pivotColumn { get; set; }
+            public string pivotFunction { get; set; }
             public string reportData { get; set; }
         }
 
@@ -178,6 +179,7 @@ namespace ReportBuilder.Web.Controllers
             bool desc = data.desc;
             string reportSeries = data.ReportSeries;
             string pivotColumn = data.pivotColumn;
+            string pivotFunction = data.pivotFunction;
             string reportData = data.reportData;
 
             var sql = "";
@@ -263,7 +265,7 @@ namespace ReportBuilder.Web.Controllers
                             if (!string.IsNullOrEmpty(pivotColumn))
                             {
                                 var ds = await DotNetReportHelper.GetDrillDownData(conn, dtPagedRun, sqlFields, reportData);
-                                dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn);
+                                dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn, pivotFunction);
                                 fields.AddRange(dtPagedRun.Columns.Cast<DataColumn>().Skip(fields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
                             }
 
