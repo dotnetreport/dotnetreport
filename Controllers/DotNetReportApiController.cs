@@ -144,12 +144,12 @@ namespace ReportBuilder.Web.Controllers
         [AllowAnonymous]
         [HttpPost]
         public async Task<JsonResult> RunReportUnAuth(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, 
-            bool desc = false, string reportSeries = null, string pivotColumn = null, string reportData = null)
+            bool desc = false, string reportSeries = null, string pivotColumn = null, string pivotFunction = null, string reportData = null)
         {
-            return await RunReport(reportSql, connectKey, reportType, pageNumber, pageSize, sortBy, desc, reportSeries, pivotColumn, reportData);
+            return await RunReport(reportSql, connectKey, reportType, pageNumber, pageSize, sortBy, desc, reportSeries, pivotColumn, pivotFunction, reportData);
         }
         public async Task<JsonResult> RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, 
-            bool desc = false, string reportSeries = null, string pivotColumn = null, string reportData = null)
+            bool desc = false, string reportSeries = null, string pivotColumn = null, string pivotFunction = null, string reportData = null)
         {
             var sql = "";
             var sqlCount = "";
@@ -234,7 +234,7 @@ namespace ReportBuilder.Web.Controllers
                             if (!string.IsNullOrEmpty(pivotColumn))
                             {
                                 var ds = await DotNetReportHelper.GetDrillDownData(conn, dtPagedRun, sqlFields, reportData);
-                                dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn);
+                                dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn, pivotFunction);
                                 fields.AddRange(dtPagedRun.Columns.Cast<DataColumn>().Skip(fields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
                             }
 
