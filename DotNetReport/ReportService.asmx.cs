@@ -163,7 +163,7 @@ namespace ReportBuilder.WebForms.DotNetReport
 
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
-        public DotNetReportResultModel RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, bool desc = false, string reportSeries = null, string pivotColumn = null, string reportData = null)
+        public DotNetReportResultModel RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, bool desc = false, string reportSeries = null, string pivotColumn = null, string pivotFunction = null, string reportData = null)
         {
             var sql = "";
             var sqlCount = "";
@@ -248,7 +248,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                             if (!string.IsNullOrEmpty(pivotColumn))
                             {
                                 var ds = DotNetReportHelper.GetDrillDownData(conn, dtPagedRun, sqlFields, reportData);
-                                dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn);
+                                dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn, pivotFunction);
                                 fields.AddRange(dtPagedRun.Columns.Cast<DataColumn>().Skip(fields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
                             }
 
