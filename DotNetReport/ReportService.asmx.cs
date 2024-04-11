@@ -539,36 +539,44 @@ namespace ReportBuilder.WebForms.DotNetReport
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
         public async Task<object> LoadSetupSchema(string databaseApiKey = "", bool onlyApi = false)
         {
-            var settings = GetSettings();
-            if (!settings.CanUseAdminMode)
+            try
             {
-                throw new Exception("Not Authorized to access this Resource");
-            }
+                var settings = GetSettings();
+                if (!settings.CanUseAdminMode)
+                {
+                    throw new Exception("Not Authorized to access this Resource");
+                }
 
-            var connect = Setup.GetConnection(databaseApiKey);
-            var tables = new List<TableViewModel>();
-            var procedures = new List<TableViewModel>();
-            if (onlyApi)
-            {
-                tables.AddRange(await Setup.GetApiTables(connect.AccountApiKey, connect.DatabaseApiKey, true));
-            }
-            else
-            {
-                tables.AddRange(await Setup.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
-                tables.AddRange(await Setup.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
-            }
-            procedures.AddRange(await Setup.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
+                var connect = Setup.GetConnection(databaseApiKey);
+                var tables = new List<TableViewModel>();
+                var procedures = new List<TableViewModel>();
+                if (onlyApi)
+                {
+                    tables.AddRange(await Setup.GetApiTables(connect.AccountApiKey, connect.DatabaseApiKey, true));
+                }
+                else
+                {
+                    tables.AddRange(await Setup.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
+                    tables.AddRange(await Setup.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
+                }
+                procedures.AddRange(await Setup.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
 
-            var model = new ManageViewModel
-            {
-                ApiUrl = connect.ApiUrl,
-                AccountApiKey = connect.AccountApiKey,
-                DatabaseApiKey = connect.DatabaseApiKey,
-                Tables = tables,
-                Procedures = procedures
-            };
+                var model = new ManageViewModel
+                {
+                    ApiUrl = connect.ApiUrl,
+                    AccountApiKey = connect.AccountApiKey,
+                    DatabaseApiKey = connect.DatabaseApiKey,
+                    Tables = tables,
+                    Procedures = procedures
+                };
 
-            return model;
+                return model;
+            }
+            catch (Exception ex)
+            {
+                Context.Response.StatusCode = 500;
+                return new { ex.Message };
+            }
         }
 
 
@@ -638,7 +646,8 @@ namespace ReportBuilder.WebForms.DotNetReport
             catch (Exception ex)
             {
 
-                return new { errorMessage = ex.Message };
+                Context.Response.StatusCode = 500;
+                return new { ex.Message };
             }
         }
 
