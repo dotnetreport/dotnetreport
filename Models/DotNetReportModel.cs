@@ -867,14 +867,10 @@ namespace ReportBuilder.Web.Models
                     int pivotColumnIndex = dtsTable.Columns[pivotColumnName].Ordinal;
                     int dtColumnIndex = (pivotColumnIndex + 1 < dtsTable.Columns.Count) ? pivotColumnIndex + 1 : pivotColumnIndex;
 
-                    bool isInt = dtsTable.Columns[dtColumnIndex].DataType == typeof(int) ||
-                                     dtsTable.Columns[dtColumnIndex].DataType == typeof(long);
-                    
-                    bool isDecimal = dtsTable.Columns[dtColumnIndex].DataType == typeof(decimal) ||
-                                     dtsTable.Columns[dtColumnIndex].DataType == typeof(double) ||
-                                     dtsTable.Columns[dtColumnIndex].DataType == typeof(float);
-
-                    bool isDate = dtsTable.Columns[dtColumnIndex].DataType == typeof(DateTime);
+                    var dtType = dtsTable.Columns[dtColumnIndex].DataType;
+                    bool isInt = dtType == typeof(int) || dtType == typeof(long) || dtType == typeof(Int16) || dtType == typeof(Int32);
+                    bool isDecimal = dtType == typeof(decimal) ||dtType == typeof(double) ||dtType == typeof(float);
+                    bool isDate = dtType == typeof(DateTime);
 
                     foreach (DataRow dtsRow in dtsTable.Rows)
                     {
@@ -882,7 +878,7 @@ namespace ReportBuilder.Web.Models
                         if (string.IsNullOrEmpty(newColumnName)) newColumnName = "(Blank)";
                         if (!dt.Columns.Contains(newColumnName))
                         {
-                            dt.Columns.Add(newColumnName, typeof(string));
+                            dt.Columns.Add(newColumnName, dtType);
                         }
 
                         if (pivotColumnIndex + 1 < dtsTable.Columns.Count)
