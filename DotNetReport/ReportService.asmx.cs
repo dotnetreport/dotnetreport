@@ -269,29 +269,44 @@ namespace ReportBuilder.WebForms.DotNetReport
                                 fields.Add(sqlFields[j - 1]);
                             }
 
-                            foreach (DataRow dr in dtPaged.Rows)
+                            foreach (DataRow dr in dtPagedRun.Rows)
                             {
-                                DataRow match = null;
+                                DataRow match = dtPaged.AsEnumerable().FirstOrDefault(drun => Convert.ToString(drun[0]) == Convert.ToString(dr[0]));
                                 if (fields[0].ToUpper().StartsWith("CONVERT(VARCHAR(10)")) // group by day
                                 {
-                                    match = dtPagedRun.AsEnumerable().Where(r => !string.IsNullOrEmpty(r.Field<string>(0)) && !string.IsNullOrEmpty((string)dr[0]) && Convert.ToDateTime(r.Field<string>(0)).Day == Convert.ToDateTime((string)dr[0]).Day).FirstOrDefault();
-                                }
-                                else if (fields[0].ToUpper().StartsWith("CONVERT(VARCHAR(3)")) // group by month/year
-                                {
-
-                                }
-                                else
-                                {
-                                    match = dtPagedRun.AsEnumerable().Where(r => r.Field<string>(0) == (string)dr[0]).FirstOrDefault();
+                                    match = dtPaged.AsEnumerable().Where(r => !string.IsNullOrEmpty(r.Field<string>(0)) && !string.IsNullOrEmpty((string)dr[0]) && Convert.ToDateTime(r.Field<string>(0)).Day == Convert.ToDateTime((string)dr[0]).Day).FirstOrDefault();
                                 }
                                 if (match != null)
                                 {
+                                    // If a matching row is found, merge the data
                                     j = 1;
-                                    while (j < dtCols)
+                                    while (j < dtPagedRun.Columns.Count)
                                     {
-                                        dr[j + i + dtCols - 2] = match[j];
+                                        match[j + i + dtCols - 2] = dr[j];
                                         j++;
                                     }
+                                }
+                                else
+                                {
+                                    // If no matching row is found, add the entire row from dtPagedRun
+                                    DataRow newRow = dtPaged.NewRow();
+                                    newRow[0] = dr[0]; // Set the first column with the non-matching value
+
+                                    // Set the values from dtPagedRun into the new row, offset by the correct index
+                                    j = 1;
+                                    while (j < dtPagedRun.Columns.Count)
+                                    {
+                                        newRow[j + i + dtCols - 2] = dr[j];
+                                        j++;
+                                    }
+
+                                    // Set the rest of the values in newRow to DBNull.Value or some default value
+                                    for (int k = 1; k < i + dtCols - 2; k++)
+                                    {
+                                        newRow[k] = DBNull.Value;
+                                    }
+
+                                    dtPaged.Rows.Add(newRow);
                                 }
                             }
                         }
