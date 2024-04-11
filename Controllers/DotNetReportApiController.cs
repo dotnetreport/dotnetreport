@@ -521,8 +521,8 @@ namespace ReportBuilder.Web.Controllers
             }
             catch (Exception ex)
             {
-
-                return Json(new { errorMessage = ex.Message}, JsonRequestBehavior.AllowGet);
+                Response.StatusCode = 500;
+                return Json(new { ex.Message }, JsonRequestBehavior.AllowGet);
             }
         }
 
@@ -541,36 +541,44 @@ namespace ReportBuilder.Web.Controllers
         [HttpPost]
         public async Task<JsonResult> LoadSetupSchema(string databaseApiKey = "", bool onlyApi = false)
         {
-            var settings = GetSettings();
-            if (!settings.CanUseAdminMode)
+            try
             {
-                throw new Exception("Not Authorized to access this Resource");
-            }
+                var settings = GetSettings();
+                if (!settings.CanUseAdminMode)
+                {
+                    throw new Exception("Not Authorized to access this Resource");
+                }
 
-            var connect = DotNetSetupController.GetConnection(databaseApiKey);
-            var tables = new List<TableViewModel>();
-            var procedures = new List<TableViewModel>();
-            if (onlyApi)
-            {
-                tables.AddRange(await DotNetSetupController.GetApiTables(connect.AccountApiKey, connect.DatabaseApiKey, true));
-            }
-            else
-            {
-                tables.AddRange(await DotNetSetupController.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
-                tables.AddRange(await DotNetSetupController.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
-            }
-            procedures.AddRange(await DotNetSetupController.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
+                var connect = DotNetSetupController.GetConnection(databaseApiKey);
+                var tables = new List<TableViewModel>();
+                var procedures = new List<TableViewModel>();
+                if (onlyApi)
+                {
+                    tables.AddRange(await DotNetSetupController.GetApiTables(connect.AccountApiKey, connect.DatabaseApiKey, true));
+                }
+                else
+                {
+                    tables.AddRange(await DotNetSetupController.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
+                    tables.AddRange(await DotNetSetupController.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
+                }
+                procedures.AddRange(await DotNetSetupController.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
 
-            var model = new ManageViewModel
-            {
-                ApiUrl = connect.ApiUrl,
-                AccountApiKey = connect.AccountApiKey,
-                DatabaseApiKey = connect.DatabaseApiKey,
-                Tables = tables,
-                Procedures = procedures
-            };
+                var model = new ManageViewModel
+                {
+                    ApiUrl = connect.ApiUrl,
+                    AccountApiKey = connect.AccountApiKey,
+                    DatabaseApiKey = connect.DatabaseApiKey,
+                    Tables = tables,
+                    Procedures = procedures
+                };
 
-            return new JsonResult { Data = model, MaxJsonLength = int.MaxValue };
+                return new JsonResult { Data = model, MaxJsonLength = int.MaxValue };
+            }
+            catch (Exception ex)
+            {
+                Response.StatusCode = 500; 
+                return Json(new { ex.Message }, JsonRequestBehavior.AllowGet);
+            }
         }
 
         public class SearchProcCall { 
