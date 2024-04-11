@@ -3079,7 +3079,7 @@ var reportViewModel = function (options) {
 			var pivotColumnIndex = _.findIndex(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot'; });
 			if (pivotColumnIndex >= 0 && pivotColumnIndex < self.SelectedFields().length - 1) {
 				var nextValue = self.SelectedFields()[pivotColumnIndex + 1];
-				pivotFunction = nextValue.aggregateFunction;
+				pivotFunction = nextValue.selectedAggregate();
 			}
 		}
 		if (!isPageSizeClick) self.pager.pageSize(self.DefaultPageSize());
