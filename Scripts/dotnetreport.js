@@ -4147,10 +4147,7 @@ var dashboardViewModel = function (options) {
 		var filteredReports = [];
 		self.reportsAndFolders().forEach(function (folder) {
 			var filterReports = folder.reports.filter(function (report) {
-				var reportNameLower = report.reportName.toLowerCase();
-				var reportDescriptionLower = report.reportDescription.toLowerCase();
-				var searchReportsLower = searchReports.toLowerCase();
-				return reportNameLower.includes(searchReportsLower) || reportDescriptionLower.includes(searchReportsLower);
+				return report.reportName.toLowerCase().indexOf(searchReports.toLowerCase()) >= 0 || report.reportDescription.toLowerCase().indexOf(searchReports.toLowerCase()) >= 0;
 			});
 			filteredReports = filteredReports.concat(filterReports);
 		});
