@@ -2167,8 +2167,9 @@ var reportViewModel = function (options) {
 			var seriesFilter = [];
 			seriesFilter.push(self.AdditionalSeries()[index]);
 			var filters = [];
+			var fieldIdToSkip = 0;
 			_.forEach(seriesFilter, function (e, i) {
-
+				fieldIdToSkip = e.Field().fieldId;
 				var f = {
 					SavedReportId: self.ReportID(),
 					FieldId: e.Field().fieldId,
@@ -2177,6 +2178,24 @@ var reportViewModel = function (options) {
 					Value1: e.Operator() == "in" || e.Operator() == "not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 ? "blank" : e.Value()),
 					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
 				};
+
+				if (f != null && !f.Value1 && !f.Value2) {
+					f = null;
+				}
+				if (f) filters.push(f);
+			});
+
+			_.forEach(g.Filters(), function (e, i) {
+
+				var f = e.Field().fieldId != fieldIdToSkip && ((e.Apply() && e.IsFilterOnFly) || !e.IsFilterOnFly) ? {
+					SavedReportId: self.ReportID(),
+					FieldId: e.Field().fieldId,
+					AndOr: i == 0 ? g.AndOr() : e.AndOr(),
+					Operator: e.Operator(),
+					Value1: e.Operator() == "in" || e.Operator() == "not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' ? "blank" : e.Value()),
+					Value2: e.Value2(),
+					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
+				} : null;
 
 				if (f != null && !f.Value1 && !f.Value2) {
 					f = null;
@@ -2329,7 +2348,8 @@ var reportViewModel = function (options) {
 				userIdForFilter: self.userIdForFilter,
 				SubTotalMode: false,
 				reportData: '',
-				pivotColumn: ''
+				pivotColumn: '',
+				pivotFunction: ''
 			})
 		}).done(function () {
 			self.RunReport(false);
@@ -2847,6 +2867,7 @@ var reportViewModel = function (options) {
 			e.isExpanded = ko.observable(false);
 			e.execute = function () {
 				if (e.sql == '') return;
+				e.DrillDownData(null);
 				ajaxcall({
 					url: options.execReportUrl,
 					type: "POST",
@@ -2860,6 +2881,7 @@ var reportViewModel = function (options) {
 						desc: e.pager.sortDescending() || false,
 						reportSeries: reportSeries || '',
 						pivotColumn: '',
+						pivotFunction: '',
 						reportData: ''
 					}),
 					noBlocking: true
@@ -2887,24 +2909,42 @@ var reportViewModel = function (options) {
 			};
 
 			e.expand = function (index) {
-				// load drill down data
-				ajaxcall({
-					url: options.runReportApiUrl,
-					type: "POST",
-					data: JSON.stringify({
-						method: "/ReportApi/RunDrillDownReport",
-						SaveReport: false,
-						ReportJson: JSON.stringify(self.BuildReportData(e.Items)),
-						adminMode: self.adminMode(),
-						SubTotalMode: false
-					}),
-					noBlocking: true
-				}).done(function (ddResult) {
-					if (ddResult.d) { ddResult = ddResult.d; }
-					if (ddResult.result) { ddResult = ddResult.result; }
-					e.sql = ddResult.sql;
-					e.connectKey = ddResult.connectKey;
-					self.expandSqls.push({ index: index, sql: e.sql });
+				var i = 0;
+				var isComparison = false;
+				var seriesCount = self.AdditionalSeries().length;
+				var allSqlQueries = '';
+				var promises = [];
+				e.DrillDownData(null);
+				do {
+					if (i > 0) {
+						isComparison = true;
+					}
+
+					// load drill down data
+					promises.push(ajaxcall({
+						url: options.runReportApiUrl,
+						type: "POST",
+						data: JSON.stringify({
+							method: "/ReportApi/RunDrillDownReport",
+							SaveReport: false,
+							ReportJson: JSON.stringify(self.BuildReportData(e.Items,isComparison, i - 1)),
+							adminMode: self.adminMode(),
+							SubTotalMode: false
+						}),
+						noBlocking: true
+					}).done(function (ddResult) {
+						if (ddResult.d) { ddResult = ddResult.d; }
+						if (ddResult.result) { ddResult = ddResult.result; }
+						e.connectKey = ddResult.connectKey;
+						self.expandSqls.push({ index: index, sql: e.sql });
+
+						allSqlQueries = allSqlQueries + (allSqlQueries ? ',' : '') + ddResult.sql;						
+					}));
+					i++;
+				}
+				while (i < seriesCount + 1);
+				$.when.apply($, promises).done(function () {
+					e.sql = allSqlQueries;
 					e.execute();
 				});
 
@@ -2968,7 +3008,8 @@ var reportViewModel = function (options) {
 					adminMode: self.adminMode(),
 					SubTotalMode: true,
 					reportData: '',
-					pivotColumn: ''
+					pivotColumn: '',
+					pivotFunction: ''
 				})
 			}).done(function (subtotalsqlResult) {
 				if (subtotalsqlResult.d) { subtotalsqlResult = subtotalsqlResult.d; }
@@ -2986,7 +3027,8 @@ var reportViewModel = function (options) {
 						desc: false,
 						reportSeries: '',
 						reportData: '',
-						pivotColumn: ''
+						pivotColumn: '',
+						pivotFunction: ''
 					})
 				}).done(function (subtotalResult) {
 					if (subtotalResult.d) { subtotalResult = subtotalResult.d; }
@@ -3030,7 +3072,16 @@ var reportViewModel = function (options) {
 		}
 		var pivotColumn = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' });
 		var reportData = pivotColumn != null ? self.BuildReportData() : '';
-		if (pivotColumn) reportData.DrillDownRowUsePlaceholders = true;
+		var pivotFunction = '';
+
+		if (pivotColumn) {
+			reportData.DrillDownRowUsePlaceholders = true;
+			var pivotColumnIndex = _.findIndex(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot'; });
+			if (pivotColumnIndex >= 0 && pivotColumnIndex < self.SelectedFields().length - 1) {
+				var nextValue = self.SelectedFields()[pivotColumnIndex + 1];
+				pivotFunction = nextValue.selectedAggregate();
+			}
+		}
 		if (!isPageSizeClick) self.pager.pageSize(self.DefaultPageSize());
 		return ajaxcall({
 			url: options.execReportUrl,
@@ -3045,6 +3096,7 @@ var reportViewModel = function (options) {
 				desc: self.pager.sortDescending() || false,
 				reportSeries: reportSeries || "",
 				pivotColumn: pivotColumn ? pivotColumn.fieldName : '',
+				pivotFunction: pivotColumn && pivotFunction ? pivotFunction : '',
 				reportData: pivotColumn ? JSON.stringify(reportData) : ''
 			}),
 			noBlocking: self.ReportMode() == 'dashboard'
