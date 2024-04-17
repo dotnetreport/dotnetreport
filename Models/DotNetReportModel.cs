@@ -854,13 +854,39 @@ namespace ReportBuilder.Web.Models
             return dts;
         }
 
+        private static int CompareValues(object value1, object value2, Type dtType)
+        {
+            bool isInt = dtType == typeof(int) || dtType == typeof(long) || dtType == typeof(Int16) || dtType == typeof(Int32);
+            bool isDecimal = dtType == typeof(decimal) || dtType == typeof(double) || dtType == typeof(float);
+
+            if (value2 == null) { return 1; }
+            if (value1 == null) { return -1; }
+
+            if (dtType == typeof(DateTime))
+            {
+                DateTime date1 = Convert.ToDateTime(value1);
+                DateTime date2 = Convert.ToDateTime(value2);
+                return DateTime.Compare(date1, date2);
+            }
+            else if (isInt || isDecimal)
+            {
+                double dblValue1 = Convert.ToDouble(value1);
+                double dblValue2 = Convert.ToDouble(value2);
+                return dblValue1.CompareTo(dblValue2);
+            }
+            return value1.ToString().CompareTo(value2.ToString());
+        }
+
         public static DataTable PushDatasetIntoDataTable(DataTable tbl, DataSet dts, string pivotColumnName, string pivotFunction)
         {
             var dt = tbl.Copy();
+            
             foreach (DataRow row in dt.Rows)
             {
                 int rowIndex = dt.Rows.IndexOf(row);
                 DataTable dtsTable = dts.Tables[rowIndex];
+                var distinctValues = new Dictionary<string, HashSet<object>>();
+                var maxValues = new Dictionary<string, object>();
 
                 if (dtsTable.Columns.Contains(pivotColumnName))
                 {
@@ -878,10 +904,26 @@ namespace ReportBuilder.Web.Models
                         if (string.IsNullOrEmpty(newColumnName)) newColumnName = "(Blank)";
                         if (!dt.Columns.Contains(newColumnName))
                         {
-                            dt.Columns.Add(newColumnName, dtType);
+                            dt.Columns.Add(newColumnName, pivotFunction.StartsWith("Count") ? typeof(int) : dtType);
                         }
-
-                        if (pivotColumnIndex + 1 < dtsTable.Columns.Count)
+                        
+                        if (pivotFunction == "Count Distinct")
+                        {
+                            if (!distinctValues.ContainsKey(newColumnName))
+                            {
+                                distinctValues[newColumnName] = new HashSet<object>();
+                            }
+                            distinctValues[newColumnName].Add(dtsRow[dtColumnIndex]);
+                        }
+                        else if (pivotFunction == "Max")
+                        {
+                            object currentValue = dtsRow[dtColumnIndex];
+                            if (!maxValues.ContainsKey(newColumnName) || CompareValues(currentValue, maxValues[newColumnName], dtType) > 0)
+                            {
+                                maxValues[newColumnName] = currentValue;
+                            }
+                        }
+                        else if (pivotColumnIndex + 1 < dtsTable.Columns.Count)
                         {
                             if (pivotFunction == "Count")
                             {
@@ -905,6 +947,21 @@ namespace ReportBuilder.Web.Models
                             {
                                 row[newColumnName] = row[newColumnName].ToString() + " " + dtsRow[pivotColumnIndex + 1].ToString();
                             }
+                        }
+                    }
+
+                    if (pivotFunction == "Count Distinct")
+                    {
+                        foreach (var column in distinctValues)
+                        {
+                            row[column.Key] = column.Value.Count;
+                        }
+                    }
+                    if (pivotFunction == "Max")
+                    {
+                        foreach (var column in maxValues)
+                        {
+                            row[column.Key] = column.Value;
                         }
                     }
                 }
