@@ -2348,7 +2348,8 @@ var reportViewModel = function (options) {
 				userIdForFilter: self.userIdForFilter,
 				SubTotalMode: false,
 				reportData: '',
-				pivotColumn: ''
+				pivotColumn: '',
+				pivotFunction: ''
 			})
 		}).done(function () {
 			self.RunReport(false);
@@ -2880,6 +2881,7 @@ var reportViewModel = function (options) {
 						desc: e.pager.sortDescending() || false,
 						reportSeries: reportSeries || '',
 						pivotColumn: '',
+						pivotFunction: '',
 						reportData: ''
 					}),
 					noBlocking: true
@@ -3006,7 +3008,8 @@ var reportViewModel = function (options) {
 					adminMode: self.adminMode(),
 					SubTotalMode: true,
 					reportData: '',
-					pivotColumn: ''
+					pivotColumn: '',
+					pivotFunction: ''
 				})
 			}).done(function (subtotalsqlResult) {
 				if (subtotalsqlResult.d) { subtotalsqlResult = subtotalsqlResult.d; }
@@ -3024,7 +3027,8 @@ var reportViewModel = function (options) {
 						desc: false,
 						reportSeries: '',
 						reportData: '',
-						pivotColumn: ''
+						pivotColumn: '',
+						pivotFunction: ''
 					})
 				}).done(function (subtotalResult) {
 					if (subtotalResult.d) { subtotalResult = subtotalResult.d; }
@@ -3068,7 +3072,16 @@ var reportViewModel = function (options) {
 		}
 		var pivotColumn = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' });
 		var reportData = pivotColumn != null ? self.BuildReportData() : '';
-		if (pivotColumn) reportData.DrillDownRowUsePlaceholders = true;
+		var pivotFunction = '';
+
+		if (pivotColumn) {
+			reportData.DrillDownRowUsePlaceholders = true;
+			var pivotColumnIndex = _.findIndex(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot'; });
+			if (pivotColumnIndex >= 0 && pivotColumnIndex < self.SelectedFields().length - 1) {
+				var nextValue = self.SelectedFields()[pivotColumnIndex + 1];
+				pivotFunction = nextValue.selectedAggregate();
+			}
+		}
 		if (!isPageSizeClick) self.pager.pageSize(self.DefaultPageSize());
 		return ajaxcall({
 			url: options.execReportUrl,
@@ -3083,6 +3096,7 @@ var reportViewModel = function (options) {
 				desc: self.pager.sortDescending() || false,
 				reportSeries: reportSeries || "",
 				pivotColumn: pivotColumn ? pivotColumn.fieldName : '',
+				pivotFunction: pivotColumn && pivotFunction ? pivotFunction : '',
 				reportData: pivotColumn ? JSON.stringify(reportData) : ''
 			}),
 			noBlocking: self.ReportMode() == 'dashboard'
