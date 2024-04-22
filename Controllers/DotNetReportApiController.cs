@@ -163,6 +163,7 @@ namespace ReportBuilder.Web.Controllers
             public string ReportSeries { get; set; }
 
             public string pivotColumn { get; set; }
+            public string pivotFunction { get; set; }
             public string reportData { get; set; }
         }
 
@@ -178,6 +179,7 @@ namespace ReportBuilder.Web.Controllers
             bool desc = data.desc;
             string reportSeries = data.ReportSeries;
             string pivotColumn = data.pivotColumn;
+            string pivotFunction = data.pivotFunction;
             string reportData = data.reportData;
 
             var sql = "";
@@ -239,7 +241,7 @@ namespace ReportBuilder.Web.Controllers
                     {
                         conn.Open();
                         var command = new OleDbCommand(sqlCount, conn);
-                        if (!sql.StartsWith("EXEC")) totalRecords = (int)command.ExecuteScalar();
+                        if (!sql.StartsWith("EXEC")) totalRecords = Math.Max(totalRecords, (int)command.ExecuteScalar());
 
                         command = new OleDbCommand(sql, conn);
                         var adapter = new OleDbDataAdapter(command);
@@ -263,7 +265,7 @@ namespace ReportBuilder.Web.Controllers
                             if (!string.IsNullOrEmpty(pivotColumn))
                             {
                                 var ds = await DotNetReportHelper.GetDrillDownData(conn, dtPagedRun, sqlFields, reportData);
-                                dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn);
+                                dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn, pivotFunction);
                                 fields.AddRange(dtPagedRun.Columns.Cast<DataColumn>().Skip(fields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
                             }
 
@@ -284,29 +286,44 @@ namespace ReportBuilder.Web.Controllers
                                 fields.Add(sqlFields[j - 1]);
                             }
 
-                            foreach (DataRow dr in dtPaged.Rows)
+                            foreach (DataRow dr in dtPagedRun.Rows)
                             {
-                                DataRow match = null;
+                                DataRow match = dtPaged.AsEnumerable().FirstOrDefault(drun => Convert.ToString(drun[0]) == Convert.ToString(dr[0]));
                                 if (fields[0].ToUpper().StartsWith("CONVERT(VARCHAR(10)")) // group by day
                                 {
-                                    match = dtPagedRun.AsEnumerable().Where(r => !string.IsNullOrEmpty(r.Field<string>(0)) && !string.IsNullOrEmpty((string)dr[0]) && Convert.ToDateTime(r.Field<string>(0)).Day == Convert.ToDateTime((string)dr[0]).Day).FirstOrDefault();
-                                }
-                                else if (fields[0].ToUpper().StartsWith("CONVERT(VARCHAR(3)")) // group by month/year
-                                {
-
-                                }
-                                else
-                                {
-                                    match = dtPagedRun.AsEnumerable().Where(r => r.Field<string>(0) == (string)dr[0]).FirstOrDefault();
+                                    match = dtPaged.AsEnumerable().Where(r => !string.IsNullOrEmpty(r.Field<string>(0)) && !string.IsNullOrEmpty((string)dr[0]) && Convert.ToDateTime(r.Field<string>(0)).Day == Convert.ToDateTime((string)dr[0]).Day).FirstOrDefault();
                                 }
                                 if (match != null)
                                 {
+                                    // If a matching row is found, merge the data
                                     j = 1;
-                                    while (j < dtCols)
+                                    while (j < dtPagedRun.Columns.Count)
                                     {
-                                        dr[j + i + dtCols - 2] = match[j];
+                                        match[j + i + dtCols - 2] = dr[j];
                                         j++;
                                     }
+                                }
+                                else
+                                {
+                                    // If no matching row is found, add the entire row from dtPagedRun
+                                    DataRow newRow = dtPaged.NewRow();
+                                    newRow[0] = dr[0]; // Set the first column with the non-matching value
+
+                                    // Set the values from dtPagedRun into the new row, offset by the correct index
+                                    j = 1;
+                                    while (j < dtPagedRun.Columns.Count)
+                                    {
+                                        newRow[j + i + dtCols - 2] = dr[j];
+                                        j++;
+                                    }
+
+                                    // Set the rest of the values in newRow to DBNull.Value or some default value
+                                    for (int k = 1; k < i + dtCols - 2; k++)
+                                    {
+                                        newRow[k] = DBNull.Value; 
+                                    }
+
+                                    dtPaged.Rows.Add(newRow);
                                 }
                             }
                         }
@@ -450,19 +467,32 @@ namespace ReportBuilder.Web.Controllers
         [HttpGet]
         public IActionResult GetUsersAndRoles()
         {
+            // These report permission settings will be applied by default to any new report user creates, leave black to allow access to all
+            var newReportClientId = ""; // comma separated client ids to set report permission when new report is created
+            var newReportEditUserId = ""; // comma separated user ids for report edit permission when new report is created
+            var newReportViewUserId = ""; // comma separated user ids for report view permission when new report is created
+            var newReportEditUserRoles = ""; // comma separated user roles for report edit permission when new report is created
+            var newReportViewUserRoles = ""; // comma separated user roles for report view permission when new report is created
+
             var settings = GetSettings();
             return Ok(new
             {
                 noAccount = string.IsNullOrEmpty(settings.AccountApiToken) || settings.AccountApiToken == "Your Public Account Api Token",
-                users = settings.CanUseAdminMode ? settings.Users : new List<dynamic>(),
-                userRoles = settings.CanUseAdminMode ? settings.UserRoles : new List<string>(),
+                users = settings.Users,
+                userRoles = settings.UserRoles,
                 currentUserId = settings.UserId,
-                currentUserRoles = settings.UserRoles,
+                currentUserRoles = settings.CurrentUserRole,
                 currentUserName = settings.UserName,
                 allowAdminMode = settings.CanUseAdminMode,
                 userIdForSchedule = settings.UserIdForSchedule,
                 dataFilters = settings.DataFilters,
-                clientId = settings.ClientId
+                clientId = settings.ClientId,
+
+                newReportClientId,
+                newReportEditUserId,
+                newReportViewUserId,
+                newReportEditUserRoles,
+                newReportViewUserRoles
             });
         }
 
@@ -519,7 +549,8 @@ namespace ReportBuilder.Web.Controllers
             }
             catch (Exception ex)
             {
-                return new JsonResult(new { errorMessage = ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+                Response.StatusCode = 500;
+                return new JsonResult(new { ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
             }
         }
 
@@ -538,42 +569,50 @@ namespace ReportBuilder.Web.Controllers
         [HttpGet]
         public async Task<IActionResult> LoadSetupSchema(string? databaseApiKey = "", bool onlyApi = true)
         {
-            var settings = GetSettings();
-
-            if (string.IsNullOrEmpty(settings.AccountApiToken))
+            try
             {
-                return Ok(new { noAccount = true });
+                var settings = GetSettings();
+
+                if (string.IsNullOrEmpty(settings.AccountApiToken))
+                {
+                    return Ok(new { noAccount = true });
+                }
+
+                if (!settings.CanUseAdminMode)
+                {
+                    throw new Exception("Not Authorized to access this Resource");
+                }
+
+                var connect = DotNetSetupController.GetConnection(databaseApiKey);
+                var tables = new List<TableViewModel>();
+                var procedures = new List<TableViewModel>();
+                if (onlyApi)
+                {
+                    tables.AddRange(await DotNetSetupController.GetApiTables(connect.AccountApiKey, connect.DatabaseApiKey, true));
+                }
+                else
+                {
+                    tables.AddRange(await DotNetSetupController.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
+                    tables.AddRange(await DotNetSetupController.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
+                }
+                procedures.AddRange(await DotNetSetupController.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
+
+                var model = new ManageViewModel
+                {
+                    ApiUrl = connect.ApiUrl,
+                    AccountApiKey = connect.AccountApiKey,
+                    DatabaseApiKey = connect.DatabaseApiKey,
+                    Tables = tables,
+                    Procedures = procedures
+                };
+
+                return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
             }
-
-            if (!settings.CanUseAdminMode)
+            catch (Exception ex)
             {
-                throw new Exception("Not Authorized to access this Resource");
+                Response.StatusCode = 500;
+                return new JsonResult(new { ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
             }
-
-            var connect = DotNetSetupController.GetConnection(databaseApiKey);
-            var tables = new List<TableViewModel>();
-            var procedures = new List<TableViewModel>();
-            if (onlyApi)
-            {
-                tables.AddRange(await DotNetSetupController.GetApiTables(connect.AccountApiKey, connect.DatabaseApiKey, true));
-            }
-            else
-            {
-                tables.AddRange(await DotNetSetupController.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
-                tables.AddRange(await DotNetSetupController.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
-            }
-            procedures.AddRange(await DotNetSetupController.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
-
-            var model = new ManageViewModel
-            {
-                ApiUrl = connect.ApiUrl,
-                AccountApiKey = connect.AccountApiKey,
-                DatabaseApiKey = connect.DatabaseApiKey,
-                Tables = tables,
-                Procedures = procedures
-            };
-
-            return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
         }
 
         public class SearchProcCall { 

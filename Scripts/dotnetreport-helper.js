@@ -37,10 +37,10 @@ function ajaxcall(options) {
             }
         }
     }).done(function (data) {
-        if ($.unblockUI) {
+        if ($.unblockUI && !noBlocking) {
             $.unblockUI();
+            setTimeout(function () { $.unblockUI(); }, 1000);
         }
-        setTimeout(function () { $.unblockUI(); }, 1000);
         delete options;
     }).fail(function (jqxhr, status, error) {
         if ($.unblockUI) {
@@ -48,6 +48,7 @@ function ajaxcall(options) {
         }
         delete options;
         if (jqxhr.responseJSON && jqxhr.responseJSON.d) jqxhr.responseJSON = jqxhr.responseJSON.d;
+        if (jqxhr.responseJSON && jqxhr.responseJSON.Result && jqxhr.responseJSON.Result.Message) jqxhr.responseJSON = jqxhr.responseJSON.Result;
         var msg = jqxhr.responseJSON && jqxhr.responseJSON.Message ? "\n" + jqxhr.responseJSON.Message : "";
 
         if (error == "Conflict") {
@@ -286,8 +287,8 @@ function pagerViewModel(args) {
 }
 
 var manageAccess = function (options) {
-    return {
-        clientId: ko.observable(options.clientId),
+    var access = {
+        clientId: ko.observable(),
         users: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
         userRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
         viewOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
@@ -302,8 +303,35 @@ var manageAccess = function (options) {
         setupList: function (x, value) {
             _.forEach(x, function (e) { if (value.indexOf(e.value()) >= 0) e.selected(true); else e.selected(false); });
         },
+        matchAndSelect: function (items, ids) {
+            _.forEach(items, function (item) {
+                if (ids.indexOf(item.value()) >= 0) {
+                    item.selected(true);
+                }
+            });
+        },
         isDashboard: ko.observable(options.isDashboard == true ? true : false)
     };
+
+    access.applyDefaultSettings = function () {
+        var userSettings = options.userSettings;
+        if (userSettings) {
+            access.clientId(options.userSettings.newReportClientId);
+            var editUserIds = userSettings.newReportEditUserId ? userSettings.newReportEditUserId.split(',') : [];
+            var viewUserIds = userSettings.newReportViewUserId ? userSettings.newReportViewUserId.split(',') : [];
+            var editUserRoles = userSettings.newReportEditUserRoles ? userSettings.newReportEditUserRoles.split(',') : [];
+            var viewUserRoles = userSettings.newReportViewUserRoles ? userSettings.newReportViewUserRoles.split(',') : [];
+
+            access.matchAndSelect(access.users, editUserIds);
+            access.matchAndSelect(access.userRoles, editUserRoles);
+            access.matchAndSelect(access.viewOnlyUsers, viewUserIds);
+            access.matchAndSelect(access.viewOnlyUserRoles, viewUserRoles);
+        }
+    }
+
+    access.applyDefaultSettings();
+
+    return access;
 };
 
 function beautifySql(sql, htmlMode=true) {
