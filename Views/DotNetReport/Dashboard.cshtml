@@ -20,6 +20,30 @@
             height: 100% !important;
             z-index: 99993 !important;
         }
+
+
+        /* Style the tabs */
+        .nav-tabs .nav-item {
+            margin-bottom: -1px;
+        }
+        .nav-tabs .nav-link {
+            border: 1px solid transparent;
+            border-top-left-radius: 0.25rem;
+            border-top-right-radius: 0.25rem;
+        }
+        .nav-tabs .nav-link:hover {
+            border-color: #dee2e6 #dee2e6 #fff;
+        }
+        .nav-tabs .nav-link.active {
+            color: #495057;
+            background-color: #fff;
+            border-color: #dee2e6 #dee2e6 #fff;
+            border-bottom-color: transparent;
+            cursor: default;
+        }
+        .selected-tab {
+            background-color: #f8f9fa;
+        }
      @@media (max-width: 767px) {
     .small-pagination {
         display: flex;
@@ -138,7 +162,7 @@
         });
     </script>
 }
-
+<!-- ko if: !canShowHorizontalTabMenu() -->
 <div class="row" style="display: none" data-bind="visible: currentDashboard">
     <div class="col-4" data-bind="with: currentDashboard">
         <h2 title="Switch Dashboard">
@@ -150,6 +174,21 @@
         &nbsp;
     </div>
 </div>
+<!-- /ko -->
+<!-- ko if: canShowHorizontalTabMenu() -->
+<div class="row" style="display: none" data-bind="visible: currentDashboard">
+    <div class="col-12">
+        <h2 title="Switch Dashboard">
+            <ul class="nav nav-tabs" data-bind="foreach: dashboards">
+                <li class="nav-item">
+                    <a class="nav-link" href="#" data-bind="text: name, click: function() { $parent.selectDashboard(id);}, css: { 'active': $parent.currentDashboard().id === id, 'selected-tab': $parent.currentDashboard().id === id }"></a>
+                </li>
+            </ul>
+        </h2>
+        <p data-bind="text: currentDashboard().description"></p>
+    </div>
+</div>
+<!-- /ko -->
 <div class="clearfix"></div>
 
 <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
@@ -163,7 +202,6 @@
             </div>
             <div class="pull-right">Arrange this Dashboard</div>
         </div>
-
         <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Edit Dashboard Settings" data-bind="click: editDashboard">Edit this Dashboard</button>
         <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-dashboard-modal" title="Add a New Dashboard" data-bind="click: newDashboard">Add a new Dashboard</button>
         <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#create-modal-reportbuilder" title="Add a New Report">Add a new Report</button>

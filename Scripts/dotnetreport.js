@@ -4165,6 +4165,7 @@ var dashboardViewModel = function (options) {
 	options.isDashboard = true;
 	self.dashboards = ko.observableArray(options.dashboards || []);
 	self.adminMode = ko.observable(false);
+	self.canShowHorizontalTabMenu = ko.observable(true);
 	self.currentUserId = options.userId;
 	self.currentUserRole = (options.currentUserRole || []).join();
 	self.reportsAndFolders = ko.observableArray([]);
