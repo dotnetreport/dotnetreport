@@ -135,11 +135,27 @@
     </script>
 }
 
+<div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
+
+
+<div class="row" style="display: none" data-bind="visible: currentDashboard">
+    <div class="col-12">
+        <ul class="nav nav-tabs" data-bind="foreach: dashboards">
+            <li class="nav-item">
+                <h2>
+                <a class="nav-link" href="#" data-bind="text: name, click: function() { $parent.selectDashboard(id);}, css: { 'active': $parent.currentDashboard().id === id, 'selected-tab': $parent.currentDashboard().id === id }"></a>
+                </h2>
+            </li>
+        </ul>
+    </div>
+</div>
+
 <div class="d-flex justify-content-between align-items-center bg-light border-bottom p-2 top-menu-toolbar">
     <div class="row" style="display: none" data-bind="visible: currentDashboard">
         <div data-bind="with: currentDashboard">
             <h2 title="Switch Dashboard">
-                <select class="form-control select-as-text" title="Switch Dashboard" data-bind="select2: {minimumResultsForSearch: Infinity}, options: $parent.dashboards, optionsText: 'name', optionsValue: 'id', value: $parent.selectDashboard"></select>
+                <span data-bind="text: name"span>
+                <!--<select class="form-control select-as-text" title="Switch Dashboard" data-bind="select2: {minimumResultsForSearch: Infinity}, options: $parent.dashboards, optionsText: 'name', optionsValue: 'id', value: $parent.selectDashboard"></select>-->
             </h2>
             <p data-bind="text: description"></p>
         </div>
@@ -291,8 +307,6 @@
         <br />
     </div>
 </div>
-
-<div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
 
 <div class="grid-stack" data-bind="visible: reports().length>0, foreach: reports" style="display: none;">
     <div class="grid-stack-item" data-bind="attr: {'data-gs-x': x, 'data-gs-y': y, 'data-gs-width': width, 'data-gs-height': height, 'data-gs-auto-position': true, 'data-gs-id': ReportID}">
