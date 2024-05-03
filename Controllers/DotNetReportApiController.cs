@@ -431,7 +431,7 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("dataFilters", JsonSerializer.Serialize(settings.DataFilters))
                 });
 
-                var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/LoadSavedDashboard"), content);
+                var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/LoadDashboardData"), content);
                 var stringContent = await response.Content.ReadAsStringAsync();
 
                 model = JsonSerializer.Deserialize<List<DotNetDasboardReportModel>>(stringContent);
