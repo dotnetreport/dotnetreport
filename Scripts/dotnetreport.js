@@ -346,7 +346,7 @@ function filterGroupViewModel(args) {
 					method: "/ReportApi/GetLookupList",
 					model: JSON.stringify({ fieldId: fieldId, dataFilters: dataFilters })
 				},
-				noBlocking: true
+				noBlocking: args.options.ReportMode()=='dashboard'
 			}).done(function (result) {
 				if (result.d) { result = result.d; }
 				if (result.result) { result = result.result; }
@@ -354,7 +354,7 @@ function filterGroupViewModel(args) {
 					type: 'POST',
 					url: args.options.lookupListUrl,
 					data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey }),
-					noBlocking: true
+					noBlocking: args.options.ReportMode() == 'dashboard'
 				}).done(function (list) {
 					if (list.d) { list = list.d; }
 					if (list.result) { list = list.result; }
@@ -397,7 +397,7 @@ function filterGroupViewModel(args) {
 								method: "/ReportApi/GetLookupList",
 								model: JSON.stringify({ fieldId: newField.fieldId, dataFilters: args.options.dataFilters, parentLookup: true })
 							},
-							noBlocking: true
+							noBlocking: args.options.ReportMode() == 'dashboard'
 						}).done(function (result) {
 							if (result.d) { result = result.d; }
 							if (result.result) { result = result.result; }
@@ -405,7 +405,7 @@ function filterGroupViewModel(args) {
 								type: 'POST',
 								url: args.options.lookupListUrl,
 								data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey }),
-								noBlocking: true
+								noBlocking: args.options.ReportMode() == 'dashboard'
 							}).done(function (list) {
 								if (list.d) { list = list.d; }
 								if (list.result) { list = list.result; }
@@ -4483,7 +4483,7 @@ var dashboardViewModel = function (options) {
 				self.ChartDrillDownData(e);
 			});
 			allreports.push(report);
-			promises.push(report.LoadReport(x.reportId, true, '', true, true).then(function () {
+			promises.push(report.LoadReport(x.reportId, true, '', true, false).then(function () {
 				return report.RunReport(false, true, true);
 			}));
 		});
