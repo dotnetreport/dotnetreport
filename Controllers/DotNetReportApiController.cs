@@ -171,6 +171,7 @@ namespace ReportBuilder.Web.Controllers
             public string ReportSeries { get; set; }
 
             public string pivotColumn { get; set; }
+            public string pivotFunction { get; set; }
             public string reportData { get; set; }
         }
 
@@ -186,6 +187,7 @@ namespace ReportBuilder.Web.Controllers
             bool desc = data.desc;
             string reportSeries = data.ReportSeries;
             string pivotColumn = data.pivotColumn;
+            string pivotFunction = data.pivotFunction;
             string reportData = data.reportData;
 
             var sql = "";
@@ -269,7 +271,7 @@ namespace ReportBuilder.Web.Controllers
                         if (!string.IsNullOrEmpty(pivotColumn))
                         {
                             var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dtPagedRun, sqlFields, reportData);
-                            dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn);
+                            dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn, pivotFunction);
                             fields.AddRange(dtPagedRun.Columns.Cast<DataColumn>().Skip(fields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
                         }
 
@@ -434,7 +436,7 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("dataFilters", JsonSerializer.Serialize(settings.DataFilters))
                 });
 
-                var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/LoadSavedDashboard"), content);
+                var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/LoadDashboardData"), content);
                 var stringContent = await response.Content.ReadAsStringAsync();
 
                 model = JsonSerializer.Deserialize<List<DotNetDasboardReportModel>>(stringContent);
@@ -552,7 +554,8 @@ namespace ReportBuilder.Web.Controllers
             }
             catch (Exception ex)
             {
-                return new JsonResult(new { errorMessage = ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+                Response.StatusCode = 500;
+                return new JsonResult(new { ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
             }
         }
 
@@ -571,17 +574,19 @@ namespace ReportBuilder.Web.Controllers
         [HttpGet]
         public async Task<IActionResult> LoadSetupSchema(string? databaseApiKey = "", bool onlyApi = true)
         {
-            var settings = GetSettings();
-
-            if (string.IsNullOrEmpty(settings.AccountApiToken))
+            try
             {
-                return Ok(new { noAccount = true });
-            }
+                var settings = GetSettings();
 
-            if (!settings.CanUseAdminMode)
-            {
-                throw new Exception("Not Authorized to access this Resource");
-            }
+                if (string.IsNullOrEmpty(settings.AccountApiToken))
+                {
+                    return Ok(new { noAccount = true });
+                }
+
+                if (!settings.CanUseAdminMode)
+                {
+                    throw new Exception("Not Authorized to access this Resource");
+                }
 
             var connect = DotNetReportHelper.GetConnection(databaseApiKey);
             var tables = new List<TableViewModel>();
@@ -609,7 +614,13 @@ namespace ReportBuilder.Web.Controllers
                 Functions = functions
             };
 
-            return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+                return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+            }
+            catch (Exception ex)
+            {
+                Response.StatusCode = 500;
+                return new JsonResult(new { ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+            }
         }
 
         public class SearchProcCall { 
