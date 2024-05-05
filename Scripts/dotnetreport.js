@@ -347,7 +347,7 @@ function filterGroupViewModel(args) {
 					method: "/ReportApi/GetLookupList",
 					model: JSON.stringify({ fieldId: fieldId, dataFilters: dataFilters })
 				},
-				noBlocking: args.options.ReportMode()=='dashboard'
+				noBlocking: args.parent.ReportMode()=='dashboard'
 			}).done(function (result) {
 				if (result.d) { result = result.d; }
 				if (result.result) { result = result.result; }
@@ -355,7 +355,7 @@ function filterGroupViewModel(args) {
 					type: 'POST',
 					url: args.options.lookupListUrl,
 					data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey }),
-					noBlocking: args.options.ReportMode() == 'dashboard'
+					noBlocking: args.parent.ReportMode() == 'dashboard'
 				}).done(function (list) {
 					if (list.d) { list = list.d; }
 					if (list.result) { list = list.result; }
@@ -398,7 +398,7 @@ function filterGroupViewModel(args) {
 								method: "/ReportApi/GetLookupList",
 								model: JSON.stringify({ fieldId: newField.fieldId, dataFilters: args.options.dataFilters, parentLookup: true })
 							},
-							noBlocking: args.options.ReportMode() == 'dashboard'
+							noBlocking: args.parent.ReportMode() == 'dashboard'
 						}).done(function (result) {
 							if (result.d) { result = result.d; }
 							if (result.result) { result = result.result; }
@@ -406,7 +406,7 @@ function filterGroupViewModel(args) {
 								type: 'POST',
 								url: args.options.lookupListUrl,
 								data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey }),
-								noBlocking: args.options.ReportMode() == 'dashboard'
+								noBlocking: args.parent.ReportMode() == 'dashboard'
 							}).done(function (list) {
 								if (list.d) { list = list.d; }
 								if (list.result) { list = list.result; }
@@ -1577,16 +1577,14 @@ var reportViewModel = function (options) {
 					data: {
 						method: "/ReportApi/GetPrmLookupList",
 						model: JSON.stringify({ parameterId: e.Id, procId: proc.Id, dataFilters: options.dataFilters })
-					},
-					noBlocking: true
+					}
 				}).done(function (result) {
 					if (result.d) { result = result.d; }
 					if (result.result) { result = result.result; }
 					ajaxcall({
 						type: 'POST',
 						url: options.lookupListUrl,
-						data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey }),
-						noBlocking: true
+						data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey })
 					}).done(function (list) {
 						if (list.d) { list = list.d; }
 						if (list.result) { list = list.result; }
