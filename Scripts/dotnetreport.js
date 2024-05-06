@@ -345,14 +345,16 @@ function filterGroupViewModel(args) {
 				data: {
 					method: "/ReportApi/GetLookupList",
 					model: JSON.stringify({ fieldId: fieldId, dataFilters: dataFilters })
-				}
+				},
+				noBlocking: args.parent.ReportMode()=='dashboard'
 			}).done(function (result) {
 				if (result.d) { result = result.d; }
 				if (result.result) { result = result.result; }
 				ajaxcall({
 					type: 'POST',
 					url: args.options.lookupListUrl,
-					data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey })
+					data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey }),
+					noBlocking: args.parent.ReportMode() == 'dashboard'
 				}).done(function (list) {
 					if (list.d) { list = list.d; }
 					if (list.result) { list = list.result; }
@@ -394,14 +396,16 @@ function filterGroupViewModel(args) {
 							data: {
 								method: "/ReportApi/GetLookupList",
 								model: JSON.stringify({ fieldId: newField.fieldId, dataFilters: args.options.dataFilters, parentLookup: true })
-							}
+							},
+							noBlocking: args.parent.ReportMode() == 'dashboard'
 						}).done(function (result) {
 							if (result.d) { result = result.d; }
 							if (result.result) { result = result.result; }
 							ajaxcall({
 								type: 'POST',
 								url: args.options.lookupListUrl,
-								data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey })
+								data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey }),
+								noBlocking: args.parent.ReportMode() == 'dashboard'
 							}).done(function (list) {
 								if (list.d) { list = list.d; }
 								if (list.result) { list = list.result; }
@@ -3010,7 +3014,8 @@ var reportViewModel = function (options) {
 					reportData: '',
 					pivotColumn: '',
 					pivotFunction: ''
-				})
+				}),
+				noBlocking: self.ReportMode()=='dashboard'
 			}).done(function (subtotalsqlResult) {
 				if (subtotalsqlResult.d) { subtotalsqlResult = subtotalsqlResult.d; }
 				if (subtotalsqlResult.result) { subtotalsqlResult = subtotalsqlResult.result; }
@@ -3029,7 +3034,8 @@ var reportViewModel = function (options) {
 						reportData: '',
 						pivotColumn: '',
 						pivotFunction: ''
-					})
+					}),
+					noBlocking: self.ReportMode() == 'dashboard'
 				}).done(function (subtotalResult) {
 					if (subtotalResult.d) { subtotalResult = subtotalResult.d; }
 					if (subtotalResult.result) { subtotalResult = subtotalResult.result }
@@ -3690,7 +3696,7 @@ var reportViewModel = function (options) {
 		}
 	}
 
-	self.LoadReport = function (reportId, filterOnFly, reportSeries, dontBlock) {
+	self.LoadReport = function (reportId, filterOnFly, reportSeries, dontBlock, buildSql) {
 		self.SelectedTable(null);
 		self.isFormulaField(false);
 		return ajaxcall({
@@ -3700,7 +3706,8 @@ var reportViewModel = function (options) {
 				model: JSON.stringify({
 					reportId: reportId,
 					adminMode: self.adminMode(),
-					userIdForSchedule: self.userIdForSchedule
+					userIdForSchedule: self.userIdForSchedule,
+					buildSql: buildSql === true
 				})
 			},
 			noBlocking: dontBlock === true
@@ -3709,6 +3716,7 @@ var reportViewModel = function (options) {
 			if (report.result) { report = report.result; }
 			self.useStoredProc(report.UseStoredProc);
 			self.ReportType(report.ReportType.indexOf('Map') >= 0 ? 'Map' : report.ReportType);
+			if (buildSql === true) options.reportSql = report.ReportSql;
 
 			if (self.useStoredProc()) {
 				function continueWithProc() {
@@ -4483,7 +4491,9 @@ var dashboardViewModel = function (options) {
 				self.ChartDrillDownData(e);
 			});
 			allreports.push(report);
-			promises.push(report.LoadReport(x.reportId, true, '', true));
+			promises.push(report.LoadReport(x.reportId, true, '', true, false).then(function () {
+				return report.RunReport(false, true, true);
+			}));
 		});
 
 		self.reports(allreports);
