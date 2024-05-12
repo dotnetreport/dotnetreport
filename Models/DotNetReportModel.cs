@@ -203,6 +203,13 @@ namespace ReportBuilder.Web.Models
         Right
     }
 
+    public enum DbTypes
+    {
+        MS_SQL,
+        MySql,
+        Postgre_Sql
+    }
+
     public class ColumnViewModel
     {
         public int Id { get; set; }
