@@ -113,6 +113,29 @@ namespace ReportBuilder.Web.Controllers
             return File(pdf, "application/pdf", reportName + ".pdf");
         }
 
+        [HttpPost]
+        public async Task<IActionResult> DownloadWord(string printUrl, int reportId, string reportSql, string connectKey, string reportName, bool expandAll,
+                                        string clientId = null, string userId = null, string userRoles = null, string dataFilters = "")
+        {
+            reportSql = HttpUtility.HtmlDecode(reportSql);
+            var (html, width) = await DotNetReportHelper.GetWordFile(HttpUtility.UrlDecode(printUrl), reportId, reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName),
+                                userId, clientId, userRoles, dataFilters, expandAll);
+            var stream = DotNetReportHelper.ExportToWord(html,width);
+            return File(
+                fileContents: stream.ToArray(),
+                  contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                 fileDownloadName: $"{reportName}.docx");
+        }
+        [HttpPost]
+        public async Task<IActionResult> DownloadWordAlt(string reportSql, string connectKey, string reportName, bool allExpanded, string expandSqls, string columnDetails = null, bool includeSubtotal = false, bool pivot = false)
+        {
+            reportSql = HttpUtility.HtmlDecode(reportSql);
+            var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
+            var word = await DotNetReportHelper.GetWordFileAlt(reportSql, connectKey, HttpUtility.UrlDecode(reportName), allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot);
+            Response.Headers.Add("content-disposition", "attachment; filename=" + reportName + ".docx");
+            Response.ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            return File(word, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", reportName + ".docx");
+        }
 
         [HttpPost]
         public async Task<IActionResult> DownloadPdfAlt(string reportSql, string connectKey, string reportName, string chartData = null, string columnDetails = null, bool includeSubtotal = false, bool pivot = false)
