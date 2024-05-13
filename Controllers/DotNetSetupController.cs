@@ -331,20 +331,6 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        public static async Task<List<CustomFunctionModel>> GetApiFunctions(string accountKey, string dataConnectKey)
-        {
-            using (var client = new HttpClient())
-            {
-                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetCustomFunctions?account={1}&dataConnect={2}&clientId=", Startup.StaticConfig.GetValue<string>("dotNetReport:apiUrl"), accountKey, dataConnectKey));
-                response.EnsureSuccessStatusCode();
-                var content = await response.Content.ReadAsStringAsync();
-                var functions = JsonConvert.DeserializeObject<List<CustomFunctionModel>>(content);
-
-                return functions;
-            }
-        }
-
-
         public static Type GetType(FieldTypes type)
         {
             switch (type)

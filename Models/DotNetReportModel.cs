@@ -781,6 +781,31 @@ namespace ReportBuilder.Web.Models
             return dtNew;
         }
 
+        public static async Task<List<CustomFunctionModel>> GetApiFunctions()
+        {
+            var settings = new DotNetReportSettings
+            {
+                ApiUrl = StaticConfig.GetValue<string>("dotNetReport:apiUrl"),
+                AccountApiToken = StaticConfig.GetValue<string>("dotNetReport:accountApiToken"), // Your Account Api Token from your http://dotnetreport.com Account
+                DataConnectApiToken = StaticConfig.GetValue<string>("dotNetReport:dataconnectApiToken") // Your Data Connect Api Token from your http://dotnetreport.com Account
+            };
+
+            return await GetApiFunctions(settings.AccountApiToken, settings.DataConnectApiToken);
+        }
+
+        public static async Task<List<CustomFunctionModel>> GetApiFunctions(string accountKey, string dataConnectKey)
+        {
+            using (var client = new HttpClient())
+            {
+                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetCustomFunctions?account={1}&dataConnect={2}&clientId=", Startup.StaticConfig.GetValue<string>("dotNetReport:apiUrl"), accountKey, dataConnectKey));
+                response.EnsureSuccessStatusCode();
+                var content = await response.Content.ReadAsStringAsync();
+                var functions = JsonConvert.DeserializeObject<List<CustomFunctionModel>>(content);
+
+                return functions;
+            }
+        }
+
         public static async Task<string> RunReportApiCall(string postData)
         {
             using (var client = new HttpClient())
@@ -1080,20 +1105,30 @@ namespace ReportBuilder.Web.Models
             return value1.ToString().CompareTo(value2.ToString());
         }
 
-        public static DataTable ExecuteCustomFunction(DataTable dataTable, string sql)
+        public static async Task<DataTable> ExecuteCustomFunction(DataTable dataTable, string sql)
         {
             if (!sql.Contains("/*|")) return dataTable;
+
+            var functions = await GetApiFunctions();
 
             Regex regex = new Regex(@"/\*\|(.*?)\|\*/");
             var matches = regex.Matches(sql);
 
-            // Iterate over all matches (function calls)
             foreach (Match match in matches)
             {
                 string functionCall = match.Groups[1].Value;
-                Console.WriteLine("Function Call Extracted: " + functionCall);
+                int columnIndex = -1;
 
-                // Iterate over all rows in the dataTable
+                // Find the column that contains the function call to replace it later
+                foreach (DataColumn column in dataTable.Columns)
+                {
+                    if (column.Expression.Contains(match.Value))
+                    {
+                        columnIndex = column.Ordinal;
+                        break;
+                    }
+                }
+
                 foreach (DataRow row in dataTable.Rows)
                 {
                     string modifiedFunctionCall = functionCall;
@@ -1101,7 +1136,6 @@ namespace ReportBuilder.Web.Models
                     // Iterate over all columns that end with "__prm__"
                     foreach (DataColumn column in dataTable.Columns.Cast<DataColumn>().Where(c => c.ColumnName.EndsWith("__prm__")))
                     {
-                        // Prepare the parameter name as it appears in the function call
                         string paramName = "{" + column.ColumnName.Replace("__prm__", "") + "}";
 
                         if (modifiedFunctionCall.Contains(paramName))
@@ -1110,22 +1144,27 @@ namespace ReportBuilder.Web.Models
                             // Check if the datatype is numeric
                             if (column.DataType == typeof(int) || column.DataType == typeof(decimal) || column.DataType == typeof(double) || column.DataType == typeof(long))
                             {
-                                // Use as is for numeric types
                                 modifiedFunctionCall = modifiedFunctionCall.Replace(paramName, valueReplacement);
                             }
                             else
                             {
-                                // Wrap non-numeric types in quotes
                                 modifiedFunctionCall = modifiedFunctionCall.Replace(paramName, "\"" + valueReplacement + "\"");
                             }
                         }
                     }
 
-                    // Here you would typically use modifiedFunctionCall, e.g., evaluate it or log it
-                    Console.WriteLine("Modified Function Call: " + modifiedFunctionCall);
+                    var result = DynamicCodeRunner.RunCode(modifiedFunctionCall + ";", functions);
+                    if (columnIndex != -1)
+                    {
+                        row[columnIndex] = result;
+                    }
                 }
             }
 
+            foreach (var column in dataTable.Columns.Cast<DataColumn>().Where(c => c.ColumnName.EndsWith("__prm__")).ToList())
+            {
+                dataTable.Columns.Remove(column);
+            }
             return dataTable;
         }
 
@@ -2722,9 +2761,43 @@ namespace ReportBuilder.Web.Models
         }
     }
 
-    public class DynamicCodeRunner
+    public static class DynamicCodeRunner
     {
-        public object RunCode(string methodName, string code, object[] paramValues)
+        public static object RunCode(string code, List<CustomFunctionModel> functions)
+        {
+            string methodName = "Execute"; // This can be static since it's a generic execution method
+            string sourceCode = GenerateExecutableCode(methodName, code, functions);
+
+            SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(sourceCode);
+            MetadataReference[] references = new MetadataReference[]
+            {
+            MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location)
+            };
+            CSharpCompilation compilation = CSharpCompilation.Create(
+                "DynamicAssembly",
+                new[] { syntaxTree },
+                references,
+                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+
+            using (var ms = new MemoryStream())
+            {
+                EmitResult result = compilation.Emit(ms);
+                if (!result.Success)
+                {
+                    var failures = result.Diagnostics.Where(diagnostic =>
+                        diagnostic.IsWarningAsError || diagnostic.Severity == DiagnosticSeverity.Error);
+                    throw new InvalidOperationException("Compilation failed: " + string.Join(", ", failures.Select(diag => diag.GetMessage())));
+                }
+
+                ms.Seek(0, SeekOrigin.Begin);
+                Assembly assembly = AssemblyLoadContext.Default.LoadFromStream(ms);
+                Type type = assembly.GetType("DynamicNamespace.DynamicClass");
+                MethodInfo method = type.GetMethod(methodName);
+                return method.Invoke(null, null); // No parameters are needed here because they are included in the 'code'
+            }
+        }
+        public static object RunCode(string methodName, string code, object[] paramValues)
         {
             string sourceCode = GenerateFullClassSourceCode(methodName, code);
 
@@ -2771,7 +2844,42 @@ namespace ReportBuilder.Web.Models
             }
         }
 
-        private string GenerateFullClassSourceCode(string methodName, string code)
+        public static string GenerateFunctionCode(CustomFunctionModel model)
+        {
+            string parameterList = string.Join(", ", model.Parameters.Select(p => $"string {p.ParameterName} = \"\""));
+
+            return "        public static " + (string.IsNullOrEmpty(model.ResultDataType) ? "object" : model.ResultDataType)  + " " + model.Name + "(" + parameterList + ")\n" +
+                   "        {\n" +
+                   "            " + model.Code + "\n" +
+                   "        }\n";
+        }
+
+        private static string GenerateExecutableCode(string methodName, string code, List<CustomFunctionModel> functions)
+        {
+            var dynamicCode =
+                "using System;\n" +
+                "namespace DynamicNamespace\n" +
+                "{\n" +
+                "    public static class DynamicClass\n" +
+                "    {\n" +
+                "        public static object " + methodName + "()\n" +
+                "        {\n" +
+                "            return " + code + ";\n" + // Direct execution of the code string
+                "        }\n";                
+            
+            foreach(var f in functions)
+            {
+                dynamicCode += GenerateFunctionCode(f);
+            }
+
+            dynamicCode +=
+                "    }\n" +
+                "}";
+            return dynamicCode;
+
+        }
+
+        private static string GenerateFullClassSourceCode(string methodName, string code)
         {
             return
                 "using System;\n" +

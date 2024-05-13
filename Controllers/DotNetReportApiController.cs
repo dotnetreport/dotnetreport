@@ -252,7 +252,7 @@ namespace ReportBuilder.Web.Controllers
                     totalRecords = databaseConnection.GetTotalRecords(connectionString, sqlCount, sql);
                     dtPagedRun = databaseConnection.ExecuteQuery(connectionString, sql);
 
-                    dtPagedRun = DotNetReportHelper.ExecuteCustomFunction(dtPagedRun, sql);
+                    dtPagedRun = await DotNetReportHelper.ExecuteCustomFunction(dtPagedRun, sql);
 
                     if (sql.StartsWith("EXEC"))
                     {
@@ -604,7 +604,7 @@ namespace ReportBuilder.Web.Controllers
                 tables.AddRange(await DotNetSetupController.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
             }
             procedures.AddRange(await DotNetSetupController.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
-            functions.AddRange(await DotNetSetupController.GetApiFunctions(connect.AccountApiKey, connect.DatabaseApiKey));
+            functions.AddRange(await DotNetReportHelper.GetApiFunctions(connect.AccountApiKey, connect.DatabaseApiKey));
 
             var model = new ManageViewModel
             {
