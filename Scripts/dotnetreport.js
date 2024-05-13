@@ -138,6 +138,8 @@ function scheduleBuilder(userId) {
 	var self = this;
 
 	self.options = ['day', 'week', 'month', 'year', 'once', 'hour'];
+	self.timezonOption = ko.observableArray([]);
+	self.selectedTimezone = ko.observable(); 
 	self.showAtTime = ko.observable(true);
 	self.showDays = ko.observable(false);
 	self.showMonths = ko.observable(false);
@@ -209,6 +211,22 @@ function scheduleBuilder(userId) {
 		}
 	});
 
+	self.getTimezones = function () {
+		ajaxcall({
+			url: '/api/DotNetReportApi/GetAllTimezones',
+			noBlocking: true
+		}).done(function (timezonesData) {
+			self.timezonOption = ko.observableArray(Object.keys(timezonesData).map(function (key) {
+				return { displayName: key, timeZoneId: timezonesData[key] };
+			}));
+
+		});
+	};
+	self.onTimezoneChange = function () {
+		var selectedTimeZoneId = self.selectedTimezone();
+	};
+	self.getTimezones();
+
 	self.toJs = function () {
 		return self.hasSchedule() ? {
 			SelectedOption: self.selectedOption(),
@@ -222,7 +240,8 @@ function scheduleBuilder(userId) {
 			UserId: userId,
 			ScheduleStart: self.hasScheduleStart() ? self.scheduleStart() : '',
 			ScheduleEnd: self.hasScheduleEnd() ? self.scheduleEnd() : '',
-			Format: self.format()
+			Format: self.format(),
+			TimeZone: self.selectedTimezone() 
 		} : null;
 	};
 
@@ -255,6 +274,7 @@ function scheduleBuilder(userId) {
 		self.scheduleEnd(data.ScheduleEnd ? new Date(data.ScheduleEnd.match(/\d+/)[0] * 1) : '');
 		self.hasScheduleStart(data.ScheduleStart ? true : false);
 		self.hasScheduleEnd(data.ScheduleEnd ? true : false);
+		self.selectedTimezone(data.TimeZone);
 		self.format(data.Format);
 	}
 
@@ -3300,7 +3320,63 @@ var reportViewModel = function (options) {
 			}
 		});
 
+		// Function to handle pointer down event
+		function handlePointerDown(event) {
+			event.preventDefault(); // Prevent default browser behavior
+			document.addEventListener('pointermove', handlePointerMove);
+			document.addEventListener('pointerup', handlePointerUp);
+		}
+
+		// Function to handle pointer move event
+		function handlePointerMove(event) {
+			event.preventDefault(); // Prevent default browser behavior
+			// Update chart width and height based on pointer position
+			chartWidth = event.clientX - document.getElementById('chart_div_' + self.ReportID()).getBoundingClientRect().left;
+			chartHeight = event.clientY - document.getElementById('chart_div_' + self.ReportID()).getBoundingClientRect().top;
+			chartWidth = Math.max(100, chartWidth); // Ensure a minimum width
+			chartHeight = Math.max(100, chartHeight); // Ensure a minimum height
+			options.width = chartWidth;
+			options.height = chartHeight;
+			chart.draw(data, options);
+		}
+
+
+		// Function to handle pointer up event
+		function handlePointerUp(event) {
+			event.preventDefault(); // Prevent default browser behavior
+			document.removeEventListener('pointermove', handlePointerMove);
+			document.removeEventListener('pointerup', handlePointerUp);
+			// Save the resulting dimensions
+			saveDimensions();
+		}
+
+		// Function to save the resulting dimensions
+		function saveDimensions() {
+			// Store the dimensions in local storage
+			localStorage.setItem('chart_dimensions_' + self.ReportID(), JSON.stringify({ width: chartWidth, height: chartHeight }));
+		}
+		// Function to retrieve the saved dimensions
+		function retrieveDimensions() {
+			var storedDimensions = localStorage.getItem('chart_dimensions_' + self.ReportID());
+			if (storedDimensions) {
+				console.log('retrieveDimensions11');
+				var dimensions = JSON.parse(storedDimensions);
+				chartOptions.width = dimensions.width;
+				chartOptions.height = dimensions.height;
+			}
+			// If dimensions are not saved yet, use default values
+			else {
+				// Use initial width as '100%' and minimum height as '450px'
+				chartOptions.width = '100%';
+				chartOptions.height = '450px';
+			}
+		}
+		// Call retrieveDimensions to load saved dimensions when the chart is initialized
+		retrieveDimensions();
 		chart.draw(data, chartOptions);
+		// Add event listener for pointer down on the chart container
+		document.getElementById('chart_div_' + self.ReportID()).addEventListener('pointerdown', handlePointerDown);
+
 	};
 
 	self.loadFolders = function (folderId) {
@@ -4167,7 +4243,36 @@ var reportViewModel = function (options) {
 			reportName: self.ReportName()
 		}, 'xml');
 	}
-
+	self.downloadWord = function () {
+		self.downloadExport("DownloadWord", {
+			reportId: self.ReportID(),
+			reportSql: self.currentSql(),
+			connectKey: self.currentConnectKey(),
+			reportName: self.ReportName(),
+			expandAll: self.allExpanded(),
+			printUrl: options.printReportUrl,
+			clientId: self.clientid || '',
+			userId: self.currentUserId || '',
+			userRoles: self.currentUserRole || '',
+			dataFilters: JSON.stringify(options.dataFilters)
+		}, 'docx');
+	}
+	self.downloadWordAlt = function () {
+		var reportData = self.BuildReportData();
+		reportData.DrillDownRowUsePlaceholders = true;
+		var pivotColumn = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' });
+		self.downloadExport("DownloadWordAlt", {
+			reportSql: self.currentSql(),
+			connectKey: self.currentConnectKey(),
+			reportName: self.ReportName(),
+			allExpanded: false,
+			expandSqls: JSON.stringify(reportData),
+			columnDetails: self.getColumnDetails(),
+			includeSubTotal: self.IncludeSubTotal(),
+			pivot: self.ReportType() == 'Pivot',
+			pivotColumn: pivotColumn ? pivotColumn.fieldName : ''
+		}, 'docx');
+	}
 };
 
 var dashboardViewModel = function (options) {
