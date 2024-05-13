@@ -98,7 +98,7 @@
                                     var e = $(event.target).find('.report-chart');
                                     var d = $(event.target).find('table');
                                     if (e.length > 0 && d.length == 0) {
-                                        e.height(item.size.height - e[0].offsetTop - 40);
+                                        //e.height(item.size.height - e[0].offsetTop - 40);
                                         vm.drawChart();
                                     }
                                 });
@@ -112,7 +112,7 @@
                                     var e = $(x).find('.report-chart');
                                     var d = $(x).find('table');
                                     if (e.length > 0 && x.clientHeight && d.length == 0) {
-                                        e.height(x.clientHeight - e[0].offsetTop - 40);
+                                        //e.height(x.clientHeight - e[0].offsetTop - 40);
                                     }
                                 });
 
