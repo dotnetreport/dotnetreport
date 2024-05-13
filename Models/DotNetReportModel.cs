@@ -18,6 +18,11 @@ using System.Text.RegularExpressions;
 using System.Web;
 using Npgsql;
 using MySql.Data.MySqlClient;
+using System.Reflection;
+using System.Runtime.Loader;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Emit;
 
 namespace ReportBuilder.Web.Models
 {
@@ -439,7 +444,7 @@ namespace ReportBuilder.Web.Models
 
         public static IConfigurationRoot StaticConfig => _configuration;
 
-        public static string GetConnectionString(string key, bool addOledbProvider = true)
+        public static string GetConnectionString(string key, bool addOledbProvider = false)
         {
             var connString = StaticConfig.GetConnectionString(key);
             if (connString == null)
@@ -1073,6 +1078,55 @@ namespace ReportBuilder.Web.Models
                 return dblValue1.CompareTo(dblValue2);
             }
             return value1.ToString().CompareTo(value2.ToString());
+        }
+
+        public static DataTable ExecuteCustomFunction(DataTable dataTable, string sql)
+        {
+            if (!sql.Contains("/*|")) return dataTable;
+
+            Regex regex = new Regex(@"/\*\|(.*?)\|\*/");
+            var matches = regex.Matches(sql);
+
+            // Iterate over all matches (function calls)
+            foreach (Match match in matches)
+            {
+                string functionCall = match.Groups[1].Value;
+                Console.WriteLine("Function Call Extracted: " + functionCall);
+
+                // Iterate over all rows in the dataTable
+                foreach (DataRow row in dataTable.Rows)
+                {
+                    string modifiedFunctionCall = functionCall;
+
+                    // Iterate over all columns that end with "__prm__"
+                    foreach (DataColumn column in dataTable.Columns.Cast<DataColumn>().Where(c => c.ColumnName.EndsWith("__prm__")))
+                    {
+                        // Prepare the parameter name as it appears in the function call
+                        string paramName = "{" + column.ColumnName.Replace("__prm__", "") + "}";
+
+                        if (modifiedFunctionCall.Contains(paramName))
+                        {
+                            string valueReplacement = row[column].ToString();
+                            // Check if the datatype is numeric
+                            if (column.DataType == typeof(int) || column.DataType == typeof(decimal) || column.DataType == typeof(double) || column.DataType == typeof(long))
+                            {
+                                // Use as is for numeric types
+                                modifiedFunctionCall = modifiedFunctionCall.Replace(paramName, valueReplacement);
+                            }
+                            else
+                            {
+                                // Wrap non-numeric types in quotes
+                                modifiedFunctionCall = modifiedFunctionCall.Replace(paramName, "\"" + valueReplacement + "\"");
+                            }
+                        }
+                    }
+
+                    // Here you would typically use modifiedFunctionCall, e.g., evaluate it or log it
+                    Console.WriteLine("Modified Function Call: " + modifiedFunctionCall);
+                }
+            }
+
+            return dataTable;
         }
 
         public static DataTable PushDatasetIntoDataTable(DataTable tbl, DataSet dts, string pivotColumnName, string pivotFunction)
@@ -2667,5 +2721,72 @@ namespace ReportBuilder.Web.Models
             return dts;
         }
     }
+
+    public class DynamicCodeRunner
+    {
+        public object RunCode(string methodName, string code, object[] paramValues)
+        {
+            string sourceCode = GenerateFullClassSourceCode(methodName, code);
+
+            // Parse the source code into a syntax tree
+            SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(sourceCode);
+
+            // Set up assembly references
+            MetadataReference[] references = new MetadataReference[]
+            {
+            MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location)
+            };
+
+            // Compile the syntax tree
+            CSharpCompilation compilation = CSharpCompilation.Create(
+                "DynamicAssembly",
+                new[] { syntaxTree },
+                references,
+                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+
+            using (var ms = new MemoryStream())
+            {
+                // Emit the assembly to the memory stream
+                EmitResult result = compilation.Emit(ms);
+
+                if (!result.Success)
+                {
+                    // Handle compilation errors (e.g., by throwing an exception)
+                    var failures = result.Diagnostics.Where(diagnostic =>
+                        diagnostic.IsWarningAsError || diagnostic.Severity == DiagnosticSeverity.Error);
+
+                    throw new InvalidOperationException("Compilation failed: " + string.Join(", ", failures.Select(diag => diag.GetMessage())));
+                }
+
+                ms.Seek(0, SeekOrigin.Begin);
+
+                // Load the compiled assembly
+                Assembly assembly = AssemblyLoadContext.Default.LoadFromStream(ms);
+                Type type = assembly.GetType("DynamicNamespace.DynamicClass");
+                MethodInfo method = type.GetMethod(methodName);
+
+                // Invoke the method
+                return method.Invoke(null, new object[] { paramValues });
+            }
+        }
+
+        private string GenerateFullClassSourceCode(string methodName, string code)
+        {
+            return
+                "using System;\n" +
+                "namespace DynamicNamespace\n" +
+                "{\n" +
+                "    public static class DynamicClass\n" +
+                "    {\n" +
+                "        public static object " + methodName + "(params object[] parameters)\n" +
+                "        {\n" +
+                "            " + code + "\n" +
+                "        }\n" +
+                "    }\n" +
+                "}";
+        }
+    }
+
 
 }

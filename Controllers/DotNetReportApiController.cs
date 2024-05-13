@@ -252,6 +252,8 @@ namespace ReportBuilder.Web.Controllers
                     totalRecords = databaseConnection.GetTotalRecords(connectionString, sqlCount, sql);
                     dtPagedRun = databaseConnection.ExecuteQuery(connectionString, sql);
 
+                    dtPagedRun = DotNetReportHelper.ExecuteCustomFunction(dtPagedRun, sql);
+
                     if (sql.StartsWith("EXEC"))
                     {
                         totalRecords = dtPagedRun.Rows.Count;
