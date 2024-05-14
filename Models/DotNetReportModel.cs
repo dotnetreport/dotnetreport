@@ -23,6 +23,7 @@ using System.Runtime.Loader;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Emit;
+using System.Collections.Concurrent;
 
 namespace ReportBuilder.Web.Models
 {
@@ -1109,8 +1110,6 @@ namespace ReportBuilder.Web.Models
         {
             if (!sql.Contains("/*|")) return dataTable;
 
-            var functions = await GetApiFunctions();
-
             Regex regex = new Regex(@"/\*\|(.*?)\|\*/");
             var matches = regex.Matches(sql);
 
@@ -1129,6 +1128,7 @@ namespace ReportBuilder.Web.Models
                     }
                 }
 
+                var functionCalls = new List<string>();
                 foreach (DataRow row in dataTable.Rows)
                 {
                     string modifiedFunctionCall = functionCall;
@@ -1153,7 +1153,7 @@ namespace ReportBuilder.Web.Models
                         }
                     }
 
-                    var result = DynamicCodeRunner.RunCode(modifiedFunctionCall + ";", functions);
+                    var result = await DynamicCodeRunner.RunCode(modifiedFunctionCall + ";");
                     if (columnIndex != -1)
                     {
                         row[columnIndex] = result;
@@ -2763,85 +2763,48 @@ namespace ReportBuilder.Web.Models
 
     public static class DynamicCodeRunner
     {
-        public static object RunCode(string code, List<CustomFunctionModel> functions)
+        private static ConcurrentDictionary<string, Assembly> _assemblyCache = new ConcurrentDictionary<string, Assembly>();
+
+        public async static Task<object> RunCode(string code)
         {
-            string methodName = "Execute"; // This can be static since it's a generic execution method
-            string sourceCode = GenerateExecutableCode(methodName, code, functions);
+            string methodName = "Execute";
+            string assemblyName = "DynamicAssembly";
 
-            SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(sourceCode);
-            MetadataReference[] references = new MetadataReference[]
+            if (!_assemblyCache.TryGetValue(assemblyName, out Assembly assembly))
             {
-            MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location)
-            };
-            CSharpCompilation compilation = CSharpCompilation.Create(
-                "DynamicAssembly",
-                new[] { syntaxTree },
-                references,
-                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
-
-            using (var ms = new MemoryStream())
-            {
-                EmitResult result = compilation.Emit(ms);
-                if (!result.Success)
+                var functions = await DotNetReportHelper.GetApiFunctions();
+                string sourceCode = GenerateExecutableCode(methodName, code, functions);
+                SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(sourceCode);
+                MetadataReference[] references = new MetadataReference[]
                 {
-                    var failures = result.Diagnostics.Where(diagnostic =>
-                        diagnostic.IsWarningAsError || diagnostic.Severity == DiagnosticSeverity.Error);
-                    throw new InvalidOperationException("Compilation failed: " + string.Join(", ", failures.Select(diag => diag.GetMessage())));
-                }
+                    MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
+                    MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location)
+                };
+                CSharpCompilation compilation = CSharpCompilation.Create(
+                    assemblyName,
+                    new[] { syntaxTree },
+                    references,
+                    new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-                ms.Seek(0, SeekOrigin.Begin);
-                Assembly assembly = AssemblyLoadContext.Default.LoadFromStream(ms);
-                Type type = assembly.GetType("DynamicNamespace.DynamicClass");
-                MethodInfo method = type.GetMethod(methodName);
-                return method.Invoke(null, null); // No parameters are needed here because they are included in the 'code'
-            }
-        }
-        public static object RunCode(string methodName, string code, object[] paramValues)
-        {
-            string sourceCode = GenerateFullClassSourceCode(methodName, code);
-
-            // Parse the source code into a syntax tree
-            SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(sourceCode);
-
-            // Set up assembly references
-            MetadataReference[] references = new MetadataReference[]
-            {
-            MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location)
-            };
-
-            // Compile the syntax tree
-            CSharpCompilation compilation = CSharpCompilation.Create(
-                "DynamicAssembly",
-                new[] { syntaxTree },
-                references,
-                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
-
-            using (var ms = new MemoryStream())
-            {
-                // Emit the assembly to the memory stream
-                EmitResult result = compilation.Emit(ms);
-
-                if (!result.Success)
+                using (var ms = new MemoryStream())
                 {
-                    // Handle compilation errors (e.g., by throwing an exception)
-                    var failures = result.Diagnostics.Where(diagnostic =>
-                        diagnostic.IsWarningAsError || diagnostic.Severity == DiagnosticSeverity.Error);
+                    EmitResult result = compilation.Emit(ms);
+                    if (!result.Success)
+                    {
+                        var failures = result.Diagnostics.Where(diagnostic =>
+                            diagnostic.IsWarningAsError || diagnostic.Severity == DiagnosticSeverity.Error);
+                        throw new InvalidOperationException("Compilation failed: " + string.Join(", ", failures.Select(diag => diag.GetMessage())));
+                    }
 
-                    throw new InvalidOperationException("Compilation failed: " + string.Join(", ", failures.Select(diag => diag.GetMessage())));
+                    ms.Seek(0, SeekOrigin.Begin);
+                    assembly = AssemblyLoadContext.Default.LoadFromStream(ms);
+                    _assemblyCache[assemblyName] = assembly;
                 }
-
-                ms.Seek(0, SeekOrigin.Begin);
-
-                // Load the compiled assembly
-                Assembly assembly = AssemblyLoadContext.Default.LoadFromStream(ms);
-                Type type = assembly.GetType("DynamicNamespace.DynamicClass");
-                MethodInfo method = type.GetMethod(methodName);
-
-                // Invoke the method
-                return method.Invoke(null, new object[] { paramValues });
             }
+
+            Type type = assembly.GetType("DynamicNamespace.DynamicClass");
+            MethodInfo method = type.GetMethod(methodName);
+            return method.Invoke(null, null); // No parameters are needed here because they are included in the 'code'
         }
 
         public static string GenerateFunctionCode(CustomFunctionModel model)
@@ -2879,21 +2842,6 @@ namespace ReportBuilder.Web.Models
 
         }
 
-        private static string GenerateFullClassSourceCode(string methodName, string code)
-        {
-            return
-                "using System;\n" +
-                "namespace DynamicNamespace\n" +
-                "{\n" +
-                "    public static class DynamicClass\n" +
-                "    {\n" +
-                "        public static object " + methodName + "(params object[] parameters)\n" +
-                "        {\n" +
-                "            " + code + "\n" +
-                "        }\n" +
-                "    }\n" +
-                "}";
-        }
     }
 
 
