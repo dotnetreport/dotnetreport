@@ -11,7 +11,7 @@
     "jquery-validation": "^1.19.1",
     "jquery-validation-unobtrusive": "^3.2.11",
     "knockout": "3.5.0",
-    "lodash": "4.17.15",
+    "lodash": "4.17.21",
     "toastr": "2.1.4",
     "bootstrap-datepicker": "1.9.0",
     "font-awesome": "4.7.0",
