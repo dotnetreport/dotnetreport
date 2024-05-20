@@ -222,9 +222,7 @@ function scheduleBuilder(userId) {
 
 		});
 	};
-	self.onTimezoneChange = function () {
-		var selectedTimeZoneId = self.selectedTimezone();
-	};
+
 	self.getTimezones();
 
 	self.toJs = function () {
@@ -246,6 +244,7 @@ function scheduleBuilder(userId) {
 	};
 
 	self.fromJs = function (data) {
+		debugger
 		self.hasSchedule(data ? true : false);
 		data = data || {
 			SelectedOption: 'day',
@@ -274,7 +273,7 @@ function scheduleBuilder(userId) {
 		self.scheduleEnd(data.ScheduleEnd ? new Date(data.ScheduleEnd.match(/\d+/)[0] * 1) : '');
 		self.hasScheduleStart(data.ScheduleStart ? true : false);
 		self.hasScheduleEnd(data.ScheduleEnd ? true : false);
-		self.selectedTimezone(data.TimeZone);
+		self.selectedTimezone(data.Timezone);
 		self.format(data.Format);
 	}
 
@@ -4244,24 +4243,10 @@ var reportViewModel = function (options) {
 		}, 'xml');
 	}
 	self.downloadWord = function () {
-		self.downloadExport("DownloadWord", {
-			reportId: self.ReportID(),
-			reportSql: self.currentSql(),
-			connectKey: self.currentConnectKey(),
-			reportName: self.ReportName(),
-			expandAll: self.allExpanded(),
-			printUrl: options.printReportUrl,
-			clientId: self.clientid || '',
-			userId: self.currentUserId || '',
-			userRoles: self.currentUserRole || '',
-			dataFilters: JSON.stringify(options.dataFilters)
-		}, 'docx');
-	}
-	self.downloadWordAlt = function () {
 		var reportData = self.BuildReportData();
 		reportData.DrillDownRowUsePlaceholders = true;
 		var pivotColumn = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' });
-		self.downloadExport("DownloadWordAlt", {
+		self.downloadExport("DownloadWord", {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),

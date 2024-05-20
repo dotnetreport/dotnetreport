@@ -1431,138 +1431,8 @@ namespace ReportBuilder.Web.Models
                 return ms.ToArray();
             }
         }
-        public static async Task<(string html, int width)> GetWordFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
-           string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false)
-        {
-            var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
-            await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
-            var executablePath = "";
-            foreach (var d in Directory.GetDirectories($"{installPath}\\chrome"))
-            {
-                executablePath = $"{d}\\chrome-win64\\chrome.exe";
-                if (File.Exists(executablePath)) break;
-            }
 
-            var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = true, ExecutablePath = executablePath });
-            var page = await browser.NewPageAsync();
-            await page.SetRequestInterceptionAsync(true);
-
-            var sql = Decrypt(reportSql);
-            var sqlFields = SplitSqlColumns(sql);
-
-            var dt = new DataTable();
-            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
-            {
-                conn.Open();
-                var command = new OleDbCommand(sql, conn);
-                var adapter = new OleDbDataAdapter(command);
-
-                adapter.Fill(dt);
-            }
-
-            var model = new DotNetReportResultModel
-            {
-                ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dt, sqlFields, false),
-                Warnings = "",
-                ReportSql = sql,
-                ReportDebug = false,
-                Pager = new DotNetReportPagerModel
-                {
-                    CurrentPage = 1,
-                    PageSize = 100000,
-                    TotalRecords = dt.Rows.Count,
-                    TotalPages = 1
-                }
-            };
-
-            var formPosted = false;
-            var formData = new StringBuilder();
-            formData.AppendLine("<html><body>");
-            formData.AppendLine($"<form action=\"{printUrl}\" method=\"post\">");
-            formData.AppendLine($"<input name=\"reportSql\" value=\"{HttpUtility.HtmlEncode(reportSql)}\" />");
-            formData.AppendLine($"<input name=\"connectKey\" value=\"{HttpUtility.HtmlEncode(connectKey)}\" />");
-            formData.AppendLine($"<input name=\"reportId\" value=\"{reportId}\" />");
-            formData.AppendLine($"<input name=\"pageNumber\" value=\"{1}\" />");
-            formData.AppendLine($"<input name=\"pageSize\" value=\"{99999}\" />");
-            formData.AppendLine($"<input name=\"userId\" value=\"{userId}\" />");
-            formData.AppendLine($"<input name=\"clientId\" value=\"{clientId}\" />");
-            formData.AppendLine($"<input name=\"currentUserRole\" value=\"{currentUserRole}\" />");
-            formData.AppendLine($"<input name=\"expandAll\" value=\"{expandAll}\" />");
-            formData.AppendLine($"<input name=\"dataFilters\" value=\"{HttpUtility.HtmlEncode(dataFilters)}\" />");
-            formData.AppendLine($"<input name=\"reportData\" value=\"{HttpUtility.HtmlEncode(JsonConvert.SerializeObject(model))}\" />");
-            formData.AppendLine($"</form>");
-            formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");
-            formData.AppendLine("</body></html>");
-
-
-            // Handle request interception for Word export
-            page.Request += async (sender, e) =>
-            {
-                if (formPosted)
-                {
-                    await e.Request.ContinueAsync();
-                    return;
-                }
-
-                await e.Request.RespondAsync(new ResponseData
-                {
-                    Status = System.Net.HttpStatusCode.OK,
-                    Body = formData.ToString()
-                });
-
-                formPosted = true;
-            };
-            await page.GoToAsync(printUrl, new NavigationOptions
-            {
-                WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
-            });
-            await page.WaitForSelectorAsync(".report-inner", new WaitForSelectorOptions { Visible = true });
-            int height = await page.EvaluateExpressionAsync<int>("document.body.offsetHeight");
-            int width = await page.EvaluateExpressionAsync<int>("$('table').width()");
-            var html = await page.GetContentAsync();
-            return (html, width);
-        }
-        public static  MemoryStream ExportToWord(string htmlValue,double width)
-        {
-            //string htmlValue = "myHtmlCodes";
-
-            using MemoryStream stream = new MemoryStream();
-            using WordprocessingDocument package = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document);
-
-            MainDocumentPart mainPart = package.MainDocumentPart;
-            if (mainPart == null)
-            {
-                mainPart = package.AddMainDocumentPart();
-                new Document(new Body()).Save(mainPart);
-            }
-            Body body = mainPart.Document.Body;
-            var sectionProperties = mainPart.Document.Body.Elements<SectionProperties>().FirstOrDefault();
-            if (sectionProperties == null)
-            {
-                sectionProperties = new SectionProperties();
-                mainPart.Document.Body.InsertBefore(sectionProperties, mainPart.Document.Body.FirstChild);
-            }
-
-            var pageSize = sectionProperties.Elements<DocumentFormat.OpenXml.Wordprocessing.PageSize>().FirstOrDefault();
-            if (pageSize == null && width < 900)
-            {
-                pageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize() { Width = Convert.ToUInt32(width * 1440), Orient = PageOrientationValues.Portrait };
-                sectionProperties.Append(pageSize);
-            }
-            else
-            {
-                pageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize() { Width = Convert.ToUInt32(width * 1440), Orient = PageOrientationValues.Landscape };
-                sectionProperties.Append(pageSize);
-            }
-        
-            HtmlConverter converter = new HtmlConverter(mainPart);
-            converter.ParseHtml(htmlValue);
-            mainPart.Document.Save();
-
-            return stream;
-        }
-
-        public static async Task<byte[]> GetWordFileAlt(string reportSql, string connectKey, string reportName, bool allExpanded = false,
+        public static async Task<byte[]> GetWordFile(string reportSql, string connectKey, string reportName, bool allExpanded = false,
             string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
         {
             var sql = Decrypt(reportSql);
@@ -1601,7 +1471,7 @@ namespace ReportBuilder.Web.Models
                     {
                         MainDocumentPart mainPart = wordDocument.AddMainDocumentPart();
                         mainPart.Document = new Document();
-                        Body body = mainPart.Document.AppendChild(new Body());
+                        Body body = mainPart.Document.AppendChild(new Body());                     
                         // Add report header
                         Paragraph header = new Paragraph(new Run(new Text(reportName)));
                         header.ParagraphProperties = new ParagraphProperties(new Justification() { Val = JustificationValues.Center });
@@ -1612,47 +1482,39 @@ namespace ReportBuilder.Web.Models
                             // Create table
                             Table table = new Table();
                             TableProperties props = new TableProperties(new Justification() { Val = JustificationValues.Center },
-                              new TableBorders(
-                              new TopBorder
-                              {
-                                  Val = new EnumValue<BorderValues>(BorderValues.Single),
-                                  Size = 12
-                              },
-                              new BottomBorder
-                              {
-                                  Val = new EnumValue<BorderValues>(BorderValues.Single),
-                                  Size = 12
-                              },
-                              new LeftBorder
-                              {
-                                  Val = new EnumValue<BorderValues>(BorderValues.Single),
-                                  Size = 12
-                              },
-                              new RightBorder
-                              {
-                                  Val = new EnumValue<BorderValues>(BorderValues.Single),
-                                  Size = 12
-                              },
-                              new InsideHorizontalBorder
-                              {
-                                  Val = new EnumValue<BorderValues>(BorderValues.Single),
-                                  Size = 12
-                              },
-                              new InsideVerticalBorder
-                              {
-                                  Val = new EnumValue<BorderValues>(BorderValues.Single),
-                                  Size = 12
-                              }));
+                             new TableBorders(
+                             new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
+                             new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
+                             new LeftBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
+                             new RightBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
+                             new InsideHorizontalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
+                             new InsideVerticalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 }));
+
                             // Append table properties
                             table.AppendChild<TableProperties>(props);
                             // Add header row
                             TableRow headerRow = new TableRow();
+                            // Calculate max text width for each column
+                           // int[] maxColumnWidths = new int[dt.Columns.Count];
                             foreach (DataColumn column in dt.Columns)
                             {
+                                //maxColumnWidths[column.Ordinal] = EstimateTextWidth(column.ColumnName);
                                 TableCell cell = new TableCell(new Paragraph(new Run(new Text(column.ColumnName))));
                                 headerRow.AppendChild(cell);
                             }
                             table.AppendChild(headerRow);
+
+                            // Normalize column widths to fit the available width
+                            //int totalWidth = 0;
+                            //foreach (int width in maxColumnWidths)
+                            //{
+                            //    totalWidth += width;
+                            //}
+                            //// Set landscape orientation
+                            //SectionProperties sectionProperties = new SectionProperties();
+                            //DocumentFormat.OpenXml.Wordprocessing.PageSize pageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize() { Width = Convert.ToUInt32(totalWidth * 1440), Orient = PageOrientationValues.Landscape };
+                            //sectionProperties.Append(pageSize);
+                            //body.Append(sectionProperties);
                             // Add data rows
                             foreach (DataRow row in dt.Rows)
                             {
@@ -1677,12 +1539,26 @@ namespace ReportBuilder.Web.Models
                             Paragraph expandedData = new Paragraph(new Run(new Text("No RecordS Found")));
                             body.AppendChild(expandedData);
                         }
+                        // Ensure word wrapping doesn't break words
+                        foreach (TableCell cell in body.Descendants<TableCell>())
+                        {
+                            cell.TableCellProperties = new TableCellProperties();
+                            NoWrap noWrap = new NoWrap();
+                            cell.TableCellProperties.Append(noWrap);
+                        }
+                        wordDocument.Save();
                     }
                     return memStream.ToArray();
                 }
             }
         }
-
+        //static private int EstimateTextWidth(string text)
+        //{
+        //    // Simple estimation: number of characters * average width of a character in twips
+        //    // Note: 1 inch = 1440 twips, and average character width can vary. Adjust this multiplier as needed.
+        //    int averageCharWidthInTwips = 10;
+        //    return text.Length * averageCharWidthInTwips;
+        //}
         public static async Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
                     string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false)
         {
