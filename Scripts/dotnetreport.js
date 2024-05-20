@@ -318,6 +318,7 @@ function filterGroupViewModel(args) {
 
 		var field = ko.observable();	
 		var valueIn = e.Operator == 'in' || e.Operator == 'not in' ? (e.Value1 || '').split(',') : [];
+		var parentIn = e.ParentIn ? e.ParentIn.split(',') : [];
 		var filter = {
 			AndOr: ko.observable(isFilterOnFly ? ' AND ' : e.AndOr),
 			Field: field,
@@ -327,7 +328,7 @@ function filterGroupViewModel(args) {
 			ValueIn: ko.observableArray(valueIn),
 			LookupList: lookupList,
 			ParentList: parentList,
-			ParentIn: ko.observableArray([]),
+			ParentIn: ko.observableArray(parentIn),
 			Apply: ko.observable(e.Apply != null ? e.Apply : true),
 			IsFilterOnFly: isFilterOnFly === true ? true : false,
 			showParentFilter: ko.observable(true)
@@ -410,6 +411,10 @@ function filterGroupViewModel(args) {
 								if (list.d) { list = list.d; }
 								if (list.result) { list = list.result; }
 								parentList(_.sortBy(list, 'text'));
+								if (parentIn.length > 0) {
+									filter.ParentIn(parentIn);
+									parentIn = [];
+								}
 							});
 						});
 
@@ -2144,6 +2149,7 @@ var reportViewModel = function (options) {
 					Operator: e.Operator(),
 					Value1: e.Operator() == "in" || e.Operator() == "not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' ? "blank" : e.Value()),
 					Value2: e.Value2(),
+					ParentIn: e.ParentIn().join(","),
 					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
 				} : null;
 
@@ -2198,6 +2204,7 @@ var reportViewModel = function (options) {
 					Operator: e.Operator(),
 					Value1: e.Operator() == "in" || e.Operator() == "not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' ? "blank" : e.Value()),
 					Value2: e.Value2(),
+					ParentIn: e.ParentIn().join(","),
 					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
 				} : null;
 
@@ -4502,6 +4509,7 @@ var dashboardViewModel = function (options) {
 									Value: ko.observable(f.Value()),
 									Value2: ko.observable(f.Value2()),
 									ValueIn: ko.observable(f.ValueIn()),
+									ParentIn: ko.observable(f.ParentIn()),
 									LookupList: ko.observable(f.LookupList()),
 									Apply: ko.observable(true),
 									IsFilterOnFly: true,
@@ -4589,6 +4597,7 @@ var dashboardViewModel = function (options) {
 							f.Value(combinedFilter.Value());
 							f.Value2(combinedFilter.Value2());
 							f.ValueIn(combinedFilter.ValueIn());
+							f.ParentIn(combinedFilter.ParentIn());
 							f.LookupList(combinedFilter.LookupList());
 
 							filterApplied = true;
