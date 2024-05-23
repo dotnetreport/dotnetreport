@@ -4652,7 +4652,7 @@ var dashboardViewModel = function (options) {
 					height: item.height,
 					dashboardId: self.currentDashboard().id,
 					reportId: parseInt(item.id),
-					WidgetSettings: JSON.stringify({
+					widgetSettings: JSON.stringify({
 						gridHeight: item.height,
 						gridWidth: item.width,
 						expandedHeight: item.height,
