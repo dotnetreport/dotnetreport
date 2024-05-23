@@ -1495,26 +1495,41 @@ namespace ReportBuilder.Web.Models
                             // Add header row
                             TableRow headerRow = new TableRow();
                             // Calculate max text width for each column
-                           // int[] maxColumnWidths = new int[dt.Columns.Count];
+                            int[] maxColumnWidths = new int[dt.Columns.Count];
                             foreach (DataColumn column in dt.Columns)
                             {
-                                //maxColumnWidths[column.Ordinal] = EstimateTextWidth(column.ColumnName);
+                                maxColumnWidths[column.Ordinal] = EstimateTextWidth(column.ColumnName);
                                 TableCell cell = new TableCell(new Paragraph(new Run(new Text(column.ColumnName))));
                                 headerRow.AppendChild(cell);
                             }
                             table.AppendChild(headerRow);
 
                             // Normalize column widths to fit the available width
-                            //int totalWidth = 0;
-                            //foreach (int width in maxColumnWidths)
-                            //{
-                            //    totalWidth += width;
-                            //}
-                            //// Set landscape orientation
-                            //SectionProperties sectionProperties = new SectionProperties();
-                            //DocumentFormat.OpenXml.Wordprocessing.PageSize pageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize() { Width = Convert.ToUInt32(totalWidth * 1440), Orient = PageOrientationValues.Landscape };
-                            //sectionProperties.Append(pageSize);
-                            //body.Append(sectionProperties);
+                            int totalWidth = 0;
+                            foreach (int width in maxColumnWidths)
+                            {
+                                totalWidth += width;
+                            }
+                            if (totalWidth > 13900)
+                            {
+                                // Set landscape orientation
+                                SectionProperties sectionProperties = new SectionProperties();
+                                DocumentFormat.OpenXml.Wordprocessing.PageSize pageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize() { Width = Convert.ToUInt32(totalWidth +(1440*2)), Orient = PageOrientationValues.Landscape };
+                                sectionProperties.Append(pageSize);
+                                body.Append(sectionProperties);
+                            }
+                            else
+                            {
+                                // Set page orientation to landscape
+                                SectionProperties sectionProps = new SectionProperties();
+                                DocumentFormat.OpenXml.Wordprocessing.PageSize defaultpageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize()
+                                {
+                                    Orient = PageOrientationValues.Landscape,
+                                    Width = 16838,  // 11.69 inch in Twips (297 mm)
+                                };
+                                sectionProps.Append(defaultpageSize);
+                                body.Append(sectionProps);
+                            }
                             // Add data rows
                             foreach (DataRow row in dt.Rows)
                             {
@@ -1552,13 +1567,13 @@ namespace ReportBuilder.Web.Models
                 }
             }
         }
-        //static private int EstimateTextWidth(string text)
-        //{
-        //    // Simple estimation: number of characters * average width of a character in twips
-        //    // Note: 1 inch = 1440 twips, and average character width can vary. Adjust this multiplier as needed.
-        //    int averageCharWidthInTwips = 10;
-        //    return text.Length * averageCharWidthInTwips;
-        //}
+        static private int EstimateTextWidth(string text)
+        {
+            // Simple estimation: number of characters * average width of a character in twips
+            // Note: 1 inch = 1440 twips, and average character width can vary. Adjust this multiplier as needed.
+            int averageCharWidthInTwips = 120;
+            return text.Length * averageCharWidthInTwips;
+        }
         public static async Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
                     string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false)
         {
