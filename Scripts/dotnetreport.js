@@ -244,7 +244,6 @@ function scheduleBuilder(userId) {
 	};
 
 	self.fromJs = function (data) {
-		debugger
 		self.hasSchedule(data ? true : false);
 		data = data || {
 			SelectedOption: 'day',
@@ -3318,15 +3317,11 @@ var reportViewModel = function (options) {
 				$("#drilldownModal").modal('show');
 			}
 		});
-
-		// Function to handle pointer down event
 		function handlePointerDown(event) {
 			event.preventDefault(); // Prevent default browser behavior
 			document.addEventListener('pointermove', handlePointerMove);
 			document.addEventListener('pointerup', handlePointerUp);
 		}
-
-		// Function to handle pointer move event
 		function handlePointerMove(event) {
 			event.preventDefault(); // Prevent default browser behavior
 			// Update chart width and height based on pointer position
@@ -3338,34 +3333,24 @@ var reportViewModel = function (options) {
 			options.height = chartHeight;
 			chart.draw(data, options);
 		}
-
-
-		// Function to handle pointer up event
 		function handlePointerUp(event) {
 			event.preventDefault(); // Prevent default browser behavior
 			document.removeEventListener('pointermove', handlePointerMove);
 			document.removeEventListener('pointerup', handlePointerUp);
-			// Save the resulting dimensions
 			saveDimensions();
 		}
 
-		// Function to save the resulting dimensions
 		function saveDimensions() {
-			// Store the dimensions in local storage
 			localStorage.setItem('chart_dimensions_' + self.ReportID(), JSON.stringify({ width: chartWidth, height: chartHeight }));
 		}
-		// Function to retrieve the saved dimensions
 		function retrieveDimensions() {
 			var storedDimensions = localStorage.getItem('chart_dimensions_' + self.ReportID());
 			if (storedDimensions) {
-				console.log('retrieveDimensions11');
 				var dimensions = JSON.parse(storedDimensions);
 				chartOptions.width = dimensions.width;
 				chartOptions.height = dimensions.height;
 			}
-			// If dimensions are not saved yet, use default values
 			else {
-				// Use initial width as '100%' and minimum height as '450px'
 				chartOptions.width = '100%';
 				chartOptions.height = '450px';
 			}
@@ -3374,8 +3359,15 @@ var reportViewModel = function (options) {
 		retrieveDimensions();
 		chart.draw(data, chartOptions);
 		// Add event listener for pointer down on the chart container
-		document.getElementById('chart_div_' + self.ReportID()).addEventListener('pointerdown', handlePointerDown);
+		var chartContainer = document.getElementById('chart_div_' + self.ReportID());
+		chartContainer.addEventListener('pointerdown', handlePointerDown);
 
+		chartContainer.addEventListener('pointerenter', function () {
+			chartContainer.style.cursor = 'nwse-resize';
+		});
+		chartContainer.addEventListener('pointerleave', function () {
+			chartContainer.style.cursor = 'default';
+		});
 	};
 
 	self.loadFolders = function (folderId) {
@@ -4659,7 +4651,13 @@ var dashboardViewModel = function (options) {
 					width: item.width,
 					height: item.height,
 					dashboardId: self.currentDashboard().id,
-					reportId: parseInt(item.id)
+					reportId: parseInt(item.id),
+					WidgetSettings: JSON.stringify({
+						gridHeight: item.height,
+						gridWidth: item.width,
+						expandedHeight: item.height,
+						expandedWidth: item.width
+					}),
 				})
 			}
 		});
