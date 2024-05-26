@@ -141,7 +141,7 @@ namespace ReportBuilder.Web.Jobs
                                         fileExt = ".xlsx";
                                         break;
                                 }
-                                
+
                                 // send email
                                 var mail = new MailMessage
                                 {
@@ -152,8 +152,16 @@ namespace ReportBuilder.Web.Jobs
                                 };
                                 mail.To.Add(schedule.EmailTo);
 
-                                var attachment = new Attachment(new MemoryStream(fileData), report.Name + fileExt);
-                                mail.Attachments.Add(attachment);
+
+                                if (schedule.Format == "Link")
+                                {
+                                    mail.Body = $"Please click on the link below to Run your Report:<br><br><a href=\"{JobScheduler.WebAppRootUrl}/DotnetReport/Report?linkedreport=true&noparent=true&reportId={reportToRun.ReportId}\">{report.Description}</a>";
+                                }
+                                else
+                                {
+                                    var attachment = new Attachment(new MemoryStream(fileData), report.Name + fileExt);
+                                    mail.Attachments.Add(attachment);
+                                }
 
                                 using (var smtpServer = new SmtpClient(mailServer))
                                 {
