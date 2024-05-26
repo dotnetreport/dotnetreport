@@ -4522,7 +4522,8 @@ var dashboardViewModel = function (options) {
 				userRoles: options.userRoles,
 				skipDraw: true,
 				printReportUrl: options.printReportUrl,
-				dataFilters: options.dataFilters
+				dataFilters: options.dataFilters,
+				getTimeZonesUrl: options.getTimeZonesUrl,
 			});
 
 			report.x = ko.observable(x.x);
