@@ -134,7 +134,7 @@ function linkFieldViewModel(args, options) {
 	}
 }
 
-function scheduleBuilder(userId) {
+function scheduleBuilder(userId, getTimeZonesUrl) {
 	var self = this;
 
 	self.options = ['day', 'week', 'month', 'year', 'once', 'hour'];
@@ -213,8 +213,9 @@ function scheduleBuilder(userId) {
 
 	self.getTimezones = function () {
 		ajaxcall({
-			url: '/api/DotNetReportApi/GetAllTimezones',
-			noBlocking: true
+			url: getTimeZonesUrl,
+			noBlocking: true,
+			type: 'GET'
 		}).done(function (timezonesData) {
 			self.timezonOption = ko.observableArray(Object.keys(timezonesData).map(function (key) {
 				return { displayName: key, timeZoneId: timezonesData[key] };
@@ -1286,7 +1287,7 @@ var reportViewModel = function (options) {
 		return _.filter(self.SelectedFields(), function (x) { return !x.disabled(); });
 	});
 
-	self.scheduleBuilder = new scheduleBuilder(self.userIdForSchedule);
+	self.scheduleBuilder = new scheduleBuilder(self.userIdForSchedule, options.getTimeZonesUrl);
 
 	self.ManageFolder = {
 		FolderName: ko.observable(),

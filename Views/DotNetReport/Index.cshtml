@@ -36,6 +36,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 userSettings: data,
                 dataFilters: data.dataFilters,
                 printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, this.Request.Url.Scheme)",
+                getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
                 samePageOnRun: true
             });
 

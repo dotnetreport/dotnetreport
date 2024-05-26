@@ -76,7 +76,8 @@
                             dashboardId: dashboardId,
                             runExportUrl: "",
                             printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, this.Request.Url.Scheme)",
-                            loadSavedDashbordUrl: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")'
+                            loadSavedDashbordUrl: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")',
+                            getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")'
                         });
 
                         vm.init().done(function () {
