@@ -243,6 +243,7 @@ namespace ReportBuilder.Web.Models
         public int Width { get; set; }
         public int Height { get; set; }
         public bool IsWidget { get; set; }
+        public string WidgetSettings { get; set; }    
     }
 
     public class DotNetDashboardModel

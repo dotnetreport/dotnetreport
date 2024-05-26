@@ -3359,14 +3359,19 @@ var reportViewModel = function (options) {
 		retrieveDimensions();
 		chart.draw(data, chartOptions);
 		// Add event listener for pointer down on the chart container
-		var chartContainer = document.getElementById('chart_div_' + self.ReportID());
+		var parentDiv = document.getElementById('chart_div_' + self.ReportID());
+		var chartContainer = parentDiv.children[0].children[0]; // Assuming the first child is the one you want
 		chartContainer.addEventListener('pointerdown', handlePointerDown);
 
 		chartContainer.addEventListener('pointerenter', function () {
 			chartContainer.style.cursor = 'nwse-resize';
+			chartContainer.style.border = '1px dashed black';
+			chartContainer.style.boxSizing = 'content-box';
 		});
 		chartContainer.addEventListener('pointerleave', function () {
 			chartContainer.style.cursor = 'default';
+			chartContainer.style.border = 'none';
+			chartContainer.style.boxSizing = 'border-box';
 		});
 	};
 
@@ -4653,10 +4658,10 @@ var dashboardViewModel = function (options) {
 					dashboardId: self.currentDashboard().id,
 					reportId: parseInt(item.id),
 					widgetSettings: JSON.stringify({
-						gridHeight: item.height,
-						gridWidth: item.width,
-						expandedHeight: item.height,
-						expandedWidth: item.width
+						gridChartHeight: item.height,
+						gridChartWidth: item.width,
+						expandedChartHeight: item.height,
+						expandedChartWidth: item.width
 					}),
 				})
 			}
