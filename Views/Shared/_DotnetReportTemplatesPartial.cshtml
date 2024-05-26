@@ -4,13 +4,13 @@
         <!-- ko if: !hasForeignKey-->
         <!-- ko if: fieldType=='DateTime'-->
         <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 -->
-        <input class="form-control" data-bind="datepicker: $parent.Value" required />
+        <input class="form-control" data-bind="datepicker: $parent.Value,datepickerOptions: { dateFormat: 'dd/mm/yy'}" required />
         <!-- /ko -->
         <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
         From
-        <input required class="form-control" data-bind="datepicker: $parent.Value" />
+        <input required class="form-control" data-bind="datepicker: $parent.Value,datepickerOptions: { dateFormat: 'dd/mm/yy'}" />
         to
-        <input data-bind="datepicker: $parent.Value2" class="form-control" required />
+        <input data-bind="datepicker: $parent.Value2,datepickerOptions: { dateFormat: 'dd/mm/yy'}" class="form-control" required />
         <!-- /ko -->
         <!-- ko if: ['range'].indexOf($parent.Operator()) != -1 -->
         <select data-bind="value: $parent.Value" class="form-control" required>
@@ -49,9 +49,9 @@
         <!-- /ko -->
         <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
         From
-        <input class="form-control" type="number" data-bind="value: $parent.Value" required />
+        <input class="form-control" type="number" data-bind="value: $parent.Value,datepickerOptions: { dateFormat: 'dd/mm/yy'}" required />
         to
-        <input class="form-control" type="number" data-bind="value: $parent.Value2" required />
+        <input class="form-control" type="number" data-bind="value: $parent.Value2,datepickerOptions: { dateFormat: 'dd/mm/yy'}" required />
         <!-- /ko -->
         <!-- /ko -->
         <!-- ko if: fieldType=='Boolean' && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
@@ -729,6 +729,8 @@
                             <option value="EXCEL">Excel</option>
                                 <option value="CSV">CSV</option>
                                <option value="PDF">PDF</option>
+                               <option value="WORD">Word</option>
+                               <option value="LINK">Link</option>
                            </select>
                       </div>
                  </div>
@@ -764,6 +766,17 @@
                       </div>
                   </div>
              </div>
+            <div class="form-horizontal form-group">
+               <div class="form-group row">
+                <label class="col-sm-2 control-label">Pick Time Zone</label>
+                    <div class="col-sm-10">
+                     <select class="form-control" data-bind="options: timezonOption,
+                                                   optionsText: 'displayName',
+                                                   optionsValue: 'timeZoneId',
+                                                   value: selectedTimezone,
+                                                   select2: {allowClear: true, placeholder: 'Set a time zone to send report'}" />
+                 </div>
+            </div>
          </div>
     </div>
 </script>
