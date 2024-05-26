@@ -1,4 +1,9 @@
-﻿using Newtonsoft.Json;
+﻿using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Wordprocessing;
+using HtmlToOpenXml;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using OfficeOpenXml;
 using PdfSharp;
@@ -238,6 +243,7 @@ namespace ReportBuilder.Web.Models
         public int Width { get; set; }
         public int Height { get; set; }
         public bool IsWidget { get; set; }
+        public string WidgetSettings { get; set; }    
     }
 
     public class DotNetDashboardModel
@@ -1003,7 +1009,6 @@ namespace ReportBuilder.Web.Models
                         }
                     }
                 }
-
                 using (ExcelPackage xp = new ExcelPackage())
                 {
                     ExcelWorksheet ws = xp.Workbook.Worksheets.Add(reportName);
@@ -1428,6 +1433,148 @@ namespace ReportBuilder.Web.Models
             }
         }
 
+        public static async Task<byte[]> GetWordFile(string reportSql, string connectKey, string reportName, bool allExpanded = false,
+            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
+        {
+            var sql = Decrypt(reportSql);
+            var sqlFields = SplitSqlColumns(sql);
+
+            // Execute sql
+            var dt = new DataTable();
+            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
+            {
+                conn.Open();
+                var command = new OleDbCommand(sql, conn);
+                var adapter = new OleDbDataAdapter(command);
+
+                adapter.Fill(dt);
+
+                if (pivot) dt = Transpose(dt);
+
+                if (columns?.Count > 0)
+                {
+                    foreach (var col in columns)
+                    {
+                        if (dt.Columns.Contains(col.fieldName) && col.hideStoredProcColumn)
+                        {
+                            dt.Columns.Remove(col.fieldName);
+                        }
+                        else if (!String.IsNullOrWhiteSpace(col.customfieldLabel))
+                        {
+                            dt.Columns[col.fieldName].ColumnName = col.customfieldLabel;
+                        }
+                    }
+                }
+
+                using (MemoryStream memStream = new MemoryStream())
+                {
+                    using (WordprocessingDocument wordDocument = WordprocessingDocument.Create(memStream, WordprocessingDocumentType.Document))
+                    {
+                        MainDocumentPart mainPart = wordDocument.AddMainDocumentPart();
+                        mainPart.Document = new Document();
+                        Body body = mainPart.Document.AppendChild(new Body());                     
+                        // Add report header
+                        Paragraph header = new Paragraph(new Run(new Text(reportName)));
+                        header.ParagraphProperties = new ParagraphProperties(new Justification() { Val = JustificationValues.Center });
+                        body.AppendChild(header);
+                        // Add data in table format
+                        if (dt.Rows.Count > 0)
+                        {
+                            // Create table
+                            Table table = new Table();
+                            TableProperties props = new TableProperties(new Justification() { Val = JustificationValues.Center },
+                             new TableBorders(
+                             new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
+                             new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
+                             new LeftBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
+                             new RightBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
+                             new InsideHorizontalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
+                             new InsideVerticalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 }));
+
+                            // Append table properties
+                            table.AppendChild<TableProperties>(props);
+                            // Add header row
+                            TableRow headerRow = new TableRow();
+                            // Calculate max text width for each column
+                            int[] maxColumnWidths = new int[dt.Columns.Count];
+                            foreach (DataColumn column in dt.Columns)
+                            {
+                                maxColumnWidths[column.Ordinal] = EstimateTextWidth(column.ColumnName);
+                                TableCell cell = new TableCell(new Paragraph(new Run(new Text(column.ColumnName))));
+                                headerRow.AppendChild(cell);
+                            }
+                            table.AppendChild(headerRow);
+
+                            // Normalize column widths to fit the available width
+                            int totalWidth = 0;
+                            foreach (int width in maxColumnWidths)
+                            {
+                                totalWidth += width;
+                            }
+                            if (totalWidth > 13900)
+                            {
+                                // Set landscape orientation
+                                SectionProperties sectionProperties = new SectionProperties();
+                                DocumentFormat.OpenXml.Wordprocessing.PageSize pageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize() { Width = Convert.ToUInt32(totalWidth +(1440*2)), Orient = PageOrientationValues.Landscape };
+                                sectionProperties.Append(pageSize);
+                                body.Append(sectionProperties);
+                            }
+                            else
+                            {
+                                // Set page orientation to landscape
+                                SectionProperties sectionProps = new SectionProperties();
+                                DocumentFormat.OpenXml.Wordprocessing.PageSize defaultpageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize()
+                                {
+                                    Orient = PageOrientationValues.Landscape,
+                                    Width = 16838,  // 11.69 inch in Twips (297 mm)
+                                };
+                                sectionProps.Append(defaultpageSize);
+                                body.Append(sectionProps);
+                            }
+                            // Add data rows
+                            foreach (DataRow row in dt.Rows)
+                            {
+                                TableRow dataRow = new TableRow();
+                                foreach (DataColumn column in dt.Columns)
+                                {
+                                    TableCell cell = new TableCell(new Paragraph(new Run(new Text(row[column].ToString()))));
+                                    dataRow.AppendChild(cell);
+                                }
+                                table.AppendChild(dataRow);
+                            }
+                            body.AppendChild(table);
+                            // Add expanded data if applicable
+                            if (allExpanded)
+                            {
+                                Paragraph expandedData = new Paragraph(new Run(new Text("Additional expanded data")));
+                                body.AppendChild(expandedData);
+                            }
+                        }
+                        else
+                        {
+                            Paragraph expandedData = new Paragraph(new Run(new Text("No RecordS Found")));
+                            body.AppendChild(expandedData);
+                        }
+                        // Ensure word wrapping doesn't break words
+                        foreach (TableCell cell in body.Descendants<TableCell>())
+                        {
+                            cell.TableCellProperties = new TableCellProperties();
+                            NoWrap noWrap = new NoWrap();
+                            cell.TableCellProperties.Append(noWrap);
+                        }
+                        wordDocument.Save();
+                    }
+                    return memStream.ToArray();
+                }
+            }
+        }
+        static private int EstimateTextWidth(string text)
+        {
+            // Simple estimation: number of characters * average width of a character in twips
+            // Note: 1 inch = 1440 twips, and average character width can vary. Adjust this multiplier as needed.
+            int averageCharWidthInTwips = 120;
+            return text.Length * averageCharWidthInTwips;
+        }
         public static async Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
                     string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false)
         {
