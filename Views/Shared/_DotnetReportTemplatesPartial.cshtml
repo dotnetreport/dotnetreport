@@ -767,12 +767,13 @@
              </div>
             <div class="form-horizontal form-group">
                <div class="form-group row">
-                <label class="col-sm-2 control-label">TimeZone</label>
+                <label class="col-sm-2 control-label">Pick Time Zone</label>
                     <div class="col-sm-10">
                      <select class="form-control" data-bind="options: timezonOption,
                                                    optionsText: 'displayName',
                                                    optionsValue: 'timeZoneId',
-                                                   value: selectedTimezone" />
+                                                   value: selectedTimezone,
+                                                   select2: {allowClear: true, placeholder: 'Set a time zone to send report'}" />
                  </div>
             </div>
          </div>

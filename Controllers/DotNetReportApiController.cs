@@ -557,6 +557,7 @@ namespace ReportBuilder.Web.Controllers
         {
             var timeZones = TimeZoneInfo.GetSystemTimeZones();
             SortedList<string, string> timeZoneList = new SortedList<string, string>();
+            timeZoneList.Add("", "");
 
             foreach (TimeZoneInfo timezone in timeZones)
             {
