@@ -412,6 +412,11 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             <span class="fa fa-file-excel-o"></span> Excel (Expanded)
                                         </a>
                                     </li>
+                                     <li class="dropdown-item">
+                                        <a href="#" data-bind="click: downloadWord">
+                                            <span class="fa fa-file-word-o"></span> Word
+                                        </a>
+                                    </li>
                                     <li class="dropdown-item">
                                         <a href="#" data-bind="click: downloadCsv">
                                             <span class="fa fa-file-excel-o"></span> Csv
