@@ -63,6 +63,7 @@
                             dashboardId: dashboardId,
                             runExportUrl: svc,
                             printReportUrl: window.location.protocol + "//" + window.location.host + "/DotnetReport/ReportPrint.aspx",
+                            getTimeZonesUrl: svc + "GetAllTimezones",
                             loadSavedDashbordUrl: svc + 'LoadSavedDashboard'
                         });
 

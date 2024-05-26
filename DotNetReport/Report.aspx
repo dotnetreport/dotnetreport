@@ -38,6 +38,7 @@
                     userSettings: data,
                     dataFilters: data.dataFilters,
                     runExportUrl: svc,
+                    getTimeZonesUrl: svc + "GetAllTimezones",
                     printReportUrl: window.location.protocol + "//" + window.location.host + "/DotnetReport/ReportPrint.aspx"
                 });
 

@@ -463,6 +463,19 @@ namespace ReportBuilder.WebForms.DotNetReport
         }
 
         [WebMethod(EnableSession = true)]
+        public async Task DownloadWord(string reportSql, string connectKey, string reportName, bool allExpanded, string expandSqls, string columnDetails = null, bool includeSubtotal = false, bool pivot = false)
+        {
+            reportSql = HttpUtility.HtmlDecode(reportSql);
+            var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
+            var word = await DotNetReportHelper.GetWordFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot);
+
+            Context.Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".docx");
+            Context.Response.ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            Context.Response.BinaryWrite(word);
+            Context.Response.End();
+        }
+
+        [WebMethod(EnableSession = true)]
         public void DownloadXml(string reportSql, string connectKey, string reportName)
         {
 
@@ -683,6 +696,43 @@ namespace ReportBuilder.WebForms.DotNetReport
             }
 
             return GetSearchProcedure(value, accountKey, dataConnectKey);
+        }
+
+        private SortedList<string, string> GetTimezones()
+        {
+            var timeZones = TimeZoneInfo.GetSystemTimeZones();
+            SortedList<string, string> timeZoneList = new SortedList<string, string>();
+            timeZoneList.Add("", "");
+
+            foreach (TimeZoneInfo timezone in timeZones)
+            {
+                DateTime localTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.Now.ToUniversalTime(), timezone);
+                TimeSpan localOffset = timezone.GetUtcOffset(localTime);
+
+                string offset = localOffset.ToString();
+                if (!offset.Contains("-"))
+                {
+                    offset = $"+{offset}";
+                }
+
+                string display = $"(GMT {offset}) {timezone.StandardName}";
+                if (timezone.IsDaylightSavingTime(localTime))
+                {
+                    display = $"{display} (active daylight savings)";
+                }
+
+                timeZoneList.Add(display, timezone.Id); // Use timezone Id as value
+            }
+
+            return timeZoneList;
+        }
+
+        [WebMethod(EnableSession = true)]
+        [ScriptMethod(UseHttpGet = true, ResponseFormat = ResponseFormat.Json)]
+        public object GetAllTimezones()
+        {
+            var timeZones = GetTimezones(); // Call your existing GetTimezones method
+            return timeZones;
         }
 
         private List<TableViewModel> GetSearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)

@@ -37,6 +37,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                     runLinkReportUrl: svc + "RunReportLink",
                     runExportUrl: svc,
                     samePageOnRun: true,
+                    getTimeZonesUrl: svc + "GetAllTimezones",
                     printReportUrl: window.location.protocol + "//" + window.location.host + "/DotnetReport/ReportPrint.aspx"
                 });
 
