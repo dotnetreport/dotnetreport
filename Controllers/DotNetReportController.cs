@@ -134,9 +134,13 @@ namespace ReportBuilder.Web.Controllers
             reportSql = HttpUtility.HtmlDecode(reportSql);
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
             var word = await DotNetReportHelper.GetWordFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot);
-            Response.Headers.Add("content-disposition", "attachment; filename=" + reportName + ".docx");
+           
+            Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".docx");
             Response.ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-            return File(word, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", reportName + ".docx");
+            Response.BinaryWrite(word);
+            Response.End();
+
+            return View();
         }
 
         [HttpPost]
