@@ -138,6 +138,8 @@ function scheduleBuilder(userId) {
 	var self = this;
 
 	self.options = ['day', 'week', 'month', 'year', 'once', 'hour'];
+	self.timezonOption = ko.observableArray([]);
+	self.selectedTimezone = ko.observable(); 
 	self.showAtTime = ko.observable(true);
 	self.showDays = ko.observable(false);
 	self.showMonths = ko.observable(false);
@@ -209,6 +211,20 @@ function scheduleBuilder(userId) {
 		}
 	});
 
+	self.getTimezones = function () {
+		ajaxcall({
+			url: '/api/DotNetReportApi/GetAllTimezones',
+			noBlocking: true
+		}).done(function (timezonesData) {
+			self.timezonOption = ko.observableArray(Object.keys(timezonesData).map(function (key) {
+				return { displayName: key, timeZoneId: timezonesData[key] };
+			}));
+
+		});
+	};
+
+	self.getTimezones();
+
 	self.toJs = function () {
 		return self.hasSchedule() ? {
 			SelectedOption: self.selectedOption(),
@@ -222,7 +238,8 @@ function scheduleBuilder(userId) {
 			UserId: userId,
 			ScheduleStart: self.hasScheduleStart() ? self.scheduleStart() : '',
 			ScheduleEnd: self.hasScheduleEnd() ? self.scheduleEnd() : '',
-			Format: self.format()
+			Format: self.format(),
+			TimeZone: self.selectedTimezone() 
 		} : null;
 	};
 
@@ -255,6 +272,7 @@ function scheduleBuilder(userId) {
 		self.scheduleEnd(data.ScheduleEnd ? new Date(data.ScheduleEnd.match(/\d+/)[0] * 1) : '');
 		self.hasScheduleStart(data.ScheduleStart ? true : false);
 		self.hasScheduleEnd(data.ScheduleEnd ? true : false);
+		self.selectedTimezone(data.Timezone);
 		self.format(data.Format);
 	}
 
@@ -318,6 +336,7 @@ function filterGroupViewModel(args) {
 
 		var field = ko.observable();
 		var valueIn = e.Operator == 'in' || e.Operator == 'not in' ? (e.Value1 || '').split(',') : [];
+		var parentIn = e.ParentIn ? e.ParentIn.split(',') : [];
 		var filter = {
 			AndOr: ko.observable(isFilterOnFly ? ' AND ' : e.AndOr),
 			Field: field,
@@ -327,7 +346,7 @@ function filterGroupViewModel(args) {
 			ValueIn: ko.observableArray(valueIn),
 			LookupList: lookupList,
 			ParentList: parentList,
-			ParentIn: ko.observableArray([]),
+			ParentIn: ko.observableArray(parentIn),
 			Apply: ko.observable(e.Apply != null ? e.Apply : true),
 			IsFilterOnFly: isFilterOnFly === true ? true : false,
 			showParentFilter: ko.observable(true)
@@ -410,6 +429,10 @@ function filterGroupViewModel(args) {
 								if (list.d) { list = list.d; }
 								if (list.result) { list = list.result; }
 								parentList(_.sortBy(list, 'text'));
+								if (parentIn.length > 0) {
+									filter.ParentIn(parentIn);
+									parentIn = [];
+								}
 							});
 						});
 
@@ -2144,6 +2167,7 @@ var reportViewModel = function (options) {
 					Operator: e.Operator(),
 					Value1: e.Operator() == "in" || e.Operator() == "not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' ? "blank" : e.Value()),
 					Value2: e.Value2(),
+					ParentIn: e.ParentIn().join(","),
 					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
 				} : null;
 
@@ -2198,6 +2222,7 @@ var reportViewModel = function (options) {
 					Operator: e.Operator(),
 					Value1: e.Operator() == "in" || e.Operator() == "not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' ? "blank" : e.Value()),
 					Value2: e.Value2(),
+					ParentIn: e.ParentIn().join(","),
 					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
 				} : null;
 
@@ -3297,8 +3322,62 @@ var reportViewModel = function (options) {
 				$("#drilldownModal").modal('show');
 			}
 		});
+		function handlePointerDown(event) {
+			event.preventDefault(); // Prevent default browser behavior
+			document.addEventListener('pointermove', handlePointerMove);
+			document.addEventListener('pointerup', handlePointerUp);
+		}
+		function handlePointerMove(event) {
+			event.preventDefault(); // Prevent default browser behavior
+			// Update chart width and height based on pointer position
+			chartWidth = event.clientX - document.getElementById('chart_div_' + self.ReportID()).getBoundingClientRect().left;
+			chartHeight = event.clientY - document.getElementById('chart_div_' + self.ReportID()).getBoundingClientRect().top;
+			chartWidth = Math.max(100, chartWidth); // Ensure a minimum width
+			chartHeight = Math.max(100, chartHeight); // Ensure a minimum height
+			options.width = chartWidth;
+			options.height = chartHeight;
+			chart.draw(data, options);
+		}
+		function handlePointerUp(event) {
+			event.preventDefault(); // Prevent default browser behavior
+			document.removeEventListener('pointermove', handlePointerMove);
+			document.removeEventListener('pointerup', handlePointerUp);
+			saveDimensions();
+		}
 
+		function saveDimensions() {
+			localStorage.setItem('chart_dimensions_' + self.ReportID(), JSON.stringify({ width: chartWidth, height: chartHeight }));
+		}
+		function retrieveDimensions() {
+			var storedDimensions = localStorage.getItem('chart_dimensions_' + self.ReportID());
+			if (storedDimensions) {
+				var dimensions = JSON.parse(storedDimensions);
+				chartOptions.width = dimensions.width;
+				chartOptions.height = dimensions.height;
+			}
+			else {
+				chartOptions.width = '100%';
+				chartOptions.height = '450px';
+			}
+		}
+		// Call retrieveDimensions to load saved dimensions when the chart is initialized
+		retrieveDimensions();
 		chart.draw(data, chartOptions);
+		// Add event listener for pointer down on the chart container
+		var parentDiv = document.getElementById('chart_div_' + self.ReportID());
+		var chartContainer = parentDiv.children[0].children[0]; // Assuming the first child is the one you want
+		chartContainer.addEventListener('pointerdown', handlePointerDown);
+
+		chartContainer.addEventListener('pointerenter', function () {
+			chartContainer.style.cursor = 'nwse-resize';
+			chartContainer.style.border = '1px dashed black';
+			chartContainer.style.boxSizing = 'content-box';
+		});
+		chartContainer.addEventListener('pointerleave', function () {
+			chartContainer.style.cursor = 'default';
+			chartContainer.style.border = 'none';
+			chartContainer.style.boxSizing = 'border-box';
+		});
 	};
 
 	self.loadFolders = function (folderId) {
@@ -4167,7 +4246,22 @@ var reportViewModel = function (options) {
 			reportName: self.ReportName()
 		}, 'xml');
 	}
-
+	self.downloadWord = function () {
+		var reportData = self.BuildReportData();
+		reportData.DrillDownRowUsePlaceholders = true;
+		var pivotColumn = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' });
+		self.downloadExport("DownloadWord", {
+			reportSql: self.currentSql(),
+			connectKey: self.currentConnectKey(),
+			reportName: self.ReportName(),
+			allExpanded: false,
+			expandSqls: JSON.stringify(reportData),
+			columnDetails: self.getColumnDetails(),
+			includeSubTotal: self.IncludeSubTotal(),
+			pivot: self.ReportType() == 'Pivot',
+			pivotColumn: pivotColumn ? pivotColumn.fieldName : ''
+		}, 'docx');
+	}
 };
 
 var dashboardViewModel = function (options) {
@@ -4504,6 +4598,7 @@ var dashboardViewModel = function (options) {
 									Value: ko.observable(f.Value()),
 									Value2: ko.observable(f.Value2()),
 									ValueIn: ko.observable(f.ValueIn()),
+									ParentIn: ko.observable(f.ParentIn()),
 									LookupList: ko.observable(f.LookupList()),
 									Apply: ko.observable(true),
 									IsFilterOnFly: true,
@@ -4571,7 +4666,13 @@ var dashboardViewModel = function (options) {
 					width: item.width,
 					height: item.height,
 					dashboardId: self.currentDashboard().id,
-					reportId: parseInt(item.id)
+					reportId: parseInt(item.id),
+					widgetSettings: JSON.stringify({
+						gridChartHeight: item.height,
+						gridChartWidth: item.width,
+						expandedChartHeight: item.height,
+						expandedChartWidth: item.width
+					}),
 				})
 			}
 		});
@@ -4591,6 +4692,7 @@ var dashboardViewModel = function (options) {
 							f.Value(combinedFilter.Value());
 							f.Value2(combinedFilter.Value2());
 							f.ValueIn(combinedFilter.ValueIn());
+							f.ParentIn(combinedFilter.ParentIn());
 							f.LookupList(combinedFilter.LookupList());
 
 							filterApplied = true;

@@ -525,6 +525,49 @@ namespace ReportBuilder.Web.Controllers
                 return Json(new { ex.Message }, JsonRequestBehavior.AllowGet);
             }
         }
+        private SortedList<string, string> GetTimezones()
+        {
+            var timeZones = TimeZoneInfo.GetSystemTimeZones();
+            SortedList<string, string> timeZoneList = new SortedList<string, string>();
+            timeZoneList.Add("", "");
+
+            foreach (TimeZoneInfo timezone in timeZones)
+            {
+                DateTime localTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.Now.ToUniversalTime(), timezone);
+                TimeSpan localOffset = timezone.GetUtcOffset(localTime);
+
+                string offset = localOffset.ToString();
+                if (!offset.Contains("-"))
+                {
+                    offset = $"+{offset}";
+                }
+
+                string display = $"(GMT {offset}) {timezone.StandardName}";
+                if (timezone.IsDaylightSavingTime(localTime))
+                {
+                    display = $"{display} (active daylight savings)";
+                }
+
+                timeZoneList.Add(display, timezone.Id); // Use timezone Id as value
+            }
+
+            return timeZoneList;
+        }
+
+        [HttpGet]
+        public async Task<ActionResult> GetAllTimezones()
+        {
+            try
+            {
+                var timeZones = GetTimezones(); // Call your existing GetTimezones method
+                return Json(timeZones, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                Response.StatusCode = 500;
+                return Json(new { ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
 
         private string GetWarnings(string sql)
         {

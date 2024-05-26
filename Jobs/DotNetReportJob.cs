@@ -23,6 +23,7 @@ namespace ReportBuilder.Web.Jobs
         public string UserId { get; set; }
         public string Format { get; set; }
         public string DataFilters { get; set; }
+        public string TimeZone { get; set; }
     }
     public class ReportWithSchedule
     {
@@ -95,6 +96,15 @@ namespace ReportBuilder.Web.Jobs
                             var lastRun = !String.IsNullOrEmpty(schedule.LastRun) ? Convert.ToDateTime(schedule.LastRun) : DateTimeOffset.UtcNow.AddMinutes(-10);
                             var nextRun = chron.GetTimeAfter(lastRun);
 
+                            if (!String.IsNullOrEmpty(schedule.TimeZone))
+                            {
+                                TimeZoneInfo timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById(schedule.TimeZone);
+                                // convert last run to user's local time zone
+                                lastRun = TimeZoneInfo.ConvertTimeFromUtc(lastRun.UtcDateTime, timeZoneInfo);
+                                nextRun = chron.GetTimeAfter(lastRun);
+                                // get current time in user's time zone
+                                DateTime currentTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.Now.ToUniversalTime(), timeZoneInfo);
+                            }
                             schedule.NextRun = (nextRun.HasValue ? nextRun.Value.ToLocalTime().DateTime : (DateTime?)null);
 
                             if (schedule.NextRun.HasValue && DateTime.Now >= schedule.NextRun && (!String.IsNullOrEmpty(schedule.LastRun) || lastRun <= schedule.NextRun))
@@ -127,13 +137,18 @@ namespace ReportBuilder.Web.Jobs
                                         fileData = DotNetReportHelper.GetCSVFile(reportToRun.ReportSql, reportToRun.ConnectKey);
                                         break;
 
+                                    case "WORD":
+                                        fileExt = ".docx";
+                                        fileData = await DotNetReportHelper.GetWordFile(reportToRun.ReportSql,reportToRun.ConnectKey, reportToRun.ReportName, columns: columnDetails, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot");
+                                        break;
+
                                     case "EXCEL":
                                     default:
                                         fileData = await DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: columnDetails, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot");
                                         fileExt = ".xlsx";
                                         break;
                                 }
-                                
+
                                 // send email
                                 var mail = new MailMessage
                                 {
@@ -144,8 +159,16 @@ namespace ReportBuilder.Web.Jobs
                                 };
                                 mail.To.Add(schedule.EmailTo);
 
-                                var attachment = new Attachment(new MemoryStream(fileData), report.Name + fileExt);
-                                mail.Attachments.Add(attachment);
+
+                                if (schedule.Format == "Link")
+                                {
+                                    mail.Body = $"Please click on the link below to Run your Report:<br><br><a href=\"{JobScheduler.WebAppRootUrl}/DotnetReport/Report?linkedreport=true&noparent=true&reportId={reportToRun.ReportId}\">{report.Description}</a>";
+                                }
+                                else
+                                {
+                                    var attachment = new Attachment(new MemoryStream(fileData), report.Name + fileExt);
+                                    mail.Attachments.Add(attachment);
+                                }
 
                                 using (var smtpServer = new SmtpClient(mailServer))
                                 {
