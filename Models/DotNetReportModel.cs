@@ -1500,7 +1500,13 @@ namespace ReportBuilder.Web.Models
                             foreach (DataColumn column in dt.Columns)
                             {
                                 maxColumnWidths[column.Ordinal] = EstimateTextWidth(column.ColumnName);
-                                TableCell cell = new TableCell(new Paragraph(new Run(new Text(column.ColumnName))));
+
+                                TableCell cell = new TableCell(new Paragraph(new Run(new RunProperties()
+                                {
+                                    Bold = new Bold(),
+                                    Color = new DocumentFormat.OpenXml.Wordprocessing.Color() { Val = "0000FF" }
+                                }, new Text(column.ColumnName))
+                                ));
                                 headerRow.AppendChild(cell);
                             }
                             table.AppendChild(headerRow);
@@ -1537,7 +1543,9 @@ namespace ReportBuilder.Web.Models
                                 TableRow dataRow = new TableRow();
                                 foreach (DataColumn column in dt.Columns)
                                 {
-                                    TableCell cell = new TableCell(new Paragraph(new Run(new Text(row[column].ToString()))));
+                                    var value = row[column.ColumnName].ToString();
+                                    var formatColumn = GetColumnFormatting(column, columns, ref value);
+                                    TableCell cell = new TableCell(new Paragraph(new Run(new Text(value))));
                                     dataRow.AppendChild(cell);
                                 }
                                 table.AppendChild(dataRow);
