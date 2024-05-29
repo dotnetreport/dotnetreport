@@ -1107,7 +1107,7 @@ namespace ReportBuilder.Web.Models
             var isCurrency = false;
             var isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
             var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
-            string decimalFormat = new string('0', formatColumn.decimalPlacesDigit.GetValueOrDefault());
+            string decimalFormat = new string('0', formatColumn?.decimalPlacesDigit.GetValueOrDefault()??0);
             try
             {
                 if (dc.DataType == typeof(decimal) || (formatColumn != null && (formatColumn.fieldFormating == "Decimal" || formatColumn.fieldFormating == "Double")))
