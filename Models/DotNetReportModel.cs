@@ -1484,11 +1484,11 @@ namespace ReportBuilder.Web.Models
                             Table table = new Table();
                             TableProperties props = new TableProperties(new Justification() { Val = JustificationValues.Center },
                              new TableBorders(
-                             new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
-                             new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
+                             new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 16 },
+                             new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 16 },
                              new LeftBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
                              new RightBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
-                             new InsideHorizontalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
+                             new InsideHorizontalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 16 },
                              new InsideVerticalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 }));
 
                             // Append table properties
