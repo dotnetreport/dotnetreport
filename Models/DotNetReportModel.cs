@@ -1107,7 +1107,7 @@ namespace ReportBuilder.Web.Models
             var isCurrency = false;
             var isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
             var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
-            string decimalFormat = new string('0', formatColumn.decimalPlacesDigit.GetValueOrDefault());
+            string decimalFormat = new string('0', formatColumn?.decimalPlacesDigit.GetValueOrDefault()??0);
             try
             {
                 if (dc.DataType == typeof(decimal) || (formatColumn != null && (formatColumn.fieldFormating == "Decimal" || formatColumn.fieldFormating == "Double")))
@@ -1484,11 +1484,11 @@ namespace ReportBuilder.Web.Models
                             Table table = new Table();
                             TableProperties props = new TableProperties(new Justification() { Val = JustificationValues.Center },
                              new TableBorders(
-                             new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
-                             new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
+                             new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 16 },
+                             new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 16 },
                              new LeftBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
                              new RightBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
-                             new InsideHorizontalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
+                             new InsideHorizontalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 16 },
                              new InsideVerticalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 }));
 
                             // Append table properties
@@ -1500,7 +1500,13 @@ namespace ReportBuilder.Web.Models
                             foreach (DataColumn column in dt.Columns)
                             {
                                 maxColumnWidths[column.Ordinal] = EstimateTextWidth(column.ColumnName);
-                                TableCell cell = new TableCell(new Paragraph(new Run(new Text(column.ColumnName))));
+
+                                TableCell cell = new TableCell(new Paragraph(new Run(new RunProperties()
+                                {
+                                    Bold = new Bold(),
+                                    Color = new DocumentFormat.OpenXml.Wordprocessing.Color() { Val = "0000FF" }
+                                }, new Text(column.ColumnName))
+                                ));
                                 headerRow.AppendChild(cell);
                             }
                             table.AppendChild(headerRow);
@@ -1537,7 +1543,9 @@ namespace ReportBuilder.Web.Models
                                 TableRow dataRow = new TableRow();
                                 foreach (DataColumn column in dt.Columns)
                                 {
-                                    TableCell cell = new TableCell(new Paragraph(new Run(new Text(row[column].ToString()))));
+                                    var value = row[column.ColumnName].ToString();
+                                    var formatColumn = GetColumnFormatting(column, columns, ref value);
+                                    TableCell cell = new TableCell(new Paragraph(new Run(new Text(value))));
                                     dataRow.AppendChild(cell);
                                 }
                                 table.AppendChild(dataRow);
