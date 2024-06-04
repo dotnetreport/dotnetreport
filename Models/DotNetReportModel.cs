@@ -1474,7 +1474,11 @@ namespace ReportBuilder.Web.Models
                         mainPart.Document = new Document();
                         Body body = mainPart.Document.AppendChild(new Body());                     
                         // Add report header
-                        Paragraph header = new Paragraph(new Run(new Text(reportName)));
+                        Paragraph header = new Paragraph(new Run(new RunProperties()
+                        {
+                            FontSize = new DocumentFormat.OpenXml.Wordprocessing.FontSize() { Val = "28" },// Font size 14 points (2 * 14)
+                            Bold = new Bold(),
+                        }, new Text(reportName)));
                         header.ParagraphProperties = new ParagraphProperties(new Justification() { Val = JustificationValues.Center });
                         body.AppendChild(header);
                         // Add data in table format
@@ -1484,12 +1488,13 @@ namespace ReportBuilder.Web.Models
                             Table table = new Table();
                             TableProperties props = new TableProperties(new Justification() { Val = JustificationValues.Center },
                              new TableBorders(
-                             new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 16 },
-                             new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 16 },
-                             new LeftBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
-                             new RightBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 },
-                             new InsideHorizontalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 16 },
-                             new InsideVerticalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 12 }));
+                             new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 8 },
+                             new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 10 },
+                             new LeftBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 10 },
+                             new RightBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 10 },
+                             new InsideHorizontalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 8 },
+                             new InsideVerticalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 10 }
+                             ));
 
                             // Append table properties
                             table.AppendChild<TableProperties>(props);
@@ -1500,13 +1505,17 @@ namespace ReportBuilder.Web.Models
                             foreach (DataColumn column in dt.Columns)
                             {
                                 maxColumnWidths[column.Ordinal] = EstimateTextWidth(column.ColumnName);
-
-                                TableCell cell = new TableCell(new Paragraph(new Run(new RunProperties()
-                                {
-                                    Bold = new Bold(),
-                                    Color = new DocumentFormat.OpenXml.Wordprocessing.Color() { Val = "0000FF" }
-                                }, new Text(column.ColumnName))
-                                ));
+                                RunProperties runProperties = new RunProperties(
+                                    new Bold(),
+                                    new DocumentFormat.OpenXml.Wordprocessing.Color() { Val = "#156082" } // Example color
+                                );
+                                Run run = new Run(runProperties, new Text(column.ColumnName));
+                                ParagraphProperties paragraphProperties = new ParagraphProperties(
+                                    new SpacingBetweenLines() { Before = "100", After = "100", Line = "240", LineRule = LineSpacingRuleValues.Auto },
+                                    new Indentation() { Left = "180", Right = "180"} // Adjust values as needed
+                                );
+                                Paragraph paragraph = new Paragraph(paragraphProperties, run);
+                                TableCell cell = new TableCell(paragraph);
                                 headerRow.AppendChild(cell);
                             }
                             table.AppendChild(headerRow);
@@ -1545,7 +1554,13 @@ namespace ReportBuilder.Web.Models
                                 {
                                     var value = row[column.ColumnName].ToString();
                                     var formatColumn = GetColumnFormatting(column, columns, ref value);
-                                    TableCell cell = new TableCell(new Paragraph(new Run(new Text(value))));
+                                    Run run = new Run( new Text(value));
+                                    ParagraphProperties paragraphProperties = new ParagraphProperties(
+                                        new SpacingBetweenLines() { Before = "100", After = "100", Line = "240", LineRule = LineSpacingRuleValues.Auto },
+                                        new Indentation() { Left = "180", Right = "180" } // Adjust values as needed
+                                    );
+                                    Paragraph paragraph = new Paragraph(paragraphProperties, run);
+                                    TableCell cell = new TableCell(paragraph);
                                     dataRow.AppendChild(cell);
                                 }
                                 table.AppendChild(dataRow);
