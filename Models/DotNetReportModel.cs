@@ -20,6 +20,9 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
+using A = DocumentFormat.OpenXml.Drawing;
+using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
+using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
 
 namespace ReportBuilder.Web.Models
 {
@@ -1433,7 +1436,7 @@ namespace ReportBuilder.Web.Models
             }
         }
 
-        public static async Task<byte[]> GetWordFile(string reportSql, string connectKey, string reportName, bool allExpanded = false,
+        public static async Task<byte[]> GetWordFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
             string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
         {
             var sql = Decrypt(reportSql);
@@ -1481,6 +1484,23 @@ namespace ReportBuilder.Web.Models
                         }, new Text(reportName)));
                         header.ParagraphProperties = new ParagraphProperties(new Justification() { Val = JustificationValues.Center });
                         body.AppendChild(header);
+
+                        // Render chart
+                        if (!string.IsNullOrEmpty(chartData) && chartData != "undefined")
+                        {
+                            byte[] imageDecoded = Convert.FromBase64String(chartData.Substring(chartData.LastIndexOf(',') + 1));
+                            using (MemoryStream imageStream = new MemoryStream(imageDecoded))
+                            {
+                                ImagePart imagePart = mainPart.AddImagePart(ImagePartType.Jpeg);
+                                imagePart.FeedData(imageStream);
+                                // Specify the size in pixels and convert to EMUs
+                                int widthInPixels = 500;
+                                int heightInPixels = 400;
+                                long widthInEmus = widthInPixels * 9525;
+                                long heightInEmus = heightInPixels * 9525;
+                                AddImageToBody(wordDocument, mainPart.GetIdOfPart(imagePart),widthInEmus, heightInEmus);
+                            }
+                        }
                         // Add data in table format
                         if (dt.Rows.Count > 0)
                         {
@@ -1590,6 +1610,80 @@ namespace ReportBuilder.Web.Models
                     return memStream.ToArray();
                 }
             }
+        }
+        static void AddImageToBody(WordprocessingDocument wordDoc, string relationshipId, long cx, long cy)
+        {
+            // Define the reference of the image.
+            var element =
+                 new  Drawing(
+                     new DW.Inline(
+                         new DW.Extent() { Cx = cx, Cy = cy },
+                         new DW.EffectExtent()
+                         {
+                             LeftEdge = 0L,
+                             TopEdge = 0L,
+                             RightEdge = 0L,
+                             BottomEdge = 0L
+                         },
+                         new DW.DocProperties()
+                         {
+                             Id = (UInt32Value)1U,
+                             Name = "Chart Image"
+                         },
+                         new DW.NonVisualGraphicFrameDrawingProperties(
+                             new A.GraphicFrameLocks() { NoChangeAspect = true }),
+                         new A.Graphic(
+                             new A.GraphicData(
+                                 new PIC.Picture(
+                                     new PIC.NonVisualPictureProperties(
+                                         new PIC.NonVisualDrawingProperties()
+                                         {
+                                             Id = (UInt32Value)0U,
+                                             Name = "New Bitmap Chart Image.jpg"
+                                         },
+                                         new PIC.NonVisualPictureDrawingProperties()),
+                                     new PIC.BlipFill(
+                                         new A.Blip(
+                                             new A.BlipExtensionList(
+                                                 new A.BlipExtension()
+                                                 {
+                                                     Uri =
+                                                        "{28A0092B-C50C-407E-A947-70E740481C1C}"
+                                                 })
+                                         )
+                                         {
+                                             Embed = relationshipId,
+                                             CompressionState =
+                                             A.BlipCompressionValues.Print
+                                         },
+                                         new A.Stretch(
+                                             new A.FillRectangle())),
+                                     new PIC.ShapeProperties(
+                                         new A.Transform2D(
+                                             new A.Offset() { X = 0L, Y = 0L },
+                                             new A.Extents() { Cx = 990000L, Cy = 792000L }),
+                                         new A.PresetGeometry(
+                                             new A.AdjustValueList()
+                                         )
+                                         { Preset = A.ShapeTypeValues.Rectangle }))
+                             )
+                             { Uri = "http://schemas.openxmlformats.org/drawingml/2006/picture" })
+                     )
+                     {
+                         DistanceFromTop = (UInt32Value)0U,
+                         DistanceFromBottom = (UInt32Value)0U,
+                         DistanceFromLeft = (UInt32Value)0U,
+                         DistanceFromRight = (UInt32Value)0U,
+                         EditId = "50D07946"
+                     });
+
+            if (wordDoc.MainDocumentPart is null || wordDoc.MainDocumentPart.Document.Body is null)
+            {
+                throw new ArgumentNullException("MainDocumentPart and/or Body is null.");
+            }
+            Paragraph paragraph = new Paragraph(new Run(element));
+            paragraph.ParagraphProperties = new ParagraphProperties(new Justification() { Val = JustificationValues.Center });
+            wordDoc.MainDocumentPart.Document.Body.AppendChild(paragraph);
         }
         static private int EstimateTextWidth(string text)
         {

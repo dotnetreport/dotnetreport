@@ -4249,6 +4249,7 @@ var reportViewModel = function (options) {
 			reportName: self.ReportName(),
 			allExpanded: false,
 			expandSqls: JSON.stringify(reportData),
+			chartData: self.ChartData() || '',
 			columnDetails: self.getColumnDetails(),
 			includeSubTotal: self.IncludeSubTotal(),
 			pivot: self.ReportType() == 'Pivot',
