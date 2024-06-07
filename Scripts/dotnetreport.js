@@ -3022,7 +3022,7 @@ var reportViewModel = function (options) {
 		}
 
 		if (self.isChart()) {
-			google.charts.load('current', { packages: ['corechart', 'geochart'] });
+			google.charts.load('current', { packages: ['corechart', 'geochart','treemap'] });
 			google.charts.setOnLoadCallback(self.DrawChart);
 		}
 
@@ -3187,6 +3187,8 @@ var reportViewModel = function (options) {
 				//	subGroups.push({ index: i, column: e.fieldLabel || e.ColumnName });
 			} else if (e.IsNumeric && !e.groupInGraph()) {
 				valColumns.push({ index: i, column: e.fieldLabel() || e.ColumnName });
+			} else if (!e.groupInGraph() && self.ReportType() == 'Treemap') {
+				data.addColumn(e.IsNumeric ? 'number' : 'string', e.fieldLabel() || e.ColumnName);
 			}
 		});
 
@@ -3233,6 +3235,8 @@ var reportViewModel = function (options) {
 						itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.FormattedValue) || (r.Column.IsNumeric ? 0 : ''));
 					}
 				} else if (r.Column.IsNumeric && !column.groupInGraph()) {
+					itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.FormattedValue) || (r.Column.IsNumeric ? 0 : ''));
+				} else if (!column.groupInGraph() && self.ReportType() == 'Treemap') {
 					itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.FormattedValue) || (r.Column.IsNumeric ? 0 : ''));
 				}
 			});
@@ -3307,6 +3311,11 @@ var reportViewModel = function (options) {
 				chartOptions.displayMode = 'regions';
 				chartOptions.region = '021';
 			}
+		}
+
+		if (self.ReportType() == 'Treemap') {
+			chart = new google.visualization.TreeMap(chartDiv);
+			chartOptions.showScale = true;
 		}
 
 		google.visualization.events.addListener(chart, 'ready', function () {
