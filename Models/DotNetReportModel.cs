@@ -543,16 +543,27 @@ namespace ReportBuilder.Web.Models
             return "";
         }
 
-        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool loadHeader=true)
+        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool loadHeader=true, string chartData = null)
         {
             ws.Cells[rowstart, colstart].LoadFromDataTable(dt, loadHeader);
             if (loadHeader) ws.Cells[rowstart, colstart, rowstart, colstart + dt.Columns.Count -1].Style.Font.Bold = true;
-
+            if (!string.IsNullOrEmpty(chartData) && chartData != "undefined")
+            {
+                byte[] imageBytes = Convert.FromBase64String(chartData.Substring(chartData.LastIndexOf(',') + 1));
+                using (MemoryStream ms = new MemoryStream(imageBytes))
+                {
+                    Image image = Image.FromStream(ms);
+                    // Add the image to the worksheet
+                    var picture = ws.Drawings.AddPicture("ChartImage", image);
+                    picture.SetPosition(1, 0, dt.Columns.Count + 1, 0); // Set the position of the image
+                    picture.SetSize(400, 300); // Set the size of the image in pixels (width, height)
+                }
+            }
             int i = colstart; var isNumeric = false;
             foreach (DataColumn dc in dt.Columns)
             {
                 var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
-                string decimalFormat = new string('0', formatColumn.decimalPlacesDigit.GetValueOrDefault());
+                string decimalFormat = new string('0', formatColumn?.decimalPlacesDigit.GetValueOrDefault() ?? 0);
                 isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
                 if (dc.DataType == typeof(decimal) || (formatColumn != null && formatColumn.fieldFormating=="Decimal"))
                 {
@@ -980,7 +991,7 @@ namespace ReportBuilder.Web.Models
         }
 
 
-        public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, bool allExpanded = false,
+        public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
                 string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
         {
             var sql = Decrypt(reportSql);
@@ -1031,7 +1042,7 @@ namespace ReportBuilder.Web.Models
                         rowstart += 2;
                         rowend = rowstart + dt.Rows.Count;
 
-                        FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeSubtotal);
+                        FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeSubtotal,true,chartData);
 
                         if (allExpanded)
                         {
