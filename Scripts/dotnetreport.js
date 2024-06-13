@@ -2789,7 +2789,8 @@ var reportViewModel = function (options) {
 							default: r.FormattedValue = '$' + r.FormattedValue; break;
 						}
 					}
-					if (self.dateFormatTypes.indexOf(col.fieldFormat()) >= 0 && !isNaN(new Date(r.Value).getTime())) {
+					var dt = self.parseDate(r.Value);
+					if (self.dateFormatTypes.indexOf(col.fieldFormat()) >= 0 && dt !== false) {
 						var dtFormat = "en-US";
 						switch (col.dateFormat()) {
 							case 'United Kingdom': dtFormat = 'en-GB'; break;
@@ -2800,13 +2801,13 @@ var reportViewModel = function (options) {
 						}
 
 						if (col.dateFormat() == 'Custom' && col.customDateFormat()) {
-							r.FormattedValue = self.formatDate(new Date(r.Value), col.customDateFormat());
+							r.FormattedValue = self.formatDate(dt, col.customDateFormat());
 						}
 						else {
 							switch (col.fieldFormat()) {
-								case 'Date': r.FormattedValue = (new Date(r.Value)).toLocaleDateString(dtFormat, { year: 'numeric', month: 'numeric', day: 'numeric' }); break;
-								case 'Date and Time': r.FormattedValue = (new Date(r.Value)).toLocaleDateString(dtFormat, { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
-								case 'Time': r.FormattedValue = (new Date(r.Value)).toLocaleTimeString(dtFormat, { hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
+								case 'Date': r.FormattedValue = (dt).toLocaleDateString(dtFormat, { year: 'numeric', month: 'numeric', day: 'numeric' }); break;
+								case 'Date and Time': r.FormattedValue = (dt).toLocaleDateString(dtFormat, { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
+								case 'Time': r.FormattedValue = (dt).toLocaleTimeString(dtFormat, { hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
 							}
 						}
 					}
@@ -3936,6 +3937,17 @@ var reportViewModel = function (options) {
 		const parts = parseFloat(number).toFixed(decPlaces).split('.');
 		parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 		return parts.join('.');
+	}
+
+	self.parseDate = function(dateString) {
+		const datePattern = /^\d{2}\/\d{2}\/\d{4}$/;
+
+		if (!dateString.match(datePattern)) {
+			return false;
+		}
+
+		const [day, month, year] = dateString.split('/').map(Number);
+		return new Date(year, month - 1, day).getTime();
 	}
 
 	self.formatDate = function(date, format) {
