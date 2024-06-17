@@ -3336,15 +3336,14 @@ var reportViewModel = function (options) {
 			document.addEventListener('pointerup', handlePointerUp);
 		}
 		function handlePointerMove(event) {
-			event.preventDefault(); // Prevent default browser behavior
-			// Update chart width and height based on pointer position
+			event.preventDefault(); 
 			chartWidth = event.clientX - document.getElementById('chart_div_' + self.ReportID()).getBoundingClientRect().left;
 			chartHeight = event.clientY - document.getElementById('chart_div_' + self.ReportID()).getBoundingClientRect().top;
 			chartWidth = Math.max(100, chartWidth); // Ensure a minimum width
 			chartHeight = Math.max(100, chartHeight); // Ensure a minimum height
-			options.width = chartWidth;
-			options.height = chartHeight;
-			chart.draw(data, options);
+			chartOptions.width = chartWidth;
+			chartOptions.height = chartHeight;
+			chart.draw(data, chartOptions);
 		}
 		function handlePointerUp(event) {
 			event.preventDefault(); // Prevent default browser behavior
