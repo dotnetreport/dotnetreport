@@ -79,7 +79,7 @@ ko.bindingHandlers.datepicker = {
         //handle the field changing
         ko.utils.registerEventHandler(element, "change", function () {
             var observable = valueAccessor();
-            observable($(element).datepicker({ dateFormat: 'mm/dd/yyyy' }).val());
+            observable($(element).datepicker({ dateFormat: options.dateFormat || 'mm/dd/yyyy' }).val());
         });
 
         //handle disposal (if KO removes by the template binding)

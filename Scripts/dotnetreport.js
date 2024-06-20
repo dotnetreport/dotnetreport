@@ -1019,6 +1019,14 @@ var reportViewModel = function (options) {
 		apiUrl: options.apiUrl,
 		isExpanded: self.isExpanded
 	});
+	self.dateFormatMappings = {
+		'United States': 'mm/dd/yy',
+		'United Kingdom': 'dd/mm/yy',
+		'France': 'dd/mm/yy',
+		'German': 'dd.mm.yy',
+		'Spanish': 'dd/mm/yy',
+		'Chinese': 'yy/mm/dd'
+	};
 
 	self.initHeaderDesigner = function () {
 		self.headerDesigner.init();
@@ -3329,15 +3337,14 @@ var reportViewModel = function (options) {
 			document.addEventListener('pointerup', handlePointerUp);
 		}
 		function handlePointerMove(event) {
-			event.preventDefault(); // Prevent default browser behavior
-			// Update chart width and height based on pointer position
+			event.preventDefault(); 
 			chartWidth = event.clientX - document.getElementById('chart_div_' + self.ReportID()).getBoundingClientRect().left;
 			chartHeight = event.clientY - document.getElementById('chart_div_' + self.ReportID()).getBoundingClientRect().top;
 			chartWidth = Math.max(100, chartWidth); // Ensure a minimum width
 			chartHeight = Math.max(100, chartHeight); // Ensure a minimum height
-			options.width = chartWidth;
-			options.height = chartHeight;
-			chart.draw(data, options);
+			chartOptions.width = chartWidth;
+			chartOptions.height = chartHeight;
+			chart.draw(data, chartOptions);
 		}
 		function handlePointerUp(event) {
 			event.preventDefault(); // Prevent default browser behavior
@@ -3364,21 +3371,6 @@ var reportViewModel = function (options) {
 		// Call retrieveDimensions to load saved dimensions when the chart is initialized
 		retrieveDimensions();
 		chart.draw(data, chartOptions);
-		// Add event listener for pointer down on the chart container
-		var parentDiv = document.getElementById('chart_div_' + self.ReportID());
-		var chartContainer = parentDiv.children[0].children[0]; // Assuming the first child is the one you want
-		chartContainer.addEventListener('pointerdown', handlePointerDown);
-
-		chartContainer.addEventListener('pointerenter', function () {
-			chartContainer.style.cursor = 'nwse-resize';
-			chartContainer.style.border = '1px dashed black';
-			chartContainer.style.boxSizing = 'content-box';
-		});
-		chartContainer.addEventListener('pointerleave', function () {
-			chartContainer.style.cursor = 'default';
-			chartContainer.style.border = 'none';
-			chartContainer.style.boxSizing = 'border-box';
-		});
 	};
 
 	self.loadFolders = function (folderId) {
@@ -4215,6 +4207,7 @@ var reportViewModel = function (options) {
 			reportName: self.ReportName(),
 			allExpanded: expand === true ? true : false,
 			expandSqls: JSON.stringify(reportData),
+			chartData: self.ChartData() || '',
 			columnDetails: self.getColumnDetails(),
 			includeSubTotal: self.IncludeSubTotal(),
 			pivot: self.ReportType() == 'Pivot',
@@ -4257,12 +4250,50 @@ var reportViewModel = function (options) {
 			reportName: self.ReportName(),
 			allExpanded: false,
 			expandSqls: JSON.stringify(reportData),
+			chartData: self.ChartData() || '',
 			columnDetails: self.getColumnDetails(),
 			includeSubTotal: self.IncludeSubTotal(),
 			pivot: self.ReportType() == 'Pivot',
 			pivotColumn: pivotColumn ? pivotColumn.fieldName : ''
 		}, 'docx');
 	}
+
+
+	// Unit tests
+	runUnitTests = function () {
+		const assert = (description, condition) => {
+			if (!condition) {
+				console.error(`Test failed: ${description}`);
+			} else {
+				console.log(`Test passed: ${description}`);
+			}
+		};
+
+		const testFormatDate = () => {
+			var date = new Date(2024, 5, 13); // June 13, 2024
+
+			// Test cases
+			assert("Format 'yyyy-mm-dd'", self.formatDate(date, 'yyyy-mm-dd') === '2024-06-13');
+			assert("Format 'dd/MM/yyyy'", self.formatDate(date, 'dd/MM/yyyy') === '13/Jun/2024');
+			assert("Format 'd/M/yy'", self.formatDate(date, 'd/M/yy') === '13/6/24');
+			assert("Format 'MM dd, yyyy'", self.formatDate(date, 'MM dd, yyyy') === 'Jun 13, 2024');
+			assert("Format 'm/d/yy'", self.formatDate(date, 'm/d/yy') === '6/13/24');
+
+			date = new Date(2024, 5, 1); // June 1, 2024
+			assert("Format 'yyyy-mm-dd'", self.formatDate(date, 'yyyy-mm-dd') === '2024-06-01');
+			assert("Format 'dd/MM/yyyy'", self.formatDate(date, 'dd/MM/yyyy') === '01/Jun/2024');
+			assert("Format 'd/M/yy'", self.formatDate(date, 'd/M/yy') === '1/6/24');
+			assert("Format 'MM dd, yyyy'", self.formatDate(date, 'MM d, yyyy') === 'Jun 1, 2024');
+			assert("Format 'm/d/yy'", self.formatDate(date, 'm/d/yy') === '6/1/24');
+
+			const date2 = new Date(2024, 0, 1); // January 1, 2024
+			assert("Format 'yyyy-mm-dd' with single-digit day and month", self.formatDate(date2, 'yyyy-mm-dd') === '2024-01-01');
+			assert("Format 'd/m/yy' with single-digit day and month", self.formatDate(date2, 'd/m/yy') === '1/1/24');
+		};
+
+		testFormatDate();
+	};
+
 };
 
 var dashboardViewModel = function (options) {
