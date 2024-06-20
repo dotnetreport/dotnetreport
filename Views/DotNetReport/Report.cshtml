@@ -15,7 +15,7 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
 
 -->
 @section scripts{
-<script type="text/javascript">
+    <script type="text/javascript">
 
     $(document).ready(function() {
 
@@ -40,7 +40,8 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
                 userSettings: data,
                 dataFilters: data.dataFilters,
                 runExportUrl: "",
-                printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, this.Request.Url.Scheme)"
+                printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, this.Request.Url.Scheme)",
+                getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")'
             });
 
             vm.loadProcs().done(function() {
@@ -57,7 +58,7 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
         });
     });
 
-</script>
+    </script>
 }
 
 

@@ -36,6 +36,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 userSettings: data,
                 dataFilters: data.dataFilters,
                 printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, this.Request.Url.Scheme)",
+                getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
                 samePageOnRun: true
             });
 
@@ -417,6 +418,11 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <li class="dropdown-item">
                                         <a href="#" data-bind="click: downloadXml">
                                             <span class="fa fa-file-code-o"></span> Xml
+                                        </a>
+                                    </li>
+                                    <li class="dropdown-item">
+                                        <a href="#" data-bind="click: downloadWord">
+                                            <span class="fa fa-file-word-o"></span> Word
                                         </a>
                                     </li>
                                 </ul>

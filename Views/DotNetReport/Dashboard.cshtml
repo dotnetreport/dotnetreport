@@ -76,7 +76,8 @@
                             dashboardId: dashboardId,
                             runExportUrl: "",
                             printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, this.Request.Url.Scheme)",
-                            loadSavedDashbordUrl: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")'
+                            loadSavedDashbordUrl: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")',
+                            getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")'
                         });
 
                         vm.init().done(function () {
@@ -99,7 +100,7 @@
                                     var e = $(event.target).find('.report-chart');
                                     var d = $(event.target).find('table');
                                     if (e.length > 0 && d.length == 0) {
-                                        e.height(item.size.height - e[0].offsetTop - 40);
+                                        //e.height(item.size.height - e[0].offsetTop - 40);
                                         vm.drawChart();
                                     }
                                 });
@@ -113,7 +114,7 @@
                                     var e = $(x).find('.report-chart');
                                     var d = $(x).find('table');
                                     if (e.length > 0 && x.clientHeight && d.length == 0) {
-                                        e.height(x.clientHeight - e[0].offsetTop - 40);
+                                        //e.height(x.clientHeight - e[0].offsetTop - 40);
                                     }
                                 });
 
@@ -301,6 +302,11 @@
                         <li class="dropdown-item">
                             <a href="#" data-bind="click: downloadPdf">
                                 <span class="fa fa-file-pdf-o"></span> PDF
+                            </a>
+                        </li>
+                        <li class="dropdown-item">
+                            <a href="#" data-bind="click: downloadWord">
+                                <span class="fa fa-file-word-o"></span> Word
                             </a>
                         </li>
                         <li class="dropdown-item">
