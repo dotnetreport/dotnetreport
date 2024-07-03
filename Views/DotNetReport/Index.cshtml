@@ -68,7 +68,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
             <div class="card-header">
                 <nav class="navbar navbar-expand-lg navbar-light bg-light">
                     <a class="navbar-brand" href="#" data-bind="click: function() {SelectedFolder(null); designingHeader(false); searchReports(''); $('#search-report').val([]).trigger('change'); }">Manage Reports</a>
-                    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                         <span class="navbar-toggler-icon"></span>
                     </button>
 
@@ -76,7 +76,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         <ul class="navbar-nav mr-auto">
 
                             <li class="nav-item active" data-bind="visible: CanSaveReports() || adminMode()">
-                                <a href="#" class="nav-link" data-bind="click: createNewReport" data-toggle="modal" data-target="#modal-reportbuilder">
+                                <a href="#" class="nav-link" data-bind="click: createNewReport" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
                                     <span class="fa fa-plus"></span> Create a New Report
                                 </a>
                             </li>
@@ -87,7 +87,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 </a>
                             </li>
                             <li class="nav-item dropdown" data-bind="visible: (CanManageFolders() || adminMode()) && SelectedFolder()!=null">
-                                <a href="#" class="nav-link dropdown-toggle" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                     <span class="fa fa-folder"></span> Folder Options
                                 </a>
                                 <div class="dropdown-menu">
@@ -249,10 +249,10 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             <div class="d-none d-md-block">
                                                 <br />
                                                 <span data-bind="if: $root.CanSaveReports() || $root.adminMode() ">
-                                                    <button class="btn btn-sm btn-secondary" data-bind="click: openReport, visible: canEdit" data-toggle="modal" data-target="#modal-reportbuilder">
+                                                    <button class="btn btn-sm btn-secondary" data-bind="click: openReport, visible: canEdit" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
                                                         <span class="fa fa-edit" aria-hidden="true"></span>Edit
                                                     </button>
-                                                    <button class="btn btn-sm btn-secondary" data-bind="click: copyReport" data-toggle="modal" data-target="#modal-reportbuilder">
+                                                    <button class="btn btn-sm btn-secondary" data-bind="click: copyReport" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
                                                         <span class="fa fa-copy" aria-hidden="true"></span>Copy
                                                     </button>
                                                 </span>
@@ -260,7 +260,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                     <button type="button" class="btn btn-sm btn-primary" data-bind="click: runReport">
                                                         <span class="fa fa-gears" aria-hidden="true"></span>Run
                                                     </button>
-                                                    <button type="button" class="btn btn-sm btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" style="margin-left: -4px;">
+                                                    <button type="button" class="btn btn-sm btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" style="margin-left: -4px;">
                                                         <span class="sr-only"></span>
                                                     </button>
                                                     <div class="dropdown-menu dropdown-menu-right">
@@ -282,10 +282,10 @@ Its Recommended you use it as is, and only change styling as needed to match you
 
                                             <div class="d-block d-md-none">
                                                 <span data-bind="if: $root.CanSaveReports() || $root.adminMode()">
-                                                    <button class="btn btn-sm btn-secondary" title="Edit Report" data-bind="click: openReport, visible: canEdit" data-toggle="modal" data-target="#modal-reportbuilder">
+                                                    <button class="btn btn-sm btn-secondary" title="Edit Report" data-bind="click: openReport, visible: canEdit" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
                                                         <span class="fa fa-edit" aria-hidden="true"></span>
                                                     </button>
-                                                    <button class="btn btn-sm btn-secondary" data-bind="click: copyReport" title="Copy Report" data-toggle="modal" data-target="#modal-reportbuilder">
+                                                    <button class="btn btn-sm btn-secondary" data-bind="click: copyReport" title="Copy Report" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
                                                         <span class="fa fa-copy" aria-hidden="true"></span>
                                                     </button>
                                                 </span>
@@ -294,7 +294,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                     <button class="btn btn-sm btn-primary" data-bind="click: runReport" title="Run Report">
                                                         <span class="fa fa-gears" aria-hidden="true"></span>
                                                     </button>
-                                                    <button type="button" class="btn btn-sm btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" style="margin-left: -4px;">
+                                                    <button type="button" class="btn btn-sm btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" style="margin-left: -4px;">
                                                         <span class="sr-only"></span>
                                                     </button>
                                                     <div class="dropdown-menu">
@@ -342,10 +342,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
         <div class="modal-dialog">
             <div class="modal-content" data-bind="with: ManageFolder">
                 <div class="modal-header">
-                    <h5 class="modal-title">Manage Folder</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
+                    <h5 class="modal-title  fs-5">Manage Folder</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="form-group">
@@ -357,7 +355,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                     <br />
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-primary" data-bind="click: saveFolder">Save</button>
                 </div>
             </div>
@@ -370,7 +368,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
             <div class="card-header">
                 <nav class="navbar navbar-expand-lg navbar-light bg-light">
                     <a class="navbar-brand" href="#">Viewing Report</a>
-                    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                         <span class="navbar-toggler-icon"></span>
                     </button>
                      <div class="collapse navbar-collapse" >
@@ -384,13 +382,13 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             <button class="btn btn-primary" data-bind="visible: ReportMode()=='linked'">
                                 Back to Parent Report
                             </button>
-                            <a href="#" class="btn btn-primary" data-bind="visible: $root.CanEdit()" data-toggle="modal" data-target="#modal-reportbuilder">
+                            <a href="#" class="btn btn-primary" data-bind="visible: $root.CanEdit()" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
                                 Edit Report
                             </a>
                             <button class="btn btn-primary" data-bind="visible: CanSaveReports(), click: SaveWithoutRun">Save Report</button>
 
                             <div class="btn-group">
-                                <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <button type="button" class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                     <span class="fa fa-download"></span> Export <span class="caret"></span>
                                 </button>
                                 <ul class="dropdown-menu">
