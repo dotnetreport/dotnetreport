@@ -1121,6 +1121,12 @@
                                 <p>Pie</p>
                             </div>
                         </div>
+                        <div class="col-md-2 col-sm-4 col-xs-6">
+                            <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Treemap'); }, css: {active: ReportType()=='Treemap'}">
+                                <span class="fa fa-2x fa-window-restore"></span>
+                                <p>Treemap</p>
+                            </div>
+                        </div>
                     </div>
                     <div class="row">
                         <div class="col-md-2 col-sm-4 col-xs-6">
@@ -1145,12 +1151,6 @@
                             <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Pivot'); }, css: {active: ReportType()=='Pivot'}">
                                 <span class="fa fa-2x fa-random"></span>
                                 <p>Transpose</p>
-                            </div>
-                        </div>
-                        <div class="col-md-2 col-sm-4 col-xs-6">
-                            <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Treemap'); }, css: {active: ReportType()=='Treemap'}">
-                                <span class="fa fa-2x fa-block"></span>
-                                <p>Treemap</p>
                             </div>
                         </div>
                     </div>
@@ -1352,6 +1352,9 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="alert alert-info" data-bind="visible: ReportType()=='Treemap'">
+                                <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For Treemap, the data must be in a hierarchical format with 2nd column having parent and third column having a numeric value. The data must have a single root node having null as its parent as well.
+                            </div>
                             <div class="alert alert-info" data-bind="visible: ReportType()=='Line'">
                                 <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For Line Graph, the first field below will show on the x-axis and it needs to be numeric.
                             </div>
@@ -1376,7 +1379,7 @@
                                             <span class="fa fa-columns"></span>
                                             <span data-bind="text: selectedFieldName"></span>
                                             <span data-bind="text: isFormulaField() ? '(' + fieldFormat() + ')' : ''"></span>
-                                            <span data-bind="visible: !$parent.isFieldValidForYAxis($index(), fieldType, selectedAggregate())">
+                                            <span data-bind="visible: !$parent.isFieldValidForYAxis($index(), fieldType, selectedAggregate()) && $parent.ReportType() !='Treemap'">
                                                 <span class="badge badge-danger" data-bind="visible: !groupInGraph()">Will not show in <span data-bind="text: $parent.ReportType"></span>Chart</span>
                                             </span>
                                         </div>

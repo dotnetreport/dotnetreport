@@ -1255,7 +1255,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.ReportType.subscribe(function (newvalue) {
-		if (newvalue == 'List') {
+		if (newvalue == 'List' || newvalue == 'Treemap') {
 			self.AggregateReport(false);
 		}
 		else {
@@ -1978,6 +1978,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.isFieldValidForYAxis = function (i, fieldType, aggregate) {
+		if (self.ReportType() == 'Treemap') return false;
 		if (i > 0) {
 			if (self.ReportType() == "Bar" && ["Int", "Double", "Money"].indexOf(fieldType) < 0 && aggregate != "Count") {
 				return false;
@@ -2000,7 +2001,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.canDrilldown = ko.computed(function () {
-		return ["List", "Pivot"].indexOf(self.ReportType()) < 0;
+		return ["List", "Pivot", "Treemap"].indexOf(self.ReportType()) < 0;
 	});
 
 	self.dateFields = ko.computed(function () {
@@ -3323,23 +3324,75 @@ var reportViewModel = function (options) {
 		}
 
 		if (self.ReportType() == 'Treemap') {
-			chart = new google.visualization.TreeMap(chartDiv);
-			chartOptions.showScale = true;
-		}
 
-		google.visualization.events.addListener(chart, 'ready', function () {
-			self.ChartData(chart.getImageURI());
-		});
+			var rootCount = 0;
+			var isInvalid = false;
+			var dt = [['Item', 'Parent', 'Value']];
 
-		// Add click event listener
-		google.visualization.events.addListener(chart, 'select', function () {
-			var selectedItem = chart.getSelection()[0];
-			if (selectedItem && selectedItem.row) {
-				self.ChartDrillDownData(null);
-				self.ReportResult().ReportData().Rows[selectedItem.row].expand();
-				$("#drilldownModal").modal('show');
+			// Check for root nodes and validate
+			_.forEach(reportData.Rows, function (e, index) {
+				if (!e.Items[1].Value) {
+					rootCount++;
+					return;
+				}
+			});
+
+			if (rootCount > 1) {
+				toastr.error('More than one root node detected.');
+				isInvalid = true;
+			} else if (rootCount === 0) {
+				// Add a custom root node if none exists
+				dt.push(['Root', null, 0]);
+				var distinctFirstColumnValues = _.uniq(_.map(reportData.Rows, function (e) {
+					return e.Items[1].Value;
+				}));
+
+				distinctFirstColumnValues.forEach(function (value) {
+					dt.push([value, 'Root', 1]);
+				});
 			}
-		});
+			_.forEach(reportData.Rows, function (e) {
+				if (e.Items[1].Value !== null) {
+					if (typeof e.Items[0].Value !== 'string' || typeof e.Items[1].Value !== 'string') {
+						toastr.error('Invalid data format: Columns 1 and 2 must be strings.');
+						isInvalid = true;
+					} 
+				}
+				dt.push([e.Items[0].Value, e.Items[1].Value, isNaN(parseInt(e.Items[2].Value)) ? 0 : parseInt(e.Items[2].Value)]);
+			});
+
+			if (isInvalid) return;
+			data = google.visualization.arrayToDataTable(dt);
+
+			chart = new google.visualization.TreeMap(chartDiv);
+			chartOptions = {
+				minColor: self.colorScheme()[0] || styleBlue[0],
+				midColor: self.colorScheme()[2] || styleBlue[2],
+				maxColor: self.colorScheme()[4] || styleBlue[4],
+				headerHeight: 15,
+				fontColor: 'black',
+				showScale: true,
+				maxDepth: 2,
+				maxPostDepth: 2,
+				useWeightedAverageForAggregation: true,
+				colorByRowLabel: true
+			};
+		}
+		if (self.ReportType() != 'Treemap') {
+			google.visualization.events.addListener(chart, 'ready', function () {
+				self.ChartData(chart.getImageURI());
+			});
+
+			// Add click event listener
+			google.visualization.events.addListener(chart, 'select', function () {
+				var selectedItem = chart.getSelection()[0];
+				if (selectedItem && selectedItem.row) {
+					self.ChartDrillDownData(null);
+					self.ReportResult().ReportData().Rows[selectedItem.row].expand();
+					$("#drilldownModal").modal('show');
+				}
+			});
+		}
 		function handlePointerDown(event) {
 			event.preventDefault(); // Prevent default browser behavior
 			document.addEventListener('pointermove', handlePointerMove);
@@ -3876,7 +3929,7 @@ var reportViewModel = function (options) {
 					e.openReport();
 				};
 
-				e.hasDrilldown = ["List", "Pivot"].indexOf(e.reportType) < 0;
+				e.hasDrilldown = ["List", "Pivot", "Treemap"].indexOf(e.reportType) < 0;
 				e.deleteReport = function () {
 					bootbox.confirm("Are you sure you would like to Delete this Report?", function (r) {
 						if (r) {
