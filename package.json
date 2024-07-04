@@ -6,7 +6,7 @@
     "jquery": "^3.4.1",
     "jquery-ui-dist": "1.12.1",
     "bootstrap": "5.3.3",
-    "bootbox": "5.3.4",
+    "bootbox": "6.0.0",
     "jquery-blockui": "2.7.0",
     "jquery-validation": "^1.19.1",
     "jquery-validation-unobtrusive": "^3.2.11",

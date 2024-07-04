@@ -166,7 +166,7 @@
             <div class="clearfix"></div>
             <hr />
             <div class="row">
-                <div class="form-group form-inline col-md-4" data-bind="with: pager">
+                <div class="d-flex flex-row align-items-center justify-content-center flex-wrap col-md-4" data-bind="with: pager">
                     <div data-bind="template: 'pager-template', data: $data"></div>
                 </div>
                 <div class="col-md-4" data-bind="ifnot: $root.customTableMode">
@@ -175,7 +175,7 @@
                     </div>
                 </div>
             </div>
-            <div class="menu row" style="margin-left: 20px;" data-bind="foreach: pagedTables">
+            <div class="menu g-3" style="margin-left: 20px;" data-bind="foreach: pagedTables">
                 <div class="menu-category card" style="float: left;">
 
                     <div class="card-header clearfix" style="">
