@@ -111,7 +111,7 @@
 
         <div class="pull-right" data-bind="if: !$parent.IsDrillDown() && !IsNumeric">
             <div class="dropup">
-                <a href="#" data-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
+                <a href="#" data-bs-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
                     <span class="fa fa-ellipsis-v"></span>
                 </a>
                 <ul class="dropdown-menu" style="z-index: 1001;">
@@ -289,7 +289,7 @@
 
     <!-- ko if: $parent.ReportType() != 'Pivot' && (!$parent.isChart() || $parent.ShowDataWithGraph()) -->
     <div class="pull-right" data-bind="if: $parent.OuterGroupColumns().length > 0">
-        <a href="#" data-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
+        <a href="#" data-bs-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
             Manage Groups <span class="fa fa-ellipsis-v"></span>
         </a>
         <ul class="dropdown-menu" style="z-index: 1001;" data-bind="foreach: $parent.OuterGroupColumns">
@@ -334,7 +334,7 @@
                 <input class="form-control text-box single-line" type="text" data-bind="value: manageAccess.clientId">
             </div>
             <div class="col-md-1 col-sm-1">
-                <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Leave blank to give all clients access (Global Reports)"></span>
+                <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Leave blank to give all clients access (Global Reports)"></span>
             </div>
         </div>
         <div class="alert alert-info">
@@ -454,7 +454,7 @@
             <div class="rules-group-header">
                 <div data-bind="visible: !isRoot">
                     <div class="pull-left">
-                        <div class="btn-group btn-group-toggle btn-group-sm" data-toggle="buttons" role="group">
+                        <div class="btn-group btn-group-toggle btn-group-sm" data-bs-toggle="buttons" role="group">
                         <label class="btn btn-primary active" style="margin-right: 0px;" >
                             <input type="radio" name="andoroption" data-bind="checked: AndOr, checkedValue: 'And'"> And
                         </label>
@@ -482,7 +482,7 @@
 <script type="text/html" id="fly-filter-template">
     <div class="card" data-bind="visible: FlyFilters().length>0">
         <div class="card-header">
-            <a data-toggle="collapse" data-bind="attr: {'data-target': '#filter-panel-' + ReportID() }" href="#">
+            <a data-bs-toggle="collapse" data-bind="attr: {'data-bs-target': '#filter-panel-' + ReportID() }" href="#">
                 <i class="fa fa-filter"></i> Choose Filters
             </a>
         </div>
@@ -1185,7 +1185,7 @@
                             </div>
                         </div>
                         <div class="row container-fluid" data-bind="foreach: ChooseFields">
-                            <div class="col-md-3 col-sm-4 col-xs-6">
+                            <div class="col-md-3 col-sm-4 col-xs-6 list-group">
                                 <div class="list-group-item">
                                     <div class="checkbox">
                                         <label>
@@ -1206,7 +1206,7 @@
                             </div>
                             <div class="card-body">
                                 <div class="row container-fluid" data-bind="foreach: jsonFields">
-                                    <div class="col-md-3 col-sm-4 col-xs-6">
+                                    <div class="col-md-3 col-sm-4 col-xs-6 list-group">
                                         <div class="list-group-item">
                                             <div class="checkbox">
                                                 <label>
@@ -1294,7 +1294,7 @@
                                     <div class="col-sm-10">
                                         <div data-bind="foreach: formulaFields">
                                             <h3 class="pull-left" data-bind="visible: setupFormula.isParenthesesStart" style="margin-top: 0;">(</h3>
-                                            <div data-bind="if: !setupFormula.isParenthesesStart() && !setupFormula.isParenthesesEnd()">
+                                            <div data-bind="if: !setupFormula.isParenthesesStart() && !setupFormula.isParenthesesEnd()" class="list-group">
                                                 <div class="list-group-item pull-left" style="margin-left: 15px; padding: 5px 15px">
                                                     <span data-bind="text: fieldName, visible: !setupFormula.isConstantValue()"></span>
                                                     <div data-bind="if: setupFormula.isConstantValue">
@@ -1614,7 +1614,7 @@
         <div class="modal-content" data-bind="with: ChartDrillDownData">
             <div class="modal-header">
                 <h4 class="modal-title">Drilldown Data</h4>
-                <button type="button" class="close pull-right" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <button type="button" class="close pull-right" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <!-- ko if: DrillDownData -->
             <div class="modal-body">
@@ -1677,7 +1677,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 <h4 class="modal-title">Account not Setup</h4>
             </div>
             <div class="modal-body">
@@ -1686,7 +1686,7 @@
                 <p>Please view the <a href="https://dotnetreport.com/blogs/getting-started-with-dotnet-report/" target="_blank">Getting Started Guide</a> to correctly configure dotnet Report.</p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-default" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
