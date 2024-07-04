@@ -349,7 +349,9 @@ function filterGroupViewModel(args) {
 			ParentIn: ko.observableArray(parentIn),
 			Apply: ko.observable(e.Apply != null ? e.Apply : true),
 			IsFilterOnFly: isFilterOnFly === true ? true : false,
-			showParentFilter: ko.observable(true)
+			showParentFilter: ko.observable(true),
+			fmtValue: ko.observable(e.Value1),
+			fmtValue2: ko.observable(e.Value2)
 		};
 
 		filter.Operator.subscribe(function () {
@@ -4398,7 +4400,14 @@ var dashboardViewModel = function (options) {
 		Description: ko.observable(currentDash.description),
 		manageAccess: manageAccess(options)
 	};
-
+	self.dateFormatMappings = {
+		'United States': 'mm/dd/yy',
+		'United Kingdom': 'dd/mm/yy',
+		'France': 'dd/mm/yy',
+		'German': 'dd.mm.yy',
+		'Spanish': 'dd/mm/yy',
+		'Chinese': 'yy/mm/dd'
+	};
 	self.currentDashboard = ko.observable(currentDash);
 	self.selectDashboard = ko.observable(currentDash.id);
 	self.loadDashboard = function (dashboardId) {
@@ -4709,7 +4718,9 @@ var dashboardViewModel = function (options) {
 									LookupList: ko.observable(f.LookupList()),
 									Apply: ko.observable(true),
 									IsFilterOnFly: true,
-									showParentFilter: ko.observable(f.showParentFilter())
+									showParentFilter: ko.observable(f.showParentFilter()),
+									fmtValue: ko.observable(f.Value()),
+									fmtValue2: ko.observable(f.Value2())
 								};
 								self.FlyFilters.push(filter);
 
