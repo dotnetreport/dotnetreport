@@ -214,24 +214,24 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             <div data-bind="if: $parent.adminMode">
                                                 <div class="small">
                                                     <b>Report Access</b><br />
-                                                    Manage by User <span class="badge badge-info" data-bind="text: userId ? userId : 'Any User'"></span>
+                                                    Manage by User <span class="badge text-bg-info text-white" data-bind="text: userId ? userId : 'Any User'"></span>
                                                     <br />
-                                                    View only by User <span class="badge badge-info" data-bind="text: (viewOnlyUserId ? viewOnlyUserId : (userId ? userId : 'Any User'))"></span>
+                                                    View only by User <span class="badge text-bg-info text-white" data-bind="text: (viewOnlyUserId ? viewOnlyUserId : (userId ? userId : 'Any User'))"></span>
                                                     <br />
                                                     <div data-bind="if: deleteOnlyUserId">
-                                                        Delete only by User <span class="badge badge-info" data-bind="text: deleteOnlyUserId"></span>
+                                                        Delete only by User <span class="badge text-bg-info text-white" data-bind="text: deleteOnlyUserId"></span>
                                                         <br />
                                                     </div>
                                                     <div data-bind="if: userRole">
-                                                        Manage by Role <span class="badge badge-info" data-bind="text: userRole ? userRole : 'No Role'"></span>
+                                                        Manage by Role <span class="badge text-bg-info text-white" data-bind="text: userRole ? userRole : 'No Role'"></span>
                                                         <br />
                                                     </div>
                                                     <div data-bind="if: viewOnlyUserRole">
-                                                        View only by Role <span class="badge badge-info" data-bind="text: viewOnlyUserRole ? viewOnlyUserRole : 'Any Role'"></span>
+                                                        View only by Role <span class="badge text-bg-info text-white" data-bind="text: viewOnlyUserRole ? viewOnlyUserRole : 'Any Role'"></span>
                                                         <br />
                                                     </div>
                                                     <div data-bind="if: deleteOnlyUserRole">
-                                                        Delete only by Role <span class="badge badge-info" data-bind="text: deleteOnlyUserRole ? deleteOnlyUserRole : 'Same as Manage'"></span>
+                                                        Delete only by Role <span class="badge text-bg-info text-white" data-bind="text: deleteOnlyUserRole ? deleteOnlyUserRole : 'Same as Manage'"></span>
                                                         <br />
                                                     </div>
                                                     <div data-bind="if: clientId">
