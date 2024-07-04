@@ -117,7 +117,7 @@
             <div class="form-row" data-bind="visible: true">
                 <div class="form-group">
                     <div class="control-group">
-                        <select class="form-control" data-bind="options: DataConnections, optionsText: 'DataConnectName', optionsValue: 'DataConnectGuid', value: currentConnectionKey"></select>
+                        <select class="form-control" style="width:25%"  data-bind="options: DataConnections, optionsText: 'DataConnectName', optionsValue: 'DataConnectGuid', value: currentConnectionKey" ></select>
                         <div class="padded-top"></div>
                         <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#connection-setup-modal">Manage DB Connection</button>
                         <button class="btn btn-primary btn-sm" data-bind="click: switchConnection, visible: canSwitchConnection">Switch Connection</button>
