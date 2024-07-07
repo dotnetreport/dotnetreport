@@ -1,4 +1,7 @@
-﻿using Microsoft.Data.SqlClient;
+﻿using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Wordprocessing;
+using Microsoft.Data.SqlClient;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using OfficeOpenXml;
@@ -24,6 +27,9 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Emit;
 using System.Collections.Concurrent;
+using A = DocumentFormat.OpenXml.Drawing;
+using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
+using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
 
 namespace ReportBuilder.Web.Models
 {
@@ -297,6 +303,7 @@ namespace ReportBuilder.Web.Models
         public int Width { get; set; }
         public int Height { get; set; }
         public bool IsWidget { get; set; }
+        public string WidgetSettings { get; set; }    
     }
 
     public class DotNetDashboardModel
@@ -687,11 +694,22 @@ namespace ReportBuilder.Web.Models
             return "";
         }
 
-        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool loadHeader = true)
+        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool loadHeader = true, string chartData = null)
         {
             ws.Cells[rowstart, colstart].LoadFromDataTable(dt, loadHeader);
-            if (loadHeader) ws.Cells[rowstart, colstart, rowstart, colstart + dt.Columns.Count - 1].Style.Font.Bold = true;
-
+            if (loadHeader) ws.Cells[rowstart, colstart, rowstart, colstart + dt.Columns.Count -1].Style.Font.Bold = true;
+            if (!string.IsNullOrEmpty(chartData) && chartData != "undefined")
+            {
+                byte[] imageBytes = Convert.FromBase64String(chartData.Substring(chartData.LastIndexOf(',') + 1));
+                using (MemoryStream ms = new MemoryStream(imageBytes))
+                {
+                    Image image = Image.FromStream(ms);
+                    // Add the image to the worksheet
+                    var picture = ws.Drawings.AddPicture("ChartImage", image);
+                    picture.SetPosition(1, 0, dt.Columns.Count + 1, 0); // Set the position of the image
+                    picture.SetSize(400, 300); // Set the size of the image in pixels (width, height)
+                }
+            }
             int i = colstart; var isNumeric = false;
             foreach (DataColumn dc in dt.Columns)
             {
@@ -1262,7 +1280,7 @@ namespace ReportBuilder.Web.Models
         }
 
 
-        public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, bool allExpanded = false,
+        public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
                 string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
         {
             var sql = Decrypt(reportSql);
@@ -1294,7 +1312,6 @@ namespace ReportBuilder.Web.Models
                         }
                     }
                 }
-
                 using (ExcelPackage xp = new ExcelPackage())
                 {
                     ExcelWorksheet ws = xp.Workbook.Worksheets.Add(reportName);
@@ -1314,7 +1331,7 @@ namespace ReportBuilder.Web.Models
                         rowstart += 2;
                         rowend = rowstart + dt.Rows.Count;
 
-                        FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeSubtotal);
+                        FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeSubtotal,true,chartData);
 
                         if (allExpanded)
                         {
@@ -1721,6 +1738,262 @@ namespace ReportBuilder.Web.Models
             }
         }
 
+        public static async Task<byte[]> GetWordFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
+            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
+        {
+            var sql = Decrypt(reportSql);
+            var sqlFields = SplitSqlColumns(sql);
+
+            // Execute sql
+            var dt = new DataTable();
+            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
+            {
+                conn.Open();
+                var command = new OleDbCommand(sql, conn);
+                var adapter = new OleDbDataAdapter(command);
+
+                adapter.Fill(dt);
+
+                if (pivot) dt = Transpose(dt);
+
+                if (columns?.Count > 0)
+                {
+                    foreach (var col in columns)
+                    {
+                        if (dt.Columns.Contains(col.fieldName) && col.hideStoredProcColumn)
+                        {
+                            dt.Columns.Remove(col.fieldName);
+                        }
+                        else if (!String.IsNullOrWhiteSpace(col.customfieldLabel))
+                        {
+                            dt.Columns[col.fieldName].ColumnName = col.customfieldLabel;
+                        }
+                    }
+                }
+
+                using (MemoryStream memStream = new MemoryStream())
+                {
+                    using (WordprocessingDocument wordDocument = WordprocessingDocument.Create(memStream, WordprocessingDocumentType.Document))
+                    {
+                        MainDocumentPart mainPart = wordDocument.AddMainDocumentPart();
+                        mainPart.Document = new Document();
+                        Body body = mainPart.Document.AppendChild(new Body());                     
+                        // Add report header
+                        Paragraph header = new Paragraph(new Run(new RunProperties()
+                        {
+                            FontSize = new DocumentFormat.OpenXml.Wordprocessing.FontSize() { Val = "28" },// Font size 14 points (2 * 14)
+                            Bold = new Bold(),
+                        }, new Text(reportName)));
+                        header.ParagraphProperties = new ParagraphProperties(new Justification() { Val = JustificationValues.Center });
+                        body.AppendChild(header);
+
+                        // Render chart
+                        if (!string.IsNullOrEmpty(chartData) && chartData != "undefined")
+                        {
+                            byte[] imageDecoded = Convert.FromBase64String(chartData.Substring(chartData.LastIndexOf(',') + 1));
+                            using (MemoryStream imageStream = new MemoryStream(imageDecoded))
+                            {
+                                ImagePart imagePart = mainPart.AddImagePart(ImagePartType.Jpeg);
+                                imagePart.FeedData(imageStream);
+                                // Specify the size in pixels and convert to EMUs
+                                int widthInPixels = 500;
+                                int heightInPixels = 400;
+                                long widthInEmus = widthInPixels * 9525;
+                                long heightInEmus = heightInPixels * 9525;
+                                AddImageToBody(wordDocument, mainPart.GetIdOfPart(imagePart),widthInEmus, heightInEmus);
+                            }
+                        }
+                        // Add data in table format
+                        if (dt.Rows.Count > 0)
+                        {
+                            // Create table
+                            Table table = new Table();
+                            TableProperties props = new TableProperties(new Justification() { Val = JustificationValues.Center },
+                             new TableBorders(
+                             new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 8 },
+                             new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 10 },
+                             new LeftBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 10 },
+                             new RightBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 10 },
+                             new InsideHorizontalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 8 },
+                             new InsideVerticalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 10 }
+                             ));
+
+                            // Append table properties
+                            table.AppendChild<TableProperties>(props);
+                            // Add header row
+                            TableRow headerRow = new TableRow();
+                            // Calculate max text width for each column
+                            int[] maxColumnWidths = new int[dt.Columns.Count];
+                            foreach (DataColumn column in dt.Columns)
+                            {
+                                maxColumnWidths[column.Ordinal] = EstimateTextWidth(column.ColumnName);
+                                RunProperties runProperties = new RunProperties(
+                                    new Bold(),
+                                    new DocumentFormat.OpenXml.Wordprocessing.Color() { Val = "#156082" } // Example color
+                                );
+                                Run run = new Run(runProperties, new Text(column.ColumnName));
+                                ParagraphProperties paragraphProperties = new ParagraphProperties(
+                                    new SpacingBetweenLines() { Before = "100", After = "100", Line = "240", LineRule = LineSpacingRuleValues.Auto },
+                                    new Indentation() { Left = "180", Right = "180"} // Adjust values as needed
+                                );
+                                Paragraph paragraph = new Paragraph(paragraphProperties, run);
+                                TableCell cell = new TableCell(paragraph);
+                                headerRow.AppendChild(cell);
+                            }
+                            table.AppendChild(headerRow);
+
+                            // Normalize column widths to fit the available width
+                            int totalWidth = 0;
+                            foreach (int width in maxColumnWidths)
+                            {
+                                totalWidth += width;
+                            }
+                            if (totalWidth > 13900)
+                            {
+                                // Set landscape orientation
+                                SectionProperties sectionProperties = new SectionProperties();
+                                DocumentFormat.OpenXml.Wordprocessing.PageSize pageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize() { Width = Convert.ToUInt32(totalWidth +(1440*2)), Orient = PageOrientationValues.Landscape };
+                                sectionProperties.Append(pageSize);
+                                body.Append(sectionProperties);
+                            }
+                            else
+                            {
+                                // Set page orientation to landscape
+                                SectionProperties sectionProps = new SectionProperties();
+                                DocumentFormat.OpenXml.Wordprocessing.PageSize defaultpageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize()
+                                {
+                                    Orient = PageOrientationValues.Landscape,
+                                    Width = 16838,  // 11.69 inch in Twips (297 mm)
+                                };
+                                sectionProps.Append(defaultpageSize);
+                                body.Append(sectionProps);
+                            }
+                            // Add data rows
+                            foreach (DataRow row in dt.Rows)
+                            {
+                                TableRow dataRow = new TableRow();
+                                foreach (DataColumn column in dt.Columns)
+                                {
+                                    var value = row[column.ColumnName].ToString();
+                                    var formatColumn = GetColumnFormatting(column, columns, ref value);
+                                    Run run = new Run( new Text(value));
+                                    ParagraphProperties paragraphProperties = new ParagraphProperties(
+                                        new SpacingBetweenLines() { Before = "100", After = "100", Line = "240", LineRule = LineSpacingRuleValues.Auto },
+                                        new Indentation() { Left = "180", Right = "180" } // Adjust values as needed
+                                    );
+                                    Paragraph paragraph = new Paragraph(paragraphProperties, run);
+                                    TableCell cell = new TableCell(paragraph);
+                                    dataRow.AppendChild(cell);
+                                }
+                                table.AppendChild(dataRow);
+                            }
+                            body.AppendChild(table);
+                            // Add expanded data if applicable
+                            if (allExpanded)
+                            {
+                                Paragraph expandedData = new Paragraph(new Run(new Text("Additional expanded data")));
+                                body.AppendChild(expandedData);
+                            }
+                        }
+                        else
+                        {
+                            Paragraph expandedData = new Paragraph(new Run(new Text("No RecordS Found")));
+                            body.AppendChild(expandedData);
+                        }
+                        // Ensure word wrapping doesn't break words
+                        foreach (TableCell cell in body.Descendants<TableCell>())
+                        {
+                            cell.TableCellProperties = new TableCellProperties();
+                            NoWrap noWrap = new NoWrap();
+                            cell.TableCellProperties.Append(noWrap);
+                        }
+                        wordDocument.Save();
+                    }
+                    return memStream.ToArray();
+                }
+            }
+        }
+        static void AddImageToBody(WordprocessingDocument wordDoc, string relationshipId, long cx, long cy)
+        {
+            // Define the reference of the image.
+            var element =
+                 new  Drawing(
+                     new DW.Inline(
+                         new DW.Extent() { Cx = cx, Cy = cy },
+                         new DW.EffectExtent()
+                         {
+                             LeftEdge = 0L,
+                             TopEdge = 0L,
+                             RightEdge = 0L,
+                             BottomEdge = 0L
+                         },
+                         new DW.DocProperties()
+                         {
+                             Id = (UInt32Value)1U,
+                             Name = "Chart Image"
+                         },
+                         new DW.NonVisualGraphicFrameDrawingProperties(
+                             new A.GraphicFrameLocks() { NoChangeAspect = true }),
+                         new A.Graphic(
+                             new A.GraphicData(
+                                 new PIC.Picture(
+                                     new PIC.NonVisualPictureProperties(
+                                         new PIC.NonVisualDrawingProperties()
+                                         {
+                                             Id = (UInt32Value)0U,
+                                             Name = "New Bitmap Chart Image.jpg"
+                                         },
+                                         new PIC.NonVisualPictureDrawingProperties()),
+                                     new PIC.BlipFill(
+                                         new A.Blip(
+                                             new A.BlipExtensionList(
+                                                 new A.BlipExtension()
+                                                 {
+                                                     Uri =
+                                                        "{28A0092B-C50C-407E-A947-70E740481C1C}"
+                                                 })
+                                         )
+                                         {
+                                             Embed = relationshipId,
+                                             CompressionState =
+                                             A.BlipCompressionValues.Print
+                                         },
+                                         new A.Stretch(
+                                             new A.FillRectangle())),
+                                     new PIC.ShapeProperties(
+                                         new A.Transform2D(
+                                             new A.Offset() { X = 0L, Y = 0L },
+                                             new A.Extents() { Cx = 990000L, Cy = 792000L }),
+                                         new A.PresetGeometry(
+                                             new A.AdjustValueList()
+                                         )
+                                         { Preset = A.ShapeTypeValues.Rectangle }))
+                             )
+                             { Uri = "http://schemas.openxmlformats.org/drawingml/2006/picture" })
+                     )
+                     {
+                         DistanceFromTop = (UInt32Value)0U,
+                         DistanceFromBottom = (UInt32Value)0U,
+                         DistanceFromLeft = (UInt32Value)0U,
+                         DistanceFromRight = (UInt32Value)0U,
+                         EditId = "50D07946"
+                     });
+
+            if (wordDoc.MainDocumentPart is null || wordDoc.MainDocumentPart.Document.Body is null)
+            {
+                throw new ArgumentNullException("MainDocumentPart and/or Body is null.");
+            }
+            Paragraph paragraph = new Paragraph(new Run(element));
+            paragraph.ParagraphProperties = new ParagraphProperties(new Justification() { Val = JustificationValues.Center });
+            wordDoc.MainDocumentPart.Document.Body.AppendChild(paragraph);
+        }
+        static private int EstimateTextWidth(string text)
+        {
+            // Simple estimation: number of characters * average width of a character in twips
+            // Note: 1 inch = 1440 twips, and average character width can vary. Adjust this multiplier as needed.
+            int averageCharWidthInTwips = 120;
+            return text.Length * averageCharWidthInTwips;
+        }
         public static async Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
                     string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false)
         {

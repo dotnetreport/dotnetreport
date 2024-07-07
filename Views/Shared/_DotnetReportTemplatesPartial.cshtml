@@ -4,13 +4,13 @@
         <!-- ko if: !hasForeignKey-->
         <!-- ko if: fieldType=='DateTime'-->
         <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 -->
-        <input class="form-control" data-bind="datepicker: $parent.Value" required />
+        <input class="form-control" data-bind="datepicker: $parent.fmtValue, datepickerOptions: {value: $parent.Value, dateFormat: dateFormat() === 'Custom' ? customDateFormat().replace(/yyyy/g, 'yy') : $root.dateFormatMappings[dateFormat()]}" required />
         <!-- /ko -->
         <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
         From
-        <input required class="form-control" data-bind="datepicker: $parent.Value" />
+        <input required class="form-control" data-bind="datepicker: $parent.fmtValue, datepickerOptions: {value: $parent.Value, dateFormat: dateFormat() === 'Custom' ? customDateFormat().replace(/yyyy/g, 'yy') : $root.dateFormatMappings[dateFormat()]}" />
         to
-        <input data-bind="datepicker: $parent.Value2" class="form-control" required />
+        <input data-bind="datepicker: $parent.fmtValue2, datepickerOptions: {value: $parent.Value2, dateFormat: dateFormat() === 'Custom' ? customDateFormat().replace(/yyyy/g, 'yy') : $root.dateFormatMappings[dateFormat()]}" class="form-control" required />
         <!-- /ko -->
         <!-- ko if: ['range'].indexOf($parent.Operator()) != -1 -->
         <select data-bind="value: $parent.Value" class="form-control" required>
@@ -60,12 +60,6 @@
         <!-- ko if: ['Int','Money','Float','Double'].indexOf(fieldType) != -1 -->
         <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
         <input class="form-control" type="number" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default'" required />
-        <!-- /ko -->
-        <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
-        From
-        <input class="form-control" type="number" data-bind="value: $parent.Value" required />
-        to
-        <input class="form-control" type="number" data-bind="value: $parent.Value2" required />
         <!-- /ko -->
         <!-- /ko -->
         <!-- ko if: fieldType=='Boolean' && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
@@ -743,6 +737,8 @@
                             <option value="EXCEL">Excel</option>
                                 <option value="CSV">CSV</option>
                                <option value="PDF">PDF</option>
+                               <option value="WORD">Word</option>
+                               <option value="LINK">Link</option>
                            </select>
                       </div>
                  </div>
@@ -778,6 +774,17 @@
                       </div>
                   </div>
              </div>
+            <div class="form-horizontal form-group">
+               <div class="form-group row">
+                <label class="col-sm-2 control-label">Pick Time Zone</label>
+                    <div class="col-sm-10">
+                     <select class="form-control" data-bind="options: timezonOption,
+                                                   optionsText: 'displayName',
+                                                   optionsValue: 'timeZoneId',
+                                                   value: selectedTimezone,
+                                                   select2: {allowClear: true, placeholder: 'Set a time zone to send report'}" />
+                 </div>
+            </div>
          </div>
     </div>
 </script>
@@ -1122,6 +1129,12 @@
                                 <p>Pie</p>
                             </div>
                         </div>
+                        <div class="col-md-2 col-sm-4 col-xs-6">
+                            <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Treemap'); }, css: {active: ReportType()=='Treemap'}">
+                                <span class="fa fa-2x fa-window-restore"></span>
+                                <p>Treemap</p>
+                            </div>
+                        </div>
                     </div>
                     <div class="row">
                         <div class="col-md-2 col-sm-4 col-xs-6">
@@ -1436,6 +1449,9 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="alert alert-info" data-bind="visible: ReportType()=='Treemap'">
+                                <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For Treemap, the data must be in a hierarchical format with 2nd column having parent and third column having a numeric value. The data must have a single root node having null as its parent as well.
+                            </div>
                             <div class="alert alert-info" data-bind="visible: ReportType()=='Line'">
                                 <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For Line Graph, the first field below will show on the x-axis and it needs to be numeric.
                             </div>
@@ -1460,7 +1476,7 @@
                                             <span class="fa fa-columns"></span>
                                             <span data-bind="text: selectedFieldName"></span>
                                             <span data-bind="text: isFormulaField() ? '(' + fieldFormat() + ')' : ''"></span>
-                                            <span data-bind="visible: !$parent.isFieldValidForYAxis($index(), fieldType, selectedAggregate())">
+                                            <span data-bind="visible: !$parent.isFieldValidForYAxis($index(), fieldType, selectedAggregate()) && $parent.ReportType() !='Treemap'">
                                                 <span class="badge badge-danger" data-bind="visible: !groupInGraph()">Will not show in <span data-bind="text: $parent.ReportType"></span>Chart</span>
                                             </span>
                                         </div>

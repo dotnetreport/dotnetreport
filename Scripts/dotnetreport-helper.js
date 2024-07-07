@@ -79,7 +79,10 @@ ko.bindingHandlers.datepicker = {
         //handle the field changing
         ko.utils.registerEventHandler(element, "change", function () {
             var observable = valueAccessor();
-            observable($(element).datepicker({ dateFormat: 'mm/dd/yyyy' }).val());
+            var date = $(element).datepicker('getDate');
+            var value = options.value;
+            observable($(element).datepicker({ dateFormat: options.dateFormat || 'mm/dd/yyyy' }).val());
+            if (value) value(date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' })); 
         });
 
         //handle disposal (if KO removes by the template binding)

@@ -139,6 +139,8 @@ function scheduleBuilder(userId) {
 	var self = this;
 
 	self.options = ['day', 'week', 'month', 'year', 'once', 'hour'];
+	self.timezonOption = ko.observableArray([]);
+	self.selectedTimezone = ko.observable(); 
 	self.showAtTime = ko.observable(true);
 	self.showDays = ko.observable(false);
 	self.showMonths = ko.observable(false);
@@ -210,6 +212,20 @@ function scheduleBuilder(userId) {
 		}
 	});
 
+	self.getTimezones = function () {
+		ajaxcall({
+			url: '/api/DotNetReportApi/GetAllTimezones',
+			noBlocking: true
+		}).done(function (timezonesData) {
+			self.timezonOption = ko.observableArray(Object.keys(timezonesData).map(function (key) {
+				return { displayName: key, timeZoneId: timezonesData[key] };
+			}));
+
+		});
+	};
+
+	self.getTimezones();
+
 	self.toJs = function () {
 		return self.hasSchedule() ? {
 			SelectedOption: self.selectedOption(),
@@ -223,7 +239,8 @@ function scheduleBuilder(userId) {
 			UserId: userId,
 			ScheduleStart: self.hasScheduleStart() ? self.scheduleStart() : '',
 			ScheduleEnd: self.hasScheduleEnd() ? self.scheduleEnd() : '',
-			Format: self.format()
+			Format: self.format(),
+			TimeZone: self.selectedTimezone() 
 		} : null;
 	};
 
@@ -256,6 +273,7 @@ function scheduleBuilder(userId) {
 		self.scheduleEnd(data.ScheduleEnd ? new Date(data.ScheduleEnd.match(/\d+/)[0] * 1) : '');
 		self.hasScheduleStart(data.ScheduleStart ? true : false);
 		self.hasScheduleEnd(data.ScheduleEnd ? true : false);
+		self.selectedTimezone(data.Timezone);
 		self.format(data.Format);
 	}
 
@@ -319,6 +337,7 @@ function filterGroupViewModel(args) {
 
 		var field = ko.observable();	
 		var valueIn = e.Operator == 'in' || e.Operator == 'not in' ? (e.Value1 || '').split(',') : [];
+		var parentIn = e.ParentIn ? e.ParentIn.split(',') : [];
 		var filter = {
 			AndOr: ko.observable(isFilterOnFly ? ' AND ' : e.AndOr),
 			Field: field,
@@ -328,10 +347,12 @@ function filterGroupViewModel(args) {
 			ValueIn: ko.observableArray(valueIn),
 			LookupList: lookupList,
 			ParentList: parentList,
-			ParentIn: ko.observableArray([]),
+			ParentIn: ko.observableArray(parentIn),
 			Apply: ko.observable(e.Apply != null ? e.Apply : true),
 			IsFilterOnFly: isFilterOnFly === true ? true : false,
-			showParentFilter: ko.observable(true)
+			showParentFilter: ko.observable(true),
+			fmtValue: ko.observable(e.Value1),
+			fmtValue2: ko.observable(e.Value2)
 		};
 
 		filter.Operator.subscribe(function () {
@@ -411,6 +432,10 @@ function filterGroupViewModel(args) {
 								if (list.d) { list = list.d; }
 								if (list.result) { list = list.result; }
 								parentList(_.sortBy(list, 'text'));
+								if (parentIn.length > 0) {
+									filter.ParentIn(parentIn);
+									parentIn = [];
+								}
 							});
 						});
 
@@ -996,6 +1021,14 @@ var reportViewModel = function (options) {
 		apiUrl: options.apiUrl,
 		isExpanded: self.isExpanded
 	});
+	self.dateFormatMappings = {
+		'United States': 'mm/dd/yy',
+		'United Kingdom': 'dd/mm/yy',
+		'France': 'dd/mm/yy',
+		'German': 'dd.mm.yy',
+		'Spanish': 'dd/mm/yy',
+		'Chinese': 'yy/mm/dd'
+	};
 
 	self.initHeaderDesigner = function () {
 		self.headerDesigner.init();
@@ -1229,7 +1262,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.ReportType.subscribe(function (newvalue) {
-		if (newvalue == 'List') {
+		if (newvalue == 'List' || newvalue == 'Treemap') {
 			self.AggregateReport(false);
 		}
 		else {
@@ -1565,7 +1598,8 @@ var reportViewModel = function (options) {
 			e.Field = {
 				hasForeignKey: e.ForeignKey,
 				fieldType: e.ParameterDataTypeString,
-				hasForeignParentKey: false
+				hasForeignParentKey: false,
+				dateFormat: ko.observable()
 			}
 			e.LookupList = ko.observableArray([]);
 			if (e.Value()) {
@@ -2046,6 +2080,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.isFieldValidForYAxis = function (i, fieldType, aggregate) {
+		if (self.ReportType() == 'Treemap') return false;
 		if (i > 0) {
 			if (self.ReportType() == "Bar" && ["Int", "Double", "Money"].indexOf(fieldType) < 0 && aggregate != "Count") {
 				return false;
@@ -2068,7 +2103,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.canDrilldown = ko.computed(function () {
-		return ["List", "Pivot"].indexOf(self.ReportType()) < 0;
+		return ["List", "Pivot", "Treemap"].indexOf(self.ReportType()) < 0;
 	});
 
 	self.dateFields = ko.computed(function () {
@@ -2244,6 +2279,7 @@ var reportViewModel = function (options) {
 					Operator: e.Operator(),
 					Value1: e.Operator() == "in" || e.Operator() == "not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' ? "blank" : e.Value()),
 					Value2: e.Value2(),
+					ParentIn: e.ParentIn().join(","),
 					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
 				} : null;
 
@@ -2298,6 +2334,7 @@ var reportViewModel = function (options) {
 					Operator: e.Operator(),
 					Value1: e.Operator() == "in" || e.Operator() == "not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' ? "blank" : e.Value()),
 					Value2: e.Value2(),
+					ParentIn: e.ParentIn().join(","),
 					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
 				} : null;
 
@@ -3101,7 +3138,7 @@ var reportViewModel = function (options) {
 		}
 
 		if (self.isChart()) {
-			google.charts.load('current', { packages: ['corechart', 'geochart'] });
+			google.charts.load('current', { packages: ['corechart', 'geochart','treemap'] });
 			google.charts.setOnLoadCallback(self.DrawChart);
 		}
 
@@ -3266,6 +3303,8 @@ var reportViewModel = function (options) {
 				//	subGroups.push({ index: i, column: e.fieldLabel || e.ColumnName });
 			} else if (e.IsNumeric && !e.groupInGraph()) {
 				valColumns.push({ index: i, column: e.fieldLabel() || e.ColumnName });
+			} else if (!e.groupInGraph() && self.ReportType() == 'Treemap') {
+				data.addColumn(e.IsNumeric ? 'number' : 'string', e.fieldLabel() || e.ColumnName);
 			}
 		});
 
@@ -3312,6 +3351,8 @@ var reportViewModel = function (options) {
 						itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.FormattedValue) || (r.Column.IsNumeric ? 0 : ''));
 					}
 				} else if (r.Column.IsNumeric && !column.groupInGraph()) {
+					itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.FormattedValue) || (r.Column.IsNumeric ? 0 : ''));
+				} else if (!column.groupInGraph() && self.ReportType() == 'Treemap') {
 					itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.FormattedValue) || (r.Column.IsNumeric ? 0 : ''));
 				}
 			});
@@ -3388,21 +3429,131 @@ var reportViewModel = function (options) {
 			}
 		}
 
-		google.visualization.events.addListener(chart, 'ready', function () {
-			self.ChartData(chart.getImageURI());
-		});
+		if (self.ReportType() == 'Treemap') {
 
-		// Add click event listener
-		google.visualization.events.addListener(chart, 'select', function () {
-			var selectedItem = chart.getSelection()[0];
-			if (selectedItem && selectedItem.row) {
-				self.ChartDrillDownData(null);
-				self.ReportResult().ReportData().Rows[selectedItem.row].expand();
-				$("#drilldownModal").modal('show');
+			var rootCount = 0;
+			var isInvalid = false;
+			var dt = [['Item', 'Parent', 'Value']];
+
+			// Check for root nodes and validate
+			_.forEach(reportData.Rows, function (e, index) {
+				if (!e.Items[1].Value) {
+					rootCount++;
+					return;
+				}
+			});
+
+			if (rootCount > 1) {
+				toastr.error('More than one root node detected.');
+				isInvalid = true;
+			} else if (rootCount === 0) {
+				// Add a custom root node if none exists
+				dt.push(['Root', null, 0]);
+				var distinctFirstColumnValues = _.uniq(_.map(reportData.Rows, function (e) {
+					return e.Items[1].Value;
+				}));
+
+				distinctFirstColumnValues.forEach(function (value) {
+					dt.push([value, 'Root', 1]);
+				});
 			}
-		});
+			_.forEach(reportData.Rows, function (e) {
+				if (e.Items[1].Value !== null) {
+					if (typeof e.Items[0].Value !== 'string' || typeof e.Items[1].Value !== 'string') {
+						toastr.error('Invalid data format: Columns 1 and 2 must be strings.');
+						isInvalid = true;
+					} 
+				}
+				dt.push([e.Items[0].Value, e.Items[1].Value, isNaN(parseInt(e.Items[2].Value)) ? 0 : parseInt(e.Items[2].Value)]);
+			});
 
+			if (isInvalid) return;
+			data = google.visualization.arrayToDataTable(dt);
+
+			chart = new google.visualization.TreeMap(chartDiv);
+			chartOptions = {
+				minColor: self.colorScheme()[0] || styleBlue[0],
+				midColor: self.colorScheme()[2] || styleBlue[2],
+				maxColor: self.colorScheme()[4] || styleBlue[4],
+				headerHeight: 15,
+				fontColor: 'black',
+				showScale: true,
+				maxDepth: 2,
+				maxPostDepth: 2,
+				useWeightedAverageForAggregation: true,
+				colorByRowLabel: true
+			};
+		}
+		if (self.ReportType() != 'Treemap') {
+			google.visualization.events.addListener(chart, 'ready', function () {
+				self.ChartData(chart.getImageURI());
+			});
+
+			// Add click event listener
+			google.visualization.events.addListener(chart, 'select', function () {
+				var selectedItem = chart.getSelection()[0];
+				if (selectedItem && selectedItem.row) {
+					self.ChartDrillDownData(null);
+					self.ReportResult().ReportData().Rows[selectedItem.row].expand();
+					$("#drilldownModal").modal('show');
+				}
+			});
+		}
+		function handlePointerDown(event) {
+			event.preventDefault(); // Prevent default browser behavior
+			document.addEventListener('pointermove', handlePointerMove);
+			document.addEventListener('pointerup', handlePointerUp);
+		}
+		function handlePointerMove(event) {
+			event.preventDefault(); 
+			chartWidth = event.clientX - document.getElementById('chart_div_' + self.ReportID()).getBoundingClientRect().left;
+			chartHeight = event.clientY - document.getElementById('chart_div_' + self.ReportID()).getBoundingClientRect().top;
+			chartWidth = Math.max(100, chartWidth); // Ensure a minimum width
+			chartHeight = Math.max(100, chartHeight); // Ensure a minimum height
+			chartOptions.width = chartWidth;
+			chartOptions.height = chartHeight;
+			chart.draw(data, chartOptions);
+		}
+		function handlePointerUp(event) {
+			event.preventDefault(); // Prevent default browser behavior
+			document.removeEventListener('pointermove', handlePointerMove);
+			document.removeEventListener('pointerup', handlePointerUp);
+			saveDimensions();
+		}
+
+		function saveDimensions() {
+			localStorage.setItem('chart_dimensions_' + self.ReportID(), JSON.stringify({ width: chartWidth, height: chartHeight }));
+		}
+		function retrieveDimensions() {
+			var storedDimensions = localStorage.getItem('chart_dimensions_' + self.ReportID());
+			if (storedDimensions) {
+				var dimensions = JSON.parse(storedDimensions);
+				chartOptions.width = dimensions.width;
+				chartOptions.height = dimensions.height;
+			}
+			else {
+				chartOptions.width = '100%';
+				chartOptions.height = '450px';
+			}
+		}
+		// Call retrieveDimensions to load saved dimensions when the chart is initialized
+		retrieveDimensions();
 		chart.draw(data, chartOptions);
+		// Add event listener for pointer down on the chart container
+		var parentDiv = document.getElementById('chart_div_' + self.ReportID());
+		var chartContainer = parentDiv.children[0].children[0]; // Assuming the first child is the one you want
+		chartContainer.addEventListener('pointerdown', handlePointerDown);
+
+		chartContainer.addEventListener('pointerenter', function () {
+			chartContainer.style.cursor = 'nwse-resize';
+			chartContainer.style.border = '1px dashed black';
+			chartContainer.style.boxSizing = 'content-box';
+		});
+		chartContainer.addEventListener('pointerleave', function () {
+			chartContainer.style.cursor = 'default';
+			chartContainer.style.border = 'none';
+			chartContainer.style.boxSizing = 'border-box';
+		});
 	};
 
 	self.loadFolders = function (folderId) {
@@ -3903,7 +4054,7 @@ var reportViewModel = function (options) {
 					e.openReport();
 				};
 
-				e.hasDrilldown = ["List", "Pivot"].indexOf(e.reportType) < 0;
+				e.hasDrilldown = ["List", "Pivot", "Treemap"].indexOf(e.reportType) < 0;
 				e.deleteReport = function () {
 					bootbox.confirm("Are you sure you would like to Delete this Report?", function (r) {
 						if (r) {
@@ -4241,6 +4392,7 @@ var reportViewModel = function (options) {
 			reportName: self.ReportName(),
 			allExpanded: expand === true ? true : false,
 			expandSqls: JSON.stringify(reportData),
+			chartData: self.ChartData() || '',
 			columnDetails: self.getColumnDetails(),
 			includeSubTotal: self.IncludeSubTotal(),
 			pivot: self.ReportType() == 'Pivot',
@@ -4273,6 +4425,59 @@ var reportViewModel = function (options) {
 			reportName: self.ReportName()
 		}, 'xml');
 	}
+	self.downloadWord = function () {
+		var reportData = self.BuildReportData();
+		reportData.DrillDownRowUsePlaceholders = true;
+		var pivotColumn = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' });
+		self.downloadExport("DownloadWord", {
+			reportSql: self.currentSql(),
+			connectKey: self.currentConnectKey(),
+			reportName: self.ReportName(),
+			allExpanded: false,
+			expandSqls: JSON.stringify(reportData),
+			chartData: self.ChartData() || '',
+			columnDetails: self.getColumnDetails(),
+			includeSubTotal: self.IncludeSubTotal(),
+			pivot: self.ReportType() == 'Pivot',
+			pivotColumn: pivotColumn ? pivotColumn.fieldName : ''
+		}, 'docx');
+	}
+
+
+	// Unit tests
+	runUnitTests = function () {
+		const assert = (description, condition) => {
+			if (!condition) {
+				console.error(`Test failed: ${description}`);
+			} else {
+				console.log(`Test passed: ${description}`);
+			}
+		};
+
+		const testFormatDate = () => {
+			var date = new Date(2024, 5, 13); // June 13, 2024
+
+			// Test cases
+			assert("Format 'yyyy-mm-dd'", self.formatDate(date, 'yyyy-mm-dd') === '2024-06-13');
+			assert("Format 'dd/MM/yyyy'", self.formatDate(date, 'dd/MM/yyyy') === '13/Jun/2024');
+			assert("Format 'd/M/yy'", self.formatDate(date, 'd/M/yy') === '13/6/24');
+			assert("Format 'MM dd, yyyy'", self.formatDate(date, 'MM dd, yyyy') === 'Jun 13, 2024');
+			assert("Format 'm/d/yy'", self.formatDate(date, 'm/d/yy') === '6/13/24');
+
+			date = new Date(2024, 5, 1); // June 1, 2024
+			assert("Format 'yyyy-mm-dd'", self.formatDate(date, 'yyyy-mm-dd') === '2024-06-01');
+			assert("Format 'dd/MM/yyyy'", self.formatDate(date, 'dd/MM/yyyy') === '01/Jun/2024');
+			assert("Format 'd/M/yy'", self.formatDate(date, 'd/M/yy') === '1/6/24');
+			assert("Format 'MM dd, yyyy'", self.formatDate(date, 'MM d, yyyy') === 'Jun 1, 2024');
+			assert("Format 'm/d/yy'", self.formatDate(date, 'm/d/yy') === '6/1/24');
+
+			const date2 = new Date(2024, 0, 1); // January 1, 2024
+			assert("Format 'yyyy-mm-dd' with single-digit day and month", self.formatDate(date2, 'yyyy-mm-dd') === '2024-01-01');
+			assert("Format 'd/m/yy' with single-digit day and month", self.formatDate(date2, 'd/m/yy') === '1/1/24');
+		};
+
+		testFormatDate();
+	};
 
 };
 
@@ -4427,7 +4632,14 @@ var dashboardViewModel = function (options) {
 		Description: ko.observable(currentDash.description),
 		manageAccess: manageAccess(options)
 	};
-
+	self.dateFormatMappings = {
+		'United States': 'mm/dd/yy',
+		'United Kingdom': 'dd/mm/yy',
+		'France': 'dd/mm/yy',
+		'German': 'dd.mm.yy',
+		'Spanish': 'dd/mm/yy',
+		'Chinese': 'yy/mm/dd'
+	};
 	self.currentDashboard = ko.observable(currentDash);
 	self.selectDashboard = ko.observable(currentDash.id);
 	self.loadDashboard = function (dashboardId) {
@@ -4734,10 +4946,13 @@ var dashboardViewModel = function (options) {
 									Value: ko.observable(f.Value()),
 									Value2: ko.observable(f.Value2()),
 									ValueIn: ko.observable(f.ValueIn()),
+									ParentIn: ko.observable(f.ParentIn()),
 									LookupList: ko.observable(f.LookupList()),
 									Apply: ko.observable(true),
 									IsFilterOnFly: true,
-									showParentFilter: ko.observable(f.showParentFilter())
+									showParentFilter: ko.observable(f.showParentFilter()),
+									fmtValue: ko.observable(f.Value()),
+									fmtValue2: ko.observable(f.Value2())
 								};
 								self.FlyFilters.push(filter);
 
@@ -4801,7 +5016,13 @@ var dashboardViewModel = function (options) {
 					width: item.width,
 					height: item.height,
 					dashboardId: self.currentDashboard().id,
-					reportId: parseInt(item.id)
+					reportId: parseInt(item.id),
+					widgetSettings: JSON.stringify({
+						gridChartHeight: item.height,
+						gridChartWidth: item.width,
+						expandedChartHeight: item.height,
+						expandedChartWidth: item.width
+					}),
 				})
 			}
 		});
@@ -4821,6 +5042,7 @@ var dashboardViewModel = function (options) {
 							f.Value(combinedFilter.Value());
 							f.Value2(combinedFilter.Value2());
 							f.ValueIn(combinedFilter.ValueIn());
+							f.ParentIn(combinedFilter.ParentIn());
 							f.LookupList(combinedFilter.LookupList());
 
 							filterApplied = true;
