@@ -1406,12 +1406,15 @@
                                         <div data-bind="foreach: formulaFields">
                                             <h3 class="pull-left" data-bind="visible: setupFormula.isParenthesesStart" style="margin-top: 0;">(</h3>
                                             <div data-bind="if: !setupFormula.isParenthesesStart() && !setupFormula.isParenthesesEnd()">
-                                                <div class="list-group-item pull-left" style="margin-left: 15px; padding: 5px 15px">
+                                                <div class="list-group-item pull-left formula-field-item" style="margin-left: 15px; padding: 5px 15px">
                                                     <span data-bind="text: fieldName, visible: !setupFormula.isConstantValue()"></span>
                                                     <div data-bind="if: setupFormula.isConstantValue">
                                                         <input data-bind="value: setupFormula.constantValue, visible: setupFormula.constantValue()!='|Today|'" class="form-control form-control-sm" required />
                                                         <span data-bind="visible: setupFormula.constantValue() == '|Today|'"><b>Today</b></span>
                                                     </div>
+                                                    <button class="btn btn-danger btn-sm delete-btn" data-bind="click: $parent.removeField">
+                                                        <i class="fa fa-trash"></i>
+                                                    </button>
                                                 </div>
                                             </div>
                                             <h3 class="pull-left" data-bind="visible: setupFormula.isParenthesesEnd" style="margin-top: 0;">)</h3>

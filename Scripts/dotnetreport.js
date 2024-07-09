@@ -1929,6 +1929,13 @@ var reportViewModel = function (options) {
 		self.clearFormulaField();
 	});
 
+	self.removeField = function (field) {
+		bootbox.confirm("Are you sure you would like to remove this field?", function (r) {
+			if (r) {
+				self.formulaFields.remove(field);
+			}
+		});
+	};
 	self.saveFunctionField = function () {
 
 		if (!self.validateReport(true)) {

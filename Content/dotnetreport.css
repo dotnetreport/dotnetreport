@@ -1253,3 +1253,21 @@ tfoot tr.sub-total {
     border-top: double 4px #dee2e6;
     border-bottom: double 4px #dee2e6;
 }
+
+.formula-field-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.delete-btn {
+    display: none;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    right: 5px;
+}
+
+.formula-field-item:hover .delete-btn {
+    display: inline-block;
+}
