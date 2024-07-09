@@ -38,7 +38,7 @@
             <option>Third Quarter</option>
             <option>Fourth Quarter</option>
             <option>Next 6 Months</option>
-            <option>Last 6 Months</option>            
+            <option>Last 6 Months</option>
             <option>2 Years ago</option>
             <option>3 Years ago</option>
             <option>4 Years ago</option>
@@ -1165,20 +1165,30 @@
                 </div>
                 <br />
                 <div class="card card-body">
-                    <h5 class="pull-left"><span class="fa fa-database"></span>&nbsp;Choose Data for Report</h5>
-                    <div class="pull-right" role="group" data-bind="if: ReportID() <= 0">
-                        <label class="btn btn-sm btn-primary active" style="margin-right: 0px;" title="You can change the Data source only when creating a new report, changing this will clear all selections">
-                            <input type="radio" name="dataoption" id="table" checked data-bind="checked: useStoredProc, checkedValue: false"> Dynamic
-                        </label>
-                        <label class="btn btn-sm btn-primary">
-                            <input type="radio" name="dataoption" id="proc" value="1" data-bind="checked: useStoredProc, checkedValue: true"> Predefined
-                        </label>
+                    <h5><span class="fa fa-database"></span>&nbsp;Choose Data for Report</h5>
+                    <div>
+                        <div class="pull-left" role="group" data-bind="if: ReportID() <= 0">
+                            <label class="btn btn-sm btn-primary active" style="margin-right: 0px;" title="You can change the Data source only when creating a new report, changing this will clear all selections">
+                                <input type="radio" name="dataoption" id="table" checked data-bind="checked: useStoredProc, checkedValue: false"> Dynamic
+                            </label>
+                            <label class="btn btn-sm btn-primary">
+                                <input type="radio" name="dataoption" id="proc" value="1" data-bind="checked: useStoredProc, checkedValue: true"> Predefined
+                            </label>
+                        </div>
+                        <div class="pull-right">
+                            <a href="#" class="btn btn-sm" title="Custom Field using Formula" data-bind="hidden: isFunctionField() || useStoredProc(), click: function(){isFormulaField(!isFormulaField())}, text: isFormulaField()? 'Cancel': 'Custom Field', css: {'btn-primary': !isFormulaField(), 'btn-danger': isFormulaField}"></a>
+                            <a href="#" class="btn btn-sm" title="Custom Field using Function" data-bind="hidden: isFormulaField() || useStoredProc(), click: function(){designFunctionField()}, text: isFunctionField()? 'Cancel': 'Function Field', css: {'btn-primary': !isFunctionField(), 'btn-danger': isFunctionField}"></a>
+                        </div>
                     </div>
                     <div class="clearfix"></div>
                     <div class="row">
                         <div class="col-md-6">
-                            <select class="form-control" data-bind="options: Procs, optionsCaption: 'Choose Section...', optionsText: 'DisplayName', value: SelectedProc, disable: isFormulaField, visible: useStoredProc"></select>
-                            <select class="form-control" data-bind="options: Tables, optionsCaption: 'Choose Section...', optionsText: 'tableName', value: SelectedTable, disable: isFormulaField, hidden: useStoredProc"></select>
+                            <div data-bind="visible: useStoredProc">
+                            <select class="form-control" data-bind="select2Value: {}, options: Procs, optionsCaption: 'Choose Section...', optionsText: 'DisplayName', value: SelectedProc, visible: useStoredProc"></select>
+                            </div>
+                            <div data-bind="hidden: useStoredProc">
+                            <select class="form-control" data-bind="select2Value: {}, options: Tables, optionsCaption: 'Choose Section...', optionsText: 'tableName', value: SelectedTable, hidden: useStoredProc"></select>
+                            </div>
                         </div>
 
                         <div class="col-md-6" data-bind="disable: isFormulaField, hidden: useStoredProc">
@@ -1186,14 +1196,12 @@
                                 <select id="search-field" class="form-control" data-bind="select2: {placeholder: 'Or Search for a Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults, headers: headers }, minimumInputLength: 2, allowClear: true }, value: selectedOption"></select>
                             </div>
                         </div>
-
+                        
                         <div class="col-md-12 padded-div" data-bind="visible: ChooseFields().length>0">
                             <div class="small pull-left">
                                 Check the fields you would like to use in the Report
                             </div>
                             <div class="pull-right btn-toolbar">
-                                <a href="#" class="btn btn-sm" title="Custom Field using Formula" data-bind="hidden: isFunctionField, click: function(){isFormulaField(!isFormulaField())}, text: isFormulaField()? 'Cancel': 'Customize', css: {'btn-primary': !isFormulaField(), 'btn-danger': isFormulaField}"></a>
-                                <a href="#" class="btn btn-sm" title="Custom Field using Function" data-bind="hidden: isFormulaField, click: function(){designFunctionField()}, text: isFunctionField()? 'Cancel': 'Function', css: {'btn-primary': !isFunctionField(), 'btn-danger': isFunctionField}"></a>
 
                                 <a href="#" class="btn btn-secondary btn-sm" data-bind="click: MoveAllFields, visible: !isFormulaField()">Select all</a>
                                 <a href="#" class="btn btn-secondary btn-sm" data-bind="click: RemoveSelectedFields, visible: !isFormulaField()">Remove all</a>
@@ -1731,7 +1739,7 @@
                             <th data-bind="attr: { id: fieldId }, css: {'right-align': IsNumeric}, style: {'width': fieldWidth, 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
                                 <span data-bind="text: fieldLabel2() ? fieldLabel2() : (fieldLabel() ? fieldLabel() : fieldName), style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
                             </th>
-                            <!-- /ko --> 
+                            <!-- /ko -->
                         </tr>
                     </thead>
                     <tbody>

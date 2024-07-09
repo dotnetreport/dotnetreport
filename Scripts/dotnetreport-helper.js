@@ -176,7 +176,7 @@ ko.bindingHandlers.select2Value = {
         // When an item is selected, update the observable with the full item object
         $(element).on('select2:select', function (e) {
             var selectedItem = e.params.data;
-            valueAccessor()(selectedItem); // Update the observable with the full object
+            //valueAccessor()(selectedItem); // Update the observable with the full object
         });
 
         // Handle clearing the selection
