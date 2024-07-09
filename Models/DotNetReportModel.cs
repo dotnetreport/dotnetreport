@@ -921,6 +921,7 @@ namespace ReportBuilder.Web.Models
             foreach (DataColumn col in dt.Columns)
             {
                 var sqlField = sqlFields[i++];
+                if (col.ColumnName.Contains("__prm__")) continue;
                 model.Columns.Add(new DotNetReportDataColumnModel
                 {
                     SqlField = sqlField.Contains(" FROM ") ? col.ColumnName : sqlField.Substring(0, sqlField.LastIndexOf(" AS ")).Trim().Replace("__jsonc__", ""),
@@ -940,23 +941,26 @@ namespace ReportBuilder.Web.Models
 
                 foreach (DataColumn col in dt.Columns)
                 {
-                    var item = new DotNetReportDataRowItemModel
+                    if (!col.ColumnName.Contains("__prm__"))
                     {
-                        Column = model.Columns[i],
-                        Value = row[col] != null ? row[col].ToString() : null,
-                        FormattedValue = GetFormattedValue(col, row, model.Columns[i].FormatType, jsonAsTable),
-                        LabelValue = GetLabelValue(col, row)
-                    };
+                        var item = new DotNetReportDataRowItemModel
+                        {
+                            Column = model.Columns[i],
+                            Value = row[col] != null ? row[col].ToString() : null,
+                            FormattedValue = GetFormattedValue(col, row, model.Columns[i].FormatType, jsonAsTable),
+                            LabelValue = GetLabelValue(col, row)
+                        };
 
-                    items.Add(item);
+                        items.Add(item);
 
-                    try
-                    {
-                        row[col] = item.FormattedValue;
-                    }
-                    catch (Exception ex)
-                    {
-                        // ignore
+                        try
+                        {
+                            row[col] = item.FormattedValue;
+                        }
+                        catch (Exception ex)
+                        {
+                            // ignore
+                        }
                     }
                     i += 1;
                 }
