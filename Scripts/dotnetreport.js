@@ -1760,6 +1760,7 @@ var reportViewModel = function (options) {
 				}
 				else {
 					e.tableName = table.tableName;
+					e.tableId = table.tableId;
 					return self.setupField(e);
 				}
 			});
