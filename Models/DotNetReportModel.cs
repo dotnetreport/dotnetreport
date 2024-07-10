@@ -1,6 +1,8 @@
 ﻿using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
+using Microsoft.Data.SqlClient;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using OfficeOpenXml;
 using PdfSharp;
@@ -22,13 +24,18 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
+using Npgsql;
+using MySql.Data.MySqlClient;
+using System.Reflection;
+using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using System.Net.Http;
-using System.Web.Script.Serialization;
-using Newtonsoft.Json;
 using A = DocumentFormat.OpenXml.Drawing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
+using Microsoft.CodeAnalysis.Emit;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace ReportBuilder.Web.Models
 {
@@ -153,8 +160,8 @@ namespace ReportBuilder.Web.Models
         public string ForeignKeyField { get; set; }
         public string ForeignValueField { get; set; }
         public bool Hidden { get; set; }
-
     }
+
     public class RelationModel
     {
         public int Id { get; set; }
@@ -164,6 +171,38 @@ namespace ReportBuilder.Web.Models
         public string FieldName { get; set; }
         public string JoinFieldName { get; set; }
     }
+
+
+    public class CustomFunctionModel
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = "";
+        public string DisplayName { get; set; } = "";
+        public string Description { get; set; } = "";
+        public int DataConnectionId { get; set; } 
+        public int DisplayOrder { get; set; } 
+
+        public string FunctionType { get; set; } = "";
+        public string References { get; set; } = "";
+        public string ResultDataType { get; set; } = "";
+        public string Code { get; set; } = "";
+        public List<CustomFunctionParameterModel> Parameters { get; set; } = new List<CustomFunctionParameterModel>();
+        public List<string> AllowedRoles { get; set; } = new List<string>();
+    }
+
+    public class CustomFunctionParameterModel
+    {
+        public int Id { get; set; }
+        public int CustomFunctionId { get; set; }
+        public string ParameterName { get; set; } = "";
+        public string DisplayName { get; set; } = "";
+  
+        public string Description { get; set; } = "";
+
+        public bool Required { get; set; }
+        public string DefaultValue { get; set; } = "";
+    }
+
 
     public enum FieldTypes
     {
@@ -180,6 +219,13 @@ namespace ReportBuilder.Web.Models
         Inner,
         Left,
         Right
+    }
+
+    public enum DbTypes
+    {
+        MS_SQL,
+        MySql,
+        Postgre_Sql
     }
 
     public class ColumnViewModel
@@ -234,8 +280,19 @@ namespace ReportBuilder.Web.Models
 
         public List<TableViewModel> Tables { get; set; }
         public List<TableViewModel> Procedures { get; set; }
-    }
+        public List<CustomFunctionModel> Functions { get; set; }
 
+        public dynamic DbConfig { get; set; }
+        public UserRolesConfig UserAndRolesConfig { get; set; }
+
+    }
+    public class UserRolesConfig
+    {
+        public bool RequireLogin { get; set; }
+        public bool UsersSource { get; set; }
+        public bool UserRolesSource { get; set; }
+        public string SelectedUserConfig { get; set; }
+    }
     public class DotNetReportApiCall
     {
         public string Method { get; set; }
@@ -340,19 +397,92 @@ namespace ReportBuilder.Web.Models
         public bool isJsonColumn { get; set; }
     }
 
-    public class DotNetReportHelper
+    public interface IDnrDataConnection
     {
-        public static string GetConnectionString(string key)
+        string DbConnection { get; set; }
+        string ConnectKey { get; set; }
+
+        DataTable ExecuteSql(string sql);
+    }
+
+    public class MsSqlDnrDataConnection : IDnrDataConnection
+    {
+        public string DbConnection { get; set; }
+        public string ConnectKey { get; set; }
+
+        public MsSqlDnrDataConnection(string connectKey)
+        {
+            //DbConnection = dbConnection;
+            ConnectKey = connectKey;
+        }
+
+        public DataTable ExecuteSql(string sql)
+        {
+            var dt = new DataTable();
+            using (var conn = new SqlConnection(DbConnection))
+            {
+                conn.Open();
+                var command = new SqlCommand(sql, conn);
+                var adapter = new SqlDataAdapter(command);
+
+                adapter.Fill(dt);
+            }
+
+            return dt;
+        }
+    }
+
+
+    public static class DotNetReportHelper
+    {
+        private readonly static string _configFileName = "appsettings.dotnetreport.json";
+
+        public static string GetConnectionString(string key, bool addOledbProvider = false)
         {
             var connString = ConfigurationManager.ConnectionStrings[key].ConnectionString;
+            if (connString == null)
+            {
+                return "";
+            }
+
             connString = connString.Replace("Trusted_Connection=True", "");
 
-            if (!connString.ToLower().StartsWith("provider"))
+            if (!connString.ToLower().StartsWith("provider") && addOledbProvider)
             {
                 connString = "Provider=sqloledb;" + connString;
             }
 
             return connString;
+        }
+
+        public static ConnectViewModel GetConnection(string databaseApiKey = "")
+        {
+            return new ConnectViewModel
+            {
+                ApiUrl = ConfigurationManager.AppSettings["dotNetReport.apiUrl"],
+                AccountApiKey = ConfigurationManager.AppSettings["dotNetReport.accountApiToken"], // Your Account Api Token from your http://dotnetreport.com Account
+                DatabaseApiKey = string.IsNullOrEmpty(databaseApiKey) ? ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"] : databaseApiKey
+            };
+        }
+
+        public static async Task<string> GetConnectionString(ConnectViewModel connect, bool addOledbProvider = true)
+        {
+            if (connect.AccountApiKey == "Your Account API Key" || string.IsNullOrEmpty(connect.AccountApiKey) || string.IsNullOrEmpty(connect.DatabaseApiKey))
+                return "";
+
+            using (var client = new HttpClient())
+            {
+                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetDataConnectKey?account={1}&dataConnect={2}", connect.ApiUrl, connect.AccountApiKey, connect.DatabaseApiKey));
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    return "";
+                }
+
+                var content = await response.Content.ReadAsStringAsync();
+                return DotNetReportHelper.GetConnectionString(content.Replace("\"", ""), addOledbProvider);
+            }
+
         }
 
         public static bool IsNumericType(Type type)
@@ -549,7 +679,7 @@ namespace ReportBuilder.Web.Models
             return "";
         }
 
-        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool loadHeader=true, string chartData = null)
+        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool loadHeader = true, string chartData = null)
         {
             ws.Cells[rowstart, colstart].LoadFromDataTable(dt, loadHeader);
             if (loadHeader) ws.Cells[rowstart, colstart, rowstart, colstart + dt.Columns.Count -1].Style.Font.Bold = true;
@@ -568,8 +698,8 @@ namespace ReportBuilder.Web.Models
             int i = colstart; var isNumeric = false;
             foreach (DataColumn dc in dt.Columns)
             {
-                var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
-                string decimalFormat = new string('0', formatColumn?.decimalPlacesDigit.GetValueOrDefault() ?? 0);
+                var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName)) ?? new ReportHeaderColumn();
+                string decimalFormat = new string('0', formatColumn.decimalPlacesDigit.GetValueOrDefault());
                 isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
                 if (dc.DataType == typeof(decimal) || (formatColumn != null && formatColumn.fieldFormating=="Decimal"))
                 {
@@ -653,6 +783,31 @@ namespace ReportBuilder.Web.Models
             }
 
             return dtNew;
+        }
+
+        public static async Task<List<CustomFunctionModel>> GetApiFunctions()
+        {
+            var settings = new DotNetReportSettings
+            {
+                ApiUrl = ConfigurationManager.AppSettings["dotNetReport.apiUrl"],
+                AccountApiToken = ConfigurationManager.AppSettings["dotNetReport.accountApiToken"], // Your Account Api Token from your http://dotnetreport.com Account
+                DataConnectApiToken = ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"] // Your Data Connect Api Token from your http://dotnetreport.com Account
+            };
+
+            return await GetApiFunctions(settings.AccountApiToken, settings.DataConnectApiToken);
+        }
+
+        public static async Task<List<CustomFunctionModel>> GetApiFunctions(string accountKey, string dataConnectKey)
+        {
+            using (var client = new HttpClient())
+            {
+                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetCustomFunctions?account={1}&dataConnect={2}&clientId=", ConfigurationManager.AppSettings["dotNetReport.apiUrl"], accountKey, dataConnectKey));
+                response.EnsureSuccessStatusCode();
+                var content = await response.Content.ReadAsStringAsync();
+                var functions = JsonConvert.DeserializeObject<List<CustomFunctionModel>>(content);
+
+                return functions;
+            }
         }
 
         public static async Task<string> RunReportApiCall(string postData)
@@ -751,6 +906,7 @@ namespace ReportBuilder.Web.Models
             foreach (DataColumn col in dt.Columns)
             {
                 var sqlField = sqlFields[i++];
+                if (col.ColumnName.Contains("__prm__")) continue;
                 model.Columns.Add(new DotNetReportDataColumnModel
                 {
                     SqlField = sqlField.Contains(" FROM ") ? col.ColumnName : sqlField.Substring(0, sqlField.LastIndexOf(" AS ")).Trim().Replace("__jsonc__", ""),
@@ -770,23 +926,26 @@ namespace ReportBuilder.Web.Models
 
                 foreach (DataColumn col in dt.Columns)
                 {
-                    var item = new DotNetReportDataRowItemModel
+                    if (!col.ColumnName.Contains("__prm__"))
                     {
-                        Column = model.Columns[i],
-                        Value = row[col] != null ? row[col].ToString() : null,
-                        FormattedValue = GetFormattedValue(col, row, model.Columns[i].FormatType, jsonAsTable),
-                        LabelValue = GetLabelValue(col, row)
-                    };
+                        var item = new DotNetReportDataRowItemModel
+                        {
+                            Column = model.Columns[i],
+                            Value = row[col] != null ? row[col].ToString() : null,
+                            FormattedValue = GetFormattedValue(col, row, model.Columns[i].FormatType, jsonAsTable),
+                            LabelValue = GetLabelValue(col, row)
+                        };
 
-                    items.Add(item);
+                        items.Add(item);
 
-                    try
-                    {
-                        row[col] = item.FormattedValue;
-                    }
-                    catch (Exception ex)
-                    {
-                        // ignore
+                        try
+                        {
+                            row[col] = item.FormattedValue;
+                        }
+                        catch (Exception ex)
+                        {
+                            // ignore
+                        }
                     }
                     i += 1;
                 }
@@ -811,7 +970,7 @@ namespace ReportBuilder.Web.Models
             }
             nextClauseIndex = nextClauseIndex < 0 ? sql.Length : nextClauseIndex;
             var modifiedSql = sql.Substring(0, whereIndex) + sql.Substring(nextClauseIndex);
-            var whereClause = sql.Substring(whereIndex, nextClauseIndex-whereIndex);
+            var whereClause = sql.Substring(whereIndex, nextClauseIndex - whereIndex);
 
             return whereClause;
         }
@@ -869,12 +1028,63 @@ namespace ReportBuilder.Web.Models
 
                     combinedSqls += filteredSql += ";\n";
                 }
-                
+
                 using (var cmd = new OleDbCommand(combinedSqls, conn))
                 using (var adp = new OleDbDataAdapter(cmd))
                 {
                     adp.Fill(dts);
                 }
+            }
+
+            return dts;
+        }
+
+        public async static Task<DataSet> GetDrillDownData(IDatabaseConnection databaseConnection, string connectionString, DataTable dt, List<string> sqlFields, string reportDataJson)
+        {
+            var drilldownRow = new List<string>();
+            var dr = dt.Rows[0];
+            int i = 0;
+            foreach (DataColumn dc in dt.Columns)
+            {
+                var col = sqlFields[i++]; //columns.FirstOrDefault(x => x.fieldName == dc.ColumnName) ?? new ReportHeaderColumn();
+                drilldownRow.Add($@"
+                                    {{
+                                        ""Value"":""{dr[dc]}"",
+                                        ""FormattedValue"":""{dr[dc]}"",
+                                        ""LabelValue"":""'{dr[dc]}'"",
+                                        ""NumericValue"":null,
+                                        ""Column"":{{
+                                            ""SqlField"":""{col.Substring(0, col.LastIndexOf(" AS "))}"",
+                                            ""ColumnName"":""{dc.ColumnName}"",
+                                            ""DataType"":""{dc.DataType.ToString()}"",
+                                            ""IsNumeric"":{(dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal" ? "true" : "false")},
+                                            ""FormatType"":""""
+                                        }}
+                                     }}
+                                ");
+            }
+
+            var reportData = reportDataJson.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
+            var drilldownSql = await RunReportApiCall(reportData);
+
+            var dts = new DataSet();
+            var combinedSqls = "";
+            if (!string.IsNullOrEmpty(drilldownSql))
+            {
+                foreach (DataRow ddr in dt.Rows)
+                {
+                    i = 0;
+                    var filteredSql = drilldownSql;
+                    foreach (DataColumn dc in dt.Columns)
+                    {
+                        var value = ddr[dc].ToString().Replace("'", "''");
+                        filteredSql = filteredSql.Replace($"<{dc.ColumnName}>", value);
+                    }
+
+                    combinedSqls += filteredSql += ";\n";
+                }
+
+                dts = databaseConnection.ExecuteDataSetQuery(connectionString, combinedSqls);
             }
 
             return dts;
@@ -901,6 +1111,68 @@ namespace ReportBuilder.Web.Models
                 return dblValue1.CompareTo(dblValue2);
             }
             return value1.ToString().CompareTo(value2.ToString());
+        }
+
+        public static async Task<DataTable> ExecuteCustomFunction(DataTable dataTable, string sql)
+        {
+            if (!sql.Contains("/*|")) return dataTable;
+
+            Regex regex = new Regex(@"/\*\|(.*?)\|\*/");
+            var matches = regex.Matches(sql);
+
+            foreach (Match match in matches)
+            {
+                string functionCall = match.Groups[1].Value;
+                int columnIndex = -1;
+
+                // Find the column that contains the function call to replace it later
+                foreach (DataColumn column in dataTable.Columns)
+                {
+                    if (column.Expression.Contains(match.Value))
+                    {
+                        columnIndex = column.Ordinal;
+                        break;
+                    }
+                }
+
+                var functionCalls = new List<string>();
+                foreach (DataRow row in dataTable.Rows)
+                {
+                    string modifiedFunctionCall = functionCall;
+
+                    // Iterate over all columns that end with "__prm__"
+                    foreach (DataColumn column in dataTable.Columns.Cast<DataColumn>().Where(c => c.ColumnName.EndsWith("__prm__")))
+                    {
+                        string paramName = "{" + column.ColumnName.Replace("__prm__", "") + "}";
+
+                        if (modifiedFunctionCall.Contains(paramName))
+                        {
+                            string valueReplacement = row[column].ToString();
+                            // Check if the datatype is numeric
+                            if (column.DataType == typeof(int) || column.DataType == typeof(decimal) || column.DataType == typeof(double) || column.DataType == typeof(long))
+                            {
+                                modifiedFunctionCall = modifiedFunctionCall.Replace(paramName, valueReplacement);
+                            }
+                            else
+                            {
+                                modifiedFunctionCall = modifiedFunctionCall.Replace(paramName, "\"" + valueReplacement + "\"");
+                            }
+                        }
+                    }
+
+                    var result = await DynamicCodeRunner.RunCode(modifiedFunctionCall + ";");
+                    if (columnIndex != -1)
+                    {
+                        row[columnIndex] = result;
+                    }
+                }
+            }
+
+            foreach (var column in dataTable.Columns.Cast<DataColumn>().Where(c => c.ColumnName.EndsWith("__prm__")).ToList())
+            {
+                dataTable.Columns.Remove(column);
+            }
+            return dataTable;
         }
 
         public static DataTable PushDatasetIntoDataTable(DataTable tbl, DataSet dts, string pivotColumnName, string pivotFunction)
@@ -1097,7 +1369,8 @@ namespace ReportBuilder.Web.Models
                                     combinedSqls += filteredSql += ";\n";
                                 }
 
-                                using (var dts = new DataSet()) {
+                                using (var dts = new DataSet())
+                                {
                                     using (var cmd = new OleDbCommand(combinedSqls, conn))
                                     using (var adp = new OleDbDataAdapter(cmd))
                                     {
@@ -1126,8 +1399,8 @@ namespace ReportBuilder.Web.Models
         {
             var isCurrency = false;
             var isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
-            var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
-            string decimalFormat = new string('0', formatColumn?.decimalPlacesDigit.GetValueOrDefault()??0);
+            var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName)) ?? new ReportHeaderColumn();
+            string decimalFormat = new string('0', formatColumn.decimalPlacesDigit.GetValueOrDefault());
             try
             {
                 if (dc.DataType == typeof(decimal) || (formatColumn != null && (formatColumn.fieldFormating == "Decimal" || formatColumn.fieldFormating == "Double")))
@@ -1161,7 +1434,8 @@ namespace ReportBuilder.Web.Models
                     value += formatColumn.fieldFormating.EndsWith("Time") ? date.ToShortTimeString() : "";
                     value = value.Trim();
                 }
-            } catch (Exception ex)
+            }
+            catch (Exception ex)
             {
                 // ignore formatting exceptions
             }
@@ -1213,7 +1487,7 @@ namespace ReportBuilder.Web.Models
         public static byte[] GetPdfFileAlt(string reportSql, string connectKey, string reportName, string chartData = null,
                     List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
         {
-            var sql = Decrypt(reportSql); 
+            var sql = Decrypt(reportSql);
             var sqlFields = SplitSqlColumns(sql);
 
             var dt = new DataTable();
@@ -1225,7 +1499,7 @@ namespace ReportBuilder.Web.Models
 
                 adapter.Fill(dt);
             }
-            
+
             var document = new PdfDocument();
             var page = document.AddPage();
             var gfx = XGraphics.FromPdfPage(page);
@@ -1310,8 +1584,8 @@ namespace ReportBuilder.Web.Models
                 {
                     // Draw column headers
                     var columnFormatting = columns[k];
-                        var columnName = !string.IsNullOrEmpty(columns[k].customfieldLabel) ? columns[k].customfieldLabel : columns[k].fieldName;
-                    
+                    var columnName = !string.IsNullOrEmpty(columns[k].customfieldLabel) ? columns[k].customfieldLabel : columns[k].fieldName;
+
                     rect = new XRect(currentXPosition, currentYPosition, columnWidth, 20);
 
                     gfx.DrawRectangle(XPens.LightGray, rect);
@@ -1332,7 +1606,7 @@ namespace ReportBuilder.Web.Models
                 // Draw table rows
                 for (int i = 0; i < dt.Rows.Count; i++)
                 {
-                    
+
                     // Check if we need to add a new page
                     if (currentYPosition > pageHeight)
                     {
@@ -1372,14 +1646,14 @@ namespace ReportBuilder.Web.Models
                     currentXPosition = leftMargin;
 
                     for (int j = 0; j < dt.Columns.Count; j++)
-                    {   
+                    {
                         var value = dt.Rows[i][j].ToString();
                         var dc = dt.Columns[j];
                         var formatColumn = GetColumnFormatting(dc, columns, ref value);
 
                         var lines = WrapText(gfx, value, rect, fontNormal, XStringFormats.Center);
                         maxLines = Math.Max(maxLines, lines.Count);
-                        
+
                         rect = new XRect(currentXPosition, currentYPosition, columnWidth, 20 * maxLines);
                         gfx.DrawRectangle(XPens.WhiteSmoke, rect);
 
@@ -1823,13 +2097,7 @@ namespace ReportBuilder.Web.Models
             return File.ReadAllBytes(pdfFile);
         }
 
-        private static byte[] Combine(byte[] a, byte[] b)
-        {
-            byte[] c = new byte[a.Length + b.Length];
-            System.Buffer.BlockCopy(a, 0, c, 0, a.Length);
-            System.Buffer.BlockCopy(b, 0, c, a.Length, b.Length);
-            return c;
-        }
+
         public static string GetXmlFile(string reportSql, string connectKey, string reportName)
         {
             var sql = Decrypt(reportSql);
@@ -1972,5 +2240,871 @@ namespace ReportBuilder.Web.Models
                 //return csv;
             }
         }
+
+        public static dynamic GetDbConnectionSettings(string account, string dataConnect, bool addOledbProvider = true)
+        {
+            var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+            if (!System.IO.File.Exists(_configFilePath))
+            {
+                var emptyConfig = new JObject();
+                System.IO.File.WriteAllText(_configFilePath, emptyConfig.ToString(Newtonsoft.Json.Formatting.Indented));
+            }
+
+            string configContent = System.IO.File.ReadAllText(_configFilePath);
+
+            var config = JObject.Parse(configContent);
+            var dotNetReportSection = config[$"dotNetReport"] as JObject;
+
+            // First try to get connection from the dotnetreport appsettings file
+            if (dotNetReportSection != null && !string.IsNullOrEmpty(dataConnect))
+            {
+                var dataConnectSection = dotNetReportSection[dataConnect] as JObject;
+                if (dataConnectSection != null)
+                {
+                    return dataConnectSection.ToObject<dynamic>();
+                }
+            }
+            else
+            {
+                // Next try to get config from appsettings (original method)
+                var connection = DotNetReportHelper.GetConnection();
+                var connectionString = DotNetReportHelper.GetConnectionString(connection, addOledbProvider).Result;
+
+                if (!string.IsNullOrEmpty(connectionString))
+                {
+                    var dbConfig = new JObject
+                    {
+                        ["DatabaseType"] = "MS Sql",
+                        ["ConnectionKey"] = "Default",
+                        ["ConnectionString"] = connectionString
+                    };
+                    return dbConfig.ToObject<dynamic>();
+                }
+            }
+
+            return null;
+        }
+
+        public static void UpdateDbConnection(UpdateDbConnectionModel model)
+        {
+            // Use dependency injection to get the appropriate implementation based on the database type
+            var databaseConnection = DatabaseConnectionFactory.GetConnection(model.dbType);
+
+            var connectionString = "";
+            if (model.connectionType == "Build")
+            {
+                connectionString = databaseConnection.CreateConnection(model);
+            }
+            else
+            {
+                connectionString = DotNetReportHelper.GetConnectionString(model.connectionKey, false);
+
+                if (string.IsNullOrEmpty(connectionString))
+                {
+                    throw new Exception($"Connection string with key '{model.connectionKey}' was not found in App Config");
+                }
+            }
+
+            try
+            {
+                // Test the database connection
+                if (!databaseConnection.TestConnection(connectionString))
+                {
+                    throw new Exception("Could not connect to the Database.");
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Could not connect to the Database. Error: {ex.Message}");
+            }
+
+            if (!model.testOnly)
+            {
+                var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+                if (!System.IO.File.Exists(_configFilePath))
+                {
+                    var emptyConfig = new JObject();
+                    System.IO.File.WriteAllText(_configFilePath, emptyConfig.ToString(Newtonsoft.Json.Formatting.Indented));
+                }
+
+                // Get the existing JSON configuration
+                var config = JObject.Parse(System.IO.File.ReadAllText(_configFilePath));
+                if (config["dotNetReport"] == null)
+                {
+                    config["dotNetReport"] = new JObject();
+                }
+
+                // Update the specified properties within the "dotNetReport" and "dataConfig" section
+                var dotNetReportSection = config["dotNetReport"] as JObject;
+                if (dotNetReportSection[model.dataConnect] == null)
+                {
+                    dotNetReportSection[model.dataConnect] = new JObject();
+                }
+
+                var dataConnectSection = dotNetReportSection[model.dataConnect] as JObject;
+
+                dataConnectSection["DatabaseType"] = model.dbType;
+                dataConnectSection["ConnectionType"] = model.connectionType;
+                if (model.connectionType == "Build")
+                {
+                    dataConnectSection["ConnectionKey"] = "Default";
+                    dataConnectSection["ConnectionString"] = connectionString;
+                    dataConnectSection["DatabaseHost"] = model.dbServer;
+                    dataConnectSection["DatabasePort"] = model.dbPort;
+                    dataConnectSection["DatabaseName"] = model.dbName;
+                    dataConnectSection["Username"] = model.dbUsername;
+                    dataConnectSection["Password"] = model.dbPassword;
+                    dataConnectSection["AuthenticationType"] = model.dbAuthType;
+
+                }
+                else if (model.connectionType == "Key")
+                {
+                    dataConnectSection["ConnectionKey"] = model.connectionKey;
+                    dataConnectSection["ConnectionString"] = connectionString;
+                }
+
+                if (model.isDefault)
+                {
+                    dotNetReportSection["DefaultConnection"] = model.dataConnect;
+                }
+
+                // Save the updated JSON back to the file
+                File.WriteAllText(_configFilePath, config.ToString());
+            }
+
+        }
+
+        public static void UpdateUserConfigSetting(UpdateUserConfigModel model)
+        {
+            var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+            if (!System.IO.File.Exists(_configFilePath))
+            {
+                var emptyConfig = new JObject();
+                System.IO.File.WriteAllText(_configFilePath, emptyConfig.ToString(Newtonsoft.Json.Formatting.Indented));
+            }
+
+            // Get the existing JSON configuration
+            var config = JObject.Parse(System.IO.File.ReadAllText(_configFilePath));
+            if (config["dotNetReport"] == null)
+            {
+                config["dotNetReport"] = new JObject();
+            }
+
+            // Update the specified properties within the "dotNetReport" and "dataConfig" section
+            var dotNetReportSection = config["dotNetReport"] as JObject;
+            if (dotNetReportSection[model.dataConnect] == null)
+            {
+                dotNetReportSection[model.dataConnect] = new JObject();
+            }
+
+            var dataConnectSection = dotNetReportSection[model.dataConnect] as JObject;
+            dataConnectSection["UserConfig"] = model.userConfig;
+
+            // Save the updated JSON back to the file
+            System.IO.File.WriteAllText(_configFilePath, config.ToString());
+
+        }
+
+        public static void UpdateConfigurationFile(string accountApiKey, string privateApiKey, string dataConnectKey, bool onlyIfEmpty = false)
+        {
+            var _configFileName = "appsettings.json";
+            var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+
+            JObject existingConfig;
+            if (System.IO.File.Exists(_configFilePath))
+            {
+                existingConfig = JObject.Parse(System.IO.File.ReadAllText(_configFilePath));
+                if (existingConfig["dotNetReport"] is JObject dotNetReportObject)
+                {
+                    if (!onlyIfEmpty || (onlyIfEmpty && dotNetReportObject["accountApiToken"] != null && dotNetReportObject["accountApiToken"].ToString() == "Your Account API Key"))
+                    {
+                        dotNetReportObject["accountApiToken"] = accountApiKey;
+                        dotNetReportObject["dataconnectApiToken"] = dataConnectKey;
+
+                        if (!string.IsNullOrEmpty(privateApiKey))
+                            dotNetReportObject["privateApiToken"] = privateApiKey;
+
+                        System.IO.File.WriteAllText(_configFilePath, existingConfig.ToString(Newtonsoft.Json.Formatting.Indented));
+                    }
+                }
+            }
+        }
+
+        public static AppSettingModel GetAppSettings()
+        {
+            var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+            if (!System.IO.File.Exists(_configFilePath))
+            {
+                var emptyConfig = new JObject();
+                System.IO.File.WriteAllText(_configFilePath, emptyConfig.ToString(Newtonsoft.Json.Formatting.Indented));
+            }
+
+            string configContent = System.IO.File.ReadAllText(_configFilePath);
+
+            var config = JObject.Parse(configContent);
+            // Extract the AppSetting section
+            var appSetting = config["dotNetReport"]?["AppSetting"];
+
+            // Create an instance of ApiSettingModel and populate its properties
+            var settings = new AppSettingModel
+            {
+                emailAddress = appSetting?["email"]?["fromemail"]?.ToString(),
+                emailName = appSetting?["email"]?["fromname"]?.ToString(),
+                emailServer = appSetting?["email"]?["server"]?.ToString(),
+                emailPort = appSetting?["email"]?["port"]?.ToString(),
+                emailUserName = appSetting?["email"]?["username"]?.ToString(),
+                emailPassword = appSetting?["email"]?["password"]?.ToString(),
+                backendApiUrl = appSetting?["BaseApiUrl"]?.ToString() ?? "https://dotnetreport.com/api",
+                timeZone = appSetting?["TimeZone"]?.ToString() ?? "-6",
+                appThemes = appSetting?["AppTheme"]?.ToString() ?? "default"
+            };
+
+            return settings;
+        }
+
+        public static void SaveAppSettings(AppSettingModel model)
+        {
+            var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+            if (!System.IO.File.Exists(_configFilePath))
+            {
+                var emptyConfig = new JObject();
+                System.IO.File.WriteAllText(_configFilePath, emptyConfig.ToString(Newtonsoft.Json.Formatting.Indented));
+            }
+
+            //// Get the existing JSON configuration
+            var config = JObject.Parse(System.IO.File.ReadAllText(_configFilePath));
+            if (config["dotNetReport"] == null)
+            {
+                config["dotNetReport"] = new JObject();
+            }
+            var appsetting = config["dotNetReport"]["AppSetting"] ?? new JObject();
+            appsetting["email"] = new JObject
+            {
+                ["fromemail"] = model.emailAddress,
+                ["fromname"] = model.emailName,
+                ["server"] = model.emailServer,
+                ["port"] = model.emailPort,
+                ["username"] = model.emailUserName,
+                ["password"] = model.emailPassword
+            };
+
+            appsetting["BaseApiUrl"] = model.backendApiUrl;
+            appsetting["TimeZone"] = model.timeZone;
+            appsetting["AppTheme"] = model.appThemes;
+
+            config["dotNetReport"]["AppSetting"] = appsetting;
+
+            // Save the updated JSON back to the file
+            System.IO.File.WriteAllText(_configFilePath, config.ToString());
+
+        }
+
     }
+
+    public class UpdateUserConfigModel
+    {
+        public string account { get; set; }
+        public string dataConnect { get; set; }
+        public string userConfig { get; set; }
+    }
+
+    public class UpdateDbConnectionModel
+    {
+        public string account { get; set; } = "";
+        public string dataConnect { get; set; } = "";
+        public string dbType { get; set; } = "";
+        public string connectionType { get; set; } = "";
+        public string connectionKey { get; set; } = "";
+        public string connectionString { get; set; } = "";
+        public string dbServer { get; set; } = "";
+        public string dbPort { get; set; } = "";
+        public string dbName { get; set; } = "";
+        public string dbAuthType { get; set; } = "";
+        public string dbUsername { get; set; } = "";
+        public string dbPassword { get; set; } = "";
+        public string providerName { get; set; } = "";
+        public bool isDefault { get; set; }
+        public bool testOnly { get; set; }
+    }
+
+    public class AppSettingModel
+    {
+        public string account { get; set; } = "";
+        public string dataConnect { get; set; } = "";
+        public string emailUserName { get; set; } = "";
+        public string emailPassword { get; set; } = "";
+        public string emailServer { get; set; } = "";
+        public string emailPort { get; set; } = "";
+        public string emailName { get; set; } = "";
+        public string emailAddress { get; set; } = "";
+        public string backendApiUrl { get; set; } = "";
+        public string timeZone { get; set; } = "";
+        public string appThemes { get; set; } = "";
+    }
+
+    public static class DatabaseConnectionFactory
+    {
+        public static IDatabaseConnection GetConnection(string dbtype)
+        {
+            IDatabaseConnection databaseConnection;
+            switch (dbtype.ToLower())
+            {
+                case "ms sql":
+                    databaseConnection = new SqlServerDatabaseConnection();
+                    break;
+                case "mysql":
+                    databaseConnection = new MySqlDatabaseConnection();
+                    break;
+                case "postgre sql":
+                    databaseConnection = new PostgresDatabaseConnection();
+                    break;
+                default:
+                    databaseConnection = new OleDbDatabaseConnection();
+                    break;
+            }
+
+            return databaseConnection;
+        }
+
+
+    }
+    public interface IDatabaseConnection
+    {
+        bool TestConnection(string connectionString);
+        string CreateConnection(UpdateDbConnectionModel model);
+        int GetTotalRecords(string connectionString, string sqlCount, string sql);
+        DataTable ExecuteQuery(string connectionString, string sql);
+        DataSet ExecuteDataSetQuery(string connectionString, string combinedSqls);
+    }
+    public class SqlServerDatabaseConnection : IDatabaseConnection
+    {
+        public bool TestConnection(string connectionString)
+        {
+            using (SqlConnection conn = new SqlConnection(connectionString))
+            {
+                try
+                {
+                    //Test Connection
+                    conn.Open();
+                    conn.Close();
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    throw ex;
+                }
+            }
+        }
+
+
+        public string CreateConnection(UpdateDbConnectionModel model)
+        {
+            SqlConnectionStringBuilder sqlConnectionStringBuilder = new SqlConnectionStringBuilder();
+
+            // Set other SQL connection properties
+            sqlConnectionStringBuilder.DataSource = model.dbServer;
+            sqlConnectionStringBuilder.Add("Initial Catalog", model.dbName);
+            sqlConnectionStringBuilder.Encrypt = false;
+            if (model.dbAuthType.ToLower() == "username")
+            {
+                sqlConnectionStringBuilder.Add("User ID", model.dbUsername);
+                sqlConnectionStringBuilder.Add("Password", model.dbPassword);
+            }
+            else
+            {
+                sqlConnectionStringBuilder.Add("Integrated Security", "SSPI");
+            }
+
+            return sqlConnectionStringBuilder.ConnectionString;
+        }
+
+        public int GetTotalRecords(string connectionString, string sqlCount, string sql)
+        {
+            int totalRecords = 0;
+
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(connectionString))
+                {
+                    conn.Open();
+
+                    using (SqlCommand command = new SqlCommand(sqlCount, conn))
+                    {
+                        if (!sql.StartsWith("EXEC")) totalRecords = Math.Max(totalRecords, (int)command.ExecuteScalar());
+
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Handle exception (log, rethrow, etc.)
+                throw new Exception($"Error executing SQL query for total records: {ex.Message}", ex);
+            }
+
+            return totalRecords;
+        }
+
+        public DataTable ExecuteQuery(string connectionString, string sql)
+        {
+            DataTable dataTable = new DataTable();
+
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(connectionString))
+                {
+                    conn.Open();
+
+                    using (SqlCommand command = new SqlCommand(sql, conn))
+                    {
+                        using (SqlDataAdapter adapter = new SqlDataAdapter(command))
+                        {
+                            adapter.Fill(dataTable);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Handle exception (log, rethrow, etc.)
+                throw new Exception($"Error executing SQL query: {ex.Message}", ex);
+            }
+
+            return dataTable;
+        }
+
+        public DataSet ExecuteDataSetQuery(string connectionString, string combinedSqls)
+        {
+            var dts = new DataSet();
+            try
+            {
+                using (var conn = new SqlConnection(connectionString))
+                using (var cmd = new SqlCommand(combinedSqls, conn))
+                using (var adp = new SqlDataAdapter(cmd))
+                {
+                    adp.Fill(dts);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error executing SQL query: {ex.Message}", ex);
+            }
+            return dts;
+        }
+    }
+    public class MySqlDatabaseConnection : IDatabaseConnection
+    {
+        public bool TestConnection(string connectionString)
+        {
+            using (MySqlConnection conn = new MySqlConnection(connectionString))
+            {
+                try
+                {
+                    //Test Connection
+                    conn.Open();
+                    conn.Close();
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+        }
+
+        public string CreateConnection(UpdateDbConnectionModel model)
+        {
+            MySqlConnectionStringBuilder conn_string = new MySqlConnectionStringBuilder();
+            conn_string.Server = model.dbServer; //"127.0.0.1";
+            conn_string.Port = Convert.ToUInt32(model.dbPort);// 3306;
+            if (model.dbAuthType.ToLower() == "username")
+            {
+                conn_string.UserID = model.dbUsername;// "root";
+                conn_string.Password = model.dbPassword;// "mysqladmin";
+            }
+            else
+            {
+                conn_string.IntegratedSecurity = true;
+            }
+            conn_string.Database = model.dbName;// "test";
+            return conn_string.ToString();
+        }
+        public int GetTotalRecords(string connectionString, string sqlCount, string sql)
+        {
+            int totalRecords = 0;
+
+            try
+            {
+                using (MySqlConnection conn = new MySqlConnection(connectionString))
+                {
+                    conn.Open();
+
+                    using (MySqlCommand command = new MySqlCommand(sqlCount, conn))
+                    {
+                        if (!sql.StartsWith("EXEC")) totalRecords = Math.Max(totalRecords, (int)command.ExecuteScalar());
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Handle exception (log, rethrow, etc.)
+                throw new Exception($"Error executing SQL query for total records: {ex.Message}", ex);
+            }
+
+            return totalRecords;
+        }
+
+        public DataTable ExecuteQuery(string connectionString, string sql)
+        {
+            DataTable dataTable = new DataTable();
+
+            try
+            {
+                using (MySqlConnection conn = new MySqlConnection(connectionString))
+                {
+                    conn.Open();
+
+                    using (MySqlCommand command = new MySqlCommand(sql, conn))
+                    {
+                        using (MySqlDataAdapter adapter = new MySqlDataAdapter(command))
+                        {
+                            adapter.Fill(dataTable);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Handle exception (log, rethrow, etc.)
+                throw new Exception($"Error executing SQL query: {ex.Message}", ex);
+            }
+
+            return dataTable;
+        }
+        public DataSet ExecuteDataSetQuery(string connectionString, string combinedSqls)
+        {
+            var dts = new DataSet();
+            try
+            {
+                using (var conn = new MySqlConnection(connectionString))
+                using (var cmd = new MySqlCommand(combinedSqls, conn))
+                using (var adp = new MySqlDataAdapter(cmd))
+                {
+                    adp.Fill(dts);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error executing SQL query: {ex.Message}", ex);
+            }
+            return dts;
+        }
+    }
+    public class PostgresDatabaseConnection : IDatabaseConnection
+    {
+        public bool TestConnection(string connectionString)
+        {
+            using (NpgsqlConnection conn = new NpgsqlConnection(connectionString))
+            {
+                try
+                {
+                    //Test Connection
+                    conn.Open();
+                    conn.Close();
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    throw ex;
+                }
+            }
+        }
+
+        public string CreateConnection(UpdateDbConnectionModel model)
+        {
+            NpgsqlConnectionStringBuilder conn_string = new NpgsqlConnectionStringBuilder();
+            conn_string.Host = model.dbServer; //"127.0.0.1";
+            conn_string.Port = Convert.ToInt32(model.dbPort);// 3306;
+            if (model.dbAuthType.ToLower() == "username")
+            {
+                conn_string.Username = model.dbUsername;// "root";
+                conn_string.Password = model.dbPassword;// "mysqladmin";
+            }
+            else
+            {
+                conn_string.IntegratedSecurity = true;
+            }
+            conn_string.Database = model.dbName;// "test";
+            return conn_string.ToString();
+        }
+
+        public int GetTotalRecords(string connectionString, string sqlCount, string sql)
+        {
+            int totalRecords = 0;
+
+            try
+            {
+                using (NpgsqlConnection conn = new NpgsqlConnection(connectionString))
+                {
+                    conn.Open();
+
+                    using (NpgsqlCommand command = new NpgsqlCommand(sqlCount, conn))
+                    {
+                        if (!sql.StartsWith("EXEC")) totalRecords = Math.Max(totalRecords, (int)command.ExecuteScalar());
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Handle exception (log, rethrow, etc.)
+                throw new Exception($"Error executing SQL query for total records: {ex.Message}", ex);
+            }
+
+            return totalRecords;
+        }
+
+        public DataTable ExecuteQuery(string connectionString, string sql)
+        {
+            DataTable dataTable = new DataTable();
+
+            try
+            {
+                using (NpgsqlConnection conn = new NpgsqlConnection(connectionString))
+                {
+                    conn.Open();
+
+                    using (NpgsqlCommand command = new NpgsqlCommand(sql, conn))
+                    {
+                        using (NpgsqlDataAdapter adapter = new NpgsqlDataAdapter(command))
+                        {
+                            adapter.Fill(dataTable);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Handle exception (log, rethrow, etc.)
+                throw new Exception($"Error executing SQL query: {ex.Message}", ex);
+            }
+
+            return dataTable;
+        }
+        public DataSet ExecuteDataSetQuery(string connectionString, string combinedSqls)
+        {
+            var dts = new DataSet();
+            try
+            {
+                using (var conn = new NpgsqlConnection(connectionString))
+                using (var cmd = new NpgsqlCommand(combinedSqls, conn))
+                using (var adp = new NpgsqlDataAdapter(cmd))
+                {
+                    adp.Fill(dts);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error executing SQL query: {ex.Message}", ex);
+            }
+            return dts;
+        }
+    }
+
+    public class OleDbDatabaseConnection : IDatabaseConnection
+    {
+        public bool TestConnection(string connectionString)
+        {
+            using (OleDbConnection conn = new OleDbConnection(connectionString))
+            {
+                try
+                {
+                    //Test Connection
+                    conn.Open();
+                    conn.Close();
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    throw ex;
+                }
+            }
+        }
+
+
+        public string CreateConnection(UpdateDbConnectionModel model)
+        {
+            OleDbConnectionStringBuilder OleDbConnectionStringBuilder = new OleDbConnectionStringBuilder();
+
+            // Set other OleDb connection properties
+            OleDbConnectionStringBuilder.Provider = model.providerName;
+            OleDbConnectionStringBuilder.DataSource = model.dbServer;
+            OleDbConnectionStringBuilder.Add("Initial Catalog", model.dbName);
+            if (model.dbAuthType.ToLower() == "username")
+            {
+                OleDbConnectionStringBuilder.Add("User ID", model.dbUsername);
+                OleDbConnectionStringBuilder.Add("Password", model.dbPassword);
+            }
+            else
+            {
+                OleDbConnectionStringBuilder.Add("Integrated Security", "SSPI");
+            }
+
+            return OleDbConnectionStringBuilder.ConnectionString;
+        }
+
+        public int GetTotalRecords(string connectionString, string sqlCount, string sql)
+        {
+            int totalRecords = 0;
+
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    using (OleDbCommand command = new OleDbCommand(sqlCount, conn))
+                    {
+                        if (!sql.StartsWith("EXEC")) totalRecords = Math.Max(totalRecords, (int)command.ExecuteScalar());
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Handle exception (log, rethrow, etc.)
+                throw new Exception($"Error executing OleDb query for total records: {ex.Message}", ex);
+            }
+
+            return totalRecords;
+        }
+
+        public DataTable ExecuteQuery(string connectionString, string sql)
+        {
+            DataTable dataTable = new DataTable();
+
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    using (OleDbCommand command = new OleDbCommand(sql, conn))
+                    {
+                        using (OleDbDataAdapter adapter = new OleDbDataAdapter(command))
+                        {
+                            adapter.Fill(dataTable);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Handle exception (log, rethrow, etc.)
+                throw new Exception($"Error executing OleDb query: {ex.Message}", ex);
+            }
+
+            return dataTable;
+        }
+        public DataSet ExecuteDataSetQuery(string connectionString, string combinedSqls)
+        {
+            var dts = new DataSet();
+            try
+            {
+                using (var conn = new OleDbConnection(connectionString))
+                using (var cmd = new OleDbCommand(combinedSqls, conn))
+                using (var adp = new OleDbDataAdapter(cmd))
+                {
+                    adp.Fill(dts);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error executing SQL query: {ex.Message}", ex);
+            }
+            return dts;
+        }
+    }
+
+    public static class DynamicCodeRunner
+    {
+        private static ConcurrentDictionary<string, Assembly> _assemblyCache = new ConcurrentDictionary<string, Assembly>();
+
+        public async static Task<object> RunCode(string code)
+        {
+            string methodName = "Execute";
+            string assemblyName = "DynamicAssembly";
+
+            if (!_assemblyCache.TryGetValue(assemblyName, out Assembly assembly))
+            {
+                var functions = await DotNetReportHelper.GetApiFunctions();
+                string sourceCode = GenerateExecutableCode(methodName, code, functions);
+                SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(sourceCode);
+                MetadataReference[] references = new MetadataReference[]
+                {
+                    MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
+                    MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location)
+                };
+                CSharpCompilation compilation = CSharpCompilation.Create(
+                    assemblyName,
+                    new[] { syntaxTree },
+                    references,
+                    new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+
+                using (var ms = new MemoryStream())
+                {
+                    EmitResult result = compilation.Emit(ms);
+                    if (!result.Success)
+                    {
+                        var failures = result.Diagnostics.Where(diagnostic =>
+                            diagnostic.IsWarningAsError || diagnostic.Severity == DiagnosticSeverity.Error);
+                        throw new InvalidOperationException("Compilation failed: " + string.Join(", ", failures.Select(diag => diag.GetMessage())));
+                    }
+
+                    ms.Seek(0, SeekOrigin.Begin);
+                    //assembly = AssemblyLoadContext.Default.LoadFromStream(ms);
+                    _assemblyCache[assemblyName] = assembly;
+                }
+            }
+
+            Type type = assembly.GetType("DynamicNamespace.DynamicClass");
+            MethodInfo method = type.GetMethod(methodName);
+            return method.Invoke(null, null); // No parameters are needed here because they are included in the 'code'
+        }
+
+        public static string GenerateFunctionCode(CustomFunctionModel model)
+        {
+            string parameterList = string.Join(", ", model.Parameters.Select(p => $"string {p.ParameterName} = \"\""));
+
+            return "        public static " + (string.IsNullOrEmpty(model.ResultDataType) ? "object" : model.ResultDataType)  + " " + model.Name + "(" + parameterList + ")\n" +
+                   "        {\n" +
+                   "            " + model.Code + "\n" +
+                   "        }\n";
+        }
+
+        private static string GenerateExecutableCode(string methodName, string code, List<CustomFunctionModel> functions)
+        {
+            var dynamicCode =
+                "using System;\n" +
+                "namespace DynamicNamespace\n" +
+                "{\n" +
+                "    public static class DynamicClass\n" +
+                "    {\n" +
+                "        public static object " + methodName + "()\n" +
+                "        {\n" +
+                "            return " + code + ";\n" + // Direct execution of the code string
+                "        }\n";                
+            
+            foreach(var f in functions)
+            {
+                dynamicCode += GenerateFunctionCode(f);
+            }
+
+            dynamicCode +=
+                "    }\n" +
+                "}";
+            return dynamicCode;
+
+        }
+
+    }
+
+
 }

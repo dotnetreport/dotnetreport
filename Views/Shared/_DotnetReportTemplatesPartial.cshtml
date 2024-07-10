@@ -29,6 +29,20 @@
             <option>This Month To Date</option>
             <option>This Year To Date</option>
             <option>Last 30 Days</option>
+            <!--<option>This Month Last Year</option>
+            <option>Last Month Last Year</option>
+            <option>This Quarter</option>
+            <option>Last Quarter</option>
+            <option>First Quarter</option>
+            <option>Second Quarter</option>
+            <option>Third Quarter</option>
+            <option>Fourth Quarter</option>
+            <option>Next 6 Months</option>
+            <option>Last 6 Months</option>
+            <option>2 Years ago</option>
+            <option>3 Years ago</option>
+            <option>4 Years ago</option>
+            <option>5 Years ago</option>-->
             <optgroup label="Comparison Options">
                 <option>>= Today</option>
                 <option><= Today</option>
@@ -1151,20 +1165,30 @@
                 </div>
                 <br />
                 <div class="card card-body">
-                    <h5 class="pull-left"><span class="fa fa-database"></span>&nbsp;Choose Data for Report</h5>
-                    <div class="pull-right" role="group" data-bind="if: ReportID() <= 0">
-                        <label class="btn btn-sm btn-primary active" style="margin-right: 0px;" title="You can change the Data source only when creating a new report, changing this will clear all selections">
-                            <input type="radio" name="dataoption" id="table" checked data-bind="checked: useStoredProc, checkedValue: false"> Dynamic
-                        </label>
-                        <label class="btn btn-sm btn-primary">
-                            <input type="radio" name="dataoption" id="proc" value="1" data-bind="checked: useStoredProc, checkedValue: true"> Predefined
-                        </label>
+                    <h5><span class="fa fa-database"></span>&nbsp;Choose Data for Report</h5>
+                    <div>
+                        <div class="pull-left" role="group" data-bind="if: ReportID() <= 0">
+                            <label class="btn btn-sm btn-primary active" style="margin-right: 0px;" title="You can change the Data source only when creating a new report, changing this will clear all selections">
+                                <input type="radio" name="dataoption" id="table" checked data-bind="checked: useStoredProc, checkedValue: false"> Dynamic
+                            </label>
+                            <label class="btn btn-sm btn-primary">
+                                <input type="radio" name="dataoption" id="proc" value="1" data-bind="checked: useStoredProc, checkedValue: true"> Predefined
+                            </label>
+                        </div>
+                        <div class="pull-right">
+                            <a href="#" class="btn btn-sm" title="Custom Field using Formula" data-bind="hidden: isFunctionField() || useStoredProc(), click: function(){isFormulaField(!isFormulaField())}, text: isFormulaField()? 'Cancel': 'Custom Field', css: {'btn-primary': !isFormulaField(), 'btn-danger': isFormulaField}"></a>
+                            <a href="#" class="btn btn-sm" title="Custom Field using Function" data-bind="hidden: isFormulaField() || useStoredProc(), click: function(){designFunctionField()}, text: isFunctionField()? 'Cancel': 'Function Field', css: {'btn-primary': !isFunctionField(), 'btn-danger': isFunctionField}"></a>
+                        </div>
                     </div>
                     <div class="clearfix"></div>
                     <div class="row">
                         <div class="col-md-6">
-                            <select class="form-control" data-bind="options: Procs, optionsCaption: 'Choose Section...', optionsText: 'DisplayName', value: SelectedProc, disable: isFormulaField, visible: useStoredProc"></select>
-                            <select class="form-control" data-bind="options: Tables, optionsCaption: 'Choose Section...', optionsText: 'tableName', value: SelectedTable, disable: isFormulaField, hidden: useStoredProc"></select>
+                            <div data-bind="visible: useStoredProc">
+                            <select class="form-control" data-bind="select2Value: {}, options: Procs, optionsCaption: 'Choose Section...', optionsText: 'DisplayName', value: SelectedProc, visible: useStoredProc"></select>
+                            </div>
+                            <div data-bind="hidden: useStoredProc">
+                            <select class="form-control" data-bind="select2Value: {}, options: Tables, optionsCaption: 'Choose Section...', optionsText: 'tableName', value: SelectedTable, hidden: useStoredProc"></select>
+                            </div>
                         </div>
 
                         <div class="col-md-6" data-bind="disable: isFormulaField, hidden: useStoredProc">
@@ -1172,13 +1196,12 @@
                                 <select id="search-field" class="form-control" data-bind="select2: {placeholder: 'Or Search for a Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults, headers: headers }, minimumInputLength: 2, allowClear: true }, value: selectedOption"></select>
                             </div>
                         </div>
-
+                        
                         <div class="col-md-12 padded-div" data-bind="visible: ChooseFields().length>0">
                             <div class="small pull-left">
                                 Check the fields you would like to use in the Report
                             </div>
                             <div class="pull-right btn-toolbar">
-                                <a href="#" class="btn btn-sm" title="Custom Field using Formula" data-bind="click: function(){isFormulaField(!isFormulaField())}, text: isFormulaField()? 'Cancel': 'Customize', css: {'btn-primary': !isFormulaField(), 'btn-danger': isFormulaField}"></a>
 
                                 <a href="#" class="btn btn-secondary btn-sm" data-bind="click: MoveAllFields, visible: !isFormulaField()">Select all</a>
                                 <a href="#" class="btn btn-secondary btn-sm" data-bind="click: RemoveSelectedFields, visible: !isFormulaField()">Remove all</a>
@@ -1196,6 +1219,94 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    <div data-bind="if: isFunctionField" class="custom-field-design">
+                        <br />
+                        <br />
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-12 pull-right">
+                                        <a href="#" class="btn btn-primary btn-sm" title="Save Custom Function Field" data-bind="click: saveFunctionField, visible: isFunctionField">Save</a>
+                                        <a href="#" class="btn btn-sm" title="Custom Field using Function" data-bind="click: function(){isFunctionField(!isFunctionField())}, text: isFunctionField()? 'Cancel': 'Function', css: {'btn-primary': !isFunctionField(), 'btn-danger': isFunctionField}"></a>
+
+                                    </div>
+                                    <div class="col-md-12 padded-div" data-bind="visible: ChooseFields().length>0 && isFunctionField()">
+                                        <div class="alert alert-info">
+                                            You are now creating a Customized Field using Functions available.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <label class="col-sm-2 control-label">Field Label</label>
+                                    <div class="col-sm-10">
+                                        <input type="text" class="form-control form-control-sm" data-bind="value: formulaFieldLabel" required placeholder="Custom Field Label" />
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-2 control-label">Data Format</label>
+                                    <div class="col-sm-10">
+                                        <select class="form-control form-control-sm" data-bind="value: formulaDataFormat" required>
+                                            <option>String</option>
+                                            <option>Integer</option>
+                                            <option>Decimal</option>
+                                            <option>Currency</option>
+                                            <option>Date</option>
+                                            <option value="DateTime">Date and Time</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group row" data-bind="visible: formulaDataFormat() == 'Decimal' || formulaDataFormat() == 'Currency'">
+                                    <label class="col-sm-2 control-label">Round to Decimal Places</label>
+                                    <div class="col-sm-10">
+                                        <input type="number" class="form-control" data-bind="value: formulaDecimalPlaces" placeholder="Choose Decimal places (leave blank to not use rounding)" title="Choose Decimal places (leave blank to not use rounding)" />
+                                    </div>
+                                </div>
+
+                                <div data-bind="visible: !simpleFunction()">
+                                    Define your Function:
+                                    <textarea id="function-code"></textarea>
+                                </div>
+
+                                <div data-bind="visible: simpleFunction()">
+                                <div class="form-group row">
+                                    <label class="col-sm-2 control-label">Select Function</label>
+                                    <div class="col-sm-10" >
+                                        <div data-bind="with: textQuery.searchFunctions">
+                                            <select id="search-function" class="form-control" data-bind="select2: {placeholder: 'Search for a Function...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults, headers: headers}, templateResult: templateResult, minimumInputLength: 2, allowClear: true }, select2Value: selectedOption"></select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div data-bind="with: selectedFunction">
+                                    <div class="form-group row" >
+                                        <label class="col-sm-2 control-label"></label>
+                                        <div class="col-sm-10" >
+                                            <p data-bind="text: description"></p>
+                                            <p>
+                                                <b>Pick values to pass for Parameters below</b>
+                                            </p>
+                                            <!-- ko foreach: parameters -->
+                                            <div class="form-group row" >
+                                                <label class="col-sm-6 control-label">
+                                                    <span data-bind="text: DisplayName"></span><span data-bind="visble: Required"> (Required)</span><br />
+                                                    <span data-bind="text: Description"></span>
+
+                                                </label>
+                                                <div class="col-sm-6" >
+                                                    <select class="form-control" data-bind="required: Required, options: $parentContext.$parent.ChooseFields, optionsText: 'fieldName', value: selectedField, optionsCaption: 'Pick a field...'"></select>
+                                                </div>
+                                            </div>
+                                            <!-- /ko -->
+                                        </div>
+                                    </div>
+
+                                </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="clearfix"></div>
                     </div>
 
                     <div data-bind="if: lastPickedField() && lastPickedField().fieldType == 'Json'">
@@ -1221,7 +1332,7 @@
                         </div>
                     </div>
 
-                    <div data-bind="if: isFormulaField" id="custom-field-design">
+                    <div data-bind="if: isFormulaField" class="custom-field-design">
                         <br />
                         <br />
                         <div class="card">
@@ -1295,12 +1406,15 @@
                                         <div data-bind="foreach: formulaFields">
                                             <h3 class="pull-left" data-bind="visible: setupFormula.isParenthesesStart" style="margin-top: 0;">(</h3>
                                             <div data-bind="if: !setupFormula.isParenthesesStart() && !setupFormula.isParenthesesEnd()">
-                                                <div class="list-group-item pull-left" style="margin-left: 15px; padding: 5px 15px">
+                                                <div class="list-group-item pull-left formula-field-item" style="margin-left: 15px; padding: 5px 15px">
                                                     <span data-bind="text: fieldName, visible: !setupFormula.isConstantValue()"></span>
                                                     <div data-bind="if: setupFormula.isConstantValue">
                                                         <input data-bind="value: setupFormula.constantValue, visible: setupFormula.constantValue()!='|Today|'" class="form-control form-control-sm" required />
                                                         <span data-bind="visible: setupFormula.constantValue() == '|Today|'"><b>Today</b></span>
                                                     </div>
+                                                    <button class="btn btn-danger btn-sm delete-btn" data-bind="click: $parent.removeField">
+                                                        <i class="fa fa-trash"></i>
+                                                    </button>
                                                 </div>
                                             </div>
                                             <h3 class="pull-left" data-bind="visible: setupFormula.isParenthesesEnd" style="margin-top: 0;">)</h3>

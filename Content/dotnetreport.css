@@ -1204,7 +1204,70 @@ h2 {
     }
 }
 
+.cm-error {
+    background: url('data:image/png;base64,iVBORw0...') bottom left repeat-x; /* red squiggly line image */
+    background-size: auto 100%;
+}
+
+.CodeMirror-hint.cm-function-hint:before {
+    content: "\f0c3";
+    font-family: FontAwesome;
+    font-weight: 900;
+    color: #3366CC;
+    padding-right: 5px;
+}
+
+.CodeMirror-hint.cm-field-hint:before {
+    content: "\f1c0";
+    font-family: FontAwesome;
+    font-weight: 900;
+    color: #E65100;
+    padding-right: 5px;
+}
+
+.cm-function-hint-text {
+    color: #3366CC;
+}
+
+.cm-field-hint-text {
+    color: #E65100;
+}
+
+.single-line-codemirror {
+    border: 1px solid #e0e0e0;
+    height: 40px !important;
+    overflow-y: hidden;
+}
+
+    .single-line-codemirror .CodeMirror-scroll {
+        overflow-y: hidden !important;
+        overflow-x: auto !important;
+    }
+
+.CodeMirror-hints {
+    z-index: 9999 !important;
+    position: fixed;
+}
+
 tfoot tr.sub-total {
     border-top: double 4px #dee2e6;
     border-bottom: double 4px #dee2e6;
+}
+
+.formula-field-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.delete-btn {
+    display: none;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    right: 5px;
+}
+
+.formula-field-item:hover .delete-btn {
+    display: inline-block;
 }
