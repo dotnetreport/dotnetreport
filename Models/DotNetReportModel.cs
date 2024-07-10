@@ -428,7 +428,7 @@ namespace ReportBuilder.Web.Models
     {
         private readonly static string _configFileName = "appsettings.dotnetreport.json";
 
-        public static string GetConnectionString(string key, bool addOledbProvider = false)
+        public static string GetConnectionString(string key, bool addOledbProvider = true)
         {
             var connString = ConfigurationManager.ConnectionStrings[key].ConnectionString;
             if (connString == null)

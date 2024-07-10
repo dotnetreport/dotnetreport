@@ -2533,6 +2533,7 @@ var reportViewModel = function (options) {
 				})
 			}
 		}).done(function (result) {
+			if (result.d) result = result.d;
 			if (result.valid) {
 				deferred.resolve(true);
 			} else {
