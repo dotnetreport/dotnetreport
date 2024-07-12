@@ -81,7 +81,6 @@ var manageViewModel = function (options) {
 		joinTable: ko.observable(),
 		joinField: ko.observable()
 	}
-
 	self.filteredJoins = ko.computed(function () {
 		var primaryTableFilter = self.JoinFilters.primaryTable();
 		var primaryFieldFilter = self.JoinFilters.primaryField();
@@ -101,6 +100,64 @@ var manageViewModel = function (options) {
 	});
 
 	self.JoinTypes = ["INNER", "LEFT", "LEFT OUTER", "RIGHT", "RIGHT OUTER"];
+
+	self.filterJoinsSorted = function () {
+		ko.toJS(self.filteredJoins());
+	};
+
+	self.sortDirection = {
+		primaryTable: ko.observable(true),  // true for ascending, false for descending
+		primaryField: ko.observable(true),
+		joinType: ko.observable(true),
+		joinTable: ko.observable(true),
+		joinField: ko.observable(true)
+	};
+	// Sorting functions
+	self.sortByPrimaryTable = function () {
+		var direction = self.sortDirection.primaryTable();
+		self.Joins.sort(function (a, b) {
+			var aValue = a.JoinTable().DisplayName().toLowerCase();
+			var bValue = b.JoinTable().DisplayName().toLowerCase();
+			return direction ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+		});
+		self.sortDirection.primaryTable(!direction);
+	};
+	self.sortByField = function () {
+		var direction = self.sortDirection.primaryField();
+		self.Joins.sort(function (a, b) {
+			var aValue = a.FieldName().toLowerCase();
+			var bValue = b.FieldName().toLowerCase();
+			return direction ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+		});
+		self.sortDirection.primaryField(!direction);
+	};
+	self.sortByJoinType = function () {
+		var direction = self.sortDirection.joinType();
+		self.Joins.sort(function (a, b) {
+			var aValue = a.JoinType().toLowerCase();
+			var bValue = b.JoinType().toLowerCase();
+			return direction ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+		});
+		self.sortDirection.joinType(!direction);
+	};
+	self.sortByJoinTable = function () {
+		var direction = self.sortDirection.joinTable();
+		self.Joins.sort(function (a, b) {
+			var aValue = a.OtherTable().DisplayName().toLowerCase();
+			var bValue = b.OtherTable().DisplayName().toLowerCase();
+			return direction ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+		});
+		self.sortDirection.joinTable(!direction);
+	};
+	self.sortByJoinField = function () {
+		var direction = self.sortDirection.joinField();
+		self.Joins.sort(function (a, b) {
+			var aValue = a.JoinFieldName().toLowerCase();
+			var bValue = b.JoinFieldName().toLowerCase();
+			return direction ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+		});
+		self.sortDirection.joinField(!direction);
+	};
 
 	self.editColumn = ko.observable();
 	self.isStoredProcColumn = ko.observable();

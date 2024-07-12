@@ -256,49 +256,65 @@
                 <table class="table">
                     <thead data-bind="with: JoinFilters">
                         <tr>
+                            @* <th>&nbsp;</th> *@
                             <th>
                                 Primary Table
                                 <div class="input-group input-group-sm">
                                     <input type="text" class="form-control input-sm" data-bind="value: primaryTable, valueUpdate: 'afterkeydown'" placeholder="Search...">
                                     <span class="input-group-addon"><i class="fa fa-filter"></i></span>
+                                    <span class="btn btn-sm" data-bind="click: $root.sortByPrimaryTable">
+                                        <i class="fa" data-bind="css: $root.sortDirection.primaryTable() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
+                                    </span>
                                 </div>
                             </th>
                             <th>
                                 Field
                                 <div class="input-group input-group-sm">
-
                                     <input type="text" class="form-control input-sm" data-bind="value: primaryField, valueUpdate: 'afterkeydown'" placeholder="Search...">
                                     <span class="input-group-addon"><i class="fa fa-filter"></i></span>
+                                    <span class="btn btn-sm" data-bind="click: $root.sortByField">
+                                        <i class="fa" data-bind="css: $root.sortDirection.primaryField() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
+                                    </span>
                                 </div>
                             </th>
                             <th>
                                 Join Type
                                 <div class="input-group input-group-sm">
-
                                     <input type="text" class="form-control input-sm" data-bind="value: joinType, valueUpdate: 'afterkeydown'" placeholder="Search...">
                                     <span class="input-group-addon"><i class="fa fa-filter"></i></span>
+                                    <span class="btn btn-sm" data-bind="click: $root.sortByJoinType">
+                                        <i class="fa" data-bind="css: $root.sortDirection.joinType() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
+                                    </span>
                                 </div>
                             </th>
                             <th>
                                 Join Table
                                 <div class="input-group input-group-sm">
-
                                     <input type="text" class="form-control input-sm" data-bind="value: joinTable, valueUpdate: 'afterkeydown'" placeholder="Search...">
                                     <span class="input-group-addon"><i class="fa fa-filter"></i></span>
+                                    <span class="btn btn-sm" data-bind="click: $root.sortByJoinTable">
+                                        <i class="fa" data-bind="css: $root.sortDirection.joinTable() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
+                                    </span>
                                 </div>
                             </th>
                             <th>
                                 Field<div class="input-group input-group-sm">
-
                                     <input type="text" class="form-control input-sm" data-bind="value: joinField, valueUpdate: 'afterkeydown'" placeholder="Search...">
                                     <span class="input-group-addon"><i class="fa fa-filter"></i></span>
+                                    <span class="btn btn-sm" data-bind="click: $root.sortByJoinField">
+                                        <i class="fa" data-bind="css: $root.sortDirection.joinField() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
+                                    </span>
                                 </div>
                             </th>
                             <th></th>
                         </tr>
                     </thead>
                     <tbody data-bind="foreach: filteredJoins">
+                    @* <tbody data-bind="sortable: { data: $root.Joins, options: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight' }, afterMove: $root.filterJoinsSorted }"> *@
                         <tr>
+                            @* <td class="btn btn-sm pull-right sortable">
+                                <span class="fa fa-ellipsis-v" aria-hidden="true" title="Drag to reorder"></span>
+                            </td> *@
                             <td>
                                 <select class="form-control input-medium" data-bind="options: $root.Tables.availableTables, optionsText: 'DisplayName', value: JoinTable"></select>
                             </td>
@@ -311,7 +327,6 @@
                             <td>
                                 <select class="form-control input-medium" data-bind="options: OtherTables, optionsText: 'DisplayName', value: OtherTable"></select>
                             </td>
-
                             <td data-bind="with: OtherTable">
                                 <select class="form-control" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsValue: 'ColumnName', value: $parent.JoinFieldName"></select>
                             </td>
