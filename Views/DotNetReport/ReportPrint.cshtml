@@ -12,7 +12,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="keywords" content="ad-hoc reporting, reporting, asp .net reporting, asp .net report, report builder, ad hoc report builder, ad-hoc report builder, adhoc report, ad hoc reports, .net report viewer, reportviewer, sql reportviewer, report builder mvc, report mvc, report builder web forms, query builder, sql report builder,visual report builder,custom query,query maker" />
     <meta name="description" content="Ad hoc Reporting software that allows programmers to easily add Reporting functionality to their ASP .NET Web Software Solution" />
-    <link href="~/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet" />
     <link href="~/lib/bootstrap-datepicker/css/bootstrap-datepicker.min.css" rel="stylesheet" />
     <link href="~/lib/toastr/toastr.min.css" rel="stylesheet" />
     <link href="~/lib/font-awesome/css/font-awesome.min.css" rel="stylesheet" />
@@ -24,6 +23,32 @@
             margin: 0 50px 0 50px;
             max-width: inherit;
         }
+        
+        .table {
+          width: 100%;
+          margin-bottom: 1rem;
+          color: #212529;
+          border-collapse: collapse;
+        }
+
+        .table th,
+        .table td {
+          padding: 0.75rem;
+          vertical-align: top;
+          border: 1px solid #dee2e6;
+        }
+
+        .table-borderless th,
+        .table-borderless td,
+        .table-borderless thead th,
+        .table-borderless tbody + tbody {
+          border: 0;
+        }
+
+        .table-striped tbody tr:nth-of-type(odd) {
+          background-color: rgba(0, 0, 0, 0.05);
+        }
+
     </style>
 </head>
 
@@ -80,15 +105,16 @@
             <table class="table table-condensed table-striped" data-bind="attr: {class: 'table table-hover table-condensed table-striped ' +  $root.selectedStyle()}">
                 <thead>
                     <tr class="no-highlight">
-                        <!-- ko if: $parentContext.$parent.canDrilldown() && !IsDrillDown() -->
-                        <th></th>
-                        <!-- /ko -->
                         <!-- ko foreach: Columns -->
-                        <th data-bind="attr: { id: 'col' + $index() }, css: {'right-align': IsNumeric}">
-                            <span>
-                                <span data-bind="text: ColumnName"></span>
-                                <span data-bind="text: $parentContext.$parentContext.$parent.pager.sortColumn() === SqlField ? ($parentContext.$parentContext.$parent.pager.sortDescending() ? '&#9660;' : '&#9650;') : ''"></span>
+                        <th data-bind="attr: { id: fieldId }, css: {'right-align': IsNumeric}, style: {'width': fieldWidth, 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
+                            <!-- ko if: $root.useStoredProc() -->
+                            <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
+                            <!-- /ko -->
+                            <!-- ko ifnot: $root.useStoredProc()  -->
+                            <span data-bind="style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}">
+                                <span data-bind="text: fieldLabel() ? fieldLabel() : ColumnName"></span>
                             </span>
+                            <!-- /ko -->
                         </th>
                         <!-- /ko -->
                     </tr>
@@ -101,18 +127,10 @@
                     </tr>
                     <!-- ko foreach: Rows  -->
                     <tr>
-                        <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() -->
-                        <td>&nbsp;</td>
-                        <!-- /ko -->
                         <!-- ko foreach: Items -->
-                        <!-- ko if: LinkTo-->
-                        <td data-bind="css: {'right-align': Column.IsNumeric}">
-                            <a data-bind="attr: {href: LinkTo}"><span data-bind="html: FormattedValue"></span></a>
+                        <td data-bind="hidden: outerGroup, style: {'background-color': _backColor != 'none' ? backColor() : '', 'color': _fontColor != 'none' ? fontColor() : '', 'font-weight': fontBold() && _fontBold != 'none' ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '48px' : ''}">
+                            <span data-bind="html: FormattedValue"></span>
                         </td>
-                        <!-- /ko-->
-                        <!-- ko ifnot: LinkTo-->
-                        <td data-bind="html: FormattedValue, css: {'right-align': Column.IsNumeric}"></td>
-                        <!-- /ko-->
                         <!-- /ko -->
                     </tr>
                     <!-- ko if: isExpanded -->
@@ -193,7 +211,7 @@
         }
     </style>
     <script type="text/javascript">
-
+    
     $(document).ready(function () {
         var data = {
             currentUserId: '@Model.UserId',

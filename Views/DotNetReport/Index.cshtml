@@ -396,12 +396,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <ul class="dropdown-menu">
                                     <li class="dropdown-item">
                                         <a href="#" data-bind="click: downloadPdf">
-                                            <span class="fa fa-file-pdf-o"></span> Pdf (Enhanced)
-                                        </a>
-                                    </li>
-                                    <li class="dropdown-item">
-                                        <a href="#" data-bind="click: downloadPdfAlt">
-                                            <span class="fa fa-file-pdf-o"></span> Pdf (Basic)
+                                            <span class="fa fa-file-pdf-o"></span> Pdf
                                         </a>
                                     </li>
                                     <li class="dropdown-item">
@@ -422,6 +417,11 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <li class="dropdown-item">
                                         <a href="#" data-bind="click: downloadXml">
                                             <span class="fa fa-file-code-o"></span> Xml
+                                        </a>
+                                    </li>
+                                    <li class="dropdown-item">
+                                        <a href="#" data-bind="click: downloadWord">
+                                            <span class="fa fa-file-word-o"></span> Word
                                         </a>
                                     </li>
                                 </ul>
@@ -522,6 +522,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             <p data-bind="html: ReportDescription">
                                             </p>
                                             <div data-bind="with: ReportResult" class="report-expanded-scroll">
+                                                <div data-bind="visible: !ReportData()">
+                                                    <div class="report-spinner"></div>
+                                                </div>
                                                 <div data-bind="template: 'report-template', data: $data"></div>
                                             </div>
                                         </div>

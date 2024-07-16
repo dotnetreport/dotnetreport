@@ -1,4 +1,7 @@
-﻿using Newtonsoft.Json;
+﻿using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Wordprocessing;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using OfficeOpenXml;
 using PdfSharp;
@@ -15,6 +18,9 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
+using A = DocumentFormat.OpenXml.Drawing;
+using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
+using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
 
 namespace ReportBuilder.Web.Models
 {
@@ -238,6 +244,7 @@ namespace ReportBuilder.Web.Models
         public int Width { get; set; }
         public int Height { get; set; }
         public bool IsWidget { get; set; }
+        public string WidgetSettings { get; set; }    
     }
 
     public class DotNetDashboardModel
@@ -315,11 +322,11 @@ namespace ReportBuilder.Web.Models
         public string fieldLabel { get; set; }
         public string customfieldLabel { get; set; }
         public bool hideStoredProcColumn { get; set; }
-        public int? decimalPlaces { get; set; }
+        public int? decimalPlacesDigit { get; set; }
         public string fieldAlign { get; set; }
-        public string fieldFormat { get; set; }
+        public string fieldFormating { get; set; }
         public bool dontSubTotal { get; set; }
-
+        public string currencySymbol { get; set; }
         public bool isNumeric { get; set; }
         public bool isCurrency { get; set; }
         public bool isJsonColumn { get; set; }
@@ -534,27 +541,57 @@ namespace ReportBuilder.Web.Models
             return "";
         }
 
-        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool loadHeader=true)
+        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool loadHeader=true, string chartData = null)
         {
             ws.Cells[rowstart, colstart].LoadFromDataTable(dt, loadHeader);
             if (loadHeader) ws.Cells[rowstart, colstart, rowstart, colstart + dt.Columns.Count -1].Style.Font.Bold = true;
-
+            if (!string.IsNullOrEmpty(chartData) && chartData != "undefined")
+            {
+                byte[] imageBytes = Convert.FromBase64String(chartData.Substring(chartData.LastIndexOf(',') + 1));
+                using (MemoryStream ms = new MemoryStream(imageBytes))
+                {
+                    Image image = Image.FromStream(ms);
+                    // Add the image to the worksheet
+                    var picture = ws.Drawings.AddPicture("ChartImage", image);
+                    picture.SetPosition(1, 0, dt.Columns.Count + 1, 0); // Set the position of the image
+                    picture.SetSize(400, 300); // Set the size of the image in pixels (width, height)
+                }
+            }
             int i = colstart; var isNumeric = false;
             foreach (DataColumn dc in dt.Columns)
             {
+                var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
+                string decimalFormat = new string('0', formatColumn?.decimalPlacesDigit.GetValueOrDefault() ?? 0);
                 isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
-                if (dc.DataType == typeof(decimal))
+                if (dc.DataType == typeof(decimal) || (formatColumn != null && formatColumn.fieldFormating=="Decimal"))
                 {
-                    ws.Column(i).Style.Numberformat.Format = "###,###,##0.00";
+                    if (formatColumn != null && formatColumn.decimalPlacesDigit != null)
+                    {
+                        ws.Column(i).Style.Numberformat.Format = "###,###,##0." + decimalFormat;
+                    }
+                    else
+                    {
+                        ws.Column(i).Style.Numberformat.Format = "###,###,##0.00";
+                    }
                     isNumeric = true;
                 }
                 if (dc.DataType == typeof(DateTime))
                     ws.Column(i).Style.Numberformat.Format = "mm/dd/yyyy";
 
-                var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
-                if (formatColumn != null && formatColumn.fieldFormat == "Currency")
+                if (formatColumn != null && formatColumn.fieldFormating == "Currency")
                 {
-                    ws.Column(i).Style.Numberformat.Format = "$###,###,##0.00";
+                    if (formatColumn.currencySymbol != null && formatColumn.decimalPlacesDigit != null)
+                    {
+                        ws.Column(i).Style.Numberformat.Format = formatColumn.currencySymbol + "###,###,##0." + decimalFormat;
+                    }
+                    else if (formatColumn.currencySymbol != null)
+                    {
+                        ws.Column(i).Style.Numberformat.Format = formatColumn.currencySymbol + "###,###,##0.00";
+                    }
+                    else
+                    {
+                        ws.Column(i).Style.Numberformat.Format = "$###,###,##0.00";
+                    }
                     isNumeric = true;
                 }
                 if (formatColumn != null && formatColumn.isJsonColumn)
@@ -835,28 +872,115 @@ namespace ReportBuilder.Web.Models
             return dts;
         }
 
-        public static DataTable PushDatasetIntoDataTable(DataTable tbl, DataSet dts, string pivotColumnName)
+        private static int CompareValues(object value1, object value2, Type dtType)
+        {
+            bool isInt = dtType == typeof(int) || dtType == typeof(long) || dtType == typeof(Int16) || dtType == typeof(Int32);
+            bool isDecimal = dtType == typeof(decimal) || dtType == typeof(double) || dtType == typeof(float);
+
+            if (value2 == null) { return 1; }
+            if (value1 == null) { return -1; }
+
+            if (dtType == typeof(DateTime))
+            {
+                DateTime date1 = Convert.ToDateTime(value1);
+                DateTime date2 = Convert.ToDateTime(value2);
+                return DateTime.Compare(date1, date2);
+            }
+            else if (isInt || isDecimal)
+            {
+                double dblValue1 = Convert.ToDouble(value1);
+                double dblValue2 = Convert.ToDouble(value2);
+                return dblValue1.CompareTo(dblValue2);
+            }
+            return value1.ToString().CompareTo(value2.ToString());
+        }
+
+        public static DataTable PushDatasetIntoDataTable(DataTable tbl, DataSet dts, string pivotColumnName, string pivotFunction)
         {
             var dt = tbl.Copy();
+            
             foreach (DataRow row in dt.Rows)
             {
                 int rowIndex = dt.Rows.IndexOf(row);
                 DataTable dtsTable = dts.Tables[rowIndex];
+                var distinctValues = new Dictionary<string, HashSet<object>>();
+                var maxValues = new Dictionary<string, object>();
 
                 if (dtsTable.Columns.Contains(pivotColumnName))
                 {
                     int pivotColumnIndex = dtsTable.Columns[pivotColumnName].Ordinal;
+                    int dtColumnIndex = (pivotColumnIndex + 1 < dtsTable.Columns.Count) ? pivotColumnIndex + 1 : pivotColumnIndex;
+
+                    var dtType = dtsTable.Columns[dtColumnIndex].DataType;
+                    bool isInt = dtType == typeof(int) || dtType == typeof(long) || dtType == typeof(Int16) || dtType == typeof(Int32);
+                    bool isDecimal = dtType == typeof(decimal) ||dtType == typeof(double) ||dtType == typeof(float);
+                    bool isDate = dtType == typeof(DateTime);
 
                     foreach (DataRow dtsRow in dtsTable.Rows)
                     {
                         string newColumnName = dtsRow[pivotColumnName].ToString();
+                        if (string.IsNullOrEmpty(newColumnName)) newColumnName = "(Blank)";
                         if (!dt.Columns.Contains(newColumnName))
                         {
-                            dt.Columns.Add(newColumnName, typeof(int));
+                            dt.Columns.Add(newColumnName, pivotFunction.StartsWith("Count") ? typeof(int) : dtType);
                         }
+                        
+                        if (pivotFunction == "Count Distinct")
+                        {
+                            if (!distinctValues.ContainsKey(newColumnName))
+                            {
+                                distinctValues[newColumnName] = new HashSet<object>();
+                            }
+                            distinctValues[newColumnName].Add(dtsRow[dtColumnIndex]);
+                        }
+                        else if (pivotFunction == "Max")
+                        {
+                            object currentValue = dtsRow[dtColumnIndex];
+                            if (!maxValues.ContainsKey(newColumnName) || CompareValues(currentValue, maxValues[newColumnName], dtType) > 0)
+                            {
+                                maxValues[newColumnName] = currentValue;
+                            }
+                        }
+                        else if (pivotColumnIndex + 1 < dtsTable.Columns.Count)
+                        {
+                            if (pivotFunction == "Count")
+                            {
+                                row[newColumnName] = (string.IsNullOrEmpty(row[newColumnName].ToString()) ? 0 : Convert.ToInt32(row[newColumnName])) + 1;
+                            }
+                            else if (isInt)
+                            {
+                                row[newColumnName] = (string.IsNullOrEmpty(row[newColumnName].ToString()) ? 0 : Convert.ToInt32(row[newColumnName])) + (string.IsNullOrEmpty(dtsRow[pivotColumnIndex + 1].ToString()) ? 0 : Convert.ToInt32(dtsRow[pivotColumnIndex + 1]));
 
-                        if (pivotColumnIndex + 1 < dtsTable.Columns.Count)
-                            row[newColumnName] = (string.IsNullOrEmpty(row[newColumnName].ToString()) ? 0 : Convert.ToInt32(row[newColumnName])) + (string.IsNullOrEmpty(dtsRow[pivotColumnIndex + 1].ToString()) ? 0 : Convert.ToInt32(dtsRow[pivotColumnIndex + 1]));
+                            }
+                            else if (isDecimal)
+                            {
+                                row[newColumnName] = (string.IsNullOrEmpty(row[newColumnName].ToString()) ? 0 : Convert.ToDecimal(row[newColumnName])) + (string.IsNullOrEmpty(dtsRow[pivotColumnIndex + 1].ToString()) ? 0 : Convert.ToDecimal(dtsRow[pivotColumnIndex + 1]));
+
+                            }
+                            else if (isDate)
+                            {
+                                row[newColumnName] = (string.IsNullOrEmpty(row[newColumnName].ToString()) ? "" : Convert.ToDateTime(row[newColumnName]).ToShortDateString()) + " " + (string.IsNullOrEmpty(dtsRow[pivotColumnIndex + 1].ToString()) ? "" : Convert.ToDateTime(dtsRow[pivotColumnIndex + 1]).ToShortDateString());
+                            }
+                            else
+                            {
+                                row[newColumnName] = row[newColumnName].ToString() + " " + dtsRow[pivotColumnIndex + 1].ToString();
+                            }
+                        }
+                    }
+
+                    if (pivotFunction == "Count Distinct")
+                    {
+                        foreach (var column in distinctValues)
+                        {
+                            row[column.Key] = column.Value.Count;
+                        }
+                    }
+                    if (pivotFunction == "Max")
+                    {
+                        foreach (var column in maxValues)
+                        {
+                            row[column.Key] = column.Value;
+                        }
                     }
                 }
             }
@@ -865,7 +989,7 @@ namespace ReportBuilder.Web.Models
         }
 
 
-        public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, bool allExpanded = false,
+        public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
                 string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
         {
             var sql = Decrypt(reportSql);
@@ -897,7 +1021,6 @@ namespace ReportBuilder.Web.Models
                         }
                     }
                 }
-
                 using (ExcelPackage xp = new ExcelPackage())
                 {
                     ExcelWorksheet ws = xp.Workbook.Worksheets.Add(reportName);
@@ -917,7 +1040,7 @@ namespace ReportBuilder.Web.Models
                         rowstart += 2;
                         rowend = rowstart + dt.Rows.Count;
 
-                        FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeSubtotal);
+                        FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeSubtotal,true,chartData);
 
                         if (allExpanded)
                         {
@@ -996,24 +1119,38 @@ namespace ReportBuilder.Web.Models
             var isCurrency = false;
             var isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
             var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
-
+            string decimalFormat = new string('0', formatColumn?.decimalPlacesDigit.GetValueOrDefault()??0);
             try
             {
-                if (dc.DataType == typeof(decimal) || (formatColumn != null && (formatColumn.fieldFormat == "Decimal" || formatColumn.fieldFormat == "Double")))
+                if (dc.DataType == typeof(decimal) || (formatColumn != null && (formatColumn.fieldFormating == "Decimal" || formatColumn.fieldFormating == "Double")))
                 {
+                    if (formatColumn.decimalPlacesDigit != null)
+                    {
+                        value = Convert.ToDecimal(value).ToString("###,###,##0." + decimalFormat);
+                    }
+                    else
+                    {
+                        value = Convert.ToDecimal(value).ToString("###,###,##0.00");
+                    }
                     isNumeric = true;
-                    value = Convert.ToDecimal(value).ToString("###,###,##0.00");
                 }
-                if (formatColumn != null && formatColumn.fieldFormat == "Currency")
+                if (formatColumn != null && formatColumn.fieldFormating == "Currency")
                 {
-                    value = Convert.ToDecimal(value).ToString("C");
+                    if (formatColumn.currencySymbol != null && formatColumn.decimalPlacesDigit != null)
+                    {
+                        value = Convert.ToDecimal(value).ToString(formatColumn.currencySymbol + "###,###,##0." + decimalFormat);
+                    }
+                    else if (formatColumn.currencySymbol != null)
+                    {
+                        value = Convert.ToDecimal(value).ToString(formatColumn.currencySymbol + "###,###,##0.00");
+                    }
                     isCurrency = true;
                 }
-                if (formatColumn != null && (formatColumn.fieldFormat == "Date" || formatColumn.fieldFormat == "Date and Time" || formatColumn.fieldFormat == "Time") && dc.DataType.Name == "DateTime")
+                if (formatColumn != null && (formatColumn.fieldFormating == "Date" || formatColumn.fieldFormating == "Date and Time" || formatColumn.fieldFormating == "Time") && dc.DataType.Name == "DateTime")
                 {
                     var date = Convert.ToDateTime(value);
-                    value = formatColumn.fieldFormat.StartsWith("Date") ? date.ToShortDateString() + " " : "";
-                    value += formatColumn.fieldFormat.EndsWith("Time") ? date.ToShortTimeString() : "";
+                    value = formatColumn.fieldFormating.StartsWith("Date") ? date.ToShortDateString() + " " : "";
+                    value += formatColumn.fieldFormating.EndsWith("Time") ? date.ToShortTimeString() : "";
                     value = value.Trim();
                 }
             } catch (Exception ex)
@@ -1308,6 +1445,262 @@ namespace ReportBuilder.Web.Models
             }
         }
 
+        public static async Task<byte[]> GetWordFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
+            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
+        {
+            var sql = Decrypt(reportSql);
+            var sqlFields = SplitSqlColumns(sql);
+
+            // Execute sql
+            var dt = new DataTable();
+            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
+            {
+                conn.Open();
+                var command = new OleDbCommand(sql, conn);
+                var adapter = new OleDbDataAdapter(command);
+
+                adapter.Fill(dt);
+
+                if (pivot) dt = Transpose(dt);
+
+                if (columns?.Count > 0)
+                {
+                    foreach (var col in columns)
+                    {
+                        if (dt.Columns.Contains(col.fieldName) && col.hideStoredProcColumn)
+                        {
+                            dt.Columns.Remove(col.fieldName);
+                        }
+                        else if (!String.IsNullOrWhiteSpace(col.customfieldLabel))
+                        {
+                            dt.Columns[col.fieldName].ColumnName = col.customfieldLabel;
+                        }
+                    }
+                }
+
+                using (MemoryStream memStream = new MemoryStream())
+                {
+                    using (WordprocessingDocument wordDocument = WordprocessingDocument.Create(memStream, WordprocessingDocumentType.Document))
+                    {
+                        MainDocumentPart mainPart = wordDocument.AddMainDocumentPart();
+                        mainPart.Document = new Document();
+                        Body body = mainPart.Document.AppendChild(new Body());                     
+                        // Add report header
+                        Paragraph header = new Paragraph(new Run(new RunProperties()
+                        {
+                            FontSize = new DocumentFormat.OpenXml.Wordprocessing.FontSize() { Val = "28" },// Font size 14 points (2 * 14)
+                            Bold = new Bold(),
+                        }, new Text(reportName)));
+                        header.ParagraphProperties = new ParagraphProperties(new Justification() { Val = JustificationValues.Center });
+                        body.AppendChild(header);
+
+                        // Render chart
+                        if (!string.IsNullOrEmpty(chartData) && chartData != "undefined")
+                        {
+                            byte[] imageDecoded = Convert.FromBase64String(chartData.Substring(chartData.LastIndexOf(',') + 1));
+                            using (MemoryStream imageStream = new MemoryStream(imageDecoded))
+                            {
+                                ImagePart imagePart = mainPart.AddImagePart(ImagePartType.Jpeg);
+                                imagePart.FeedData(imageStream);
+                                // Specify the size in pixels and convert to EMUs
+                                int widthInPixels = 500;
+                                int heightInPixels = 400;
+                                long widthInEmus = widthInPixels * 9525;
+                                long heightInEmus = heightInPixels * 9525;
+                                AddImageToBody(wordDocument, mainPart.GetIdOfPart(imagePart),widthInEmus, heightInEmus);
+                            }
+                        }
+                        // Add data in table format
+                        if (dt.Rows.Count > 0)
+                        {
+                            // Create table
+                            Table table = new Table();
+                            TableProperties props = new TableProperties(new Justification() { Val = JustificationValues.Center },
+                             new TableBorders(
+                             new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 8 },
+                             new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 10 },
+                             new LeftBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 10 },
+                             new RightBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 10 },
+                             new InsideHorizontalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 8 },
+                             new InsideVerticalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 10 }
+                             ));
+
+                            // Append table properties
+                            table.AppendChild<TableProperties>(props);
+                            // Add header row
+                            TableRow headerRow = new TableRow();
+                            // Calculate max text width for each column
+                            int[] maxColumnWidths = new int[dt.Columns.Count];
+                            foreach (DataColumn column in dt.Columns)
+                            {
+                                maxColumnWidths[column.Ordinal] = EstimateTextWidth(column.ColumnName);
+                                RunProperties runProperties = new RunProperties(
+                                    new Bold(),
+                                    new DocumentFormat.OpenXml.Wordprocessing.Color() { Val = "#156082" } // Example color
+                                );
+                                Run run = new Run(runProperties, new Text(column.ColumnName));
+                                ParagraphProperties paragraphProperties = new ParagraphProperties(
+                                    new SpacingBetweenLines() { Before = "100", After = "100", Line = "240", LineRule = LineSpacingRuleValues.Auto },
+                                    new Indentation() { Left = "180", Right = "180"} // Adjust values as needed
+                                );
+                                Paragraph paragraph = new Paragraph(paragraphProperties, run);
+                                TableCell cell = new TableCell(paragraph);
+                                headerRow.AppendChild(cell);
+                            }
+                            table.AppendChild(headerRow);
+
+                            // Normalize column widths to fit the available width
+                            int totalWidth = 0;
+                            foreach (int width in maxColumnWidths)
+                            {
+                                totalWidth += width;
+                            }
+                            if (totalWidth > 13900)
+                            {
+                                // Set landscape orientation
+                                SectionProperties sectionProperties = new SectionProperties();
+                                DocumentFormat.OpenXml.Wordprocessing.PageSize pageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize() { Width = Convert.ToUInt32(totalWidth +(1440*2)), Orient = PageOrientationValues.Landscape };
+                                sectionProperties.Append(pageSize);
+                                body.Append(sectionProperties);
+                            }
+                            else
+                            {
+                                // Set page orientation to landscape
+                                SectionProperties sectionProps = new SectionProperties();
+                                DocumentFormat.OpenXml.Wordprocessing.PageSize defaultpageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize()
+                                {
+                                    Orient = PageOrientationValues.Landscape,
+                                    Width = 16838,  // 11.69 inch in Twips (297 mm)
+                                };
+                                sectionProps.Append(defaultpageSize);
+                                body.Append(sectionProps);
+                            }
+                            // Add data rows
+                            foreach (DataRow row in dt.Rows)
+                            {
+                                TableRow dataRow = new TableRow();
+                                foreach (DataColumn column in dt.Columns)
+                                {
+                                    var value = row[column.ColumnName].ToString();
+                                    var formatColumn = GetColumnFormatting(column, columns, ref value);
+                                    Run run = new Run( new Text(value));
+                                    ParagraphProperties paragraphProperties = new ParagraphProperties(
+                                        new SpacingBetweenLines() { Before = "100", After = "100", Line = "240", LineRule = LineSpacingRuleValues.Auto },
+                                        new Indentation() { Left = "180", Right = "180" } // Adjust values as needed
+                                    );
+                                    Paragraph paragraph = new Paragraph(paragraphProperties, run);
+                                    TableCell cell = new TableCell(paragraph);
+                                    dataRow.AppendChild(cell);
+                                }
+                                table.AppendChild(dataRow);
+                            }
+                            body.AppendChild(table);
+                            // Add expanded data if applicable
+                            if (allExpanded)
+                            {
+                                Paragraph expandedData = new Paragraph(new Run(new Text("Additional expanded data")));
+                                body.AppendChild(expandedData);
+                            }
+                        }
+                        else
+                        {
+                            Paragraph expandedData = new Paragraph(new Run(new Text("No RecordS Found")));
+                            body.AppendChild(expandedData);
+                        }
+                        // Ensure word wrapping doesn't break words
+                        foreach (TableCell cell in body.Descendants<TableCell>())
+                        {
+                            cell.TableCellProperties = new TableCellProperties();
+                            NoWrap noWrap = new NoWrap();
+                            cell.TableCellProperties.Append(noWrap);
+                        }
+                        wordDocument.Save();
+                    }
+                    return memStream.ToArray();
+                }
+            }
+        }
+        static void AddImageToBody(WordprocessingDocument wordDoc, string relationshipId, long cx, long cy)
+        {
+            // Define the reference of the image.
+            var element =
+                 new  Drawing(
+                     new DW.Inline(
+                         new DW.Extent() { Cx = cx, Cy = cy },
+                         new DW.EffectExtent()
+                         {
+                             LeftEdge = 0L,
+                             TopEdge = 0L,
+                             RightEdge = 0L,
+                             BottomEdge = 0L
+                         },
+                         new DW.DocProperties()
+                         {
+                             Id = (UInt32Value)1U,
+                             Name = "Chart Image"
+                         },
+                         new DW.NonVisualGraphicFrameDrawingProperties(
+                             new A.GraphicFrameLocks() { NoChangeAspect = true }),
+                         new A.Graphic(
+                             new A.GraphicData(
+                                 new PIC.Picture(
+                                     new PIC.NonVisualPictureProperties(
+                                         new PIC.NonVisualDrawingProperties()
+                                         {
+                                             Id = (UInt32Value)0U,
+                                             Name = "New Bitmap Chart Image.jpg"
+                                         },
+                                         new PIC.NonVisualPictureDrawingProperties()),
+                                     new PIC.BlipFill(
+                                         new A.Blip(
+                                             new A.BlipExtensionList(
+                                                 new A.BlipExtension()
+                                                 {
+                                                     Uri =
+                                                        "{28A0092B-C50C-407E-A947-70E740481C1C}"
+                                                 })
+                                         )
+                                         {
+                                             Embed = relationshipId,
+                                             CompressionState =
+                                             A.BlipCompressionValues.Print
+                                         },
+                                         new A.Stretch(
+                                             new A.FillRectangle())),
+                                     new PIC.ShapeProperties(
+                                         new A.Transform2D(
+                                             new A.Offset() { X = 0L, Y = 0L },
+                                             new A.Extents() { Cx = 990000L, Cy = 792000L }),
+                                         new A.PresetGeometry(
+                                             new A.AdjustValueList()
+                                         )
+                                         { Preset = A.ShapeTypeValues.Rectangle }))
+                             )
+                             { Uri = "http://schemas.openxmlformats.org/drawingml/2006/picture" })
+                     )
+                     {
+                         DistanceFromTop = (UInt32Value)0U,
+                         DistanceFromBottom = (UInt32Value)0U,
+                         DistanceFromLeft = (UInt32Value)0U,
+                         DistanceFromRight = (UInt32Value)0U,
+                         EditId = "50D07946"
+                     });
+
+            if (wordDoc.MainDocumentPart is null || wordDoc.MainDocumentPart.Document.Body is null)
+            {
+                throw new ArgumentNullException("MainDocumentPart and/or Body is null.");
+            }
+            Paragraph paragraph = new Paragraph(new Run(element));
+            paragraph.ParagraphProperties = new ParagraphProperties(new Justification() { Val = JustificationValues.Center });
+            wordDoc.MainDocumentPart.Document.Body.AppendChild(paragraph);
+        }
+        static private int EstimateTextWidth(string text)
+        {
+            // Simple estimation: number of characters * average width of a character in twips
+            // Note: 1 inch = 1440 twips, and average character width can vary. Adjust this multiplier as needed.
+            int averageCharWidthInTwips = 120;
+            return text.Length * averageCharWidthInTwips;
+        }
         public static async Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
                     string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false)
         {
@@ -1401,6 +1794,7 @@ namespace ReportBuilder.Web.Models
 
             var pdfOptions = new PdfOptions
             {
+                PrintBackground = true,
                 PreferCSSPageSize = false,
                 MarginOptions = new MarginOptions() { Top = "0.75in", Bottom = "0.75in", Left = "0.1in", Right = "0.1in" }
             };
