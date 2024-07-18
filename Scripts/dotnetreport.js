@@ -4995,7 +4995,10 @@ var dashboardViewModel = function (options) {
 					}, 1000);
 				});
 			};
-
+			
+			report.RefreshReport = function (reportId) {
+				report.LoadReport(reportId, true, '');
+			};
 			report.ChartDrillDownData.subscribe(function (e) {
 				self.ChartDrillDownData(e);
 			});
@@ -5107,6 +5110,9 @@ var dashboardViewModel = function (options) {
 	self.ExecuteReport = function () {
 		self.executingReport = true;
 		self.RunReport();
+	}
+	self.RefreshAllReports = function () {
+		self.loadDashboardReports(options.reports, true);
 	}
 	self.RunReport = function () {
 		_.forEach(self.reports(), function (report) {
