@@ -1002,6 +1002,7 @@ var reportViewModel = function (options) {
 		} else {
 			$('.report-expanded-scroll').css('height', 'auto');
 		}
+		self.DrawChart();
 	}
 
 	self.fieldFormatTypes = ['Auto', 'Number', 'Decimal', 'Currency', 'Percentage', 'Date', 'Date and Time', 'Time', 'String'];
@@ -3576,11 +3577,13 @@ var reportViewModel = function (options) {
 			});
 		}
 		function handlePointerDown(event) {
+			if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
 			event.preventDefault(); // Prevent default browser behavior
 			document.addEventListener('pointermove', handlePointerMove);
 			document.addEventListener('pointerup', handlePointerUp);
 		}
 		function handlePointerMove(event) {
+			if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
 			event.preventDefault(); 
 			chartWidth = event.clientX - document.getElementById('chart_div_' + self.ReportID()).getBoundingClientRect().left;
 			chartHeight = event.clientY - document.getElementById('chart_div_' + self.ReportID()).getBoundingClientRect().top;
@@ -3591,6 +3594,7 @@ var reportViewModel = function (options) {
 			chart.draw(data, chartOptions);
 		}
 		function handlePointerUp(event) {
+			if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
 			event.preventDefault(); // Prevent default browser behavior
 			document.removeEventListener('pointermove', handlePointerMove);
 			document.removeEventListener('pointerup', handlePointerUp);
@@ -3598,14 +3602,29 @@ var reportViewModel = function (options) {
 		}
 
 		function saveDimensions() {
-			localStorage.setItem('chart_dimensions_' + self.ReportID(), JSON.stringify({ width: chartWidth, height: chartHeight }));
+			var storedDimensions = localStorage.getItem('chart_dimensions_' + self.ReportID()) || '{}';
+			var dimensions = JSON.parse(storedDimensions);
+			if (options.arrangeDashboard && !self.isExpanded()) {
+				dimensions.width = chartWidth;
+				dimensions.height = chartHeight;
+			} else {
+				dimensions.fullWidth = chartWidth;
+				dimensions.fullHeight = chartHeight;
+			}
+
+			localStorage.setItem('chart_dimensions_' + self.ReportID(), JSON.stringify(dimensions));
 		}
 		function retrieveDimensions() {
 			var storedDimensions = localStorage.getItem('chart_dimensions_' + self.ReportID());
 			if (storedDimensions) {
 				var dimensions = JSON.parse(storedDimensions);
-				chartOptions.width = dimensions.width;
-				chartOptions.height = dimensions.height;
+				if (options.arrangeDashboard && !self.isExpanded()) {
+					chartOptions.width = dimensions.width || '100%';
+					chartOptions.height = dimensions.height || '450px';
+				} else {
+					chartOptions.width = dimensions.fullWidth || '100%';
+					chartOptions.height = dimensions.fullHeight || '450px';
+				}
 			}
 			else {
 				chartOptions.width = '100%';
@@ -3615,21 +3634,26 @@ var reportViewModel = function (options) {
 		// Call retrieveDimensions to load saved dimensions when the chart is initialized
 		retrieveDimensions();
 		chart.draw(data, chartOptions);
+
 		// Add event listener for pointer down on the chart container
 		var parentDiv = document.getElementById('chart_div_' + self.ReportID());
-		var chartContainer = parentDiv.children[0].children[0]; // Assuming the first child is the one you want
-		chartContainer.addEventListener('pointerdown', handlePointerDown);
+		var chartContainer = (parentDiv && parentDiv.children[0]) ? parentDiv.children[0].children[0] : null; 
+		if (chartContainer) {
+			chartContainer.addEventListener('pointerdown', handlePointerDown);
 
-		chartContainer.addEventListener('pointerenter', function () {
-			chartContainer.style.cursor = 'nwse-resize';
-			chartContainer.style.border = '1px dashed black';
-			chartContainer.style.boxSizing = 'content-box';
-		});
-		chartContainer.addEventListener('pointerleave', function () {
-			chartContainer.style.cursor = 'default';
-			chartContainer.style.border = 'none';
-			chartContainer.style.boxSizing = 'border-box';
-		});
+			if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
+
+			chartContainer.addEventListener('pointerenter', function () {
+				chartContainer.style.cursor = 'nwse-resize';
+				chartContainer.style.border = '1px dashed black';
+				chartContainer.style.boxSizing = 'content-box';
+			});
+			chartContainer.addEventListener('pointerleave', function () {
+				chartContainer.style.cursor = 'default';
+				chartContainer.style.border = 'none';
+				chartContainer.style.boxSizing = 'border-box';
+			});
+		}
 	};
 
 	self.loadFolders = function (folderId) {
@@ -4017,6 +4041,9 @@ var reportViewModel = function (options) {
 			}
 		}
 	}
+	self.RefreshReport = function () {
+		self.LoadReport(self.ReportID(), true, '');
+	};
 
 	self.LoadReport = function (reportId, filterOnFly, reportSeries, dontBlock, buildSql) {
 		self.SelectedTable(null);
@@ -4698,6 +4725,7 @@ var dashboardViewModel = function (options) {
 	self.ChartDrillDownData = ko.observable();
 	self.DontExecuteOnRun = ko.observable(false);
 	self.searchReports = ko.observable('');
+	self.arrangeDashboard = ko.observable(false);
 	var currentDash = options.dashboardId > 0
 		? (_.find(self.dashboards(), { id: options.dashboardId }) || { name: '', description: '' })
 		: (self.dashboards().length > 0 ? self.dashboards()[0] : { name: '', description: '' });
@@ -4946,7 +4974,8 @@ var dashboardViewModel = function (options) {
 				skipDraw: true,
 				printReportUrl: options.printReportUrl,
 				dataFilters: options.dataFilters,
-				getTimeZonesUrl: options.getTimeZonesUrl
+				getTimeZonesUrl: options.getTimeZonesUrl,
+				arrangeDashboard: self.arrangeDashboard
 			});
 
 			report.x = ko.observable(x.x);
@@ -5204,15 +5233,48 @@ var dashboardViewModel = function (options) {
 
 	});
 
-	self.arrangeDashboard = ko.observable(false);
+	var eventHandlers = {};
 	self.arrangeDashboard.subscribe(function (newValue) {		
 		var grid = $('.grid-stack').data("gridstack");
 		if (grid) {
 			if (newValue) {
 				grid.enable();
+
+				_.forEach(self.reports(), function (report) {
+					// Add event listener for pointer down on the chart container
+					var parentDiv = document.getElementById('chart_div_' + report.ReportID());
+					var chartContainer = (parentDiv && parentDiv.children[0]) ? parentDiv.children[0].children[0] : null;
+					if (chartContainer) {
+						
+						chartContainer.addEventListener('pointerenter', function () {
+							chartContainer.style.cursor = 'nwse-resize';
+							chartContainer.style.border = '1px dashed black';
+							chartContainer.style.boxSizing = 'content-box';
+						});
+						chartContainer.addEventListener('pointerleave', function () {
+							chartContainer.style.cursor = 'default';
+							chartContainer.style.border = 'none';
+							chartContainer.style.boxSizing = 'border-box';
+						});
+					}
+				});
+
 			}
 			else {
 				grid.disable();
+
+				_.forEach(self.reports(), function (report) {
+					// Add event listener for pointer down on the chart container
+					var parentDiv = document.getElementById('chart_div_' + report.ReportID());
+					var chartContainer = (parentDiv && parentDiv.children[0]) ? parentDiv.children[0].children[0] : null;
+					if (chartContainer) {
+						chartContainer.addEventListener('pointerenter', function () {
+							chartContainer.style.cursor = 'default';
+							chartContainer.style.border = 'none';
+							chartContainer.style.boxSizing = 'border-box';
+						});
+					}
+				});
 			}
 		}
 	});
