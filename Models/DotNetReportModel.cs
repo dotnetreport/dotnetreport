@@ -344,6 +344,12 @@ namespace ReportBuilder.Web.Models
         /// </summary>
         public string UserIdForSchedule { get; set; }
 
+
+        /// <summary>
+        /// If you want to use user id for filter but not for authentication, use this property
+        /// </summary>
+        public string UserIdForFilter { get; set; }
+
         /// <summary>
         /// Current User name to display
         /// </summary>
