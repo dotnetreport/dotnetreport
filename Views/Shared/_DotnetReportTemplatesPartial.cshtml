@@ -735,11 +735,12 @@
                      <div class="col-sm-2">
                         <select class="form-control" data-bind="value: format">
                             <option value="EXCEL">Excel</option>
-                                <option value="CSV">CSV</option>
-                               <option value="PDF">PDF</option>
-                               <option value="WORD">Word</option>
-                               <option value="LINK">Link</option>
-                           </select>
+                            <option data-bind="visible: $parent.canDrilldown()" value="EXCEL-SUB">Excel (Expanded)</option>
+                            <option value="CSV">CSV</option>
+                            <option value="PDF">PDF</option>
+                            <option value="WORD">Word</option>
+                            <option value="LINK">Link</option>
+                        </select>
                       </div>
                  </div>
             </div>
@@ -1196,7 +1197,7 @@
                                 <select id="search-field" class="form-control" data-bind="select2: {placeholder: 'Or Search for a Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults, headers: headers }, minimumInputLength: 2, allowClear: true }, value: selectedOption"></select>
                             </div>
                         </div>
-                        
+
                         <div class="col-md-12 padded-div" data-bind="visible: ChooseFields().length>0">
                             <div class="small pull-left">
                                 Check the fields you would like to use in the Report

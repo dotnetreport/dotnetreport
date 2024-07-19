@@ -92,11 +92,11 @@ namespace ReportBuilder.Web.Jobs
                             if (!String.IsNullOrEmpty(schedule.TimeZone))
                             {
                                 TimeZoneInfo timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById(schedule.TimeZone);
-                                // convert last run to user's local time zone
-                                lastRun = TimeZoneInfo.ConvertTimeFromUtc(lastRun.UtcDateTime, timeZoneInfo);
+                                // Convert last run to user's local time zone
+                                lastRun = TimeZoneInfo.ConvertTime(lastRun, timeZoneInfo);
                                 nextRun = chron.GetTimeAfter(lastRun);
-                                // get current time in user's time zone
-                                DateTime currentTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.Now.ToUniversalTime(), timeZoneInfo);
+                                // Get current time in user's time zone
+                                DateTime currentTime = TimeZoneInfo.ConvertTime(DateTime.UtcNow, timeZoneInfo);
                             }
                             schedule.NextRun = (nextRun.HasValue ? nextRun.Value.ToLocalTime().DateTime : (DateTime?)null);
 
@@ -135,6 +135,11 @@ namespace ReportBuilder.Web.Jobs
                                         fileData = await DotNetReportHelper.GetWordFile(reportToRun.ReportSql,reportToRun.ConnectKey, reportToRun.ReportName, columns: columnDetails, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot");
                                         break;
 
+                                    case "EXCEL-SUB":
+                                        fileData = await DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: columnDetails, allExpanded: true, expandSqls: reportToRun.ReportData, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot");
+                                        fileExt = ".xlsx";
+                                        break;
+                                    
                                     case "EXCEL":
                                     default:
                                         fileData = await DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: columnDetails, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot");
