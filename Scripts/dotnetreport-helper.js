@@ -69,7 +69,7 @@ function ajaxcall(options) {
     });
 }
 
-// knockout binding extenders
+   // knockout binding extenders
 ko.bindingHandlers.datepicker = {
     init: function (element, valueAccessor, allBindingsAccessor) {
         //initialize datepicker with some optional options
@@ -78,26 +78,25 @@ ko.bindingHandlers.datepicker = {
 
         //handle the field changing
         ko.utils.registerEventHandler(element, "change", function () {
-            var observable = valueAccessor();
-            var date = $(element).datepicker('getDate');
-            var value = options.value;
-            observable($(element).datepicker({ dateFormat: options.dateFormat || 'mm/dd/yyyy' }).val());
-            if (value) value(date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' })); 
+              var observable = valueAccessor();
+              var date = $(element).datepicker('getDate');
+              var value = options.value;
+              observable($(element).datepicker({ dateFormat: options.dateFormat || 'mm/dd/yyyy' }).val());
+              if (value) value(date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }));
         });
 
         //handle disposal (if KO removes by the template binding)
         ko.utils.domNodeDisposal.addDisposeCallback(element, function () {
-            $(element).datepicker("destroy");
+                       $(element).datepicker("destroy");
         });
 
     },
     //update the control when the view model changes
     update: function (element, valueAccessor) {
-        var value = ko.utils.unwrapObservable(valueAccessor()),
-            current = $(element).datepicker("getDate");
-
-        if (value - current !== 0) {
-            $(element).datepicker("setDate", value);
+        var value = ko.utils.unwrapObservable(valueAccessor());
+        var formattedDate = $.datepicker.formatDate($(element).datepicker("option", "dateFormat") || 'mm/dd/yy', new Date(value));
+        if (formattedDate !== $(element).val()) {
+            $(element).datepicker("setDate", formattedDate);
         }
     }
 };
