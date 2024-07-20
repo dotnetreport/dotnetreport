@@ -215,8 +215,10 @@ function scheduleBuilder(userId, getTimeZonesUrl) {
 	self.getTimezones = function () {
 		ajaxcall({
 			url: getTimeZonesUrl || '/api/DotNetReportApi/GetAllTimezones',
-			noBlocking: true
+			noBlocking: true,
+			type: 'GET'
 		}).done(function (timezonesData) {
+			if (timezonesData.d) timezonesData = timezonesData.d;
 			self.timezonOption = ko.observableArray(Object.keys(timezonesData).map(function (key) {
 				return { displayName: key, timeZoneId: timezonesData[key] };
 			}));
