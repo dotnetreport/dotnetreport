@@ -4046,6 +4046,10 @@ var reportViewModel = function (options) {
 		}
 	}
 
+	self.RefreshReport = function () {
+		self.LoadReport(self.ReportID(), true, '');
+	};
+
 	self.LoadReport = function (reportId, filterOnFly, reportSeries, dontBlock, buildSql) {
 		self.SelectedTable(null);
 		self.isFormulaField(false);
