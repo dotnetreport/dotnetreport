@@ -454,6 +454,7 @@ namespace ReportBuilder.Web.Controllers
                 currentUserName = settings.UserName,
                 allowAdminMode = settings.CanUseAdminMode,
                 userIdForSchedule = settings.UserIdForSchedule,
+                userIdForFilter = settings.UserIdForFilter,
                 dataFilters = settings.DataFilters,
                 clientId = settings.ClientId,
 

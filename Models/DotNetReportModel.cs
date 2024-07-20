@@ -51,6 +51,7 @@ namespace ReportBuilder.Web.Models
 
         public string ReportSeries { get; set; }
         public bool ExpandAll { get; set; }
+        public string ReportData { get; set; }
     }
 
     public class DotNetReportPrintModel : DotNetReportModel
@@ -340,6 +341,12 @@ namespace ReportBuilder.Web.Models
         /// If you want to use user id for schedule but not for authentication, use this property
         /// </summary>
         public string UserIdForSchedule { get; set; }
+
+
+        /// <summary>
+        /// If you want to use user id for filter but not for authentication, use this property
+        /// </summary>
+        public string UserIdForFilter { get; set; }
 
         /// <summary>
         /// Current User name to display
@@ -1243,7 +1250,7 @@ namespace ReportBuilder.Web.Models
 
             // Execute sql
             var dt = new DataTable();
-            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
+            using (var conn = new OleDbConnection(GetConnectionString(connectKey, true)))
             {
                 conn.Open();
                 var command = new OleDbCommand(sql, conn);
@@ -1457,7 +1464,7 @@ namespace ReportBuilder.Web.Models
             var sqlFields = SplitSqlColumns(sql);
 
             var dt = new DataTable();
-            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
+            using (var conn = new OleDbConnection(GetConnectionString(connectKey, true)))
             {
                 conn.Open();
                 var command = new OleDbCommand(sql, conn);
@@ -1701,7 +1708,7 @@ namespace ReportBuilder.Web.Models
 
             // Execute sql
             var dt = new DataTable();
-            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
+            using (var conn = new OleDbConnection(GetConnectionString(connectKey, true)))
             {
                 conn.Open();
                 var command = new OleDbCommand(sql, conn);
@@ -1957,7 +1964,7 @@ namespace ReportBuilder.Web.Models
             // Execute sql
             var dt = new DataTable();
             var ds = new DataSet();
-            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
+            using (var conn = new OleDbConnection(GetConnectionString(connectKey, true)))
             {
                 conn.Open();
                 var command = new OleDbCommand(sql, conn);
@@ -2022,7 +2029,7 @@ namespace ReportBuilder.Web.Models
 
             // Execute sql
             var dt = new DataTable();
-            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
+            using (var conn = new OleDbConnection(GetConnectionString(connectKey, true)))
             {
                 conn.Open();
                 var command = new OleDbCommand(sql, conn);
