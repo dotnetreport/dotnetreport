@@ -1124,11 +1124,13 @@ var reportViewModel = function (options) {
 	var tokenKey = '';
 	var token = JSON.parse(localStorage.getItem(tokenKey));
 
+	self.usingAi = ko.observable(true);
 	self.textQuery = new textQuery(options);
 
 	self.runQuery = function (useAi) {
 		self.SelectedFields([]);
 		self.resetQuery(false);
+		self.usingAi(useAi);
 
 		var fieldIds = _.filter(self.textQuery.queryItems, { type: 'Field' }).map(function (x) { return x.value });
 		if (fieldIds.length == 0) fieldIds.push(0);
@@ -1191,6 +1193,7 @@ var reportViewModel = function (options) {
 		self.ReportResult().HasError(false);
 		self.ReportResult().ReportSql(null);
 		self.ReportResult().SubTotals([]);
+		self.clearReport();
 	}
 
 	self.openDesigner = function () {
