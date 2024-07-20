@@ -582,6 +582,7 @@ select.is-invalid ~ span .select2-selection {
     }
 
 .ui-datepicker {
+    display: none;
     font-family: Arial, sans-serif;
     font-size: 14px;
     background-color: #fff;
