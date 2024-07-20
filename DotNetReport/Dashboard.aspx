@@ -146,8 +146,9 @@
             <div class="pull-right">Arrange this Dashboard</div>
         </div>
 
-        <button class="btn btn-primary btn-sm" onclick="return false;" data-toggle="modal" data-target="#add-dashboard-modal" title="Edit Dashboard Settings" data-bind="click: editDashboard">Edit this Dashboard</button>
-        <button class="btn btn-primary btn-sm" onclick="return false;" data-toggle="modal" data-target="#add-dashboard-modal" title="Add a New Dashboard" data-bind="click: newDashboard">Add a new Dashboard</button>
+        <button class="btn btn-primary btn-sm" onclick="return false;" data-toggle="modal" data-target="#add-dashboard-modal" title="Edit Dashboard Settings" data-bind="click: editDashboard"><span class="fa fa-pencil"></span> Edit this Dashboard</button>
+        <button class="btn btn-primary btn-sm" onclick="return false;" data-toggle="modal" data-target="#add-dashboard-modal" title="Add a New Dashboard" data-bind="click: newDashboard"><span class="fa fa-plus"></span> Add a new Dashboard</button>
+        <button class="btn btn-primary btn-sm" onclick="return false;" title="Refresh to Load All Reports" data-bind="click: RefreshAllReports"><span class="fa fa-refresh"></span> Refresh Dashboard</button>
     </div>
 </div>
 <div class="padded-top"></div>
@@ -299,6 +300,11 @@
                         <li class="dropdown-item">
                             <a href="#" data-bind="click: function() { $parent.removeReportFromDashboard(ReportID()); }">
                                 <span class="fa fa-close"></span> Remove
+                            </a>
+                        </li>
+                        <li class="dropdown-item">
+                            <a href="#"  data-bind="click: function() { RefreshReport(ReportID()); }">
+                                <span class="fa fa-refresh"></span> Refresh
                             </a>
                         </li>
                     </ul>
