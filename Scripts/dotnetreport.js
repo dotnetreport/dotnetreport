@@ -4183,12 +4183,7 @@ var reportViewModel = function (options) {
 							});
 						}
 					});
-				};
-
-				if (self.Folders()) {
-					var f = _.find(self.Folders(), { Id: e.folderId });
-					e.folderName = f ? f.FolderName : '';
-				}
+				};				
 
 				if (options.reportId > 0 && e.reportId == options.reportId && skipOpen !== true) {
 					e.openReport();
