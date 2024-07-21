@@ -48,6 +48,7 @@ function ajaxcall(options) {
         }
         delete options;
         if (jqxhr.responseJSON && jqxhr.responseJSON.d) jqxhr.responseJSON = jqxhr.responseJSON.d;
+        if (jqxhr.responseJSON && jqxhr.responseJSON.Result && jqxhr.responseJSON.Result.Message) jqxhr.responseJSON = jqxhr.responseJSON.Result;
         var msg = jqxhr.responseJSON && jqxhr.responseJSON.Message ? "\n" + jqxhr.responseJSON.Message : "";
 
         if (error == "Conflict") {
@@ -68,7 +69,7 @@ function ajaxcall(options) {
     });
 }
 
-// knockout binding extenders
+   // knockout binding extenders
 ko.bindingHandlers.datepicker = {
     init: function (element, valueAccessor, allBindingsAccessor) {
         //initialize datepicker with some optional options
@@ -77,23 +78,25 @@ ko.bindingHandlers.datepicker = {
 
         //handle the field changing
         ko.utils.registerEventHandler(element, "change", function () {
-            var observable = valueAccessor();
-            observable($(element).datepicker({ dateFormat: 'mm/dd/yyyy' }).val());
+              var observable = valueAccessor();
+              var date = $(element).datepicker('getDate');
+              var value = options.value;
+              observable($(element).datepicker({ dateFormat: options.dateFormat || 'mm/dd/yyyy' }).val());
+              if (value) value(date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }));
         });
 
         //handle disposal (if KO removes by the template binding)
         ko.utils.domNodeDisposal.addDisposeCallback(element, function () {
-            $(element).datepicker("destroy");
+                       $(element).datepicker("destroy");
         });
 
     },
     //update the control when the view model changes
     update: function (element, valueAccessor) {
-        var value = ko.utils.unwrapObservable(valueAccessor()),
-            current = $(element).datepicker("getDate");
-
-        if (value - current !== 0) {
-            $(element).datepicker("setDate", value);
+        var value = ko.utils.unwrapObservable(valueAccessor());
+        var formattedDate = $.datepicker.formatDate($(element).datepicker("option", "dateFormat") || 'mm/dd/yy', new Date(value));
+        if (formattedDate !== $(element).val()) {
+            $(element).datepicker("setDate", formattedDate);
         }
     }
 };
@@ -158,6 +161,31 @@ ko.bindingHandlers.select2 = {
                 select2.val([newValue]);
             }
         }
+    }
+};
+
+ko.bindingHandlers.select2Value = {
+    init: function (element, valueAccessor, allBindingsAccessor) {
+        var allBindings = allBindingsAccessor();
+        var value = ko.unwrap(valueAccessor());
+
+        // Initialize select2
+        $(element).select2(allBindings.select2);
+
+        // When an item is selected, update the observable with the full item object
+        $(element).on('select2:select', function (e) {
+            var selectedItem = e.params.data;
+            //valueAccessor()(selectedItem); // Update the observable with the full object
+        });
+
+        // Handle clearing the selection
+        $(element).on('select2:unselect', function () {
+            valueAccessor()(null);
+        });
+    },
+    update: function (element, valueAccessor) {
+        var value = ko.unwrap(valueAccessor());
+        $(element).val(value ? value.id : null).trigger('change');
     }
 };
 
@@ -477,6 +505,62 @@ var textQuery = function (options) {
             return {
                 results: items
             };
+        }
+    }
+
+    self.searchFunctions = {
+        selectedOption: ko.observable(),
+        url: options.apiUrl,
+        headers: { "Authorization": "Bearer " + token },
+        query: function (params) {
+            return params.term ? {
+                method: "/ReportApi/SearchFunction",
+                model: JSON.stringify({
+                    token: params.term,
+                    text: ''
+                })
+            } : null;
+        },
+        processResults: function (data) {
+            if (data.d) results = data.d;
+            var items = _.map(data, function (x) {
+                x.Parameters.forEach(function (p) {
+                    p.selectedField = ko.observable();
+                });
+                return { id: x.Id, text: x.DisplayName || x.Name, type: 'Field', description: x.Description, functionType: x.functionType, name: x.Name, parameters: x.Parameters || []};
+            });
+
+            return {
+                results: items
+            };
+        },
+        templateResult: function (item) {
+            if (!item.id) {
+                return item.text;
+            }
+
+            var $result = $(
+                '<div class="select2-result-repository clearfix">' +
+                '   <div class="select2-result-repository__meta">' +
+                '       <div class="select2-result-repository__title"><strong>' + item.text + '</strong></div>' +
+                '       <div class="select2-result-repository__description"><small style="font-size:smaller;">' + item.description + '</small></div>' +
+                '       <div class="select2-result-repository__description"><small style="font-size:smaller;">Parameters: ' + '</small></div>' +
+                '   </div>' +
+                '</div>'
+            );
+
+            if (item.parameters && item.parameters.length) {
+                var $parametersList = $('<ul style="font-size:smaller;"></ul>'); // Making the list small
+                item.parameters.forEach(function (param) {
+                    var requiredText = param.Required ? ' (Required)' : '';
+                    $parametersList.append('<li>' + param.DisplayName + ': ' + (param.Description || '') + requiredText + '</li>');
+                });
+                $result.append($parametersList); // Appending the list to the result
+            }
+
+            $result.append('</div></div>'); // Closing the main structure
+
+            return $result;
         }
     }
 

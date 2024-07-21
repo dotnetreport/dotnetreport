@@ -43,6 +43,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 userSettings: data,
                 dataFilters: data.dataFilters,
                 printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, this.Request.Url.Scheme)",
+                getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
                 samePageOnRun: true
             });
 
@@ -96,8 +97,6 @@ Its Recommended you use it as is, and only change styling as needed to match you
 </div>
 
 <div class="container-fluid">
-
-
     <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
 
     <!--
@@ -144,11 +143,13 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 </a>
                             </li>
                         </ul>
-                        <form class="form-inline my-5 my-md-0">
-                            <div data-bind="with: searchFieldsInReport">
+                        <div class="form-inline my-5 my-md-0 ml-auto w-50">
+                            <input type="text" class="form-control w-75" data-bind="value: searchReports" placeholder="Search Report by Name, Description or Data Field..." />
+                            <span class="btn btn-secondary"><i class="fa fa-search"></i></span>
+                            <div data-bind="with: searchFieldsInReport, visible: false">
                                 <select id="search-report" class="form-control" data-bind="select2: {placeholder: 'Search Report by Name, Description or Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults }, minimumInputLength: 0, language: language, allowClear: true }, value: selectedOption"></select>
                             </div>
-                        </form>
+                        </div>
                     </div>
                 </nav>
             </div>
@@ -243,7 +244,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <div class="list-group-item">
                                     <div class="row">
                                         <div class="col-sm-7">
-                                            <div class="fa fa-2x pull-left" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType.indexOf('Map')==0, 'fa-window-maximize': reportType=='Single', 'fa-random': reportType=='Pivot'}"></div>
+                                            <div class="fa fa-2x pull-left" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType.indexOf('Map')==0, 'fa-window-maximize': reportType=='Single', 'fa-random': reportType=='Pivot', 'fa-window-restore': reportType=='Treemap'}"></div>
                                             <div class="pull-left">
                                                 <h4>
                                                     <a data-bind="click: runReport" style="cursor: pointer">
@@ -253,7 +254,12 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             </div>
                                             <div class="clearfix"></div>
                                             <p data-bind="text: reportDescription"></p>
-                                            <p data-bind="if: $parent.searchReports()"><span class="fa fa-folder"></span> <span data-bind="text: folderName"></span></p>
+                                            <p data-bind="if: $parent.searchReports()">
+                                                <span class="fa fa-folder"></span> <span data-bind="text: folderName"></span>
+                                                <div>
+                                                <span data-bind="text: message" class="highlight small"></span>
+                                                </div>
+                                            </p>
                                             <div data-bind="if: $parent.adminMode">
                                                 <div class="small">
                                                     <b>Report Access</b><br />
@@ -429,6 +435,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             <a href="#" class="btn btn-primary" data-bind="visible: $root.CanEdit()" data-toggle="modal" data-target="#modal-reportbuilder">
                                 Edit Report
                             </a>
+                            <button class="btn btn-primary" data-bind="click: RefreshReport">Refresh Report</button>
                             <button class="btn btn-primary" data-bind="visible: CanSaveReports(), click: SaveWithoutRun">Save Report</button>
 
                             <div class="btn-group">
@@ -459,6 +466,11 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <li class="dropdown-item">
                                         <a href="#" data-bind="click: downloadXml">
                                             <span class="fa fa-file-code-o"></span> Xml
+                                        </a>
+                                    </li>
+                                    <li class="dropdown-item">
+                                        <a href="#" data-bind="click: downloadWord">
+                                            <span class="fa fa-file-word-o"></span> Word
                                         </a>
                                     </li>
                                 </ul>
