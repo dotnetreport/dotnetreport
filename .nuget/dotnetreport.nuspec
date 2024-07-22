@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
   <metadata>
     <id>dotNetReport.mvc</id>
-    <version>5.4.4-beta</version>
+    <version>5.4.4</version>
     <authors>dotnetReport Builder</authors>
     <owners>dotnetReport Builder</owners>
     <projectUrl>https://dotnetreport.com/</projectUrl>
@@ -14,7 +14,7 @@
     <dependencies>
       <dependency id="Bootbox.JS" version="5.5.2" />
       <dependency id="bootstrap" version="4.6.0" />
-      <dependency id="DocumentFormat.OpenXm" version="3.0.2" />
+      <dependency id="DocumentFormat.OpenXml" version="3.0.2" />
       <dependency id="EPPlus" version="4.5.1" />
       <dependency id="FontAwesome" version="4.7.0" />
       <dependency id="PDFsharp" version="1.50.5147" />
@@ -55,6 +55,7 @@
     <file src="..\Scripts\bootstrap-editable.min.js" target="Content\Scripts\bootstrap-editable.min.js" />
     <file src="..\Scripts\knockout.x-editable.min.js" target="Content\Scripts\knockout.x-editable.min.js" />
     <file src="..\Views\DotNetReport\Index.cshtml" target="Content\Views\DotNetReport\Index.cshtml" />
+    <file src="..\Views\DotNetReport\Query.cshtml" target="Content\Views\DotNetReport\Query.cshtml" />
     <file src="..\Views\DotNetReport\Report.cshtml" target="Content\Views\DotNetReport\Report.cshtml" />
     <file src="..\Views\DotNetReport\ReportPrint.cshtml" target="Content\Views\DotNetReport\ReportPrint.cshtml" />
     <file src="..\Views\DotNetReport\Dashboard.cshtml" target="Content\Views\DotNetReport\Dashboard.cshtml" />

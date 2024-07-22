@@ -498,6 +498,7 @@
     <Content Include="Views\shared\_DotnetReportTemplatesPartial.cshtml" />
     <Content Include="Views\web.config.transform" />
     <Content Include="web.config.install.xdt" />
+    <Content Include="Views\DotNetReport\Query.cshtml" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
