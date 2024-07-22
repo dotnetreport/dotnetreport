@@ -1124,11 +1124,13 @@ var reportViewModel = function (options) {
 	var tokenKey = '';
 	var token = JSON.parse(localStorage.getItem(tokenKey));
 
+	self.usingAi = ko.observable(true);
 	self.textQuery = new textQuery(options);
 
 	self.runQuery = function (useAi) {
 		self.SelectedFields([]);
 		self.resetQuery(false);
+		self.usingAi(useAi);
 
 		var fieldIds = _.filter(self.textQuery.queryItems, { type: 'Field' }).map(function (x) { return x.value });
 		if (fieldIds.length == 0) fieldIds.push(0);
@@ -1191,6 +1193,7 @@ var reportViewModel = function (options) {
 		self.ReportResult().HasError(false);
 		self.ReportResult().ReportSql(null);
 		self.ReportResult().SubTotals([]);
+		self.clearReport();
 	}
 
 	self.openDesigner = function () {
@@ -3719,7 +3722,7 @@ var reportViewModel = function (options) {
 		e.headerFontBold = ko.observable(e.headerFontBold);
 		e.fieldWidth = ko.observable(e.fieldWidth);
 		e.fieldConditionOp = ko.observable(e.fieldConditionOp);
-		e.fieldConditionVal = JSON.parse(e.fieldConditionVal || '[]');
+		e.fieldConditionVal = e.fieldConditionVal && Array.isArray(e.fieldConditionVal) ? e.fieldConditionVal : JSON.parse(e.fieldConditionVal || '[]');
 		e.fieldCondtionalFormats = ko.observableArray([]);
 		e.jsonColumnName = e.jsonColumnName;
 		e.isJsonColumn = e.jsonColumnName ? true : false;
@@ -4180,12 +4183,7 @@ var reportViewModel = function (options) {
 							});
 						}
 					});
-				};
-
-				if (self.Folders()) {
-					var f = _.find(self.Folders(), { Id: e.folderId });
-					e.folderName = f ? f.FolderName : '';
-				}
+				};				
 
 				if (options.reportId > 0 && e.reportId == options.reportId && skipOpen !== true) {
 					e.openReport();
