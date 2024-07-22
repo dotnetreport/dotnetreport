@@ -53,7 +53,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
 
 <div>
     <br />
-    <h4>Smarter Report Builder</h4>
+    <h4>Smarter Report Builder <small style="color: red">(Beta)</small> </h4>
+
+    <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
     <p>
         What would you like to know? Try typing in below to search your data
     </p>
@@ -64,7 +66,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
         <button data-bind="click: function() {runQuery(false);}" class="btn btn-primary btn-sm">Process your Query</button>&nbsp;
         <button data-bind="click: function() {runQuery(true);}" class="btn btn-primary btn-sm">Process with ChatGPT</button>&nbsp;
         <button data-bind="click: resetQuery" class="btn btn-secondary btn-sm">Start over</button>
-        <button data-bind="click: openDesigner" class="btn btn-secondary btn-sm">Design/Save Report</button>
+        <button data-bind="click: openDesigner, hidden: usingAi" class="btn btn-secondary btn-sm">Design/Save Report</button>
     </p>
 </div>
 
@@ -99,7 +101,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
         </p>
     </div>
 
-    <div data-bind="if: ReportDebug()">
+    <div data-bind="if: $root.adminMode()">
         <br />
         <br />
         <hr />
