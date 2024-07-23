@@ -87,7 +87,8 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
     <button class="btn btn-primary" data-bind="visible: CanSaveReports(), click: SaveWithoutRun">Save Report</button>
 
     <div class="btn-group">
-        <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        <button type="button" class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        <button type="button" class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
             <span class="fa fa-download"></span> Export <span class="caret"></span>
         </button>
         <ul class="dropdown-menu">
@@ -127,7 +128,7 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
             <div data-bind="if: EditFiltersOnReport">
                 <div class="card">
                     <div class="card-header">
-                        <a data-toggle="collapse" data-target="#filter-panel" href="#">
+                            <a data-bs-toggle="collapse" data-bs-target="#filter-panel" href="#">
                             <i class="fa fa-filter"></i>Choose Filters
                         </a>
                     </div>
