@@ -1272,3 +1272,8 @@ tfoot tr.sub-total {
 .formula-field-item:hover .delete-btn {
     display: inline-block;
 }
+
+
+.select2-container {
+    z-index: 9999;
+}
