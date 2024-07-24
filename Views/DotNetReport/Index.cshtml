@@ -100,10 +100,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             </li>
                         </ul>
                         <div class="form-inline my-5 my-md-0 ml-auto w-50">
-                            <input type="text" class="form-control w-75" data-bind="value: searchReports" placeholder="Search Report by Name, Description or Data Field..." />
-                            <span class="btn btn-secondary"><i class="fa fa-search"></i></span>
-                            <div data-bind="with: searchFieldsInReport, visible: false">
-                                <select id="search-report" class="form-control" data-bind="select2: {placeholder: 'Search Report by Name, Description or Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults }, minimumInputLength: 0, language: language, allowClear: true }, value: selectedOption"></select>
+                            <div class="input-group w-75">
+                                <span class="input-group-text"><i class="fa fa-search"></i></span>
+                                <input type="text" class="form-control" data-bind="value: searchReports" placeholder="Search Report by Name, Description or Data Field..." />
                             </div>
                         </div>
                     </div>

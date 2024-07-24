@@ -1493,49 +1493,6 @@ var reportViewModel = function (options) {
 			});
 		}
 	});
-	self.reportsInSearchCompute = ko.computed(function () {
-		var searchReports = self.searchReports();
-		var searchFieldId = self.searchFieldsInReport.selectedOption();
-
-		if (!searchReports) {
-			$('.select2-selection__placeholder').text('Search for text or select a field');
-			$('#search-report').val([]).trigger('change');
-		}
-
-		if (!searchReports && !searchFieldId) {
-			self.reportsInSearch([]);
-			return;
-		}
-
-		if (searchFieldId) {
-			ajaxcall({
-				url: options.apiUrl,
-				data: {
-					method: "/ReportApi/FindReportsByFieldId",
-					model: JSON.stringify({
-						fieldId: parseInt(searchFieldId),
-					})
-				}
-			}).done(function (reports) {
-				if (reports.d) { reports = reports.d; }
-				if (reports.length == 0) {
-					self.reportsInSearch([]);
-				}
-				else {
-					var foundReportIds = _.map(reports, function (x) { return x.reportId });
-					self.reportsInSearch(_.filter(self.SavedReports(), function (x) {
-						return foundReportIds.indexOf(x.reportId) >= 0;
-					}));
-				}
-			});
-
-		}
-		else {
-			self.reportsInSearch(_.filter(self.SavedReports(), function (x) {
-				return x.reportName.toLowerCase().indexOf(searchReports.toLowerCase()) >= 0 || x.reportDescription.toLowerCase().indexOf(searchReports.toLowerCase()) >= 0;
-			}));
-		}
-	});
 
 	self.clearReport = function () {
 		self.ReportName("");
