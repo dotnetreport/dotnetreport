@@ -1,4 +1,4 @@
-﻿/// dotnet Report Builder view model v5.3.0
+﻿/// dotnet Report Builder view model v5.4.5
 /// License must be purchased for commercial use
 /// 2024 (c) www.dotnetreport.com
 

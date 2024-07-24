@@ -1277,3 +1277,19 @@ tfoot tr.sub-total {
 .select2-container {
     z-index: 9999;
 }
+
+.bubble-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 8px;
+    border-radius: 15px;
+    background-color: #007bff;
+    color: white;
+    font-size: 12px;
+}
+
+    .bubble-badge .form-check-input {
+        margin-left: 5px;
+        margin-top: 5px;
+        font-size: 14px;
+    }

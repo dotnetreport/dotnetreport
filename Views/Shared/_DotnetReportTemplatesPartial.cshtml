@@ -320,16 +320,18 @@
     <!-- /ko -->
 </script>
 <script type="text/html" id="admin-mode-template">
-    <div class="row" style="padding: 10px 10px">
-        <div class="material-switch pull-right">
-            <input id="admin-mode" type="checkbox" data-bind="checked: adminMode" />
-            <label for="admin-mode" class="label-primary"></label>
+    <div class="row" style="margin-bottom: 10px;">
+        <div class="d-flex justify-content-end align-items-center">
+            <div class="bubble-badge">
+                Admin Mode
+                <div class="form-check form-switch ms-2">
+                    <input class="form-check-input" id="admin-mode" type="checkbox" data-bind="checked: adminMode">
+                </div>
+            </div>
         </div>
-        <div class="pull-right">Admin Mode</div>
     </div>
-
     <div class="alert alert-info" data-bind="visible: adminMode">
-        <i class="fa fa-user-circle"></i>Admin Mode is turned on now, it allows you to setup and view Reports or Dashboards for all roles and users. You should remove the Admin mode toggle for non-admin users.<br />
+        <i class="fa fa-user-circle"></i> Admin Mode is turned on now, it allows you to setup and view Reports or Dashboards for all roles and users. You should remove the Admin mode toggle for non-admin users.<br />
     </div>
 </script>
 <script type="text/html" id="manage-access-template">

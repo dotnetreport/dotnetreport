@@ -134,6 +134,8 @@
     </script>
 }
 
+<div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
+
 <div class="row" style="display: none" data-bind="visible: currentDashboard">
     <div class="col-4" data-bind="with: currentDashboard">
         <h2 title="Switch Dashboard">
@@ -147,23 +149,22 @@
 </div>
 <div class="clearfix"></div>
 
-<div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
-
-<div class="row padded-top">
-    <div class="col-md-12">
-        <div style="padding: 10px 10px">
-            <div class="material-switch pull-right">
-                <input id="arrange-mode" type="checkbox" data-bind="checked: arrangeDashboard" />
-                <label for="arrange-mode" class="label-primary"></label>
-            </div>
-            <div class="pull-right">Arrange this Dashboard</div>
-        </div>
-
-        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" title="Edit Dashboard Settings" data-bind="click: editDashboard">Edit this Dashboard</button>
-        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" title="Add a New Dashboard" data-bind="click: newDashboard">Add a new Dashboard</button>
+<div class="row">
+    <div class="col d-flex align-items-center">
+        <button class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" title="Edit Dashboard Settings" data-bind="click: editDashboard">Edit this Dashboard</button>
+        <button class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" title="Add a New Dashboard" data-bind="click: newDashboard">Add a new Dashboard</button>
         <button class="btn btn-primary btn-sm" title="Refresh to Load All Reports" data-bind="click: RefreshAllReports"><span class="fa fa-refresh"></span> Refresh Dashboard</button>
     </div>
+    <div class="col-auto d-flex align-items-center">
+        <div class="bubble-badge">
+            Arrange Dashboard
+            <div class="form-check form-switch ms-2">
+                <input class="form-check-input" id="arrange-mode" type="checkbox" data-bind="checked: arrangeDashboard">
+            </div>
+        </div>
+    </div>
 </div>
+
 <div class="padded-top"></div>
 
 <div class="centered" style="display: none;" data-bind="visible: dashboards().length == 0 ">
