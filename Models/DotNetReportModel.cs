@@ -1292,7 +1292,7 @@ namespace ReportBuilder.Web.Models
 
 
         public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
+                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false,string pivotColumn= null,string pivotFunction=null)
         {
             var sql = Decrypt(reportSql);
             var sqlFields = SplitSqlColumns(sql);
@@ -1322,6 +1322,11 @@ namespace ReportBuilder.Web.Models
                             dt.Columns[col.fieldName].ColumnName = col.customfieldLabel;
                         }
                     }
+                }
+                if (!string.IsNullOrEmpty(pivotColumn))
+                {
+                    var ds = await DotNetReportHelper.GetDrillDownData(conn, dt, sqlFields, expandSqls);
+                    dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction);
                 }
                 using (ExcelPackage xp = new ExcelPackage())
                 {
