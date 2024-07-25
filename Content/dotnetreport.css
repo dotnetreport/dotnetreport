@@ -582,6 +582,7 @@ select.is-invalid ~ span .select2-selection {
     }
 
 .ui-datepicker {
+    display: none;
     font-family: Arial, sans-serif;
     font-size: 14px;
     background-color: #fff;
@@ -1204,7 +1205,100 @@ h2 {
     }
 }
 
+.cm-error {
+    background: url('data:image/png;base64,iVBORw0...') bottom left repeat-x; /* red squiggly line image */
+    background-size: auto 100%;
+}
+
+.CodeMirror-hint.cm-function-hint:before {
+    content: "\f0c3";
+    font-family: FontAwesome;
+    font-weight: 900;
+    color: #3366CC;
+    padding-right: 5px;
+}
+
+.CodeMirror-hint.cm-field-hint:before {
+    content: "\f1c0";
+    font-family: FontAwesome;
+    font-weight: 900;
+    color: #E65100;
+    padding-right: 5px;
+}
+
+.cm-function-hint-text {
+    color: #3366CC;
+}
+
+.cm-field-hint-text {
+    color: #E65100;
+}
+
+.single-line-codemirror {
+    border: 1px solid #e0e0e0;
+    height: 40px !important;
+    overflow-y: hidden;
+}
+
+    .single-line-codemirror .CodeMirror-scroll {
+        overflow-y: hidden !important;
+        overflow-x: auto !important;
+    }
+
+.CodeMirror-hints {
+    z-index: 9999 !important;
+    position: fixed;
+}
+
 tfoot tr.sub-total {
     border-top: double 4px #dee2e6;
     border-bottom: double 4px #dee2e6;
+}
+
+.formula-field-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.delete-btn {
+    display: none;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    right: 5px;
+}
+
+.formula-field-item:hover .delete-btn {
+    display: inline-block;
+}
+
+
+.select2-container {
+    z-index: 9999;
+}
+
+.bubble-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 8px;
+    border-radius: 15px;
+    background-color: #007bff;
+    color: white;
+    font-size: 12px;
+}
+
+    .bubble-badge .form-check-input {
+        margin-left: 5px;
+        margin-top: 5px;
+        font-size: 14px;
+    }
+
+
+    .dropdown-item a {
+        text-decoration: none;
+    }
+
+.row{
+    padding-top: 5px; padding-bottom: 5px;
 }

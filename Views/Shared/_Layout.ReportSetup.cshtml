@@ -93,17 +93,16 @@
 </head>
 
 <body>
-
     <!-- Bootstrap NavBar -->
     <nav class="navbar navbar-expand-md navbar-dark bg-dark">
-        <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse" data-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
         <a class="navbar-brand" href="/">
             <img src="~/img/report-logo.png" alt=".Net Report Builder" style="width: 140px;" />
         </a>
         <div class="collapse navbar-collapse" id="navbarNavDropdown">
-            <ul class="navbar-nav ml-auto">
+            <ul class="navbar-nav ms-auto">
                 <li class="nav-item">
                     <a class="nav-link" href="/DotnetReport/Dashboard"><span class="fa fa-dashboard"></span> Dashboards</a>
                 </li>
@@ -113,24 +112,24 @@
                 @if (User.Identity.IsAuthenticated)
                 {
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                             <i class="fa fa-user"></i> @User.Identity.Name
                         </a>
-                        <div class="dropdown-menu dropdown-menu-right" aria-labelledby="userDropdown">
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                             <form id="logoutForm" action="@Url.Action("Logout", "Home")" method="post">
-                                <a class="dropdown-item" href="javascript:logout()"><span class="fa fa-close"></span> Logout</a>
+                            <li><a class="dropdown-item" href="javascript:logout()"><span class="fa fa-close"></span> Logout</a></li>
                             </form>
-                        </div>
+                        </ul>
                     </li>
                 }
 
                 <!-- This menu is hidden in bigger devices with d-sm-none -->
-                <li class="nav-item dropdown d-sm-block d-md-none">
-                    <a class="nav-link dropdown-toggle" href="#" id="smallerscreenmenu" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> Menu </a>
-                    <div class="dropdown-menu" aria-labelledby="smallerscreenmenu">
-                        <a class="dropdown-item" href="/dotnetsetup">Database Setup</a>
-                        <a class="dropdown-item" href="/dotnetsetup/usersandroles">Users Setup</a>
-                    </div>
+                <li class="nav-item dropdown d-md-none">
+                    <a class="nav-link dropdown-toggle" href="#" id="smallerscreenmenu" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> Menu </a>
+                    <ul class="dropdown-menu" aria-labelledby="smallerscreenmenu">
+                        <li><a class="dropdown-item" href="/dotnetsetup">Database Setup</a></li>
+                        <li><a class="dropdown-item" href="/dotnetsetup/usersandroles">Users Setup</a></li>
+                    </ul>
                 </li><!-- Smaller devices menu END -->
             </ul>
         </div>
@@ -143,21 +142,7 @@
                 <div class="list-group-item sidebar-separator-title text-muted d-flex align-items-center menu-collapsed">
                     <small>DATABASE</small>
                 </div>
-                <!-- Menu with submenu -->
-                <!--<a href="#submenu1" data-toggle="collapse" aria-expanded="false" class="bg-dark list-group-item list-group-item-action flex-column align-items-start">
-                    <div class="d-flex w-100 justify-content-start align-items-center">
-                        <span class="fa fa-dashboard fa-fw mr-3"></span>
-                        <span class="menu-collapsed">Dashboard</span>
-                        <span class="submenu-icon ml-auto"></span>
-                    </div>
-                </a>-->
-                <!-- Submenu content -->
-                <!--<div id='submenu1' class="collapse sidebar-submenu">
-                    <a href="#" class="list-group-item list-group-item-action bg-dark text-white">
-                        <span class="menu-collapsed">Chahgag</span>
-                    </a>
-                </div>-->
-                
+
                 @RenderSection("dboptions")
 
                 <div class="list-group-item sidebar-separator-title text-muted d-flex align-items-center menu-collapsed">
@@ -165,10 +150,10 @@
                 </div>
 
                 @RenderSection("useroptions")
-                
-                <a href="#top" data-toggle="sidebar-colapse" class="bg-dark list-group-item list-group-item-action d-flex align-items-center">
+
+                <a href="#top" data-bs-toggle="sidebar-collapse" class="bg-dark list-group-item list-group-item-action d-flex align-items-center">
                     <div class="d-flex w-100 justify-content-start align-items-center">
-                        <span id="collapse-icon" class="fa fa-2x mr-3"></span>
+                        <span id="collapse-icon" class="fa fa-2x me-3"></span>
                         <span id="collapse-text" class="menu-collapsed">Collapse</span>
                     </div>
                 </a>
@@ -186,7 +171,6 @@
             </div>
         </div><!-- Main Col END -->
     </div><!-- body-row END -->
-    
     @await Html.PartialAsync("_DotnetReportTemplatesPartial")
     @await Html.PartialAsync("_DotnetReportJsLibrariesPartial")
 

@@ -17,7 +17,8 @@ namespace ReportBuilder.Web.Controllers
     public class DotNetReportApiController : ControllerBase
     {
         private readonly IConfigurationRoot _configuration;
-        
+        public readonly static string _configFileName = "appsettings.dotnetreport.json";
+        public readonly static string dbtype = DbTypes.MS_SQL.ToString().Replace("_", " ");
         public DotNetReportApiController()
         {
             var builder = new ConfigurationBuilder()
@@ -527,6 +528,7 @@ namespace ReportBuilder.Web.Controllers
                 currentUserName = settings.UserName,
                 allowAdminMode = settings.CanUseAdminMode,
                 userIdForSchedule = settings.UserIdForSchedule,
+                userIdForFilter = settings.UserIdForFilter,
                 dataFilters = settings.DataFilters,
                 clientId = settings.ClientId,
 
@@ -595,6 +597,48 @@ namespace ReportBuilder.Web.Controllers
                 return new JsonResult(new { ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
             }
         }
+        private SortedList<string, string> GetTimezones()
+        {
+            var timeZones = TimeZoneInfo.GetSystemTimeZones();
+            SortedList<string, string> timeZoneList = new SortedList<string, string>();
+            timeZoneList.Add("", "");
+
+            foreach (TimeZoneInfo timezone in timeZones)
+            {
+                DateTime localTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.Now.ToUniversalTime(), timezone);
+                TimeSpan localOffset = timezone.GetUtcOffset(localTime);
+
+                string offset = localOffset.ToString();
+                if (!offset.Contains("-"))
+                {
+                    offset = $"+{offset}";
+                }
+
+                string display = $"(GMT {offset}) {timezone.StandardName}";
+                if (timezone.IsDaylightSavingTime(localTime))
+                {
+                    display = $"{display} (active daylight savings)";
+                }
+
+                timeZoneList.Add(display, timezone.Id); // Use timezone Id as value
+            }
+
+            return timeZoneList;
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetAllTimezones()
+        {
+            try
+            {
+                var timeZones = GetTimezones(); // Call your existing GetTimezones method
+                return new JsonResult(timeZones, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+            }
+            catch (Exception ex)
+            {
+                Response.StatusCode = 500;
+                return new JsonResult(new { ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+            }
+        }
 
         private string GetWarnings(string sql)
         {
@@ -628,6 +672,7 @@ namespace ReportBuilder.Web.Controllers
                 var connect = DotNetReportHelper.GetConnection(databaseApiKey);
                 var tables = new List<TableViewModel>();
                 var procedures = new List<TableViewModel>();
+                var functions = new List<CustomFunctionModel>();
                 if (onlyApi.HasValue)
                 {
                     if (onlyApi.Value)
@@ -639,7 +684,8 @@ namespace ReportBuilder.Web.Controllers
                         tables.AddRange(await DotNetSetupController.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
                         tables.AddRange(await DotNetSetupController.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
                     }
-                    procedures.AddRange(await DotNetSetupController.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
+                    procedures.AddRange(await DotNetSetupController.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey)); 
+                    functions.AddRange(await DotNetReportHelper.GetApiFunctions(connect.AccountApiKey, connect.DatabaseApiKey));
                 }
                 var dbConfig = DotNetReportHelper.GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey) ?? new JObject();
                 var model = new ManageViewModel
@@ -649,6 +695,7 @@ namespace ReportBuilder.Web.Controllers
                     DatabaseApiKey = connect.DatabaseApiKey,
                     Tables = tables,
                     Procedures = procedures,
+                    Functions = functions,
                     DbConfig = dbConfig.ToObject<Dictionary<string, string>>(),
                     UserAndRolesConfig = new UserRolesConfig { RequireLogin = true, UserRolesSource = true, UsersSource = true }
                 };

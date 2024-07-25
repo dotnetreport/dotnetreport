@@ -1,4 +1,7 @@
-﻿using Microsoft.Data.SqlClient;
+﻿using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Wordprocessing;
+using Microsoft.Data.SqlClient;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using OfficeOpenXml;
@@ -18,6 +21,15 @@ using System.Text.RegularExpressions;
 using System.Web;
 using Npgsql;
 using MySql.Data.MySqlClient;
+using System.Reflection;
+using System.Runtime.Loader;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Emit;
+using System.Collections.Concurrent;
+using A = DocumentFormat.OpenXml.Drawing;
+using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
+using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
 
 namespace ReportBuilder.Web.Models
 {
@@ -42,6 +54,7 @@ namespace ReportBuilder.Web.Models
 
         public string ReportSeries { get; set; }
         public bool ExpandAll { get; set; }
+        public string ReportData { get; set; }
     }
 
     public class DotNetReportPrintModel : DotNetReportModel
@@ -142,8 +155,8 @@ namespace ReportBuilder.Web.Models
         public string ForeignKeyField { get; set; }
         public string ForeignValueField { get; set; }
         public bool Hidden { get; set; }
-
     }
+
     public class RelationModel
     {
         public int Id { get; set; }
@@ -153,6 +166,38 @@ namespace ReportBuilder.Web.Models
         public string FieldName { get; set; }
         public string JoinFieldName { get; set; }
     }
+
+
+    public class CustomFunctionModel
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = "";
+        public string DisplayName { get; set; } = "";
+        public string Description { get; set; } = "";
+        public int DataConnectionId { get; set; } 
+        public int DisplayOrder { get; set; } 
+
+        public string FunctionType { get; set; } = "";
+        public string References { get; set; } = "";
+        public string ResultDataType { get; set; } = "";
+        public string Code { get; set; } = "";
+        public List<CustomFunctionParameterModel> Parameters { get; set; } = new List<CustomFunctionParameterModel>();
+        public List<string> AllowedRoles { get; set; } = new List<string>();
+    }
+
+    public class CustomFunctionParameterModel
+    {
+        public int Id { get; set; }
+        public int CustomFunctionId { get; set; }
+        public string ParameterName { get; set; } = "";
+        public string DisplayName { get; set; } = "";
+  
+        public string Description { get; set; } = "";
+
+        public bool Required { get; set; }
+        public string DefaultValue { get; set; } = "";
+    }
+
 
     public enum FieldTypes
     {
@@ -169,6 +214,13 @@ namespace ReportBuilder.Web.Models
         Inner,
         Left,
         Right
+    }
+
+    public enum DbTypes
+    {
+        MS_SQL,
+        MySql,
+        Postgre_Sql
     }
 
     public class ColumnViewModel
@@ -223,6 +275,7 @@ namespace ReportBuilder.Web.Models
 
         public List<TableViewModel> Tables { get; set; }
         public List<TableViewModel> Procedures { get; set; }
+        public List<CustomFunctionModel> Functions { get; set; }
 
         public dynamic DbConfig { get; set; }
         public UserRolesConfig UserAndRolesConfig { get; set; }
@@ -230,7 +283,7 @@ namespace ReportBuilder.Web.Models
     }
     public class UserRolesConfig
     {
-        public bool RequireLogin  { get; set; }
+        public bool RequireLogin { get; set; }
         public bool UsersSource { get; set; }
         public bool UserRolesSource { get; set; }
         public string SelectedUserConfig { get; set; }
@@ -251,6 +304,7 @@ namespace ReportBuilder.Web.Models
         public int Width { get; set; }
         public int Height { get; set; }
         public bool IsWidget { get; set; }
+        public string WidgetSettings { get; set; }    
     }
 
     public class DotNetDashboardModel
@@ -290,6 +344,12 @@ namespace ReportBuilder.Web.Models
         /// If you want to use user id for schedule but not for authentication, use this property
         /// </summary>
         public string UserIdForSchedule { get; set; }
+
+
+        /// <summary>
+        /// If you want to use user id for filter but not for authentication, use this property
+        /// </summary>
+        public string UserIdForFilter { get; set; }
 
         /// <summary>
         /// Current User name to display
@@ -641,15 +701,26 @@ namespace ReportBuilder.Web.Models
             return "";
         }
 
-        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool loadHeader=true)
+        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool loadHeader = true, string chartData = null)
         {
             ws.Cells[rowstart, colstart].LoadFromDataTable(dt, loadHeader);
             if (loadHeader) ws.Cells[rowstart, colstart, rowstart, colstart + dt.Columns.Count -1].Style.Font.Bold = true;
-
+            if (!string.IsNullOrEmpty(chartData) && chartData != "undefined")
+            {
+                byte[] imageBytes = Convert.FromBase64String(chartData.Substring(chartData.LastIndexOf(',') + 1));
+                using (MemoryStream ms = new MemoryStream(imageBytes))
+                {
+                    Image image = Image.FromStream(ms);
+                    // Add the image to the worksheet
+                    var picture = ws.Drawings.AddPicture("ChartImage", image);
+                    picture.SetPosition(1, 0, dt.Columns.Count + 1, 0); // Set the position of the image
+                    picture.SetSize(400, 300); // Set the size of the image in pixels (width, height)
+                }
+            }
             int i = colstart; var isNumeric = false;
             foreach (DataColumn dc in dt.Columns)
             {
-                var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
+                var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName)) ?? new ReportHeaderColumn();
                 string decimalFormat = new string('0', formatColumn.decimalPlacesDigit.GetValueOrDefault());
                 isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
                 if (dc.DataType == typeof(decimal) || (formatColumn != null && formatColumn.fieldFormating=="Decimal"))
@@ -734,6 +805,31 @@ namespace ReportBuilder.Web.Models
             }
 
             return dtNew;
+        }
+
+        public static async Task<List<CustomFunctionModel>> GetApiFunctions()
+        {
+            var settings = new DotNetReportSettings
+            {
+                ApiUrl = StaticConfig.GetValue<string>("dotNetReport:apiUrl"),
+                AccountApiToken = StaticConfig.GetValue<string>("dotNetReport:accountApiToken"), // Your Account Api Token from your http://dotnetreport.com Account
+                DataConnectApiToken = StaticConfig.GetValue<string>("dotNetReport:dataconnectApiToken") // Your Data Connect Api Token from your http://dotnetreport.com Account
+            };
+
+            return await GetApiFunctions(settings.AccountApiToken, settings.DataConnectApiToken);
+        }
+
+        public static async Task<List<CustomFunctionModel>> GetApiFunctions(string accountKey, string dataConnectKey)
+        {
+            using (var client = new HttpClient())
+            {
+                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetCustomFunctions?account={1}&dataConnect={2}&clientId=", Startup.StaticConfig.GetValue<string>("dotNetReport:apiUrl"), accountKey, dataConnectKey));
+                response.EnsureSuccessStatusCode();
+                var content = await response.Content.ReadAsStringAsync();
+                var functions = JsonConvert.DeserializeObject<List<CustomFunctionModel>>(content);
+
+                return functions;
+            }
         }
 
         public static async Task<string> RunReportApiCall(string postData)
@@ -832,6 +928,7 @@ namespace ReportBuilder.Web.Models
             foreach (DataColumn col in dt.Columns)
             {
                 var sqlField = sqlFields[i++];
+                if (col.ColumnName.Contains("__prm__")) continue;
                 model.Columns.Add(new DotNetReportDataColumnModel
                 {
                     SqlField = sqlField.Contains(" FROM ") ? col.ColumnName : sqlField.Substring(0, sqlField.LastIndexOf(" AS ")).Trim().Replace("__jsonc__", ""),
@@ -851,23 +948,26 @@ namespace ReportBuilder.Web.Models
 
                 foreach (DataColumn col in dt.Columns)
                 {
-                    var item = new DotNetReportDataRowItemModel
+                    if (!col.ColumnName.Contains("__prm__"))
                     {
-                        Column = model.Columns[i],
-                        Value = row[col] != null ? row[col].ToString() : null,
-                        FormattedValue = GetFormattedValue(col, row, model.Columns[i].FormatType, jsonAsTable),
-                        LabelValue = GetLabelValue(col, row)
-                    };
+                        var item = new DotNetReportDataRowItemModel
+                        {
+                            Column = model.Columns[i],
+                            Value = row[col] != null ? row[col].ToString() : null,
+                            FormattedValue = GetFormattedValue(col, row, model.Columns[i].FormatType, jsonAsTable),
+                            LabelValue = GetLabelValue(col, row)
+                        };
 
-                    items.Add(item);
+                        items.Add(item);
 
-                    try
-                    {
-                        row[col] = item.FormattedValue;
-                    }
-                    catch (Exception ex)
-                    {
-                        // ignore
+                        try
+                        {
+                            row[col] = item.FormattedValue;
+                        }
+                        catch (Exception ex)
+                        {
+                            // ignore
+                        }
                     }
                     i += 1;
                 }
@@ -892,7 +992,7 @@ namespace ReportBuilder.Web.Models
             }
             nextClauseIndex = nextClauseIndex < 0 ? sql.Length : nextClauseIndex;
             var modifiedSql = sql.Substring(0, whereIndex) + sql.Substring(nextClauseIndex);
-            var whereClause = sql.Substring(whereIndex, nextClauseIndex-whereIndex);
+            var whereClause = sql.Substring(whereIndex, nextClauseIndex - whereIndex);
 
             return whereClause;
         }
@@ -1035,6 +1135,68 @@ namespace ReportBuilder.Web.Models
             return value1.ToString().CompareTo(value2.ToString());
         }
 
+        public static async Task<DataTable> ExecuteCustomFunction(DataTable dataTable, string sql)
+        {
+            if (!sql.Contains("/*|")) return dataTable;
+
+            Regex regex = new Regex(@"/\*\|(.*?)\|\*/");
+            var matches = regex.Matches(sql);
+
+            foreach (Match match in matches)
+            {
+                string functionCall = match.Groups[1].Value;
+                int columnIndex = -1;
+
+                // Find the column that contains the function call to replace it later
+                foreach (DataColumn column in dataTable.Columns)
+                {
+                    if (column.Expression.Contains(match.Value))
+                    {
+                        columnIndex = column.Ordinal;
+                        break;
+                    }
+                }
+
+                var functionCalls = new List<string>();
+                foreach (DataRow row in dataTable.Rows)
+                {
+                    string modifiedFunctionCall = functionCall;
+
+                    // Iterate over all columns that end with "__prm__"
+                    foreach (DataColumn column in dataTable.Columns.Cast<DataColumn>().Where(c => c.ColumnName.EndsWith("__prm__")))
+                    {
+                        string paramName = "{" + column.ColumnName.Replace("__prm__", "") + "}";
+
+                        if (modifiedFunctionCall.Contains(paramName))
+                        {
+                            string valueReplacement = row[column].ToString();
+                            // Check if the datatype is numeric
+                            if (column.DataType == typeof(int) || column.DataType == typeof(decimal) || column.DataType == typeof(double) || column.DataType == typeof(long))
+                            {
+                                modifiedFunctionCall = modifiedFunctionCall.Replace(paramName, valueReplacement);
+                            }
+                            else
+                            {
+                                modifiedFunctionCall = modifiedFunctionCall.Replace(paramName, "\"" + valueReplacement + "\"");
+                            }
+                        }
+                    }
+
+                    //var result = await DynamicCodeRunner.RunCode(modifiedFunctionCall + ";");
+                    //if (columnIndex != -1)
+                    //{
+                    //    row[columnIndex] = result;
+                    //}
+                }
+            }
+
+            foreach (var column in dataTable.Columns.Cast<DataColumn>().Where(c => c.ColumnName.EndsWith("__prm__")).ToList())
+            {
+                dataTable.Columns.Remove(column);
+            }
+            return dataTable;
+        }
+
         public static DataTable PushDatasetIntoDataTable(DataTable tbl, DataSet dts, string pivotColumnName, string pivotFunction)
         {
             var dt = tbl.Copy();
@@ -1129,7 +1291,7 @@ namespace ReportBuilder.Web.Models
         }
 
 
-        public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, bool allExpanded = false,
+        public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
                 string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
         {
             var sql = Decrypt(reportSql);
@@ -1137,7 +1299,7 @@ namespace ReportBuilder.Web.Models
 
             // Execute sql
             var dt = new DataTable();
-            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
+            using (var conn = new OleDbConnection(GetConnectionString(connectKey, true)))
             {
                 conn.Open();
                 var command = new OleDbCommand(sql, conn);
@@ -1161,7 +1323,6 @@ namespace ReportBuilder.Web.Models
                         }
                     }
                 }
-
                 using (ExcelPackage xp = new ExcelPackage())
                 {
                     ExcelWorksheet ws = xp.Workbook.Worksheets.Add(reportName);
@@ -1181,7 +1342,7 @@ namespace ReportBuilder.Web.Models
                         rowstart += 2;
                         rowend = rowstart + dt.Rows.Count;
 
-                        FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeSubtotal);
+                        FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeSubtotal,true,chartData);
 
                         if (allExpanded)
                         {
@@ -1230,7 +1391,8 @@ namespace ReportBuilder.Web.Models
                                     combinedSqls += filteredSql += ";\n";
                                 }
 
-                                using (var dts = new DataSet()) {
+                                using (var dts = new DataSet())
+                                {
                                     using (var cmd = new OleDbCommand(combinedSqls, conn))
                                     using (var adp = new OleDbDataAdapter(cmd))
                                     {
@@ -1259,7 +1421,7 @@ namespace ReportBuilder.Web.Models
         {
             var isCurrency = false;
             var isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
-            var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName));
+            var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName)) ?? new ReportHeaderColumn();
             string decimalFormat = new string('0', formatColumn.decimalPlacesDigit.GetValueOrDefault());
             try
             {
@@ -1294,7 +1456,8 @@ namespace ReportBuilder.Web.Models
                     value += formatColumn.fieldFormating.EndsWith("Time") ? date.ToShortTimeString() : "";
                     value = value.Trim();
                 }
-            } catch (Exception ex)
+            }
+            catch (Exception ex)
             {
                 // ignore formatting exceptions
             }
@@ -1346,11 +1509,11 @@ namespace ReportBuilder.Web.Models
         public static byte[] GetPdfFileAlt(string reportSql, string connectKey, string reportName, string chartData = null,
                     List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
         {
-            var sql = Decrypt(reportSql); 
+            var sql = Decrypt(reportSql);
             var sqlFields = SplitSqlColumns(sql);
 
             var dt = new DataTable();
-            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
+            using (var conn = new OleDbConnection(GetConnectionString(connectKey, true)))
             {
                 conn.Open();
                 var command = new OleDbCommand(sql, conn);
@@ -1358,7 +1521,7 @@ namespace ReportBuilder.Web.Models
 
                 adapter.Fill(dt);
             }
-            
+
             var document = new PdfDocument();
             var page = document.AddPage();
             var gfx = XGraphics.FromPdfPage(page);
@@ -1443,8 +1606,8 @@ namespace ReportBuilder.Web.Models
                 {
                     // Draw column headers
                     var columnFormatting = columns[k];
-                        var columnName = !string.IsNullOrEmpty(columns[k].customfieldLabel) ? columns[k].customfieldLabel : columns[k].fieldName;
-                    
+                    var columnName = !string.IsNullOrEmpty(columns[k].customfieldLabel) ? columns[k].customfieldLabel : columns[k].fieldName;
+
                     rect = new XRect(currentXPosition, currentYPosition, columnWidth, 20);
 
                     gfx.DrawRectangle(XPens.LightGray, rect);
@@ -1465,7 +1628,7 @@ namespace ReportBuilder.Web.Models
                 // Draw table rows
                 for (int i = 0; i < dt.Rows.Count; i++)
                 {
-                    
+
                     // Check if we need to add a new page
                     if (currentYPosition > pageHeight)
                     {
@@ -1505,14 +1668,14 @@ namespace ReportBuilder.Web.Models
                     currentXPosition = leftMargin;
 
                     for (int j = 0; j < dt.Columns.Count; j++)
-                    {   
+                    {
                         var value = dt.Rows[i][j].ToString();
                         var dc = dt.Columns[j];
                         var formatColumn = GetColumnFormatting(dc, columns, ref value);
 
                         var lines = WrapText(gfx, value, rect, fontNormal, XStringFormats.Center);
                         maxLines = Math.Max(maxLines, lines.Count);
-                        
+
                         rect = new XRect(currentXPosition, currentYPosition, columnWidth, 20 * maxLines);
                         gfx.DrawRectangle(XPens.WhiteSmoke, rect);
 
@@ -1586,13 +1749,269 @@ namespace ReportBuilder.Web.Models
             }
         }
 
+        public static async Task<byte[]> GetWordFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
+            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
+        {
+            var sql = Decrypt(reportSql);
+            var sqlFields = SplitSqlColumns(sql);
+
+            // Execute sql
+            var dt = new DataTable();
+            using (var conn = new OleDbConnection(GetConnectionString(connectKey, true)))
+            {
+                conn.Open();
+                var command = new OleDbCommand(sql, conn);
+                var adapter = new OleDbDataAdapter(command);
+
+                adapter.Fill(dt);
+
+                if (pivot) dt = Transpose(dt);
+
+                if (columns?.Count > 0)
+                {
+                    foreach (var col in columns)
+                    {
+                        if (dt.Columns.Contains(col.fieldName) && col.hideStoredProcColumn)
+                        {
+                            dt.Columns.Remove(col.fieldName);
+                        }
+                        else if (!String.IsNullOrWhiteSpace(col.customfieldLabel))
+                        {
+                            dt.Columns[col.fieldName].ColumnName = col.customfieldLabel;
+                        }
+                    }
+                }
+
+                using (MemoryStream memStream = new MemoryStream())
+                {
+                    using (WordprocessingDocument wordDocument = WordprocessingDocument.Create(memStream, WordprocessingDocumentType.Document))
+                    {
+                        MainDocumentPart mainPart = wordDocument.AddMainDocumentPart();
+                        mainPart.Document = new Document();
+                        Body body = mainPart.Document.AppendChild(new Body());                     
+                        // Add report header
+                        Paragraph header = new Paragraph(new Run(new RunProperties()
+                        {
+                            FontSize = new DocumentFormat.OpenXml.Wordprocessing.FontSize() { Val = "28" },// Font size 14 points (2 * 14)
+                            Bold = new Bold(),
+                        }, new Text(reportName)));
+                        header.ParagraphProperties = new ParagraphProperties(new Justification() { Val = JustificationValues.Center });
+                        body.AppendChild(header);
+
+                        // Render chart
+                        if (!string.IsNullOrEmpty(chartData) && chartData != "undefined")
+                        {
+                            byte[] imageDecoded = Convert.FromBase64String(chartData.Substring(chartData.LastIndexOf(',') + 1));
+                            using (MemoryStream imageStream = new MemoryStream(imageDecoded))
+                            {
+                                ImagePart imagePart = mainPart.AddImagePart(ImagePartType.Jpeg);
+                                imagePart.FeedData(imageStream);
+                                // Specify the size in pixels and convert to EMUs
+                                int widthInPixels = 500;
+                                int heightInPixels = 400;
+                                long widthInEmus = widthInPixels * 9525;
+                                long heightInEmus = heightInPixels * 9525;
+                                AddImageToBody(wordDocument, mainPart.GetIdOfPart(imagePart),widthInEmus, heightInEmus);
+                            }
+                        }
+                        // Add data in table format
+                        if (dt.Rows.Count > 0)
+                        {
+                            // Create table
+                            Table table = new Table();
+                            TableProperties props = new TableProperties(new Justification() { Val = JustificationValues.Center },
+                             new TableBorders(
+                             new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 8 },
+                             new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 10 },
+                             new LeftBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 10 },
+                             new RightBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 10 },
+                             new InsideHorizontalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 8 },
+                             new InsideVerticalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 10 }
+                             ));
+
+                            // Append table properties
+                            table.AppendChild<TableProperties>(props);
+                            // Add header row
+                            TableRow headerRow = new TableRow();
+                            // Calculate max text width for each column
+                            int[] maxColumnWidths = new int[dt.Columns.Count];
+                            foreach (DataColumn column in dt.Columns)
+                            {
+                                maxColumnWidths[column.Ordinal] = EstimateTextWidth(column.ColumnName);
+                                RunProperties runProperties = new RunProperties(
+                                    new Bold(),
+                                    new DocumentFormat.OpenXml.Wordprocessing.Color() { Val = "#156082" } // Example color
+                                );
+                                Run run = new Run(runProperties, new Text(column.ColumnName));
+                                ParagraphProperties paragraphProperties = new ParagraphProperties(
+                                    new SpacingBetweenLines() { Before = "100", After = "100", Line = "240", LineRule = LineSpacingRuleValues.Auto },
+                                    new Indentation() { Left = "180", Right = "180"} // Adjust values as needed
+                                );
+                                Paragraph paragraph = new Paragraph(paragraphProperties, run);
+                                TableCell cell = new TableCell(paragraph);
+                                headerRow.AppendChild(cell);
+                            }
+                            table.AppendChild(headerRow);
+
+                            // Normalize column widths to fit the available width
+                            int totalWidth = 0;
+                            foreach (int width in maxColumnWidths)
+                            {
+                                totalWidth += width;
+                            }
+                            if (totalWidth > 13900)
+                            {
+                                // Set landscape orientation
+                                SectionProperties sectionProperties = new SectionProperties();
+                                DocumentFormat.OpenXml.Wordprocessing.PageSize pageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize() { Width = Convert.ToUInt32(totalWidth +(1440*2)), Orient = PageOrientationValues.Landscape };
+                                sectionProperties.Append(pageSize);
+                                body.Append(sectionProperties);
+                            }
+                            else
+                            {
+                                // Set page orientation to landscape
+                                SectionProperties sectionProps = new SectionProperties();
+                                DocumentFormat.OpenXml.Wordprocessing.PageSize defaultpageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize()
+                                {
+                                    Orient = PageOrientationValues.Landscape,
+                                    Width = 16838,  // 11.69 inch in Twips (297 mm)
+                                };
+                                sectionProps.Append(defaultpageSize);
+                                body.Append(sectionProps);
+                            }
+                            // Add data rows
+                            foreach (DataRow row in dt.Rows)
+                            {
+                                TableRow dataRow = new TableRow();
+                                foreach (DataColumn column in dt.Columns)
+                                {
+                                    var value = row[column.ColumnName].ToString();
+                                    var formatColumn = GetColumnFormatting(column, columns, ref value);
+                                    Run run = new Run( new Text(value));
+                                    ParagraphProperties paragraphProperties = new ParagraphProperties(
+                                        new SpacingBetweenLines() { Before = "100", After = "100", Line = "240", LineRule = LineSpacingRuleValues.Auto },
+                                        new Indentation() { Left = "180", Right = "180" } // Adjust values as needed
+                                    );
+                                    Paragraph paragraph = new Paragraph(paragraphProperties, run);
+                                    TableCell cell = new TableCell(paragraph);
+                                    dataRow.AppendChild(cell);
+                                }
+                                table.AppendChild(dataRow);
+                            }
+                            body.AppendChild(table);
+                            // Add expanded data if applicable
+                            if (allExpanded)
+                            {
+                                Paragraph expandedData = new Paragraph(new Run(new Text("Additional expanded data")));
+                                body.AppendChild(expandedData);
+                            }
+                        }
+                        else
+                        {
+                            Paragraph expandedData = new Paragraph(new Run(new Text("No RecordS Found")));
+                            body.AppendChild(expandedData);
+                        }
+                        // Ensure word wrapping doesn't break words
+                        foreach (TableCell cell in body.Descendants<TableCell>())
+                        {
+                            cell.TableCellProperties = new TableCellProperties();
+                            NoWrap noWrap = new NoWrap();
+                            cell.TableCellProperties.Append(noWrap);
+                        }
+                        wordDocument.Save();
+                    }
+                    return memStream.ToArray();
+                }
+            }
+        }
+        static void AddImageToBody(WordprocessingDocument wordDoc, string relationshipId, long cx, long cy)
+        {
+            // Define the reference of the image.
+            var element =
+                 new  Drawing(
+                     new DW.Inline(
+                         new DW.Extent() { Cx = cx, Cy = cy },
+                         new DW.EffectExtent()
+                         {
+                             LeftEdge = 0L,
+                             TopEdge = 0L,
+                             RightEdge = 0L,
+                             BottomEdge = 0L
+                         },
+                         new DW.DocProperties()
+                         {
+                             Id = (UInt32Value)1U,
+                             Name = "Chart Image"
+                         },
+                         new DW.NonVisualGraphicFrameDrawingProperties(
+                             new A.GraphicFrameLocks() { NoChangeAspect = true }),
+                         new A.Graphic(
+                             new A.GraphicData(
+                                 new PIC.Picture(
+                                     new PIC.NonVisualPictureProperties(
+                                         new PIC.NonVisualDrawingProperties()
+                                         {
+                                             Id = (UInt32Value)0U,
+                                             Name = "New Bitmap Chart Image.jpg"
+                                         },
+                                         new PIC.NonVisualPictureDrawingProperties()),
+                                     new PIC.BlipFill(
+                                         new A.Blip(
+                                             new A.BlipExtensionList(
+                                                 new A.BlipExtension()
+                                                 {
+                                                     Uri =
+                                                        "{28A0092B-C50C-407E-A947-70E740481C1C}"
+                                                 })
+                                         )
+                                         {
+                                             Embed = relationshipId,
+                                             CompressionState =
+                                             A.BlipCompressionValues.Print
+                                         },
+                                         new A.Stretch(
+                                             new A.FillRectangle())),
+                                     new PIC.ShapeProperties(
+                                         new A.Transform2D(
+                                             new A.Offset() { X = 0L, Y = 0L },
+                                             new A.Extents() { Cx = 990000L, Cy = 792000L }),
+                                         new A.PresetGeometry(
+                                             new A.AdjustValueList()
+                                         )
+                                         { Preset = A.ShapeTypeValues.Rectangle }))
+                             )
+                             { Uri = "http://schemas.openxmlformats.org/drawingml/2006/picture" })
+                     )
+                     {
+                         DistanceFromTop = (UInt32Value)0U,
+                         DistanceFromBottom = (UInt32Value)0U,
+                         DistanceFromLeft = (UInt32Value)0U,
+                         DistanceFromRight = (UInt32Value)0U,
+                         EditId = "50D07946"
+                     });
+
+            if (wordDoc.MainDocumentPart is null || wordDoc.MainDocumentPart.Document.Body is null)
+            {
+                throw new ArgumentNullException("MainDocumentPart and/or Body is null.");
+            }
+            Paragraph paragraph = new Paragraph(new Run(element));
+            paragraph.ParagraphProperties = new ParagraphProperties(new Justification() { Val = JustificationValues.Center });
+            wordDoc.MainDocumentPart.Document.Body.AppendChild(paragraph);
+        }
+        static private int EstimateTextWidth(string text)
+        {
+            // Simple estimation: number of characters * average width of a character in twips
+            // Note: 1 inch = 1440 twips, and average character width can vary. Adjust this multiplier as needed.
+            int averageCharWidthInTwips = 120;
+            return text.Length * averageCharWidthInTwips;
+        }
         public static async Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
                     string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false)
         {
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
             await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
             var executablePath = "";
-            foreach(var d in Directory.GetDirectories($"{installPath}\\chrome"))
+            foreach (var d in Directory.GetDirectories($"{installPath}\\chrome"))
             {
                 executablePath = $"{d}\\chrome-win64\\chrome.exe";
                 if (File.Exists(executablePath)) break;
@@ -1606,7 +2025,7 @@ namespace ReportBuilder.Web.Models
             var sqlFields = SplitSqlColumns(sql);
 
             var dt = new DataTable();
-            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
+            using (var conn = new OleDbConnection(GetConnectionString(connectKey, true)))
             {
                 conn.Open();
                 var command = new OleDbCommand(sql, conn);
@@ -1708,7 +2127,7 @@ namespace ReportBuilder.Web.Models
             // Execute sql
             var dt = new DataTable();
             var ds = new DataSet();
-            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
+            using (var conn = new OleDbConnection(GetConnectionString(connectKey, true)))
             {
                 conn.Open();
                 var command = new OleDbCommand(sql, conn);
@@ -1773,7 +2192,7 @@ namespace ReportBuilder.Web.Models
 
             // Execute sql
             var dt = new DataTable();
-            using (var conn = new OleDbConnection(GetConnectionString(connectKey)))
+            using (var conn = new OleDbConnection(GetConnectionString(connectKey, true)))
             {
                 conn.Open();
                 var command = new OleDbCommand(sql, conn);
