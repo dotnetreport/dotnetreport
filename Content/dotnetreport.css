@@ -1298,3 +1298,7 @@ tfoot tr.sub-total {
     .dropdown-item a {
         text-decoration: none;
     }
+
+.row{
+    padding-top: 5px; padding-bottom: 5px;
+}

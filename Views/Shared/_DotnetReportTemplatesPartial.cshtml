@@ -747,6 +747,19 @@
             </div>
             <div class="mb-3">
                 <div class="row g-3">
+                    <label class="col-sm-3 col-form-label">Pick Time Zone</label>
+                    <div class="col-sm-9">
+                        <select class="form-select" data-bind="options: timezonOption,
+                                                            optionsText: 'displayName',
+                                                            optionsValue: 'timeZoneId',
+                                                            value: selectedTimezone,
+                                                            select2: {allowClear: true, placeholder: 'Set a time zone to send report'}">
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="row g-3">
                     <div class="col-sm-3">
                         <div class="form-check" title="Set a date to start sending scheduled report">
                             <input class="form-check-input" type="checkbox" data-bind="checked: hasScheduleStart" id="scheduleStartCheckbox">
@@ -774,20 +787,7 @@
                         <input type="text" class="form-control" data-bind="datepicker: scheduleEnd" title="Scheduled Report will not be sent after this date" required />
                     </div>
                 </div>
-            </div>
-            <div class="mb-3">
-                <div class="row g-3">
-                    <label class="col-sm-3 col-form-label">Pick Time Zone</label>
-                    <div class="col-sm-9">
-                        <select class="form-select" data-bind="options: timezonOption,
-                                                            optionsText: 'displayName',
-                                                            optionsValue: 'timeZoneId',
-                                                            value: selectedTimezone,
-                                                            select2: {allowClear: true, placeholder: 'Set a time zone to send report'}">
-                        </select>
-                    </div>
-                </div>
-            </div>
+            </div>            
         </div>
     </div>
 
@@ -915,7 +915,7 @@
                             <div class="mb-3">
                                 <label class="form-label">Pick Text Color</label>
                                 <div class="d-flex">
-                                    <input type="color" style="width: 50px; height: 30px;" class="form-control me-2" data-bind="value: fontColor" />
+                                    <input type="color" style="width: 50px; height: 38px;" class="form-control me-2" data-bind="value: fontColor" />
                                     <input type="text" style="width: 100px;" class="form-control me-2" data-bind="value: fontColor" />
                                     <button class="btn btn-sm btn-secondary" title="Apply to all columns" data-bind="click: function(){applyAllFontColor(!applyAllFontColor()); }">
                                         <span class="fa" data-bind="css: applyAllFontColor() ? 'fa-check' : 'fa-paste'"></span>
@@ -1131,7 +1131,7 @@
                                 <p>Pie</p>
                             </div>
                         </div>
-                        <div class="col-md-2 col-sm-4 col-xs-6" style="display: none;">
+                        <div class="col-md-2 col-sm-4 col-xs-6">
                             <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Treemap'); }, css: {active: ReportType()=='Treemap'}">
                                 <span class="fa fa-2x fa-window-restore"></span>
                                 <p>Treemap</p>
