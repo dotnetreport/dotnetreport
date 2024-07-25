@@ -32,6 +32,7 @@
     </style>
 }
 @section scripts{
+        <script>$.fn.popover = { Constructor: {} };</script>
     <script src="~/lib/tributejs/tribute.min.js"></script>
     <script src="~/js/dotnetreport-setup.js"></script>
     <script src="~/lib/knockout-mapping/knockout.mapping.js"></script>
@@ -106,34 +107,34 @@
 
 @section useroptions {
 
-    <a class="bg-dark list-group-item list-group-item-action" href="#useroptions" aria-controls="home" role="tab" data-toggle="tab">
+        <a class="bg-dark list-group-item list-group-item-action" href="#useroptions" aria-controls="home" role="tab" data-bs-toggle="tab">
         <div class="d-flex w-100 justify-content-start align-items-center">
-            <span class="fa fa-gear fa-fw mr-3"></span>
+            <span class="fa fa-gear fa-fw me-3"></span>
             <span class="menu-collapsed">Configuration</span>
         </div>
     </a>
 
-
-    <a href="#manageusers" aria-controls="manageusers" role="tab" data-toggle="tab" class="bg-dark list-group-item list-group-item-action">
+    <a href="#manageusers" aria-controls="manageusers" role="tab" data-bs-toggle="tab" class="bg-dark list-group-item list-group-item-action">
         <div class="d-flex w-100 justify-content-start align-items-center">
-            <span class="fa fa-users fa-fw mr-3"></span>
+            <span class="fa fa-users fa-fw me-3"></span>
             <span class="menu-collapsed">Users and Roles</span>
         </div>
     </a>
 
-    <a href="#manageaccess" aria-controls="manageaccess" role="tab" data-toggle="tab" class="bg-dark list-group-item list-group-item-action">
+    <a href="#manageaccess" aria-controls="manageaccess" role="tab" data-bs-toggle="tab" class="bg-dark list-group-item list-group-item-action">
         <div class="d-flex w-100 justify-content-start align-items-center">
-            <span class="fa fa-user-secret fa-fw mr-3"></span>
+            <span class="fa fa-user-secret fa-fw me-3"></span>
             <span class="menu-collapsed">Manage Access</span>
         </div>
     </a>
 
-    <a href="#settingpage" aria-controls="settingpage" role="tab" data-toggle="tab" class="bg-dark list-group-item list-group-item-action">
+    <a href="#settingpage" aria-controls="settingpage" role="tab" data-bs-toggle="tab" class="bg-dark list-group-item list-group-item-action">
         <div class="d-flex w-100 justify-content-start align-items-center">
-            <span class="fa fa-gears fa-fw mr-3"></span>
+            <span class="fa fa-gears fa-fw me-3"></span>
             <span class="menu-collapsed">System Settings</span>
         </div>
     </a>
+
 }
 
 <div>

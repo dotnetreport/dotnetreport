@@ -56,16 +56,19 @@
         /* Separators */
         .sidebar-separator-title {
             background-color: #333;
+            color: #fff;
             height: 35px;
         }
 
         .sidebar-separator {
             background-color: #333;
+            color: #fff;
             height: 25px;
         }
 
         .logo-separator {
             background-color: #333;
+            color: #fff;
             height: 60px;
         }
 
@@ -137,15 +140,15 @@
     <!-- Bootstrap row -->
     <div class="row" id="body-row">
         <!-- Sidebar -->
-        <div id="sidebar-container" class="sidebar-expanded d-none d-md-block">
+        <div id="sidebar-container" class="sidebar-expanded d-none d-md-block" style="margin-top: -5px;">
             <div class="list-group">
-                <div class="list-group-item sidebar-separator-title text-muted d-flex align-items-center menu-collapsed">
+                <div class="list-group-item sidebar-separator-title d-flex align-items-center menu-collapsed">
                     <small>DATABASE</small>
                 </div>
 
                 @RenderSection("dboptions")
 
-                <div class="list-group-item sidebar-separator-title text-muted d-flex align-items-center menu-collapsed">
+                <div class="list-group-item sidebar-separator-title d-flex align-items-center menu-collapsed">
                     <small>CONFIGURATION</small>
                 </div>
 
@@ -178,15 +181,7 @@
 
     <script>
         // Hide submenus
-        $('#body-row .collapse').collapse('hide');
-
-        // Collapse/Expand icon
-        $('#collapse-icon').addClass('fa-angle-double-left');
-
-        // Collapse click
-        $('[data-toggle=sidebar-colapse]').click(function () {
-            SidebarCollapse();
-        });
+        
 
         function SidebarCollapse() {
             $('.menu-collapsed').toggleClass('d-none');

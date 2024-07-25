@@ -27,6 +27,7 @@
     </style>
 }
 @section scripts{
+    <script>$.fn.popover = { Constructor: {} };</script>
     <script src="~/lib/tributejs/tribute.min.js"></script>
     <script src="~/js/dotnetreport-setup.js"></script>
     <script src="~/lib/knockout-mapping/knockout.mapping.js"></script>
@@ -92,40 +93,41 @@
 }
 
 @section dboptions {
-    <a class="bg-dark list-group-item list-group-item-action" href="#connection" aria-controls="home" role="tab" data-toggle="tab">
+    <a class="bg-dark list-group-item list-group-item-action" href="#connection" aria-controls="home" role="tab" data-bs-toggle="tab">
         <div class="d-flex w-100 justify-content-start align-items-center">
-            <span class="fa fa-database fa-fw mr-3"></span>
+            <span class="fa fa-database fa-fw me-3"></span>
             <span class="menu-collapsed">DB Connections</span>
         </div>
     </a>
 
-    <a class="bg-dark list-group-item list-group-item-action" href="#tablesfields" aria-controls="home" role="tab" data-toggle="tab" data-bind="click: function() { customTableMode(false); }">
+    <a class="bg-dark list-group-item list-group-item-action" href="#tablesfields" aria-controls="home" role="tab" data-bs-toggle="tab" data-bind="click: function() { customTableMode(false); }">
         <div class="d-flex w-100 justify-content-start align-items-center">
-            <span class="fa fa-tasks fa-fw mr-3"></span>
+            <span class="fa fa-tasks fa-fw me-3"></span>
             <span class="menu-collapsed">DB Tables and Views</span>
         </div>
     </a>
 
-    <a href="#tablesfields" aria-controls="custom" role="tab" data-toggle="tab" data-bind="click: function() { customTableMode(true); }" class="bg-dark list-group-item list-group-item-action">
+    <a href="#tablesfields" aria-controls="custom" role="tab" data-bs-toggle="tab" data-bind="click: function() { customTableMode(true); }" class="bg-dark list-group-item list-group-item-action">
         <div class="d-flex w-100 justify-content-start align-items-center">
-            <span class="fa fa-list fa-fw mr-3"></span>
+            <span class="fa fa-list fa-fw me-3"></span>
             <span class="menu-collapsed">Custom Datasets</span>
         </div>
     </a>
 
-    <a href="#relations" aria-controls="profile" role="tab" data-toggle="tab" class="bg-dark list-group-item list-group-item-action">
+    <a href="#relations" aria-controls="profile" role="tab" data-bs-toggle="tab" class="bg-dark list-group-item list-group-item-action">
         <div class="d-flex w-100 justify-content-start align-items-center">
-            <span class="fa fa-arrow-right fa-fw mr-3"></span>
+            <span class="fa fa-arrow-right fa-fw me-3"></span>
             <span class="menu-collapsed">Relations</span>
         </div>
     </a>
 
-    <a href="#procedure" aria-controls="procedure" role="tab" data-toggle="tab" class="bg-dark list-group-item list-group-item-action">
+    <a href="#procedure" aria-controls="procedure" role="tab" data-bs-toggle="tab" class="bg-dark list-group-item list-group-item-action">
         <div class="d-flex w-100 justify-content-start align-items-center">
-            <span class="fa fa-code fa-fw mr-3"></span>
+            <span class="fa fa-code fa-fw me-3"></span>
             <span class="menu-collapsed">Stored Procs</span>
         </div>
     </a>
+
 }
 
 @section useroptions {
