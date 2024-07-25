@@ -546,10 +546,10 @@
                 <tr class="rule-container">
                     <td class="row">
                         <div class="col-md-1">
-                        <select data-bind="value: AndOr, visible: $index()>0" class="form-control">
-                            <option>And</option>
-                            <option>Or</option>
-                        </select>
+                            <select data-bind="value: AndOr, visible: $index()>0" class="form-control">
+                                <option>And</option>
+                                <option>Or</option>
+                            </select>
                         </div>
                         <div class="col-md-3">
                             <div class="form-group">
@@ -566,14 +566,14 @@
                         </div>
                         <div class="col-md-2">
                             <div data-bind="with: Field">
-                            <div class="form-group">
-                                <select class="form-control" style="width: 100%;" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
-                            </div>
+                                <div class="form-group">
+                                    <select class="form-select" style="width: 100%;" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
+                                </div>
                             </div>
                         </div>
                         <div class="col-md-5">
-                            <div data-bind="with: Field">
-                                <div data-bind="template: 'report-filter', data: $data"></div>
+                            <div data-bind="with: Field">                                
+                                <div data-bind="template: 'report-filter', data: $data"></div>                                
                             </div>
                             <!-- ko if: Field() && Field().fieldType == 'DateTime' && Operator() == 'range' && $index()==0 -->
                                 <!-- ko if: $parents[$parents.length-2].canAddSeries != undefined && $parents[$parents.length-2].canAddSeries() -->
@@ -586,7 +586,19 @@
                             <span data-bind="visible: Field() && Field().forced" class="badge badge-info">Required Filter</span>
                         </div>
                         <div class="col-md-1">
-                            <button class="btn btn-sm btn-secondary" data-bind="click: $parent.RemoveFilter, hidden: Field() && Field().forced">Remove</button>
+                            <div style="display: flex; align-items: center;">
+                                <div class="form-group" style="flex-grow: 1;">
+                                    <button class="btn btn-sm btn-secondary" data-bind="click: $parent.RemoveFilter, hidden: Field() && Field().forced" title="Remove">
+                                        <i class="fa fa-trash"></i>
+                                    </button>
+                                </div>
+                                <div class="form-group" style="flex-grow: 1;" data-bind="with: Field" >
+                                    <span class="btn btn-sm" tabindex="0" data-bind="click: function(){ filterOnFly(!filterOnFly()); }, css: {'btn-success': filterOnFly()==true, 'btn-secondary': filterOnFly()==false}">
+                                        <span class="fa fa-filter" aria-hidden="true" title="Filter by this field on the Report"></span>
+                                    </span>
+                                </div>
+                            </div>
+
                         </div>
                     </td>
                 </tr>
@@ -599,7 +611,7 @@
                         <span>Compare To</span>
                         </div>
                         <div class="col-md-4">
-                            <select class="form-control" data-bind="options: Range, value: Value" required></select>
+                            <select class="form-select" data-bind="options: Range, value: Value" required></select>
                         </div>
                     </td>
                 </tr>
@@ -789,6 +801,7 @@
                  </div>
             </div>
          </div>
+    </div>
     </div>
 </script>
 
@@ -1487,6 +1500,9 @@
                                 <li class="list-group-item">
                                     <div class="row">
                                         <div class="col">
+                                            <span class="sortable pull-left" style="padding-right: 15px;" data-bind="ifnot: $parent.useStoredProc">
+                                                <span class="fa fa-ellipsis-v" aria-hidden="true" title="Drag to reorder"></span>
+                                            </span>
                                             <span class="fa fa-columns"></span>
                                             <span data-bind="text: selectedFieldName"></span>
                                             <span data-bind="text: isFormulaField() ? '(' + fieldFormat() + ')' : ''"></span>
@@ -1498,18 +1514,16 @@
                                             <div class="pull-right" style="margin-top: -5px;" data-bind="if: $parent.AggregateReport() && !$parent.useStoredProc()">
                                                 <select class="form-control form-control-sm" data-bind="options: $parent.canDrilldown() && $index()>0 ? fieldAggregateWithDrilldown : fieldAggregate, value: selectedAggregate"></select>
                                             </div>
-                                            <div class="sortable pull-right" style="padding-right: 15px;" data-bind="ifnot: $parent.useStoredProc">
-                                                <span class="fa fa-arrows " aria-hidden="true" title="Drag to reorder"></span>
-                                            </div>
+                                            
                                             <div class="pull-right" style="padding-right: 15px;" data-bind="ifnot: $parent.useStoredProc">
                                                 <span class="fa fa-trash-o" title="Cannot Delete Required Filter" data-bind="visible: forceFilterForTable"></span>
                                                 <span class="fa fa-trash" style="cursor: pointer;" aria-hidden="true" title="Delete this Field" data-bind="click: $parent.RemoveField, hidden: forceFilterForTable"></span>
                                             </div>
-                                            <div class="pull-right" style="padding-right: 15px;" data-bind="ifnot: $parent.useStoredProc">
+                                            <!--<div class="pull-right" style="padding-right: 15px;" data-bind="ifnot: $parent.useStoredProc">
                                                 <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ filterOnFly(!filterOnFly()); }, css: {active: filterOnFly()==true}">
                                                     <span class="fa fa-filter" aria-hidden="true" title="Filter by this field on the Report"></span>
                                                 </span>
-                                            </div>
+                                            </div>-->
                                             <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $parent.ReportType()!='Pivot'">
                                                 <span class="button-box no-padding" tabindex="0" data-bind="click: toggleDisable, css: {active: disabled()==true}">
                                                     <span class="fa fa-close" aria-hidden="true" title="Do not include in Report"></span>

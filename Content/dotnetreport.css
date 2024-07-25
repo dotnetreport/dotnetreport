@@ -1293,3 +1293,8 @@ tfoot tr.sub-total {
         margin-top: 5px;
         font-size: 14px;
     }
+
+
+    .dropdown-item a {
+        text-decoration: none;
+    }
