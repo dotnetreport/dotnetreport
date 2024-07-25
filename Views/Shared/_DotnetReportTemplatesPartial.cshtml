@@ -667,87 +667,74 @@
 
 <script type="text/html" id="report-schedule">
     <div data-bind="with: scheduleBuilder">
-            <div class="checkbox">
-               <label>
-                  <input type="checkbox" data-bind="checked: hasSchedule" />
-                 Schedule Report
-             </label>
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" data-bind="checked: hasSchedule" id="scheduleReportCheckbox">
+            <label class="form-check-label" for="scheduleReportCheckbox">
+                Schedule Report
+            </label>
         </div>
         <div data-bind="if: hasSchedule">
-                  <div class="form-inline form-group">
-                    <div class="row col-sm-12">
+                <div class="d-flex align-items-center">
+                    <div class="me-3 d-flex align-items-center">
                         <span data-bind="text: selectedOption() != 'once' ? 'Every ' : ''"></span>&nbsp;
-                        <select class="form-control" required data-bind="options: options, value: selectedOption"></select>
-                        <div data-bind="if: selectedOption() == 'once'">
-                            <div class="form-inline">
-                                &nbsp;on&nbsp;<input data-bind="datepicker: selectedDate" class="form-control" required />
-                            </div>
+                        <select class="form-select" required data-bind="options: options, value: selectedOption" style="min-width: 80px;" ></select>
+                    </div>
+                    <div data-bind="if: selectedOption() == 'once'" class="me-3 d-flex align-items-center">
+                        &nbsp;on&nbsp;<input data-bind="datepicker: selectedDate" class="form-control" required />
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <div data-bind="if: showDays" class="d-flex align-items-center">
+                            &nbsp;on&nbsp;
+                            <select multiple class="form-select ms-2" required data-bind="select2: { placeholder: 'Choose Days', allowClear: true }, options: days, selectedOptions: selectedDays"></select>
                         </div>
-                        <p>
-                            <div class="form-inline" data-bind="if: showDays">
-                                &nbsp;on&nbsp;
-                            </div>
-                            <div class="form-inline" data-bind="if: showDays">
-                                <select multiple class="form-control" required data-bind="select2: { placeholder: 'Choose Days', allowClear: true }, options: days, selectedOptions: selectedDays"></select>
-                            </div>
-                        </p>
-                        <p>
-                            <div class="form-inline" data-bind="if: showDates">
-                                &nbsp;on&nbsp;
-                            </div>
-                            <div class="form-inline" data-bind="if: showDates">
-                                <select multiple class="form-control" required data-bind="select2: { placeholder: 'Choose Dates', allowClear: true }, options: dates, selectedOptions: selectedDates"></select>
-                            </div>
-                        </p>
-                        <p>
-                            <div class="form-inline" data-bind="if: showMonths">
-                                &nbsp;of&nbsp;
-                            </div>
-                            <div class="form-inline" data-bind="if: showMonths">
-                                <select multiple class="form-control" required data-bind="select2: { placeholder: 'Choose Months', allowClear: true }, options: months, selectedOptions: selectedMonths"></select>
-                            </div>
-                        </p>
-                        <div data-bind="if: showAtTime">
-                            <div class="form-inline">
-                                &nbsp;at&nbsp;<select class="form-control" data-bind="options: hours, value: selectedHour"></select>
-                                <select class="form-control" data-bind="options: minutes, value: selectedMinute"></select>
-                                <select class="form-control" data-bind="value: selectedAmPm">
-                                    <option>AM</option>
-                                    <option>PM</option>
-                                </select>
-                            </div>
+                        <div data-bind="if: showDates" class="d-flex align-items-center">
+                            &nbsp;on&nbsp;
+                                <select multiple class="form-select" required data-bind="select2: { placeholder: 'Choose Dates', allowClear: true }, options: dates, selectedOptions: selectedDates"></select>
+                        </div>
+                        <div data-bind="if: showMonths" class="d-flex align-items-center">
+                            &nbsp;on&nbsp;
+                                <select multiple class="form-select" required data-bind="select2: { placeholder: 'Choose Months', allowClear: true }, options: months, selectedOptions: selectedMonths"></select>
+                        </div>
+                        <div data-bind="if: showAtTime" class="d-flex align-items-center ms-3">
+                            &nbsp;at&nbsp;
+                             <select class="form-select me-2" style="min-width: 60px;" data-bind="options: hours, value: selectedHour"></select>
+                            <select class="form-select me-2" style="min-width: 60px;" data-bind="options: minutes, value: selectedMinute"></select>
+                            <select class="form-select" style="min-width: 80px;" data-bind="value: selectedAmPm">
+                                <option>AM</option>
+                                <option>PM</option>
+                            </select>
                         </div>
                     </div>
                 </div>
 
-              <div class="alert alert-info">
-                  Report will be run and emailed <span data-bind="text: selectedOption() != 'once' ? 'every' : ''"></span> <span data-bind="text: selectedOption"></span>
-                 <span data-bind="if: selectedOption() == 'once'">
-                     on <span class="error" data-bind="visible: !selectedDate()">Please pick a Date</span> <span data-bind="text: selectedDate"></span>
+            <div class="alert alert-info">
+                Report will be run and emailed <span data-bind="text: selectedOption() != 'once' ? 'every' : ''"></span> <span data-bind="text: selectedOption"></span>
+                <span data-bind="if: selectedOption() == 'once'">
+                    on <span class="error" data-bind="visible: !selectedDate()">Please pick a Date</span> <span data-bind="text: selectedDate"></span>
                 </span>
-                    <span data-bind="if: showDays">
-                       on <span class="error" data-bind="visible: selectedDays().length == 0">Please pick Day(s)</span> <span data-bind="text: selectedDays"></span>
-                  </span>
-                  <span data-bind="if: showDates">
-                     on <span class="error" data-bind="visible: selectedDates().length == 0">Please pick Date(s)</span>
-                     <span data-bind="foreach: selectedDates"><span data-bind="visible: $index()>0">, </span><span data-bind="text: $data == 1 ? '1st': ($data == 2 ? '2nd' : ($data == 3 ? '3rd' : ($data == 31 ? '31st' : $data+'th')))"></span></span>
+                <span data-bind="if: showDays">
+                    on <span class="error" data-bind="visible: selectedDays().length == 0">Please pick Day(s)</span> <span data-bind="text: selectedDays"></span>
+                </span>
+                <span data-bind="if: showDates">
+                    on <span class="error" data-bind="visible: selectedDates().length == 0">Please pick Date(s)</span>
+                    <span data-bind="foreach: selectedDates"><span data-bind="visible: $index()>0">, </span><span data-bind="text: $data == 1 ? '1st': ($data == 2 ? '2nd' : ($data == 3 ? '3rd' : ($data == 31 ? '31st' : $data+'th')))"></span></span>
                 </span>
                 <span data-bind="if: showMonths">
-                        of <span class="error" data-bind="visible: selectedMonths().length == 0">Please pick Month(s)</span> <span data-bind="text: selectedMonths"></span>
-                   </span>
-                  <span data-bind="if: showAtTime">
-                     at <span data-bind="text: selectedHour"></span>:<span data-bind="text: selectedMinute"></span> <span data-bind="text: selectedAmPm"></span>
-                 </span>
+                    of <span class="error" data-bind="visible: selectedMonths().length == 0">Please pick Month(s)</span> <span data-bind="text: selectedMonths"></span>
+                </span>
+                <span data-bind="if: showAtTime">
+                    at <span data-bind="text: selectedHour"></span>:<span data-bind="text: selectedMinute"></span> <span data-bind="text: selectedAmPm"></span>
+                </span>
             </div>
-            <div class="form-horizontal form-group">
-                    <div class="form-group row">
-                       <label class="col-sm-2 control-label">Email to</label>
-                       <div class="col-sm-6">
-                          <input type="text" class="form-control" style="width: 100%;" data-bind="value: emailTo" placeholder="Enter Email Addresses separated by comma to send the Report to" required />
-                      </div>
-                     <label class="col-sm-2 control-label">Report Format</label>
-                     <div class="col-sm-2">
-                        <select class="form-control" data-bind="value: format">
+            <div class="mb-3">
+                <div class="row g-3">
+                    <label class="col-sm-3 col-form-label">Email to</label>
+                    <div class="col-sm-6">
+                        <input type="text" class="form-control" data-bind="value: emailTo" placeholder="Enter Email Addresses separated by comma to send the Report to" required />
+                    </div>
+                    <label class="col-sm-1 col-form-label">Format</label>
+                    <div class="col-sm-2">
+                        <select class="form-select" data-bind="value: format">
                             <option value="EXCEL">Excel</option>
                             <option data-bind="visible: $parent.canDrilldown()" value="EXCEL-SUB">Excel (Expanded)</option>
                             <option value="CSV">CSV</option>
@@ -755,54 +742,56 @@
                             <option value="WORD">Word</option>
                             <option value="LINK">Link</option>
                         </select>
-                      </div>
-                 </div>
+                    </div>
+                </div>
             </div>
-            <div class="form-horizontal form-group">
-                    <div class="form-group row">
-                       <div class="col-sm-4 control-label">
-                           <div class="checkbox">
-                              <label title="Set a date to start sending scheduled report">
-                                  <input type="checkbox" data-bind="checked: hasScheduleStart" />
-                                 Set Schedule Start Date
+            <div class="mb-3">
+                <div class="row g-3">
+                    <div class="col-sm-3">
+                        <div class="form-check" title="Set a date to start sending scheduled report">
+                            <input class="form-check-input" type="checkbox" data-bind="checked: hasScheduleStart" id="scheduleStartCheckbox">
+                            <label class="form-check-label" for="scheduleStartCheckbox">
+                                Schedule Start Date
                             </label>
-                            </div>
-                       </div>
-                       <div class="col-sm-4" data-bind="if: hasScheduleStart">
-                          <input type="text" class="form-control" data-bind="datepicker: scheduleStart" title="Scheduled Report will not be sent before this date" required />
-                      </div>
-                 </div>
-             </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4" data-bind="if: hasScheduleStart">
+                        <input type="text" class="form-control" data-bind="datepicker: scheduleStart" title="Scheduled Report will not be sent before this date" required />
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="row g-3">
+                    <div class="col-sm-3">
+                        <div class="form-check" title="Set a date to stop sending scheduled report">
+                            <input class="form-check-input" type="checkbox" data-bind="checked: hasScheduleEnd" id="scheduleEndCheckbox">
+                            <label class="form-check-label" for="scheduleEndCheckbox">
+                                Schedule End Date
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-sm-4" data-bind="if: hasScheduleEnd">
+                        <input type="text" class="form-control" data-bind="datepicker: scheduleEnd" title="Scheduled Report will not be sent after this date" required />
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="row g-3">
+                    <label class="col-sm-3 col-form-label">Pick Time Zone</label>
+                    <div class="col-sm-9">
+                        <select class="form-select" data-bind="options: timezonOption,
+                                                            optionsText: 'displayName',
+                                                            optionsValue: 'timeZoneId',
+                                                            value: selectedTimezone,
+                                                            select2: {allowClear: true, placeholder: 'Set a time zone to send report'}">
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-            <div class="form-horizontal form-group">
-                    <div class="form-group row">
-                       <div class="col-sm-4 control-label">
-                          <div class="checkbox" title="Set a date to stop sending scheduled report">
-                              <label>
-                                 <input type="checkbox" data-bind="checked: hasScheduleEnd" />
-                                 Set Schedule End Date
-                            </label>
-                        </div>
-                        </div>
-                       <div class="col-sm-4" data-bind="if: hasScheduleEnd">
-                           <input type="text" class="form-control" data-bind="datepicker: scheduleEnd" title="Scheduled Report will not be sent after this date" required />
-                      </div>
-                  </div>
-             </div>
-            <div class="form-horizontal form-group">
-               <div class="form-group row">
-                <label class="col-sm-2 control-label">Pick Time Zone</label>
-                    <div class="col-sm-10">
-                     <select class="form-control" data-bind="options: timezonOption,
-                                                   optionsText: 'displayName',
-                                                   optionsValue: 'timeZoneId',
-                                                   value: selectedTimezone,
-                                                   select2: {allowClear: true, placeholder: 'Set a time zone to send report'}" />
-                 </div>
-            </div>
-         </div>
-    </div>
-    </div>
+
 </script>
 
 <script type="text/html" id="report-field-options">
