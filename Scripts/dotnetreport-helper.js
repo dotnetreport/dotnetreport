@@ -656,17 +656,19 @@ var textQuery = function (options) {
 }
 
 function getThemeFromAppSettings() {
-    ajaxcall({
-        url: '/api/DotNetReportApi/AppSettings',
-    }).done(function (response) {
-        if (response && response.appThemes) {
-            changeTheme(response.appThemes);
-        } else {
-            var theme = localStorage.getItem('dotnetreport-selectedTheme') || 'default';
-            changeTheme(theme);
-            return false;
-        }
-    });
+    var theme = localStorage.getItem('dotnetreport-selectedTheme') || 'default';
+    if (theme != 'default') {
+        changeTheme(theme);
+    }
+    else {
+        ajaxcall({
+            url: '/api/DotNetReportApi/AppSettings',
+        }).done(function (response) {
+            if (response && response.appThemes) {
+                changeTheme(response.appThemes);
+            }
+        });
+    }
 }
 // pick theme 
 function changeTheme(theme) {
