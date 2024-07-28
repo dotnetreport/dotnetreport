@@ -94,9 +94,14 @@ ko.bindingHandlers.datepicker = {
     //update the control when the view model changes
     update: function (element, valueAccessor) {
         var value = ko.utils.unwrapObservable(valueAccessor());
-        var formattedDate = $.datepicker.formatDate($(element).datepicker("option", "dateFormat") || 'mm/dd/yy', new Date(value));
-        if (formattedDate !== $(element).val()) {
-            $(element).datepicker("setDate", formattedDate);
+        if (value === null || value === undefined) {
+            $(element).datepicker("setDate", null);
+            $(element).val('');
+        } else {
+            var formattedDate = $.datepicker.formatDate($(element).datepicker("option", "dateFormat") || 'mm/dd/yy', new Date(value));
+            if (formattedDate !== $(element).val()) {
+                $(element).datepicker("setDate", formattedDate);
+            }
         }
     }
 };
