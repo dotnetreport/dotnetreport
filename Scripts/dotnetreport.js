@@ -3452,6 +3452,13 @@ var reportViewModel = function (options) {
 		});
 
 		data.addRows(rowArray);
+		var prefixFormat = reportData.Columns[1].currencyFormat ? reportData.Columns[1].currencyFormat() : null;
+		if (prefixFormat != null) {
+			var formatter = new google.visualization.NumberFormat({
+				prefix: prefixFormat
+			});
+			formatter.format(data, 1);
+		}
 
 		// Set chart options
 		var chartOptions = {
@@ -3460,7 +3467,10 @@ var reportViewModel = function (options) {
 				startup: true,
 				duration: 1000,
 				easing: 'out'
-			}
+			},
+			vAxis: {
+				ticks: generateTicks(data, prefixFormat) // Custom ticks with currency formatting
+			},
 		};
 
 		if (options.chartSize) {
@@ -3582,6 +3592,25 @@ var reportViewModel = function (options) {
 				}
 			});
 		}
+		function generateTicks(data, prefixFormat) {
+			var max = 0;
+			for (var i = 0; i < data.getNumberOfRows(); i++) {
+				for (var j = 1; j < data.getNumberOfColumns(); j++) {
+					if (data.getValue(i, j) > max) {
+						max = data.getValue(i, j);
+					}
+				}
+			}
+
+			var tickInterval = Math.pow(10, Math.floor(Math.log10(max)) - 1); // Dynamically calculate the interval
+			var ticks = [];
+
+			for (var i = 0; i <= max; i += tickInterval) {
+				ticks.push({ v: i, f: prefixFormat + i.toLocaleString() });
+			}
+
+			return ticks;
+		}
 		function handlePointerDown(event) {
 			if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
 			event.preventDefault(); // Prevent default browser behavior
@@ -3597,6 +3626,7 @@ var reportViewModel = function (options) {
 			chartHeight = Math.max(100, chartHeight); // Ensure a minimum height
 			chartOptions.width = chartWidth;
 			chartOptions.height = chartHeight;
+			chartOptions.vAxis.ticks = generateTicks(data, prefixFormat); // Update ticks dynamically
 			chart.draw(data, chartOptions);
 		}
 		function handlePointerUp(event) {
