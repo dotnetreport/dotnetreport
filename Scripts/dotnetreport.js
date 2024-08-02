@@ -1823,7 +1823,7 @@ var reportViewModel = function (options) {
 	self.formulaDataFormat = ko.observable('')
 	self.formulaDecimalPlaces = ko.observable();
 	self.selectedFunction = ko.observable();
-
+	self.currentFormulaField = ko.observable(null);
 	var codeEditor;
 	self.designFunctionField = function () {
 		if (self.isFunctionField()) {
@@ -1934,7 +1934,13 @@ var reportViewModel = function (options) {
 	self.isFormulaField.subscribe(function () {
 		self.clearFormulaField();
 	});
-
+	self.cancelFormulaField = function () {
+		self.isFormulaField(!self.isFormulaField());
+		if (self.currentFormulaField() != null) {
+			self.SelectedFields.push(self.currentFormulaField());
+			self.currentFormulaField(null);
+		}
+	};
 	self.removeField = function (field) {
 		bootbox.confirm("Are you sure you would like to remove this field?", function (r) {
 			if (r) {
@@ -2047,7 +2053,7 @@ var reportViewModel = function (options) {
 				});
 			}
 		}
-
+		self.currentFormulaField(field)
 		self.SelectedFields.remove(field);
 	}
 
