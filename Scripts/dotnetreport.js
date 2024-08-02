@@ -2331,6 +2331,11 @@ var reportViewModel = function (options) {
 				if (f) filters.push(f);
 			});
 
+			if (g.Filters().length == 0 && g.FilterGroups().length > 0) {
+				// empty group
+				filters = self.BuildFilterData(g.FilterGroups());
+			}
+
 			groups.push({
 				SavedReportId: self.ReportID(),
 				isRoot: g.isRoot,
