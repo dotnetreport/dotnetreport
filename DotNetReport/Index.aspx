@@ -55,9 +55,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
 </asp:Content>
 
 <asp:Content ID="Content2" ContentPlaceHolderID="body" runat="server">
-
+    
 <div class="container-fluid">
-   
+
     <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
 
     <!--
@@ -104,11 +104,13 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 </a>
                             </li>
                         </ul>
-                        <form class="form-inline my-5 my-md-0">
-                            <div data-bind="with: searchFieldsInReport">
-                                <select id="search-report" class="form-control" data-bind="select2: {placeholder: 'Search Report by Name, Description or Data Field...', ajax: { url: url, dataType: 'json', contentType: 'application/json; charset=utf-8', data: query, processResults: processResults, type: 'POST' }, minimumInputLength: 0, language: language, allowClear: true }, value: selectedOption"></select>
+                        <div class="form-inline my-5 my-md-0 ml-auto w-50">
+                            <input type="text" class="form-control w-75" data-bind="value: searchReports" placeholder="Search Report by Name, Description or Data Field..." />
+                            <span class="btn btn-secondary"><i class="fa fa-search"></i></span>
+                            <div data-bind="with: searchFieldsInReport, visible: false">
+                                <select id="search-report" class="form-control" data-bind="select2: {placeholder: 'Search Report by Name, Description or Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults }, minimumInputLength: 0, language: language, allowClear: true }, value: selectedOption"></select>
                             </div>
-                        </form>
+                        </div>
                     </div>
                 </nav>
             </div>
@@ -213,7 +215,12 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             </div>
                                             <div class="clearfix"></div>
                                             <p data-bind="text: reportDescription"></p>
-                                            <p data-bind="if: $parent.searchReports()"><span class="fa fa-folder"></span> <span data-bind="text: folderName"></span></p>
+                                            <p data-bind="if: $parent.searchReports()">
+                                                <span class="fa fa-folder"></span> <span data-bind="text: folderName"></span>
+                                                <div>
+                                                <span data-bind="text: message" class="highlight small"></span>
+                                                </div>
+                                            </p>
                                             <div data-bind="if: $parent.adminMode">
                                                 <div class="small">
                                                     <b>Report Access</b><br />
@@ -390,7 +397,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             <a href="#" class="btn btn-primary" data-bind="visible: $root.CanEdit()" data-toggle="modal" data-target="#modal-reportbuilder">
                                 Edit Report
                             </a>
-                            
+
                             <button class="btn btn-primary" data-bind="click: RefreshReport">Refresh Report</button>
                             <button class="btn btn-primary" data-bind="visible: CanSaveReports(), click: SaveWithoutRun">Save Report</button>
 
@@ -414,7 +421,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             <span class="fa fa-file-excel-o"></span> Excel (Expanded)
                                         </a>
                                     </li>
-                                     <li class="dropdown-item">
+                                    <li class="dropdown-item">
                                         <a href="#" data-bind="click: downloadWord">
                                             <span class="fa fa-file-word-o"></span> Word
                                         </a>
@@ -527,6 +534,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             <p data-bind="html: ReportDescription">
                                             </p>
                                             <div data-bind="with: ReportResult" class="report-expanded-scroll">
+                                                <div data-bind="visible: !ReportData()">
+                                                    <div class="report-spinner"></div>
+                                                </div>
                                                 <div data-bind="template: 'report-template', data: $data"></div>
                                             </div>
                                         </div>
