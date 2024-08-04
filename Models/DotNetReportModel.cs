@@ -1555,8 +1555,8 @@ namespace ReportBuilder.Web.Models
             using (var ms = new MemoryStream())
             {
                 Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
-                var fontNormal = new XFont("Arial", 11, XFontStyle.Regular);
-                var fontBold = new XFont("Arial", 12, XFontStyle.Bold);
+                var fontNormal = new XFont("Arial", 11, XFontStyleEx.Bold);
+                var fontBold = new XFont("Arial", 12, XFontStyleEx.Bold);
                 var tableWidth = page.Width - 100;
                 var columnWidth = Math.Max(tableWidth / dt.Columns.Count, 100f);
                 var currentYPosition = 30;
@@ -1566,7 +1566,7 @@ namespace ReportBuilder.Web.Models
 
                 // Report header
                 gfx.DrawString(reportName,
-                    new XFont("Arial", 14, XFontStyle.Bold), XBrushes.Black,
+                    new XFont("Arial", 14, XFontStyleEx.Bold), XBrushes.Black,
                     new XRect(0, currentYPosition, page.Width, 30),
                     XStringFormats.Center);
 
@@ -2895,7 +2895,7 @@ namespace ReportBuilder.Web.Models
             }
             else
             {
-                conn_string.IntegratedSecurity = true;
+                conn_string.PersistSecurityInfo = true;
             }
             conn_string.Database = model.dbName;// "test";
             return conn_string.ToString();
