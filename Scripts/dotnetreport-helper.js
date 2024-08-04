@@ -175,7 +175,7 @@ ko.bindingHandlers.select2Value = {
         var value = ko.unwrap(valueAccessor());
 
         // Initialize select2
-        $(element).select2(allBindings.select2);
+        $(element).select2(allBindings.select2Value);
 
         // When an item is selected, update the observable with the full item object
         $(element).on('select2:select', function (e) {

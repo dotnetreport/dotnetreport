@@ -1,6 +1,6 @@
 ﻿<!-- Dotnet Report HTML Templates -->
 <script type="text/html" id="report-filter">
-    <div class="form-group">
+    <div class="form-group" data-bind="attr: {id: 'filter-'+fieldId}">
         <!-- ko if: !hasForeignKey-->
         <!-- ko if: fieldType=='DateTime'-->
         <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 -->
@@ -13,7 +13,7 @@
         <input data-bind="datepicker: $parent.fmtValue2, datepickerOptions: {value: $parent.Value2, dateFormat: dateFormat() === 'Custom' ? customDateFormat().replace(/yyyy/g, 'yy') : $root.dateFormatMappings[dateFormat()]}" class="form-control" required />
         <!-- /ko -->
         <!-- ko if: ['range'].indexOf($parent.Operator()) != -1 -->
-        <select data-bind="value: $parent.Value" class="form-control" required>
+        <select data-bind="value: $parent.Value" class="form-select" required>
             <option value=""></option>
             <option>Today</option>
             <option>Today +</option>
@@ -63,7 +63,7 @@
         <!-- /ko -->
         <!-- /ko -->
         <!-- ko if: fieldType=='Boolean' && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
-        <select required class="form-control" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default'">
+        <select required class="form-select" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default'">
             <option value="1">Yes</option>
             <option value="0">No</option>
         </select>
@@ -74,13 +74,13 @@
         <!-- /ko -->
         <!-- ko if: hasForeignKey && $parent.Operator() != 'all' -->
         <!-- ko if: hasForeignParentKey && $parent.showParentFilter() -->
-        <select multiple class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.ParentList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ParentIn"></select>
+        <select multiple class="form-control" data-bind="select2: { dropdownParent: '#filter-'+fieldId, placeholder: 'Please Choose', allowClear: true }, options: $parent.ParentList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ParentIn"></select>
         <!-- /ko -->
         <!-- ko if: $parent.Operator()=='='-->
-        <select required class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', value: $parent.Value, optionsCaption: 'Please Choose'"></select>
+        <select required class="form-control" data-bind="select2: { dropdownParent: '#filter-'+fieldId, placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', value: $parent.Value, optionsCaption: 'Please Choose'"></select>
         <!-- /ko -->
         <!-- ko if: $parent.Operator()=='in' || $parent.Operator()=='not in'-->
-        <select required multiple class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ValueIn"></select>
+        <select required multiple class="form-control" data-bind="select2: { dropdownParent: '#filter-'+fieldId, placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ValueIn"></select>
         <!-- /ko -->
         <!-- /ko -->
     </div>
@@ -511,7 +511,7 @@
                     </div>
                     <div data-bind="with: Field" class="col-sm-2 col-xs-3">
                         <div class="form-group" data-bind="if: $parent.Apply">
-                            <select class="form-control" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
+                            <select class="form-select" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
                         </div>
                     </div>
                     <div data-bind="with: Field" class="col-sm-5 col-xs-5">
@@ -553,7 +553,7 @@
                         </div>
                         <div class="col-md-3">
                             <div class="form-group">
-                                <select class="form-control" style="width: 100%;" data-bind="
+                                <select class="form-select" style="width: 100%;" data-bind="
                                         options: $parents[$parents.length-2].selectedFieldsCanFilter != undefined
                                                     ? $parents[$parents.length-2].selectedFieldsCanFilter
                                                     : $parents[$parents.length-1].selectedFieldsCanFilter,
@@ -650,7 +650,7 @@
                         </td>
                         <td>
                             <div class="form-group">
-                                <select class="form-control" style="width: 100%;" data-bind="options: operators, value: Operator" required></select>
+                                <select class="form-select" style="width: 100%;" data-bind="options: operators, value: Operator" required></select>
                             </div>
                         </td>
                         <td data-bind="with: Field">
@@ -666,7 +666,7 @@
 </script>
 
 <script type="text/html" id="report-schedule">
-    <div data-bind="with: scheduleBuilder">
+    <div data-bind="with: scheduleBuilder" id="schedule-builder-div">
         <div class="form-check">
             <input class="form-check-input" type="checkbox" data-bind="checked: hasSchedule" id="scheduleReportCheckbox">
             <label class="form-check-label" for="scheduleReportCheckbox">
@@ -753,7 +753,7 @@
                                                             optionsText: 'displayName',
                                                             optionsValue: 'timeZoneId',
                                                             value: selectedTimezone,
-                                                            select2: {allowClear: true, placeholder: 'Set a time zone to send report'}">
+                                                            select2: {dropdownParent: $('#schedule-builder-div'), allowClear: true, placeholder: 'Set a time zone to send report'}">
                         </select>
                     </div>
                 </div>
@@ -806,7 +806,7 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-md-5 control-label">Pick Data Format</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-control" data-bind="options: $parents[1].fieldFormatTypes, value: fieldFormat"></select>
+                            <select class="form-select" data-bind="options: $parents[1].fieldFormatTypes, value: fieldFormat"></select>
                         </div>
                     </div>
                     <div class="form-group row" data-bind="visible: $parents[1].decimalFormatTypes.indexOf($data.fieldFormat())>=0">
@@ -818,13 +818,13 @@
                      <div class="form-group row" data-bind="visible: fieldFormat()=='Currency'">
                         <label class="col-sm-5 col-md-5 control-label">Pick Currency Format</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-control" required data-bind="options: $parents[1].currencyFormats, optionsText: 'display',optionsValue: 'value', value: currencyFormat"></select>
+                            <select class="form-select" required data-bind="options: $parents[1].currencyFormats, optionsText: 'display',optionsValue: 'value', value: currencyFormat"></select>
                         </div>
                     </div>
                       <div class="form-group row" data-bind="visible: fieldFormat()=='Date'">
                         <label class="col-sm-5 col-md-5 control-label">Pick Date Format</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-control" data-bind="options: $parents[1].dateFormats, value: dateFormat"></select>
+                            <select class="form-select" data-bind="options: $parents[1].dateFormats, value: dateFormat"></select>
                         </div>
                     </div>
                        <div class="form-group row" data-bind="visible: dateFormat()==='Custom'">
@@ -848,7 +848,7 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-md-5 control-label">Choose Text Alignment</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-control" data-bind="options: $parents[1].fieldAlignments, value: fieldAlign"></select>
+                            <select class="form-select" data-bind="options: $parents[1].fieldAlignments, value: fieldAlign"></select>
                         </div>
                     </div>
                     <div class="form-group row">
@@ -997,7 +997,7 @@
                             <div class="col-md-4">
                                 <div data-bind="with: Field">
                                     <div class="form-group">
-                                        <select class="form-control" style="width: 100%;" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
+                                        <select class="form-select" style="width: 100%;" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
                                     </div>
                                 </div>
                             </div>
@@ -1039,14 +1039,14 @@
                 <div class="form-group row">
                     <label class="col-sm-5 col-md-5 control-label">This field will link to</label>
                     <div class="col-sm-7 col-md-7">
-                        <select class="form-control" required data-bind="options: linkTypes, value: selectedLinkType"></select>
+                        <select class="form-select" required data-bind="options: linkTypes, value: selectedLinkType"></select>
                     </div>
                 </div>
                 <div data-bind="if: LinksToReport">
                     <div class="form-group row">
                         <label class="col-sm-5 col-md-5 control-label">Link to this Report</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-control" required data-bind="options: $parentContext.$parent.SavedReports, optionsText: 'reportName', optionsValue: 'reportId', value: LinkedToReportId, optionsCaption: 'Choose the Report to link to'"></select>
+                            <select class="form-select" required data-bind="options: $parentContext.$parent.SavedReports, optionsText: 'reportName', optionsValue: 'reportId', value: LinkedToReportId, optionsCaption: 'Choose the Report to link to'"></select>
                         </div>
                     </div>
                     <div class="checkbox" data-bind="if: LinkedToReportId">
@@ -1058,7 +1058,7 @@
                     <div class="form-group row" data-bind="if: SendAsFilterParameter">
                         <label class="col-sm-5 col-md-5 control-label">Link to this Report Filter</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-control" required data-bind="options: allFields, optionsText: 'fieldName', optionsValue: 'fieldId', value: SelectedFilterId, optionsCaption: 'Choose the Field to Filter by value'"></select>
+                            <select class="form-select" required data-bind="options: allFields, optionsText: 'fieldName', optionsValue: 'fieldId', value: SelectedFilterId, optionsCaption: 'Choose the Field to Filter by value'"></select>
                         </div>
                     </div>
                 </div>
@@ -1166,7 +1166,7 @@
                     </div>
                 </div>
                 <br />
-                <div class="card card-body">
+                <div class="card card-body" id="choose-data-card">
                     <h5><span class="fa fa-database"></span>&nbsp;Choose Data for Report</h5>
                     <div>
                         <div class="pull-left" role="group" data-bind="if: ReportID() <= 0">
@@ -1186,16 +1186,16 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div data-bind="visible: useStoredProc">
-                            <select class="form-control" data-bind="select2Value: {}, options: Procs, optionsCaption: 'Choose Section...', optionsText: 'DisplayName', value: SelectedProc, visible: useStoredProc"></select>
+                            <select class="form-control" data-bind="select2Value: {dropdownParent: $('#choose-data-card')}, options: Procs, optionsCaption: 'Choose Section...', optionsText: 'DisplayName', value: SelectedProc, visible: useStoredProc"></select>
                             </div>
                             <div data-bind="hidden: useStoredProc">
-                            <select class="form-control" data-bind="select2Value: {}, options: Tables, optionsCaption: 'Choose Section...', optionsText: 'tableName', value: SelectedTable, hidden: useStoredProc"></select>
+                            <select class="form-control" data-bind="select2Value: {dropdownParent: $('#choose-data-card')}, options: Tables, optionsCaption: 'Choose Section...', optionsText: 'tableName', value: SelectedTable, hidden: useStoredProc"></select>
                             </div>
                         </div>
 
                         <div class="col-md-6" data-bind="disable: isFormulaField, hidden: useStoredProc">
                             <div data-bind="with: textQuery.searchFields">
-                                <select id="search-field" class="form-control" data-bind="select2: {placeholder: 'Or Search for a Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults, headers: headers }, minimumInputLength: 2, allowClear: true }, value: selectedOption"></select>
+                                <select id="search-field" class="form-control" data-bind="select2: {dropdownParent: $('#choose-data-card'), placeholder: 'Or Search for a Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults, headers: headers }, minimumInputLength: 2, allowClear: true }, value: selectedOption"></select>
                             </div>
                         </div>
 
@@ -1250,7 +1250,7 @@
                                 <div class="form-group row">
                                     <label class="col-sm-2 control-label">Data Format</label>
                                     <div class="col-sm-10">
-                                        <select class="form-control form-control-sm" data-bind="value: formulaDataFormat" required>
+                                        <select class="form-select form-control-sm" data-bind="value: formulaDataFormat" required>
                                             <option>String</option>
                                             <option>Integer</option>
                                             <option>Decimal</option>
@@ -1297,7 +1297,7 @@
 
                                                 </label>
                                                 <div class="col-sm-6" >
-                                                    <select class="form-control" data-bind="required: Required, options: $parentContext.$parent.ChooseFields, optionsText: 'fieldName', value: selectedField, optionsCaption: 'Pick a field...'"></select>
+                                                    <select class="form-select" data-bind="required: Required, options: $parentContext.$parent.ChooseFields, optionsText: 'fieldName', value: selectedField, optionsCaption: 'Pick a field...'"></select>
                                                 </div>
                                             </div>
                                             <!-- /ko -->
@@ -1379,7 +1379,7 @@
                                 <div class="form-group row">
                                     <label class="col-sm-2 control-label">Data Format</label>
                                     <div class="col-sm-10">
-                                        <select class="form-control form-control-sm" data-bind="value: formulaDataFormat" required>
+                                        <select class="form-select form-control-sm" data-bind="value: formulaDataFormat" required>
                                             <!-- ko ifnot: formulaOnlyHasDateFields -->
                                             <option>String</option>
                                             <option>Integer</option>
@@ -1478,7 +1478,7 @@
                                 <div class="form-group row">
                                     <label class="col-sm-2 control-label">Map Display</label>
                                     <div class="col-sm-4">
-                                        <select class="form-control form-control-sm" data-bind="options: $parent.mapRegions, value: mapRegion"></select>
+                                        <select class="form-select form-control-sm" data-bind="options: $parent.mapRegions, value: mapRegion"></select>
                                     </div>
                                 </div>
                             </div>
@@ -1498,7 +1498,7 @@
                                         </div>
                                         <div class="col">
                                             <div class="pull-right" style="margin-top: -5px;" data-bind="if: $parent.AggregateReport() && !$parent.useStoredProc()">
-                                                <select class="form-control form-control-sm" data-bind="options: $parent.canDrilldown() && $index()>0 ? fieldAggregateWithDrilldown : fieldAggregate, value: selectedAggregate"></select>
+                                                <select class="form-select form-control-sm" data-bind="options: $parent.canDrilldown() && $index()>0 ? fieldAggregateWithDrilldown : fieldAggregate, value: selectedAggregate"></select>
                                             </div>
                                             
                                             <div class="pull-right" style="padding-right: 15px;" data-bind="ifnot: $parent.useStoredProc">
@@ -1599,7 +1599,7 @@
                         <div class="form-group row">
                             <label class="col-sm-2 control-label">Sort By</label>
                             <div class="col-sm-6">
-                                <select class="form-control" required data-bind="options: SelectedFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: SortByField"></select>
+                                <select class="form-select" required data-bind="options: SelectedFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: SortByField"></select>
                             </div>
                             <div class="col-sm-2">
                                 <button class="btn btn-sm btn-secondary" data-bind="text: !SortDesc() ? '▲ Sort Ascending' : 'Sort Descending ▼', click: function() { SortDesc(!SortDesc()); return false; }"></button>
@@ -1612,7 +1612,7 @@
                             <div class="form-group row">
                                 <label class="col-sm-2 control-label">&nbsp;&nbsp;Then Sort By</label>
                                 <div class="col-sm-4">
-                                    <select class="form-control" required data-bind="options: $parent.SelectedFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: sortByFieldId"></select>
+                                    <select class="form-select" required data-bind="options: $parent.SelectedFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: sortByFieldId"></select>
                                 </div>
                                 <div class="col-sm-2">
                                     <button class="btn btn-sm btn-secondary" data-bind="click: remove">Remove Sort Field</button>
@@ -1642,7 +1642,7 @@
                     <div class="form-group row" data-bind="visible: SaveReport">
                         <label class="col-sm-2 control-label">Choose Folder</label>
                         <div class="col-sm-10">
-                            <select class="form-control" style="width: 100%;" data-bind="options: Folders, optionsText: 'FolderName', optionsValue: 'Id', value: FolderID"></select>
+                            <select class="form-select" style="width: 100%;" data-bind="options: Folders, optionsText: 'FolderName', optionsValue: 'Id', value: FolderID"></select>
                         </div>
                     </div>
                 </div>
@@ -1694,7 +1694,7 @@
                                     </label>
                                 </div>
                                 <div class="col-md-6" data-bind="visible: changePageSize">
-                                    <select style="width: 150px;" class="form-control" data-bind="options: [10,30,50,100,150,200,500], value: DefaultPageSize"></select>
+                                    <select style="width: 150px;" class="form-select" data-bind="options: [10,30,50,100,150,200,500], value: DefaultPageSize"></select>
                                 </div>
                             </div>
                         </div>
