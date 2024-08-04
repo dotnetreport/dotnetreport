@@ -1587,6 +1587,7 @@ var reportViewModel = function (options) {
 			}
 
 			e.Field = {
+				fieldId: e.Id,
 				hasForeignKey: e.ForeignKey,
 				fieldType: e.ParameterDataTypeString,
 				hasForeignParentKey: false,
