@@ -175,6 +175,12 @@ namespace ReportBuilder.Web.Controllers
             public string reportData { get; set; }
         }
 
+        public class SqlQuery
+        {
+            public string sql { get; set; } = "";
+            public List<KeyValuePair<string, string>> parameters { get; set; } = null;
+        }
+
         [HttpPost]
         public async Task<IActionResult> RunReport(RunReportParameters data)
         {
@@ -193,6 +199,7 @@ namespace ReportBuilder.Web.Controllers
             var sql = "";
             var sqlCount = "";
             int totalRecords = 0;
+            var qry = new SqlQuery();
 
             try
             {
@@ -209,6 +216,11 @@ namespace ReportBuilder.Web.Controllers
                 for (int i = 0; i < allSqls.Length; i++)
                 {
                     sql = DotNetReportHelper.Decrypt(HttpUtility.HtmlDecode(allSqls[i]));
+                    if (sql.StartsWith("{\"sql\""))
+                    {
+                        qry = JsonSerializer.Deserialize<SqlQuery>(sql);
+                        sql = qry.sql;
+                    }
                     if (!sql.StartsWith("EXEC"))
                     {
                         var fromIndex = DotNetReportHelper.FindFromIndex(sql);
@@ -249,8 +261,8 @@ namespace ReportBuilder.Web.Controllers
 
                     var dtPagedRun = new DataTable();
 
-                    totalRecords = databaseConnection.GetTotalRecords(connectionString, sqlCount, sql);
-                    dtPagedRun = databaseConnection.ExecuteQuery(connectionString, sql);
+                    totalRecords = databaseConnection.GetTotalRecords(connectionString, sqlCount, sql, qry.parameters);
+                    dtPagedRun = databaseConnection.ExecuteQuery(connectionString, sql, qry.parameters);
 
                     dtPagedRun = await DotNetReportHelper.ExecuteCustomFunction(dtPagedRun, sql);
 
