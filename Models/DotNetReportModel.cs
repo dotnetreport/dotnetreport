@@ -2701,6 +2701,11 @@ namespace ReportBuilder.Web.Models
                     {
                         if (parameters != null)
                         {
+                            if (sql.StartsWith("EXEC "))
+                            {
+                                command.CommandText = sql.Replace("EXEC ", "");
+                                command.CommandType = CommandType.StoredProcedure;
+                            }
                             parameters.ForEach(x => command.Parameters.Add(new SqlParameter(x.Key, x.Value)));
                         }
                         using (SqlDataAdapter adapter = new SqlDataAdapter(command))
