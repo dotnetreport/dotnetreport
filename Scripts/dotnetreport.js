@@ -2634,6 +2634,8 @@ var reportViewModel = function (options) {
 									self.downloadExcelWithDrilldown(); break;
 								case 'export-csv':
 									self.downloadCsv(); break;
+								case 'export-json':
+									self.downloadJson(); break;
 							}
 
 							self.ReportMode('start');
@@ -4490,7 +4492,18 @@ var reportViewModel = function (options) {
 			includeSubTotal: self.IncludeSubTotal()
 		}, 'csv');
 	}
-
+	self.downloadJson = function () {
+		var reportData = self.BuildReportData();
+		var jsonBlob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
+		var url = URL.createObjectURL(jsonBlob);
+		var a = document.createElement('a');
+		a.href = url;
+		a.download = self.ReportName();
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		window.URL.revokeObjectURL(url);
+	};
 	self.downloadXml = function () {
 		self.downloadExport("DownloadXml", {
 			reportSql: self.currentSql(),
