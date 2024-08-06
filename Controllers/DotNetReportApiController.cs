@@ -60,8 +60,13 @@ namespace ReportBuilder.Web.Controllers
         {
             string lookupSql = model.lookupSql;
             string connectKey = model.connectKey;
-
+            var qry = new SqlQuery();
             var sql = DotNetReportHelper.Decrypt(lookupSql);
+            if (sql.StartsWith("{\"sql\""))
+            {
+                qry = JsonSerializer.Deserialize<SqlQuery>(sql);
+                sql = qry.sql;
+            }
 
             // Uncomment if you want to restrict max records returned
             sql = sql.Replace("SELECT ", "SELECT TOP 500 ");
@@ -72,7 +77,7 @@ namespace ReportBuilder.Web.Controllers
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
 
-            dt = databaseConnection.ExecuteQuery(connectionString, sql);
+            dt = databaseConnection.ExecuteQuery(connectionString, sql, qry.parameters);
 
             var data = new List<object>();
             foreach (DataRow dr in dt.Rows)
@@ -529,6 +534,9 @@ namespace ReportBuilder.Web.Controllers
                     Selected = true
                 };
 
+                if (string.IsNullOrEmpty(data.value) || !data.value.StartsWith("SELECT ")) {
+                    throw new Exception("Invalid SQL");
+                }
                 table.CustomTableSql = data.value;
 
                 var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(data.dataConnectKey));
@@ -693,8 +701,17 @@ namespace ReportBuilder.Web.Controllers
         [HttpPost]
         public async Task<IActionResult> SearchProcedure([FromBody] SearchProcCall data)
         {
-            string value = data.value; string accountKey = data.accountKey; string dataConnectKey = data.dataConnectKey;
-            return new JsonResult(await GetSearchProcedure(value, accountKey, dataConnectKey), new JsonSerializerOptions() { PropertyNamingPolicy = null });
+            try
+            {
+                string value = data.value; string accountKey = data.accountKey; string dataConnectKey = data.dataConnectKey;
+                return new JsonResult(await GetSearchProcedure(value, accountKey, dataConnectKey), new JsonSerializerOptions() { PropertyNamingPolicy = null });
+            }
+            catch (Exception ex)
+
+            {
+                Response.StatusCode = 500;
+                return new JsonResult(new { ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+            }
         }
 
         private async Task<List<TableViewModel>> GetSearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
@@ -705,12 +722,18 @@ namespace ReportBuilder.Web.Controllers
             {
                 // open the connection to the database 
                 conn.Open();
-                string spQuery = "SELECT ROUTINE_NAME, ROUTINE_DEFINITION, ROUTINE_SCHEMA FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_NAME LIKE '%" + value + "%' AND ROUTINE_TYPE = 'PROCEDURE'";
+                string spQuery = "SELECT ROUTINE_NAME, ROUTINE_DEFINITION, ROUTINE_SCHEMA FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_NAME LIKE ? AND ROUTINE_TYPE = 'PROCEDURE'";
                 OleDbCommand cmd = new OleDbCommand(spQuery, conn);
                 cmd.CommandType = CommandType.Text;
+                cmd.Parameters.Add(new OleDbParameter("?", $"%{value}%"));
                 DataTable dtProcedures = new DataTable();
                 dtProcedures.Load(cmd.ExecuteReader());
                 int count = 1;
+
+                if (dtProcedures.Rows.Count == 0)
+                {
+                    throw new Exception($"No stored procs found matching {value}");
+                }
                 foreach (DataRow dr in dtProcedures.Rows)
                 {
                     var procName = dr["ROUTINE_NAME"].ToString();
