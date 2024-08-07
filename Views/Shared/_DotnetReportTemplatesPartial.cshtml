@@ -89,9 +89,9 @@
     <div class="pager-container d-flex flex-row align-items-center flex-wrap">
         <a href="" title="first" data-bind="click: first, enable: !isFirstPage()"><i class="fa fa-backward report-pager-btn" style="font-size: 18px;"></i></a>&nbsp;
         <a href="" title="previous" data-bind="click: previous, enable: !isFirstPage()"><i class="fa fa-caret-left fa-2x report-pager-btn"></i></a>
-        <select class="form-control form-control-sm" data-bind="options: [10,30,50,100,150,200,500], value: pageSize" style="width:auto"></select>
+        <select class="form-select form-control-sm" data-bind="options: [10,30,50,100,150,200,500], value: pageSize" style="width:auto"></select>
         <span class="pager-pageinfo d-flex flex-row align-items-center flex-wrap">
-            <span>Page</span>&nbsp;
+            <span>&nbsp;Page</span>&nbsp;
             <input type="number" min="1" pattern="[0-9]*" class="form-control form-control-sm text-center" style="width:auto" data-bind="
                                 value: currentPage,
                                 attr: { max: pages() }" />&nbsp;
@@ -1177,7 +1177,7 @@
                         </div>
                         <div class="pull-right">
                             <a href="#" class="btn btn-sm" title="Add Custom Field using Formula" data-bind="hidden: isFunctionField() || useStoredProc(), click: function(){isFormulaField(!isFormulaField())}, text: isFormulaField()? 'Cancel': 'Custom Field', css: {'btn-primary': !isFormulaField(), 'btn-danger': isFormulaField}"></a>
-                            <a href="#" class="btn btn-sm" title="Add Custom Field using Function" data-bind="hidden: true || isFormulaField() || useStoredProc(), click: function(){designFunctionField()}, text: isFunctionField()? 'Cancel': 'Function Field', css: {'btn-primary': !isFunctionField(), 'btn-danger': isFunctionField}"></a>
+                            <a href="#" class="btn btn-sm" title="Add Custom Field using Function" data-bind="hidden: isFormulaField() || useStoredProc(), click: function(){designFunctionField()}, text: isFunctionField()? 'Cancel': 'Function Field', css: {'btn-primary': !isFunctionField(), 'btn-danger': isFunctionField}"></a>
                         </div>
                     </div>
                     <div class="clearfix"></div>
@@ -1275,7 +1275,7 @@
                                     <label class="col-sm-2 control-label">Select Function</label>
                                     <div class="col-sm-10" >
                                         <div data-bind="with: textQuery.searchFunctions">
-                                            <select id="search-function" class="form-control" data-bind="select2: {placeholder: 'Search for a Function...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults, headers: headers}, templateResult: templateResult, minimumInputLength: 2, allowClear: true }, select2Value: selectedOption"></select>
+                                            <select id="search-function" class="form-control" data-bind="select2: {placeholder: 'Search for a Function...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults, headers: headers}, templateResult: templateResult, minimumInputLength: 2, allowClear: true }, select2Value: {value: selectedOption}"></select>
                                         </div>
                                     </div>
                                 </div>
@@ -1597,7 +1597,7 @@
                         <div class="form-group row">
                             <label class="col-sm-2 control-label">Sort By</label>
                             <div class="col-sm-6">
-                                <select class="form-select" required data-bind="options: SelectedFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: SortByField"></select>
+                                <select class="form-select" data-bind="options: SelectedFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: SortByField, optionsCaption: 'Select field to sort...', allowClear: true"></select>
                             </div>
                             <div class="col-sm-2">
                                 <button class="btn btn-sm btn-secondary" data-bind="text: !SortDesc() ? '▲ Sort Ascending' : 'Sort Descending ▼', click: function() { SortDesc(!SortDesc()); return false; }"></button>
