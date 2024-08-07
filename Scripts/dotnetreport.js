@@ -2710,7 +2710,6 @@ var reportViewModel = function (options) {
 						if (saveOnly) {
 							return;
 						}
-
 						if (self.ReportMode().indexOf('export-') == 0) {
 
 							self.ReportID(_result.reportId);
@@ -2734,7 +2733,7 @@ var reportViewModel = function (options) {
 							self.ReportMode('start');
 							return;
 						}
-
+						self.LoadAllSavedReports(true);
 				if (options.samePageOnRun || dashboardRun) {
 					self.ReportID(_result.reportId);
 					self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, _.map(self.AdditionalSeries(), function (e, i) {
