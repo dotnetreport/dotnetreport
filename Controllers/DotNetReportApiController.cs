@@ -55,6 +55,7 @@ namespace ReportBuilder.Web.Controllers
             public string connectKey { get; set; }
         }
 
+        [ValidateAntiForgeryToken]
         [HttpPost]
         public IActionResult GetLookupList(GetLookupListParameters model)
         {
@@ -109,6 +110,7 @@ namespace ReportBuilder.Web.Controllers
             return await ExecuteCallReportApi(method, model, settings);
         }
 
+        [ValidateAntiForgeryToken]
         [HttpPost]
         public async Task<IActionResult> PostReportApi(PostReportApiCallMode data)
         {
@@ -116,6 +118,7 @@ namespace ReportBuilder.Web.Controllers
             return await CallReportApi(method, JsonSerializer.Serialize(data));
         }
 
+        [ValidateAntiForgeryToken]
         [HttpPost]
         public async Task<IActionResult> RunReportApi(DotNetReportApiCall data)
         {
@@ -186,6 +189,7 @@ namespace ReportBuilder.Web.Controllers
             public List<KeyValuePair<string, string>> parameters { get; set; } = null;
         }
 
+        [ValidateAntiForgeryToken]
         [HttpPost]
         public async Task<IActionResult> RunReport(RunReportParameters data)
         {
@@ -521,6 +525,7 @@ namespace ReportBuilder.Web.Controllers
             });
         }
 
+        [ValidateAntiForgeryToken]
         [HttpPost]
         public async Task<IActionResult> GetSchemaFromSql([FromBody] SchemaFromSqlCall data)
         {
@@ -698,6 +703,7 @@ namespace ReportBuilder.Web.Controllers
         {
         }
 
+        [ValidateAntiForgeryToken]
         [HttpPost]
         public async Task<IActionResult> SearchProcedure([FromBody] SearchProcCall data)
         {

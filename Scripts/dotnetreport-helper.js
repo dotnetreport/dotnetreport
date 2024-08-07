@@ -13,6 +13,12 @@ function ajaxcall(options) {
     var headers = new Headers();
     headers.append('Authorization', 'Bearer ' + token);
 
+    var validationToken = $('input[name="__RequestVerificationToken"]').val();
+    if (options.type == 'POST' && validationToken) {
+        options.headers = options.headers || {};
+        options.headers['RequestVerificationToken'] = validationToken;
+    }
+
     if (options.success) {
         options.beforeSend = function (x) {
             if (token && !options.url.startsWith("https://dotnetreport.com")) {
