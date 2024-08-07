@@ -1401,6 +1401,99 @@ var reportViewModel = function (options) {
 		}
 	};
 
+	self.ManageJsonFile = {
+		file: ko.observable(null),
+		fileName: ko.observable(''),
+		triggerFileInput: function () {
+			$('#fileInputJson').click();
+		},
+		handleFileSelect: function (data, event) {
+			var selectedFile = event.target.files[0];
+			if (selectedFile && (selectedFile.type === "application/json" || selectedFile.name.endsWith('.json'))) {
+				self.ManageJsonFile.file(selectedFile);
+				self.ManageJsonFile.fileName(selectedFile.name);
+			} else {
+				self.ManageJsonFile.file(null);
+				self.ManageJsonFile.fileName('');
+				toastr.error('Only JSON files are allowed.');
+			}
+		},
+		uploadFile: function () {
+			debugger
+			var file = self.ManageJsonFile.file();
+			if (file != null) {
+				debugger
+				var reader = new FileReader();
+				reader.onload = function (event) {
+					try {
+						var report = JSON.parse(event.target.result);
+						var reportName = report.ReportName;
+						var reportId = report.ReportID;
+						var reportExists = _.some(self.SavedReports(), function (report) {
+							return report.reportName === reportName && report.reportId === reportId;
+						});
+						if (reportExists) {
+							handleOverwriteConfirmation(reportName, function (action) {
+								if (action === 'overwrite') {
+									self.RunReport(true, true, false, report);
+								} else if (action === 'duplicate') {
+									report.ReportID = 0;
+									report.ReportName = `Copy of ${reportName}`;
+									self.RunReport(true, true, false, report);
+								} else {
+									toastr.info('Upload canceled.');
+								}
+							});
+							$('#uploadFileModal').modal('hide');
+						} else {
+							report.ReportID = 0;
+							self.RunReport(true, true, false, report);
+							$('#uploadFileModal').modal('hide');
+						}
+						self.ManageJsonFile.file(null);
+						self.ManageJsonFile.fileName('');
+					} catch (e) {
+						toastr.error('Invalid JSON file.'+ e);
+					}
+				};
+				reader.onerror = function (event) {
+					toastr.error('Error reading file.');
+				};
+				reader.readAsText(file); // Read the file as text
+				function handleOverwriteConfirmation(reportName, callback) {
+					bootbox.dialog({
+						title: "Confirm Action",
+						message: `A report with the name "${reportName}" already exists. What would you like to do?`,
+						buttons: {
+							cancel: {
+								label: 'Cancel',
+								className: 'btn-secondary',
+								callback: function () {
+									callback('cancel');
+								}
+							},
+							duplicate: {
+								label: 'Make Copy',
+								className: 'btn-warning',
+								callback: function () {
+									callback('duplicate');
+								}
+							},
+							overwrite: {
+								label: 'Overwrite',
+								className: 'btn-primary',
+								callback: function () {
+									callback('overwrite');
+								}
+							}
+						}
+					});
+				}
+			} else {
+				toastr.error('No JSON file selected for upload.');
+			}
+		}
+	}; 
 	self.reportsInFolder = ko.computed(function () {
 		if (self.SelectedFolder() == null) {
 			return [];
@@ -2535,7 +2628,7 @@ var reportViewModel = function (options) {
 		self.RunReport(false);
 	}
 
-	self.RunReport = function (saveOnly, skipValidation, dashboardRun) {
+	self.RunReport = function (saveOnly, skipValidation, dashboardRun,importJson) {
 
 		saveOnly = saveOnly === true ? true : false;
 		skipValidation = skipValidation === true ? true : false;
@@ -2576,7 +2669,7 @@ var reportViewModel = function (options) {
 						data: JSON.stringify({
 							method: "/ReportApi/RunReport",
 							SaveReport: self.CanSaveReports() && !isComparison ? (saveOnly || self.SaveReport()) : false,
-							ReportJson: JSON.stringify(self.BuildReportData([], isComparison, i - 1)),
+							ReportJson: importJson ? JSON.stringify(importJson) : JSON.stringify(self.BuildReportData([], isComparison, i - 1)),
 							adminMode: self.adminMode(),
 							userIdForFilter: self.userIdForFilter,
 							SubTotalMode: false
