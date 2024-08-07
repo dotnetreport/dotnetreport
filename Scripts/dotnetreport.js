@@ -1185,9 +1185,9 @@ var reportViewModel = function (options) {
 		});
 	}
 
-	self.resetQuery = function (resetText = true) {
+	self.resetQuery = function (resetText = true, searchReportFlag = false) {
 		if (resetText !== false) {
-			self.textQuery.resetQuery();
+			self.textQuery.resetQuery(searchReportFlag);
 		}
 		self.ReportResult().ReportData(null);
 		self.ReportResult().HasError(false);
@@ -1465,6 +1465,10 @@ var reportViewModel = function (options) {
 	});
 
 	self.reportsInSearch = ko.observableArray([]);
+
+	self.searchForReports = function () {
+		self.searchReports($('#query-input').text());
+	}
 
 	self.searchReports.subscribe(function (x) {
 		if (x) {

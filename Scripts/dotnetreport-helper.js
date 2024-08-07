@@ -25,7 +25,7 @@ function ajaxcall(options) {
     return $.ajax({
         url: options.url,
         type: options.type || "GET",
-        data: options.data,
+        data: options.data, 
         cache: options.cache || false,
         dataType: options.dataType || "json",
         contentType: options.contentType || "application/json; charset=utf-8",
@@ -479,10 +479,10 @@ var textQuery = function (options) {
         return (_.find(self.queryItems, { type: 'Function' })) ? 'Summary' : 'List';
     }
 
-    self.resetQuery = function () {
+    self.resetQuery = function (searchReportFlag) {
         self.queryItems = [];
         self.filterItems = [];
-        document.getElementById("query-input").innerHTML = "Show me&nbsp;";
+        document.getElementById("query-input").innerHTML = searchReportFlag === true ? '' : "Show me&nbsp;";
     }
 
     var tokenKey = '';
@@ -601,7 +601,7 @@ var textQuery = function (options) {
         return containsFilter;
     }
 
-    self.setupQuery = function () {
+    self.setupQuery = function (searchReportFlag) {
         var tributeAttributes = {
             allowSpaces: true,
             autocompleteMode: true,
@@ -620,10 +620,12 @@ var textQuery = function (options) {
                         return { value: x.fieldId, key: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey, searchKey: x.tableDisplay + ' > ' + x.fieldDisplay };
                     });
 
-                    if (self.usingFilter() && self.filterField != null) {
-                        items = items.concat(self.FilterMethods);
-                    } else {
-                        items = items.concat(self.QueryMethods);
+                    if (searchReportFlag !== true) {
+                        if (self.usingFilter() && self.filterField != null) {
+                            items = items.concat(self.FilterMethods);
+                        } else {
+                            items = items.concat(self.QueryMethods);
+                        }
                     }
                     callback(items);
                 });

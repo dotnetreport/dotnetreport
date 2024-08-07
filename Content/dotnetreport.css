@@ -539,8 +539,14 @@ select.is-invalid ~ span .select2-selection {
     min-height: 64px;
     cursor: text;
 }
-
     .query-input a {
+        background-color: transparent;
+        color: #2ba6cb !important;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .search-input a {
         background-color: transparent;
         color: #2ba6cb !important;
         text-decoration: none;
