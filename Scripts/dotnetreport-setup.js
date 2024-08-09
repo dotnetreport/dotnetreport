@@ -271,7 +271,16 @@ var manageViewModel = function (options) {
 
 		return false;
 	}
-
+	self.exportProcedureJson = function (procName) {
+		var proc = _.find(self.Procedures.savedProcedures(), function (e) {
+			return e.TableName === procName;
+		});
+		var e = ko.mapping.toJS(proc, {
+			'ignore': ["dataTable", "deleteTable", "JoinTable"]
+		});
+		var exportJson = JSON.stringify(e, null, 2)
+		downloadJson(exportJson, e.TableName + ' Procedure' +'.json', 'application/json');
+	}
 	self.saveProcedure = function (procName, adding) {
 		var proc = _.find(adding === true ? self.foundProcedures() : self.Procedures.savedProcedures(), function (e) {
 			return e.TableName === procName;
@@ -358,7 +367,11 @@ var manageViewModel = function (options) {
 
 		return joinsToSave;
 	}
-
+	self.ExportJoins = function () {
+		var joinsToSave = self.getJoinsToSave();
+		var exportJson = JSON.stringify(joinsToSave, null, 2)
+		downloadJson(exportJson, 'Relations' + '.json', 'application/json');
+	}
 	self.SaveJoins = function () {
 
 		var joinsToSave = self.getJoinsToSave();
@@ -657,7 +670,9 @@ var tablesViewModel = function (options) {
 		}
 
 		t.exportTableJson = function () {
-			var e = ko.mapping.toJS(t);
+			var e = ko.mapping.toJS(t, {
+				'ignore': ["saveTable", "JoinTable", "ForeignJoinTable"]
+			});
 			var exportJson = JSON.stringify(e, null,2)
 			downloadJson(exportJson, e.TableName + (e.IsView ? ' (View)' : '') + '.json', 'application/json');
 		}

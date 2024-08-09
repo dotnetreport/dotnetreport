@@ -254,6 +254,7 @@
             </p>
             <button class="btn btn-sm btn-primary" data-bind="click: AddJoin">Add new Join</button>&nbsp;
             <button class="btn btn-sm btn-primary" data-bind="click: SaveJoins">Save Joins</button>
+            <button class="btn btn-sm btn-primary" data-bind="click: ExportJoins">Export Joins</button>
             <br />
             <br />
             <form id="form-joins">
@@ -340,7 +341,7 @@
             <div data-bind="if: Procedures.savedProcedures().length == 0">
                 No Stored Procedures have been setup yet.
             </div>
-            <div class="menu row" data-bind="foreach: Procedures.savedProcedures" style="margin-left: 20px; padding-top: 20px;">
+            <div class="menu g-3" data-bind="foreach: Procedures.savedProcedures" style="margin-left: 20px; padding-top: 20px;">
                 <div class="menu-category card" style="float: left;">
 
                     <div class="card-header clearfix" style="">
@@ -355,6 +356,9 @@
                             </button>
                             <button class="btn btn-sm" title="Manage Role Access" data-bs-toggle="modal" data-bs-target="#role-access-modal" data-bind="click: $root.selectAllowedRoles">
                                 <i class="fa fa-user"></i>
+                            </button>
+                            <button class="btn btn-sm" title="Export this Procedure" data-bind="click: function(){$root.exportProcedureJson($data.TableName);}">
+                                <i class="fa fa-file"></i>
                             </button>
                             <button class="btn btn-sm" title="Delete this Procedure" data-bind="click: function(){$data.deleteTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}">
                                 <span class="fa fa-trash"></span>
