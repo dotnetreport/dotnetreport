@@ -468,6 +468,92 @@ var manageViewModel = function (options) {
 
 	}
 
+	self.ManageTablesJsonFile = {
+		file: ko.observable(null),
+		fileName: ko.observable(''),
+		triggerTablesFileInput: function () {
+			$('#tablesFileInputJson').click();
+		},
+		handleTablesFileSelect: function (data, event) {
+			var selectedFile = event.target.files[0];
+			if (selectedFile && (selectedFile.type === "application/json" || selectedFile.name.endsWith('.json'))) {
+				self.ManageTablesJsonFile.file(selectedFile);
+				self.ManageTablesJsonFile.fileName(selectedFile.name);
+			} else {
+				self.ManageTablesJsonFile.file(null);
+				self.ManageTablesJsonFile.fileName('');
+				toastr.error('Only JSON files are allowed.');
+			}
+		},
+		uploadTablesFile: function () {
+			var file = self.ManageTablesJsonFile.file();
+			if (file != null) {
+				var reader = new FileReader();
+				reader.onload = function (event) {
+					try {
+						var table = JSON.parse(event.target.result);
+						var tableName = table.TableName;
+						var tableId = table.Id;
+						var tableMatch = _.some(self.Tables.model(), function (table) {
+							return table.TableName() === tableName && table.Id() === tableId;
+						});
+						if (tableMatch) {
+							handleOverwriteConfirmation(tableName, function (action) {
+								if (action === 'overwrite') {
+									var t = ko.mapping.fromJS(table);
+									self.Tables.model.push(self.Tables.processTable(t));
+									var newTable = self.Tables.model()[self.Tables.model().length - 1];
+									newTable.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey, table);
+								}else {
+									toastr.info('Upload canceled.');
+								}
+							});
+							$('#uploadTablesFileModal').modal('hide');
+						} else {
+							table.Id = 0;
+							var t = ko.mapping.fromJS(table);
+							self.Tables.model.push(self.Tables.processTable(t));
+							var newTable = self.Tables.model()[self.Tables.model().length - 1];
+							newTable.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey, table);
+							$('#uploadTablesFileModal').modal('hide');
+						}
+						self.ManageTablesJsonFile.file(null);
+						self.ManageTablesJsonFile.fileName('');
+					} catch (e) {
+						toastr.error('Invalid JSON file.' + e);
+					}
+				};
+				reader.onerror = function (event) {
+					toastr.error('Error reading file.');
+				};
+				reader.readAsText(file); // Read the file as text
+				function handleOverwriteConfirmation(tableName, callback) {
+					bootbox.dialog({
+						title: "Confirm Action",
+						message: `A tables/views with the name "${tableName}" already exists. What would you like to do?`,
+						buttons: {
+							cancel: {
+								label: 'Cancel',
+								className: 'btn-secondary',
+								callback: function () {
+									callback('cancel');
+								}
+							},
+							overwrite: {
+								label: 'Overwrite',
+								className: 'btn-primary',
+								callback: function () {
+									callback('overwrite');
+								}
+							}
+						}
+					});
+				}
+			} else {
+				toastr.error('No JSON file selected for upload.');
+			}
+		}
+	};
 	self.importStart = function () {
 		self.importingFile(true);
 	}
@@ -569,6 +655,7 @@ var manageViewModel = function (options) {
 			self.reportsAndFolders(setup);
 		});
 	}
+
 
 }
 
@@ -676,7 +763,7 @@ var tablesViewModel = function (options) {
 			var exportJson = JSON.stringify(e, null,2)
 			downloadJson(exportJson, e.TableName + (e.IsView ? ' (View)' : '') + '.json', 'application/json');
 		}
-		t.saveTable = function (apiKey, dbKey) {
+		t.saveTable = function (apiKey, dbKey,jsonTable) {
 			var e = ko.mapping.toJS(t, {
 				'ignore': ["saveTable", "JoinTable", "ForeignJoinTable"]
 			});
@@ -713,7 +800,7 @@ var tablesViewModel = function (options) {
 				data: JSON.stringify({
 					account: apiKey,
 					dataConnect: dbKey,
-					table: e
+					table: jsonTable ? jsonTable : e
 				})
 			}).done(function (x) {
 				if (x.success && x.tableId) {

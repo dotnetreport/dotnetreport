@@ -165,6 +165,9 @@
                 <button class="btn btn-sm" data-bind="click: toggleShowAll, hidden: $root.customTableMode() || $root.onlyApi(), text: usedOnly() ? 'Show all' : 'Show used only'">Show used only</button>
                 <button class="btn btn-sm btn-primary" data-bind="click: $root.customSql.addNewCustomSqlTable, visible: $root.customTableMode">Add New Custom Table</button>
                 <button class="btn btn-sm btn-primary" data-bind="click: $root.loadFromDatabase, hidden: $root.customTableMode() || !$root.onlyApi()">Load all Database Tables</button>
+                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadTablesFileModal" aria-haspopup="true" aria-expanded="false">
+                    <span class="fa fa-file"></span> Import Tables/Views Json File
+                </button>
             </div>
             <div class="clearfix"></div>
             <hr />
@@ -1180,6 +1183,33 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" data-bind="click: executeSql">Save changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import Tables/Views Json File Modal -->
+<div class="modal" id="uploadTablesFileModal" tabindex="-1" aria-labelledby="uploadTablesFileModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" data-bind="with: ManageTablesJsonFile">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadTablesFileModalLabel">Import Tables/Views JSON File Upload</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="dropzone" class="dropzone"
+                     data-bind="event: {click: triggerTablesFileInput }"
+                     style="border: 2px dashed #007bff; border-radius: 5px; padding: 30px; text-align: center; color: #007bff; cursor: pointer;">
+                    click to select Json file
+                </div>
+                <input type="file" id="tablesFileInputJson" accept=".json" style="display: none;" data-bind="event: { change: handleTablesFileSelect }">
+                <div data-bind="visible: fileName">
+                    <p>Selected Tables/Views File: <span data-bind="text: fileName"></span></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" data-bind="click: uploadTablesFile">Upload</button>
             </div>
         </div>
     </div>
