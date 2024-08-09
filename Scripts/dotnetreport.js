@@ -1419,10 +1419,8 @@ var reportViewModel = function (options) {
 			}
 		},
 		uploadFile: function () {
-			debugger
 			var file = self.ManageJsonFile.file();
 			if (file != null) {
-				debugger
 				var reader = new FileReader();
 				reader.onload = function (event) {
 					try {
