@@ -656,6 +656,11 @@ var tablesViewModel = function (options) {
 			});
 		}
 
+		t.exportTableJson = function () {
+			var e = ko.mapping.toJS(t);
+			var exportJson = JSON.stringify(e, null,2)
+			downloadJson(exportJson, e.TableName + (e.IsView ? ' (View)' : '') + '.json', 'application/json');
+		}
 		t.saveTable = function (apiKey, dbKey) {
 			var e = ko.mapping.toJS(t, {
 				'ignore': ["saveTable", "JoinTable", "ForeignJoinTable"]

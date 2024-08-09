@@ -69,6 +69,17 @@ function ajaxcall(options) {
     });
 }
 
+function downloadJson(content, fileName, contentType) {
+    var jsonBlob = new Blob([content], { type: contentType });
+    var url = URL.createObjectURL(jsonBlob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
    // knockout binding extenders
 ko.bindingHandlers.datepicker = {
     init: function (element, valueAccessor, allBindingsAccessor) {
