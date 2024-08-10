@@ -281,8 +281,8 @@ var manageViewModel = function (options) {
 		var exportJson = JSON.stringify(e, null, 2)
 		downloadJson(exportJson, e.TableName + ' Procedure' +'.json', 'application/json');
 	}
-	self.saveProcedure = function (procName, adding) {
-		var proc = _.find(adding === true ? self.foundProcedures() : self.Procedures.savedProcedures(), function (e) {
+	self.saveProcedure = function (procName, adding, jsonProcedure) {
+		var proc = jsonProcedure ? jsonProcedure : _.find(adding === true ? self.foundProcedures() : self.Procedures.savedProcedures(), function (e) {
 			return e.TableName === procName;
 		});
 
@@ -294,7 +294,7 @@ var manageViewModel = function (options) {
 			url: options.saveProcUrl,
 			type: 'POST',
 			data: JSON.stringify({
-				model: e,
+				model: jsonProcedure ? jsonProcedure : e,
 				account: self.keys.AccountApiKey,
 				dataConnect: self.keys.DatabaseApiKey
 			})
@@ -356,7 +356,7 @@ var manageViewModel = function (options) {
 		var joinsToSave = $.map(ko.mapping.toJS(self.Joins), function (x) {
 			return {
 				DataConnectionId: x.DataConnectionId,
-				RelationId: x.Id,
+				RelationId: x.Id ? x.Id : x.RelationId,
 				TableId: x.TableId,
 				JoinedTableId: x.JoinedTableId,
 				JoinType: x.JoinType,
@@ -373,7 +373,6 @@ var manageViewModel = function (options) {
 		downloadJson(exportJson, 'Relations' + '.json', 'application/json');
 	}
 	self.SaveJoins = function () {
-
 		var joinsToSave = self.getJoinsToSave();
 
 		ajaxcall({
@@ -554,6 +553,184 @@ var manageViewModel = function (options) {
 			}
 		}
 	};
+	self.ManageJoinsJsonFile = {
+		file: ko.observable(null),
+		fileName: ko.observable(''),
+		triggerJoinsFileInput: function () {
+			$('#joinsFileInputJson').click();
+		},
+		handleJoinsFileSelect: function (data, event) {
+			var selectedFile = event.target.files[0];
+			if (selectedFile && (selectedFile.type === "application/json" || selectedFile.name.endsWith('.json'))) {
+				self.ManageJoinsJsonFile.file(selectedFile);
+				self.ManageJoinsJsonFile.fileName(selectedFile.name);
+			} else {
+				self.ManageJoinsJsonFile.file(null);
+				self.ManageJoinsJsonFile.fileName('');
+				toastr.error('Only JSON files are allowed.');
+			}
+		},
+		uploadJoinsFile: function () {
+			var file = self.ManageJoinsJsonFile.file();
+			if (file != null) {
+				var reader = new FileReader();
+				reader.onload = function (event) {
+					try {
+						var joins = JSON.parse(event.target.result);
+						let hasConflicts = false;
+						let conflictingItems = [];
+						joins.forEach(newItem => {
+							var existingItem = self.Joins().find(item =>
+								(item.Id ? item.Id() : item.RelationId()) === newItem.RelationId
+							);
+							if (existingItem) {
+								hasConflicts = true;  
+								conflictingItems.push({ existingItem, newItem });  
+							}
+						});
+						if (hasConflicts) {
+							var relations = conflictingItems.map(conflict => `- ${conflict.existingItem.FieldName()}`).join('\n');
+							handleOverwriteConfirmation(relations, function (action) {
+								if (action === 'overwrite') {
+									self.Joins().length = 0
+									joins.forEach(newItem => {
+										self.Joins.push(self.setupJoin(newItem));
+									});
+									self.SaveJoins();
+									toastr.success('Conflicting items have been overwritten successfully.');
+								} else {
+									toastr.info('Upload canceled.');
+								}
+								$('#uploadJoinsFileModal').modal('hide');
+							});
+						} else {
+							joins.forEach(newItem => {
+								self.Joins.push(self.setupJoin(newItem));
+							});
+							self.SaveJoins();
+							$('#uploadJoinsFileModal').modal('hide');
+						}
+						// Reset the file input and file name
+						self.ManageJoinsJsonFile.file(null);
+						self.ManageJoinsJsonFile.fileName('');
+					} catch (e) {
+						toastr.error('Invalid JSON file: ' + e.message);
+					}
+				};
+				reader.onerror = function (event) {
+					toastr.error('Error reading file.');
+				};
+				reader.readAsText(file); 
+				function handleOverwriteConfirmation(Join, callback) {
+					bootbox.dialog({
+						title: "Confirm Action",
+						message: `A Joins Json with the name "${Join}" already exists. What would you like to do?`,
+						buttons: {
+							cancel: {
+								label: 'Cancel',
+								className: 'btn-secondary',
+								callback: function () {
+									callback('cancel');
+								}
+							},
+							overwrite: {
+								label: 'Overwrite',
+								className: 'btn-primary',
+								callback: function () {
+									callback('overwrite');
+								}
+							}
+						}
+					});
+				}
+			} else {
+				toastr.error('No JSON file selected for upload.');
+			}
+		}
+	};
+	self.ManageStoredProceduresJsonFile = {
+		file: ko.observable(null),
+		fileName: ko.observable(''),
+		triggerStoredProceduresFileInput: function () {
+			$('#storedProceduresFileInputJson').click();
+		},
+		handleStoredProceduresFileSelect: function (data, event) {
+			var selectedFile = event.target.files[0];
+			if (selectedFile && (selectedFile.type === "application/json" || selectedFile.name.endsWith('.json'))) {
+				self.ManageStoredProceduresJsonFile.file(selectedFile);
+				self.ManageStoredProceduresJsonFile.fileName(selectedFile.name);
+			} else {
+				self.ManageStoredProceduresJsonFile.file(null);
+				self.ManageStoredProceduresJsonFile.fileName('');
+				toastr.error('Only JSON files are allowed.');
+			}
+		},
+		uploadStoredProceduresFile: function () {
+			var file = self.ManageStoredProceduresJsonFile.file();
+			if (file != null) {
+				var reader = new FileReader();
+				reader.onload = function (event) {
+					try {
+						var Procedure = JSON.parse(event.target.result);
+						var procName = Procedure.TableName;
+						var procId = Procedure.Id;
+						var procMatch = _.some(self.Procedures.savedProcedures(), function (e) {
+							return e.TableName() === procName && e.Id() === procId;
+						});
+						if (procMatch) {
+							handleOverwriteConfirmation(procName, function (action) {
+								if (action === 'overwrite') {
+									self.saveProcedure(procName, true, Procedure)
+								} else {
+									toastr.info('Upload canceled.');
+								}
+							});
+							$('#uploadStoredProceduresFileModal').modal('hide');
+						}
+						else {
+							Procedure.Id = 0;
+							self.saveProcedure(procName, true, Procedure)
+							$('#uploadStoredProceduresFileModal').modal('hide');
+						}
+						// Reset the file input and file name
+						self.ManageStoredProceduresJsonFile.file(null);
+						self.ManageStoredProceduresJsonFile.fileName('');
+					} catch (e) {
+						toastr.error('Invalid JSON file: ' + e.message);
+					}
+				};
+				reader.onerror = function (event) {
+					toastr.error('Error reading file.');
+				};
+				reader.readAsText(file);
+				function handleOverwriteConfirmation(storedProcedure, callback) {
+					bootbox.dialog({
+						title: "Confirm Action",
+						message: `A Stored Procedures Json with the name "${storedProcedure}" already exists. What would you like to do?`,
+						buttons: {
+							cancel: {
+								label: 'Cancel',
+								className: 'btn-secondary',
+								callback: function () {
+									callback('cancel');
+								}
+							},
+							overwrite: {
+								label: 'Overwrite',
+								className: 'btn-primary',
+								callback: function () {
+									callback('overwrite');
+								}
+							}
+						}
+					});
+				}
+			} else {
+				toastr.error('No JSON file selected for upload.');
+			}
+		}
+	};
+
 	self.importStart = function () {
 		self.importingFile(true);
 	}

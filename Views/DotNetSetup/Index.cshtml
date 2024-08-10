@@ -165,7 +165,7 @@
                 <button class="btn btn-sm" data-bind="click: toggleShowAll, hidden: $root.customTableMode() || $root.onlyApi(), text: usedOnly() ? 'Show all' : 'Show used only'">Show used only</button>
                 <button class="btn btn-sm btn-primary" data-bind="click: $root.customSql.addNewCustomSqlTable, visible: $root.customTableMode">Add New Custom Table</button>
                 <button class="btn btn-sm btn-primary" data-bind="click: $root.loadFromDatabase, hidden: $root.customTableMode() || !$root.onlyApi()">Load all Database Tables</button>
-                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadTablesFileModal" aria-haspopup="true" aria-expanded="false">
+                <button class="btn btn-sm btn-primary" data-bind="hidden: $root.customTableMode()" data-bs-toggle="modal" data-bs-target="#uploadTablesFileModal" aria-haspopup="true" aria-expanded="false">
                     <span class="fa fa-file"></span> Import Tables/Views Json File
                 </button>
             </div>
@@ -256,8 +256,11 @@
                 Setup your Database Relations for Dotnet Report to produce dynamic queries
             </p>
             <button class="btn btn-sm btn-primary" data-bind="click: AddJoin">Add new Join</button>&nbsp;
-            <button class="btn btn-sm btn-primary" data-bind="click: SaveJoins">Save Joins</button>
-            <button class="btn btn-sm btn-primary" data-bind="click: ExportJoins">Export Joins</button>
+            <button class="btn btn-sm btn-primary" data-bind="click: SaveJoins">Save Joins</button>&nbsp;
+            <button class="btn btn-sm btn-primary" data-bind="click: ExportJoins">Export Joins</button>&nbsp;
+            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadJoinsFileModal" aria-haspopup="true" aria-expanded="false">
+                <span class="fa fa-file"></span> Import Joins Json File
+            </button>
             <br />
             <br />
             <form id="form-joins">
@@ -340,6 +343,9 @@
             </p>
             <hr />
             <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#procedure-modal">Add Stored Procs from database</button>
+            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadStoredProceduresFileModal" aria-haspopup="true" aria-expanded="false">
+                <span class="fa fa-file"></span> Import Stored Procedures Json File
+            </button>
             <br />
             <div data-bind="if: Procedures.savedProcedures().length == 0">
                 No Stored Procedures have been setup yet.
@@ -1210,6 +1216,59 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 <button type="button" class="btn btn-primary" data-bind="click: uploadTablesFile">Upload</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import Joins Json File Modal -->
+<div class="modal" id="uploadJoinsFileModal" tabindex="-1" aria-labelledby="uploadJoinsFileModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" data-bind="with: ManageJoinsJsonFile">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadJoinsFileModalLabel">Import Joins JSON File Upload</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="dropzone" class="dropzone"
+                     data-bind="event: {click: triggerJoinsFileInput }"
+                     style="border: 2px dashed #007bff; border-radius: 5px; padding: 30px; text-align: center; color: #007bff; cursor: pointer;">
+                    click to select Json file
+                </div>
+                <input type="file" id="joinsFileInputJson" accept=".json" style="display: none;" data-bind="event: { change: handleJoinsFileSelect }">
+                <div data-bind="visible: fileName">
+                    <p>Selected Joins File: <span data-bind="text: fileName"></span></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" data-bind="click: uploadJoinsFile">Upload</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Import StoredProcedures Json File Modal -->
+<div class="modal" id="uploadStoredProceduresFileModal" tabindex="-1" aria-labelledby="uploadStoredProceduresFileModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" data-bind="with: ManageStoredProceduresJsonFile">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadStoredProceduresFileModalLabel">Import Stored Procedures JSON File Upload</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="dropzone" class="dropzone"
+                     data-bind="event: {click: triggerStoredProceduresFileInput }"
+                     style="border: 2px dashed #007bff; border-radius: 5px; padding: 30px; text-align: center; color: #007bff; cursor: pointer;">
+                    click to select Json file
+                </div>
+                <input type="file" id="storedProceduresFileInputJson" accept=".json" style="display: none;" data-bind="event: { change: handleStoredProceduresFileSelect }">
+                <div data-bind="visible: fileName">
+                    <p>Selected Stored Procedures File: <span data-bind="text: fileName"></span></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" data-bind="click: uploadStoredProceduresFile">Upload</button>
             </div>
         </div>
     </div>
