@@ -499,6 +499,9 @@ var manageViewModel = function (options) {
 						if (tableMatch) {
 							handleOverwriteConfirmation(tableName, function (action) {
 								if (action === 'overwrite') {
+									self.Tables.model.remove(_.find(self.Tables.model(), function (e) {
+										return e.TableName() === tableName;
+									}));
 									var t = ko.mapping.fromJS(table);
 									self.Tables.model.push(self.Tables.processTable(t));
 									var newTable = self.Tables.model()[self.Tables.model().length - 1];
