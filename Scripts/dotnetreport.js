@@ -4257,7 +4257,9 @@ var reportViewModel = function (options) {
 		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey(), self.ReportSeries);
 		return false;
 	};
-
+	self.sortReportHeaderColumn = function () {
+		self.RunReport(false, true,false);
+	};
 	self.formatNumber = function (number, decPlaces) {
 		if (decPlaces === null) decPlaces = 2;
 		decPlaces = isNaN(decPlaces = Math.abs(decPlaces)) ? 2 : decPlaces;

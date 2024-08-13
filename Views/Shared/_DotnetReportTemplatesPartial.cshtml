@@ -107,6 +107,9 @@
 <script type="text/html" id="report-column-header">
     <!-- ko foreach: Columns -->
     <th data-bind="attr: { id: fieldId }, style: {'text-align': fieldAlign ? fieldAlign : (IsNumeric ? 'right' : 'left'), 'width': fieldWidth, 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
+        <span class="sortable pull-left" style="padding-right: 15px;">
+             <span class="fa fa-arrows" aria-hidden="true" title="Drag to reorder"></span>
+        </span>
         <!-- ko if: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false) -->
         <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
         <!-- /ko -->
@@ -192,7 +195,7 @@
     <div class="table-responsive" >
         <table class="table table-hover table-condensed" data-bind="attr: {class: 'table table-striped table-hover table-condensed ' + $parents[2].selectedStyle()}">
             <thead data-bind="if: $parents[2].ReportType() != 'Single'">
-                <tr class="no-highlight">
+                <tr class="no-highlight" data-bind="sortableColumns: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight',selectedFields: $root.SelectedFields }">
                     <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !IsDrillDown() && !CanExpandOption() -->
                     <th style="width: 30px; border-left: 1px solid;"></th>
                     <!-- /ko -->

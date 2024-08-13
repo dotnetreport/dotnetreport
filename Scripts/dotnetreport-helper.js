@@ -226,6 +226,34 @@ ko.bindingHandlers.highlightedText = {
     }
 };
 
+ko.bindingHandlers.sortableColumns = {
+    init: function (element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+        var options = valueAccessor() || {};
+        var selectedFields = options.selectedFields;
+
+        $(element).sortable({
+            items: "> th",
+            handle: options.handle || ".sortable",
+            axis: options.axis || "x", // Restrict to horizontal movement
+            cursor: options.cursor || "move",
+            placeholder: options.placeholder || "drop-highlight",
+            stop: function (event, ui) {
+                var newOrder = $(element).sortable("toArray");
+                if (ko.isObservable(selectedFields)) {
+                    var sortedFields = selectedFields().slice().sort(function (a, b) {
+                        var indexA = newOrder.indexOf(a.fieldId.toString());
+                        var indexB = newOrder.indexOf(b.fieldId.toString());
+                        return indexA - indexB;
+                    });
+                    selectedFields(sortedFields);
+                    // Call the function after sorting
+                    bindingContext.$root.sortReportHeaderColumn();
+                }
+            }
+        }).disableSelection(); // Prevent text selection while dragging
+    }
+};
+
 function redirectToReport(url, prm, newtab, multipart) {
     prm = (typeof prm == 'undefined') ? {} : prm;
     newtab = (typeof newtab == 'undefined') ? false : newtab;
