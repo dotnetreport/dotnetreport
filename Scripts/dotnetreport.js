@@ -1419,10 +1419,8 @@ var reportViewModel = function (options) {
 			}
 		},
 		uploadFile: function () {
-			debugger
 			var file = self.ManageJsonFile.file();
 			if (file != null) {
-				debugger
 				var reader = new FileReader();
 				reader.onload = function (event) {
 					try {
@@ -2727,7 +2725,7 @@ var reportViewModel = function (options) {
 								case 'export-csv':
 									self.downloadCsv(); break;
 								case 'export-json':
-									self.downloadJson(); break;
+									self.downloadReportJson(); break;
 							}
 
 							self.ReportMode('start');
@@ -4259,7 +4257,9 @@ var reportViewModel = function (options) {
 		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey(), self.ReportSeries);
 		return false;
 	};
-
+	self.sortReportHeaderColumn = function () {
+		self.RunReport(false, true,false);
+	};
 	self.formatNumber = function (number, decPlaces) {
 		if (decPlaces === null) decPlaces = 2;
 		decPlaces = isNaN(decPlaces = Math.abs(decPlaces)) ? 2 : decPlaces;
@@ -4584,17 +4584,9 @@ var reportViewModel = function (options) {
 			includeSubTotal: self.IncludeSubTotal()
 		}, 'csv');
 	}
-	self.downloadJson = function () {
+	self.downloadReportJson = function () {
 		var reportData = self.BuildReportData();
-		var jsonBlob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
-		var url = URL.createObjectURL(jsonBlob);
-		var a = document.createElement('a');
-		a.href = url;
-		a.download = self.ReportName();
-		document.body.appendChild(a);
-		a.click();
-		document.body.removeChild(a);
-		window.URL.revokeObjectURL(url);
+		downloadJson(JSON.stringify(reportData, null, 2), self.ReportName(), 'application/json')
 	};
 	self.downloadXml = function () {
 		self.downloadExport("DownloadXml", {

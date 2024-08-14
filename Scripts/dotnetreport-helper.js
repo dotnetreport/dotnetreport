@@ -75,6 +75,17 @@ function ajaxcall(options) {
     });
 }
 
+function downloadJson(content, fileName, contentType) {
+    var jsonBlob = new Blob([content], { type: contentType });
+    var url = URL.createObjectURL(jsonBlob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
    // knockout binding extenders
 ko.bindingHandlers.datepicker = {
     init: function (element, valueAccessor, allBindingsAccessor) {
@@ -218,6 +229,34 @@ ko.bindingHandlers.highlightedText = {
         }
 
         element.innerHTML = value.replace(regex, getReplacement);
+    }
+};
+
+ko.bindingHandlers.sortableColumns = {
+    init: function (element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+        var options = valueAccessor() || {};
+        var selectedFields = options.selectedFields;
+
+        $(element).sortable({
+            items: "> th",
+            handle: options.handle || ".sortable",
+            axis: options.axis || "x", // Restrict to horizontal movement
+            cursor: options.cursor || "move",
+            placeholder: options.placeholder || "drop-highlight",
+            stop: function (event, ui) {
+                var newOrder = $(element).sortable("toArray");
+                if (ko.isObservable(selectedFields)) {
+                    var sortedFields = selectedFields().slice().sort(function (a, b) {
+                        var indexA = newOrder.indexOf(a.fieldId.toString());
+                        var indexB = newOrder.indexOf(b.fieldId.toString());
+                        return indexA - indexB;
+                    });
+                    selectedFields(sortedFields);
+                    // Call the function after sorting
+                    bindingContext.$root.sortReportHeaderColumn();
+                }
+            }
+        }).disableSelection(); // Prevent text selection while dragging
     }
 };
 
