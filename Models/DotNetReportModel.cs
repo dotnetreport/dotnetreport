@@ -386,8 +386,7 @@ namespace ReportBuilder.Web.Models
     public class ReportHeaderColumn
     {
         public string fieldName { get; set; }
-        public string fieldLabel { get; set; }
-        public string customfieldLabel { get; set; }
+        public string fieldLabel { get; set; }}
         public bool hideStoredProcColumn { get; set; }
         public int? decimalPlacesDigit { get; set; }
         public string fieldAlign { get; set; }
@@ -1335,9 +1334,9 @@ namespace ReportBuilder.Web.Models
                     {
                         dt.Columns.Remove(col.fieldName);
                     }
-                    else if (!String.IsNullOrWhiteSpace(col.customfieldLabel))
+                    else if (!String.IsNullOrWhiteSpace(col.fieldLabel))
                     {
-                        dt.Columns[col.fieldName].ColumnName = col.customfieldLabel;
+                        dt.Columns[col.fieldName].ColumnName = col.fieldLabel;
                     }
                 }
             }
@@ -1617,7 +1616,7 @@ namespace ReportBuilder.Web.Models
                 {
                     // Draw column headers
                     var columnFormatting = columns[k];
-                    var columnName = !string.IsNullOrEmpty(columns[k].customfieldLabel) ? columns[k].customfieldLabel : columns[k].fieldName;
+                    var columnName = !string.IsNullOrEmpty(columns[k].fieldLabel) ? columns[k].fieldLabel : columns[k].fieldName;
 
                     rect = new XRect(currentXPosition, currentYPosition, columnWidth, 20);
 
@@ -1782,9 +1781,9 @@ namespace ReportBuilder.Web.Models
                     {
                         dt.Columns.Remove(col.fieldName);
                     }
-                    else if (!String.IsNullOrWhiteSpace(col.customfieldLabel))
+                    else if (!String.IsNullOrWhiteSpace(col.fieldLabel))
                     {
-                        dt.Columns[col.fieldName].ColumnName = col.customfieldLabel;
+                        dt.Columns[col.fieldName].ColumnName = col.fieldLabel;
                     }
                 }
             }
@@ -2224,7 +2223,7 @@ namespace ReportBuilder.Web.Models
             for (int i = 0; i < dt.Columns.Count; i++)
             {
                 DataColumn column = dt.Columns[i];
-                var columnName = !string.IsNullOrEmpty(columns[i].customfieldLabel) ? columns[i].customfieldLabel : columns[i].fieldName;
+                var columnName = !string.IsNullOrEmpty(columns[i].fieldLabel) ? columns[i].fieldLabel : columns[i].fieldName;
                 csv += columnName + ',';
             }
 
