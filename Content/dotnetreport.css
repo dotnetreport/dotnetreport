@@ -846,6 +846,11 @@ h2 {
     height: 20px; /* Set a fixed height */
 }
 
+thead th {
+    border-top: 1px solid var(--bs-border-color);
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
 /* Style Gray */
 .style-gray tbody tr:nth-child(odd) {
     background-color: #d1d1d1;
@@ -860,6 +865,7 @@ h2 {
     color: #333333;
     padding: 10px;
     border-bottom: 2px solid #868686;
+    border-top: 2px solid #868686;
 }
 
 .style-gray a {
@@ -879,6 +885,7 @@ h2 {
     color: #000000;
     padding: 10px;
     border-bottom: 1px solid #4dc3ff;
+    border-top: 1px solid #4dc3ff;
 }
 
 .style-blue a {
@@ -899,6 +906,7 @@ h2 {
     color: #333333;
     padding: 10px;
     border-bottom: 2px solid #64c764;
+    border-top: 2px solid #64c764;
 }
 
 .style-green a {
@@ -919,6 +927,7 @@ h2 {
     color: #333333;
     padding: 10px;
     border-bottom: 2px solid #ff4d4d;
+    border-top: 2px solid #ff4d4d;
 }
 
 .style-red a {
@@ -939,6 +948,7 @@ h2 {
     color: #333333;
     padding: 10px;
     border-bottom: 2px solid #ffff4d;
+    border-top: 2px solid #ffff4d;
 }
 
 .style-yellow a {
@@ -958,6 +968,7 @@ h2 {
     color: #333333;
     padding: 10px;
     border-bottom: 1px solid #ffb84d;
+    border-top: 1px solid #ffb84d;
 }
 
 .style-orange a {
@@ -978,6 +989,7 @@ h2 {
     color: #333333;
     padding: 10px;
     border-bottom: 2px solid #c8e4d8;
+    border-top: 2px solid #c8e4d8;
 }
 
     .style-mixed thead th a {
@@ -1007,6 +1019,7 @@ h2 {
     color: #000000;
     padding: 10px;
     border-bottom: 1px solid #4dc3ff;
+    border-top: 1px solid #4dc3ff;
 }
 
 .style-blue a {
@@ -1027,6 +1040,7 @@ h2 {
     color: #333333;
     padding: 10px;
     border-bottom: 2px solid #64c764;
+    border-top: 2px solid #64c764;
 }
 
 .style-green a {
@@ -1047,6 +1061,7 @@ h2 {
     color: #333333;
     padding: 10px;
     border-bottom: 2px solid #ff4d4d;
+    border-top: 2px solid #ff4d4d;
 }
 
 .style-red a {
@@ -1086,6 +1101,7 @@ h2 {
     color: #333333;
     padding: 10px;
     border-bottom: 1px solid #ffb84d;
+    border-top: 1px solid #ffb84d;
 }
 
 .style-orange a {
@@ -1106,6 +1122,7 @@ h2 {
     color: #333333;
     padding: 10px;
     border-bottom: 2px solid #c8e4d8;
+    border-top: 2px solid #c8e4d8;
 }
 
     .style-mixed thead th a {
