@@ -123,7 +123,7 @@
                     <div class="control-group">
                         <select class="form-control" style="width:25%"  data-bind="options: DataConnections, optionsText: 'DataConnectName', optionsValue: 'DataConnectGuid', value: currentConnectionKey" ></select>
                         <div class="padded-top"></div>
-                        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#connection-setup-modal">Manage DB Connection</button>
+                        <button class="btn btn-primary btn-sm" data-bind="visible: false" data-bs-toggle="modal" data-bs-target="#connection-setup-modal">Manage DB Connection</button>
                         <button class="btn btn-primary btn-sm" data-bind="click: switchConnection, visible: canSwitchConnection">Switch Connection</button>
                         <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#add-connection-modal">Add New Connection</button>
                         <button class="btn btn-primary btn-sm" data-bind="click: exportAll, visible: false">Export Connection</button>
@@ -165,9 +165,11 @@
                 <button class="btn btn-sm" onclick="closeall()">Close all</button>
                 <button class="btn btn-sm" data-bind="click: toggleShowAll, hidden: $root.customTableMode() || $root.onlyApi(), text: usedOnly() ? 'Show all' : 'Show used only'">Show used only</button>
                 <button class="btn btn-sm btn-primary" data-bind="click: $root.customSql.addNewCustomSqlTable, visible: $root.customTableMode">Add New Custom Table</button>
-                <button class="btn btn-sm btn-primary" data-bind="click: $root.loadFromDatabase, hidden: $root.customTableMode() || !$root.onlyApi()">Load all Database Tables</button>
+                <button class="btn btn-sm btn-primary" data-bind="click: $root.loadFromDatabase, hidden: $root.customTableMode() || !$root.onlyApi()">
+                    <span class="fa fa-database"></span> Load all Database Tables
+                </button>
                 <button class="btn btn-sm btn-primary" data-bind="hidden: $root.customTableMode()" data-bs-toggle="modal" data-bs-target="#uploadTablesFileModal" aria-haspopup="true" aria-expanded="false">
-                    <span class="fa fa-file"></span> Import Tables/Views Json File
+                    <span class="fa fa-file"></span> Import Tables/Views
                 </button>
             </div>
             <div class="clearfix"></div>
@@ -193,10 +195,6 @@
                                 <span data-bind="visible: IsView" class="label-sm">(view)</span>
                             </label>
                             <button class="btn btn-sm" title="Save this Table" data-bind="click: function(){$data.saveTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}"><i class="fa fa-floppy-o"></i></button>
-                            <button class="btn btn-sm" title="Manage Role Access" data-bs-toggle="modal" data-bs-target="#role-access-modal" data-bind="click: $root.selectAllowedRoles">
-                                <i class="fa fa-user"></i>
-                            </button>
-                            <button class="btn btn-sm" title="Export this Table" data-bind="click: function(){$data.exportTableJson();}"><i class='fa fa-file'></i></button>
                         </div>
                         <a class="pull-right" data-bs-toggle="collapse" data-bind="attr: {'data-bs-target': '#table'+$index()}">
                             <span class="fa fa-chevron-down"></span>
@@ -204,6 +202,12 @@
                     </div>
                     <div data-bind="attr: {id: 'table'+$index()}" class="panel-collapse collapse in">
                         <div class="card-body">
+                            <p class="pull-right">
+                                <button class="btn btn-sm" title="Manage Role Access" data-bs-toggle="modal" data-bs-target="#role-access-modal" data-bind="click: $root.selectAllowedRoles">
+                                    <i class="fa fa-user"></i>
+                                </button>
+                                <button class="btn btn-sm" title="Export this Table" data-bind="click: function(){$data.exportTableJson();}"><i class='fa fa-file'></i></button>
+                            </p>
                             <p>
                                 <label class="label-sm">Display Name</label><br />
                                 <span data-bind="editable: DisplayName"></span>
@@ -260,7 +264,7 @@
             <button class="btn btn-sm btn-primary" data-bind="click: SaveJoins">Save Joins</button>&nbsp;
             <button class="btn btn-sm btn-primary" data-bind="click: ExportJoins">Export Joins</button>&nbsp;
             <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadJoinsFileModal" aria-haspopup="true" aria-expanded="false">
-                <span class="fa fa-file"></span> Import Joins Json File
+                <span class="fa fa-file"></span> Import Joins
             </button>
             <br />
             <br />
@@ -345,7 +349,7 @@
             <hr />
             <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#procedure-modal">Add Stored Procs from database</button>
             <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadStoredProceduresFileModal" aria-haspopup="true" aria-expanded="false">
-                <span class="fa fa-file"></span> Import Stored Procedures Json File
+                <span class="fa fa-file"></span> Import Stored Procedures
             </button>
             <br />
             <div data-bind="if: Procedures.savedProcedures().length == 0">
@@ -363,13 +367,7 @@
 
                             <button class="btn btn-sm" title="Save this Procedure" data-bind="click: function(){$root.saveProcedure($data.TableName, false);}">
                                 <span class="fa fa-save"></span>
-                            </button>
-                            <button class="btn btn-sm" title="Manage Role Access" data-bs-toggle="modal" data-bs-target="#role-access-modal" data-bind="click: $root.selectAllowedRoles">
-                                <i class="fa fa-user"></i>
-                            </button>
-                            <button class="btn btn-sm" title="Export this Procedure" data-bind="click: function(){$root.exportProcedureJson($data.TableName);}">
-                                <i class="fa fa-file"></i>
-                            </button>
+                            </button>                           
                             <button class="btn btn-sm" title="Delete this Procedure" data-bind="click: function(){$data.deleteTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}">
                                 <span class="fa fa-trash"></span>
                             </button>
@@ -381,6 +379,14 @@
                     </div>
                     <div data-bind="attr: {id: 'table'+$index()}" class="panel-collapse collapse in">
                         <div class="card-body">
+                            <p class="pull-right">
+                                <button class="btn btn-sm" title="Manage Role Access" data-bs-toggle="modal" data-bs-target="#role-access-modal" data-bind="click: $root.selectAllowedRoles">
+                                    <i class="fa fa-user"></i>
+                                </button>
+                                <button class="btn btn-sm" title="Export this Procedure" data-bind="click: function(){$root.exportProcedureJson($data.TableName);}">
+                                    <i class="fa fa-file"></i>
+                                </button>
+                            </p>
                             <p>
                                 <label class="label-sm">Display Name</label><br />
                                 <span data-bind="editable: DisplayName"></span>
