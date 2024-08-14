@@ -153,14 +153,17 @@ var manageViewModel = function (options) {
 		}
 
 		ajaxcall({
-			url: options.addDataConnectionUrl,
+			url: options.apiUrl,
 			type: 'POST',
 			data: JSON.stringify({
-				account: self.keys.AccountApiKey,
-				dataConnect: self.newDataConnection.copySchema() ? self.newDataConnection.copyFrom() : self.keys.DatabaseApiKey,
-				newDataConnect: self.newDataConnection.Name(),
-				connectionKey: self.newDataConnection.ConnectionKey(),
-				copySchema: self.newDataConnection.copySchema()
+				method: options.addDataConnectionUrl,
+				model: JSON.stringify({
+					account: self.keys.AccountApiKey,
+					dataConnect: self.newDataConnection.copySchema() ? self.newDataConnection.copyFrom() : self.keys.DatabaseApiKey,
+					newDataConnect: self.newDataConnection.Name(),
+					connectionKey: self.newDataConnection.ConnectionKey(),
+					copySchema: self.newDataConnection.copySchema()
+				})
 			})
 		}).done(function (result) {
 			self.DataConnections.push({
@@ -226,11 +229,14 @@ var manageViewModel = function (options) {
 	self.LoadDataConnections = function () {
 
 		ajaxcall({
-			url: options.getDataConnectionsUrl,
+			url: options.apiUrl,
 			type: 'POST',
 			data: JSON.stringify({
-				account: self.keys.AccountApiKey,
-				dataConnect: self.keys.DatabaseApiKey
+				method: options.getDataConnectionsUrl,
+				model: JSON.stringify({
+					account: self.keys.AccountApiKey,
+					dataConnect: self.keys.DatabaseApiKey
+				})
 			})
 		}).done(function (result) {
 			self.DataConnections(result);
@@ -291,12 +297,15 @@ var manageViewModel = function (options) {
 		});
 
 		ajaxcall({
-			url: options.saveProcUrl,
+			url: options.apiUrl,
 			type: 'POST',
 			data: JSON.stringify({
-				model: jsonProcedure ? jsonProcedure : e,
-				account: self.keys.AccountApiKey,
-				dataConnect: self.keys.DatabaseApiKey
+				method: options.saveProcUrl,
+				model: JSON.stringify({
+					model: jsonProcedure ? jsonProcedure : e,
+					account: self.keys.AccountApiKey,
+					dataConnect: self.keys.DatabaseApiKey
+				})
 			})
 		}).done(function (result) {
 			if (!result) {
@@ -324,11 +333,14 @@ var manageViewModel = function (options) {
 		// Load and setup Relations
 
 		ajaxcall({
-			url: options.getRelationsUrl,
+			url: options.apiUrl,
 			type: 'POST',
 			data: JSON.stringify({
-				account: self.keys.AccountApiKey,
-				dataConnect: self.keys.DatabaseApiKey
+				method: options.getRelationsUrl,
+				model: JSON.stringify({
+					account: self.keys.AccountApiKey,
+					dataConnect: self.keys.DatabaseApiKey
+				})
 			})
 		}).done(function (result) {
 			self.Joins($.map(result, function (item) {
@@ -376,12 +388,15 @@ var manageViewModel = function (options) {
 		var joinsToSave = self.getJoinsToSave();
 
 		ajaxcall({
-			url: options.saveRelationsUrl,
+			url: options.apiUrl,
 			type: 'POST',
 			data: JSON.stringify({
-				account: self.keys.AccountApiKey,
-				dataConnect: self.keys.DatabaseApiKey,
-				relations: joinsToSave
+				method: options.saveRelationsUrl,
+				model: JSON.stringify({
+					account: self.keys.AccountApiKey,
+					dataConnect: self.keys.DatabaseApiKey,
+					relations: joinsToSave
+				})
 			})
 		}).done(function (result) {
 			if (result == "Success") toastr.success("Changes saved successfully.");
@@ -756,22 +771,28 @@ var manageViewModel = function (options) {
 
 		var getReports = function () {
 			return ajaxcall({
-				url: options.reportsApiUrl + "/ReportApi/GetSavedReports",
+				url: options.reportsApiUrl,
 				data: {
-					account: self.keys.AccountApiKey,
-					dataConnect: self.keys.DatabaseApiKey,
-					adminMode: true
+					method: "/ReportApi/GetSavedReports",
+					model: JSON.stringify({
+						account: self.keys.AccountApiKey,
+						dataConnect: self.keys.DatabaseApiKey,
+						adminMode: true
+					})
 				}
 			});
 		};
 
 		var getFolders = function () {
 			return ajaxcall({
-				url: options.reportsApiUrl + "/ReportApi/GetFolders",
+				url: options.reportsApiUrl,
 				data: {
-					account: self.keys.AccountApiKey,
-					dataConnect: self.keys.DatabaseApiKey,
-					adminMode: true
+					method: "/ReportApi/GetFolders",
+					model: JSON.stringify({
+						account: self.keys.AccountApiKey,
+						dataConnect: self.keys.DatabaseApiKey,
+						adminMode: true
+					})
 				}
 			});
 		};
@@ -799,20 +820,23 @@ var manageViewModel = function (options) {
 
 					r.saveAccessChanges = function () {
 						return ajaxcall({
-							url: options.reportsApiUrl + "/ReportApi/SaveReportAccess",
+							url: options.apiUrl,
 							type: "POST",
 							data: JSON.stringify({
-								account: self.keys.AccountApiKey,
-								dataConnect: self.keys.DatabaseApiKey,
-								reportJson: JSON.stringify({
-									Id: r.reportId,
-									ClientId: self.manageAccess.clientId(),
-									UserId: self.manageAccess.getAsList(self.manageAccess.users),
-									ViewOnlyUserId: self.manageAccess.getAsList(self.manageAccess.viewOnlyUsers),
-									DeleteOnlyUserId: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUsers),
-									UserRoles: self.manageAccess.getAsList(self.manageAccess.userRoles),
-									ViewOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.viewOnlyUserRoles),
-									DeleteOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUserRoles)
+								method: "/ReportApi/SaveReportAccess",
+								model: JSON.stringify({
+									account: self.keys.AccountApiKey,
+									dataConnect: self.keys.DatabaseApiKey,
+									reportJson: JSON.stringify({
+										Id: r.reportId,
+										ClientId: self.manageAccess.clientId(),
+										UserId: self.manageAccess.getAsList(self.manageAccess.users),
+										ViewOnlyUserId: self.manageAccess.getAsList(self.manageAccess.viewOnlyUsers),
+										DeleteOnlyUserId: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUsers),
+										UserRoles: self.manageAccess.getAsList(self.manageAccess.userRoles),
+										ViewOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.viewOnlyUserRoles),
+										DeleteOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUserRoles)
+									})
 								})
 							})
 						}).done(function (d) {
@@ -952,12 +976,15 @@ var tablesViewModel = function (options) {
 				bootbox.confirm("Are you sure you would like to delete Table '" + e.DisplayName + "'?", function (r) {
 					if (r) {
 						ajaxcall({
-							url: options.deleteTableUrl,
+							url: options.apiUrl,
 							type: 'POST',
 							data: JSON.stringify({
-								account: apiKey,
-								dataConnect: dbKey,
-								tableId: e.Id
+								method: options.deleteTableUrl,
+								model: JSON.stringify({
+									account: apiKey,
+									dataConnect: dbKey,
+									tableId: e.Id
+								})
 							})
 						}).done(function () {
 							toastr.success("Deleted table " + e.DisplayName);
@@ -975,12 +1002,15 @@ var tablesViewModel = function (options) {
 			}
 
 			ajaxcall({
-				url: options.saveTableUrl,
+				url: options.apiUrl,
 				type: 'POST',
 				data: JSON.stringify({
-					account: apiKey,
-					dataConnect: dbKey,
-					table: jsonTable ? jsonTable : e
+					method: options.saveTableUrl,
+					model: JSON.stringify({
+						account: apiKey,
+						dataConnect: dbKey,
+						table: jsonTable ? jsonTable : e
+					})
 				})
 			}).done(function (x) {
 				if (x.success && x.tableId) {
@@ -1083,12 +1113,15 @@ var proceduresViewModel = function (options) {
 			bootbox.confirm("Are you sure you would like to delete Procedure '" + e.TableName + "'? <br><br>WARNING: Deleting the stored procedure will also delete all Reports using this Stored Proc.", function (r) {
 				if (r) {
 					ajaxcall({
-						url: options.deleteProcUrl,
+						url: options.apiUrl,
 						type: 'POST',
 						data: JSON.stringify({
-							procId: e.Id,
-							account: apiKey,
-							dataConnect: dbKey
+							method: options.deleteProcUrl,
+							model: JSON.stringify({
+								procId: e.Id,
+								account: apiKey,
+								dataConnect: dbKey
+							})
 						})
 					}).done(function () {
 						toastr.success("Deleted procedure " + e.TableName);
@@ -1441,12 +1474,15 @@ var customFunctionManageModel = function (options, keys) {
 		});
 
 		ajaxcall({
-			url: options.saveCustomFuncUrl,
+			url: options.apiUrl,
 			type: 'POST',
 			data: JSON.stringify({
-				model: e,
-				account: self.keys.AccountApiKey,
-				dataConnect: self.keys.DatabaseApiKey
+				method: options.saveCustomFuncUrl,
+				model: JSON.stringify({
+					model: e,
+					account: self.keys.AccountApiKey,
+					dataConnect: self.keys.DatabaseApiKey
+				})
 			})
 		}).done(function (result) {
 			if (!result) {

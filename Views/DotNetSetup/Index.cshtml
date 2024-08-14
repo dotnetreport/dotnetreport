@@ -53,21 +53,21 @@
             ajaxcall({ url: '@Url.Action("LoadSetupSchema", "DotNetReportApi")' + '?databaseApiKey=' + (queryParams.databaseApiKey || '') + '&onlyApi=' + (queryParams.onlyApi === 'false' ? false : true) }).done(function(model) {
                 var options = {
                     model: model,
-                    saveTableUrl: model.ApiUrl + '/ReportApi/SaveTable',
-                    deleteTableUrl: model.ApiUrl + '/ReportApi/DeleteTable',
-                    getRelationsUrl: model.ApiUrl + '/ReportApi/GetRelations',
-                    getDataConnectionsUrl: model.ApiUrl + '/ReportApi/GetDataConnections',
-                    saveRelationsUrl: model.ApiUrl + '/ReportApi/SaveRelations',
-                    addDataConnectionUrl: model.ApiUrl + '/ReportApi/AddDataConnection',
-                    saveProcUrl: model.ApiUrl + '/ReportApi/SaveProcedure',
-                    deleteProcUrl: model.ApiUrl + '/ReportApi/DeleteProcedure',
-                    saveCustomFuncUrl: model.ApiUrl + '/ReportApi/SaveCustomFunction',
-                    deleteCustomFuncUrl: model.ApiUrl + '/ReportApi/DeleteCustomFunction',
-                    reportsApiUrl: model.ApiUrl,
+                    saveTableUrl: '/ReportApi/SaveTableData',
+                    deleteTableUrl: '/ReportApi/DeleteTable',
+                    getRelationsUrl: '/ReportApi/GetRelations',
+                    getDataConnectionsUrl: '/ReportApi/GetDataConnections',
+                    saveRelationsUrl: '/ReportApi/SaveRelationsData',
+                    addDataConnectionUrl: '/ReportApi/AddDataConnection',
+                    saveProcUrl: '/ReportApi/SaveProcedureData',
+                    deleteProcUrl: '/ReportApi/DeleteProcedure',
+                    saveCustomFuncUrl: '/ReportApi/SaveCustomFunctionData',
+                    deleteCustomFuncUrl: '/ReportApi/DeleteCustomFunction',
+                    reportsApiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")',
                     getUsersAndRoles: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")',
                     searchProcUrl: '@Url.Action("SearchProcedure", "DotNetReportApi")',
                     getSchemaFromSql: '@Url.Action("GetSchemaFromSql", "DotNetReportApi")',
-                    apiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")',
+                    apiUrl: '@Url.Action("CallPostReportApi", "DotNetReportApi")',
                     onlyApi: queryParams.onlyApi !== 'false'
                 };
 
@@ -103,6 +103,7 @@
             <li role="presentation" class="nav-item"><a class="nav-link" href="#tablesfields" aria-controls="custom" role="tab" data-bs-toggle="tab" data-bind="click: function() { customTableMode(true); }">Custom Tables</a></li>
             <li role="presentation" class="nav-item"><a class="nav-link" href="#relations" aria-controls="profile" role="tab" data-bs-toggle="tab">Relations</a></li>
             <li role="presentation" class="nav-item"><a class="nav-link" href="#procedure" aria-controls="procedure" role="tab" data-bs-toggle="tab">Stored Procs</a></li>
+            <li role="presentation" class="nav-item"><a class="nav-link" href="#functions" aria-controls="functions" role="tab" data-bs-toggle="tab">Custom Functions</a></li>
             <li role="presentation" class="nav-item"><a class="nav-link" href="#manageaccess" aria-controls="manageaccess" role="tab" data-bs-toggle="tab">Manage Reports Access</a></li>
             <li role="presentation" class="nav-item"><a class="nav-link" href="#connection" aria-controls="home" role="tab" data-bs-toggle="tab">Data Connection</a></li>
         </ul>

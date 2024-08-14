@@ -97,6 +97,12 @@ namespace ReportBuilder.Web.Controllers
 
         }
 
+        public class ReportApiCallModel
+        {
+            public string method { get; set; }
+            public string model { get; set; }
+        }
+
         [AllowAnonymous]
         public async Task<IActionResult> CallReportApiUnAuth(string method, string model)
         {
@@ -125,6 +131,13 @@ namespace ReportBuilder.Web.Controllers
             return await CallReportApi(data.Method, JsonSerializer.Serialize(data));
         }
 
+        [ValidateAntiForgeryToken]
+        [HttpPost]
+        public async Task<IActionResult> CallPostReportApi(ReportApiCallModel data)
+        {
+            return await CallReportApi(data.method, data.model);
+        }
+
         [HttpGet]
         public async Task<IActionResult> CallReportApi(string? method, string? model)
         {
@@ -149,6 +162,14 @@ namespace ReportBuilder.Web.Controllers
                 var data = JsonSerializer.Deserialize<Dictionary<string, dynamic>>(model);
                 foreach (var key in data.Keys)
                 {
+                    if (key == "dataConnect" && data[key] is not null)
+                    {
+                        keyvalues.RemoveAt(keyvalues.FindIndex(kv => kv.Key == "dataConnect"));
+                    }
+                    if (key == "account" && data[key] is not null)
+                    {
+                        keyvalues.RemoveAt(keyvalues.FindIndex(kv => kv.Key == "account"));
+                    }
                     if ((key != "adminMode" || (key == "adminMode" && settings.CanUseAdminMode)) && data[key] is not null)
                     {
                         keyvalues.Add(new KeyValuePair<string, string>(key, data[key].ToString()));
