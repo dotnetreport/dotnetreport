@@ -107,26 +107,13 @@
 <script type="text/html" id="report-column-header">
     <!-- ko foreach: Columns -->
     <th data-bind="attr: { id: fieldId }, style: {'text-align': fieldAlign ? fieldAlign : (IsNumeric ? 'right' : 'left'), 'width': fieldWidth, 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
-        <span class="sortable pull-left" style="padding-right: 15px;">
-             <span class="fa fa-arrows" aria-hidden="true" title="Drag to reorder"></span>
-        </span>
-        <!-- ko if: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false) -->
-        <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
-        <!-- /ko -->
-        <!-- ko ifnot: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false)  -->
-        <a href="" data-bind="click: function(){ $parents[pagerIndex($parents)].changeSort(SqlField) }, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}">
-            <span data-bind="text: $parent.IsDrillDown() && fieldLabel2() ? fieldLabel2() : (fieldLabel() ? fieldLabel() : fieldName)"></span>
-            <span data-bind="text: $parents[pagerIndex($parents)].pager.sortColumn() === SqlField ? ($parents[pagerIndex($parents)].pager.sortDescending() ? '&#9660;' : '&#9650;') : ''"></span>
-        </a>
-        <!-- /ko -->
-
-        <div class="pull-right" data-bind="if: !$parent.IsDrillDown() && !IsNumeric">
+        <div class="pull-left" data-bind="if: !$parent.IsDrillDown()" style="padding-right: 5px;">
             <div class="dropup">
                 <a href="#" data-bs-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
-                    <span class="fa fa-ellipsis-v"></span>
+                    <span class="fa fa-ellipsis-v sortable" title="Drag to reorder"></span>
                 </a>
                 <ul class="dropdown-menu" style="z-index: 1001;">
-                    <li class="dropdown-item small">
+                    <li class="dropdown-item small" data-bind="visible: !IsNumeric">
                         <a href="#" data-bind="click: toggleOuterGroup">
                             <span class="fa fa-clone"></span> Outer Group
                         </a>
@@ -140,6 +127,15 @@
             </div>
         </div>
 
+        <!-- ko if: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false) -->
+        <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
+        <!-- /ko -->
+        <!-- ko ifnot: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false)  -->
+        <a href="" data-bind="click: function(){ $parents[pagerIndex($parents)].changeSort(SqlField) }, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}">
+            <span data-bind="text: $parent.IsDrillDown() && fieldLabel2() ? fieldLabel2() : (fieldLabel() ? fieldLabel() : fieldName)"></span>
+            <span data-bind="text: $parents[pagerIndex($parents)].pager.sortColumn() === SqlField ? ($parents[pagerIndex($parents)].pager.sortDescending() ? '&#9660;' : '&#9650;') : ''"></span>
+        </a>
+        <!-- /ko -->
     </th>
     <!-- /ko -->
 </script>
