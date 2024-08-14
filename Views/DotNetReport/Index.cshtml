@@ -81,7 +81,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
 
                             <li class="nav-item" data-bind="visible: CanManageFolders() || adminMode()">
                                 <a href="#" class="nav-link" data-bind="click: ManageFolder.newFolder">
-                                    <span class="fa fa-folder-o"></span> Add a new Folder
+                                    <span class="fa fa-folder-o"></span> Add Folder
                                 </a>
                             </li>
                             <li class="nav-item dropdown" data-bind="visible: (CanManageFolders() || adminMode()) && SelectedFolder()!=null">
@@ -100,7 +100,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             </li>
                             <li class="nav-item active" data-bind="visible: adminMode">
                                 <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#uploadFileModal" aria-haspopup="true" aria-expanded="false" title="Import Report from JSON file">
-                                    <span class="fa fa-file"></span> Import Report
+                                    <span class="fa fa-upload"></span> Import Report
                                 </a>
                             </li>
                         </ul>
