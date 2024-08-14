@@ -386,7 +386,7 @@ namespace ReportBuilder.Web.Models
     public class ReportHeaderColumn
     {
         public string fieldName { get; set; }
-        public string fieldLabel { get; set; }}
+        public string fieldLabel { get; set; }
         public bool hideStoredProcColumn { get; set; }
         public int? decimalPlacesDigit { get; set; }
         public string fieldAlign { get; set; }
