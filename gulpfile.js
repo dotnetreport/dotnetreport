@@ -140,7 +140,6 @@ gulp.task("scripts", function (done) {
 gulp.task('watch', function () {
 	gulp.watch('Scripts/*.js', gulp.series('scripts'));
 	gulp.watch('Content/*.css', gulp.series('scripts'));
-	gulp.watch('Content/img/*.png', gulp.series('scripts'));
 })
 
 gulp.task('build', gulp.series(
