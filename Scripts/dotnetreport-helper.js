@@ -604,7 +604,7 @@ var textQuery = function (options) {
     self.setupQuery = function (searchReportFlag) {
         var tributeAttributes = {
             allowSpaces: true,
-            autocompleteMode: true,
+            autocompleteMode: searchReportFlag == true ? false : true,
             noMatchTemplate: "",
             searchOpts: {
                 skip: true, // Disable the default matching
