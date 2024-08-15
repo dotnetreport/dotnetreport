@@ -1202,10 +1202,49 @@ namespace ReportBuilder.Web.Models
             return dataTable;
         }
 
-        public static DataTable PushDatasetIntoDataTable(DataTable tbl, DataSet dts, string pivotColumnName, string pivotFunction)
+        public static DataTable PushDatasetIntoDataTable(DataTable tbl, DataSet dts, string pivotColumnName, string pivotFunction, string reportDataJson=null)
         {
             var dt = tbl.Copy();
             
+            if (!string.IsNullOrEmpty(reportDataJson))
+            {
+                var desiredOrder = new List<string>();
+                JObject reportSettingObject = JObject.Parse(reportDataJson);
+                var reportSettingsObject = (string)reportSettingObject["ReportSettings"];
+                if (reportSettingsObject != null)
+                {
+                    JObject pivotColumnsObject = JObject.Parse(reportSettingsObject);
+                    string pivotColumnOrder = (string)pivotColumnsObject["PivotColumns"]?.ToString();
+                    if (!string.IsNullOrEmpty(pivotColumnOrder))
+                    {
+                        var pivotColumns = pivotColumnOrder.Split(',').ToList();
+                        desiredOrder.AddRange(pivotColumns);
+                        if(desiredOrder.Count == dts.Tables.Count)
+                        {
+                            // Reorder each DataTable in the DataSet
+                            List<DataTable> reorderedTables = new List<DataTable>();
+                            foreach (var name in desiredOrder)
+                            {
+                                foreach (DataTable table in dts.Tables)
+                                {
+                                    if (table.Rows.Count > 0 && table.Rows[0][1].ToString().Trim() == name.Trim())
+                                    {
+                                        reorderedTables.Add(table.Copy());
+                                        break;
+                                    }
+                                }
+                            }
+                            // Clear the existing tables in the DataSet and add reordered ones
+                            dts.Tables.Clear();
+                            foreach (var table in reorderedTables)
+                            {
+                                dts.Tables.Add(table);
+                            }
+                        }
+                    }
+                }
+            }
+
             foreach (DataRow row in dt.Rows)
             {
                 int rowIndex = dt.Rows.IndexOf(row);
@@ -1291,6 +1330,39 @@ namespace ReportBuilder.Web.Models
                     }
                 }
             }
+            // Reorder columns based on desired order
+            //if (desiredOrder.Any())
+            //{
+            //    var columnsToReorder = dt.Columns.Cast<DataColumn>()
+            //                                     .Where(c => desiredOrder.Contains(c.ColumnName))
+            //                                     .ToList();
+
+            //    // Reorder columns by removing and re-adding them in the desired order
+            //    foreach (var columnName in desiredOrder)
+            //    {
+            //        if (dt.Columns.Contains(columnName))
+            //        {
+            //            var column = dt.Columns[columnName];
+            //            dt.Columns.Remove(column);
+            //            dt.Columns.Add(column);
+            //        }
+            //    }
+
+            //    // Reorder rows to match the column order
+            //    var orderedRows = dt.Rows.Cast<DataRow>()
+            //                              .OrderBy(row => desiredOrder.IndexOf(row.Table.Columns.Cast<DataColumn>()
+            //                                                                                    .Where(c => desiredOrder.Contains(c.ColumnName))
+            //                                                                                    .Select(c => row[c.ColumnName].ToString())
+            //                                                                                    .FirstOrDefault()))
+            //                              .CopyToDataTable();
+
+            //    // Clear existing rows and add the reordered rows
+            //    dt.Rows.Clear();
+            //    foreach (DataRow orderedRow in orderedRows.Rows)
+            //    {
+            //        dt.ImportRow(orderedRow);
+            //    }
+            //}
 
             return dt;
         }
@@ -1344,7 +1416,7 @@ namespace ReportBuilder.Web.Models
             if (!string.IsNullOrEmpty(pivotColumn))
             {
                 var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
-                dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction);
+                dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);
             }
             using (ExcelPackage xp = new ExcelPackage())
             {
@@ -1792,7 +1864,7 @@ namespace ReportBuilder.Web.Models
             if (!string.IsNullOrEmpty(pivotColumn))
             {
                 var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
-                dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction);
+                dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);
             }
 
             using (MemoryStream memStream = new MemoryStream())
