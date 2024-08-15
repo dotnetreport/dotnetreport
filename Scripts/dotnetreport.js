@@ -5155,7 +5155,10 @@ var dashboardViewModel = function (options) {
 					});
 				});
 
-				if (skipGridRefresh === true) return;
+				if (skipGridRefresh === true) {
+					self.skipGridRefresh = false;
+					return;
+				}
 
 				var grid = $('.grid-stack').data("gridstack");
 				grid.removeAll();
