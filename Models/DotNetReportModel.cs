@@ -1865,7 +1865,7 @@ namespace ReportBuilder.Web.Models
         }
 
         public static async Task<byte[]> GetWordFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
+            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null,bool compareColumn = false, string reportSeries = null)
         {
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
@@ -1898,7 +1898,10 @@ namespace ReportBuilder.Web.Models
                 var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
                 dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction);
             }
-
+            if (compareColumn)
+            {
+                dt = await DotNetReportHelper.GetCompareColumnsDataTable(reportSql, connectKey, reportSeries);
+            }
             using (MemoryStream memStream = new MemoryStream())
             {
                 using (WordprocessingDocument wordDocument = WordprocessingDocument.Create(memStream, WordprocessingDocumentType.Document))
