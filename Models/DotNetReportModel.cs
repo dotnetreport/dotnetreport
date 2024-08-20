@@ -1312,9 +1312,110 @@ namespace ReportBuilder.Web.Models
 
             return (dt, qry, sqlFields);
         }
+        public async static Task<DataTable> GetCompareColumnsDataTable(string reportSql, string connectKey, string reportSeries = null)
+        {
+            var allSqls = reportSql.Split(new string[] { "%2C", "," }, StringSplitOptions.RemoveEmptyEntries);
+            var dtPaged = new DataTable();
+            var dtCols = 0;
+            var sql = "";
+            var qry = new SqlQuery();
+            List<string> fields = new List<string>();
+            List<string> sqlFields = new List<string>();
+            for (int i = 0; i < allSqls.Length; i++)
+            {
+                sql = DotNetReportHelper.Decrypt(HttpUtility.HtmlDecode(allSqls[i]));
+                if (sql.StartsWith("{\"sql\""))
+                {
+                    qry = System.Text.Json.JsonSerializer.Deserialize<SqlQuery>(sql);
+                    sql = qry.sql;
+                }
+                if (!sql.StartsWith("EXEC"))
+                {
+                    sqlFields = DotNetReportHelper.SplitSqlColumns(sql);
+                    if (sql.Contains("__jsonc__"))
+                        sql = sql.Replace("__jsonc__", "");
+                }
+                // Execute sql
+                var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
+                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
 
+                var dtPagedRun = new DataTable();
+
+                dtPagedRun = databaseConnection.ExecuteQuery(connectionString, sql, qry.parameters);
+
+                dtPagedRun = await DotNetReportHelper.ExecuteCustomFunction(dtPagedRun, sql);
+                if (!sqlFields.Any())
+                {
+                    foreach (DataColumn c in dtPagedRun.Columns) { sqlFields.Add($"{c.ColumnName} AS {c.ColumnName}"); }
+                }
+
+                string[] series = { };
+                if (i == 0)
+                {
+                    fields.AddRange(sqlFields);
+                    dtPaged = dtPagedRun;
+                    dtCols = dtPagedRun.Columns.Count;
+                }
+                else if (i > 0)
+                {
+                    // merge in to dt
+                    if (!string.IsNullOrEmpty(reportSeries))
+                        series = reportSeries.Split(new string[] { "%2C", "," }, StringSplitOptions.RemoveEmptyEntries);
+
+                    var j = 1;
+                    while (j < dtPagedRun.Columns.Count)
+                    {
+                        var col = dtPagedRun.Columns[j++];
+                        dtPaged.Columns.Add($"{col.ColumnName} ({series[i - 1]})", col.DataType);
+                        fields.Add(sqlFields[j - 1]);
+                    }
+
+                    foreach (DataRow dr in dtPagedRun.Rows)
+                    {
+                        DataRow match = dtPaged.AsEnumerable().FirstOrDefault(drun => Convert.ToString(drun[0]) == Convert.ToString(dr[0]));
+                        if (fields[0].ToUpper().StartsWith("CONVERT(VARCHAR(10)")) // group by day
+                        {
+                            match = dtPaged.AsEnumerable().Where(r => !string.IsNullOrEmpty(r.Field<string>(0)) && !string.IsNullOrEmpty((string)dr[0]) && Convert.ToDateTime(r.Field<string>(0)).Day == Convert.ToDateTime((string)dr[0]).Day).FirstOrDefault();
+                        }
+                        if (match != null)
+                        {
+                            // If a matching row is found, merge the data
+                            j = 1;
+                            while (j < dtPagedRun.Columns.Count)
+                            {
+                                match[j + i + dtCols - 2] = dr[j];
+                                j++;
+                            }
+                        }
+                        else
+                        {
+                            // If no matching row is found, add the entire row from dtPagedRun
+                            DataRow newRow = dtPaged.NewRow();
+                            newRow[0] = dr[0]; // Set the first column with the non-matching value
+
+                            // Set the values from dtPagedRun into the new row, offset by the correct index
+                            j = 1;
+                            while (j < dtPagedRun.Columns.Count)
+                            {
+                                newRow[j + i + dtCols - 2] = dr[j];
+                                j++;
+                            }
+
+                            // Set the rest of the values in newRow to DBNull.Value or some default value
+                            for (int k = 1; k < i + dtCols - 2; k++)
+                            {
+                                newRow[k] = DBNull.Value;
+                            }
+
+                            dtPaged.Rows.Add(newRow);
+                        }
+                    }
+                }
+            }
+            return dtPaged;
+        }
         public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
+                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, bool compareColumn = false, string reportSeries = null)
         {
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
@@ -1344,6 +1445,10 @@ namespace ReportBuilder.Web.Models
             {
                 var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
                 dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction);
+            }
+            if (compareColumn)
+            {
+                dt = await DotNetReportHelper.GetCompareColumnsDataTable(reportSql, connectKey, reportSeries);
             }
             using (ExcelPackage xp = new ExcelPackage())
             {

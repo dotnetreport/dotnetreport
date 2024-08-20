@@ -4552,6 +4552,11 @@ var reportViewModel = function (options) {
 				pivotFunction = nextValue.selectedAggregate();
 			}
 		}
+		var compareColumn = _.some(reportData.Filters, function (filterGroup) {
+			return _.some(filterGroup.Filters, function (filter) {
+				return filter.Operator == 'range' && _.includes(['This Year', 'This Month', 'This Week'], filter.Value1);
+			});
+		});
 		self.downloadExport("DownloadExcel", {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
@@ -4564,6 +4569,8 @@ var reportViewModel = function (options) {
 			pivot: self.ReportType() == 'Pivot',
 			pivotColumn: pivotColumn ? pivotColumn.fieldName : '',
 			pivotFunction: pivotColumn && pivotFunction ? pivotFunction : '',
+			compareColumn: compareColumn === true ? true : false,
+			reportSeries: self.ReportSeries	
 		}, 'xlsx');
 	}
 
