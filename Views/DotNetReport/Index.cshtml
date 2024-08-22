@@ -178,9 +178,14 @@ Its Recommended you use it as is, and only change styling as needed to match you
                     <div data-bind="visible: !SelectedFolder() && !searchReports()">
                         <p>Please choose Folders below to view Reports</p>
                         <ul class="folder-list" data-bind="foreach: Folders">
-                            <li data-bind="click: function(){ $parent.SelectedFolder($data); }">
+                            <li class="folder-item" data-bind="click: function(){ $parent.SelectedFolder($data); }">
                                 <span class="fa fa-3x fa-folder" style="color: #ffd800"></span>
                                 <span class="desc" data-bind="text: FolderName"></span>
+                                <button data-bind="visible: $parent.adminMode, click: function() {event.stopPropagation();}" 
+                                        data-bs-toggle="modal" data-bs-target="#managesAccessModal"
+                                        class="btn btn-light btn-sm edit-access-btn">
+                                    <i class="fa fa-edit" style="font-size:10px"></i>
+                                </button>
                             </li>
                         </ul>
                     </div>
@@ -596,6 +601,25 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         </code>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- managesAccessModal -->
+<div class="modal" id="managesAccessModal" tabindex="-1" aria-labelledby="managesAccessModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="managesAccessModalLabel">Manage Access</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div data-bind="template: {name: 'manage-access-template'}"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary">Save changes</button>
             </div>
         </div>
     </div>

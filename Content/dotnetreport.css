@@ -1319,3 +1319,17 @@ tfoot tr.sub-total {
 .row{
     padding-top: 5px; padding-bottom: 5px;
 }
+
+.folder-item {
+    position: relative; 
+    padding: 10px; 
+}
+.edit-access-btn {
+    position: absolute; 
+    top: 10px;
+    left: 10px;
+    display: none; 
+}
+.folder-item:hover .edit-access-btn {
+    display: inline-block;
+}
