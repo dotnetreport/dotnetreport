@@ -5108,7 +5108,8 @@ var dashboardViewModel = function (options) {
 					report.SaveReport(true);
 					self.selectedReport(report);
 					setTimeout(function () {
-						options.reportWizard.modal('show');
+						var reportModel = new bootstrap.Modal(document.getElementById('modal-reportbuilder'));
+						reportModel.show();
 						if ($.unblockUI) {
 							$.unblockUI();
 						}
