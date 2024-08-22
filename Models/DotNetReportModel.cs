@@ -1330,39 +1330,6 @@ namespace ReportBuilder.Web.Models
                     }
                 }
             }
-            // Reorder columns based on desired order
-            //if (desiredOrder.Any())
-            //{
-            //    var columnsToReorder = dt.Columns.Cast<DataColumn>()
-            //                                     .Where(c => desiredOrder.Contains(c.ColumnName))
-            //                                     .ToList();
-
-            //    // Reorder columns by removing and re-adding them in the desired order
-            //    foreach (var columnName in desiredOrder)
-            //    {
-            //        if (dt.Columns.Contains(columnName))
-            //        {
-            //            var column = dt.Columns[columnName];
-            //            dt.Columns.Remove(column);
-            //            dt.Columns.Add(column);
-            //        }
-            //    }
-
-            //    // Reorder rows to match the column order
-            //    var orderedRows = dt.Rows.Cast<DataRow>()
-            //                              .OrderBy(row => desiredOrder.IndexOf(row.Table.Columns.Cast<DataColumn>()
-            //                                                                                    .Where(c => desiredOrder.Contains(c.ColumnName))
-            //                                                                                    .Select(c => row[c.ColumnName].ToString())
-            //                                                                                    .FirstOrDefault()))
-            //                              .CopyToDataTable();
-
-            //    // Clear existing rows and add the reordered rows
-            //    dt.Rows.Clear();
-            //    foreach (DataRow orderedRow in orderedRows.Rows)
-            //    {
-            //        dt.ImportRow(orderedRow);
-            //    }
-            //}
 
             return dt;
         }
