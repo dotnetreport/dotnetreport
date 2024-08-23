@@ -1326,8 +1326,8 @@ tfoot tr.sub-total {
 }
 .edit-access-btn {
     position: absolute; 
-    top: 10px;
-    left: 10px;
+    top: 2px;
+    right: -2px;
     display: none; 
 }
 .folder-item:hover .edit-access-btn {

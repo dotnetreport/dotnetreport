@@ -30,6 +30,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 fieldOptionsModal: $("#fieldOptionsModal"),
                 lookupListUrl: '@Url.Action("GetLookupList", "DotNetReportApi")',
                 apiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")',
+                postApiUrl: '@Url.Action("CallPostReportApi", "DotNetReportApi")',
                 runReportApiUrl: '@Url.Action("RunReportApi", "DotNetReportApi")',
                 getUsersAndRolesUrl: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")',
                 reportId: queryParams.reportId || 0,
@@ -181,7 +182,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             <li class="folder-item" data-bind="click: function(){ $parent.SelectedFolder($data); }">
                                 <span class="fa fa-3x fa-folder" style="color: #ffd800"></span>
                                 <span class="desc" data-bind="text: FolderName"></span>
-                                <button data-bind="visible: $parent.adminMode, click: function() {event.stopPropagation();}" 
+                                <button data-bind="visible: $parent.adminMode, click: function() {event.stopPropagation();$parent.SelectedFolderAccess($data);$root.folderAccess.loadFolderAccess()}"
                                         data-bs-toggle="modal" data-bs-target="#managesAccessModal"
                                         class="btn btn-light btn-sm edit-access-btn">
                                     <i class="fa fa-edit" style="font-size:10px"></i>
@@ -609,7 +610,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
 <!-- managesAccessModal -->
 <div class="modal" id="managesAccessModal" tabindex="-1" aria-labelledby="managesAccessModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content">
+        <div class="modal-content" data-bind="with: folderAccess">
             <div class="modal-header">
                 <h5 class="modal-title" id="managesAccessModalLabel">Manage Access</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -619,7 +620,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary">Save changes</button>
+                <button type="button" class="btn btn-primary" data-bind="click: saveFolderAccess">Save changes</button>
             </div>
         </div>
     </div>

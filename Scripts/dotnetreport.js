@@ -882,7 +882,8 @@ var reportViewModel = function (options) {
 	self.ReportMode = ko.observable(options.reportMode || "start");
 	self.Folders = ko.observableArray();
 	self.SavedReports = ko.observableArray([]);
-	self.SelectedFolder = ko.observable(null); // Folder selected in start
+	self.SelectedFolder = ko.observable(null);// Folder selected in start
+	self.SelectedFolderAccess = ko.observable(null);
 	self.CanSaveReports = ko.observable(true);
 	self.CanManageFolders = ko.observable(true);
 	self.CanEdit = ko.observable(true);
@@ -1400,7 +1401,51 @@ var reportViewModel = function (options) {
 			});
 		}
 	};
-
+	self.folderAccess = {
+		manageAccess: manageAccess(options),
+		loadFolderAccess: function () {
+			ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/GetFolderAccess",
+					model: JSON.stringify({
+						folderId: self.SelectedFolderAccess().Id,
+					})
+				}
+			}).done(function (folder) {
+				self.manageAccess.clientId(folder.ClientId);
+				self.folderAccess.manageAccess.setupList(self.folderAccess.manageAccess.users, folder.UserId || '');
+				self.folderAccess.manageAccess.setupList(self.folderAccess.manageAccess.userRoles, folder.UserRoles || '');
+				self.folderAccess.manageAccess.setupList(self.folderAccess.manageAccess.viewOnlyUserRoles, folder.ViewOnlyUserRoles || '');
+				self.folderAccess.manageAccess.setupList(self.folderAccess.manageAccess.viewOnlyUsers, folder.ViewOnlyUserId || '');
+				self.folderAccess.manageAccess.setupList(self.folderAccess.manageAccess.deleteOnlyUserRoles, folder.DeleteOnlyUserRoles || '');
+				self.folderAccess.manageAccess.setupList(self.folderAccess.manageAccess.deleteOnlyUsers, folder.DeleteOnlyUserId || '');
+			});
+		},
+		saveFolderAccess: function () {
+			ajaxcall({
+				url: options.postApiUrl,
+				type: "POST",
+				data: JSON.stringify({
+					method: "/ReportApi/SaveFolderAccess",
+					model: JSON.stringify({
+						reportJson: JSON.stringify({
+							FolderId: self.SelectedFolderAccess().Id,
+							UserId: self.folderAccess.manageAccess.getAsList(self.folderAccess.manageAccess.users),
+							ViewOnlyUserId: self.folderAccess.manageAccess.getAsList(self.folderAccess.manageAccess.viewOnlyUsers),
+							DeleteOnlyUserId: self.folderAccess.manageAccess.getAsList(self.folderAccess.manageAccess.deleteOnlyUsers),
+							UserRoles: self.folderAccess.manageAccess.getAsList(self.folderAccess.manageAccess.userRoles),
+							ViewOnlyUserRoles: self.folderAccess.manageAccess.getAsList(self.folderAccess.manageAccess.viewOnlyUserRoles),
+							DeleteOnlyUserRoles: self.folderAccess.manageAccess.getAsList(self.folderAccess.manageAccess.deleteOnlyUserRoles),
+							ClientId: self.folderAccess.manageAccess.clientId()
+						})
+					})
+				})
+			}).done(function (result) {
+				toastr.success("Folder Access Saved");
+			});
+		}
+	};
 	self.ManageJsonFile = {
 		file: ko.observable(null),
 		fileName: ko.observable(''),
