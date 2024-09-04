@@ -3164,8 +3164,29 @@ var reportViewModel = function (options) {
 			}
 			processRow(e.Items, result.ReportData.Columns);
 		});
+		function renderTable(data) {
+			const tableBody = document.getElementById('report-table-body' + self.ReportID());
+			let rowsHTML = '';
+
+			data.forEach(row => {
+				rowsHTML += '<tr>';
+				row.Items.forEach(item => {
+					rowsHTML +=
+						`<td>
+							${item.FormattedValue}
+						</td>`;
+				});
+				rowsHTML += '</tr>';
+			});
+
+			// Replace the table body content in one go
+			tableBody.innerHTML = rowsHTML;
+		}
 
 		reportResult.ReportData(result.ReportData);
+
+		if (self.ReportType() == 'List' || self.ShowExpandOption())
+			renderTable(result.ReportData.Rows);
 
 		self.pager.totalRecords(result.Pager.TotalRecords);
 		self.pager.pages(result.Pager.TotalPages);

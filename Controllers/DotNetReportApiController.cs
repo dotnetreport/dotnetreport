@@ -237,7 +237,7 @@ namespace ReportBuilder.Web.Controllers
                             }
                         }
 
-                        if (sql.Contains("ORDER BY") && !sql.Contains(" TOP "))
+                        if (sql.Contains("ORDER BY") && !sql.Contains(" TOP ") && string.IsNullOrEmpty(pivotColumn))
                             sql = sql + $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
 
                         if (sql.Contains("__jsonc__"))
@@ -250,8 +250,9 @@ namespace ReportBuilder.Web.Controllers
                     var dtPagedRun = new DataTable();
 
                     totalRecords = databaseConnection.GetTotalRecords(connectionString, sqlCount, sql);
-                    dtPagedRun = databaseConnection.ExecuteQuery(connectionString, sql);
 
+                    if (!string.IsNullOrEmpty(pivotColumn)) sql = sql.Replace("SELECT ", "SELECT TOP 1 ");
+                    dtPagedRun = databaseConnection.ExecuteQuery(connectionString, sql);
                     dtPagedRun = await DotNetReportHelper.ExecuteCustomFunction(dtPagedRun, sql);
 
                     if (sql.StartsWith("EXEC"))
@@ -272,8 +273,12 @@ namespace ReportBuilder.Web.Controllers
 
                         if (!string.IsNullOrEmpty(pivotColumn))
                         {
-                            var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dtPagedRun, sqlFields, reportData);
-                            dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn, pivotFunction);
+                            var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dtPagedRun, sqlFields, reportData, pivotColumn, pivotFunction, pageNumber, pageSize, sortBy, desc);
+                            dtPagedRun = pd.dt; 
+                            if (!string.IsNullOrEmpty(pd.sql)) sql = pd.sql;
+
+                            //var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dtPagedRun, sqlFields, reportData);
+                            //dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn, pivotFunction);                      
                             fields.AddRange(dtPagedRun.Columns.Cast<DataColumn>().Skip(fields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
                         }
 
@@ -341,7 +346,7 @@ namespace ReportBuilder.Web.Controllers
                 var model = new DotNetReportResultModel
                 {
                     ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dtPaged, fields),
-                    Warnings = GetWarnings(sql),
+                    //Warnings = GetWarnings(sql),
                     ReportSql = sql,
                     ReportDebug = Request.Host.Host.Contains("localhost"),
                     Pager = new DotNetReportPagerModel

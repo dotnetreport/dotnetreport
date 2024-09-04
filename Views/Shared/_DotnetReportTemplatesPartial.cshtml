@@ -112,7 +112,7 @@
         <!-- /ko -->
         <!-- ko ifnot: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false)  -->
         <a href="" data-bind="click: function(){ $parents[pagerIndex($parents)].changeSort(SqlField) }, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}">
-            <span data-bind="text: $parent.IsDrillDown() && fieldLabel2() ? fieldLabel2() : (fieldLabel() ? fieldLabel() : fieldName)"></span>
+            <span data-bind="html: $parent.IsDrillDown() && fieldLabel2() ? fieldLabel2() : (fieldLabel() ? fieldLabel() : fieldName)"></span>
             <span data-bind="text: $parents[pagerIndex($parents)].pager.sortColumn() === SqlField ? ($parents[pagerIndex($parents)].pager.sortDescending() ? '&#9660;' : '&#9650;') : ''"></span>
         </a>
         <!-- /ko -->
@@ -200,7 +200,7 @@
                     <!-- /ko-->
                 </tr>
             </thead>
-            <tbody>
+            <tbody data-bind="attr: {id: 'report-table-body' + $parents[2].ReportID()}">
                 <tr style="display: none;" data-bind="visible: Rows.length < 1">
                     <td class="text-info" data-bind="attr:{colspan: Columns.length}">
                         <!-- ko if: $parents[2].ReportType()=='Single' -->
@@ -213,6 +213,8 @@
                         <!-- /ko -->
                     </td>
                 </tr>
+
+                <!-- ko if: !$parents[2].ShowExpandOption() || $parents[2].ReportType() == 'List' -->
                 <!-- ko foreach: $parent.rows  -->
                 <tr>
                     <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() && !$parent.CanExpandOption() && $parentContext.$parentContext.$parentContext.$parent.ReportType() != 'Single' -->
@@ -268,6 +270,7 @@
                 </tr>
                 <!-- /ko -->
                 <!-- /ko -->
+                <!-- /ko-->
             </tbody>
             <!-- ko if: $parentContext.$parent.SubTotals().length == 1 && $parentContext.$parentContext.$parent.OuterGroupColumns().length == 0 -->
             <tfoot data-bind="foreach: $parentContext.$parent.SubTotals">
@@ -1692,7 +1695,7 @@
                                     </label>
                                 </div>
                                 <div class="col-md-6" data-bind="visible: changePageSize">
-                                    <select style="width: 150px;" class="form-select" data-bind="options: [10,30,50,100,150,200,500], value: DefaultPageSize"></select>
+                                    <select style="width: 150px;" class="form-select" data-bind="options: [10,30,50,100,150,200,500,1000], value: DefaultPageSize"></select>
                                 </div>
                             </div>
                         </div>

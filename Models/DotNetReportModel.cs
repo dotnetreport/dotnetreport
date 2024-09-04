@@ -959,15 +959,7 @@ namespace ReportBuilder.Web.Models
                         };
 
                         items.Add(item);
-
-                        try
-                        {
-                            row[col] = item.FormattedValue;
-                        }
-                        catch (Exception ex)
-                        {
-                            // ignore
-                        }
+                    
                     }
                     i += 1;
                 }
@@ -1059,6 +1051,135 @@ namespace ReportBuilder.Web.Models
             }
 
             return dts;
+        }
+
+        public async static Task<(DataTable dt, string sql)> GetPivotTable(IDatabaseConnection databaseConnection, string connectionString, DataTable dt, List<string> sqlFields, string reportDataJson, string pivotColumn, string pivotFunction, int pageNumber, int pageSize, string sortBy, bool desc)
+        {
+
+            var dts = new DataTable();
+            var drilldownRow = new List<string>();
+            if (dt.Rows.Count == 0)
+                return (dts, "");
+
+            var dr = dt.Rows[0];
+            int i = 0;
+            foreach (DataColumn dc in dt.Columns)
+            {
+                var col = sqlFields[i++]; //columns.FirstOrDefault(x => x.fieldName == dc.ColumnName) ?? new ReportHeaderColumn();
+                drilldownRow.Add($@"
+                            {{
+                                ""Value"":""{dr[dc]}"",
+                                ""FormattedValue"":""{dr[dc]}"",
+                                ""LabelValue"":""'{dr[dc]}'"",
+                                ""NumericValue"":null,
+                                ""Column"":{{
+                                    ""SqlField"":""{col.Substring(0, col.LastIndexOf(" AS "))}"",
+                                    ""ColumnName"":""{dc.ColumnName}"",
+                                    ""DataType"":""{dc.DataType.ToString()}"",
+                                    ""IsNumeric"":{(dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal" ? "true" : "false")},
+                                      ""FormatType"":""""
+                                }}
+                             }}
+                        ");
+            }
+
+            var reportData = reportDataJson.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
+            var drilldownSql = await RunReportApiCall(reportData);
+
+
+            if (!string.IsNullOrEmpty(drilldownSql))
+            {
+                var lastWhereIndex = drilldownSql.LastIndexOf("WHERE");
+                var baseQuery = drilldownSql.Substring(0, lastWhereIndex);
+                
+                var baseDataTable = databaseConnection.ExecuteQuery(connectionString, baseQuery.Replace("SELECT ", "SELECT DISTINCT "));
+                var distinctValues = baseDataTable
+                    .AsEnumerable()
+                    .Select(row => "[" + row.Field<string>(pivotColumn)?.Trim() + "]")
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Where(x=>x != "[]" && x.Length <=128)
+                    .ToList();
+
+                int pivotColumnIndex = baseDataTable.Columns[pivotColumn].Ordinal;
+                string nextColumnName = baseDataTable.Columns[pivotColumnIndex + 1].ColumnName;
+                var validFunctions = new[] { "Sum", "Count", "Avg" };
+                pivotFunction = validFunctions.Contains(pivotFunction) ? pivotFunction : "Max";
+
+                var sqlQry = $@"SELECT * FROM (
+                                        {baseQuery}
+                                   ) src
+                                   PIVOT (
+                                        {pivotFunction} ([{nextColumnName}])
+                                        FOR [{pivotColumn}] IN ({string.Join(", ", distinctValues)})
+                                   ) AS pvt
+                                   ORDER BY {(string.IsNullOrEmpty(sortBy) ? "1" : sortBy) + (desc ? " DESC" : "")} 
+                                   OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY
+                                    ";
+
+                dts = databaseConnection.ExecuteQuery(connectionString, sqlQry);
+
+                return (dts, sqlQry);
+            }
+
+            return (dts, "");
+        }
+        
+        public async static Task<DataSet> GetDrillDownDataAlternate(IDatabaseConnection databaseConnection, string connectionString, DataTable dt, List<string> sqlFields, string reportDataJson)
+        {
+            var drilldownRow = new StringBuilder();
+            var dr = dt.Rows[0];
+            int i = 0;
+
+            foreach (DataColumn dc in dt.Columns)
+            {
+                var col = sqlFields[i++];
+                var formattedCol = col.Substring(0, col.LastIndexOf(" AS "));
+
+                if (drilldownRow.Length > 0) drilldownRow.Append(',');
+
+                drilldownRow.Append($@"
+                            {{
+                                ""Value"":""{dr[dc]}"",
+                                ""FormattedValue"":""{dr[dc]}"",
+                                ""LabelValue"":""'{dr[dc]}'"",
+                                ""NumericValue"":null,
+                                ""Column"":{{
+                                    ""SqlField"":""{formattedCol}"",
+                                    ""ColumnName"":""{dc.ColumnName}"",
+                                    ""DataType"":""{dc.DataType}"",
+                                    ""IsNumeric"":{(dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal" ? "true" : "false")},
+                                    ""FormatType"":""""
+                                }}
+                             }}
+                        ");
+            }
+
+            var reportData = reportDataJson
+                .Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{drilldownRow.ToString()}]")
+                .Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
+
+            var drilldownSql = await RunReportApiCall(reportData);
+            var combinedSqls = new StringBuilder();
+
+            if (!string.IsNullOrEmpty(drilldownSql))
+            {
+                foreach (DataRow ddr in dt.Rows)
+                {
+                    i = 0;
+                    var filteredSql = drilldownSql;
+                    foreach (DataColumn dc in dt.Columns)
+                    {
+                        var value = ddr[dc].ToString().Replace("'", "''");
+                        filteredSql = filteredSql.Replace($"<{dc.ColumnName}>", value);
+                    }
+
+                    combinedSqls.AppendLine(filteredSql + ";");
+                }
+
+                return databaseConnection.ExecuteDataSetQuery(connectionString, combinedSqls.ToString());
+            }
+
+            return new DataSet();
         }
 
         public async static Task<DataSet> GetDrillDownData(IDatabaseConnection databaseConnection, string connectionString, DataTable dt, List<string> sqlFields, string reportDataJson)
