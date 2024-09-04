@@ -342,7 +342,7 @@ namespace ReportBuilder.Web.Controllers
                     }
                 }                
 
-                sql = DotNetReportHelper.Decrypt(HttpUtility.HtmlDecode(allSqls[0]));
+                if (string.IsNullOrEmpty(pivotColumn)) sql = DotNetReportHelper.Decrypt(HttpUtility.HtmlDecode(allSqls[0]));
                 var model = new DotNetReportResultModel
                 {
                     ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dtPaged, fields),
