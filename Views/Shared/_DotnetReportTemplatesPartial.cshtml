@@ -193,7 +193,7 @@
         <table class="table table-hover table-condensed" data-bind="attr: {class: 'table table-striped table-hover table-condensed ' + $parents[2].selectedStyle()}">
             <thead data-bind="if: $parents[2].ReportType() != 'Single'">
                 <tr class="no-highlight">
-                    <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !IsDrillDown() && !CanExpandOption() -->
+                    <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !IsDrillDown() && !CanExpandOption() && !$parents[2].hasPivotColumn() -->
                     <th style="width: 30px; border-left: 1px solid;"></th>
                     <!-- /ko -->
                     <!-- ko template: 'report-column-header', data: $data -->
@@ -214,7 +214,7 @@
                     </td>
                 </tr>
 
-                <!-- ko if: !$parents[2].ShowExpandOption() || $parents[2].ReportType() == 'List' -->
+                <!-- ko if: !$parents[2].hasPivotColumn() && (!$parents[2].ShowExpandOption() || $parents[2].ReportType() == 'List') -->
                 <!-- ko foreach: $parent.rows  -->
                 <tr>
                     <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() && !$parent.CanExpandOption() && $parentContext.$parentContext.$parentContext.$parent.ReportType() != 'Single' -->
@@ -575,8 +575,8 @@
                             </div>
                         </div>
                         <div class="col-md-5">
-                            <div data-bind="with: Field">                                
-                                <div data-bind="template: 'report-filter', data: $data"></div>                                
+                            <div data-bind="with: Field">
+                                <div data-bind="template: 'report-filter', data: $data"></div>
                             </div>
                             <!-- ko if: Field() && Field().fieldType == 'DateTime' && Operator() == 'range' && $index()==0 -->
                                 <!-- ko if: $parents[$parents.length-2].canAddSeries != undefined && $parents[$parents.length-2].canAddSeries() -->
@@ -788,7 +788,7 @@
                         <input type="text" class="form-control" data-bind="datepicker: scheduleEnd" title="Scheduled Report will not be sent after this date" required />
                     </div>
                 </div>
-            </div>            
+            </div>
         </div>
     </div>
 
@@ -822,13 +822,20 @@
                             <select class="form-select" required data-bind="options: $parents[1].currencyFormats, optionsText: 'display',optionsValue: 'value', value: currencyFormat"></select>
                         </div>
                     </div>
-                      <div class="form-group row" data-bind="visible: fieldFormat()=='Date'">
+                    <div class="form-group row" data-bind="visible: fieldFormat()=='Date'">
                         <label class="col-sm-5 col-md-5 control-label">Pick Date Format</label>
                         <div class="col-sm-7 col-md-7">
                             <select class="form-select" data-bind="options: $parents[1].dateFormats, value: dateFormat"></select>
                         </div>
+                     </div>
+                     <div class="form-group row" data-bind="visible: fieldFormat()=='Date'">
+                        <label class="col-sm-5 col-md-5 control-label">Drill Date Format</label>
+                        <div class="col-sm-7 col-md-7">
+                            <select class="form-select" data-bind="options: ['Day', 'Month', 'Year', 'Month/Year'], value: drillDataFormat"></select>
+                        </div>
                     </div>
-                       <div class="form-group row" data-bind="visible: dateFormat()==='Custom'">
+
+                     <div class="form-group row" data-bind="visible: dateFormat()==='Custom'">
                          <label class="col-sm-5 col-md-5 control-label">Enter Custom Date Format</label>
                         <div class="col-sm-7 col-md-7">
                             <input type="text" class="form-control" data-bind="value: customDateFormat" placeholder="dd/mm/yyyy" />
@@ -1501,7 +1508,7 @@
                                             <div class="pull-right" style="margin-top: -5px;" data-bind="if: $parent.AggregateReport() && !$parent.useStoredProc()">
                                                 <select class="form-select form-control-sm" data-bind="options: $parent.canDrilldown() && $index()>0 ? fieldAggregateWithDrilldown : fieldAggregate, value: selectedAggregate"></select>
                                             </div>
-                                            
+
                                             <div class="pull-right" style="padding-right: 15px;" data-bind="ifnot: $parent.useStoredProc">
                                                 <span class="fa fa-trash-o" title="Cannot Delete Required Filter" data-bind="visible: forceFilterForTable"></span>
                                                 <span class="fa fa-trash" style="cursor: pointer;" aria-hidden="true" title="Delete this Field" data-bind="click: $parent.RemoveField, hidden: forceFilterForTable"></span>

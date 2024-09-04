@@ -2437,8 +2437,10 @@ var reportViewModel = function (options) {
 						customDateFormat: x.customDateFormat(),
 						currencyFormat: x.currencyFormat(),
 						fieldLabel2: x.fieldLabel2(),
+						drillDataFormat: x.drillDataFormat(),
 						functionConfig: x.functionConfig
 					}),
+					DrillDataFormat: x.drillDataFormat(),
 					FieldAlign: x.fieldAlign(),
 					FontColor: x.fontColor(),
 					BackColor: x.backColor(),
@@ -2548,6 +2550,11 @@ var reportViewModel = function (options) {
 				toastr.error("All fields except one must be hidden for Single Value Report");
 				return;
 			}
+		}
+
+		if (_.filter(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' }).length > 1) {
+			toastr.error("Select only one field for Pivot.");
+			return;
 		}
 
 		if (!skipValidation && !self.validateReport()) {
@@ -2762,6 +2769,7 @@ var reportViewModel = function (options) {
 				e.fieldName = e.ColumnName || col.fieldName;
 				e.fieldWidth = col.fieldWidth || ko.observable();
 				e.fontBold = col.fontBold || ko.observable();
+				e.drillDataFormat = col.drillDataFormat || ko.observable();
 				e.headerFontBold = col.headerFontBold || ko.observable();
 				e.headerFontColor = col.headerFontColor || ko.observable();
 				e.headerBackColor = col.headerBackColor || ko.observable();
@@ -3185,8 +3193,9 @@ var reportViewModel = function (options) {
 
 		reportResult.ReportData(result.ReportData);
 
-		if (self.ReportType() == 'List' || self.ShowExpandOption())
+		if (self.ReportType() == 'List' || self.ShowExpandOption() || self.hasPivotColumn()) {
 			renderTable(result.ReportData.Rows);
+		}
 
 		self.pager.totalRecords(result.Pager.TotalRecords);
 		self.pager.pages(result.Pager.TotalPages);
@@ -3256,6 +3265,10 @@ var reportViewModel = function (options) {
 			self.allowTableResize();
 		}, 2000);
 	}
+
+	self.hasPivotColumn = ko.computed(function () {
+		return _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' }) != null;
+	});
 
 	self.executingReport = false;
 	self.ExecuteReport = function () {
@@ -3692,6 +3705,7 @@ var reportViewModel = function (options) {
 		e.dateFormat = ko.observable(e.fieldSettings.dateFormat || '');
 		e.customDateFormat = ko.observable(e.fieldSettings.customDateFormat || '');
 		e.fieldLabel2 = ko.observable(e.fieldSettings.fieldLabel2 || '');
+		e.drillDataFormat = ko.observable(e.fieldSettings.drillDataFormat || '');
 		e.fieldAlign = ko.observable(e.fieldAlign);
 		e.fontColor = ko.observable(e.fontColor);
 		e.backColor = ko.observable(e.backColor);
@@ -3803,7 +3817,8 @@ var reportViewModel = function (options) {
 				headerFontBold: e.headerFontBold(),
 				fieldWidth: e.fieldWidth(),
 				fieldConditionOp: e.fieldConditionOp(),
-				fieldConditionVal: e.fieldConditionVal
+				fieldConditionVal: e.fieldConditionVal,
+				drillDataFormat: e.drillDataFormat()
 			}
 
 			e.fieldCondtionalFormats([]);
@@ -3857,6 +3872,7 @@ var reportViewModel = function (options) {
 			e.dateFormat(self.currentFieldOptions.dateFormat);
 			e.customDateFormat(self.currentFieldOptions.customDateFormat);
 			e.fieldLabel2(self.currentFieldOptions.fieldLabel2);
+			e.drillDataFormat(self.currentFieldOptions.drillDataFormat);
 			e.fontColor(self.currentFieldOptions.fontColor);
 			e.backColor(self.currentFieldOptions.backColor);
 			e.headerFontColor(self.currentFieldOptions.headerFontColor);

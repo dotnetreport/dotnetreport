@@ -1053,7 +1053,7 @@ namespace ReportBuilder.Web.Models
             return dts;
         }
 
-        public async static Task<(DataTable dt, string sql)> GetPivotTable(IDatabaseConnection databaseConnection, string connectionString, DataTable dt, List<string> sqlFields, string reportDataJson, string pivotColumn, string pivotFunction, int pageNumber, int pageSize, string sortBy, bool desc)
+        public async static Task<(DataTable dt, string sql)> GetPivotTable(IDatabaseConnection databaseConnection, string connectionString, DataTable dt, string sql, List<string> sqlFields, string reportDataJson, string pivotColumn, string pivotFunction, int pageNumber, int pageSize, string sortBy, bool desc)
         {
 
             var dts = new DataTable();
@@ -1090,7 +1090,7 @@ namespace ReportBuilder.Web.Models
             if (!string.IsNullOrEmpty(drilldownSql))
             {
                 var lastWhereIndex = drilldownSql.LastIndexOf("WHERE");
-                var baseQuery = drilldownSql.Substring(0, lastWhereIndex);
+                var baseQuery = drilldownSql.Substring(0, lastWhereIndex) + " " + GetWhereClause(sql);
                 
                 var baseDataTable = databaseConnection.ExecuteQuery(connectionString, baseQuery.Replace("SELECT ", "SELECT DISTINCT "));
                 var distinctValues = baseDataTable
