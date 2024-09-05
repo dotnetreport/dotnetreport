@@ -236,7 +236,6 @@ ko.bindingHandlers.sortableColumns = {
     init: function (element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
         var options = valueAccessor() || {};
         var selectedFields = options.selectedFields;
-
         $(element).sortable({
             items: "> th",
             handle: options.handle || ".sortable",
@@ -245,16 +244,29 @@ ko.bindingHandlers.sortableColumns = {
             placeholder: options.placeholder || "drop-highlight",
             stop: function (event, ui) {
                 var newOrder = $(element).sortable("toArray");
-                if (ko.isObservable(selectedFields)) {
+                var itemId = ui.item.attr('id');
+                var isPivotColumn = itemId.includes('pivot--');
+                if (isPivotColumn) {
+                    var pivotColumnOrder = newOrder.filter(function (item) {
+                        return item.includes('pivot--');
+                    });
+                    if (pivotColumnOrder.length > 0) {
+                        var pivotColumnOrderWithoutPrefix = pivotColumnOrder.map(function (item) {
+                            return item.replace('pivot--', '');
+                        });
+                        var pivotColumnOrderString = pivotColumnOrderWithoutPrefix.join(',');
+                        bindingContext.$root.PivotColumns(pivotColumnOrderString);
+                    }
+                }
+                else if (ko.isObservable(selectedFields)) {
                     var sortedFields = selectedFields().slice().sort(function (a, b) {
                         var indexA = newOrder.indexOf(a.fieldId.toString());
                         var indexB = newOrder.indexOf(b.fieldId.toString());
                         return indexA - indexB;
                     });
                     selectedFields(sortedFields);
-                    // Call the function after sorting
-                    bindingContext.$root.sortReportHeaderColumn();
                 }
+                bindingContext.$root.sortReportHeaderColumn();
             }
         }).disableSelection(); // Prevent text selection while dragging
     }

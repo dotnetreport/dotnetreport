@@ -856,6 +856,7 @@ var reportViewModel = function (options) {
 	self.barChartStacked = ko.observable();
 	self.DefaultPageSize = ko.observable();
 	self.FilterGroups = ko.observableArray();
+	self.PivotColumns = ko.observable();
 	self.FilterGroups.subscribe(function (newArray) {
 		if (newArray && newArray.length == 0) {
 			self.FilterGroups.push(new filterGroupViewModel({ isRoot: true, parent: self, options: options }));
@@ -2480,6 +2481,7 @@ var reportViewModel = function (options) {
 				barChartStacked: self.barChartStacked(),
 				barChartHorizontal: self.barChartHorizontal(),
 				DefaultPageSize: self.DefaultPageSize() || 30,
+				PivotColumns: self.PivotColumns()
 			}),
 			OnlyTop: self.maxRecords() ? self.OnlyTop() : null,
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : self.AggregateReport(),
@@ -3944,6 +3946,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.PopulateReport = function (report, filterOnFly, reportSeries) {
+
 		self.ReportID(report.ReportID);
 		self.mapRegion('');
 		if (report.ReportType.indexOf('Map') >= 0) {
@@ -4002,7 +4005,7 @@ var reportViewModel = function (options) {
 		self.barChartHorizontal(reportSettings.barChartHorizontal === true ? true : false);
 		self.barChartStacked(reportSettings.barChartStacked === true ? true : false);
 		self.DefaultPageSize(reportSettings.DefaultPageSize || 30);
-
+		self.PivotColumns(reportSettings.PivotColumns || null)
 		if (self.ReportMode() == "execute") {
 			if (self.useReportHeader()) {
 				self.headerDesigner.init(true);
