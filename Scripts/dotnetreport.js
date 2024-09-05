@@ -1287,7 +1287,7 @@ var reportViewModel = function (options) {
 				options.reportWizard.modal('hide');
 
 				if (self.ReportMode() == 'dashboard') {
-					report.SaveReport(false);
+					//report.SaveReport(false);
 					return;
 				}
 				self.ReportMode("start");
@@ -5149,7 +5149,8 @@ var dashboardViewModel = function (options) {
 					report.SaveReport(true);
 					self.selectedReport(report);
 					setTimeout(function () {
-						options.reportWizard.modal('show');
+						var reportModel = new bootstrap.Modal(document.getElementById('modal-reportbuilder'));
+						reportModel.show();
 						if ($.unblockUI) {
 							$.unblockUI();
 						}
