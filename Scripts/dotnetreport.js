@@ -1873,7 +1873,7 @@ var reportViewModel = function (options) {
 	self.formulaDataFormat = ko.observable('')
 	self.formulaDecimalPlaces = ko.observable();
 	self.selectedFunction = ko.observable();
-
+	self.currentFormulaField = ko.observable(null);
 	var codeEditor;
 	self.designFunctionField = function () {
 		if (self.isFunctionField()) {
@@ -1984,7 +1984,13 @@ var reportViewModel = function (options) {
 	self.isFormulaField.subscribe(function () {
 		self.clearFormulaField();
 	});
-
+	self.cancelFormulaField = function () {
+		self.isFormulaField(!self.isFormulaField());
+		if (self.currentFormulaField() != null) {
+			self.SelectedFields.push(self.currentFormulaField());
+			self.currentFormulaField(null);
+		}
+	};
 	self.removeField = function (field) {
 		bootbox.confirm("Are you sure you would like to remove this field?", function (r) {
 			if (r) {
@@ -2097,7 +2103,7 @@ var reportViewModel = function (options) {
 				});
 			}
 		}
-
+		self.currentFormulaField(field)
 		self.SelectedFields.remove(field);
 	}
 
@@ -2838,6 +2844,7 @@ var reportViewModel = function (options) {
 					e.linkField = false;
 				}
 				col = col || { fieldName: e.ColumnName };
+				col.customfieldLabel = col.fieldLabel ? col.fieldLabel() : null;
 				col.currencySymbol = col.currencyFormat ? col.currencyFormat() : null;
 				col.decimalPlacesDigit = col.decimalPlaces ? col.decimalPlaces() : null;
 				col.fieldFormating = col.fieldFormat ? col.fieldFormat() : null;
@@ -3503,6 +3510,13 @@ var reportViewModel = function (options) {
 		});
 
 		data.addRows(rowArray);
+		var prefixFormat = reportData.Columns[1].currencyFormat ? reportData.Columns[1].currencyFormat() : null;
+		if (prefixFormat != null) {
+			var formatter = new google.visualization.NumberFormat({
+				prefix: prefixFormat
+			});
+			formatter.format(data, 1);
+		}
 
 		// Set chart options
 		var chartOptions = {
@@ -3511,7 +3525,10 @@ var reportViewModel = function (options) {
 				startup: true,
 				duration: 1000,
 				easing: 'out'
-			}
+			},
+			vAxis: {
+				ticks: generateTicks(data, prefixFormat) // Custom ticks with currency formatting
+			},
 		};
 
 		if (options.chartSize) {
@@ -3633,6 +3650,25 @@ var reportViewModel = function (options) {
 				}
 			});
 		}
+		function generateTicks(data, prefixFormat) {
+			var max = 0;
+			for (var i = 0; i < data.getNumberOfRows(); i++) {
+				for (var j = 1; j < data.getNumberOfColumns(); j++) {
+					if (data.getValue(i, j) > max) {
+						max = data.getValue(i, j);
+					}
+				}
+			}
+
+			var tickInterval = Math.pow(10, Math.floor(Math.log10(max)) - 1); // Dynamically calculate the interval
+			var ticks = [];
+
+			for (var i = 0; i <= max; i += tickInterval) {
+				ticks.push({ v: i, f: prefixFormat + i.toLocaleString() });
+			}
+
+			return ticks;
+		}
 		function handlePointerDown(event) {
 			if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
 			event.preventDefault(); // Prevent default browser behavior
@@ -3648,6 +3684,7 @@ var reportViewModel = function (options) {
 			chartHeight = Math.max(100, chartHeight); // Ensure a minimum height
 			chartOptions.width = chartWidth;
 			chartOptions.height = chartHeight;
+			chartOptions.vAxis.ticks = generateTicks(data, prefixFormat); // Update ticks dynamically
 			chart.draw(data, chartOptions);
 		}
 		function handlePointerUp(event) {
