@@ -55,13 +55,19 @@ namespace ReportBuilder.Web.Controllers
             public string connectKey { get; set; }
         }
 
+        [ValidateAntiForgeryToken]
         [HttpPost]
         public IActionResult GetLookupList(GetLookupListParameters model)
         {
             string lookupSql = model.lookupSql;
             string connectKey = model.connectKey;
-
+            var qry = new SqlQuery();
             var sql = DotNetReportHelper.Decrypt(lookupSql);
+            if (sql.StartsWith("{\"sql\""))
+            {
+                qry = JsonSerializer.Deserialize<SqlQuery>(sql);
+                sql = qry.sql;
+            }
 
             // Uncomment if you want to restrict max records returned
             sql = sql.Replace("SELECT ", "SELECT TOP 500 ");
@@ -72,7 +78,7 @@ namespace ReportBuilder.Web.Controllers
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
 
-            dt = databaseConnection.ExecuteQuery(connectionString, sql);
+            dt = databaseConnection.ExecuteQuery(connectionString, sql, qry.parameters);
 
             var data = new List<object>();
             foreach (DataRow dr in dt.Rows)
@@ -91,6 +97,12 @@ namespace ReportBuilder.Web.Controllers
 
         }
 
+        public class ReportApiCallModel
+        {
+            public string method { get; set; }
+            public string model { get; set; }
+        }
+
         [AllowAnonymous]
         public async Task<IActionResult> CallReportApiUnAuth(string method, string model)
         {
@@ -104,6 +116,7 @@ namespace ReportBuilder.Web.Controllers
             return await ExecuteCallReportApi(method, model, settings);
         }
 
+        [ValidateAntiForgeryToken]
         [HttpPost]
         public async Task<IActionResult> PostReportApi(PostReportApiCallMode data)
         {
@@ -111,10 +124,18 @@ namespace ReportBuilder.Web.Controllers
             return await CallReportApi(method, JsonSerializer.Serialize(data));
         }
 
+        [ValidateAntiForgeryToken]
         [HttpPost]
         public async Task<IActionResult> RunReportApi(DotNetReportApiCall data)
         {
             return await CallReportApi(data.Method, JsonSerializer.Serialize(data));
+        }
+
+        [ValidateAntiForgeryToken]
+        [HttpPost]
+        public async Task<IActionResult> CallPostReportApi(ReportApiCallModel data)
+        {
+            return await CallReportApi(data.method, data.model);
         }
 
         [HttpGet]
@@ -135,12 +156,21 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("clientId", settings.ClientId),
                     new KeyValuePair<string, string>("userId", settings.UserId),
                     new KeyValuePair<string, string>("userIdForSchedule", settings.UserIdForSchedule),
-                    new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole))
-                };
+                    new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
+                    new KeyValuePair<string, string>("useParameters", "true")
+            };
 
                 var data = JsonSerializer.Deserialize<Dictionary<string, dynamic>>(model);
                 foreach (var key in data.Keys)
                 {
+                    if (key == "dataConnect" && data[key] is not null)
+                    {
+                        keyvalues.RemoveAt(keyvalues.FindIndex(kv => kv.Key == "dataConnect"));
+                    }
+                    if (key == "account" && data[key] is not null)
+                    {
+                        keyvalues.RemoveAt(keyvalues.FindIndex(kv => kv.Key == "account"));
+                    }
                     if ((key != "adminMode" || (key == "adminMode" && settings.CanUseAdminMode)) && data[key] is not null)
                     {
                         keyvalues.Add(new KeyValuePair<string, string>(key, data[key].ToString()));
@@ -175,6 +205,13 @@ namespace ReportBuilder.Web.Controllers
             public string reportData { get; set; }
         }
 
+        public class SqlQuery
+        {
+            public string sql { get; set; } = "";
+            public List<KeyValuePair<string, string>> parameters { get; set; } = null;
+        }
+
+        [ValidateAntiForgeryToken]
         [HttpPost]
         public async Task<IActionResult> RunReport(RunReportParameters data)
         {
@@ -193,6 +230,7 @@ namespace ReportBuilder.Web.Controllers
             var sql = "";
             var sqlCount = "";
             int totalRecords = 0;
+            var qry = new SqlQuery();
 
             try
             {
@@ -209,6 +247,11 @@ namespace ReportBuilder.Web.Controllers
                 for (int i = 0; i < allSqls.Length; i++)
                 {
                     sql = DotNetReportHelper.Decrypt(HttpUtility.HtmlDecode(allSqls[i]));
+                    if (sql.StartsWith("{\"sql\""))
+                    {
+                        qry = JsonSerializer.Deserialize<SqlQuery>(sql);
+                        sql = qry.sql;
+                    }
                     if (!sql.StartsWith("EXEC"))
                     {
                         var fromIndex = DotNetReportHelper.FindFromIndex(sql);
@@ -249,10 +292,10 @@ namespace ReportBuilder.Web.Controllers
 
                     var dtPagedRun = new DataTable();
 
-                    totalRecords = databaseConnection.GetTotalRecords(connectionString, sqlCount, sql);
+                    totalRecords = databaseConnection.GetTotalRecords(connectionString, sqlCount, sql, qry.parameters);
 
                     if (!string.IsNullOrEmpty(pivotColumn)) sql = sql.Replace("SELECT ", "SELECT TOP 1 ");
-                    dtPagedRun = databaseConnection.ExecuteQuery(connectionString, sql);
+                    dtPagedRun = databaseConnection.ExecuteQuery(connectionString, sql, qry.parameters);
                     dtPagedRun = await DotNetReportHelper.ExecuteCustomFunction(dtPagedRun, sql);
 
                     if (sql.StartsWith("EXEC"))
@@ -278,7 +321,7 @@ namespace ReportBuilder.Web.Controllers
                             if (!string.IsNullOrEmpty(pd.sql)) sql = pd.sql;
 
                             //var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dtPagedRun, sqlFields, reportData);
-                            //dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn, pivotFunction);                      
+                            //dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn, pivotFunction, reportData);                      
                             fields.AddRange(dtPagedRun.Columns.Cast<DataColumn>().Skip(fields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
                         }
 
@@ -396,7 +439,8 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("filterId", filterId.HasValue ? filterId.ToString() : ""),
                     new KeyValuePair<string, string>("filterValue", filterValue.ToString()),
                     new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
-                    new KeyValuePair<string, string>("dataFilters", JsonSerializer.Serialize(settings.DataFilters))
+                    new KeyValuePair<string, string>("dataFilters", JsonSerializer.Serialize(settings.DataFilters)),
+                    new KeyValuePair<string, string>("useParameters", "true")
                 });
 
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/RunLinkedReport"), content);
@@ -509,6 +553,7 @@ namespace ReportBuilder.Web.Controllers
             });
         }
 
+        [ValidateAntiForgeryToken]
         [HttpPost]
         public async Task<IActionResult> GetSchemaFromSql([FromBody] SchemaFromSqlCall data)
         {
@@ -522,6 +567,9 @@ namespace ReportBuilder.Web.Controllers
                     Selected = true
                 };
 
+                if (string.IsNullOrEmpty(data.value) || !data.value.StartsWith("SELECT ")) {
+                    throw new Exception("Invalid SQL");
+                }
                 table.CustomTableSql = data.value;
 
                 var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(data.dataConnectKey));
@@ -683,11 +731,21 @@ namespace ReportBuilder.Web.Controllers
         {
         }
 
+        [ValidateAntiForgeryToken]
         [HttpPost]
         public async Task<IActionResult> SearchProcedure([FromBody] SearchProcCall data)
         {
-            string value = data.value; string accountKey = data.accountKey; string dataConnectKey = data.dataConnectKey;
-            return new JsonResult(await GetSearchProcedure(value, accountKey, dataConnectKey), new JsonSerializerOptions() { PropertyNamingPolicy = null });
+            try
+            {
+                string value = data.value; string accountKey = data.accountKey; string dataConnectKey = data.dataConnectKey;
+                return new JsonResult(await GetSearchProcedure(value, accountKey, dataConnectKey), new JsonSerializerOptions() { PropertyNamingPolicy = null });
+            }
+            catch (Exception ex)
+
+            {
+                Response.StatusCode = 500;
+                return new JsonResult(new { ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+            }
         }
 
         private async Task<List<TableViewModel>> GetSearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
@@ -698,12 +756,18 @@ namespace ReportBuilder.Web.Controllers
             {
                 // open the connection to the database 
                 conn.Open();
-                string spQuery = "SELECT ROUTINE_NAME, ROUTINE_DEFINITION, ROUTINE_SCHEMA FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_NAME LIKE '%" + value + "%' AND ROUTINE_TYPE = 'PROCEDURE'";
+                string spQuery = "SELECT ROUTINE_NAME, ROUTINE_DEFINITION, ROUTINE_SCHEMA FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_NAME LIKE ? AND ROUTINE_TYPE = 'PROCEDURE'";
                 OleDbCommand cmd = new OleDbCommand(spQuery, conn);
                 cmd.CommandType = CommandType.Text;
+                cmd.Parameters.Add(new OleDbParameter("?", $"%{value}%"));
                 DataTable dtProcedures = new DataTable();
                 dtProcedures.Load(cmd.ExecuteReader());
                 int count = 1;
+
+                if (dtProcedures.Rows.Count == 0)
+                {
+                    throw new Exception($"No stored procs found matching {value}");
+                }
                 foreach (DataRow dr in dtProcedures.Rows)
                 {
                     var procName = dr["ROUTINE_NAME"].ToString();

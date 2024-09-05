@@ -856,6 +856,7 @@ var reportViewModel = function (options) {
 	self.barChartStacked = ko.observable();
 	self.DefaultPageSize = ko.observable();
 	self.FilterGroups = ko.observableArray();
+	self.PivotColumns = ko.observable();
 	self.FilterGroups.subscribe(function (newArray) {
 		if (newArray && newArray.length == 0) {
 			self.FilterGroups.push(new filterGroupViewModel({ isRoot: true, parent: self, options: options }));
@@ -1401,6 +1402,97 @@ var reportViewModel = function (options) {
 		}
 	};
 
+	self.ManageJsonFile = {
+		file: ko.observable(null),
+		fileName: ko.observable(''),
+		triggerFileInput: function () {
+			$('#fileInputJson').click();
+		},
+		handleFileSelect: function (data, event) {
+			var selectedFile = event.target.files[0];
+			if (selectedFile && (selectedFile.type === "application/json" || selectedFile.name.endsWith('.json'))) {
+				self.ManageJsonFile.file(selectedFile);
+				self.ManageJsonFile.fileName(selectedFile.name);
+			} else {
+				self.ManageJsonFile.file(null);
+				self.ManageJsonFile.fileName('');
+				toastr.error('Only JSON files are allowed.');
+			}
+		},
+		uploadFile: function () {
+			var file = self.ManageJsonFile.file();
+			if (file != null) {
+				var reader = new FileReader();
+				reader.onload = function (event) {
+					try {
+						var report = JSON.parse(event.target.result);
+						var reportName = report.ReportName;
+						var reportId = report.ReportID;
+						var reportExists = _.some(self.SavedReports(), function (report) {
+							return report.reportName === reportName && report.reportId === reportId;
+						});
+						if (reportExists) {
+							handleOverwriteConfirmation(reportName, function (action) {
+								if (action === 'overwrite') {
+									self.RunReport(true, true, false, report);
+								} else if (action === 'duplicate') {
+									report.ReportID = 0;
+									report.ReportName = `Copy of ${reportName}`;
+									self.RunReport(true, true, false, report);
+								} else {
+									toastr.info('Upload canceled.');
+								}
+							});
+							$('#uploadFileModal').modal('hide');
+						} else {
+							report.ReportID = 0;
+							self.RunReport(true, true, false, report);
+							$('#uploadFileModal').modal('hide');
+						}
+						self.ManageJsonFile.file(null);
+						self.ManageJsonFile.fileName('');
+					} catch (e) {
+						toastr.error('Invalid JSON file.'+ e);
+					}
+				};
+				reader.onerror = function (event) {
+					toastr.error('Error reading file.');
+				};
+				reader.readAsText(file); // Read the file as text
+				function handleOverwriteConfirmation(reportName, callback) {
+					bootbox.dialog({
+						title: "Confirm Action",
+						message: `A report with the name "${reportName}" already exists. What would you like to do?`,
+						buttons: {
+							cancel: {
+								label: 'Cancel',
+								className: 'btn-secondary',
+								callback: function () {
+									callback('cancel');
+								}
+							},
+							duplicate: {
+								label: 'Make Copy',
+								className: 'btn-warning',
+								callback: function () {
+									callback('duplicate');
+								}
+							},
+							overwrite: {
+								label: 'Overwrite',
+								className: 'btn-primary',
+								callback: function () {
+									callback('overwrite');
+								}
+							}
+						}
+					});
+				}
+			} else {
+				toastr.error('No JSON file selected for upload.');
+			}
+		}
+	}; 
 	self.reportsInFolder = ko.computed(function () {
 		if (self.SelectedFolder() == null) {
 			return [];
@@ -1781,7 +1873,7 @@ var reportViewModel = function (options) {
 	self.formulaDataFormat = ko.observable('')
 	self.formulaDecimalPlaces = ko.observable();
 	self.selectedFunction = ko.observable();
-
+	self.currentFormulaField = ko.observable(null);
 	var codeEditor;
 	self.designFunctionField = function () {
 		if (self.isFunctionField()) {
@@ -1892,7 +1984,13 @@ var reportViewModel = function (options) {
 	self.isFormulaField.subscribe(function () {
 		self.clearFormulaField();
 	});
-
+	self.cancelFormulaField = function () {
+		self.isFormulaField(!self.isFormulaField());
+		if (self.currentFormulaField() != null) {
+			self.SelectedFields.push(self.currentFormulaField());
+			self.currentFormulaField(null);
+		}
+	};
 	self.removeField = function (field) {
 		bootbox.confirm("Are you sure you would like to remove this field?", function (r) {
 			if (r) {
@@ -2005,7 +2103,7 @@ var reportViewModel = function (options) {
 				});
 			}
 		}
-
+		self.currentFormulaField(field)
 		self.SelectedFields.remove(field);
 	}
 
@@ -2389,6 +2487,7 @@ var reportViewModel = function (options) {
 				barChartStacked: self.barChartStacked(),
 				barChartHorizontal: self.barChartHorizontal(),
 				DefaultPageSize: self.DefaultPageSize() || 30,
+				PivotColumns: self.PivotColumns()
 			}),
 			OnlyTop: self.maxRecords() ? self.OnlyTop() : null,
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : self.AggregateReport(),
@@ -2537,7 +2636,7 @@ var reportViewModel = function (options) {
 		self.RunReport(false);
 	}
 
-	self.RunReport = function (saveOnly, skipValidation, dashboardRun) {
+	self.RunReport = function (saveOnly, skipValidation, dashboardRun,importJson) {
 
 		saveOnly = saveOnly === true ? true : false;
 		skipValidation = skipValidation === true ? true : false;
@@ -2583,7 +2682,7 @@ var reportViewModel = function (options) {
 						data: JSON.stringify({
 							method: "/ReportApi/RunReport",
 							SaveReport: self.CanSaveReports() && !isComparison ? (saveOnly || self.SaveReport()) : false,
-							ReportJson: JSON.stringify(self.BuildReportData([], isComparison, i - 1)),
+							ReportJson: importJson ? JSON.stringify(importJson) : JSON.stringify(self.BuildReportData([], isComparison, i - 1)),
 							adminMode: self.adminMode(),
 							userIdForFilter: self.userIdForFilter,
 							SubTotalMode: false
@@ -2624,7 +2723,6 @@ var reportViewModel = function (options) {
 						if (saveOnly) {
 							return;
 						}
-
 						if (self.ReportMode().indexOf('export-') == 0) {
 
 							self.ReportID(_result.reportId);
@@ -2641,12 +2739,14 @@ var reportViewModel = function (options) {
 									self.downloadExcelWithDrilldown(); break;
 								case 'export-csv':
 									self.downloadCsv(); break;
+								case 'export-json':
+									self.downloadReportJson(); break;
 							}
 
 							self.ReportMode('start');
 							return;
 						}
-
+						self.LoadAllSavedReports(true);
 				if (options.samePageOnRun || dashboardRun) {
 					self.ReportID(_result.reportId);
 					self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, _.map(self.AdditionalSeries(), function (e, i) {
@@ -2751,10 +2851,11 @@ var reportViewModel = function (options) {
 					e.linkField = false;
 				}
 				col = col || { fieldName: e.ColumnName };
+				col.customfieldLabel = col.fieldLabel ? col.fieldLabel() : null;
 				col.currencySymbol = col.currencyFormat ? col.currencyFormat() : null;
 				col.decimalPlacesDigit = col.decimalPlaces ? col.decimalPlaces() : null;
 				col.fieldFormating = col.fieldFormat ? col.fieldFormat() : null;
-				if (skipColDetails !== true) self.columnDetails.push(col);
+				if (skipColDetails !== true) self.columnDetails.push(ko.toJS(col));
 
 				e.decimalPlaces = col.decimalPlaces || ko.observable();
 				e.currencyFormat = col.currencyFormat || ko.observable();
@@ -3443,6 +3544,13 @@ var reportViewModel = function (options) {
 		});
 
 		data.addRows(rowArray);
+		var prefixFormat = reportData.Columns[1].currencyFormat ? reportData.Columns[1].currencyFormat() : null;
+		if (prefixFormat != null) {
+			var formatter = new google.visualization.NumberFormat({
+				prefix: prefixFormat
+			});
+			formatter.format(data, 1);
+		}
 
 		// Set chart options
 		var chartOptions = {
@@ -3451,7 +3559,10 @@ var reportViewModel = function (options) {
 				startup: true,
 				duration: 1000,
 				easing: 'out'
-			}
+			},
+			vAxis: {
+				ticks: generateTicks(data, prefixFormat) // Custom ticks with currency formatting
+			},
 		};
 
 		if (options.chartSize) {
@@ -3573,6 +3684,25 @@ var reportViewModel = function (options) {
 				}
 			});
 		}
+		function generateTicks(data, prefixFormat) {
+			var max = 0;
+			for (var i = 0; i < data.getNumberOfRows(); i++) {
+				for (var j = 1; j < data.getNumberOfColumns(); j++) {
+					if (data.getValue(i, j) > max) {
+						max = data.getValue(i, j);
+					}
+				}
+			}
+
+			var tickInterval = Math.pow(10, Math.floor(Math.log10(max)) - 1); // Dynamically calculate the interval
+			var ticks = [];
+
+			for (var i = 0; i <= max; i += tickInterval) {
+				ticks.push({ v: i, f: prefixFormat + i.toLocaleString() });
+			}
+
+			return ticks;
+		}
 		function handlePointerDown(event) {
 			if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
 			event.preventDefault(); // Prevent default browser behavior
@@ -3588,6 +3718,7 @@ var reportViewModel = function (options) {
 			chartHeight = Math.max(100, chartHeight); // Ensure a minimum height
 			chartOptions.width = chartWidth;
 			chartOptions.height = chartHeight;
+			chartOptions.vAxis.ticks = generateTicks(data, prefixFormat); // Update ticks dynamically
 			chart.draw(data, chartOptions);
 		}
 		function handlePointerUp(event) {
@@ -3889,6 +4020,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.PopulateReport = function (report, filterOnFly, reportSeries) {
+
 		self.ReportID(report.ReportID);
 		self.mapRegion('');
 		if (report.ReportType.indexOf('Map') >= 0) {
@@ -3947,7 +4079,7 @@ var reportViewModel = function (options) {
 		self.barChartHorizontal(reportSettings.barChartHorizontal === true ? true : false);
 		self.barChartStacked(reportSettings.barChartStacked === true ? true : false);
 		self.DefaultPageSize(reportSettings.DefaultPageSize || 30);
-
+		self.PivotColumns(reportSettings.PivotColumns || null)
 		if (self.ReportMode() == "execute") {
 			if (self.useReportHeader()) {
 				self.headerDesigner.init(true);
@@ -4202,7 +4334,9 @@ var reportViewModel = function (options) {
 		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey(), self.ReportSeries);
 		return false;
 	};
-
+	self.sortReportHeaderColumn = function () {
+		self.RunReport(false, true,false);
+	};
 	self.formatNumber = function (number, decPlaces) {
 		if (decPlaces === null) decPlaces = 2;
 		decPlaces = isNaN(decPlaces = Math.abs(decPlaces)) ? 2 : decPlaces;
@@ -4527,7 +4661,10 @@ var reportViewModel = function (options) {
 			includeSubTotal: self.IncludeSubTotal()
 		}, 'csv');
 	}
-
+	self.downloadReportJson = function () {
+		var reportData = self.BuildReportData();
+		downloadJson(JSON.stringify(reportData, null, 2), self.ReportName(), 'application/json')
+	};
 	self.downloadXml = function () {
 		self.downloadExport("DownloadXml", {
 			reportSql: self.currentSql(),
@@ -5095,7 +5232,10 @@ var dashboardViewModel = function (options) {
 					});
 				});
 
-				if (skipGridRefresh === true) return;
+				if (skipGridRefresh === true) {
+					self.skipGridRefresh = false;
+					return;
+				}
 
 				var grid = $('.grid-stack').data("gridstack");
 				grid.removeAll();
