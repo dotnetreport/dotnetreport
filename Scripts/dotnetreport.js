@@ -3544,13 +3544,6 @@ var reportViewModel = function (options) {
 		});
 
 		data.addRows(rowArray);
-		var prefixFormat = reportData.Columns[1].currencyFormat ? reportData.Columns[1].currencyFormat() : null;
-		if (prefixFormat != null) {
-			var formatter = new google.visualization.NumberFormat({
-				prefix: prefixFormat
-			});
-			formatter.format(data, 1);
-		}
 
 		// Set chart options
 		var chartOptions = {
@@ -3559,9 +3552,16 @@ var reportViewModel = function (options) {
 				startup: true,
 				duration: 1000,
 				easing: 'out'
-			}			
+			},
 		};
-
+		var prefixFormat = reportData.Columns[1].currencyFormat ? reportData.Columns[1].currencyFormat() : null;
+		if (prefixFormat != null && prefixFormat != "") {
+			var formatter = new google.visualization.NumberFormat({
+				prefix: prefixFormat
+			});
+			formatter.format(data, 1);
+			chartOptions.vAxis = { format: `${prefixFormat}#` }
+		}
 		if (options.chartSize) {
 			chartOptions.width = options.chartSize.width;
 			chartOptions.height = options.chartSize.height;
@@ -3572,7 +3572,6 @@ var reportViewModel = function (options) {
 			chartOptions.backgroundColor = self.colorScheme()[0], // Set the background color here
 				chartOptions.chartArea = { backgroundColor: self.colorScheme()[0] }
 		}
-
 		var chartDiv = document.getElementById('chart_div_' + self.ReportID());
 		var chart = null;
 		if (!chartDiv) return;
