@@ -255,7 +255,7 @@ ko.bindingHandlers.sortableColumns = {
                             return item.replace('pivot--', '');
                         });
                         var pivotColumnOrderString = pivotColumnOrderWithoutPrefix.join(',');
-                        bindingContext.$root.PivotColumns(pivotColumnOrderString);
+                        bindingContext.$parents[2].PivotColumns(pivotColumnOrderString);
                     }
                 }
                 else if (ko.isObservable(selectedFields)) {
@@ -266,7 +266,7 @@ ko.bindingHandlers.sortableColumns = {
                     });
                     selectedFields(sortedFields);
                 }
-                bindingContext.$root.sortReportHeaderColumn();
+                bindingContext.$parents[2].sortReportHeaderColumn();
             }
         }).disableSelection(); // Prevent text selection while dragging
     }
