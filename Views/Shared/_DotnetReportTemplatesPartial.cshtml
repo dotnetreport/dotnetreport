@@ -1,6 +1,6 @@
 ﻿<!-- Dotnet Report HTML Templates -->
 <script type="text/html" id="report-filter">
-    <div class="form-group" data-bind="attr: {id: 'filter-'+fieldId}">
+    <div class="form-group" data-bind="attr: {id: 'filter-'+uiId }">
         <!-- ko if: !hasForeignKey-->
         <!-- ko if: fieldType=='DateTime'-->
         <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 -->
@@ -74,13 +74,13 @@
         <!-- /ko -->
         <!-- ko if: hasForeignKey && $parent.Operator() != 'all' -->
         <!-- ko if: hasForeignParentKey && $parent.showParentFilter() -->
-        <select multiple class="form-control" data-bind="select2: { dropdownParent: '#filter-'+fieldId, placeholder: 'Please Choose', allowClear: true }, options: $parent.ParentList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ParentIn"></select>
+        <select multiple class="form-control" data-bind="select2: { dropdownParent: $parent.inModal ? '#filter-'+uiId : '', placeholder: 'Please Choose', allowClear: true }, options: $parent.ParentList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ParentIn"></select>
         <!-- /ko -->
         <!-- ko if: $parent.Operator()=='='-->
-        <select required class="form-control" data-bind="select2: { dropdownParent: '#filter-'+fieldId, placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', value: $parent.Value, optionsCaption: 'Please Choose'"></select>
+        <select required class="form-control" data-bind="select2: { dropdownParent: $parent.inModal ? '#filter-'+uiId : '', placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', value: $parent.Value, optionsCaption: 'Please Choose'"></select>
         <!-- /ko -->
         <!-- ko if: $parent.Operator()=='in' || $parent.Operator()=='not in'-->
-        <select required multiple class="form-control" data-bind="select2: { dropdownParent: '#filter-'+fieldId, placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ValueIn"></select>
+        <select required multiple class="form-control" data-bind="select2: { dropdownParent: $parent.inModal ? '#filter-'+uiId : '', placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ValueIn"></select>
         <!-- /ko -->
         <!-- /ko -->
     </div>
@@ -507,7 +507,7 @@
                         <div data-bind="with: Field" class="checkbox">
                             <div class="checkbox">
                                 <label>
-                                    <input type="checkbox" title="Apply this filter" data-bind="checked: $parent.Apply" /> <span data-bind="text: selectedFilterName"></span>
+                                    <input type="checkbox" title="Apply this filter" data-bind="checked: $parent.Apply, disabled: forced" /> <span data-bind="text: selectedFilterName"></span>
                                 </label>
                             </div>
                         </div>
@@ -519,7 +519,7 @@
                     </div>
                     <div data-bind="with: Field" class="col-sm-5 col-xs-5">
                         <div data-bind="if: $parent.Apply">
-                            <div data-bind="template: 'report-filter', data: $data"></div>
+                            <div data-bind="template: { name: 'report-filter', data: function() { return Object.assign({}, $data, { inModal: true }); } }"></div>
                         </div>
                     </div>
                 </div>
@@ -595,7 +595,7 @@
                                         <i class="fa fa-trash"></i>
                                     </button>
                                 </div>
-                                <div class="form-group" style="flex-grow: 1;" data-bind="with: Field" >
+                                <div class="form-group" style="flex-grow: 1;" data-bind="with: Field, hidden: document.querySelector('#filter-panel.card-body.collapse')" >
                                     <span class="btn btn-sm" tabindex="0" data-bind="click: function(){ filterOnFly(!filterOnFly()); }, css: {'btn-success': filterOnFly()==true, 'btn-secondary': filterOnFly()==false}">
                                         <span class="fa fa-filter" aria-hidden="true" title="Filter by this field on the Report"></span>
                                     </span>

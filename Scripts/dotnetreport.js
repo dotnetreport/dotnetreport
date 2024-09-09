@@ -8,6 +8,7 @@ function formulaFieldViewModel(args) {
 
 	self.tableId = ko.observable(args.tableId);
 	self.fieldId = ko.observable(args.fieldId);
+	self.uiId = generateUniqueId();
 	self.isParenthesesStart = ko.observable(args.isParenthesesStart);
 	self.isParenthesesEnd = ko.observable(args.isParenthesesEnd);
 	self.formulaOperation = ko.observable(args.formulaOperation);
@@ -66,7 +67,8 @@ function linkFieldViewModel(args, options) {
 					self.allFields(_.map(report.SelectedParameters, function (x) {
 						return {
 							fieldId: x.ParameterId,
-							fieldName: x.ParameterName
+							fieldName: x.ParameterName,
+							uiId: generateUniqueId()
 						}
 					}));
 				}
@@ -2637,7 +2639,7 @@ var reportViewModel = function (options) {
 	}
 
 	self.RunReport = function (saveOnly, skipValidation, dashboardRun,importJson) {
-
+		self.ReportResult().HasError(false);
 		saveOnly = saveOnly === true ? true : false;
 		skipValidation = skipValidation === true ? true : false;
 
@@ -3680,7 +3682,8 @@ var reportViewModel = function (options) {
 				}
 			});
 		}
-		
+
+		var chartWidth; var chartHeight;
 		function handlePointerDown(event) {
 			if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
 			event.preventDefault(); // Prevent default browser behavior
@@ -3827,6 +3830,7 @@ var reportViewModel = function (options) {
 		e.fieldCondtionalFormats = ko.observableArray([]);
 		e.jsonColumnName = e.jsonColumnName;
 		e.isJsonColumn = e.jsonColumnName ? true : false;
+		e.uiId = generateUniqueId();
 
 		e.applyAllHeaderFontColor = ko.observable(false);
 		e.applyAllHeaderBackColor = ko.observable(false);
