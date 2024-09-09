@@ -253,6 +253,7 @@ namespace ReportBuilder.Web.Models
         public string ForeignParentValueField { get; set; }
         public bool ForeignParentRequired { get; set; }
         public string JsonStructure { get; set; }
+        public bool ForeignFilterOnly { get; set; }
     }
 
     public class ConnectViewModel

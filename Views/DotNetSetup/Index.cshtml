@@ -802,6 +802,22 @@
                             </div>
 
                             <div data-bind="if: ForeignKey">
+                                <div class="control-group">
+                                    <div class="form-group row">
+                                        <label class="col-md-3 col-sm-3 control-label">Only for Filter?</label>
+                                        <div class="col-md-6 col-sm-6">
+                                            <div class="checkbox">
+                                                <label>
+                                                    <input class="check-box" type="checkbox" data-bind="checked:ForeignFilterOnly">
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3 col-sm-3">
+                                            <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Check this option if you would like to use this for Filtering only, and not for SQL Joins"></span>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="alert alert-info">
                                     You can setup a cascading filter by setting up a parent for the foreign key below
                                 </div>

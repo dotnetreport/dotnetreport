@@ -135,6 +135,7 @@ namespace ReportBuilder.Web.Controllers
                                 ForeignParentValueField = field.foreignParentValueField,
                                 ForeignParentTable = field.foreignParentTable,
                                 ForeignParentRequired = field.foreignParentRequired,
+                                ForeignFilterOnly = field.foreignFilterOnly,
 
                                 JsonStructure = field.jsonStructure,
                                 Selected = true
@@ -190,6 +191,7 @@ namespace ReportBuilder.Web.Controllers
                         ForeignParentValueField = item.foreignParentValue,
                         ForeignParentTable = item.foreignParentTable,
                         ForeignParentRequired = item.foreignParentRequired,
+                        ForeignFilterOnly = item.foreignFilterOnly,
 
                         JsonStructure = item.jsonStructure
                     };
@@ -281,6 +283,7 @@ namespace ReportBuilder.Web.Controllers
                             column.ForeignParentValueField = matchColumn.ForeignParentValueField;
                             column.ForeignParentRequired = matchColumn.ForeignParentRequired;
                             column.JsonStructure = matchColumn.JsonStructure;
+                            column.ForeignFilterOnly = matchColumn.ForeignFilterOnly;
 
                             column.Selected = true;
                         }
