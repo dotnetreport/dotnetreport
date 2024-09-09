@@ -133,7 +133,7 @@ namespace ReportBuilder.Web.Models
         public DataTable dataTable { get; set; }
         public List<ParameterViewModel> Parameters { get; set; }
         public List<string> AllowedRoles { get; set; }
-        public bool? DoNotDisplay { get; set; }
+        public bool? DoNotDisplay { get; set; } = false;
 
         public bool CustomTable { get; set; }
         public string CustomTableSql { get; set; }
@@ -236,10 +236,10 @@ namespace ReportBuilder.Web.Models
         public bool ForeignKey { get; set; }
         public bool AccountIdField { get; set; }
         public string ForeignTable { get; set; }
-        public string ForeignJoin { get; set; }
+        public string ForeignJoin { get; set; } = "Inner";
         public string ForeignKeyField { get; set; }
         public string ForeignValueField { get; set; }
-        public bool DoNotDisplay { get; set; }
+        public bool DoNotDisplay { get; set; } = false;
         public bool ForceFilter { get; set; }
         public bool ForceFilterForTable { get; set; }
         public string RestrictedDateRange { get; set; }
@@ -980,7 +980,7 @@ namespace ReportBuilder.Web.Models
         private static string GetWhereClause(string sql)
         {
 
-            int whereIndex = sql.IndexOf("WHERE ", StringComparison.OrdinalIgnoreCase);
+            int whereIndex = sql.LastIndexOf("WHERE ", StringComparison.OrdinalIgnoreCase);
             int nextClauseIndex = sql.IndexOf("GROUP BY ", whereIndex, StringComparison.OrdinalIgnoreCase);
             if (nextClauseIndex < 0)
             {
@@ -989,6 +989,11 @@ namespace ReportBuilder.Web.Models
             nextClauseIndex = nextClauseIndex < 0 ? sql.Length : nextClauseIndex;
             var modifiedSql = sql.Substring(0, whereIndex) + sql.Substring(nextClauseIndex);
             var whereClause = sql.Substring(whereIndex, nextClauseIndex - whereIndex);
+
+            if (whereClause.Contains(" ON ") && whereClause.Contains("\""))
+            {
+                whereClause = "";
+            }
 
             return whereClause;
         }
