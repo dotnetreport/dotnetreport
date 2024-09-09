@@ -1502,6 +1502,10 @@ namespace ReportBuilder.Web.Models
                 qry = JsonConvert.DeserializeObject<SqlQuery>(sql);
                 sql = qry.sql;
             }
+            else
+            {
+                qry.sql = sql;
+            }
             var sqlFields = SplitSqlColumns(sql);
 
             // Execute sql
@@ -1541,8 +1545,13 @@ namespace ReportBuilder.Web.Models
             }
             if (!string.IsNullOrEmpty(pivotColumn))
             {
-                var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
-                dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);
+                var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
+                dt = pd.dt;
+                if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
+                allExpanded = false;
+
+                //var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
+                //dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);
             }
             using (ExcelPackage xp = new ExcelPackage())
             {
