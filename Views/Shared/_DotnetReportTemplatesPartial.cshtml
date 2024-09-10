@@ -1187,7 +1187,7 @@
                         </div>
                         <div class="pull-right">
                             <a href="#" class="btn btn-sm" title="Add Custom Field using Formula" data-bind="hidden: isFunctionField() || useStoredProc(), click: cancelFormulaField, text: isFormulaField()? 'Cancel': 'Custom Field', css: {'btn-primary': !isFormulaField(), 'btn-danger': isFormulaField}"></a>
-                            <a href="#" class="btn btn-sm" title="Add Custom Field using Function" data-bind="hidden: isFormulaField() || useStoredProc(), click: function(){designFunctionField()}, text: isFunctionField()? 'Cancel': 'Function Field', css: {'btn-primary': !isFunctionField(), 'btn-danger': isFunctionField}"></a>
+                            <a href="#" class="btn btn-sm" title="Add Custom Field using Function" data-bind="hidden: true || isFormulaField() || useStoredProc(), click: function(){designFunctionField()}, text: isFunctionField()? 'Cancel': 'Function Field', css: {'btn-primary': !isFunctionField(), 'btn-danger': isFunctionField}"></a>
                         </div>
                     </div>
                     <div class="clearfix"></div>
