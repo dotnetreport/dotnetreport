@@ -519,7 +519,7 @@
                     </div>
                     <div data-bind="with: Field" class="col-sm-5 col-xs-5">
                         <div data-bind="if: $parent.Apply">
-                            <div data-bind="template: { name: 'report-filter', data: function() { return Object.assign({}, $data, { inModal: true }); } }"></div>
+                            <div data-bind="template: 'report-filter', data: $data"></div>
                         </div>
                     </div>
                 </div>
