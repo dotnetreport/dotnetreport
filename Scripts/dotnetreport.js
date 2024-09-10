@@ -3277,21 +3277,23 @@ var reportViewModel = function (options) {
 		});
 		function renderTable(data) {
 			const tableBody = document.getElementById('report-table-body' + self.ReportID());
-			let rowsHTML = '';
+			if (tableBody) {
+				let rowsHTML = '';
 
-			data.forEach(row => {
-				rowsHTML += '<tr>';
-				row.Items.forEach(item => {
-					rowsHTML +=
-						`<td>
+				data.forEach(row => {
+					rowsHTML += '<tr>';
+					row.Items.forEach(item => {
+						rowsHTML +=
+							`<td>
 							${item.FormattedValue}
 						</td>`;
+					});
+					rowsHTML += '</tr>';
 				});
-				rowsHTML += '</tr>';
-			});
 
-			// Replace the table body content in one go
-			tableBody.innerHTML = rowsHTML;
+				// Replace the table body content in one go
+				tableBody.innerHTML = rowsHTML ? rowsHTML : '<tr><td>No records found</td></tr>';
+			}
 		}
 
 		reportResult.ReportData(result.ReportData);
