@@ -1168,8 +1168,8 @@ tfoot tr.sub-total {
 }
 
 
-.select2-container {
-    z-index: 9999;
+.select2-container--open {
+    z-index: 2000;
 }
 
 .bubble-badge {
