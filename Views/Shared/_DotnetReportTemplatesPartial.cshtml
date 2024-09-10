@@ -106,7 +106,7 @@
 
 <script type="text/html" id="report-column-header">
     <!-- ko foreach: Columns -->
-    <th data-bind="attr: { id: fieldId ? fieldId : 'pivot--' + (fieldLabel() ? fieldLabel() : fieldName) }, style: {'text-align': fieldAlign ? fieldAlign : (IsNumeric ? 'right' : 'left'), 'width': fieldWidth, 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
+    <th data-bind="attr: { id: fieldId ? fieldId : 'pivot--' + (fieldLabel() ? fieldLabel() : fieldName) }, style: {'text-align': fieldAlign ? fieldAlign : (IsNumeric ? 'right' : 'left'), 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
         <div class="pull-left" data-bind="if: !$parent.IsDrillDown()" style="padding-right: 5px;">
             <div class="dropup">
                 <a href="#" data-bs-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
@@ -126,7 +126,7 @@
                 </ul>
             </div>
         </div>
-
+        <div data-bind="style: {'width': fieldWidth}">
         <!-- ko if: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false) -->
         <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
         <!-- /ko -->
@@ -136,7 +136,7 @@
             <span data-bind="text: $parents[pagerIndex($parents)].pager.sortColumn() === SqlField ? ($parents[pagerIndex($parents)].pager.sortDescending() ? '&#9660;' : '&#9650;') : ''"></span>
         </a>
         <!-- /ko -->
-
+        </div>
     </th>
     <!-- /ko -->
 </script>
