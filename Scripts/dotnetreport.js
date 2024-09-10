@@ -1298,13 +1298,16 @@ var reportViewModel = function (options) {
 		});
 	};
 
-	self.FlyFilters = ko.computed(function () {
+	self.FlyFilters = ko.observableArray([]); 
+
+	self.setFlyFilters = function () {
 		var flyfilters = [];
 		_.forEach(self.FilterGroups(), function (e) {
-			_.forEach(e.Filters(), function (x) { if (x.IsFilterOnFly) flyfilters.push(x); });
+			_.forEach(e.Filters(), function (x) { if (x.Field().filterOnFly()) flyfilters.push(x); });
 		});
-		return flyfilters;
-	});
+
+		self.FlyFilters(flyfilters);
+	}
 
 	self.enabledFields = ko.computed(function () {
 		return _.filter(self.SelectedFields(), function (x) { return !x.disabled(); });
@@ -2642,6 +2645,7 @@ var reportViewModel = function (options) {
 		self.ReportResult().HasError(false);
 		saveOnly = saveOnly === true ? true : false;
 		skipValidation = skipValidation === true ? true : false;
+		self.setFlyFilters();
 
 		self.TotalSeries(self.AdditionalSeries().length);
 		if (self.TotalSeries() > 0) self.ReportMode('start');
