@@ -95,6 +95,7 @@ namespace ReportBuilder.Web.Models
         public string DataType { get; set; }
         public bool IsNumeric { get; set; }
         public string FormatType { get; set; }
+        public bool IsPivotField { get; set; }
     }
 
     public class DotNetReportDataRowItemModel
@@ -940,7 +941,8 @@ namespace ReportBuilder.Web.Models
                     ColumnName = col.ColumnName,
                     DataType = col.DataType.ToString(),
                     IsNumeric = IsNumericType(col.DataType),
-                    FormatType = sqlField.Contains("__jsonc__") ? "Json" : (sqlField.Contains(" FROM ") ? "Csv" : "")
+                    FormatType = sqlField.Contains("__jsonc__") ? "Json" : (sqlField.Contains(" FROM ") ? "Csv" : ""),
+                    IsPivotField= sqlField.Contains("__") ? true : false 
                 });
 
                 col.ColumnName = col.ColumnName.Replace("__jsonc__", "");
@@ -1065,7 +1067,7 @@ namespace ReportBuilder.Web.Models
 
         public async static Task<(DataTable dt, string sql)> GetPivotTable(IDatabaseConnection databaseConnection, string connectionString, DataTable dt, string sql, List<string> sqlFields, string reportDataJson, string pivotColumn, string pivotFunction, int pageNumber, int pageSize, string sortBy, bool desc)
         {
-
+            var pivotColumnOrder = GetPivotColumnOrder(reportDataJson);
             var dts = new DataTable();
             var drilldownRow = new List<string>();
             if (dt.Rows.Count == 0)
@@ -1109,6 +1111,7 @@ namespace ReportBuilder.Web.Models
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .Where(x=>x != "[]" && x.Length <=128)
                     .ToList();
+                distinctValues = (pivotColumnOrder.Count == distinctValues.Count && !pivotColumnOrder.Except(distinctValues).Any())? pivotColumnOrder: distinctValues;
 
                 int pivotColumnIndex = baseDataTable.Columns[pivotColumn].Ordinal;
                 string nextColumnName = baseDataTable.Columns[pivotColumnIndex + 1].ColumnName;
@@ -1327,6 +1330,27 @@ namespace ReportBuilder.Web.Models
             }
             return dataTable;
         }
+        public static List<string> GetPivotColumnOrder(string reportDataJson)
+        {
+            var desiredOrder = new List<string>();
+
+            if (!string.IsNullOrEmpty(reportDataJson))
+            {
+                JObject reportSettingObject = JObject.Parse(reportDataJson);
+                var reportSettingsObject = (string)reportSettingObject["ReportSettings"];
+                if (reportSettingsObject != null)
+                {
+                    JObject pivotColumnsObject = JObject.Parse(reportSettingsObject);
+                    string pivotColumnOrder = (string)pivotColumnsObject["PivotColumns"]?.ToString();
+                    if (!string.IsNullOrEmpty(pivotColumnOrder))
+                    {
+                        desiredOrder = pivotColumnOrder.Split(',').Select(c => c.Trim()).ToList();
+                    }
+                }
+            }
+
+            return desiredOrder;
+        }
 
         public static DataTable PushDatasetIntoDataTable(DataTable tbl, DataSet dts, string pivotColumnName, string pivotFunction, string reportDataJson=null)
         {
@@ -1456,40 +1480,6 @@ namespace ReportBuilder.Web.Models
                     }
                 }
             }
-            // Reorder columns based on desired order
-            //if (desiredOrder.Any())
-            //{
-            //    var columnsToReorder = dt.Columns.Cast<DataColumn>()
-            //                                     .Where(c => desiredOrder.Contains(c.ColumnName))
-            //                                     .ToList();
-
-            //    // Reorder columns by removing and re-adding them in the desired order
-            //    foreach (var columnName in desiredOrder)
-            //    {
-            //        if (dt.Columns.Contains(columnName))
-            //        {
-            //            var column = dt.Columns[columnName];
-            //            dt.Columns.Remove(column);
-            //            dt.Columns.Add(column);
-            //        }
-            //    }
-
-            //    // Reorder rows to match the column order
-            //    var orderedRows = dt.Rows.Cast<DataRow>()
-            //                              .OrderBy(row => desiredOrder.IndexOf(row.Table.Columns.Cast<DataColumn>()
-            //                                                                                    .Where(c => desiredOrder.Contains(c.ColumnName))
-            //                                                                                    .Select(c => row[c.ColumnName].ToString())
-            //                                                                                    .FirstOrDefault()))
-            //                              .CopyToDataTable();
-
-            //    // Clear existing rows and add the reordered rows
-            //    dt.Rows.Clear();
-            //    foreach (DataRow orderedRow in orderedRows.Rows)
-            //    {
-            //        dt.ImportRow(orderedRow);
-            //    }
-            //}
-
             return dt;
         }
 

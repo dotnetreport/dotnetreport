@@ -252,7 +252,7 @@ ko.bindingHandlers.sortableColumns = {
                     });
                     if (pivotColumnOrder.length > 0) {
                         var pivotColumnOrderWithoutPrefix = pivotColumnOrder.map(function (item) {
-                            return item.replace('pivot--', '');
+                            return '[' + item.replace('pivot--', '') + ']';
                         });
                         var pivotColumnOrderString = pivotColumnOrderWithoutPrefix.join(',');
                         bindingContext.$parents[2].PivotColumns(pivotColumnOrderString);

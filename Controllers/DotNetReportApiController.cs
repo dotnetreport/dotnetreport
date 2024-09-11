@@ -325,7 +325,11 @@ namespace ReportBuilder.Web.Controllers
                             if (!string.IsNullOrEmpty(pd.sql)) sql = pd.sql;
 
                             //var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dtPagedRun, sqlFields, reportData);
-                            //dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn, pivotFunction, reportData);                      
+                            //dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn, pivotFunction, reportData);
+                            var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
+                            fields = fields
+                                .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
+                                .ToList();
                             fields.AddRange(dtPagedRun.Columns.Cast<DataColumn>().Skip(fields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
                         }
 

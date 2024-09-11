@@ -2857,10 +2857,10 @@ var reportViewModel = function (options) {
 					e.linkField = false;
 				}
 				col = col || { fieldName: e.ColumnName };
-				col.customfieldLabel = col.fieldLabel ? col.fieldLabel() : null;
 				col.currencySymbol = col.currencyFormat ? col.currencyFormat() : null;
 				col.decimalPlacesDigit = col.decimalPlaces ? col.decimalPlaces() : null;
 				col.fieldFormating = col.fieldFormat ? col.fieldFormat() : null;
+				col.IsPivotField = e.IsPivotField ;
 				if (skipColDetails !== true) self.columnDetails.push(ko.toJS(col));
 
 				e.decimalPlaces = col.decimalPlaces || ko.observable();
