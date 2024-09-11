@@ -984,6 +984,11 @@ namespace ReportBuilder.Web.Models
         {
 
             int whereIndex = sql.LastIndexOf("WHERE ", StringComparison.OrdinalIgnoreCase);
+            // If there is no WHERE clause, return an empty string
+            if (whereIndex < 0)
+            {
+                return "";
+            }
             int nextClauseIndex = sql.IndexOf("GROUP BY ", whereIndex, StringComparison.OrdinalIgnoreCase);
             if (nextClauseIndex < 0)
             {
