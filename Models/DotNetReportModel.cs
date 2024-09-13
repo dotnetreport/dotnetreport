@@ -942,7 +942,7 @@ namespace ReportBuilder.Web.Models
                     DataType = col.DataType.ToString(),
                     IsNumeric = IsNumericType(col.DataType),
                     FormatType = sqlField.Contains("__jsonc__") ? "Json" : (sqlField.Contains(" FROM ") ? "Csv" : ""),
-                    IsPivotField= sqlField.Contains("__") ? true : false 
+                    IsPivotField= sqlField.Contains("__ AS") ? true : false 
                 });
 
                 col.ColumnName = col.ColumnName.Replace("__jsonc__", "");
