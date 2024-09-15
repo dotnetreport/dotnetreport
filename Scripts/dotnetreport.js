@@ -4864,6 +4864,7 @@ var dashboardViewModel = function (options) {
 	self.procs = [];
 	self.folders = [];
 	self.ChartDrillDownData = ko.observable();
+	self.selectedStyle = ko.observable('default');
 	self.DontExecuteOnRun = ko.observable(false);
 	self.searchReports = ko.observable('');
 	self.arrangeDashboard = ko.observable(false);
