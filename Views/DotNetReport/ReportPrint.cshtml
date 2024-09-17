@@ -228,7 +228,7 @@
             // Remove new lines and carriage returns
             return decodedText.replace(/[\n\r]/g, '');
         }
-        
+
         var vm = new reportViewModel({
             runReportUrl: "@Url.Action("Report")",
             execReportUrl: "@Url.Action("RunReportUnAuth", "DotNetReportApi")",
@@ -247,16 +247,17 @@
             userSettings: data,
             dataFilters: data.dataFilters,
             reportData: JSON.parse(decodeHTMLEntities('@Model.ReportData')),
+            getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
             chartSize: { width: 1000, height: 450 }
         });
         vm.pager.pageSize(10000);
         ko.applyBindings(vm);
-        vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {                
+        vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {
             if (vm.useReportHeader()) {
                 vm.headerDesigner.init(true);
                 vm.headerDesigner.loadCanvas(true);
             }
-            
+
             if (vm.useStoredProc()) {
                 setTimeout(function(){
                     vm.printReport();
