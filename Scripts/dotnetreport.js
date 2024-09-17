@@ -8,6 +8,7 @@ function formulaFieldViewModel(args) {
 
 	self.tableId = ko.observable(args.tableId);
 	self.fieldId = ko.observable(args.fieldId);
+	self.uiId = generateUniqueId();
 	self.isParenthesesStart = ko.observable(args.isParenthesesStart);
 	self.isParenthesesEnd = ko.observable(args.isParenthesesEnd);
 	self.formulaOperation = ko.observable(args.formulaOperation);
@@ -66,7 +67,8 @@ function linkFieldViewModel(args, options) {
 					self.allFields(_.map(report.SelectedParameters, function (x) {
 						return {
 							fieldId: x.ParameterId,
-							fieldName: x.ParameterName
+							fieldName: x.ParameterName,
+							uiId: generateUniqueId()
 						}
 					}));
 				}
@@ -856,6 +858,7 @@ var reportViewModel = function (options) {
 	self.barChartStacked = ko.observable();
 	self.DefaultPageSize = ko.observable();
 	self.FilterGroups = ko.observableArray();
+	self.PivotColumns = ko.observable();
 	self.FilterGroups.subscribe(function (newArray) {
 		if (newArray && newArray.length == 0) {
 			self.FilterGroups.push(new filterGroupViewModel({ isRoot: true, parent: self, options: options }));
@@ -1286,7 +1289,7 @@ var reportViewModel = function (options) {
 				options.reportWizard.modal('hide');
 
 				if (self.ReportMode() == 'dashboard') {
-					report.SaveReport(false);
+					//report.SaveReport(false);
 					return;
 				}
 				self.ReportMode("start");
@@ -1295,13 +1298,16 @@ var reportViewModel = function (options) {
 		});
 	};
 
-	self.FlyFilters = ko.computed(function () {
+	self.FlyFilters = ko.observableArray([]); 
+
+	self.setFlyFilters = function () {
 		var flyfilters = [];
 		_.forEach(self.FilterGroups(), function (e) {
-			_.forEach(e.Filters(), function (x) { if (x.IsFilterOnFly) flyfilters.push(x); });
+			_.forEach(e.Filters(), function (x) { if (x.Field().filterOnFly()) flyfilters.push(x); });
 		});
-		return flyfilters;
-	});
+
+		self.FlyFilters(flyfilters);
+	}
 
 	self.enabledFields = ko.computed(function () {
 		return _.filter(self.SelectedFields(), function (x) { return !x.disabled(); });
@@ -1401,6 +1407,97 @@ var reportViewModel = function (options) {
 		}
 	};
 
+	self.ManageJsonFile = {
+		file: ko.observable(null),
+		fileName: ko.observable(''),
+		triggerFileInput: function () {
+			$('#fileInputJson').click();
+		},
+		handleFileSelect: function (data, event) {
+			var selectedFile = event.target.files[0];
+			if (selectedFile && (selectedFile.type === "application/json" || selectedFile.name.endsWith('.json'))) {
+				self.ManageJsonFile.file(selectedFile);
+				self.ManageJsonFile.fileName(selectedFile.name);
+			} else {
+				self.ManageJsonFile.file(null);
+				self.ManageJsonFile.fileName('');
+				toastr.error('Only JSON files are allowed.');
+			}
+		},
+		uploadFile: function () {
+			var file = self.ManageJsonFile.file();
+			if (file != null) {
+				var reader = new FileReader();
+				reader.onload = function (event) {
+					try {
+						var report = JSON.parse(event.target.result);
+						var reportName = report.ReportName;
+						var reportId = report.ReportID;
+						var reportExists = _.some(self.SavedReports(), function (report) {
+							return report.reportName === reportName && report.reportId === reportId;
+						});
+						if (reportExists) {
+							handleOverwriteConfirmation(reportName, function (action) {
+								if (action === 'overwrite') {
+									self.RunReport(true, true, false, report);
+								} else if (action === 'duplicate') {
+									report.ReportID = 0;
+									report.ReportName = `Copy of ${reportName}`;
+									self.RunReport(true, true, false, report);
+								} else {
+									toastr.info('Upload canceled.');
+								}
+							});
+							$('#uploadFileModal').modal('hide');
+						} else {
+							report.ReportID = 0;
+							self.RunReport(true, true, false, report);
+							$('#uploadFileModal').modal('hide');
+						}
+						self.ManageJsonFile.file(null);
+						self.ManageJsonFile.fileName('');
+					} catch (e) {
+						toastr.error('Invalid JSON file.'+ e);
+					}
+				};
+				reader.onerror = function (event) {
+					toastr.error('Error reading file.');
+				};
+				reader.readAsText(file); // Read the file as text
+				function handleOverwriteConfirmation(reportName, callback) {
+					bootbox.dialog({
+						title: "Confirm Action",
+						message: `A report with the name "${reportName}" already exists. What would you like to do?`,
+						buttons: {
+							cancel: {
+								label: 'Cancel',
+								className: 'btn-secondary',
+								callback: function () {
+									callback('cancel');
+								}
+							},
+							duplicate: {
+								label: 'Make Copy',
+								className: 'btn-warning',
+								callback: function () {
+									callback('duplicate');
+								}
+							},
+							overwrite: {
+								label: 'Overwrite',
+								className: 'btn-primary',
+								callback: function () {
+									callback('overwrite');
+								}
+							}
+						}
+					});
+				}
+			} else {
+				toastr.error('No JSON file selected for upload.');
+			}
+		}
+	}; 
 	self.reportsInFolder = ko.computed(function () {
 		if (self.SelectedFolder() == null) {
 			return [];
@@ -1781,7 +1878,7 @@ var reportViewModel = function (options) {
 	self.formulaDataFormat = ko.observable('')
 	self.formulaDecimalPlaces = ko.observable();
 	self.selectedFunction = ko.observable();
-
+	self.currentFormulaField = ko.observable(null);
 	var codeEditor;
 	self.designFunctionField = function () {
 		if (self.isFunctionField()) {
@@ -1892,7 +1989,13 @@ var reportViewModel = function (options) {
 	self.isFormulaField.subscribe(function () {
 		self.clearFormulaField();
 	});
-
+	self.cancelFormulaField = function () {
+		self.isFormulaField(!self.isFormulaField());
+		if (self.currentFormulaField() != null) {
+			self.SelectedFields.push(self.currentFormulaField());
+			self.currentFormulaField(null);
+		}
+	};
 	self.removeField = function (field) {
 		bootbox.confirm("Are you sure you would like to remove this field?", function (r) {
 			if (r) {
@@ -2005,7 +2108,7 @@ var reportViewModel = function (options) {
 				});
 			}
 		}
-
+		self.currentFormulaField(field)
 		self.SelectedFields.remove(field);
 	}
 
@@ -2389,6 +2492,7 @@ var reportViewModel = function (options) {
 				barChartStacked: self.barChartStacked(),
 				barChartHorizontal: self.barChartHorizontal(),
 				DefaultPageSize: self.DefaultPageSize() || 30,
+				PivotColumns: self.PivotColumns()
 			}),
 			OnlyTop: self.maxRecords() ? self.OnlyTop() : null,
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : self.AggregateReport(),
@@ -2437,8 +2541,10 @@ var reportViewModel = function (options) {
 						customDateFormat: x.customDateFormat(),
 						currencyFormat: x.currencyFormat(),
 						fieldLabel2: x.fieldLabel2(),
+						drillDataFormat: x.drillDataFormat(),
 						functionConfig: x.functionConfig
 					}),
+					DrillDataFormat: x.drillDataFormat(),
 					FieldAlign: x.fieldAlign(),
 					FontColor: x.fontColor(),
 					BackColor: x.backColor(),
@@ -2535,10 +2641,11 @@ var reportViewModel = function (options) {
 		self.RunReport(false);
 	}
 
-	self.RunReport = function (saveOnly, skipValidation, dashboardRun) {
-
+	self.RunReport = function (saveOnly, skipValidation, dashboardRun,importJson) {
+		self.ReportResult().HasError(false);
 		saveOnly = saveOnly === true ? true : false;
 		skipValidation = skipValidation === true ? true : false;
+		self.setFlyFilters();
 
 		self.TotalSeries(self.AdditionalSeries().length);
 		if (self.TotalSeries() > 0) self.ReportMode('start');
@@ -2548,6 +2655,11 @@ var reportViewModel = function (options) {
 				toastr.error("All fields except one must be hidden for Single Value Report");
 				return;
 			}
+		}
+
+		if (_.filter(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' }).length > 1) {
+			toastr.error("Select only one field for Pivot.");
+			return;
 		}
 
 		if (!skipValidation && !self.validateReport()) {
@@ -2576,7 +2688,7 @@ var reportViewModel = function (options) {
 						data: JSON.stringify({
 							method: "/ReportApi/RunReport",
 							SaveReport: self.CanSaveReports() && !isComparison ? (saveOnly || self.SaveReport()) : false,
-							ReportJson: JSON.stringify(self.BuildReportData([], isComparison, i - 1)),
+							ReportJson: importJson ? JSON.stringify(importJson) : JSON.stringify(self.BuildReportData([], isComparison, i - 1)),
 							adminMode: self.adminMode(),
 							userIdForFilter: self.userIdForFilter,
 							SubTotalMode: false
@@ -2617,7 +2729,6 @@ var reportViewModel = function (options) {
 						if (saveOnly) {
 							return;
 						}
-
 						if (self.ReportMode().indexOf('export-') == 0) {
 
 							self.ReportID(_result.reportId);
@@ -2634,12 +2745,14 @@ var reportViewModel = function (options) {
 									self.downloadExcelWithDrilldown(); break;
 								case 'export-csv':
 									self.downloadCsv(); break;
+								case 'export-json':
+									self.downloadReportJson(); break;
 							}
 
 							self.ReportMode('start');
 							return;
 						}
-
+						self.LoadAllSavedReports(true);
 				if (options.samePageOnRun || dashboardRun) {
 					self.ReportID(_result.reportId);
 					self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, _.map(self.AdditionalSeries(), function (e, i) {
@@ -2747,7 +2860,8 @@ var reportViewModel = function (options) {
 				col.currencySymbol = col.currencyFormat ? col.currencyFormat() : null;
 				col.decimalPlacesDigit = col.decimalPlaces ? col.decimalPlaces() : null;
 				col.fieldFormating = col.fieldFormat ? col.fieldFormat() : null;
-				if (skipColDetails !== true) self.columnDetails.push(col);
+				col.IsPivotField = e.IsPivotField ;
+				if (skipColDetails !== true) self.columnDetails.push(ko.toJS(col));
 
 				e.decimalPlaces = col.decimalPlaces || ko.observable();
 				e.currencyFormat = col.currencyFormat || ko.observable();
@@ -2762,6 +2876,7 @@ var reportViewModel = function (options) {
 				e.fieldName = e.ColumnName || col.fieldName;
 				e.fieldWidth = col.fieldWidth || ko.observable();
 				e.fontBold = col.fontBold || ko.observable();
+				e.drillDataFormat = col.drillDataFormat || ko.observable();
 				e.headerFontBold = col.headerFontBold || ko.observable();
 				e.headerFontColor = col.headerFontColor || ko.observable();
 				e.headerBackColor = col.headerBackColor || ko.observable();
@@ -3164,8 +3279,32 @@ var reportViewModel = function (options) {
 			}
 			processRow(e.Items, result.ReportData.Columns);
 		});
+		function renderTable(data) {
+			const tableBody = document.getElementById('report-table-body' + self.ReportID());
+			if (tableBody) {
+				let rowsHTML = '';
+
+				data.forEach(row => {
+					rowsHTML += '<tr>';
+					row.Items.forEach(item => {
+						rowsHTML +=
+							`<td>
+							${item.FormattedValue}
+						</td>`;
+					});
+					rowsHTML += '</tr>';
+				});
+
+				// Replace the table body content in one go
+				tableBody.innerHTML = rowsHTML ? rowsHTML : '<tr><td>No records found</td></tr>';
+			}
+		}
 
 		reportResult.ReportData(result.ReportData);
+
+		if (self.ReportType() == 'List' || self.ShowExpandOption() || self.hasPivotColumn()) {
+			renderTable(result.ReportData.Rows);
+		}
 
 		self.pager.totalRecords(result.Pager.TotalRecords);
 		self.pager.pages(result.Pager.TotalPages);
@@ -3235,6 +3374,10 @@ var reportViewModel = function (options) {
 			self.allowTableResize();
 		}, 2000);
 	}
+
+	self.hasPivotColumn = ko.computed(function () {
+		return _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' }) != null;
+	});
 
 	self.executingReport = false;
 	self.ExecuteReport = function () {
@@ -3417,9 +3560,16 @@ var reportViewModel = function (options) {
 				startup: true,
 				duration: 1000,
 				easing: 'out'
-			}
+			},
 		};
-
+		var prefixFormat = reportData.Columns[1].currencyFormat ? reportData.Columns[1].currencyFormat() : null;
+		if (prefixFormat != null && prefixFormat != "") {
+			var formatter = new google.visualization.NumberFormat({
+				prefix: prefixFormat
+			});
+			formatter.format(data, 1);
+			chartOptions.vAxis = { format: `${prefixFormat}#` }
+		}
 		if (options.chartSize) {
 			chartOptions.width = options.chartSize.width;
 			chartOptions.height = options.chartSize.height;
@@ -3430,7 +3580,6 @@ var reportViewModel = function (options) {
 			chartOptions.backgroundColor = self.colorScheme()[0], // Set the background color here
 				chartOptions.chartArea = { backgroundColor: self.colorScheme()[0] }
 		}
-
 		var chartDiv = document.getElementById('chart_div_' + self.ReportID());
 		var chart = null;
 		if (!chartDiv) return;
@@ -3539,6 +3688,8 @@ var reportViewModel = function (options) {
 				}
 			});
 		}
+
+		var chartWidth; var chartHeight;
 		function handlePointerDown(event) {
 			if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
 			event.preventDefault(); // Prevent default browser behavior
@@ -3671,6 +3822,7 @@ var reportViewModel = function (options) {
 		e.dateFormat = ko.observable(e.fieldSettings.dateFormat || '');
 		e.customDateFormat = ko.observable(e.fieldSettings.customDateFormat || '');
 		e.fieldLabel2 = ko.observable(e.fieldSettings.fieldLabel2 || '');
+		e.drillDataFormat = ko.observable(e.fieldSettings.drillDataFormat || '');
 		e.fieldAlign = ko.observable(e.fieldAlign);
 		e.fontColor = ko.observable(e.fontColor);
 		e.backColor = ko.observable(e.backColor);
@@ -3684,6 +3836,7 @@ var reportViewModel = function (options) {
 		e.fieldCondtionalFormats = ko.observableArray([]);
 		e.jsonColumnName = e.jsonColumnName;
 		e.isJsonColumn = e.jsonColumnName ? true : false;
+		e.uiId = generateUniqueId();
 
 		e.applyAllHeaderFontColor = ko.observable(false);
 		e.applyAllHeaderBackColor = ko.observable(false);
@@ -3782,7 +3935,8 @@ var reportViewModel = function (options) {
 				headerFontBold: e.headerFontBold(),
 				fieldWidth: e.fieldWidth(),
 				fieldConditionOp: e.fieldConditionOp(),
-				fieldConditionVal: e.fieldConditionVal
+				fieldConditionVal: e.fieldConditionVal,
+				drillDataFormat: e.drillDataFormat()
 			}
 
 			e.fieldCondtionalFormats([]);
@@ -3836,6 +3990,7 @@ var reportViewModel = function (options) {
 			e.dateFormat(self.currentFieldOptions.dateFormat);
 			e.customDateFormat(self.currentFieldOptions.customDateFormat);
 			e.fieldLabel2(self.currentFieldOptions.fieldLabel2);
+			e.drillDataFormat(self.currentFieldOptions.drillDataFormat);
 			e.fontColor(self.currentFieldOptions.fontColor);
 			e.backColor(self.currentFieldOptions.backColor);
 			e.headerFontColor(self.currentFieldOptions.headerFontColor);
@@ -3852,6 +4007,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.PopulateReport = function (report, filterOnFly, reportSeries) {
+
 		self.ReportID(report.ReportID);
 		self.mapRegion('');
 		if (report.ReportType.indexOf('Map') >= 0) {
@@ -3910,7 +4066,7 @@ var reportViewModel = function (options) {
 		self.barChartHorizontal(reportSettings.barChartHorizontal === true ? true : false);
 		self.barChartStacked(reportSettings.barChartStacked === true ? true : false);
 		self.DefaultPageSize(reportSettings.DefaultPageSize || 30);
-
+		self.PivotColumns(reportSettings.PivotColumns || null)
 		if (self.ReportMode() == "execute") {
 			if (self.useReportHeader()) {
 				self.headerDesigner.init(true);
@@ -4165,7 +4321,9 @@ var reportViewModel = function (options) {
 		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey(), self.ReportSeries);
 		return false;
 	};
-
+	self.sortReportHeaderColumn = function () {
+		self.RunReport(false, true,false);
+	};
 	self.formatNumber = function (number, decPlaces) {
 		if (decPlaces === null) decPlaces = 2;
 		decPlaces = isNaN(decPlaces = Math.abs(decPlaces)) ? 2 : decPlaces;
@@ -4490,7 +4648,10 @@ var reportViewModel = function (options) {
 			includeSubTotal: self.IncludeSubTotal()
 		}, 'csv');
 	}
-
+	self.downloadReportJson = function () {
+		var reportData = self.BuildReportData();
+		downloadJson(JSON.stringify(reportData, null, 2), self.ReportName(), 'application/json')
+	};
 	self.downloadXml = function () {
 		self.downloadExport("DownloadXml", {
 			reportSql: self.currentSql(),
@@ -4703,6 +4864,7 @@ var dashboardViewModel = function (options) {
 	self.procs = [];
 	self.folders = [];
 	self.ChartDrillDownData = ko.observable();
+	self.selectedStyle = ko.observable('default');
 	self.DontExecuteOnRun = ko.observable(false);
 	self.searchReports = ko.observable('');
 	self.arrangeDashboard = ko.observable(false);
@@ -4997,7 +5159,8 @@ var dashboardViewModel = function (options) {
 					report.SaveReport(true);
 					self.selectedReport(report);
 					setTimeout(function () {
-						options.reportWizard.modal('show');
+						var reportModel = new bootstrap.Modal(document.getElementById('modal-reportbuilder'));
+						reportModel.show();
 						if ($.unblockUI) {
 							$.unblockUI();
 						}
@@ -5058,7 +5221,10 @@ var dashboardViewModel = function (options) {
 					});
 				});
 
-				if (skipGridRefresh === true) return;
+				if (skipGridRefresh === true) {
+					self.skipGridRefresh = false;
+					return;
+				}
 
 				var grid = $('.grid-stack').data("gridstack");
 				grid.removeAll();
