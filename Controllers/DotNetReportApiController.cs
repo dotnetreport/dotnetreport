@@ -121,6 +121,13 @@ namespace ReportBuilder.Web.Controllers
             return await CallReportApi(data.method, data.model);
         }
 
+        [ValidateAntiForgeryToken]
+        [HttpPost]
+        public async Task<JsonResult> CallReportApi(ReportApiCallModel data)
+        {
+            return await CallReportApi(data.method, data.model);
+        }
+         
         [HttpGet]
         public async Task<JsonResult> CallReportApi(string method, string model)
         {

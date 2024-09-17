@@ -18,6 +18,17 @@ function ajaxcall(options) {
     if (options.type == 'POST' && validationToken) {
         options.headers = options.headers || {};
         options.headers['RequestVerificationToken'] = validationToken;
+
+        if (typeof options.data === 'string') {
+            options.data = JSON.parse(options.data);
+        }
+
+        options.data = ({
+            __RequestVerificationToken: validationToken,  
+            ...options.data || {}
+        });
+
+        options.contentType = 'application/x-www-form-urlencoded';
     }
 
     if (options.success) {
