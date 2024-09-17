@@ -1,6 +1,6 @@
 ﻿<!-- Dotnet Report HTML Templates -->
 <script type="text/html" id="report-filter">
-    <div class="form-group">
+    <div class="form-group" data-bind="attr: {id: 'filter-'+fieldId}">
         <!-- ko if: !hasForeignKey-->
         <!-- ko if: fieldType=='DateTime'-->
         <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 -->
@@ -13,7 +13,7 @@
         <input data-bind="datepicker: $parent.fmtValue2, datepickerOptions: {value: $parent.Value2, dateFormat: dateFormat() === 'Custom' ? customDateFormat().replace(/yyyy/g, 'yy') : $root.dateFormatMappings[dateFormat()]}" class="form-control" required />
         <!-- /ko -->
         <!-- ko if: ['range'].indexOf($parent.Operator()) != -1 -->
-        <select data-bind="value: $parent.Value" class="form-control" required>
+        <select data-bind="value: $parent.Value" class="form-select" required>
             <option value=""></option>
             <option>Today</option>
             <option>Today +</option>
@@ -63,7 +63,7 @@
         <!-- /ko -->
         <!-- /ko -->
         <!-- ko if: fieldType=='Boolean' && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
-        <select required class="form-control" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default'">
+        <select required class="form-select" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default'">
             <option value="1">Yes</option>
             <option value="0">No</option>
         </select>
@@ -74,25 +74,25 @@
         <!-- /ko -->
         <!-- ko if: hasForeignKey && $parent.Operator() != 'all' -->
         <!-- ko if: hasForeignParentKey && $parent.showParentFilter() -->
-        <select multiple class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.ParentList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ParentIn"></select>
+        <select multiple class="form-control" data-bind="select2: { dropdownParent: '#filter-'+fieldId, placeholder: 'Please Choose', allowClear: true }, options: $parent.ParentList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ParentIn"></select>
         <!-- /ko -->
         <!-- ko if: $parent.Operator()=='='-->
-        <select required class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', value: $parent.Value, optionsCaption: 'Please Choose'"></select>
+        <select required class="form-control" data-bind="select2: { dropdownParent: '#filter-'+fieldId, placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', value: $parent.Value, optionsCaption: 'Please Choose'"></select>
         <!-- /ko -->
         <!-- ko if: $parent.Operator()=='in' || $parent.Operator()=='not in'-->
-        <select required multiple class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ValueIn"></select>
+        <select required multiple class="form-control" data-bind="select2: { dropdownParent: '#filter-'+fieldId, placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ValueIn"></select>
         <!-- /ko -->
         <!-- /ko -->
     </div>
 </script>
 <script type="text/html" id="pager-template">
-    <div class="pager-container">
+    <div class="pager-container d-flex flex-row align-items-center flex-wrap">
         <a href="" title="first" data-bind="click: first, enable: !isFirstPage()"><i class="fa fa-backward report-pager-btn" style="font-size: 18px;"></i></a>&nbsp;
         <a href="" title="previous" data-bind="click: previous, enable: !isFirstPage()"><i class="fa fa-caret-left fa-2x report-pager-btn"></i></a>
-        <select class="form-control form-control-sm" data-bind="options: [10,30,50,100,150,200,500], value: pageSize"></select>
-        <span class="pager-pageinfo">
+        <select class="form-control form-control-sm" data-bind="options: [10,30,50,100,150,200,500], value: pageSize" style="width:auto"></select>
+        <span class="pager-pageinfo d-flex flex-row align-items-center flex-wrap">
             <span>Page</span>&nbsp;
-            <input type="number" min="1" pattern="[0-9]*" class="form-control form-control-sm text-center" data-bind="
+            <input type="number" min="1" pattern="[0-9]*" class="form-control form-control-sm text-center" style="width:auto" data-bind="
                                 value: currentPage,
                                 attr: { max: pages() }" />&nbsp;
             <span>of</span>&nbsp;
@@ -119,7 +119,7 @@
 
         <div class="pull-right" data-bind="if: !$parent.IsDrillDown() && !IsNumeric">
             <div class="dropup">
-                <a href="#" data-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
+                <a href="#" data-bs-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
                     <span class="fa fa-ellipsis-v"></span>
                 </a>
                 <ul class="dropdown-menu" style="z-index: 1001;">
@@ -297,7 +297,7 @@
 
     <!-- ko if: $parent.ReportType() != 'Pivot' && (!$parent.isChart() || $parent.ShowDataWithGraph()) -->
     <div class="pull-right" data-bind="if: $parent.OuterGroupColumns().length > 0">
-        <a href="#" data-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
+        <a href="#" data-bs-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
             Manage Groups <span class="fa fa-ellipsis-v"></span>
         </a>
         <ul class="dropdown-menu" style="z-index: 1001;" data-bind="foreach: $parent.OuterGroupColumns">
@@ -320,16 +320,18 @@
     <!-- /ko -->
 </script>
 <script type="text/html" id="admin-mode-template">
-    <div class="row" style="padding: 10px 10px">
-        <div class="material-switch pull-right">
-            <input id="admin-mode" type="checkbox" data-bind="checked: adminMode" />
-            <label for="admin-mode" class="label-primary"></label>
+    <div class="row" style="margin-bottom: 10px;">
+        <div class="d-flex justify-content-end align-items-center">
+            <div class="bubble-badge">
+                Admin Mode
+                <div class="form-check form-switch ms-2">
+                    <input class="form-check-input" id="admin-mode" type="checkbox" data-bind="checked: adminMode">
+                </div>
+            </div>
         </div>
-        <div class="pull-right">Admin Mode</div>
     </div>
-
     <div class="alert alert-info" data-bind="visible: adminMode">
-        <i class="fa fa-user-circle"></i>Admin Mode is turned on now, it allows you to setup and view Reports or Dashboards for all roles and users. You should remove the Admin mode toggle for non-admin users.<br />
+        <i class="fa fa-user-circle"></i> Admin Mode is turned on now, it allows you to setup and view Reports or Dashboards for all roles and users. You should remove the Admin mode toggle for non-admin users.<br />
     </div>
 </script>
 <script type="text/html" id="manage-access-template">
@@ -342,7 +344,7 @@
                 <input class="form-control text-box single-line" type="text" data-bind="value: manageAccess.clientId">
             </div>
             <div class="col-md-1 col-sm-1">
-                <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Leave blank to give all clients access (Global Reports)"></span>
+                <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Leave blank to give all clients access (Global Reports)"></span>
             </div>
         </div>
         <div class="alert alert-info">
@@ -462,7 +464,7 @@
             <div class="rules-group-header">
                 <div data-bind="visible: !isRoot">
                     <div class="pull-left">
-                        <div class="btn-group btn-group-toggle btn-group-sm" data-toggle="buttons" role="group">
+                        <div class="btn-group btn-group-toggle btn-group-sm" data-bs-toggle="buttons" role="group">
                         <label class="btn btn-primary active" style="margin-right: 0px;" >
                             <input type="radio" name="andoroption" data-bind="checked: AndOr, checkedValue: 'And'"> And
                         </label>
@@ -490,7 +492,7 @@
 <script type="text/html" id="fly-filter-template">
     <div class="card" data-bind="visible: FlyFilters().length>0">
         <div class="card-header">
-            <a data-toggle="collapse" data-bind="attr: {'data-target': '#filter-panel-' + ReportID() }" href="#">
+            <a data-bs-toggle="collapse" data-bind="attr: {'data-bs-target': '#filter-panel-' + ReportID() }" href="#">
                 <i class="fa fa-filter"></i> Choose Filters
             </a>
         </div>
@@ -509,7 +511,7 @@
                     </div>
                     <div data-bind="with: Field" class="col-sm-2 col-xs-3">
                         <div class="form-group" data-bind="if: $parent.Apply">
-                            <select class="form-control" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
+                            <select class="form-select" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
                         </div>
                     </div>
                     <div data-bind="with: Field" class="col-sm-5 col-xs-5">
@@ -544,14 +546,14 @@
                 <tr class="rule-container">
                     <td class="row">
                         <div class="col-md-1">
-                        <select data-bind="value: AndOr, visible: $index()>0" class="form-control">
-                            <option>And</option>
-                            <option>Or</option>
-                        </select>
+                            <select data-bind="value: AndOr, visible: $index()>0" class="form-control">
+                                <option>And</option>
+                                <option>Or</option>
+                            </select>
                         </div>
                         <div class="col-md-3">
                             <div class="form-group">
-                                <select class="form-control" style="width: 100%;" data-bind="
+                                <select class="form-select" style="width: 100%;" data-bind="
                                         options: $parents[$parents.length-2].selectedFieldsCanFilter != undefined
                                                     ? $parents[$parents.length-2].selectedFieldsCanFilter
                                                     : $parents[$parents.length-1].selectedFieldsCanFilter,
@@ -564,14 +566,14 @@
                         </div>
                         <div class="col-md-2">
                             <div data-bind="with: Field">
-                            <div class="form-group">
-                                <select class="form-control" style="width: 100%;" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
-                            </div>
+                                <div class="form-group">
+                                    <select class="form-select" style="width: 100%;" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
+                                </div>
                             </div>
                         </div>
                         <div class="col-md-5">
-                            <div data-bind="with: Field">
-                                <div data-bind="template: 'report-filter', data: $data"></div>
+                            <div data-bind="with: Field">                                
+                                <div data-bind="template: 'report-filter', data: $data"></div>                                
                             </div>
                             <!-- ko if: Field() && Field().fieldType == 'DateTime' && Operator() == 'range' && $index()==0 -->
                                 <!-- ko if: $parents[$parents.length-2].canAddSeries != undefined && $parents[$parents.length-2].canAddSeries() -->
@@ -584,7 +586,19 @@
                             <span data-bind="visible: Field() && Field().forced" class="badge badge-info">Required Filter</span>
                         </div>
                         <div class="col-md-1">
-                            <button class="btn btn-sm btn-secondary" data-bind="click: $parent.RemoveFilter, hidden: Field() && Field().forced">Remove</button>
+                            <div style="display: flex; align-items: center;">
+                                <div class="form-group" style="flex-grow: 1;">
+                                    <button class="btn btn-sm btn-secondary" data-bind="click: $parent.RemoveFilter, hidden: Field() && Field().forced" title="Remove">
+                                        <i class="fa fa-trash"></i>
+                                    </button>
+                                </div>
+                                <div class="form-group" style="flex-grow: 1;" data-bind="with: Field" >
+                                    <span class="btn btn-sm" tabindex="0" data-bind="click: function(){ filterOnFly(!filterOnFly()); }, css: {'btn-success': filterOnFly()==true, 'btn-secondary': filterOnFly()==false}">
+                                        <span class="fa fa-filter" aria-hidden="true" title="Filter by this field on the Report"></span>
+                                    </span>
+                                </div>
+                            </div>
+
                         </div>
                     </td>
                 </tr>
@@ -597,7 +611,7 @@
                         <span>Compare To</span>
                         </div>
                         <div class="col-md-4">
-                            <select class="form-control" data-bind="options: Range, value: Value" required></select>
+                            <select class="form-select" data-bind="options: Range, value: Value" required></select>
                         </div>
                     </td>
                 </tr>
@@ -618,122 +632,107 @@
 </script>
 
 <script type="text/html" id="filter-parameters">
-    <div class="table-responsive card">
-        <div class="card-body">
-            <span data-bind="hidden: showParameters">No filters available to choose</span>
-            <table class="table table-striped table-hover table-borderless" data-bind="visible: showParameters">
-                <thead>
-                    <tr>
-                        <th style="width: 30%">Filter</th>
-                        <th style="width: 20%"></th>
-                        <th style="width: 30%">Value</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody data-bind="foreach: Parameters">
-                    <tr data-bind="ifnot: Hidden">
-                        <td data-bind="text: DisplayName">
-                        </td>
-                        <td>
-                            <div class="form-group">
-                                <select class="form-control" style="width: 100%;" data-bind="options: operators, value: Operator" required></select>
-                            </div>
-                        </td>
-                        <td data-bind="with: Field">
-                            <div data-bind="template: 'report-filter', data: $data"></div>
-                        </td>
-                        <td></td>
-                    </tr>
+    <div class="table-responsive">
+        <span data-bind="hidden: showParameters">No filters available to choose</span>
+        <table class="table table-striped table-hover table-borderless" data-bind="visible: showParameters">
+            <thead>
+                <tr>
+                    <th style="width: 30%">Filter</th>
+                    <th style="width: 20%"></th>
+                    <th style="width: 30%">Value</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody data-bind="foreach: Parameters">
+                <tr data-bind="ifnot: Hidden">
+                    <td data-bind="text: DisplayName">
+                    </td>
+                    <td>
+                        <div class="form-group">
+                            <select class="form-select" style="width: 100%;" data-bind="options: operators, value: Operator" required></select>
+                        </div>
+                    </td>
+                    <td data-bind="with: Field">
+                        <div data-bind="template: 'report-filter', data: $data"></div>
+                    </td>
+                    <td></td>
+                </tr>
 
-                </tbody>
-            </table>
-        </div>
+            </tbody>
+        </table>
     </div>
 </script>
 
 <script type="text/html" id="report-schedule">
-    <div data-bind="with: scheduleBuilder">
-            <div class="checkbox">
-               <label>
-                  <input type="checkbox" data-bind="checked: hasSchedule" />
-                 Schedule Report
-             </label>
+    <div data-bind="with: scheduleBuilder" id="schedule-builder-div">
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" data-bind="checked: hasSchedule" id="scheduleReportCheckbox">
+            <label class="form-check-label" for="scheduleReportCheckbox">
+                Schedule Report
+            </label>
         </div>
         <div data-bind="if: hasSchedule">
-                  <div class="form-inline form-group">
-                    <div class="row col-sm-12">
+                <div class="d-flex align-items-center">
+                    <div class="me-3 d-flex align-items-center">
                         <span data-bind="text: selectedOption() != 'once' ? 'Every ' : ''"></span>&nbsp;
-                        <select class="form-control" required data-bind="options: options, value: selectedOption"></select>
-                        <div data-bind="if: selectedOption() == 'once'">
-                            <div class="form-inline">
-                                &nbsp;on&nbsp;<input data-bind="datepicker: selectedDate" class="form-control" required />
-                            </div>
+                        <select class="form-select" required data-bind="options: options, value: selectedOption" style="min-width: 80px;" ></select>
+                    </div>
+                    <div data-bind="if: selectedOption() == 'once'" class="me-3 d-flex align-items-center">
+                        &nbsp;on&nbsp;<input data-bind="datepicker: selectedDate" class="form-control" required />
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <div data-bind="if: showDays" class="d-flex align-items-center">
+                            &nbsp;on&nbsp;
+                            <select multiple class="form-select ms-2" required data-bind="select2: { placeholder: 'Choose Days', allowClear: true }, options: days, selectedOptions: selectedDays"></select>
                         </div>
-                        <p>
-                            <div class="form-inline" data-bind="if: showDays">
-                                &nbsp;on&nbsp;
-                            </div>
-                            <div class="form-inline" data-bind="if: showDays">
-                                <select multiple class="form-control" required data-bind="select2: { placeholder: 'Choose Days', allowClear: true }, options: days, selectedOptions: selectedDays"></select>
-                            </div>
-                        </p>
-                        <p>
-                            <div class="form-inline" data-bind="if: showDates">
-                                &nbsp;on&nbsp;
-                            </div>
-                            <div class="form-inline" data-bind="if: showDates">
-                                <select multiple class="form-control" required data-bind="select2: { placeholder: 'Choose Dates', allowClear: true }, options: dates, selectedOptions: selectedDates"></select>
-                            </div>
-                        </p>
-                        <p>
-                            <div class="form-inline" data-bind="if: showMonths">
-                                &nbsp;of&nbsp;
-                            </div>
-                            <div class="form-inline" data-bind="if: showMonths">
-                                <select multiple class="form-control" required data-bind="select2: { placeholder: 'Choose Months', allowClear: true }, options: months, selectedOptions: selectedMonths"></select>
-                            </div>
-                        </p>
-                        <div data-bind="if: showAtTime">
-                            <div class="form-inline">
-                                &nbsp;at&nbsp;<select class="form-control" data-bind="options: hours, value: selectedHour"></select>
-                                <select class="form-control" data-bind="options: minutes, value: selectedMinute"></select>
-                                <select class="form-control" data-bind="value: selectedAmPm">
-                                    <option>AM</option>
-                                    <option>PM</option>
-                                </select>
-                            </div>
+                        <div data-bind="if: showDates" class="d-flex align-items-center">
+                            &nbsp;on&nbsp;
+                                <select multiple class="form-select" required data-bind="select2: { placeholder: 'Choose Dates', allowClear: true }, options: dates, selectedOptions: selectedDates"></select>
+                        </div>
+                        <div data-bind="if: showMonths" class="d-flex align-items-center">
+                            &nbsp;on&nbsp;
+                                <select multiple class="form-select" required data-bind="select2: { placeholder: 'Choose Months', allowClear: true }, options: months, selectedOptions: selectedMonths"></select>
+                        </div>
+                        <div data-bind="if: showAtTime" class="d-flex align-items-center ms-3">
+                            &nbsp;at&nbsp;
+                             <select class="form-select me-2" style="min-width: 60px;" data-bind="options: hours, value: selectedHour"></select>
+                            <select class="form-select me-2" style="min-width: 60px;" data-bind="options: minutes, value: selectedMinute"></select>
+                            <select class="form-select" style="min-width: 80px;" data-bind="value: selectedAmPm">
+                                <option>AM</option>
+                                <option>PM</option>
+                            </select>
                         </div>
                     </div>
                 </div>
 
-              <div class="alert alert-info">
-                  Report will be run and emailed <span data-bind="text: selectedOption() != 'once' ? 'every' : ''"></span> <span data-bind="text: selectedOption"></span>
-                 <span data-bind="if: selectedOption() == 'once'">
-                     on <span class="error" data-bind="visible: !selectedDate()">Please pick a Date</span> <span data-bind="text: selectedDate"></span>
+            <div class="alert alert-info">
+                Report will be run and emailed <span data-bind="text: selectedOption() != 'once' ? 'every' : ''"></span> <span data-bind="text: selectedOption"></span>
+                <span data-bind="if: selectedOption() == 'once'">
+                    on <span class="error" data-bind="visible: !selectedDate()">Please pick a Date</span> <span data-bind="text: selectedDate"></span>
                 </span>
-                    <span data-bind="if: showDays">
-                       on <span class="error" data-bind="visible: selectedDays().length == 0">Please pick Day(s)</span> <span data-bind="text: selectedDays"></span>
-                  </span>
-                  <span data-bind="if: showDates">
-                     on <span class="error" data-bind="visible: selectedDates().length == 0">Please pick Date(s)</span>
-                     <span data-bind="foreach: selectedDates"><span data-bind="visible: $index()>0">, </span><span data-bind="text: $data == 1 ? '1st': ($data == 2 ? '2nd' : ($data == 3 ? '3rd' : ($data == 31 ? '31st' : $data+'th')))"></span></span>
+                <span data-bind="if: showDays">
+                    on <span class="error" data-bind="visible: selectedDays().length == 0">Please pick Day(s)</span> <span data-bind="text: selectedDays"></span>
+                </span>
+                <span data-bind="if: showDates">
+                    on <span class="error" data-bind="visible: selectedDates().length == 0">Please pick Date(s)</span>
+                    <span data-bind="foreach: selectedDates"><span data-bind="visible: $index()>0">, </span><span data-bind="text: $data == 1 ? '1st': ($data == 2 ? '2nd' : ($data == 3 ? '3rd' : ($data == 31 ? '31st' : $data+'th')))"></span></span>
                 </span>
                 <span data-bind="if: showMonths">
-                        of <span class="error" data-bind="visible: selectedMonths().length == 0">Please pick Month(s)</span> <span data-bind="text: selectedMonths"></span>
-                   </span>
-                  <span data-bind="if: showAtTime">
-                     at <span data-bind="text: selectedHour"></span>:<span data-bind="text: selectedMinute"></span> <span data-bind="text: selectedAmPm"></span>
-                 </span>
+                    of <span class="error" data-bind="visible: selectedMonths().length == 0">Please pick Month(s)</span> <span data-bind="text: selectedMonths"></span>
+                </span>
+                <span data-bind="if: showAtTime">
+                    at <span data-bind="text: selectedHour"></span>:<span data-bind="text: selectedMinute"></span> <span data-bind="text: selectedAmPm"></span>
+                </span>
             </div>
-            <div class="form-horizontal form-group">
-                    <div class="form-group row">
-                       <label class="col-sm-2 control-label">Email to</label>
-                       <div class="col-sm-6">
-                          <input type="text" class="form-control" style="width: 100%;" data-bind="value: emailTo" placeholder="Enter Email Addresses separated by comma to send the Report to" required />
-                      </div>
-                     <label class="col-sm-2 control-label">Report Format</label>
-                     <div class="col-sm-2">
-                        <select class="form-control" data-bind="value: format">
+            <div class="mb-3">
+                <div class="row g-3">
+                    <label class="col-sm-3 col-form-label">Email to</label>
+                    <div class="col-sm-6">
+                        <input type="text" class="form-control" data-bind="value: emailTo" placeholder="Enter Email Addresses separated by comma to send the Report to" required />
+                    </div>
+                    <label class="col-sm-1 col-form-label">Format</label>
+                    <div class="col-sm-2">
+                        <select class="form-select" data-bind="value: format">
                             <option value="EXCEL">Excel</option>
                             <option data-bind="visible: $parent.canDrilldown()" value="EXCEL-SUB">Excel (Expanded)</option>
                             <option value="CSV">CSV</option>
@@ -741,53 +740,56 @@
                             <option value="WORD">Word</option>
                             <option value="LINK">Link</option>
                         </select>
-                      </div>
-                 </div>
+                    </div>
+                </div>
             </div>
-            <div class="form-horizontal form-group">
-                    <div class="form-group row">
-                       <div class="col-sm-4 control-label">
-                           <div class="checkbox">
-                              <label title="Set a date to start sending scheduled report">
-                                  <input type="checkbox" data-bind="checked: hasScheduleStart" />
-                                 Set Schedule Start Date
-                            </label>
-                            </div>
-                       </div>
-                       <div class="col-sm-4" data-bind="if: hasScheduleStart">
-                          <input type="text" class="form-control" data-bind="datepicker: scheduleStart" title="Scheduled Report will not be sent before this date" required />
-                      </div>
-                 </div>
-             </div>
-
-            <div class="form-horizontal form-group">
-                    <div class="form-group row">
-                       <div class="col-sm-4 control-label">
-                          <div class="checkbox" title="Set a date to stop sending scheduled report">
-                              <label>
-                                 <input type="checkbox" data-bind="checked: hasScheduleEnd" />
-                                 Set Schedule End Date
+            <div class="mb-3">
+                <div class="row g-3">
+                    <label class="col-sm-3 col-form-label">Pick Time Zone</label>
+                    <div class="col-sm-9">
+                        <select class="form-select" data-bind="options: timezonOption,
+                                                            optionsText: 'displayName',
+                                                            optionsValue: 'timeZoneId',
+                                                            value: selectedTimezone,
+                                                            select2: {dropdownParent: $('#schedule-builder-div'), allowClear: true, placeholder: 'Set a time zone to send report'}">
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="row g-3">
+                    <div class="col-sm-3">
+                        <div class="form-check" title="Set a date to start sending scheduled report">
+                            <input class="form-check-input" type="checkbox" data-bind="checked: hasScheduleStart" id="scheduleStartCheckbox">
+                            <label class="form-check-label" for="scheduleStartCheckbox">
+                                Schedule Start Date
                             </label>
                         </div>
-                        </div>
-                       <div class="col-sm-4" data-bind="if: hasScheduleEnd">
-                           <input type="text" class="form-control" data-bind="datepicker: scheduleEnd" title="Scheduled Report will not be sent after this date" required />
-                      </div>
-                  </div>
-             </div>
-            <div class="form-horizontal form-group">
-               <div class="form-group row">
-                <label class="col-sm-2 control-label">Pick Time Zone</label>
-                    <div class="col-sm-10">
-                     <select class="form-control" data-bind="options: timezonOption,
-                                                   optionsText: 'displayName',
-                                                   optionsValue: 'timeZoneId',
-                                                   value: selectedTimezone,
-                                                   select2: {allowClear: true, placeholder: 'Set a time zone to send report'}" />
-                 </div>
+                    </div>
+                    <div class="col-sm-4" data-bind="if: hasScheduleStart">
+                        <input type="text" class="form-control" data-bind="datepicker: scheduleStart" title="Scheduled Report will not be sent before this date" required />
+                    </div>
+                </div>
             </div>
-         </div>
+            <div class="mb-3">
+                <div class="row g-3">
+                    <div class="col-sm-3">
+                        <div class="form-check" title="Set a date to stop sending scheduled report">
+                            <input class="form-check-input" type="checkbox" data-bind="checked: hasScheduleEnd" id="scheduleEndCheckbox">
+                            <label class="form-check-label" for="scheduleEndCheckbox">
+                                Schedule End Date
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-sm-4" data-bind="if: hasScheduleEnd">
+                        <input type="text" class="form-control" data-bind="datepicker: scheduleEnd" title="Scheduled Report will not be sent after this date" required />
+                    </div>
+                </div>
+            </div>            
+        </div>
     </div>
+
+
 </script>
 
 <script type="text/html" id="report-field-options">
@@ -802,7 +804,7 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-md-5 control-label">Pick Data Format</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-control" data-bind="options: $parents[1].fieldFormatTypes, value: fieldFormat"></select>
+                            <select class="form-select" data-bind="options: $parents[1].fieldFormatTypes, value: fieldFormat"></select>
                         </div>
                     </div>
                     <div class="form-group row" data-bind="visible: $parents[1].decimalFormatTypes.indexOf($data.fieldFormat())>=0">
@@ -814,13 +816,13 @@
                      <div class="form-group row" data-bind="visible: fieldFormat()=='Currency'">
                         <label class="col-sm-5 col-md-5 control-label">Pick Currency Format</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-control" required data-bind="options: $parents[1].currencyFormats, optionsText: 'display',optionsValue: 'value', value: currencyFormat"></select>
+                            <select class="form-select" required data-bind="options: $parents[1].currencyFormats, optionsText: 'display',optionsValue: 'value', value: currencyFormat"></select>
                         </div>
                     </div>
                       <div class="form-group row" data-bind="visible: fieldFormat()=='Date'">
                         <label class="col-sm-5 col-md-5 control-label">Pick Date Format</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-control" data-bind="options: $parents[1].dateFormats, value: dateFormat"></select>
+                            <select class="form-select" data-bind="options: $parents[1].dateFormats, value: dateFormat"></select>
                         </div>
                     </div>
                        <div class="form-group row" data-bind="visible: dateFormat()==='Custom'">
@@ -844,7 +846,7 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-md-5 control-label">Choose Text Alignment</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-control" data-bind="options: $parents[1].fieldAlignments, value: fieldAlign"></select>
+                            <select class="form-select" data-bind="options: $parents[1].fieldAlignments, value: fieldAlign"></select>
                         </div>
                     </div>
                     <div class="form-group row">
@@ -861,42 +863,41 @@
                             <b>Header Settings</b>
                         </div>
                     </div>
-                    <div class="form-row">
+                    <div class="row mb-3">
                         <div class="col">
-                            <div class="form-group">
-                                <label class="control-label">Pick Text Color</label>
-                                <div>
-                                    <input type="color" style="width: 50px" class="form-control pull-left" data-bind="value: headerFontColor" />
-                                    <input type="text" style="width: 100px" class="form-control pull-left" data-bind="value: headerFontColor" />
-                                    <button class="btn btn-sm pull-left" title="Apply to all columns" data-bind="click: function(){applyAllHeaderFontColor(!applyAllHeaderFontColor()); }">
+                            <div class="mb-3">
+                                <label class="form-label">Pick Text Color</label>
+                                <div class="d-flex">
+                                    <input type="color" style="width: 50px; height: 38px;" class="form-control me-2" data-bind="value: headerFontColor" />
+                                    <input type="text" style="width: 100px" class="form-control me-2" data-bind="value: headerFontColor" />
+                                    <button class="btn btn-sm btn-secondary" title="Apply to all columns" data-bind="click: function(){applyAllHeaderFontColor(!applyAllHeaderFontColor()); }">
                                         <span class="fa" data-bind="css: applyAllHeaderFontColor() ? 'fa-check' : 'fa-paste'"></span>
                                     </button>
                                 </div>
                             </div>
                         </div>
                         <div class="col">
-                            <div class="form-group">
-                                <label class="control-label">Pick Background Color</label>
-                                <div>
-                                    <input type="color" style="width: 50px" class="form-control pull-left" data-bind="value: headerBackColor" />
-                                    <input type="text" style="width: 100px" class="form-control pull-left" data-bind="value: headerBackColor" />
-                                    <button class="btn btn-sm pull-left" title="Apply to all columns" data-bind="click: function(){applyAllHeaderBackColor(!applyAllHeaderBackColor()); }">
+                            <div class="mb-3">
+                                <label class="form-label">Pick Background Color</label>
+                                <div class="d-flex">
+                                    <input type="color" style="width: 50px; height: 38px;" class="form-control me-2" data-bind="value: headerBackColor" />
+                                    <input type="text" style="width: 100px" class="form-control me-2" data-bind="value: headerBackColor" />
+                                    <button class="btn btn-sm btn-secondary" title="Apply to all columns" data-bind="click: function(){applyAllHeaderBackColor(!applyAllHeaderBackColor()); }">
                                         <span class="fa" data-bind="css: applyAllHeaderBackColor() ? 'fa-check' : 'fa-paste'"></span>
                                     </button>
                                 </div>
                             </div>
                         </div>
                         <div class="col d-flex align-items-center">
-                            <div class="form-group d-flex align-items-center">
-                                <div class="checkbox" style="padding-top: 5px; margin-right: 10px;">
-                                    <label>
-                                        <input type="checkbox" data-bind="checked: headerFontBold" /> Bold Text
-                                    </label>
-                                </div>
-                                <button class="btn btn-sm" title="Apply to all columns" data-bind="click: function(){applyAllHeaderBold(!applyAllHeaderBold()); }">
-                                    <span class="fa" data-bind="css: applyAllHeaderBold() ? 'fa-check' : 'fa-paste'"></span>
-                                </button>
+                            <div class="form-check me-3">
+                                <input class="form-check-input" type="checkbox" data-bind="checked: headerFontBold" id="headerFontBoldCheckbox">
+                                <label class="form-check-label" for="headerFontBoldCheckbox">
+                                    Bold Text
+                                </label>
                             </div>
+                            <button class="btn btn-sm btn-secondary" title="Apply to all columns" data-bind="click: function(){applyAllHeaderBold(!applyAllHeaderBold()); }">
+                                <span class="fa" data-bind="css: applyAllHeaderBold() ? 'fa-check' : 'fa-paste'"></span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -907,42 +908,41 @@
                             <b>Text Settings</b>
                         </div>
                     </div>
-                     <div class="form-row">
+                        <div class="row mb-3">
                         <div class="col">
-                            <div class="form-group">
-                                <label class="control-label">Pick Text Color</label>
-                                <div>
-                                    <input type="color" style="width: 50px" class="form-control pull-left" data-bind="value: fontColor" />
-                                    <input type="text" style="width: 100px" class="form-control pull-left" data-bind="value: fontColor" />
-                                    <button class="btn btn-sm pull-left" title="Apply to all columns" data-bind="click: function(){applyAllFontColor(!applyAllFontColor()); }">
+                            <div class="mb-3">
+                                <label class="form-label">Pick Text Color</label>
+                                <div class="d-flex">
+                                    <input type="color" style="width: 50px; height: 38px;" class="form-control me-2" data-bind="value: fontColor" />
+                                    <input type="text" style="width: 100px;" class="form-control me-2" data-bind="value: fontColor" />
+                                    <button class="btn btn-sm btn-secondary" title="Apply to all columns" data-bind="click: function(){applyAllFontColor(!applyAllFontColor()); }">
                                         <span class="fa" data-bind="css: applyAllFontColor() ? 'fa-check' : 'fa-paste'"></span>
                                     </button>
                                 </div>
                             </div>
                         </div>
                         <div class="col">
-                            <div class="form-group">
-                                <label class="control-label">Pick Background Color</label>
-                                <div>
-                                    <input type="color" style="width: 50px" class="form-control pull-left" data-bind="value: backColor" />
-                                    <input type="text" style="width: 100px" class="form-control pull-left" data-bind="value: backColor" />
-                                    <button class="btn btn-sm pull-left" title="Apply to all columns" data-bind="click: function(){applyAllBackColor(!applyAllBackColor()); }">
+                            <div class="mb-3">
+                                <label class="form-label">Pick Background Color</label>
+                                <div class="d-flex">
+                                    <input type="color" style="width: 50px; height: 38px;" class="form-control me-2" data-bind="value: backColor" />
+                                    <input type="text" style="width: 100px;" class="form-control me-2" data-bind="value: backColor" />
+                                    <button class="btn btn-sm btn-secondary" title="Apply to all columns" data-bind="click: function(){applyAllBackColor(!applyAllBackColor()); }">
                                         <span class="fa" data-bind="css: applyAllBackColor() ? 'fa-check' : 'fa-paste'"></span>
                                     </button>
                                 </div>
                             </div>
                         </div>
                         <div class="col d-flex align-items-center">
-                            <div class="form-group d-flex align-items-center">
-                                <div class="checkbox" style="padding-top: 5px; margin-right: 10px;">
-                                    <label>
-                                        <input type="checkbox" data-bind="checked: fontBold" /> Bold Text
-                                    </label>
-                                </div>
-                                <button class="btn btn-sm" title="Apply to all columns" data-bind="click: function(){applyAllBold(!applyAllBold()); }">
-                                    <span class="fa" data-bind="css: applyAllBold() ? 'fa-check' : 'fa-paste'"></span>
-                                </button>
+                            <div class="form-check me-3">
+                                <input class="form-check-input" type="checkbox" data-bind="checked: fontBold" id="fontBoldCheckbox">
+                                <label class="form-check-label" for="fontBoldCheckbox">
+                                    Bold Text
+                                </label>
                             </div>
+                            <button class="btn btn-sm btn-secondary" title="Apply to all columns" data-bind="click: function(){applyAllBold(!applyAllBold()); }">
+                                <span class="fa" data-bind="css: applyAllBold() ? 'fa-check' : 'fa-paste'"></span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -959,32 +959,31 @@
                                 <button class="btn btn-sm btn-secondary" data-bind="click: $parent.removeSetting">Remove</button>
                             </div>
                         </div>
-                        <div class="form-row">
+                        <div class="row mb-3">
                             <div class="col">
-                                <div class="form-group">
-                                    <label class="control-label">Pick Text Color</label>
-                                    <div>
-                                        <input type="color" style="width: 50px" class="form-control pull-left" data-bind="value: fontColor" />
-                                        <input type="text" style="width: 100px" class="form-control pull-left" data-bind="value: fontColor" />
+                                <div class="mb-3">
+                                    <label class="form-label">Pick Text Color</label>
+                                    <div class="d-flex">
+                                        <input type="color" style="width: 50px; height: 38px;" class="form-control me-2" data-bind="value: fontColor" />
+                                        <input type="text" style="width: 100px;" class="form-control me-2" data-bind="value: fontColor" />
                                     </div>
                                 </div>
                             </div>
                             <div class="col">
-                                <div class="form-group">
-                                    <label class="control-label">Pick Background Color</label>
-                                    <div>
-                                        <input type="color" style="width: 50px" class="form-control pull-left" data-bind="value: backColor" />
-                                        <input type="text" style="width: 100px" class="form-control pull-left" data-bind="value: backColor" />
+                                <div class="mb-3">
+                                    <label class="form-label">Pick Background Color</label>
+                                    <div class="d-flex">
+                                        <input type="color" style="width: 50px; height: 38px;" class="form-control me-2" data-bind="value: backColor" />
+                                        <input type="text" style="width: 100px;" class="form-control me-2" data-bind="value: backColor" />
                                     </div>
                                 </div>
                             </div>
                             <div class="col d-flex align-items-center">
-                                <div class="form-group d-flex align-items-center">
-                                    <div class="checkbox" style="padding-top: 5px; margin-right: 10px;">
-                                        <label>
-                                            <input type="checkbox" data-bind="checked: fontBold" /> Bold Text
-                                        </label>
-                                    </div>
+                                <div class="form-check me-3">
+                                    <input class="form-check-input" type="checkbox" data-bind="checked: fontBold" id="fontBoldCheckbox">
+                                    <label class="form-check-label" for="fontBoldCheckbox">
+                                        Bold Text
+                                    </label>
                                 </div>
                             </div>
                         </div>
@@ -996,7 +995,7 @@
                             <div class="col-md-4">
                                 <div data-bind="with: Field">
                                     <div class="form-group">
-                                        <select class="form-control" style="width: 100%;" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
+                                        <select class="form-select" style="width: 100%;" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
                                     </div>
                                 </div>
                             </div>
@@ -1038,14 +1037,14 @@
                 <div class="form-group row">
                     <label class="col-sm-5 col-md-5 control-label">This field will link to</label>
                     <div class="col-sm-7 col-md-7">
-                        <select class="form-control" required data-bind="options: linkTypes, value: selectedLinkType"></select>
+                        <select class="form-select" required data-bind="options: linkTypes, value: selectedLinkType"></select>
                     </div>
                 </div>
                 <div data-bind="if: LinksToReport">
                     <div class="form-group row">
                         <label class="col-sm-5 col-md-5 control-label">Link to this Report</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-control" required data-bind="options: $parentContext.$parent.SavedReports, optionsText: 'reportName', optionsValue: 'reportId', value: LinkedToReportId, optionsCaption: 'Choose the Report to link to'"></select>
+                            <select class="form-select" required data-bind="options: $parentContext.$parent.SavedReports, optionsText: 'reportName', optionsValue: 'reportId', value: LinkedToReportId, optionsCaption: 'Choose the Report to link to'"></select>
                         </div>
                     </div>
                     <div class="checkbox" data-bind="if: LinkedToReportId">
@@ -1057,7 +1056,7 @@
                     <div class="form-group row" data-bind="if: SendAsFilterParameter">
                         <label class="col-sm-5 col-md-5 control-label">Link to this Report Filter</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-control" required data-bind="options: allFields, optionsText: 'fieldName', optionsValue: 'fieldId', value: SelectedFilterId, optionsCaption: 'Choose the Field to Filter by value'"></select>
+                            <select class="form-select" required data-bind="options: allFields, optionsText: 'fieldName', optionsValue: 'fieldId', value: SelectedFilterId, optionsCaption: 'Choose the Field to Filter by value'"></select>
                         </div>
                     </div>
                 </div>
@@ -1100,7 +1099,7 @@
                         <span class="fa fa-question-circle"></span>
                     </a> Design your Report
                 </h5>
-                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body needs-validation">
                 <div class="card card-body">
@@ -1130,7 +1129,7 @@
                                 <p>Pie</p>
                             </div>
                         </div>
-                        <div class="col-md-2 col-sm-4 col-xs-6" style="display: none;">
+                        <div class="col-md-2 col-sm-4 col-xs-6">
                             <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Treemap'); }, css: {active: ReportType()=='Treemap'}">
                                 <span class="fa fa-2x fa-window-restore"></span>
                                 <p>Treemap</p>
@@ -1165,7 +1164,7 @@
                     </div>
                 </div>
                 <br />
-                <div class="card card-body">
+                <div class="card card-body" id="choose-data-card">
                     <h5><span class="fa fa-database"></span>&nbsp;Choose Data for Report</h5>
                     <div>
                         <div class="pull-left" role="group" data-bind="if: ReportID() <= 0">
@@ -1185,16 +1184,16 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div data-bind="visible: useStoredProc">
-                            <select class="form-control" data-bind="select2Value: {}, options: Procs, optionsCaption: 'Choose Section...', optionsText: 'DisplayName', value: SelectedProc, visible: useStoredProc"></select>
+                            <select class="form-control" data-bind="select2Value: {dropdownParent: $('#choose-data-card')}, options: Procs, optionsCaption: 'Choose Section...', optionsText: 'DisplayName', value: SelectedProc, visible: useStoredProc"></select>
                             </div>
                             <div data-bind="hidden: useStoredProc">
-                            <select class="form-control" data-bind="select2Value: {}, options: Tables, optionsCaption: 'Choose Section...', optionsText: 'tableName', value: SelectedTable, hidden: useStoredProc"></select>
+                            <select class="form-control" data-bind="select2Value: {dropdownParent: $('#choose-data-card')}, options: Tables, optionsCaption: 'Choose Section...', optionsText: 'tableName', value: SelectedTable, hidden: useStoredProc"></select>
                             </div>
                         </div>
 
                         <div class="col-md-6" data-bind="disable: isFormulaField, hidden: useStoredProc">
                             <div data-bind="with: textQuery.searchFields">
-                                <select id="search-field" class="form-control" data-bind="select2: {placeholder: 'Or Search for a Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults, headers: headers }, minimumInputLength: 2, allowClear: true }, value: selectedOption"></select>
+                                <select id="search-field" class="form-control" data-bind="select2: {dropdownParent: $('#choose-data-card'), placeholder: 'Or Search for a Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults, headers: headers }, minimumInputLength: 2, allowClear: true }, value: selectedOption"></select>
                             </div>
                         </div>
 
@@ -1209,7 +1208,7 @@
                             </div>
                         </div>
                         <div class="row container-fluid" data-bind="foreach: ChooseFields">
-                            <div class="col-md-3 col-sm-4 col-xs-6">
+                            <div class="col-md-3 col-sm-4 col-xs-6 list-group">
                                 <div class="list-group-item">
                                     <div class="checkbox">
                                         <label>
@@ -1249,7 +1248,7 @@
                                 <div class="form-group row">
                                     <label class="col-sm-2 control-label">Data Format</label>
                                     <div class="col-sm-10">
-                                        <select class="form-control form-control-sm" data-bind="value: formulaDataFormat" required>
+                                        <select class="form-select form-control-sm" data-bind="value: formulaDataFormat" required>
                                             <option>String</option>
                                             <option>Integer</option>
                                             <option>Decimal</option>
@@ -1296,7 +1295,7 @@
 
                                                 </label>
                                                 <div class="col-sm-6" >
-                                                    <select class="form-control" data-bind="required: Required, options: $parentContext.$parent.ChooseFields, optionsText: 'fieldName', value: selectedField, optionsCaption: 'Pick a field...'"></select>
+                                                    <select class="form-select" data-bind="required: Required, options: $parentContext.$parent.ChooseFields, optionsText: 'fieldName', value: selectedField, optionsCaption: 'Pick a field...'"></select>
                                                 </div>
                                             </div>
                                             <!-- /ko -->
@@ -1318,7 +1317,7 @@
                             </div>
                             <div class="card-body">
                                 <div class="row container-fluid" data-bind="foreach: jsonFields">
-                                    <div class="col-md-3 col-sm-4 col-xs-6">
+                                    <div class="col-md-3 col-sm-4 col-xs-6 list-group">
                                         <div class="list-group-item">
                                             <div class="checkbox">
                                                 <label>
@@ -1378,7 +1377,7 @@
                                 <div class="form-group row">
                                     <label class="col-sm-2 control-label">Data Format</label>
                                     <div class="col-sm-10">
-                                        <select class="form-control form-control-sm" data-bind="value: formulaDataFormat" required>
+                                        <select class="form-select form-control-sm" data-bind="value: formulaDataFormat" required>
                                             <!-- ko ifnot: formulaOnlyHasDateFields -->
                                             <option>String</option>
                                             <option>Integer</option>
@@ -1404,22 +1403,22 @@
                                 <div class="form-group row">
                                     <label class="col-sm-2 control-label">Field Formula</label>
                                     <div class="col-sm-10">
-                                        <div data-bind="foreach: formulaFields">
-                                            <h3 class="pull-left" data-bind="visible: setupFormula.isParenthesesStart" style="margin-top: 0;">(</h3>
-                                            <div data-bind="if: !setupFormula.isParenthesesStart() && !setupFormula.isParenthesesEnd()">
-                                                <div class="list-group-item pull-left formula-field-item" style="margin-left: 15px; padding: 5px 15px">
+                                        <div class="d-flex align-items-center flex-wrap" data-bind="foreach: formulaFields">
+                                            <h3 class="me-3" data-bind="visible: setupFormula.isParenthesesStart" style="margin-top: 0;">(</h3>
+                                            <div data-bind="if: !setupFormula.isParenthesesStart() && !setupFormula.isParenthesesEnd()" class="list-group me-3">
+                                                <div class="list-group-item d-flex align-items-center formula-field-item" style="margin-left: 15px; padding: 5px 15px">
                                                     <span data-bind="text: fieldName, visible: !setupFormula.isConstantValue()"></span>
-                                                    <div data-bind="if: setupFormula.isConstantValue">
-                                                        <input data-bind="value: setupFormula.constantValue, visible: setupFormula.constantValue()!='|Today|'" class="form-control form-control-sm" required />
+                                                    <div data-bind="if: setupFormula.isConstantValue" class="d-flex align-items-center">
+                                                        <input data-bind="value: setupFormula.constantValue, visible: setupFormula.constantValue()!='|Today|'" class="form-control form-control-sm me-2" required />
                                                         <span data-bind="visible: setupFormula.constantValue() == '|Today|'"><b>Today</b></span>
                                                     </div>
-                                                    <button class="btn btn-danger btn-sm delete-btn" data-bind="click: $parent.removeField">
+                                                    <button class="btn btn-danger btn-sm ms-2" data-bind="click: $parent.removeField">
                                                         <i class="fa fa-trash"></i>
                                                     </button>
                                                 </div>
                                             </div>
-                                            <h3 class="pull-left" data-bind="visible: setupFormula.isParenthesesEnd" style="margin-top: 0;">)</h3>
-                                            <div class="pull-left" style="margin-left: 15px;" data-bind="visible: $parent.showFormulaOperation($index())">
+                                            <h3 class="me-3" data-bind="visible: setupFormula.isParenthesesEnd" style="margin-top: 0;">)</h3>
+                                            <div class="me-3" style="margin-left: 15px;" data-bind="visible: $parent.showFormulaOperation($index())">
                                                 <select class="form-control form-control-sm" style="max-width: 50px;" data-bind="value: setupFormula.formulaOperation">
                                                     <!-- ko if: !$parent.formulaOnlyHasDateFields() || ($parent.formulaOnlyHasDateFields() && $parent.isConstantOperation($index())) -->
                                                     <option>+</option>
@@ -1477,7 +1476,7 @@
                                 <div class="form-group row">
                                     <label class="col-sm-2 control-label">Map Display</label>
                                     <div class="col-sm-4">
-                                        <select class="form-control form-control-sm" data-bind="options: $parent.mapRegions, value: mapRegion"></select>
+                                        <select class="form-select form-control-sm" data-bind="options: $parent.mapRegions, value: mapRegion"></select>
                                     </div>
                                 </div>
                             </div>
@@ -1485,6 +1484,9 @@
                                 <li class="list-group-item">
                                     <div class="row">
                                         <div class="col">
+                                            <span class="sortable pull-left" style="padding-right: 15px;" data-bind="ifnot: $parent.useStoredProc">
+                                                <span class="fa fa-ellipsis-v" aria-hidden="true" title="Drag to reorder"></span>
+                                            </span>
                                             <span class="fa fa-columns"></span>
                                             <span data-bind="text: selectedFieldName"></span>
                                             <span data-bind="text: isFormulaField() ? '(' + fieldFormat() + ')' : ''"></span>
@@ -1494,20 +1496,18 @@
                                         </div>
                                         <div class="col">
                                             <div class="pull-right" style="margin-top: -5px;" data-bind="if: $parent.AggregateReport() && !$parent.useStoredProc()">
-                                                <select class="form-control form-control-sm" data-bind="options: $parent.canDrilldown() && $index()>0 ? fieldAggregateWithDrilldown : fieldAggregate, value: selectedAggregate"></select>
+                                                <select class="form-select form-control-sm" data-bind="options: $parent.canDrilldown() && $index()>0 ? fieldAggregateWithDrilldown : fieldAggregate, value: selectedAggregate"></select>
                                             </div>
-                                            <div class="sortable pull-right" style="padding-right: 15px;" data-bind="ifnot: $parent.useStoredProc">
-                                                <span class="fa fa-arrows " aria-hidden="true" title="Drag to reorder"></span>
-                                            </div>
+                                            
                                             <div class="pull-right" style="padding-right: 15px;" data-bind="ifnot: $parent.useStoredProc">
                                                 <span class="fa fa-trash-o" title="Cannot Delete Required Filter" data-bind="visible: forceFilterForTable"></span>
                                                 <span class="fa fa-trash" style="cursor: pointer;" aria-hidden="true" title="Delete this Field" data-bind="click: $parent.RemoveField, hidden: forceFilterForTable"></span>
                                             </div>
-                                            <div class="pull-right" style="padding-right: 15px;" data-bind="ifnot: $parent.useStoredProc">
+                                            <!--<div class="pull-right" style="padding-right: 15px;" data-bind="ifnot: $parent.useStoredProc">
                                                 <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ filterOnFly(!filterOnFly()); }, css: {active: filterOnFly()==true}">
                                                     <span class="fa fa-filter" aria-hidden="true" title="Filter by this field on the Report"></span>
                                                 </span>
-                                            </div>
+                                            </div>-->
                                             <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $parent.ReportType()!='Pivot'">
                                                 <span class="button-box no-padding" tabindex="0" data-bind="click: toggleDisable, css: {active: disabled()==true}">
                                                     <span class="fa fa-close" aria-hidden="true" title="Do not include in Report"></span>
@@ -1597,7 +1597,7 @@
                         <div class="form-group row">
                             <label class="col-sm-2 control-label">Sort By</label>
                             <div class="col-sm-6">
-                                <select class="form-control" required data-bind="options: SelectedFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: SortByField"></select>
+                                <select class="form-select" required data-bind="options: SelectedFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: SortByField"></select>
                             </div>
                             <div class="col-sm-2">
                                 <button class="btn btn-sm btn-secondary" data-bind="text: !SortDesc() ? '▲ Sort Ascending' : 'Sort Descending ▼', click: function() { SortDesc(!SortDesc()); return false; }"></button>
@@ -1610,7 +1610,7 @@
                             <div class="form-group row">
                                 <label class="col-sm-2 control-label">&nbsp;&nbsp;Then Sort By</label>
                                 <div class="col-sm-4">
-                                    <select class="form-control" required data-bind="options: $parent.SelectedFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: sortByFieldId"></select>
+                                    <select class="form-select" required data-bind="options: $parent.SelectedFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: sortByFieldId"></select>
                                 </div>
                                 <div class="col-sm-2">
                                     <button class="btn btn-sm btn-secondary" data-bind="click: remove">Remove Sort Field</button>
@@ -1640,7 +1640,7 @@
                     <div class="form-group row" data-bind="visible: SaveReport">
                         <label class="col-sm-2 control-label">Choose Folder</label>
                         <div class="col-sm-10">
-                            <select class="form-control" style="width: 100%;" data-bind="options: Folders, optionsText: 'FolderName', optionsValue: 'Id', value: FolderID"></select>
+                            <select class="form-select" style="width: 100%;" data-bind="options: Folders, optionsText: 'FolderName', optionsValue: 'Id', value: FolderID"></select>
                         </div>
                     </div>
                 </div>
@@ -1692,7 +1692,7 @@
                                     </label>
                                 </div>
                                 <div class="col-md-6" data-bind="visible: changePageSize">
-                                    <select style="width: 150px;" class="form-control" data-bind="options: [10,30,50,100,150,200,500], value: DefaultPageSize"></select>
+                                    <select style="width: 150px;" class="form-select" data-bind="options: [10,30,50,100,150,200,500], value: DefaultPageSize"></select>
                                 </div>
                             </div>
                         </div>
@@ -1732,7 +1732,7 @@
         <div class="modal-content" data-bind="with: ChartDrillDownData">
             <div class="modal-header">
                 <h4 class="modal-title">Drilldown Data</h4>
-                <button type="button" class="close pull-right" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <button type="button" class="close pull-right" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <!-- ko if: DrillDownData -->
             <div class="modal-body">
@@ -1795,7 +1795,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 <h4 class="modal-title">Account not Setup</h4>
             </div>
             <div class="modal-body">
@@ -1804,7 +1804,7 @@
                 <p>Please view the <a href="https://dotnetreport.com/blogs/getting-started-with-dotnet-report/" target="_blank">Getting Started Guide</a> to correctly configure dotnet Report.</p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-default" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>

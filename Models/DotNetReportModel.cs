@@ -1272,7 +1272,7 @@ namespace ReportBuilder.Web.Models
 
 
         public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
+                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false,string pivotColumn= null,string pivotFunction=null)
         {
             var sql = Decrypt(reportSql);
             var sqlFields = SplitSqlColumns(sql);
@@ -1302,6 +1302,11 @@ namespace ReportBuilder.Web.Models
                             dt.Columns[col.fieldName].ColumnName = col.customfieldLabel;
                         }
                     }
+                }
+                if (!string.IsNullOrEmpty(pivotColumn))
+                {
+                    var ds = await DotNetReportHelper.GetDrillDownData(conn, dt, sqlFields, expandSqls);
+                    dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction);
                 }
                 using (ExcelPackage xp = new ExcelPackage())
                 {
@@ -1730,7 +1735,7 @@ namespace ReportBuilder.Web.Models
         }
 
         public static async Task<byte[]> GetWordFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
+            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
         {
             var sql = Decrypt(reportSql);
             var sqlFields = SplitSqlColumns(sql);
@@ -1744,6 +1749,7 @@ namespace ReportBuilder.Web.Models
                 var adapter = new OleDbDataAdapter(command);
 
                 adapter.Fill(dt);
+                var subTotals = new decimal[dt.Columns.Count];
 
                 if (pivot) dt = Transpose(dt);
 
@@ -1762,6 +1768,11 @@ namespace ReportBuilder.Web.Models
                     }
                 }
 
+                if (!string.IsNullOrEmpty(pivotColumn))
+                {
+                    var ds = await DotNetReportHelper.GetDrillDownData(conn, dt, sqlFields, expandSqls);
+                    dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction);
+                }
                 using (MemoryStream memStream = new MemoryStream())
                 {
                     using (WordprocessingDocument wordDocument = WordprocessingDocument.Create(memStream, WordprocessingDocumentType.Document))
@@ -1862,11 +1873,19 @@ namespace ReportBuilder.Web.Models
                             // Add data rows
                             foreach (DataRow row in dt.Rows)
                             {
+                                var i = 0;
                                 TableRow dataRow = new TableRow();
                                 foreach (DataColumn column in dt.Columns)
                                 {
                                     var value = row[column.ColumnName].ToString();
                                     var formatColumn = GetColumnFormatting(column, columns, ref value);
+                                    if (includeSubtotal)
+                                    {
+                                        if (formatColumn.isNumeric && !(formatColumn?.dontSubTotal ?? false))
+                                        {
+                                            subTotals[i] += Convert.ToDecimal(row[column.ColumnName]);
+                                        }
+                                    }
                                     Run run = new Run( new Text(value));
                                     ParagraphProperties paragraphProperties = new ParagraphProperties(
                                         new SpacingBetweenLines() { Before = "100", After = "100", Line = "240", LineRule = LineSpacingRuleValues.Auto },
@@ -1878,13 +1897,36 @@ namespace ReportBuilder.Web.Models
                                 }
                                 table.AppendChild(dataRow);
                             }
-                            body.AppendChild(table);
+                            if (includeSubtotal)
+                            {
+                                TableRow dataRow = new TableRow();
+
+                                for (int j = 0; j < dt.Columns.Count; j++)
+                                {
+                                    var value = subTotals[j].ToString();
+                                    var dc = dt.Columns[j];
+                                    var formatColumn = GetColumnFormatting(dc, columns, ref value);
+                                    bool isNumericAndNotExcluded = formatColumn?.isNumeric == true && !(formatColumn?.dontSubTotal ?? false);
+                                    Run run = new Run(new Text(isNumericAndNotExcluded ? value : " "));
+                                    ParagraphProperties paragraphProperties = new ParagraphProperties(
+                                        new SpacingBetweenLines() { Before = "100", After = "100", Line = "240", LineRule = LineSpacingRuleValues.Auto },
+                                        new Indentation() { Left = "180", Right = "180" } // Adjust values as needed
+                                    );
+                                    Paragraph paragraph = new Paragraph(paragraphProperties, run);
+                                    TableCell cell = new TableCell(paragraph);
+                                    dataRow.AppendChild(cell);
+                                }
+
+                                table.AppendChild(dataRow);
+                            }
+
                             // Add expanded data if applicable
                             if (allExpanded)
                             {
                                 Paragraph expandedData = new Paragraph(new Run(new Text("Additional expanded data")));
                                 body.AppendChild(expandedData);
                             }
+                            body.AppendChild(table);
                         }
                         else
                         {

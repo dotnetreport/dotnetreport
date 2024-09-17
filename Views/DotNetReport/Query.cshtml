@@ -52,10 +52,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
 }
 
 <div>
-    <br />
+    <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
     <h4>Smarter Report Builder <small style="color: red">(Beta)</small> </h4>
 
-    <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
     <p>
         What would you like to know? Try typing in below to search your data
     </p>
@@ -104,7 +103,6 @@ Its Recommended you use it as is, and only change styling as needed to match you
     <div data-bind="if: $root.adminMode()">
         <br />
         <br />
-        <hr />
         <code data-bind="html: ReportSql">
         </code>
     </div>

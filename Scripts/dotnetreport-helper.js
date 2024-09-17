@@ -78,25 +78,30 @@ ko.bindingHandlers.datepicker = {
 
         //handle the field changing
         ko.utils.registerEventHandler(element, "change", function () {
-              var observable = valueAccessor();
-              var date = $(element).datepicker('getDate');
-              var value = options.value;
-              observable($(element).datepicker({ dateFormat: options.dateFormat || 'mm/dd/yyyy' }).val());
-              if (value) value(date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }));
+           var observable = valueAccessor();
+           var date = $(element).datepicker('getDate');
+            if (date) {
+                var value = options.value;
+                if (value) value(date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }));
+            }
         });
 
-        //handle disposal (if KO removes by the template binding)
         ko.utils.domNodeDisposal.addDisposeCallback(element, function () {
-                       $(element).datepicker("destroy");
+            $(element).datepicker("destroy");
         });
-
+        
     },
     //update the control when the view model changes
     update: function (element, valueAccessor) {
         var value = ko.utils.unwrapObservable(valueAccessor());
-        var formattedDate = $.datepicker.formatDate($(element).datepicker("option", "dateFormat") || 'mm/dd/yy', new Date(value));
-        if (formattedDate !== $(element).val()) {
-            $(element).datepicker("setDate", formattedDate);
+        if (value === null || value === undefined) {
+            $(element).datepicker("setDate", null);
+            $(element).val('');
+        } else {
+            var formattedDate = $.datepicker.formatDate($(element).datepicker("option", "dateFormat") || 'mm/dd/yy', new Date(value));
+            if (formattedDate !== $(element).val()) {
+                $(element).datepicker("setDate", formattedDate);
+            }
         }
     }
 };
@@ -170,7 +175,7 @@ ko.bindingHandlers.select2Value = {
         var value = ko.unwrap(valueAccessor());
 
         // Initialize select2
-        $(element).select2(allBindings.select2);
+        $(element).select2(allBindings.select2Value);
 
         // When an item is selected, update the observable with the full item object
         $(element).on('select2:select', function (e) {
@@ -434,21 +439,21 @@ var textQuery = function (options) {
     }
 
     self.QueryMethods = [
-        { value: 'Sum', key: '<span class="fa fa-flash"></span> Sum of', type: 'Function' },
-        { value: 'Avg', key: '<span class="fa fa-flash"></span> Average of', type: 'Function' },
-        { value: 'Sum', key: '<span class="fa fa-flash"></span> Total of', type: 'Function' },
-        { value: 'Count', key: '<span class="fa fa-flash"></span> Count of', type: 'Function' },
-        { value: 'Percent', key: '<span class="fa fa-flash"></span> Percentage of', type: 'Function' },
-        { value: 'OrderBy', key: '<span class="fa fa-gear"></span> Order by', type: 'Order' },
-        { value: 'Bar', key: '<span class="fa fa-bar-chart"></span> as Bar Chart', type: 'ReportType' },
-        { value: 'Pie', key: '<span class="fa fa-pie-chart"></span> as Pie Chart', type: 'ReportType' },
+        { value: 'Sum', key: '<span class="fa fa-flash"></span> Sum of', type: 'Function', searchKey: 'Sum of' },
+        { value: 'Avg', key: '<span class="fa fa-flash"></span> Average of', type: 'Function', searchKey: 'Average of' },
+        { value: 'Sum', key: '<span class="fa fa-flash"></span> Total of', type: 'Function', searchKey: 'Total of' },
+        { value: 'Count', key: '<span class="fa fa-flash"></span> Count of', type: 'Function', searchKey: 'Count of' },
+        { value: 'Percent', key: '<span class="fa fa-flash"></span> Percentage of', type: 'Function', searchKey: 'Percentage of' },
+        { value: 'OrderBy', key: '<span class="fa fa-gear"></span> Order by', type: 'Order', searchKey: 'Order By' },
+        { value: 'Bar', key: '<span class="fa fa-bar-chart"></span> as Bar Chart', type: 'ReportType', searchKey: 'as Bar Chart' },
+        { value: 'Pie', key: '<span class="fa fa-pie-chart"></span> as Pie Chart', type: 'ReportType', searchKey: 'as Pie Chart' },
     ];
 
     self.FilterMethods = [
-        { value: 'Today', key: '<span class="fa fa-filter"></span> for Today', type: 'DateFilter' },
-        { value: 'Yesterday', key: '<span class="fa fa-filter"></span> for Yesterday', type: 'DateFilter' },
-        { value: 'This Month', key: '<span class="fa fa-filter"></span> for This Month', type: 'DateFilter' },
-        { value: 'Last Month', key: '<span class="fa fa-filter"></span> for Last Month', type: 'DateFilter' },
+        { value: 'Today', key: '<span class="fa fa-filter"></span> for Today', type: 'DateFilter', searchKey: 'for Today' },
+        { value: 'Yesterday', key: '<span class="fa fa-filter"></span> for Yesterday', type: 'DateFilter', searchKey: 'for Yesterday' },
+        { value: 'This Month', key: '<span class="fa fa-filter"></span> for This Month', type: 'DateFilter', searchKey: 'for This Month' },
+        { value: 'Last Month', key: '<span class="fa fa-filter"></span> for Last Month', type: 'DateFilter', searchKey: 'for Last Month' },
     ];
 
     self.getAggregate = function (columnId) {
@@ -601,12 +606,18 @@ var textQuery = function (options) {
             allowSpaces: true,
             autocompleteMode: true,
             noMatchTemplate: "",
+            searchOpts: {
+                skip: true, // Disable the default matching
+                extract: function (el) {
+                    return el.searchKey; // Use stripped key for matching
+                }
+            },
             values: function (token, callback) {
                 if (token == "=" || token == ">" || token == "<") return;
                 self.ParseQuery(token, "").done(function (results) {
                     if (results.d) results = results.d;
                     var items = _.map(results, function (x) {
-                        return { value: x.fieldId, key: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey };
+                        return { value: x.fieldId, key: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey, searchKey: x.tableDisplay + ' > ' + x.fieldDisplay };
                     });
 
                     if (self.usingFilter() && self.filterField != null) {
