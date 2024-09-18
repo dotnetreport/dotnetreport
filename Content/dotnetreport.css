@@ -522,7 +522,7 @@ select.is-invalid ~ span .select2-selection {
 
 .select2-container {
     width: 100% !important;
-    min-width: 380px !important;
+    min-width: 180px !important;
 }
 
 .select2-selection {
