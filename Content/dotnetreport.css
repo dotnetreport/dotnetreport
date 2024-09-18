@@ -1056,8 +1056,8 @@ thead th {
 }
 
 .mini-table-preview {
-    width: 80px; /* Set a fixed width for the mini-table previews */
-    height: 50px; /* Set a fixed height for the mini-table previews */
+    width: 60px; /* Set a fixed width for the mini-table previews */
+    height: 40px; /* Set a fixed height for the mini-table previews */
     overflow: hidden; /* Hides any overflow */
     display: flex; /* Use flexbox for the mini-table layout */
     flex-direction: column; /* Aligns the rows vertically */
@@ -1072,8 +1072,8 @@ thead th {
     flex-grow: 1; /* Allows cells to expand, maintaining the flex layout */
     border: 1px solid #ddd; /* Adds a border to each cell */
     box-sizing: border-box; /* Ensures the border is included in the cell's dimensions */
-    width: 15px; /* Sets a fixed width for each cell */
-    height: 10px; /* Sets a different fixed height for each cell, making it rectangular */
+    width: 12px; /* Sets a fixed width for each cell */
+    height: 8px; /* Sets a different fixed height for each cell, making it rectangular */
 }
 
 .dropdown-option-selected {
@@ -1195,4 +1195,17 @@ tfoot tr.sub-total {
 
 .row{
     padding-top: 5px; padding-bottom: 5px;
+}
+
+.sticky-column {
+    position: sticky;
+    top: 0;
+    height: 100%;
+    z-index: 1000;
+}
+
+@media (max-width: 768px) {
+    .sticky-column {
+        position: static; /* Disable sticky on smaller screens */
+    }
 }

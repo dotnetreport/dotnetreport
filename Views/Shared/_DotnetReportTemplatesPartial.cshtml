@@ -352,7 +352,7 @@
             </div>
         </div>
         <div class="alert alert-info">
-            <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;User level rights over rule Role level rights. No selection for a rule implies report is available to all.
+            <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;User level rights override Role level rights. No selection for a rule implies report is available to all.
         </div>
 
         <div class="row small">
@@ -1113,7 +1113,7 @@
             </div>
             <div class="modal-body needs-validation" style="overflow-y: auto; flex-grow: 1;">
                 <div class="row">
-               <div class="col-md-4" style="position: sticky; top: 0; height: 100%; z-index: 1000; background-color: white;">                
+               <div class="col-md-4 sticky-column">
                 <div class="card card-body" id="choose-data-card">
                     <h5><span class="fa fa-database"></span>&nbsp;Choose Data for Report</h5>
                     <div>
@@ -1619,7 +1619,7 @@
                                 <select class="form-select" data-bind="options: SelectedFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: SortByField, optionsCaption: 'Select field to sort...', allowClear: true"></select>
                             </div>
                             <div class="col-sm-2">
-                                <button class="btn btn-sm btn-secondary" data-bind="text: !SortDesc() ? '▲ Sort Ascending' : 'Sort Descending ▼', click: function() { SortDesc(!SortDesc()); return false; }"></button>
+                                <button class="btn btn-sm btn-secondary" data-bind="text: !SortDesc() ? '▲ Ascending' : 'Descending ▼', click: function() { SortDesc(!SortDesc()); return false; }"></button>
                             </div>
                             <div class="col-sm-2">
                                 <button class="btn btn-sm btn-secondary" data-bind="click: addSortField">Add Sort Field</button>
@@ -1656,7 +1656,7 @@
                 <div data-bind="ifnot: useStoredProc" class="card card-body">
                     <div class="row">
                         <div class="col-md-6">
-                            <h5><span class="fa fa-gear"></span>&nbsp;Other Settings</h5>
+                            <h5><span class="fa fa-gear"></span>&nbsp;Optional Settings</h5>
                             <div class="checkbox" data-bind="visible: ReportType()!='Pivot'">
                                 <label>
                                     <input type="checkbox" data-bind="checked: IncludeSubTotal" />
@@ -1705,7 +1705,7 @@
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <h5><span class="fa fa-paint-brush"></span>&nbsp;Pick Report Format</h5>
+                            <b><span class="fa fa-paint-brush"></span>&nbsp;Pick Report Format</b>
                             <div>
                                 <!-- ko foreach: tableStyles -->
                                 <div class="dropdown-option" data-bind="title: $data.name, click: $parent.selectStyle, css: {'dropdown-option-selected': $parent.selectedStyle() == $data.colorscheme}">
