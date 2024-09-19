@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using PuppeteerSharp;
 using ReportBuilder.Web.Models;
 using System;
 using System.Collections.Generic;
@@ -136,6 +137,11 @@ namespace ReportBuilder.Web.Controllers
 
         private async Task<JsonResult> ExecuteCallReportApi(string method, string model, DotNetReportSettings settings = null)
         { 
+            if (method== "/ReportApi/Ignore")
+            {
+                Response.StatusCode = 500;
+                return Json(new { success = false, error = true, Message = "Saving changes not allowed in Demo" }, JsonRequestBehavior.AllowGet);
+            }
             using (var client = new HttpClient())
             {
                 settings = settings ?? GetSettings();

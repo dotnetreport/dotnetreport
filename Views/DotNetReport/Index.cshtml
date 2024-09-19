@@ -22,7 +22,12 @@ Its Recommended you use it as is, and only change styling as needed to match you
         localStorage.setItem('dotnetreport-selectedDb', selectedDb);
 
         var selectedTheme = '@(Request.QueryString["theme"] != null ? Request.QueryString["theme"] : "")' ||localStorage.getItem('dotnetreport-selectedTheme') || 'Default';
-        document.getElementById('theme-css').href = '/Content/themes/'+selectedTheme.toLowerCase()+'.min.css';
+        if (selectedTheme != 'Default') {
+            const themeUrl = 'https://cdnjs.cloudflare.com/ajax/libs/bootswatch/5.1.3/' + selectedTheme.toLowerCase() + '/bootstrap.min.css';
+            document.getElementById('theme-css').href = themeUrl;
+        } else {
+            document.getElementById('theme-css').href = '/Content/themes/' + selectedTheme.toLowerCase() + '.min.css';
+        }
         localStorage.setItem('dotnetreport-selectedTheme', selectedTheme);
 
         $(document).ready(function () {
@@ -51,8 +56,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
 
             var switchVm = {
                 databases: [{ name: 'Northwind', key: '62a126b4-a863-4fd4-8d91-185558b64ea2' }, { name: 'Epedimics', key: 'aa514357-42b9-42fc-8e56-a2d9fe1a1d89' }, { name: 'Charity Database', key: '2dd1cfe7-9e91-4d9f-9bec-3f688499fe37' }, { name: 'Point of Sale', key: '7a6a5694-7b2d-4df7-b15a-00a414b620e3' }],
-                themes: ['Default', 'Cosmos', 'Cyborg', 'Flatly', 'Lumen', 'Slate', 'Superhero', 'United'],
-                selectedDb: ko.observable(selectedDb),
+                themes: ['Default', 'Cerulean', 'Cosmo', 'Cyborg', 'Darkly', 'Flatly', 'Journal', 'Lumen', 'Slate', 'Lux', 'Materia', 'Minty', 'Morph', 'Quartz', 'Sandstone', 'Simplex', 'Sketchy', 'Slate', 'Superhero', 'United'],
+                 selectedDb: ko.observable(selectedDb),
                 selectedTheme: ko.observable(selectedTheme)
             }
 

@@ -12,7 +12,6 @@ using System.Web.Mvc;
 
 namespace ReportBuilder.Web.Controllers
 {
-    [Authorize]
     public class DotNetSetupController : Controller
     {
         public async Task<ActionResult> Index(string databaseApiKey = "")
