@@ -203,6 +203,7 @@ namespace ReportBuilder.Web.Controllers
             public string pivotColumn { get; set; }
             public string pivotFunction { get; set; }
             public string reportData { get; set; }
+            public bool SubTotalMode { get; set; }
         }
 
         public class SqlQuery
@@ -226,7 +227,7 @@ namespace ReportBuilder.Web.Controllers
             string pivotColumn = data.pivotColumn;
             string pivotFunction = data.pivotFunction;
             string reportData = data.reportData;
-
+            bool subtotalMode = data.SubTotalMode;
             var sql = "";
             var sqlCount = "";
             int totalRecords = 0;
@@ -312,7 +313,17 @@ namespace ReportBuilder.Web.Controllers
                     {
                         foreach (DataColumn c in dtPagedRun.Columns) { sqlFields.Add($"{c.ColumnName} AS {c.ColumnName}"); }
                     }
-
+                    if (!string.IsNullOrEmpty(pivotColumn) && subtotalMode)
+                    {
+                        var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dtPagedRun, sql, sqlFields, reportData, pivotColumn, pivotFunction, pageNumber, pageSize, sortBy, desc, true);
+                        dtPagedRun = pd.dt;
+                        pivotColumn = null;
+                        var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
+                        fields = fields
+                            .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
+                            .ToList();
+                        fields.AddRange(dtPagedRun.Columns.Cast<DataColumn>().Skip(fields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
+                    }
                     string[] series = { };
                     if (i == 0)
                     {

@@ -1070,7 +1070,7 @@ namespace ReportBuilder.Web.Models
             return dts;
         }
 
-        public async static Task<(DataTable dt, string sql)> GetPivotTable(IDatabaseConnection databaseConnection, string connectionString, DataTable dt, string sql, List<string> sqlFields, string reportDataJson, string pivotColumn, string pivotFunction, int pageNumber, int pageSize, string sortBy, bool desc)
+        public async static Task<(DataTable dt, string sql)> GetPivotTable(IDatabaseConnection databaseConnection, string connectionString, DataTable dt, string sql, List<string> sqlFields, string reportDataJson, string pivotColumn, string pivotFunction, int pageNumber, int pageSize, string sortBy, bool desc, bool returnCount=false)
         {
             var pivotColumnOrder = GetPivotColumnOrder(reportDataJson);
             var dts = new DataTable();
@@ -1084,31 +1084,30 @@ namespace ReportBuilder.Web.Models
             {
                 var col = sqlFields[i++]; //columns.FirstOrDefault(x => x.fieldName == dc.ColumnName) ?? new ReportHeaderColumn();
                 drilldownRow.Add($@"
-                            {{
-                                ""Value"":""{dr[dc]}"",
-                                ""FormattedValue"":""{dr[dc]}"",
-                                ""LabelValue"":""'{dr[dc]}'"",
-                                ""NumericValue"":null,
-                                ""Column"":{{
-                                    ""SqlField"":""{col.Substring(0, col.LastIndexOf(" AS "))}"",
-                                    ""ColumnName"":""{dc.ColumnName}"",
-                                    ""DataType"":""{dc.DataType.ToString()}"",
-                                    ""IsNumeric"":{(dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal" ? "true" : "false")},
-                                      ""FormatType"":""""
-                                }}
-                             }}
-                        ");
+            {{
+                ""Value"":""{dr[dc]}"",
+                ""FormattedValue"":""{dr[dc]}"",
+                ""LabelValue"":""'{dr[dc]}'"",
+                ""NumericValue"":null,
+                ""Column"":{{
+                    ""SqlField"":""{col.Substring(0, col.LastIndexOf(" AS "))}"",
+                    ""ColumnName"":""{dc.ColumnName}"",
+                    ""DataType"":""{dc.DataType.ToString()}"",
+                    ""IsNumeric"":{(dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal" ? "true" : "false")},
+                    ""FormatType"":""""
+                }}
+            }}
+        ");
             }
 
             var reportData = reportDataJson.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
             var drilldownSql = await RunReportApiCall(reportData);
 
-
             if (!string.IsNullOrEmpty(drilldownSql))
             {
                 var lastWhereIndex = drilldownSql.LastIndexOf("WHERE");
                 var baseQuery = drilldownSql.Substring(0, lastWhereIndex) + " " + GetWhereClause(sql);
-                
+
                 var baseDataTable = databaseConnection.ExecuteQuery(connectionString, baseQuery.Replace("SELECT ", "SELECT DISTINCT "));
                 var distinctValues = baseDataTable
                     .AsEnumerable()
@@ -1116,32 +1115,51 @@ namespace ReportBuilder.Web.Models
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .Where(x=>x != "[]" && x.Length <=128)
                     .ToList();
-                distinctValues = (pivotColumnOrder.Count == distinctValues.Count && !pivotColumnOrder.Except(distinctValues).Any())? pivotColumnOrder: distinctValues;
+                distinctValues = (pivotColumnOrder.Count == distinctValues.Count && !pivotColumnOrder.Except(distinctValues).Any()) ? pivotColumnOrder : distinctValues;
 
                 int pivotColumnIndex = baseDataTable.Columns[pivotColumn].Ordinal;
                 string nextColumnName = baseDataTable.Columns[pivotColumnIndex + 1].ColumnName;
                 var validFunctions = new[] { "Sum", "Count", "Avg" };
                 pivotFunction = validFunctions.Contains(pivotFunction) ? pivotFunction : "Max";
 
-                var sqlQry = $@"SELECT * FROM (
-                                        {baseQuery}
-                                   ) src
-                                   PIVOT (
-                                        {pivotFunction} ([{nextColumnName}])
-                                        FOR [{pivotColumn}] IN ({string.Join(", ", distinctValues)})
-                                   ) AS pvt
-                                   ORDER BY {(string.IsNullOrEmpty(sortBy) ? "1" : sortBy) + (desc ? " DESC" : "")} 
+                if (returnCount)
+                {
+                    var sqlQryforCount = $@"
+                SELECT 
+                    {string.Join(", ", distinctValues.Select(v => $"SUM(COALESCE({v}, 0)) AS {v}"))}
+                FROM (
+                    {baseQuery}
+                ) src
+                PIVOT (
+                    COUNT([{nextColumnName}]) 
+                    FOR [{pivotColumn}] IN ({string.Join(", ", distinctValues)})
+                ) AS pvt;";
+
+                    var countdata = databaseConnection.ExecuteQuery(connectionString, sqlQryforCount);
+                    return (countdata, sqlQryforCount);
+                }
+                else
+                {
+                    var sqlQry = $@"
+                SELECT * FROM (
+                    {baseQuery}
+                ) src
+                PIVOT (
+                    {pivotFunction} ([{nextColumnName}])
+                    FOR [{pivotColumn}] IN ({string.Join(", ", distinctValues)})
+                ) AS pvt
+                ORDER BY {(string.IsNullOrEmpty(sortBy) ? "1" : sortBy) + (desc ? " DESC" : "")} 
                                    OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY
                                     ";
 
-                dts = databaseConnection.ExecuteQuery(connectionString, sqlQry);
-
-                return (dts, sqlQry);
+                    dts = databaseConnection.ExecuteQuery(connectionString, sqlQry);
+                    return (dts, sqlQry);
+                }
             }
 
             return (dts, "");
         }
-        
+
         public async static Task<DataSet> GetDrillDownDataAlternate(IDatabaseConnection databaseConnection, string connectionString, DataTable dt, List<string> sqlFields, string reportDataJson)
         {
             var drilldownRow = new StringBuilder();
@@ -1993,8 +2011,13 @@ namespace ReportBuilder.Web.Models
 
             if (!string.IsNullOrEmpty(pivotColumn))
             {
-                var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
-                dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);
+                var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
+                dt = pd.dt;
+                if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
+                allExpanded = false;
+                subTotals = new decimal[pd.dt.Columns.Count];
+                //ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
+                //dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);
             }
 
             using (MemoryStream memStream = new MemoryStream())
@@ -2118,6 +2141,7 @@ namespace ReportBuilder.Web.Models
                                 Paragraph paragraph = new Paragraph(paragraphProperties, run);
                                 TableCell cell = new TableCell(paragraph);
                                 dataRow.AppendChild(cell);
+                                i++;
                             }
                             table.AppendChild(dataRow);
                         }
