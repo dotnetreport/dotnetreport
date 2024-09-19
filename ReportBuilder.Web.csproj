@@ -227,6 +227,7 @@
     <Content Include="Content\gridstack.min.css" />
     <Content Include="Content\img\report-icon.png" />
     <Content Include="Content\img\report-logo.png" />
+    <Content Include="Content\Site.css" />
     <Content Include="Content\themes\base\accordion.css" />
     <Content Include="Content\themes\base\all.css" />
     <Content Include="Content\themes\base\autocomplete.css" />
@@ -490,6 +491,7 @@
     <Compile Include="Controllers\DotNetReportApiController.cs" />
     <Compile Include="Controllers\DotNetReportController.cs" />
     <Compile Include="Controllers\DotNetSetupController.cs" />
+    <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Controllers\ReportController.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
@@ -533,6 +535,9 @@
     <Content Include="Views\DotNetReport\Query.cshtml" />
     <Content Include="Views\Report\Index.cshtml" />
     <Content Include="Views\Report\Dashboard.cshtml" />
+    <Content Include="Views\_ViewStart.cshtml" />
+    <Content Include="Views\shared\_Layout.cshtml" />
+    <Content Include="Views\Home\Index.cshtml" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>

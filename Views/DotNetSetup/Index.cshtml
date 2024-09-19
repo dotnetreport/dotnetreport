@@ -49,6 +49,18 @@
             $('.panel-collapse.in')
                 .collapse('show');
         };
+        var selectedDb = '@(Request.QueryString["selectedDb"] != null ? Request.QueryString["selectedDb"] : "")' || localStorage.getItem('dotnetreport-selectedDb') || '62a126b4-a863-4fd4-8d91-185558b64ea2';
+        localStorage.setItem('dotnetreport-selectedDb', selectedDb);
+
+        var selectedTheme = '@(Request.QueryString["theme"] != null ? Request.QueryString["theme"] : "")' ||localStorage.getItem('dotnetreport-selectedTheme') || 'Default';
+        if (selectedTheme != 'Default') {
+            const themeUrl = 'https://cdnjs.cloudflare.com/ajax/libs/bootswatch/5.1.3/' + selectedTheme.toLowerCase() + '/bootstrap.min.css';
+            document.getElementById('theme-css').href = themeUrl;
+        } else {
+            document.getElementById('theme-css').href = '/Content/themes/' + selectedTheme.toLowerCase() + '.min.css';
+        }
+        localStorage.setItem('dotnetreport-selectedTheme', selectedTheme);
+
         $(document).ready(function() {
             var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
             ajaxcall({ url: '@Url.Action("LoadSetupSchema", "DotNetReportApi")' + '?databaseApiKey=' + (queryParams.databaseApiKey || '') + '&onlyApi=' + (queryParams.onlyApi === 'false' ? false : true) }).done(function(model) {
@@ -74,7 +86,7 @@
 
                 var vm = new manageViewModel(options);
                 vm.LoadJoins();
-                vm.setupManageAccess();            
+                vm.setupManageAccess();
                 ko.applyBindings(vm);
                 vm.LoadDataConnections();
 

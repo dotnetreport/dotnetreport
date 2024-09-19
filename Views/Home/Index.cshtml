@@ -1,0 +1,87 @@
+﻿@using Newtonsoft.Json;
+@using ReportBuilder.Web.Models;
+@{
+    Layout = "~/Views/shared/_Layout.Report.cshtml";
+}
+
+@section head {
+    <style>
+
+        .hero {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: transparent;
+        }
+
+        .hero-image img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .hero-text {
+            margin-left: 20px; /* Adjust the spacing between the image and text as needed */
+        }
+    </style>
+}
+
+<div class="container">
+    <div class="hero">
+        <div class="hero-image">
+            <img src="https://dotnetreport.com/wp-content/uploads/2024/02/Dotnet-Report-Dashboard-1024x688.png" style="max-width: 300px;">
+        </div>
+        <div class="hero-text">
+            
+            <h1>Welcome to Dotnet Report</h1>
+            <p>DN Report is an easy-to-use and feature-rich Reports, Analytics and Dashboards system.</p>
+
+        </div>
+    </div>
+
+    <div class="row justify-content-center mt-5">
+
+        <div class="col-md-4">
+            <div class="list-group">
+                <div class="list-group-item list-group-item-dark list-group-item-heading">
+                    Front End Options for Users
+                </div>
+                <a href="/dotnetreport/dashboard" class="list-group-item list-group-item-action" data-bind="click: viewManageDashboards">
+                    <i class="fa fa-dashboard mr-2"></i> View/Design Dashboards
+                </a>
+                <a href="/dotnetreport" class="list-group-item list-group-item-action" data-bind="click: viewManageReports">
+                    <i class="fa fa-file mr-2"></i> View/Run Reports
+                </a>
+            </div>
+            <br />
+            <div class="list-group">
+                <div class="list-group-item list-group-item-action">
+                    <i class="fa fa-question-circle-o mr-2"></i> Need help? <br />
+                    Try our <a href="https://dotnetreport.com/docs/" target="_blank">Knowledgebase</a> or <a href="https://dotnetreport.com/contact/" target="_blank">Contact Support</a>
+                </div>
+
+            </div>
+
+        </div>
+        
+            <div class="col-md-4">
+
+                <div class="list-group">
+
+                    <div class="list-group-item list-group-item-dark list-group-item-heading">
+                        Backend Options for Admins
+                    </div>
+                    <a href="/dotnetsetup" class="list-group-item list-group-item-action">
+                        <i class="fa fa-database mr-2"></i> Manage Database
+                    </a>
+                   
+                    <a href="https://dotnetreport.com/app/AccountProfile/Dashboard" class="list-group-item list-group-item-action" target="_blank">
+                        <i class="fa fa-gear mr-2"></i> Manage your Account (Online Portal)
+                    </a>
+                </div>
+
+            </div>
+        
+
+    </div>
+</div>
