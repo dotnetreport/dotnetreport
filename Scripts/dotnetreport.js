@@ -2652,7 +2652,7 @@ var reportViewModel = function (options) {
 
 		if (self.ReportType() == 'Single') {
 			if (self.enabledFields().length != 1) {
-				toastr.error("All fields except one must be hidden for Single Value Report");
+				toastr.error("All fields except one must be hidden for Widget type report");
 				return;
 			}
 		}
@@ -3339,6 +3339,16 @@ var reportViewModel = function (options) {
 			}).done(function (subtotalsqlResult) {
 				if (subtotalsqlResult.d) { subtotalsqlResult = subtotalsqlResult.d; }
 				if (subtotalsqlResult.result) { subtotalsqlResult = subtotalsqlResult.result; }
+				var pivotColumn = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' });
+				var pivotFunction = '';
+				if (pivotColumn) {
+					var pivotColumnIndex = _.findIndex(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot'; });
+					if (pivotColumnIndex >= 0 && pivotColumnIndex < self.SelectedFields().length - 1) {
+						var nextValue = self.SelectedFields()[pivotColumnIndex + 1];
+						pivotFunction = nextValue.selectedAggregate();
+					}
+				}
+				var reportData = pivotColumn != null ? self.BuildReportData() : '';
 				ajaxcall({
 					url: options.execReportUrl,
 					type: "POST",
@@ -3351,9 +3361,10 @@ var reportViewModel = function (options) {
 						sortBy: '',
 						desc: false,
 						reportSeries: '',
-						reportData: '',
-						pivotColumn: '',
-						pivotFunction: ''
+						reportData: pivotColumn ? JSON.stringify(reportData) : '',
+						SubTotalMode: pivotColumn ? true : false,
+						pivotColumn: pivotColumn ? pivotColumn.fieldName : '',
+						pivotFunction: pivotColumn && pivotFunction ? pivotFunction : '',
 					}),
 					noBlocking: self.ReportMode() == 'dashboard'
 				}).done(function (subtotalResult) {
