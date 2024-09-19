@@ -46,10 +46,10 @@
                 <div class="list-group-item list-group-item-dark list-group-item-heading">
                     Front End Options for Users
                 </div>
-                <a href="/dotnetreport/dashboard" class="list-group-item list-group-item-action" data-bind="click: viewManageDashboards">
+                <a href="@Url.Action("Dashboard","DotNetReport")" class="list-group-item list-group-item-action" data-bind="click: viewManageDashboards">
                     <i class="fa fa-dashboard mr-2"></i> View/Design Dashboards
                 </a>
-                <a href="/dotnetreport" class="list-group-item list-group-item-action" data-bind="click: viewManageReports">
+                <a href="@Url.Action("Index","DotNetReport")" class="list-group-item list-group-item-action" data-bind="click: viewManageReports">
                     <i class="fa fa-file mr-2"></i> View/Run Reports
                 </a>
             </div>
@@ -71,7 +71,7 @@
                     <div class="list-group-item list-group-item-dark list-group-item-heading">
                         Backend Options for Admins
                     </div>
-                    <a href="/dotnetsetup" class="list-group-item list-group-item-action">
+                    <a href="@Url.Action("Index","DotNetSetup")" class="list-group-item list-group-item-action">
                         <i class="fa fa-database mr-2"></i> Manage Database
                     </a>
                    

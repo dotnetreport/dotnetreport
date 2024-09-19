@@ -227,7 +227,6 @@
     <Content Include="Content\gridstack.min.css" />
     <Content Include="Content\img\report-icon.png" />
     <Content Include="Content\img\report-logo.png" />
-    <Content Include="Content\Site.css" />
     <Content Include="Content\themes\base\accordion.css" />
     <Content Include="Content\themes\base\all.css" />
     <Content Include="Content\themes\base\autocomplete.css" />
@@ -535,8 +534,6 @@
     <Content Include="Views\DotNetReport\Query.cshtml" />
     <Content Include="Views\Report\Index.cshtml" />
     <Content Include="Views\Report\Dashboard.cshtml" />
-    <Content Include="Views\_ViewStart.cshtml" />
-    <Content Include="Views\shared\_Layout.cshtml" />
     <Content Include="Views\Home\Index.cshtml" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
