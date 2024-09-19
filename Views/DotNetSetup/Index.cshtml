@@ -53,12 +53,8 @@
         localStorage.setItem('dotnetreport-selectedDb', selectedDb);
 
         var selectedTheme = '@(Request.QueryString["theme"] != null ? Request.QueryString["theme"] : "")' ||localStorage.getItem('dotnetreport-selectedTheme') || 'Default';
-        if (selectedTheme != 'Default') {
-            const themeUrl = 'https://cdnjs.cloudflare.com/ajax/libs/bootswatch/5.1.3/' + selectedTheme.toLowerCase() + '/bootstrap.min.css';
-            document.getElementById('theme-css').href = themeUrl;
-        } else {
-            document.getElementById('theme-css').href = '/Content/themes/' + selectedTheme.toLowerCase() + '.min.css';
-        }
+        const themeUrl = 'https://cdnjs.cloudflare.com/ajax/libs/bootswatch/5.1.3/' + selectedTheme.toLowerCase() + '/bootstrap.min.css';
+        document.getElementById('theme-css').href = themeUrl;
         localStorage.setItem('dotnetreport-selectedTheme', selectedTheme);
 
         $(document).ready(function() {

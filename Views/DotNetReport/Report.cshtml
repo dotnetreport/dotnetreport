@@ -20,6 +20,14 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
     $(document).ready(function() {
 
         var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
+        var selectedDb = '@(Request.QueryString["selectedDb"] != null ? Request.QueryString["selectedDb"] : "")' || localStorage.getItem('dotnetreport-selectedDb') || '62a126b4-a863-4fd4-8d91-185558b64ea2';
+        localStorage.setItem('dotnetreport-selectedDb', selectedDb);
+
+        var selectedTheme = '@(Request.QueryString["theme"] != null ? Request.QueryString["theme"] : "")' ||localStorage.getItem('dotnetreport-selectedTheme') || 'Default';
+        const themeUrl = 'https://cdnjs.cloudflare.com/ajax/libs/bootswatch/5.1.3/' + selectedTheme.toLowerCase() + '/bootstrap.min.css';
+        document.getElementById('theme-css').href = themeUrl;
+        localStorage.setItem('dotnetreport-selectedTheme', selectedTheme);
+
 
         ajaxcall({ url: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")' }).done(function (data) {
             var vm = new reportViewModel({
