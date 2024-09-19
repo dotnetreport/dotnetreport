@@ -153,14 +153,17 @@ var manageViewModel = function (options) {
 		}
 
 		ajaxcall({
-			url: options.addDataConnectionUrl,
+			url: options.apiUrl,
 			type: 'POST',
 			data: JSON.stringify({
-				account: self.keys.AccountApiKey,
-				dataConnect: self.newDataConnection.copySchema() ? self.newDataConnection.copyFrom() : self.keys.DatabaseApiKey,
-				newDataConnect: self.newDataConnection.Name(),
-				connectionKey: self.newDataConnection.ConnectionKey(),
-				copySchema: self.newDataConnection.copySchema()
+				method: options.addDataConnectionUrl,
+				model: JSON.stringify({
+					account: self.keys.AccountApiKey,
+					dataConnect: self.newDataConnection.copySchema() ? self.newDataConnection.copyFrom() : self.keys.DatabaseApiKey,
+					newDataConnect: self.newDataConnection.Name(),
+					connectionKey: self.newDataConnection.ConnectionKey(),
+					copySchema: self.newDataConnection.copySchema()
+				})
 			})
 		}).done(function (result) {
 			self.DataConnections.push({
@@ -226,11 +229,14 @@ var manageViewModel = function (options) {
 	self.LoadDataConnections = function () {
 
 		ajaxcall({
-			url: options.getDataConnectionsUrl,
+			url: options.apiUrl,
 			type: 'POST',
 			data: JSON.stringify({
-				account: self.keys.AccountApiKey,
-				dataConnect: self.keys.DatabaseApiKey
+				method: options.getDataConnectionsUrl,
+				model: JSON.stringify({
+					account: self.keys.AccountApiKey,
+					dataConnect: self.keys.DatabaseApiKey
+				})
 			})
 		}).done(function (result) {
 			self.DataConnections(result);
@@ -271,9 +277,18 @@ var manageViewModel = function (options) {
 
 		return false;
 	}
-
-	self.saveProcedure = function (procName, adding) {
-		var proc = _.find(adding === true ? self.foundProcedures() : self.Procedures.savedProcedures(), function (e) {
+	self.exportProcedureJson = function (procName) {
+		var proc = _.find(self.Procedures.savedProcedures(), function (e) {
+			return e.TableName === procName;
+		});
+		var e = ko.mapping.toJS(proc, {
+			'ignore': ["dataTable", "deleteTable", "JoinTable"]
+		});
+		var exportJson = JSON.stringify(e, null, 2)
+		downloadJson(exportJson, e.TableName + ' Procedure' +'.json', 'application/json');
+	}
+	self.saveProcedure = function (procName, adding, jsonProcedure) {
+		var proc = jsonProcedure ? jsonProcedure : _.find(adding === true ? self.foundProcedures() : self.Procedures.savedProcedures(), function (e) {
 			return e.TableName === procName;
 		});
 
@@ -282,12 +297,15 @@ var manageViewModel = function (options) {
 		});
 
 		ajaxcall({
-			url: options.saveProcUrl,
+			url: options.apiUrl,
 			type: 'POST',
 			data: JSON.stringify({
-				model: e,
-				account: self.keys.AccountApiKey,
-				dataConnect: self.keys.DatabaseApiKey
+				method: options.saveProcUrl,
+				model: JSON.stringify({
+					model: jsonProcedure ? jsonProcedure : e,
+					account: self.keys.AccountApiKey,
+					dataConnect: self.keys.DatabaseApiKey
+				})
 			})
 		}).done(function (result) {
 			if (!result) {
@@ -315,11 +333,14 @@ var manageViewModel = function (options) {
 		// Load and setup Relations
 
 		ajaxcall({
-			url: options.getRelationsUrl,
+			url: options.apiUrl,
 			type: 'POST',
 			data: JSON.stringify({
-				account: self.keys.AccountApiKey,
-				dataConnect: self.keys.DatabaseApiKey
+				method: options.getRelationsUrl,
+				model: JSON.stringify({
+					account: self.keys.AccountApiKey,
+					dataConnect: self.keys.DatabaseApiKey
+				})
 			})
 		}).done(function (result) {
 			self.Joins($.map(result, function (item) {
@@ -347,7 +368,7 @@ var manageViewModel = function (options) {
 		var joinsToSave = $.map(ko.mapping.toJS(self.Joins), function (x) {
 			return {
 				DataConnectionId: x.DataConnectionId,
-				RelationId: x.Id,
+				RelationId: x.Id ? x.Id : x.RelationId,
 				TableId: x.TableId,
 				JoinedTableId: x.JoinedTableId,
 				JoinType: x.JoinType,
@@ -358,18 +379,24 @@ var manageViewModel = function (options) {
 
 		return joinsToSave;
 	}
-
+	self.ExportJoins = function () {
+		var joinsToSave = self.getJoinsToSave();
+		var exportJson = JSON.stringify(joinsToSave, null, 2)
+		downloadJson(exportJson, 'Relations' + '.json', 'application/json');
+	}
 	self.SaveJoins = function () {
-
 		var joinsToSave = self.getJoinsToSave();
 
 		ajaxcall({
-			url: options.saveRelationsUrl,
+			url: options.apiUrl,
 			type: 'POST',
 			data: JSON.stringify({
-				account: self.keys.AccountApiKey,
-				dataConnect: self.keys.DatabaseApiKey,
-				relations: joinsToSave
+				method: options.saveRelationsUrl,
+				model: JSON.stringify({
+					account: self.keys.AccountApiKey,
+					dataConnect: self.keys.DatabaseApiKey,
+					relations: joinsToSave
+				})
 			})
 		}).done(function (result) {
 			if (result == "Success") toastr.success("Changes saved successfully.");
@@ -455,6 +482,273 @@ var manageViewModel = function (options) {
 
 	}
 
+	self.ManageTablesJsonFile = {
+		file: ko.observable(null),
+		fileName: ko.observable(''),
+		triggerTablesFileInput: function () {
+			$('#tablesFileInputJson').click();
+		},
+		handleTablesFileSelect: function (data, event) {
+			var selectedFile = event.target.files[0];
+			if (selectedFile && (selectedFile.type === "application/json" || selectedFile.name.endsWith('.json'))) {
+				self.ManageTablesJsonFile.file(selectedFile);
+				self.ManageTablesJsonFile.fileName(selectedFile.name);
+			} else {
+				self.ManageTablesJsonFile.file(null);
+				self.ManageTablesJsonFile.fileName('');
+				toastr.error('Only JSON files are allowed.');
+			}
+		},
+		uploadTablesFile: function () {
+			var file = self.ManageTablesJsonFile.file();
+			if (file != null) {
+				var reader = new FileReader();
+				reader.onload = function (event) {
+					try {
+						var table = JSON.parse(event.target.result);
+						var tableName = table.TableName;
+						var tableId = table.Id;
+						var tableMatch = _.some(self.Tables.model(), function (table) {
+							return table.TableName() === tableName && table.Id() === tableId;
+						});
+						if (tableMatch) {
+							handleOverwriteConfirmation(tableName, function (action) {
+								if (action === 'overwrite') {
+									self.Tables.model.remove(_.find(self.Tables.model(), function (e) {
+										return e.TableName() === tableName;
+									}));
+									var t = ko.mapping.fromJS(table);
+									self.Tables.model.push(self.Tables.processTable(t));
+									var newTable = self.Tables.model()[self.Tables.model().length - 1];
+									newTable.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey, table);
+								}else {
+									toastr.info('Upload canceled.');
+								}
+							});
+							$('#uploadTablesFileModal').modal('hide');
+						} else {
+							table.Id = 0;
+							var t = ko.mapping.fromJS(table);
+							self.Tables.model.push(self.Tables.processTable(t));
+							var newTable = self.Tables.model()[self.Tables.model().length - 1];
+							newTable.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey, table);
+							$('#uploadTablesFileModal').modal('hide');
+						}
+						self.ManageTablesJsonFile.file(null);
+						self.ManageTablesJsonFile.fileName('');
+					} catch (e) {
+						toastr.error('Invalid JSON file.' + e);
+					}
+				};
+				reader.onerror = function (event) {
+					toastr.error('Error reading file.');
+				};
+				reader.readAsText(file); // Read the file as text
+				function handleOverwriteConfirmation(tableName, callback) {
+					bootbox.dialog({
+						title: "Confirm Action",
+						message: `A tables/views with the name "${tableName}" already exists. What would you like to do?`,
+						buttons: {
+							cancel: {
+								label: 'Cancel',
+								className: 'btn-secondary',
+								callback: function () {
+									callback('cancel');
+								}
+							},
+							overwrite: {
+								label: 'Overwrite',
+								className: 'btn-primary',
+								callback: function () {
+									callback('overwrite');
+								}
+							}
+						}
+					});
+				}
+			} else {
+				toastr.error('No JSON file selected for upload.');
+			}
+		}
+	};
+	self.ManageJoinsJsonFile = {
+		file: ko.observable(null),
+		fileName: ko.observable(''),
+		triggerJoinsFileInput: function () {
+			$('#joinsFileInputJson').click();
+		},
+		handleJoinsFileSelect: function (data, event) {
+			var selectedFile = event.target.files[0];
+			if (selectedFile && (selectedFile.type === "application/json" || selectedFile.name.endsWith('.json'))) {
+				self.ManageJoinsJsonFile.file(selectedFile);
+				self.ManageJoinsJsonFile.fileName(selectedFile.name);
+			} else {
+				self.ManageJoinsJsonFile.file(null);
+				self.ManageJoinsJsonFile.fileName('');
+				toastr.error('Only JSON files are allowed.');
+			}
+		},
+		uploadJoinsFile: function () {
+			var file = self.ManageJoinsJsonFile.file();
+			if (file != null) {
+				var reader = new FileReader();
+				reader.onload = function (event) {
+					try {
+						var joins = JSON.parse(event.target.result);
+						let hasConflicts = false;
+						let conflictingItems = [];
+						joins.forEach(newItem => {
+							var existingItem = self.Joins().find(item =>
+								(item.Id ? item.Id() : item.RelationId()) === newItem.RelationId
+							);
+							if (existingItem) {
+								hasConflicts = true;  
+								conflictingItems.push({ existingItem, newItem });  
+							}
+						});
+						if (hasConflicts) {
+							var relations = conflictingItems.map(conflict => `- ${conflict.existingItem.FieldName()}`).join('\n');
+							handleOverwriteConfirmation(relations, function (action) {
+								if (action === 'overwrite') {
+									self.Joins().length = 0
+									joins.forEach(newItem => {
+										self.Joins.push(self.setupJoin(newItem));
+									});
+									self.SaveJoins();
+									toastr.success('Conflicting items have been overwritten successfully.');
+								} else {
+									toastr.info('Upload canceled.');
+								}
+								$('#uploadJoinsFileModal').modal('hide');
+							});
+						} else {
+							joins.forEach(newItem => {
+								self.Joins.push(self.setupJoin(newItem));
+							});
+							self.SaveJoins();
+							$('#uploadJoinsFileModal').modal('hide');
+						}
+						// Reset the file input and file name
+						self.ManageJoinsJsonFile.file(null);
+						self.ManageJoinsJsonFile.fileName('');
+					} catch (e) {
+						toastr.error('Invalid JSON file: ' + e.message);
+					}
+				};
+				reader.onerror = function (event) {
+					toastr.error('Error reading file.');
+				};
+				reader.readAsText(file); 
+				function handleOverwriteConfirmation(Join, callback) {
+					bootbox.dialog({
+						title: "Confirm Action",
+						message: `A Joins Json with the name "${Join}" already exists. What would you like to do?`,
+						buttons: {
+							cancel: {
+								label: 'Cancel',
+								className: 'btn-secondary',
+								callback: function () {
+									callback('cancel');
+								}
+							},
+							overwrite: {
+								label: 'Overwrite',
+								className: 'btn-primary',
+								callback: function () {
+									callback('overwrite');
+								}
+							}
+						}
+					});
+				}
+			} else {
+				toastr.error('No JSON file selected for upload.');
+			}
+		}
+	};
+	self.ManageStoredProceduresJsonFile = {
+		file: ko.observable(null),
+		fileName: ko.observable(''),
+		triggerStoredProceduresFileInput: function () {
+			$('#storedProceduresFileInputJson').click();
+		},
+		handleStoredProceduresFileSelect: function (data, event) {
+			var selectedFile = event.target.files[0];
+			if (selectedFile && (selectedFile.type === "application/json" || selectedFile.name.endsWith('.json'))) {
+				self.ManageStoredProceduresJsonFile.file(selectedFile);
+				self.ManageStoredProceduresJsonFile.fileName(selectedFile.name);
+			} else {
+				self.ManageStoredProceduresJsonFile.file(null);
+				self.ManageStoredProceduresJsonFile.fileName('');
+				toastr.error('Only JSON files are allowed.');
+			}
+		},
+		uploadStoredProceduresFile: function () {
+			var file = self.ManageStoredProceduresJsonFile.file();
+			if (file != null) {
+				var reader = new FileReader();
+				reader.onload = function (event) {
+					try {
+						var Procedure = JSON.parse(event.target.result);
+						var procName = Procedure.TableName;
+						var procId = Procedure.Id;
+						var procMatch = _.some(self.Procedures.savedProcedures(), function (e) {
+							return e.TableName() === procName && e.Id() === procId;
+						});
+						if (procMatch) {
+							handleOverwriteConfirmation(procName, function (action) {
+								if (action === 'overwrite') {
+									self.saveProcedure(procName, true, Procedure)
+								} else {
+									toastr.info('Upload canceled.');
+								}
+							});
+							$('#uploadStoredProceduresFileModal').modal('hide');
+						}
+						else {
+							Procedure.Id = 0;
+							self.saveProcedure(procName, true, Procedure)
+							$('#uploadStoredProceduresFileModal').modal('hide');
+						}
+						// Reset the file input and file name
+						self.ManageStoredProceduresJsonFile.file(null);
+						self.ManageStoredProceduresJsonFile.fileName('');
+					} catch (e) {
+						toastr.error('Invalid JSON file: ' + e.message);
+					}
+				};
+				reader.onerror = function (event) {
+					toastr.error('Error reading file.');
+				};
+				reader.readAsText(file);
+				function handleOverwriteConfirmation(storedProcedure, callback) {
+					bootbox.dialog({
+						title: "Confirm Action",
+						message: `A Stored Procedures Json with the name "${storedProcedure}" already exists. What would you like to do?`,
+						buttons: {
+							cancel: {
+								label: 'Cancel',
+								className: 'btn-secondary',
+								callback: function () {
+									callback('cancel');
+								}
+							},
+							overwrite: {
+								label: 'Overwrite',
+								className: 'btn-primary',
+								callback: function () {
+									callback('overwrite');
+								}
+							}
+						}
+					});
+				}
+			} else {
+				toastr.error('No JSON file selected for upload.');
+			}
+		}
+	};
+
 	self.importStart = function () {
 		self.importingFile(true);
 	}
@@ -477,22 +771,28 @@ var manageViewModel = function (options) {
 
 		var getReports = function () {
 			return ajaxcall({
-				url: options.reportsApiUrl + "/ReportApi/GetSavedReports",
+				url: options.reportsApiUrl,
 				data: {
-					account: self.keys.AccountApiKey,
-					dataConnect: self.keys.DatabaseApiKey,
-					adminMode: true
+					method: "/ReportApi/GetSavedReports",
+					model: JSON.stringify({
+						account: self.keys.AccountApiKey,
+						dataConnect: self.keys.DatabaseApiKey,
+						adminMode: true
+					})
 				}
 			});
 		};
 
 		var getFolders = function () {
 			return ajaxcall({
-				url: options.reportsApiUrl + "/ReportApi/GetFolders",
+				url: options.reportsApiUrl,
 				data: {
-					account: self.keys.AccountApiKey,
-					dataConnect: self.keys.DatabaseApiKey,
-					adminMode: true
+					method: "/ReportApi/GetFolders",
+					model: JSON.stringify({
+						account: self.keys.AccountApiKey,
+						dataConnect: self.keys.DatabaseApiKey,
+						adminMode: true
+					})
 				}
 			});
 		};
@@ -520,20 +820,23 @@ var manageViewModel = function (options) {
 
 					r.saveAccessChanges = function () {
 						return ajaxcall({
-							url: options.reportsApiUrl + "/ReportApi/SaveReportAccess",
+							url: options.apiUrl,
 							type: "POST",
 							data: JSON.stringify({
-								account: self.keys.AccountApiKey,
-								dataConnect: self.keys.DatabaseApiKey,
-								reportJson: JSON.stringify({
-									Id: r.reportId,
-									ClientId: self.manageAccess.clientId(),
-									UserId: self.manageAccess.getAsList(self.manageAccess.users),
-									ViewOnlyUserId: self.manageAccess.getAsList(self.manageAccess.viewOnlyUsers),
-									DeleteOnlyUserId: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUsers),
-									UserRoles: self.manageAccess.getAsList(self.manageAccess.userRoles),
-									ViewOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.viewOnlyUserRoles),
-									DeleteOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUserRoles)
+								method: "/ReportApi/SaveReportAccess",
+								model: JSON.stringify({
+									account: self.keys.AccountApiKey,
+									dataConnect: self.keys.DatabaseApiKey,
+									reportJson: JSON.stringify({
+										Id: r.reportId,
+										ClientId: self.manageAccess.clientId(),
+										UserId: self.manageAccess.getAsList(self.manageAccess.users),
+										ViewOnlyUserId: self.manageAccess.getAsList(self.manageAccess.viewOnlyUsers),
+										DeleteOnlyUserId: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUsers),
+										UserRoles: self.manageAccess.getAsList(self.manageAccess.userRoles),
+										ViewOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.viewOnlyUserRoles),
+										DeleteOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUserRoles)
+									})
 								})
 							})
 						}).done(function (d) {
@@ -556,6 +859,7 @@ var manageViewModel = function (options) {
 			self.reportsAndFolders(setup);
 		});
 	}
+
 
 }
 
@@ -656,7 +960,14 @@ var tablesViewModel = function (options) {
 			});
 		}
 
-		t.saveTable = function (apiKey, dbKey) {
+		t.exportTableJson = function () {
+			var e = ko.mapping.toJS(t, {
+				'ignore': ["saveTable", "JoinTable", "ForeignJoinTable"]
+			});
+			var exportJson = JSON.stringify(e, null,2)
+			downloadJson(exportJson, e.TableName + (e.IsView ? ' (View)' : '') + '.json', 'application/json');
+		}
+		t.saveTable = function (apiKey, dbKey,jsonTable) {
 			var e = ko.mapping.toJS(t, {
 				'ignore': ["saveTable", "JoinTable", "ForeignJoinTable"]
 			});
@@ -665,12 +976,15 @@ var tablesViewModel = function (options) {
 				bootbox.confirm("Are you sure you would like to delete Table '" + e.DisplayName + "'?", function (r) {
 					if (r) {
 						ajaxcall({
-							url: options.deleteTableUrl,
+							url: options.apiUrl,
 							type: 'POST',
 							data: JSON.stringify({
-								account: apiKey,
-								dataConnect: dbKey,
-								tableId: e.Id
+								method: options.deleteTableUrl,
+								model: JSON.stringify({
+									account: apiKey,
+									dataConnect: dbKey,
+									tableId: e.Id
+								})
 							})
 						}).done(function () {
 							toastr.success("Deleted table " + e.DisplayName);
@@ -688,12 +1002,15 @@ var tablesViewModel = function (options) {
 			}
 
 			ajaxcall({
-				url: options.saveTableUrl,
+				url: options.apiUrl,
 				type: 'POST',
 				data: JSON.stringify({
-					account: apiKey,
-					dataConnect: dbKey,
-					table: e
+					method: options.saveTableUrl,
+					model: JSON.stringify({
+						account: apiKey,
+						dataConnect: dbKey,
+						table: jsonTable ? jsonTable : e
+					})
 				})
 			}).done(function (x) {
 				if (x.success && x.tableId) {
@@ -796,12 +1113,15 @@ var proceduresViewModel = function (options) {
 			bootbox.confirm("Are you sure you would like to delete Procedure '" + e.TableName + "'? <br><br>WARNING: Deleting the stored procedure will also delete all Reports using this Stored Proc.", function (r) {
 				if (r) {
 					ajaxcall({
-						url: options.deleteProcUrl,
+						url: options.apiUrl,
 						type: 'POST',
 						data: JSON.stringify({
-							procId: e.Id,
-							account: apiKey,
-							dataConnect: dbKey
+							method: options.deleteProcUrl,
+							model: JSON.stringify({
+								procId: e.Id,
+								account: apiKey,
+								dataConnect: dbKey
+							})
 						})
 					}).done(function () {
 						toastr.success("Deleted procedure " + e.TableName);
@@ -1154,12 +1474,15 @@ var customFunctionManageModel = function (options, keys) {
 		});
 
 		ajaxcall({
-			url: options.saveCustomFuncUrl,
+			url: options.apiUrl,
 			type: 'POST',
 			data: JSON.stringify({
-				model: e,
-				account: self.keys.AccountApiKey,
-				dataConnect: self.keys.DatabaseApiKey
+				method: options.saveCustomFuncUrl,
+				model: JSON.stringify({
+					model: e,
+					account: self.keys.AccountApiKey,
+					dataConnect: self.keys.DatabaseApiKey
+				})
 			})
 		}).done(function (result) {
 			if (!result) {
