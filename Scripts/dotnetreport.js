@@ -2652,7 +2652,7 @@ var reportViewModel = function (options) {
 
 		if (self.ReportType() == 'Single') {
 			if (self.enabledFields().length != 1) {
-				toastr.error("All fields except one must be hidden for Single Value Report");
+				toastr.error("All fields except one must be hidden for Widget type report");
 				return;
 			}
 		}

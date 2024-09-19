@@ -1175,39 +1175,46 @@
                 </div>
 
                 <br />
-                <div class="card card-body">
-                    <div class="form-group row" data-bind="if: SaveReport">
-                        <label control-label">Report Name</label>
-                        <div>
-                            <input type="text" style="width: 100%;" class="form-control" required placeholder="Report Name" data-bind="value: ReportName">
+                   <div class="card card-body">
+                        <div class="form-group row" data-bind="if: SaveReport">
+                            <label class="control-label h6">
+                                <i class="fa fa-file"></i> Report Name
+                            </label>
+                            <div>
+                                <input type="text" style="width: 100%;" class="form-control" required placeholder="Report Name" data-bind="value: ReportName">
+                            </div>
                         </div>
-                    </div>
-                    <div class="form-group row">
-                        <label class="control-label">Report Description</label>
-                        <div>
-                            <textarea class="form-control" style="width: 100%;" rows="3" placeholder="Optional Report Description" data-bind="value: ReportDescription"></textarea>
+                        <div class="form-group row">
+                            <label class="control-label h6">
+                                <i class="fa fa-info-circle"></i> Description
+                            </label>
+                            <div>
+                                <textarea class="form-control" style="width: 100%;" rows="3" placeholder="Additional details (optional)" data-bind="value: ReportDescription"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="checkbox" data-bind="visible: isChart">
+                            <label>
+                                <input type="checkbox" data-bind="checked: ShowDataWithGraph" />
+                                Show Data along with Graph
+                            </label>
+                        </div>
+                        <div class="checkbox" data-bind="visible: CanSaveReports()">
+                            <label>
+                                <input type="checkbox" data-bind="checked: SaveReport">
+                                Save Report
+                            </label>
+                        </div>
+                        <div class="form-group row" data-bind="visible: SaveReport">
+                            <label class="control-label h6">
+                                <i class="fa fa-folder-open"></i> Choose Folder
+                            </label>
+                            <div>
+                                <select class="form-select" style="width: 100%;" data-bind="options: Folders, optionsText: 'FolderName', optionsValue: 'Id', value: FolderID"></select>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="checkbox" data-bind="visible: isChart">
-                        <label>
-                            <input type="checkbox" data-bind="checked: ShowDataWithGraph" />
-                            Show Data along with Graph
-                        </label>
-                    </div>
-                    <div class="checkbox" data-bind="visible: CanSaveReports()">
-                        <label>
-                            <input type="checkbox" data-bind="checked: SaveReport">
-                            Save Report
-                        </label>
-                    </div>
-                    <div class="form-group row" data-bind="visible: SaveReport">
-                        <label class="control-label">Choose Folder</label>
-                        <div>
-                            <select class="form-select" style="width: 100%;" data-bind="options: Folders, optionsText: 'FolderName', optionsValue: 'Id', value: FolderID"></select>
-                        </div>
-                    </div>
-                </div>
                 <br />
                 </div>
                 <div class="col-md-8">
@@ -1505,6 +1512,9 @@
                             </div>
                             <div class="alert alert-info" data-bind="visible: ReportType()=='Pivot'">
                                 <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For Transpose, the first field below will be used to Pivot/Transpose the rows as columns, and it must be grouped.
+                            </div>
+                             <div class="alert alert-info" data-bind="visible: ReportType()=='Single'">
+                                <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;Widget is a single value report that is ideal for placing on a Dashboard. All fields except one must be hidden for Widgets.
                             </div>
                             <div data-bind="visible: ReportType()=='Map'" class="card card-body" style="margin-bottom: 15px">
                                 <div class="alert alert-info">
