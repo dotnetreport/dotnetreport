@@ -30,6 +30,7 @@ using System.Collections.Concurrent;
 using A = DocumentFormat.OpenXml.Drawing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
+using static ReportBuilder.Web.Controllers.DotNetReportApiController;
 
 namespace ReportBuilder.Web.Models
 {
@@ -94,6 +95,7 @@ namespace ReportBuilder.Web.Models
         public string DataType { get; set; }
         public bool IsNumeric { get; set; }
         public string FormatType { get; set; }
+        public bool IsPivotField { get; set; }
     }
 
     public class DotNetReportDataRowItemModel
@@ -132,7 +134,7 @@ namespace ReportBuilder.Web.Models
         public DataTable dataTable { get; set; }
         public List<ParameterViewModel> Parameters { get; set; }
         public List<string> AllowedRoles { get; set; }
-        public bool? DoNotDisplay { get; set; }
+        public bool? DoNotDisplay { get; set; } = false;
 
         public bool CustomTable { get; set; }
         public string CustomTableSql { get; set; }
@@ -235,10 +237,10 @@ namespace ReportBuilder.Web.Models
         public bool ForeignKey { get; set; }
         public bool AccountIdField { get; set; }
         public string ForeignTable { get; set; }
-        public string ForeignJoin { get; set; }
+        public string ForeignJoin { get; set; } = "Inner";
         public string ForeignKeyField { get; set; }
         public string ForeignValueField { get; set; }
-        public bool DoNotDisplay { get; set; }
+        public bool DoNotDisplay { get; set; } = false;
         public bool ForceFilter { get; set; }
         public bool ForceFilterForTable { get; set; }
         public string RestrictedDateRange { get; set; }
@@ -252,6 +254,7 @@ namespace ReportBuilder.Web.Models
         public string ForeignParentValueField { get; set; }
         public bool ForeignParentRequired { get; set; }
         public string JsonStructure { get; set; }
+        public bool ForeignFilterOnly { get; set; }
     }
 
     public class ConnectViewModel
@@ -386,7 +389,6 @@ namespace ReportBuilder.Web.Models
     {
         public string fieldName { get; set; }
         public string fieldLabel { get; set; }
-        public string customfieldLabel { get; set; }
         public bool hideStoredProcColumn { get; set; }
         public int? decimalPlacesDigit { get; set; }
         public string fieldAlign { get; set; }
@@ -723,6 +725,10 @@ namespace ReportBuilder.Web.Models
                 var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName)) ?? new ReportHeaderColumn();
                 string decimalFormat = new string('0', formatColumn.decimalPlacesDigit.GetValueOrDefault());
                 isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
+                if (!string.IsNullOrEmpty(formatColumn.fieldLabel))
+                {
+                    ws.Cells[rowstart, i].Value = formatColumn.fieldLabel;
+                }
                 if (dc.DataType == typeof(decimal) || (formatColumn != null && formatColumn.fieldFormating=="Decimal"))
                 {
                     if (formatColumn != null && formatColumn.decimalPlacesDigit != null)
@@ -823,7 +829,7 @@ namespace ReportBuilder.Web.Models
         {
             using (var client = new HttpClient())
             {
-                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetCustomFunctions?account={1}&dataConnect={2}&clientId=", Startup.StaticConfig.GetValue<string>("dotNetReport:apiUrl"), accountKey, dataConnectKey));
+                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetCustomFunctions?account={1}&dataConnect={2}&clientId=", _configuration.GetValue<string>("dotNetReport:apiUrl"), accountKey, dataConnectKey));
                 response.EnsureSuccessStatusCode();
                 var content = await response.Content.ReadAsStringAsync();
                 var functions = JsonConvert.DeserializeObject<List<CustomFunctionModel>>(content);
@@ -935,7 +941,8 @@ namespace ReportBuilder.Web.Models
                     ColumnName = col.ColumnName,
                     DataType = col.DataType.ToString(),
                     IsNumeric = IsNumericType(col.DataType),
-                    FormatType = sqlField.Contains("__jsonc__") ? "Json" : (sqlField.Contains(" FROM ") ? "Csv" : "")
+                    FormatType = sqlField.Contains("__jsonc__") ? "Json" : (sqlField.Contains(" FROM ") ? "Csv" : ""),
+                    IsPivotField= sqlField.Contains("__ AS") ? true : false 
                 });
 
                 col.ColumnName = col.ColumnName.Replace("__jsonc__", "");
@@ -959,15 +966,7 @@ namespace ReportBuilder.Web.Models
                         };
 
                         items.Add(item);
-
-                        try
-                        {
-                            row[col] = item.FormattedValue;
-                        }
-                        catch (Exception ex)
-                        {
-                            // ignore
-                        }
+                    
                     }
                     i += 1;
                 }
@@ -984,7 +983,12 @@ namespace ReportBuilder.Web.Models
         private static string GetWhereClause(string sql)
         {
 
-            int whereIndex = sql.IndexOf("WHERE ", StringComparison.OrdinalIgnoreCase);
+            int whereIndex = sql.LastIndexOf("WHERE ", StringComparison.OrdinalIgnoreCase);
+            // If there is no WHERE clause, return an empty string
+            if (whereIndex < 0)
+            {
+                return "";
+            }
             int nextClauseIndex = sql.IndexOf("GROUP BY ", whereIndex, StringComparison.OrdinalIgnoreCase);
             if (nextClauseIndex < 0)
             {
@@ -993,6 +997,11 @@ namespace ReportBuilder.Web.Models
             nextClauseIndex = nextClauseIndex < 0 ? sql.Length : nextClauseIndex;
             var modifiedSql = sql.Substring(0, whereIndex) + sql.Substring(nextClauseIndex);
             var whereClause = sql.Substring(whereIndex, nextClauseIndex - whereIndex);
+
+            if (whereClause.Contains(" ON ") && whereClause.Contains("\""))
+            {
+                whereClause = "";
+            }
 
             return whereClause;
         }
@@ -1061,7 +1070,155 @@ namespace ReportBuilder.Web.Models
             return dts;
         }
 
-        public async static Task<DataSet> GetDrillDownData(IDatabaseConnection databaseConnection, string connectionString, DataTable dt, List<string> sqlFields, string reportDataJson)
+        public async static Task<(DataTable dt, string sql)> GetPivotTable(IDatabaseConnection databaseConnection, string connectionString, DataTable dt, string sql, List<string> sqlFields, string reportDataJson, string pivotColumn, string pivotFunction, int pageNumber, int pageSize, string sortBy, bool desc, bool returnCount=false)
+        {
+            var pivotColumnOrder = GetPivotColumnOrder(reportDataJson);
+            var dts = new DataTable();
+            var drilldownRow = new List<string>();
+            if (dt.Rows.Count == 0)
+                return (dts, "");
+
+            var dr = dt.Rows[0];
+            int i = 0;
+            foreach (DataColumn dc in dt.Columns)
+            {
+                var col = sqlFields[i++]; //columns.FirstOrDefault(x => x.fieldName == dc.ColumnName) ?? new ReportHeaderColumn();
+                drilldownRow.Add($@"
+            {{
+                ""Value"":""{dr[dc]}"",
+                ""FormattedValue"":""{dr[dc]}"",
+                ""LabelValue"":""'{dr[dc]}'"",
+                ""NumericValue"":null,
+                ""Column"":{{
+                    ""SqlField"":""{col.Substring(0, col.LastIndexOf(" AS "))}"",
+                    ""ColumnName"":""{dc.ColumnName}"",
+                    ""DataType"":""{dc.DataType.ToString()}"",
+                    ""IsNumeric"":{(dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal" ? "true" : "false")},
+                    ""FormatType"":""""
+                }}
+            }}
+        ");
+            }
+
+            var reportData = reportDataJson.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
+            var drilldownSql = await RunReportApiCall(reportData);
+
+            if (!string.IsNullOrEmpty(drilldownSql))
+            {
+                var lastWhereIndex = drilldownSql.LastIndexOf("WHERE");
+                var baseQuery = drilldownSql.Substring(0, lastWhereIndex) + " " + GetWhereClause(sql);
+
+                var baseDataTable = databaseConnection.ExecuteQuery(connectionString, baseQuery.Replace("SELECT ", "SELECT DISTINCT "));
+                var distinctValues = baseDataTable
+                    .AsEnumerable()
+                    .Select(row => "[" + row.Field<string>(pivotColumn)?.Trim() + "]")
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Where(x=>x != "[]" && x.Length <=128)
+                    .ToList();
+                distinctValues = (pivotColumnOrder.Count == distinctValues.Count && !pivotColumnOrder.Except(distinctValues).Any()) ? pivotColumnOrder : distinctValues;
+
+                int pivotColumnIndex = baseDataTable.Columns[pivotColumn].Ordinal;
+                string nextColumnName = baseDataTable.Columns[pivotColumnIndex + 1].ColumnName;
+                var validFunctions = new[] { "Sum", "Count", "Avg" };
+                pivotFunction = validFunctions.Contains(pivotFunction) ? pivotFunction : "Max";
+
+                if (returnCount)
+                {
+                    var sqlQryforCount = $@"
+                SELECT 
+                    {string.Join(", ", distinctValues.Select(v => $"SUM(COALESCE({v}, 0)) AS {v}"))}
+                FROM (
+                    {baseQuery}
+                ) src
+                PIVOT (
+                    COUNT([{nextColumnName}]) 
+                    FOR [{pivotColumn}] IN ({string.Join(", ", distinctValues)})
+                ) AS pvt;";
+
+                    var countdata = databaseConnection.ExecuteQuery(connectionString, sqlQryforCount);
+                    return (countdata, sqlQryforCount);
+                }
+                else
+                {
+                    var sqlQry = $@"
+                SELECT * FROM (
+                    {baseQuery}
+                ) src
+                PIVOT (
+                    {pivotFunction} ([{nextColumnName}])
+                    FOR [{pivotColumn}] IN ({string.Join(", ", distinctValues)})
+                ) AS pvt
+                ORDER BY {(string.IsNullOrEmpty(sortBy) ? "1" : sortBy) + (desc ? " DESC" : "")} 
+                                   OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY
+                                    ";
+
+                    dts = databaseConnection.ExecuteQuery(connectionString, sqlQry);
+                    return (dts, sqlQry);
+                }
+            }
+
+            return (dts, "");
+        }
+
+        public async static Task<DataSet> GetDrillDownDataAlternate(IDatabaseConnection databaseConnection, string connectionString, DataTable dt, List<string> sqlFields, string reportDataJson)
+        {
+            var drilldownRow = new StringBuilder();
+            var dr = dt.Rows[0];
+            int i = 0;
+
+            foreach (DataColumn dc in dt.Columns)
+            {
+                var col = sqlFields[i++];
+                var formattedCol = col.Substring(0, col.LastIndexOf(" AS "));
+
+                if (drilldownRow.Length > 0) drilldownRow.Append(',');
+
+                drilldownRow.Append($@"
+                            {{
+                                ""Value"":""{dr[dc]}"",
+                                ""FormattedValue"":""{dr[dc]}"",
+                                ""LabelValue"":""'{dr[dc]}'"",
+                                ""NumericValue"":null,
+                                ""Column"":{{
+                                    ""SqlField"":""{formattedCol}"",
+                                    ""ColumnName"":""{dc.ColumnName}"",
+                                    ""DataType"":""{dc.DataType}"",
+                                    ""IsNumeric"":{(dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal" ? "true" : "false")},
+                                    ""FormatType"":""""
+                                }}
+                             }}
+                        ");
+            }
+
+            var reportData = reportDataJson
+                .Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{drilldownRow.ToString()}]")
+                .Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
+
+            var drilldownSql = await RunReportApiCall(reportData);
+            var combinedSqls = new StringBuilder();
+
+            if (!string.IsNullOrEmpty(drilldownSql))
+            {
+                foreach (DataRow ddr in dt.Rows)
+                {
+                    i = 0;
+                    var filteredSql = drilldownSql;
+                    foreach (DataColumn dc in dt.Columns)
+                    {
+                        var value = ddr[dc].ToString().Replace("'", "''");
+                        filteredSql = filteredSql.Replace($"<{dc.ColumnName}>", value);
+                    }
+
+                    combinedSqls.AppendLine(filteredSql + ";");
+                }
+
+                return databaseConnection.ExecuteDataSetQuery(connectionString, combinedSqls.ToString());
+            }
+
+            return new DataSet();
+        }
+
+        public async static Task<DataSet> GetDrillDownData(IDatabaseConnection databaseConnection, string connectionString, DataTable dt, List<string> sqlFields, string reportDataJson, List<KeyValuePair<string, string>> parameters = null)
         {
             var drilldownRow = new List<string>();
             var dr = dt.Rows[0];
@@ -1106,7 +1263,7 @@ namespace ReportBuilder.Web.Models
                     combinedSqls += filteredSql += ";\n";
                 }
 
-                dts = databaseConnection.ExecuteDataSetQuery(connectionString, combinedSqls);
+                dts = databaseConnection.ExecuteDataSetQuery(connectionString, combinedSqls, parameters);
             }
 
             return dts;
@@ -1196,11 +1353,71 @@ namespace ReportBuilder.Web.Models
             }
             return dataTable;
         }
+        public static List<string> GetPivotColumnOrder(string reportDataJson)
+        {
+            var desiredOrder = new List<string>();
 
-        public static DataTable PushDatasetIntoDataTable(DataTable tbl, DataSet dts, string pivotColumnName, string pivotFunction)
+            if (!string.IsNullOrEmpty(reportDataJson))
+            {
+                JObject reportSettingObject = JObject.Parse(reportDataJson);
+                var reportSettingsObject = (string)reportSettingObject["ReportSettings"];
+                if (reportSettingsObject != null)
+                {
+                    JObject pivotColumnsObject = JObject.Parse(reportSettingsObject);
+                    string pivotColumnOrder = (string)pivotColumnsObject["PivotColumns"]?.ToString();
+                    if (!string.IsNullOrEmpty(pivotColumnOrder))
+                    {
+                        desiredOrder = pivotColumnOrder.Split(',').Select(c => c.Trim()).ToList();
+                    }
+                }
+            }
+
+            return desiredOrder;
+        }
+
+        public static DataTable PushDatasetIntoDataTable(DataTable tbl, DataSet dts, string pivotColumnName, string pivotFunction, string reportDataJson=null)
         {
             var dt = tbl.Copy();
             
+            if (!string.IsNullOrEmpty(reportDataJson))
+            {
+                var desiredOrder = new List<string>();
+                JObject reportSettingObject = JObject.Parse(reportDataJson);
+                var reportSettingsObject = (string)reportSettingObject["ReportSettings"];
+                if (reportSettingsObject != null)
+                {
+                    JObject pivotColumnsObject = JObject.Parse(reportSettingsObject);
+                    string pivotColumnOrder = (string)pivotColumnsObject["PivotColumns"]?.ToString();
+                    if (!string.IsNullOrEmpty(pivotColumnOrder))
+                    {
+                        var pivotColumns = pivotColumnOrder.Split(',').ToList();
+                        desiredOrder.AddRange(pivotColumns);
+                        if(desiredOrder.Count == dts.Tables.Count)
+                        {
+                            // Reorder each DataTable in the DataSet
+                            List<DataTable> reorderedTables = new List<DataTable>();
+                            foreach (var name in desiredOrder)
+                            {
+                                foreach (DataTable table in dts.Tables)
+                                {
+                                    if (table.Rows.Count > 0 && table.Rows[0][1].ToString().Trim() == name.Trim())
+                                    {
+                                        reorderedTables.Add(table.Copy());
+                                        break;
+                                    }
+                                }
+                            }
+                            // Clear the existing tables in the DataSet and add reordered ones
+                            dts.Tables.Clear();
+                            foreach (var table in reorderedTables)
+                            {
+                                dts.Tables.Add(table);
+                            }
+                        }
+                    }
+                }
+            }
+
             foreach (DataRow row in dt.Rows)
             {
                 int rowIndex = dt.Rows.IndexOf(row);
@@ -1286,76 +1503,102 @@ namespace ReportBuilder.Web.Models
                     }
                 }
             }
-
             return dt;
         }
 
-
-        public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
+        private static (DataTable dt, SqlQuery qry, List<string> sqlFields) GetDataTable(string reportSql, string connectKey)
         {
+            var qry = new SqlQuery();
             var sql = Decrypt(reportSql);
+            if (sql.StartsWith("{\"sql\""))
+            {
+                qry = JsonConvert.DeserializeObject<SqlQuery>(sql);
+                sql = qry.sql;
+            }
+            else
+            {
+                qry.sql = sql;
+            }
             var sqlFields = SplitSqlColumns(sql);
 
             // Execute sql
-            var dt = new DataTable();
-            using (var conn = new OleDbConnection(GetConnectionString(connectKey, true)))
+            var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
+            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+            var dt = databaseConnection.ExecuteQuery(connectionString, sql, qry.parameters);
+
+            return (dt, qry, sqlFields);
+        }
+
+        public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
+                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
+        {
+            var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
+            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+            var data = GetDataTable(reportSql, connectKey);
+
+            var qry = data.qry;
+            var sqlFields = data.sqlFields;
+            var dt = data.dt;
+
+            if (pivot) dt = Transpose(dt);
+
+            if (columns?.Count > 0)
             {
-                conn.Open();
-                var command = new OleDbCommand(sql, conn);
-                var adapter = new OleDbDataAdapter(command);
-
-                adapter.Fill(dt);
-
-                if (pivot) dt = Transpose(dt);
-
-                if (columns?.Count > 0)
+                foreach (var col in columns)
                 {
-                    foreach (var col in columns)
+                    if (dt.Columns.Contains(col.fieldName) && col.hideStoredProcColumn)
                     {
-                        if (dt.Columns.Contains(col.fieldName) && col.hideStoredProcColumn)
-                        {
-                            dt.Columns.Remove(col.fieldName);
-                        }
-                        else if (!String.IsNullOrWhiteSpace(col.customfieldLabel))
-                        {
-                            dt.Columns[col.fieldName].ColumnName = col.customfieldLabel;
-                        }
+                        dt.Columns.Remove(col.fieldName);
+                    }
+                    else if (!String.IsNullOrWhiteSpace(col.fieldLabel))
+                    {
+                        dt.Columns[col.fieldName].ColumnName = col.fieldLabel;
                     }
                 }
-                using (ExcelPackage xp = new ExcelPackage())
+            }
+            if (!string.IsNullOrEmpty(pivotColumn))
+            {
+                var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
+                dt = pd.dt;
+                if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
+                allExpanded = false;
+
+                //var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
+                //dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);
+            }
+            using (ExcelPackage xp = new ExcelPackage())
+            {
+                ExcelWorksheet ws = xp.Workbook.Worksheets.Add(reportName);
+
+                int rowstart = 1;
+                int colstart = 1;
+                int rowend = rowstart;
+                int colend = dt.Columns.Count;
+
+                if (dt.Rows.Count > 0)
                 {
-                    ExcelWorksheet ws = xp.Workbook.Worksheets.Add(reportName);
+                    ws.Cells[rowstart, colstart, rowend, colend].Merge = true;
+                    ws.Cells[rowstart, colstart, rowend, colend].Value = reportName;
+                    ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Bold = true;
+                    ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Size = 14;
 
-                    int rowstart = 1;
-                    int colstart = 1;
-                    int rowend = rowstart;
-                    int colend = dt.Columns.Count;
+                    rowstart += 2;
+                    rowend = rowstart + dt.Rows.Count;
 
-                    if (dt.Rows.Count > 0)
+                    FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeSubtotal, true, chartData);
+
+                    if (allExpanded)
                     {
-                        ws.Cells[rowstart, colstart, rowend, colend].Merge = true;
-                        ws.Cells[rowstart, colstart, rowend, colend].Value = reportName;
-                        ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Bold = true;
-                        ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Size = 14;
+                        var insertRowIndex = 3;
 
-                        rowstart += 2;
-                        rowend = rowstart + dt.Rows.Count;
+                        var drilldownRow = new List<string>();
+                        var dr = dt.Rows[0];
 
-                        FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeSubtotal,true,chartData);
-
-                        if (allExpanded)
+                        int i = 0;
+                        foreach (DataColumn dc in dt.Columns)
                         {
-                            var insertRowIndex = 3;
-
-                            var drilldownRow = new List<string>();
-                            var dr = dt.Rows[0];
-
-                            int i = 0;
-                            foreach (DataColumn dc in dt.Columns)
-                            {
-                                var col = sqlFields[i++]; //columns.FirstOrDefault(x => x.fieldName == dc.ColumnName) ?? new ReportHeaderColumn();
-                                drilldownRow.Add($@"
+                            var col = sqlFields[i++]; //columns.FirstOrDefault(x => x.fieldName == dc.ColumnName) ?? new ReportHeaderColumn();
+                            drilldownRow.Add($@"
                                     {{
                                         ""Value"":""{dr[dc]}"",
                                         ""FormattedValue"":""{dr[dc]}"",
@@ -1370,50 +1613,47 @@ namespace ReportBuilder.Web.Models
                                         }}
                                      }}
                                 ");
+                        }
+
+                        var reportData = expandSqls.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(',', drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
+                        var drilldownSql = await RunReportApiCall(reportData);
+                        if (drilldownSql.StartsWith("{\"sql\""))
+                        {
+                            qry = JsonConvert.DeserializeObject<SqlQuery>(drilldownSql);
+                            drilldownSql = qry.sql;
+                        }
+
+                        var combinedSqls = "";
+                        if (!string.IsNullOrEmpty(drilldownSql))
+                        {
+                            foreach (DataRow ddr in dt.Rows)
+                            {
+                                i = 0;
+                                var filteredSql = drilldownSql;
+                                foreach (DataColumn dc in dt.Columns)
+                                {
+                                    var value = ddr[dc].ToString().Replace("'", "''");
+                                    filteredSql = filteredSql.Replace($"<{dc.ColumnName}>", value);
+                                }
+
+                                combinedSqls += filteredSql += ";\n";
                             }
 
-                            var reportData = expandSqls.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(',', drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
-                            var drilldownSql = await RunReportApiCall(reportData);
+                            var dts = databaseConnection.ExecuteDataSetQuery(connectionString, combinedSqls, qry.parameters);
 
-                            var combinedSqls = "";
-                            if (!string.IsNullOrEmpty(drilldownSql))
+                            foreach (DataTable ddt in dts.Tables)
                             {
-                                foreach (DataRow ddr in dt.Rows)
-                                {
-                                    i = 0;
-                                    var filteredSql = drilldownSql;
-                                    foreach (DataColumn dc in dt.Columns)
-                                    {
-                                        var value = ddr[dc].ToString().Replace("'", "''");
-                                        filteredSql = filteredSql.Replace($"<{dc.ColumnName}>", value);
-                                    }
+                                ws.InsertRow(insertRowIndex + 2, ddt.Rows.Count);
 
-                                    combinedSqls += filteredSql += ";\n";
-                                }
+                                FormatExcelSheet(ddt, ws, insertRowIndex == 3 ? 3 : (insertRowIndex + 1), ddt.Columns.Count + 1, columns, false, insertRowIndex == 3);
 
-                                using (var dts = new DataSet())
-                                {
-                                    using (var cmd = new OleDbCommand(combinedSqls, conn))
-                                    using (var adp = new OleDbDataAdapter(cmd))
-                                    {
-                                        adp.Fill(dts);
-                                    }
-
-                                    foreach (DataTable ddt in dts.Tables)
-                                    {
-                                        ws.InsertRow(insertRowIndex + 2, ddt.Rows.Count);
-
-                                        FormatExcelSheet(ddt, ws, insertRowIndex == 3 ? 3 : (insertRowIndex + 1), ddt.Columns.Count + 1, columns, false, insertRowIndex == 3);
-
-                                        insertRowIndex += ddt.Rows.Count + 1;
-                                    }
-                                }
+                                insertRowIndex += ddt.Rows.Count + 1;
                             }
                         }
                     }
-                    ws.View.FreezePanes(4, 1);
-                    return xp.GetAsByteArray();
                 }
+                ws.View.FreezePanes(4, 1);
+                return xp.GetAsByteArray();
             }
         }
 
@@ -1509,18 +1749,9 @@ namespace ReportBuilder.Web.Models
         public static byte[] GetPdfFileAlt(string reportSql, string connectKey, string reportName, string chartData = null,
                     List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
         {
-            var sql = Decrypt(reportSql);
-            var sqlFields = SplitSqlColumns(sql);
-
-            var dt = new DataTable();
-            using (var conn = new OleDbConnection(GetConnectionString(connectKey, true)))
-            {
-                conn.Open();
-                var command = new OleDbCommand(sql, conn);
-                var adapter = new OleDbDataAdapter(command);
-
-                adapter.Fill(dt);
-            }
+            var data = GetDataTable(reportSql, connectKey);
+            var sqlFields = data.sqlFields;
+            var dt = data.dt;
 
             var document = new PdfDocument();
             var page = document.AddPage();
@@ -1550,8 +1781,8 @@ namespace ReportBuilder.Web.Models
             using (var ms = new MemoryStream())
             {
                 Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
-                var fontNormal = new XFont("Arial", 11, XFontStyle.Regular);
-                var fontBold = new XFont("Arial", 12, XFontStyle.Bold);
+                var fontNormal = new XFont("Arial", 11, XFontStyleEx.Bold);
+                var fontBold = new XFont("Arial", 12, XFontStyleEx.Bold);
                 var tableWidth = page.Width - 100;
                 var columnWidth = Math.Max(tableWidth / dt.Columns.Count, 100f);
                 var currentYPosition = 30;
@@ -1561,7 +1792,7 @@ namespace ReportBuilder.Web.Models
 
                 // Report header
                 gfx.DrawString(reportName,
-                    new XFont("Arial", 14, XFontStyle.Bold), XBrushes.Black,
+                    new XFont("Arial", 14, XFontStyleEx.Bold), XBrushes.Black,
                     new XRect(0, currentYPosition, page.Width, 30),
                     XStringFormats.Center);
 
@@ -1606,7 +1837,7 @@ namespace ReportBuilder.Web.Models
                 {
                     // Draw column headers
                     var columnFormatting = columns[k];
-                    var columnName = !string.IsNullOrEmpty(columns[k].customfieldLabel) ? columns[k].customfieldLabel : columns[k].fieldName;
+                    var columnName = !string.IsNullOrEmpty(columns[k].fieldLabel) ? columns[k].fieldLabel : columns[k].fieldName;
 
                     rect = new XRect(currentXPosition, currentYPosition, columnWidth, 20);
 
@@ -1750,180 +1981,219 @@ namespace ReportBuilder.Web.Models
         }
 
         public static async Task<byte[]> GetWordFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
+            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
         {
-            var sql = Decrypt(reportSql);
-            var sqlFields = SplitSqlColumns(sql);
+            var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
+            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+            var data = GetDataTable(reportSql, connectKey);
 
-            // Execute sql
-            var dt = new DataTable();
-            using (var conn = new OleDbConnection(GetConnectionString(connectKey, true)))
+            var qry = data.qry;
+            var sqlFields = data.sqlFields;
+            var dt = data.dt;
+            var subTotals = new decimal[dt.Columns.Count];
+
+            if (pivot) dt = Transpose(dt);
+
+            if (columns?.Count > 0)
             {
-                conn.Open();
-                var command = new OleDbCommand(sql, conn);
-                var adapter = new OleDbDataAdapter(command);
-
-                adapter.Fill(dt);
-
-                if (pivot) dt = Transpose(dt);
-
-                if (columns?.Count > 0)
+                foreach (var col in columns)
                 {
-                    foreach (var col in columns)
+                    if (dt.Columns.Contains(col.fieldName) && col.hideStoredProcColumn)
                     {
-                        if (dt.Columns.Contains(col.fieldName) && col.hideStoredProcColumn)
-                        {
-                            dt.Columns.Remove(col.fieldName);
-                        }
-                        else if (!String.IsNullOrWhiteSpace(col.customfieldLabel))
-                        {
-                            dt.Columns[col.fieldName].ColumnName = col.customfieldLabel;
-                        }
+                        dt.Columns.Remove(col.fieldName);
+                    }
+                    else if (!String.IsNullOrWhiteSpace(col.fieldLabel))
+                    {
+                        dt.Columns[col.fieldName].ColumnName = col.fieldLabel;
                     }
                 }
+            }
 
-                using (MemoryStream memStream = new MemoryStream())
+            if (!string.IsNullOrEmpty(pivotColumn))
+            {
+                var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
+                dt = pd.dt;
+                if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
+                allExpanded = false;
+                subTotals = new decimal[pd.dt.Columns.Count];
+                //ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
+                //dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);
+            }
+
+            using (MemoryStream memStream = new MemoryStream())
+            {
+                using (WordprocessingDocument wordDocument = WordprocessingDocument.Create(memStream, WordprocessingDocumentType.Document))
                 {
-                    using (WordprocessingDocument wordDocument = WordprocessingDocument.Create(memStream, WordprocessingDocumentType.Document))
+                    MainDocumentPart mainPart = wordDocument.AddMainDocumentPart();
+                    mainPart.Document = new Document();
+                    Body body = mainPart.Document.AppendChild(new Body());
+                    // Add report header
+                    Paragraph header = new Paragraph(new Run(new RunProperties()
                     {
-                        MainDocumentPart mainPart = wordDocument.AddMainDocumentPart();
-                        mainPart.Document = new Document();
-                        Body body = mainPart.Document.AppendChild(new Body());                     
-                        // Add report header
-                        Paragraph header = new Paragraph(new Run(new RunProperties()
-                        {
-                            FontSize = new DocumentFormat.OpenXml.Wordprocessing.FontSize() { Val = "28" },// Font size 14 points (2 * 14)
-                            Bold = new Bold(),
-                        }, new Text(reportName)));
-                        header.ParagraphProperties = new ParagraphProperties(new Justification() { Val = JustificationValues.Center });
-                        body.AppendChild(header);
+                        FontSize = new DocumentFormat.OpenXml.Wordprocessing.FontSize() { Val = "28" },// Font size 14 points (2 * 14)
+                        Bold = new Bold(),
+                    }, new Text(reportName)));
+                    header.ParagraphProperties = new ParagraphProperties(new Justification() { Val = JustificationValues.Center });
+                    body.AppendChild(header);
 
-                        // Render chart
-                        if (!string.IsNullOrEmpty(chartData) && chartData != "undefined")
+                    // Render chart
+                    if (!string.IsNullOrEmpty(chartData) && chartData != "undefined")
+                    {
+                        byte[] imageDecoded = Convert.FromBase64String(chartData.Substring(chartData.LastIndexOf(',') + 1));
+                        using (MemoryStream imageStream = new MemoryStream(imageDecoded))
                         {
-                            byte[] imageDecoded = Convert.FromBase64String(chartData.Substring(chartData.LastIndexOf(',') + 1));
-                            using (MemoryStream imageStream = new MemoryStream(imageDecoded))
-                            {
-                                ImagePart imagePart = mainPart.AddImagePart(ImagePartType.Jpeg);
-                                imagePart.FeedData(imageStream);
-                                // Specify the size in pixels and convert to EMUs
-                                int widthInPixels = 500;
-                                int heightInPixels = 400;
-                                long widthInEmus = widthInPixels * 9525;
-                                long heightInEmus = heightInPixels * 9525;
-                                AddImageToBody(wordDocument, mainPart.GetIdOfPart(imagePart),widthInEmus, heightInEmus);
-                            }
+                            ImagePart imagePart = mainPart.AddImagePart(ImagePartType.Jpeg);
+                            imagePart.FeedData(imageStream);
+                            // Specify the size in pixels and convert to EMUs
+                            int widthInPixels = 500;
+                            int heightInPixels = 400;
+                            long widthInEmus = widthInPixels * 9525;
+                            long heightInEmus = heightInPixels * 9525;
+                            AddImageToBody(wordDocument, mainPart.GetIdOfPart(imagePart), widthInEmus, heightInEmus);
                         }
-                        // Add data in table format
-                        if (dt.Rows.Count > 0)
+                    }
+                    // Add data in table format
+                    if (dt.Rows.Count > 0)
+                    {
+                        // Create table
+                        Table table = new Table();
+                        TableProperties props = new TableProperties(new Justification() { Val = JustificationValues.Center },
+                         new TableBorders(
+                         new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 8 },
+                         new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 10 },
+                         new LeftBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 10 },
+                         new RightBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 10 },
+                         new InsideHorizontalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 8 },
+                         new InsideVerticalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 10 }
+                         ));
+
+                        // Append table properties
+                        table.AppendChild<TableProperties>(props);
+                        // Add header row
+                        TableRow headerRow = new TableRow();
+                        // Calculate max text width for each column
+                        int[] maxColumnWidths = new int[dt.Columns.Count];
+                        foreach (DataColumn column in dt.Columns)
                         {
-                            // Create table
-                            Table table = new Table();
-                            TableProperties props = new TableProperties(new Justification() { Val = JustificationValues.Center },
-                             new TableBorders(
-                             new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 8 },
-                             new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 10 },
-                             new LeftBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 10 },
-                             new RightBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 10 },
-                             new InsideHorizontalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 8 },
-                             new InsideVerticalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 10 }
-                             ));
+                            maxColumnWidths[column.Ordinal] = EstimateTextWidth(column.ColumnName);
+                            RunProperties runProperties = new RunProperties(
+                                new Bold(),
+                                new DocumentFormat.OpenXml.Wordprocessing.Color() { Val = "#156082" } // Example color
+                            );
+                            Run run = new Run(runProperties, new Text(column.ColumnName));
+                            ParagraphProperties paragraphProperties = new ParagraphProperties(
+                                new SpacingBetweenLines() { Before = "100", After = "100", Line = "240", LineRule = LineSpacingRuleValues.Auto },
+                                new Indentation() { Left = "180", Right = "180" } // Adjust values as needed
+                            );
+                            Paragraph paragraph = new Paragraph(paragraphProperties, run);
+                            TableCell cell = new TableCell(paragraph);
+                            headerRow.AppendChild(cell);
+                        }
+                        table.AppendChild(headerRow);
 
-                            // Append table properties
-                            table.AppendChild<TableProperties>(props);
-                            // Add header row
-                            TableRow headerRow = new TableRow();
-                            // Calculate max text width for each column
-                            int[] maxColumnWidths = new int[dt.Columns.Count];
-                            foreach (DataColumn column in dt.Columns)
-                            {
-                                maxColumnWidths[column.Ordinal] = EstimateTextWidth(column.ColumnName);
-                                RunProperties runProperties = new RunProperties(
-                                    new Bold(),
-                                    new DocumentFormat.OpenXml.Wordprocessing.Color() { Val = "#156082" } // Example color
-                                );
-                                Run run = new Run(runProperties, new Text(column.ColumnName));
-                                ParagraphProperties paragraphProperties = new ParagraphProperties(
-                                    new SpacingBetweenLines() { Before = "100", After = "100", Line = "240", LineRule = LineSpacingRuleValues.Auto },
-                                    new Indentation() { Left = "180", Right = "180"} // Adjust values as needed
-                                );
-                                Paragraph paragraph = new Paragraph(paragraphProperties, run);
-                                TableCell cell = new TableCell(paragraph);
-                                headerRow.AppendChild(cell);
-                            }
-                            table.AppendChild(headerRow);
-
-                            // Normalize column widths to fit the available width
-                            int totalWidth = 0;
-                            foreach (int width in maxColumnWidths)
-                            {
-                                totalWidth += width;
-                            }
-                            if (totalWidth > 13900)
-                            {
-                                // Set landscape orientation
-                                SectionProperties sectionProperties = new SectionProperties();
-                                DocumentFormat.OpenXml.Wordprocessing.PageSize pageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize() { Width = Convert.ToUInt32(totalWidth +(1440*2)), Orient = PageOrientationValues.Landscape };
-                                sectionProperties.Append(pageSize);
-                                body.Append(sectionProperties);
-                            }
-                            else
-                            {
-                                // Set page orientation to landscape
-                                SectionProperties sectionProps = new SectionProperties();
-                                DocumentFormat.OpenXml.Wordprocessing.PageSize defaultpageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize()
-                                {
-                                    Orient = PageOrientationValues.Landscape,
-                                    Width = 16838,  // 11.69 inch in Twips (297 mm)
-                                };
-                                sectionProps.Append(defaultpageSize);
-                                body.Append(sectionProps);
-                            }
-                            // Add data rows
-                            foreach (DataRow row in dt.Rows)
-                            {
-                                TableRow dataRow = new TableRow();
-                                foreach (DataColumn column in dt.Columns)
-                                {
-                                    var value = row[column.ColumnName].ToString();
-                                    var formatColumn = GetColumnFormatting(column, columns, ref value);
-                                    Run run = new Run( new Text(value));
-                                    ParagraphProperties paragraphProperties = new ParagraphProperties(
-                                        new SpacingBetweenLines() { Before = "100", After = "100", Line = "240", LineRule = LineSpacingRuleValues.Auto },
-                                        new Indentation() { Left = "180", Right = "180" } // Adjust values as needed
-                                    );
-                                    Paragraph paragraph = new Paragraph(paragraphProperties, run);
-                                    TableCell cell = new TableCell(paragraph);
-                                    dataRow.AppendChild(cell);
-                                }
-                                table.AppendChild(dataRow);
-                            }
-                            body.AppendChild(table);
-                            // Add expanded data if applicable
-                            if (allExpanded)
-                            {
-                                Paragraph expandedData = new Paragraph(new Run(new Text("Additional expanded data")));
-                                body.AppendChild(expandedData);
-                            }
+                        // Normalize column widths to fit the available width
+                        int totalWidth = 0;
+                        foreach (int width in maxColumnWidths)
+                        {
+                            totalWidth += width;
+                        }
+                        if (totalWidth > 13900)
+                        {
+                            // Set landscape orientation
+                            SectionProperties sectionProperties = new SectionProperties();
+                            DocumentFormat.OpenXml.Wordprocessing.PageSize pageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize() { Width = Convert.ToUInt32(totalWidth + (1440 * 2)), Orient = PageOrientationValues.Landscape };
+                            sectionProperties.Append(pageSize);
+                            body.Append(sectionProperties);
                         }
                         else
                         {
-                            Paragraph expandedData = new Paragraph(new Run(new Text("No RecordS Found")));
+                            // Set page orientation to landscape
+                            SectionProperties sectionProps = new SectionProperties();
+                            DocumentFormat.OpenXml.Wordprocessing.PageSize defaultpageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize()
+                            {
+                                Orient = PageOrientationValues.Landscape,
+                                Width = 16838,  // 11.69 inch in Twips (297 mm)
+                            };
+                            sectionProps.Append(defaultpageSize);
+                            body.Append(sectionProps);
+                        }
+                        // Add data rows
+                        foreach (DataRow row in dt.Rows)
+                        {
+                            var i = 0;
+                            TableRow dataRow = new TableRow();
+                            foreach (DataColumn column in dt.Columns)
+                            {
+                                var value = row[column.ColumnName].ToString();
+                                var formatColumn = GetColumnFormatting(column, columns, ref value);
+                                if (includeSubtotal)
+                                {
+                                    if (formatColumn.isNumeric && !(formatColumn?.dontSubTotal ?? false))
+                                    {
+                                        subTotals[i] += Convert.ToDecimal(row[column.ColumnName]);
+                                    }
+                                }
+                                Run run = new Run(new Text(value));
+                                ParagraphProperties paragraphProperties = new ParagraphProperties(
+                                    new SpacingBetweenLines() { Before = "100", After = "100", Line = "240", LineRule = LineSpacingRuleValues.Auto },
+                                    new Indentation() { Left = "180", Right = "180" } // Adjust values as needed
+                                );
+                                Paragraph paragraph = new Paragraph(paragraphProperties, run);
+                                TableCell cell = new TableCell(paragraph);
+                                dataRow.AppendChild(cell);
+                                i++;
+                            }
+                            table.AppendChild(dataRow);
+                        }
+                        if (includeSubtotal)
+                        {
+                            TableRow dataRow = new TableRow();
+
+                            for (int j = 0; j < dt.Columns.Count; j++)
+                            {
+                                var value = subTotals[j].ToString();
+                                var dc = dt.Columns[j];
+                                var formatColumn = GetColumnFormatting(dc, columns, ref value);
+                                bool isNumericAndNotExcluded = formatColumn?.isNumeric == true && !(formatColumn?.dontSubTotal ?? false);
+                                Run run = new Run(new Text(isNumericAndNotExcluded ? value : " "));
+                                ParagraphProperties paragraphProperties = new ParagraphProperties(
+                                    new SpacingBetweenLines() { Before = "100", After = "100", Line = "240", LineRule = LineSpacingRuleValues.Auto },
+                                    new Indentation() { Left = "180", Right = "180" } // Adjust values as needed
+                                );
+                                Paragraph paragraph = new Paragraph(paragraphProperties, run);
+                                TableCell cell = new TableCell(paragraph);
+                                dataRow.AppendChild(cell);
+                            }
+
+                            table.AppendChild(dataRow);
+                        }
+
+                        // Add expanded data if applicable
+                        if (allExpanded)
+                        {
+                            Paragraph expandedData = new Paragraph(new Run(new Text("Additional expanded data")));
                             body.AppendChild(expandedData);
                         }
-                        // Ensure word wrapping doesn't break words
-                        foreach (TableCell cell in body.Descendants<TableCell>())
-                        {
-                            cell.TableCellProperties = new TableCellProperties();
-                            NoWrap noWrap = new NoWrap();
-                            cell.TableCellProperties.Append(noWrap);
-                        }
-                        wordDocument.Save();
+                        body.AppendChild(table);
                     }
-                    return memStream.ToArray();
+                    else
+                    {
+                        Paragraph expandedData = new Paragraph(new Run(new Text("No RecordS Found")));
+                        body.AppendChild(expandedData);
+                    }
+                    // Ensure word wrapping doesn't break words
+                    foreach (TableCell cell in body.Descendants<TableCell>())
+                    {
+                        cell.TableCellProperties = new TableCellProperties();
+                        NoWrap noWrap = new NoWrap();
+                        cell.TableCellProperties.Append(noWrap);
+                    }
+                    wordDocument.Save();
                 }
+                return memStream.ToArray();
             }
         }
+        
         static void AddImageToBody(WordprocessingDocument wordDoc, string relationshipId, long cx, long cy)
         {
             // Define the reference of the image.
@@ -2021,24 +2291,17 @@ namespace ReportBuilder.Web.Models
             var page = await browser.NewPageAsync();
             await page.SetRequestInterceptionAsync(true);
 
-            var sql = Decrypt(reportSql);
-            var sqlFields = SplitSqlColumns(sql);
+            var data = GetDataTable(reportSql, connectKey);
 
-            var dt = new DataTable();
-            using (var conn = new OleDbConnection(GetConnectionString(connectKey, true)))
-            {
-                conn.Open();
-                var command = new OleDbCommand(sql, conn);
-                var adapter = new OleDbDataAdapter(command);
-
-                adapter.Fill(dt);
-            }
+            var qry = data.qry;
+            var sqlFields = data.sqlFields;
+            var dt = data.dt;
 
             var model = new DotNetReportResultModel
             {
                 ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dt, sqlFields, false),
                 Warnings = "",
-                ReportSql = sql,
+                ReportSql = qry.sql,
                 ReportDebug = false,
                 Pager = new DotNetReportPagerModel
                 {
@@ -2121,20 +2384,10 @@ namespace ReportBuilder.Web.Models
 
 
         public static string GetXmlFile(string reportSql, string connectKey, string reportName)
-        {
-            var sql = Decrypt(reportSql);
-
-            // Execute sql
-            var dt = new DataTable();
+        {           
             var ds = new DataSet();
-            using (var conn = new OleDbConnection(GetConnectionString(connectKey, true)))
-            {
-                conn.Open();
-                var command = new OleDbCommand(sql, conn);
-                var adapter = new OleDbDataAdapter(command);
-
-                adapter.Fill(dt);
-            }
+            var data = GetDataTable(reportSql, connectKey);
+            var dt = data.dt;
 
             ds.Tables.Add(dt);
             ds.DataSetName = "data";
@@ -2188,79 +2441,68 @@ namespace ReportBuilder.Web.Models
         }
         public static byte[] GetCSVFile(string reportSql, string connectKey, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false)
         {
-            var sql = Decrypt(reportSql);
+            var data = GetDataTable(reportSql, connectKey);
+            var dt = data.dt;
+            var subTotals = new decimal[dt.Columns.Count];
 
-            // Execute sql
-            var dt = new DataTable();
-            using (var conn = new OleDbConnection(GetConnectionString(connectKey, true)))
+            //Build the CSV file data as a Comma separated string.
+            string csv = string.Empty;
+            for (int i = 0; i < dt.Columns.Count; i++)
             {
-                conn.Open();
-                var command = new OleDbCommand(sql, conn);
-                var adapter = new OleDbDataAdapter(command);
+                DataColumn column = dt.Columns[i];
+                var columnName = !string.IsNullOrEmpty(columns[i].fieldLabel) ? columns[i].fieldLabel : columns[i].fieldName;
+                csv += columnName + ',';
+            }
 
-                adapter.Fill(dt);
-                var subTotals = new decimal[dt.Columns.Count];
+            //Add new line.
+            csv += "\r\n";
 
-                //Build the CSV file data as a Comma separated string.
-                string csv = string.Empty;
-                for (int i = 0; i < dt.Columns.Count; i++)
+            foreach (DataRow row in dt.Rows)
+            {
+                var i = 0;
+                foreach (DataColumn column in dt.Columns)
                 {
-                    DataColumn column = dt.Columns[i];
-                    var columnName = !string.IsNullOrEmpty(columns[i].customfieldLabel) ? columns[i].customfieldLabel : columns[i].fieldName;
-                    csv += columnName + ',';
+                    var value = row[column.ColumnName].ToString();
+                    var formatColumn = GetColumnFormatting(column, columns, ref value);
+
+                    if (includeSubtotal)
+                    {
+                        if (formatColumn.isNumeric && !(formatColumn?.dontSubTotal ?? false))
+                        {
+                            subTotals[i] += Convert.ToDecimal(row[column.ColumnName]);
+                        }
+                    }
+
+                    //Add the Data rows.
+                    csv += $"{(i == 0 ? "" : ",")}\"{value}\"";
+                    i++;
                 }
 
                 //Add new line.
                 csv += "\r\n";
-
-                foreach (DataRow row in dt.Rows)
-                {
-                    var i = 0;
-                    foreach (DataColumn column in dt.Columns)
-                    {
-                        var value = row[column.ColumnName].ToString();
-                        var formatColumn = GetColumnFormatting(column, columns, ref value);
-
-                        if (includeSubtotal)
-                        {
-                            if (formatColumn.isNumeric && !(formatColumn?.dontSubTotal ?? false))
-                            {
-                                subTotals[i] += Convert.ToDecimal(row[column.ColumnName]);
-                            }
-                        }
-
-                        //Add the Data rows.
-                        csv += $"{(i == 0 ? "" : ",")}\"{value}\"";
-                        i++;
-                    }
-
-                    //Add new line.
-                    csv += "\r\n";
-                }
-
-                if (includeSubtotal)
-                {
-                    for (int j = 0; j < dt.Columns.Count; j++)
-                    {
-                        var value = subTotals[j].ToString();
-                        var dc = dt.Columns[j];
-                        var formatColumn = GetColumnFormatting(dc, columns, ref value);
-                        if (formatColumn.isNumeric && !(formatColumn?.dontSubTotal ?? false))
-                        {
-                            csv += $"{(j == 0 ? "" : ",")}\"{value}\"";
-                        }
-                        else
-                        {
-                            csv += $"{(j == 0 ? "" : ",")}\"\"";
-                        }
-                    }
-
-                    csv += "\r\n";
-                }
-
-                return Encoding.ASCII.GetBytes(csv);
-                //return csv;
             }
+
+            if (includeSubtotal)
+            {
+                for (int j = 0; j < dt.Columns.Count; j++)
+                {
+                    var value = subTotals[j].ToString();
+                    var dc = dt.Columns[j];
+                    var formatColumn = GetColumnFormatting(dc, columns, ref value);
+                    if (formatColumn.isNumeric && !(formatColumn?.dontSubTotal ?? false))
+                    {
+                        csv += $"{(j == 0 ? "" : ",")}\"{value}\"";
+                    }
+                    else
+                    {
+                        csv += $"{(j == 0 ? "" : ",")}\"\"";
+                    }
+                }
+
+                csv += "\r\n";
+            }
+
+            return Encoding.ASCII.GetBytes(csv);
         }
 
         public static dynamic GetDbConnectionSettings(string account, string dataConnect, bool addOledbProvider = true)
@@ -2594,9 +2836,9 @@ namespace ReportBuilder.Web.Models
     {
         bool TestConnection(string connectionString);
         string CreateConnection(UpdateDbConnectionModel model);
-        int GetTotalRecords(string connectionString, string sqlCount, string sql);
-        DataTable ExecuteQuery(string connectionString, string sql);
-        DataSet ExecuteDataSetQuery(string connectionString, string combinedSqls);
+        int GetTotalRecords(string connectionString, string sqlCount, string sql, List<KeyValuePair<string, string>> parameters = null);
+        DataTable ExecuteQuery(string connectionString, string sql, List<KeyValuePair<string, string>> parameters = null);
+        DataSet ExecuteDataSetQuery(string connectionString, string combinedSqls, List<KeyValuePair<string, string>> parameters = null);
     }
     public class SqlServerDatabaseConnection : IDatabaseConnection
     {
@@ -2640,7 +2882,7 @@ namespace ReportBuilder.Web.Models
             return sqlConnectionStringBuilder.ConnectionString;
         }
 
-        public int GetTotalRecords(string connectionString, string sqlCount, string sql)
+        public int GetTotalRecords(string connectionString, string sqlCount, string sql, List<KeyValuePair<string, string>> parameters = null)
         {
             int totalRecords = 0;
 
@@ -2652,8 +2894,13 @@ namespace ReportBuilder.Web.Models
 
                     using (SqlCommand command = new SqlCommand(sqlCount, conn))
                     {
-                        if (!sql.StartsWith("EXEC"))
-                            totalRecords = (int)command.ExecuteScalar();
+                        if (parameters != null)
+                        {
+                            parameters.ForEach(x => command.Parameters.Add(new SqlParameter(x.Key, x.Value)));
+                        }
+
+                        if (!sql.StartsWith("EXEC")) totalRecords = Math.Max(totalRecords, (int)command.ExecuteScalar());
+
                     }
                 }
             }
@@ -2666,7 +2913,7 @@ namespace ReportBuilder.Web.Models
             return totalRecords;
         }
 
-        public DataTable ExecuteQuery(string connectionString, string sql)
+        public DataTable ExecuteQuery(string connectionString, string sql, List<KeyValuePair<string, string>> parameters = null)
         {
             DataTable dataTable = new DataTable();
 
@@ -2678,6 +2925,15 @@ namespace ReportBuilder.Web.Models
 
                     using (SqlCommand command = new SqlCommand(sql, conn))
                     {
+                        if (parameters != null)
+                        {
+                            if (sql.StartsWith("EXEC "))
+                            {
+                                command.CommandText = sql.Replace("EXEC ", "");
+                                command.CommandType = CommandType.StoredProcedure;
+                            }
+                            parameters.ForEach(x => command.Parameters.Add(new SqlParameter(x.Key, x.Value)));
+                        }
                         using (SqlDataAdapter adapter = new SqlDataAdapter(command))
                         {
                             adapter.Fill(dataTable);
@@ -2694,7 +2950,7 @@ namespace ReportBuilder.Web.Models
             return dataTable;
         }
 
-        public DataSet ExecuteDataSetQuery(string connectionString, string combinedSqls)
+        public DataSet ExecuteDataSetQuery(string connectionString, string combinedSqls, List<KeyValuePair<string, string>> parameters = null)
         {
             var dts = new DataSet();
             try
@@ -2703,6 +2959,10 @@ namespace ReportBuilder.Web.Models
                 using (var cmd = new SqlCommand(combinedSqls, conn))
                 using (var adp = new SqlDataAdapter(cmd))
                 {
+                    if (parameters != null)
+                    {
+                        parameters.ForEach(x => cmd.Parameters.Add(new SqlParameter(x.Key, x.Value)));
+                    }
                     adp.Fill(dts);
                 }
             }
@@ -2750,7 +3010,7 @@ namespace ReportBuilder.Web.Models
             conn_string.Database = model.dbName;// "test";
             return conn_string.ToString();
         }
-        public int GetTotalRecords(string connectionString, string sqlCount, string sql)
+        public int GetTotalRecords(string connectionString, string sqlCount, string sql, List<KeyValuePair<string, string>> parameters = null)
         {
             int totalRecords = 0;
 
@@ -2776,7 +3036,7 @@ namespace ReportBuilder.Web.Models
             return totalRecords;
         }
 
-        public DataTable ExecuteQuery(string connectionString, string sql)
+        public DataTable ExecuteQuery(string connectionString, string sql, List<KeyValuePair<string, string>> parameters = null)
         {
             DataTable dataTable = new DataTable();
 
@@ -2788,6 +3048,10 @@ namespace ReportBuilder.Web.Models
 
                     using (MySqlCommand command = new MySqlCommand(sql, conn))
                     {
+                        if (parameters != null)
+                        {
+                            parameters.ForEach(x => command.Parameters.Add(new MySqlParameter(x.Key, x.Value)));
+                        }
                         using (MySqlDataAdapter adapter = new MySqlDataAdapter(command))
                         {
                             adapter.Fill(dataTable);
@@ -2803,7 +3067,7 @@ namespace ReportBuilder.Web.Models
 
             return dataTable;
         }
-        public DataSet ExecuteDataSetQuery(string connectionString, string combinedSqls)
+        public DataSet ExecuteDataSetQuery(string connectionString, string combinedSqls, List<KeyValuePair<string, string>> parameters = null)
         {
             var dts = new DataSet();
             try
@@ -2812,6 +3076,10 @@ namespace ReportBuilder.Web.Models
                 using (var cmd = new MySqlCommand(combinedSqls, conn))
                 using (var adp = new MySqlDataAdapter(cmd))
                 {
+                    if (parameters != null)
+                    {
+                        parameters.ForEach(x => cmd.Parameters.Add(new MySqlParameter(x.Key, x.Value)));
+                    }
                     adp.Fill(dts);
                 }
             }
@@ -2854,13 +3122,13 @@ namespace ReportBuilder.Web.Models
             }
             else
             {
-                conn_string.IntegratedSecurity = true;
+                conn_string.PersistSecurityInfo = true;
             }
             conn_string.Database = model.dbName;// "test";
             return conn_string.ToString();
         }
 
-        public int GetTotalRecords(string connectionString, string sqlCount, string sql)
+        public int GetTotalRecords(string connectionString, string sqlCount, string sql, List<KeyValuePair<string, string>> parameters = null)
         {
             int totalRecords = 0;
 
@@ -2886,7 +3154,7 @@ namespace ReportBuilder.Web.Models
             return totalRecords;
         }
 
-        public DataTable ExecuteQuery(string connectionString, string sql)
+        public DataTable ExecuteQuery(string connectionString, string sql, List<KeyValuePair<string, string>> parameters = null)
         {
             DataTable dataTable = new DataTable();
 
@@ -2898,6 +3166,10 @@ namespace ReportBuilder.Web.Models
 
                     using (NpgsqlCommand command = new NpgsqlCommand(sql, conn))
                     {
+                        if (parameters != null)
+                        {
+                            parameters.ForEach(x => command.Parameters.Add(new NpgsqlParameter(x.Key, x.Value)));
+                        }
                         using (NpgsqlDataAdapter adapter = new NpgsqlDataAdapter(command))
                         {
                             adapter.Fill(dataTable);
@@ -2913,7 +3185,7 @@ namespace ReportBuilder.Web.Models
 
             return dataTable;
         }
-        public DataSet ExecuteDataSetQuery(string connectionString, string combinedSqls)
+        public DataSet ExecuteDataSetQuery(string connectionString, string combinedSqls, List<KeyValuePair<string, string>> parameters = null)
         {
             var dts = new DataSet();
             try
@@ -2922,6 +3194,10 @@ namespace ReportBuilder.Web.Models
                 using (var cmd = new NpgsqlCommand(combinedSqls, conn))
                 using (var adp = new NpgsqlDataAdapter(cmd))
                 {
+                    if (parameters != null)
+                    {
+                        parameters.ForEach(x => cmd.Parameters.Add(new NpgsqlParameter(x.Key, x.Value)));
+                    }
                     adp.Fill(dts);
                 }
             }
@@ -2975,7 +3251,7 @@ namespace ReportBuilder.Web.Models
             return OleDbConnectionStringBuilder.ConnectionString;
         }
 
-        public int GetTotalRecords(string connectionString, string OleDbCount, string OleDb)
+        public int GetTotalRecords(string connectionString, string sqlCount, string sql, List<KeyValuePair<string, string>> parameters = null)
         {
             int totalRecords = 0;
 
@@ -2985,9 +3261,9 @@ namespace ReportBuilder.Web.Models
                 {
                     conn.Open();
 
-                    using (OleDbCommand command = new OleDbCommand(OleDbCount, conn))
+                    using (OleDbCommand command = new OleDbCommand(sqlCount, conn))
                     {
-                        if (!OleDb.StartsWith("EXEC"))
+                        if (!sql.StartsWith("EXEC"))
                             totalRecords = (int)command.ExecuteScalar();
                     }
                 }
@@ -3001,7 +3277,7 @@ namespace ReportBuilder.Web.Models
             return totalRecords;
         }
 
-        public DataTable ExecuteQuery(string connectionString, string OleDb)
+        public DataTable ExecuteQuery(string connectionString, string sql, List<KeyValuePair<string, string>> parameters = null)
         {
             DataTable dataTable = new DataTable();
 
@@ -3011,8 +3287,12 @@ namespace ReportBuilder.Web.Models
                 {
                     conn.Open();
 
-                    using (OleDbCommand command = new OleDbCommand(OleDb, conn))
+                    using (OleDbCommand command = new OleDbCommand(sql, conn))
                     {
+                        if (parameters != null)
+                        {
+                            parameters.ForEach(x => command.Parameters.Add(new OleDbParameter(x.Key, x.Value)));
+                        }
                         using (OleDbDataAdapter adapter = new OleDbDataAdapter(command))
                         {
                             adapter.Fill(dataTable);
@@ -3028,7 +3308,7 @@ namespace ReportBuilder.Web.Models
 
             return dataTable;
         }
-        public DataSet ExecuteDataSetQuery(string connectionString, string combinedSqls)
+        public DataSet ExecuteDataSetQuery(string connectionString, string combinedSqls, List<KeyValuePair<string, string>> parameters = null)
         {
             var dts = new DataSet();
             try
@@ -3037,6 +3317,10 @@ namespace ReportBuilder.Web.Models
                 using (var cmd = new OleDbCommand(combinedSqls, conn))
                 using (var adp = new OleDbDataAdapter(cmd))
                 {
+                    if (parameters != null)
+                    {
+                        parameters.ForEach(x => cmd.Parameters.Add(new OleDbParameter(x.Key, x.Value)));
+                    }
                     adp.Fill(dts);
                 }
             }

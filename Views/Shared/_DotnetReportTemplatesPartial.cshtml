@@ -1,6 +1,6 @@
 ﻿<!-- Dotnet Report HTML Templates -->
 <script type="text/html" id="report-filter">
-    <div class="form-group">
+    <div class="form-group" data-bind="attr: {id: 'filter-'+uiId }">
         <!-- ko if: !hasForeignKey-->
         <!-- ko if: fieldType=='DateTime'-->
         <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 -->
@@ -13,7 +13,7 @@
         <input data-bind="datepicker: $parent.fmtValue2, datepickerOptions: {value: $parent.Value2, dateFormat: dateFormat() === 'Custom' ? customDateFormat().replace(/yyyy/g, 'yy') : $root.dateFormatMappings[dateFormat()]}" class="form-control" required />
         <!-- /ko -->
         <!-- ko if: ['range'].indexOf($parent.Operator()) != -1 -->
-        <select data-bind="value: $parent.Value" class="form-control" required>
+        <select data-bind="value: $parent.Value" class="form-select" required>
             <option value=""></option>
             <option>Today</option>
             <option>Today +</option>
@@ -63,7 +63,7 @@
         <!-- /ko -->
         <!-- /ko -->
         <!-- ko if: fieldType=='Boolean' && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
-        <select required class="form-control" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default'">
+        <select required class="form-select" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default'">
             <option value="1">Yes</option>
             <option value="0">No</option>
         </select>
@@ -74,13 +74,13 @@
         <!-- /ko -->
         <!-- ko if: hasForeignKey && $parent.Operator() != 'all' -->
         <!-- ko if: hasForeignParentKey && $parent.showParentFilter() -->
-        <select multiple class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.ParentList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ParentIn"></select>
+        <select multiple class="form-control" data-bind="select2: { dropdownParent: $parent.inModal ? '#filter-'+uiId : '', placeholder: 'Please Choose', allowClear: true }, options: $parent.ParentList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ParentIn"></select>
         <!-- /ko -->
         <!-- ko if: $parent.Operator()=='='-->
-        <select required class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', value: $parent.Value, optionsCaption: 'Please Choose'"></select>
+        <select required class="form-control" data-bind="select2: { dropdownParent: $parent.inModal ? '#filter-'+uiId : '', placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', value: $parent.Value, optionsCaption: 'Please Choose'"></select>
         <!-- /ko -->
         <!-- ko if: $parent.Operator()=='in' || $parent.Operator()=='not in'-->
-        <select required multiple class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ValueIn"></select>
+        <select required multiple class="form-control" data-bind="select2: { dropdownParent: $parent.inModal ? '#filter-'+uiId : '', placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ValueIn"></select>
         <!-- /ko -->
         <!-- /ko -->
     </div>
@@ -89,9 +89,9 @@
     <div class="pager-container d-flex flex-row align-items-center flex-wrap">
         <a href="" title="first" data-bind="click: first, enable: !isFirstPage()"><i class="fa fa-backward report-pager-btn" style="font-size: 18px;"></i></a>&nbsp;
         <a href="" title="previous" data-bind="click: previous, enable: !isFirstPage()"><i class="fa fa-caret-left fa-2x report-pager-btn"></i></a>
-        <select class="form-control form-control-sm" data-bind="options: [10,30,50,100,150,200,500], value: pageSize" style="width:auto"></select>
+        <select class="form-select form-control-sm" data-bind="options: [10,30,50,100,150,200,500], value: pageSize" style="width:auto"></select>
         <span class="pager-pageinfo d-flex flex-row align-items-center flex-wrap">
-            <span>Page</span>&nbsp;
+            <span>&nbsp;Page</span>&nbsp;
             <input type="number" min="1" pattern="[0-9]*" class="form-control form-control-sm text-center" style="width:auto" data-bind="
                                 value: currentPage,
                                 attr: { max: pages() }" />&nbsp;
@@ -106,24 +106,15 @@
 
 <script type="text/html" id="report-column-header">
     <!-- ko foreach: Columns -->
-    <th data-bind="attr: { id: fieldId }, style: {'text-align': fieldAlign ? fieldAlign : (IsNumeric ? 'right' : 'left'), 'width': fieldWidth, 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
-        <!-- ko if: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false) -->
-        <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
-        <!-- /ko -->
-        <!-- ko ifnot: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false)  -->
-        <a href="" data-bind="click: function(){ $parents[pagerIndex($parents)].changeSort(SqlField) }, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}">
-            <span data-bind="text: $parent.IsDrillDown() && fieldLabel2() ? fieldLabel2() : (fieldLabel() ? fieldLabel() : fieldName)"></span>
-            <span data-bind="text: $parents[pagerIndex($parents)].pager.sortColumn() === SqlField ? ($parents[pagerIndex($parents)].pager.sortDescending() ? '&#9660;' : '&#9650;') : ''"></span>
-        </a>
-        <!-- /ko -->
+        <th data-bind="attr: { id: !IsPivotField ? fieldId : 'pivot--' + fieldName }, style: {'text-align': fieldAlign ? fieldAlign : (IsNumeric ? 'right' : 'left'), 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
 
-        <div class="pull-right" data-bind="if: !$parent.IsDrillDown() && !IsNumeric">
+        <div class="pull-left" data-bind="if: !$parent.IsDrillDown()" style="padding-right: 5px;">
             <div class="dropup">
                 <a href="#" data-bs-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
-                    <span class="fa fa-ellipsis-v"></span>
+                    <span class="fa fa-ellipsis-v sortable" title="Drag to reorder"></span>
                 </a>
-                <ul class="dropdown-menu" style="z-index: 1001;">
-                    <li class="dropdown-item small">
+                <ul data-bind="visible: !IsPivotField" class="dropdown-menu" style="z-index: 1001;">
+                    <li class="dropdown-item small" data-bind="visible: !IsNumeric">
                         <a href="#" data-bind="click: toggleOuterGroup">
                             <span class="fa fa-clone"></span> Outer Group
                         </a>
@@ -136,7 +127,17 @@
                 </ul>
             </div>
         </div>
-
+        <div data-bind="style: {'width': fieldWidth}">
+        <!-- ko if: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false) -->
+        <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
+        <!-- /ko -->
+        <!-- ko ifnot: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false)  -->
+        <a href="" data-bind="click: function(){ if (!IsPivotField) { $parents[pagerIndex($parents)].changeSort(SqlField); } }, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}">
+            <span data-bind="text: $parent.IsDrillDown() && fieldLabel2() ? fieldLabel2() : (fieldLabel() ? fieldLabel() : fieldName)"></span>
+            <span data-bind="text: $parents[pagerIndex($parents)].pager.sortColumn() === SqlField ? ($parents[pagerIndex($parents)].pager.sortDescending() ? '&#9660;' : '&#9650;') : ''"></span>
+        </a>
+        <!-- /ko -->
+        </div>
     </th>
     <!-- /ko -->
 </script>
@@ -192,15 +193,15 @@
     <div class="table-responsive" >
         <table class="table table-hover table-condensed" data-bind="attr: {class: 'table table-striped table-hover table-condensed ' + $parents[2].selectedStyle()}">
             <thead data-bind="if: $parents[2].ReportType() != 'Single'">
-                <tr class="no-highlight">
-                    <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !IsDrillDown() && !CanExpandOption() -->
+                <tr class="no-highlight" data-bind="sortableColumns: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight',selectedFields: $parents[2].SelectedFields }">
+                    <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !IsDrillDown() && !CanExpandOption() && !$parents[2].hasPivotColumn() -->
                     <th style="width: 30px; border-left: 1px solid;"></th>
                     <!-- /ko -->
                     <!-- ko template: 'report-column-header', data: $data -->
                     <!-- /ko-->
                 </tr>
             </thead>
-            <tbody>
+            <tbody data-bind="attr: {id: 'report-table-body' + $parents[2].ReportID()}">
                 <tr style="display: none;" data-bind="visible: Rows.length < 1">
                     <td class="text-info" data-bind="attr:{colspan: Columns.length}">
                         <!-- ko if: $parents[2].ReportType()=='Single' -->
@@ -213,6 +214,8 @@
                         <!-- /ko -->
                     </td>
                 </tr>
+
+                <!-- ko if: !$parents[2].hasPivotColumn() && (!$parents[2].ShowExpandOption() || $parents[2].ReportType() == 'List') -->
                 <!-- ko foreach: $parent.rows  -->
                 <tr>
                     <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() && !$parent.CanExpandOption() && $parentContext.$parentContext.$parentContext.$parent.ReportType() != 'Single' -->
@@ -268,6 +271,7 @@
                 </tr>
                 <!-- /ko -->
                 <!-- /ko -->
+                <!-- /ko-->
             </tbody>
             <!-- ko if: $parentContext.$parent.SubTotals().length == 1 && $parentContext.$parentContext.$parent.OuterGroupColumns().length == 0 -->
             <tfoot data-bind="foreach: $parentContext.$parent.SubTotals">
@@ -348,7 +352,7 @@
             </div>
         </div>
         <div class="alert alert-info">
-            <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;User level rights over rule Role level rights. No selection for a rule implies report is available to all.
+            <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;User level rights override Role level rights. No selection for a rule implies report is available to all.
         </div>
 
         <div class="row small">
@@ -504,14 +508,14 @@
                         <div data-bind="with: Field" class="checkbox">
                             <div class="checkbox">
                                 <label>
-                                    <input type="checkbox" title="Apply this filter" data-bind="checked: $parent.Apply" /> <span data-bind="text: selectedFilterName"></span>
+                                    <input type="checkbox" title="Apply this filter" data-bind="checked: $parent.Apply, disabled: forced" /> <span data-bind="text: selectedFilterName"></span>
                                 </label>
                             </div>
                         </div>
                     </div>
                     <div data-bind="with: Field" class="col-sm-2 col-xs-3">
                         <div class="form-group" data-bind="if: $parent.Apply">
-                            <select class="form-control" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
+                            <select class="form-select" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
                         </div>
                     </div>
                     <div data-bind="with: Field" class="col-sm-5 col-xs-5">
@@ -553,7 +557,7 @@
                         </div>
                         <div class="col-md-3">
                             <div class="form-group">
-                                <select class="form-control" style="width: 100%;" data-bind="
+                                <select class="form-select" style="width: 100%;" data-bind="
                                         options: $parents[$parents.length-2].selectedFieldsCanFilter != undefined
                                                     ? $parents[$parents.length-2].selectedFieldsCanFilter
                                                     : $parents[$parents.length-1].selectedFieldsCanFilter,
@@ -572,8 +576,8 @@
                             </div>
                         </div>
                         <div class="col-md-5">
-                            <div data-bind="with: Field">                                
-                                <div data-bind="template: 'report-filter', data: $data"></div>                                
+                            <div data-bind="with: Field">
+                                <div data-bind="template: 'report-filter', data: $data"></div>
                             </div>
                             <!-- ko if: Field() && Field().fieldType == 'DateTime' && Operator() == 'range' && $index()==0 -->
                                 <!-- ko if: $parents[$parents.length-2].canAddSeries != undefined && $parents[$parents.length-2].canAddSeries() -->
@@ -583,7 +587,7 @@
                                 <button class="btn btn-sm btn-secondary" data-bind="click: $parentContext.$parent.AddSeries.bind($data)">Add Comparison</button>
                                 <!--/ko -->
                             <!--/ko -->
-                            <span data-bind="visible: Field() && Field().forced" class="badge badge-info">Required Filter</span>
+                            <span data-bind="visible: Field() && Field().forced" class="badge bg-info">Required Filter</span>
                         </div>
                         <div class="col-md-1">
                             <div style="display: flex; align-items: center;">
@@ -592,9 +596,9 @@
                                         <i class="fa fa-trash"></i>
                                     </button>
                                 </div>
-                                <div class="form-group" style="flex-grow: 1;" data-bind="with: Field" >
+                                <div class="form-group" style="flex-grow: 1;" data-bind="with: Field, hidden: document.querySelector('#filter-panel.card-body.collapse')" >
                                     <span class="btn btn-sm" tabindex="0" data-bind="click: function(){ filterOnFly(!filterOnFly()); }, css: {'btn-success': filterOnFly()==true, 'btn-secondary': filterOnFly()==false}">
-                                        <span class="fa fa-filter" aria-hidden="true" title="Filter by this field on the Report"></span>
+                                        <span class="fa fa-filter" aria-hidden="true" title="Filter on Report"></span>
                                     </span>
                                 </div>
                             </div>
@@ -607,8 +611,8 @@
                     <td class="row">
                         <div class="col-md-6">&nbsp;</div>
                         <div class="col-md-2">
-                        <span style="text-align: right"><button class="btn btn-xs" data-bind="click: $parents[2].RemoveSeries"><span class="fa fa-trash-o"></span></button></span>
-                        <span>Compare To</span>
+                        <span style="text-align: right"><button class="btn btn-sm" data-bind="click: $parents[2].RemoveSeries"><span class="fa fa-trash-o"></span></button></span>
+                        <span class="muted">Compare to</span>
                         </div>
                         <div class="col-md-4">
                             <select class="form-select" data-bind="options: Range, value: Value" required></select>
@@ -632,41 +636,39 @@
 </script>
 
 <script type="text/html" id="filter-parameters">
-    <div class="table-responsive card">
-        <div class="card-body">
-            <span data-bind="hidden: showParameters">No filters available to choose</span>
-            <table class="table table-striped table-hover table-borderless" data-bind="visible: showParameters">
-                <thead>
-                    <tr>
-                        <th style="width: 30%">Filter</th>
-                        <th style="width: 20%"></th>
-                        <th style="width: 30%">Value</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody data-bind="foreach: Parameters">
-                    <tr data-bind="ifnot: Hidden">
-                        <td data-bind="text: DisplayName">
-                        </td>
-                        <td>
-                            <div class="form-group">
-                                <select class="form-control" style="width: 100%;" data-bind="options: operators, value: Operator" required></select>
-                            </div>
-                        </td>
-                        <td data-bind="with: Field">
-                            <div data-bind="template: 'report-filter', data: $data"></div>
-                        </td>
-                        <td></td>
-                    </tr>
+    <div class="table-responsive">
+        <span data-bind="hidden: showParameters">No filters available to choose</span>
+        <table class="table table-striped table-hover table-borderless" data-bind="visible: showParameters">
+            <thead>
+                <tr>
+                    <th style="width: 30%">Filter</th>
+                    <th style="width: 20%"></th>
+                    <th style="width: 30%">Value</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody data-bind="foreach: Parameters">
+                <tr data-bind="ifnot: Hidden">
+                    <td data-bind="text: DisplayName">
+                    </td>
+                    <td>
+                        <div class="form-group">
+                            <select class="form-select" style="width: 100%;" data-bind="options: operators, value: Operator" required></select>
+                        </div>
+                    </td>
+                    <td data-bind="with: Field">
+                        <div data-bind="template: 'report-filter', data: $data"></div>
+                    </td>
+                    <td></td>
+                </tr>
 
-                </tbody>
-            </table>
-        </div>
+            </tbody>
+        </table>
     </div>
 </script>
 
 <script type="text/html" id="report-schedule">
-    <div data-bind="with: scheduleBuilder">
+    <div data-bind="with: scheduleBuilder" id="schedule-builder-div">
         <div class="form-check">
             <input class="form-check-input" type="checkbox" data-bind="checked: hasSchedule" id="scheduleReportCheckbox">
             <label class="form-check-label" for="scheduleReportCheckbox">
@@ -753,7 +755,7 @@
                                                             optionsText: 'displayName',
                                                             optionsValue: 'timeZoneId',
                                                             value: selectedTimezone,
-                                                            select2: {allowClear: true, placeholder: 'Set a time zone to send report'}">
+                                                            select2: {dropdownParent: $('#schedule-builder-div'), allowClear: true, placeholder: 'Set a time zone to send report'}">
                         </select>
                     </div>
                 </div>
@@ -787,7 +789,7 @@
                         <input type="text" class="form-control" data-bind="datepicker: scheduleEnd" title="Scheduled Report will not be sent after this date" required />
                     </div>
                 </div>
-            </div>            
+            </div>
         </div>
     </div>
 
@@ -806,7 +808,7 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-md-5 control-label">Pick Data Format</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-control" data-bind="options: $parents[1].fieldFormatTypes, value: fieldFormat"></select>
+                            <select class="form-select" data-bind="options: $parents[1].fieldFormatTypes, value: fieldFormat"></select>
                         </div>
                     </div>
                     <div class="form-group row" data-bind="visible: $parents[1].decimalFormatTypes.indexOf($data.fieldFormat())>=0">
@@ -818,16 +820,23 @@
                      <div class="form-group row" data-bind="visible: fieldFormat()=='Currency'">
                         <label class="col-sm-5 col-md-5 control-label">Pick Currency Format</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-control" required data-bind="options: $parents[1].currencyFormats, optionsText: 'display',optionsValue: 'value', value: currencyFormat"></select>
+                            <select class="form-select" required data-bind="options: $parents[1].currencyFormats, optionsText: 'display',optionsValue: 'value', value: currencyFormat"></select>
                         </div>
                     </div>
-                      <div class="form-group row" data-bind="visible: fieldFormat()=='Date'">
+                    <div class="form-group row" data-bind="visible: fieldFormat()=='Date'">
                         <label class="col-sm-5 col-md-5 control-label">Pick Date Format</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-control" data-bind="options: $parents[1].dateFormats, value: dateFormat"></select>
+                            <select class="form-select" data-bind="options: $parents[1].dateFormats, value: dateFormat"></select>
+                        </div>
+                     </div>
+                     <div class="form-group row" data-bind="visible: fieldFormat()=='Date'">
+                        <label class="col-sm-5 col-md-5 control-label">Drilldown Date Format</label>
+                        <div class="col-sm-7 col-md-7">
+                            <select class="form-select" data-bind="options: ['', 'Day', 'Month', 'Year', 'Month/Year'], value: drillDataFormat"></select>
                         </div>
                     </div>
-                       <div class="form-group row" data-bind="visible: dateFormat()==='Custom'">
+
+                     <div class="form-group row" data-bind="visible: dateFormat()==='Custom'">
                          <label class="col-sm-5 col-md-5 control-label">Enter Custom Date Format</label>
                         <div class="col-sm-7 col-md-7">
                             <input type="text" class="form-control" data-bind="value: customDateFormat" placeholder="dd/mm/yyyy" />
@@ -848,7 +857,7 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-md-5 control-label">Choose Text Alignment</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-control" data-bind="options: $parents[1].fieldAlignments, value: fieldAlign"></select>
+                            <select class="form-select" data-bind="options: $parents[1].fieldAlignments, value: fieldAlign"></select>
                         </div>
                     </div>
                     <div class="form-group row">
@@ -997,7 +1006,7 @@
                             <div class="col-md-4">
                                 <div data-bind="with: Field">
                                     <div class="form-group">
-                                        <select class="form-control" style="width: 100%;" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
+                                        <select class="form-select" style="width: 100%;" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
                                     </div>
                                 </div>
                             </div>
@@ -1039,14 +1048,14 @@
                 <div class="form-group row">
                     <label class="col-sm-5 col-md-5 control-label">This field will link to</label>
                     <div class="col-sm-7 col-md-7">
-                        <select class="form-control" required data-bind="options: linkTypes, value: selectedLinkType"></select>
+                        <select class="form-select" required data-bind="options: linkTypes, value: selectedLinkType"></select>
                     </div>
                 </div>
                 <div data-bind="if: LinksToReport">
                     <div class="form-group row">
                         <label class="col-sm-5 col-md-5 control-label">Link to this Report</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-control" required data-bind="options: $parentContext.$parent.SavedReports, optionsText: 'reportName', optionsValue: 'reportId', value: LinkedToReportId, optionsCaption: 'Choose the Report to link to'"></select>
+                            <select class="form-select" required data-bind="options: $parentContext.$parent.SavedReports, optionsText: 'reportName', optionsValue: 'reportId', value: LinkedToReportId, optionsCaption: 'Choose the Report to link to'"></select>
                         </div>
                     </div>
                     <div class="checkbox" data-bind="if: LinkedToReportId">
@@ -1058,7 +1067,7 @@
                     <div class="form-group row" data-bind="if: SendAsFilterParameter">
                         <label class="col-sm-5 col-md-5 control-label">Link to this Report Filter</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-control" required data-bind="options: allFields, optionsText: 'fieldName', optionsValue: 'fieldId', value: SelectedFilterId, optionsCaption: 'Choose the Field to Filter by value'"></select>
+                            <select class="form-select" required data-bind="options: allFields, optionsText: 'fieldName', optionsValue: 'fieldId', value: SelectedFilterId, optionsCaption: 'Choose the Field to Filter by value'"></select>
                         </div>
                     </div>
                 </div>
@@ -1093,80 +1102,19 @@
 </script>
 
 <script type="text/html" id="report-designer">
-    <div class="modal-dialog">
-        <div class="modal-content">
+    <div class="modal-dialog modal-dialog-scrollable" style="height: 100vh;">
+        <div class="modal-content" style="display: flex; flex-direction: column; height: 100%;">
+
             <div class="modal-header">
                 <h5 class="modal-title" id="myModalLabel">
-                    <a title="Need help setting up a report?" target="_blank" href="https://dotnetreport.com/blogs/docs/designing-reports">
-                        <span class="fa fa-question-circle"></span>
-                    </a> Design your Report
+                    <a title="Need help setting up a report?" target="_blank" href="https://dotnetreport.com/blogs/docs/designing-reports"><span class="fa fa-question-circle"></span></a> Design your Report
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body needs-validation">
-                <div class="card card-body">
-                    <h5><span class="fa fa-file"></span>&nbsp;Choose Report Type</h5>
-                    <div class="row">
-                        <div class="col-md-2 col-sm-4 col-xs-6">
-                            <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('List'); }, css: {active: ReportType()=='List'}">
-                                <span class="fa fa-2x fa-list-alt"></span>
-                                <p>List</p>
-                            </div>
-                        </div>
-                        <div class="col-md-2 col-sm-4 col-xs-6">
-                            <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Summary'); }, css: {active: ReportType()=='Summary'}">
-                                <span class="fa fa-2x fa-table"></span>
-                                <p>Summary</p>
-                            </div>
-                        </div>
-                        <div class="col-md-2 col-sm-4 col-xs-6">
-                            <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Bar'); }, css: {active: ReportType()=='Bar'}">
-                                <span class="fa fa-2x fa-bar-chart"></span>
-                                <p>Bar</p>
-                            </div>
-                        </div>
-                        <div class="col-md-2 col-sm-4 col-xs-6">
-                            <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Pie'); }, css: {active: ReportType()=='Pie'}">
-                                <span class="fa fa-2x fa-pie-chart"></span>
-                                <p>Pie</p>
-                            </div>
-                        </div>
-                        <div class="col-md-2 col-sm-4 col-xs-6">
-                            <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Treemap'); }, css: {active: ReportType()=='Treemap'}">
-                                <span class="fa fa-2x fa-window-restore"></span>
-                                <p>Treemap</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-2 col-sm-4 col-xs-6">
-                            <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Line'); }, css: {active: ReportType()=='Line'}">
-                                <span class="fa fa-2x fa-line-chart"></span>
-                                <p>Line</p>
-                            </div>
-                        </div>
-                        <div class="col-md-2 col-sm-4 col-xs-6">
-                            <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Map'); }, css: {active: ReportType().indexOf('Map')==0}">
-                                <span class="fa fa-2x fa-globe"></span>
-                                <p>Map</p>
-                            </div>
-                        </div>
-                        <div class="col-md-2 col-sm-4 col-xs-6">
-                            <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Single'); }, css: {active: ReportType()=='Single'}">
-                                <span class="fa fa-2x fa-window-maximize"></span>
-                                <p>Widget</p>
-                            </div>
-                        </div>
-                        <div class="col-md-2 col-sm-4 col-xs-6">
-                            <div class="button-box" tabindex="0" data-bind="click: function(){ setReportType('Pivot'); }, css: {active: ReportType()=='Pivot'}">
-                                <span class="fa fa-2x fa-random"></span>
-                                <p>Transpose</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <br />
-                <div class="card card-body">
+            <div class="modal-body needs-validation" style="overflow-y: auto; flex-grow: 1;">
+                <div class="row">
+               <div class="col-md-4 sticky-column">
+                <div class="card card-body" id="choose-data-card">
                     <h5><span class="fa fa-database"></span>&nbsp;Choose Data for Report</h5>
                     <div>
                         <div class="pull-left" role="group" data-bind="if: ReportID() <= 0">
@@ -1178,30 +1126,31 @@
                             </label>
                         </div>
                         <div class="pull-right">
-                            <a href="#" class="btn btn-sm" title="Add Custom Field using Formula" data-bind="hidden: isFunctionField() || useStoredProc(), click: function(){isFormulaField(!isFormulaField())}, text: isFormulaField()? 'Cancel': 'Custom Field', css: {'btn-primary': !isFormulaField(), 'btn-danger': isFormulaField}"></a>
+                            <a href="#" class="btn btn-sm" title="Add Custom Field using Formula" data-bind="hidden: isFunctionField() || useStoredProc(), click: cancelFormulaField, text: isFormulaField()? 'Cancel': 'Custom Field', css: {'btn-primary': !isFormulaField(), 'btn-danger': isFormulaField}"></a>
                             <a href="#" class="btn btn-sm" title="Add Custom Field using Function" data-bind="hidden: true || isFormulaField() || useStoredProc(), click: function(){designFunctionField()}, text: isFunctionField()? 'Cancel': 'Function Field', css: {'btn-primary': !isFunctionField(), 'btn-danger': isFunctionField}"></a>
                         </div>
                     </div>
                     <div class="clearfix"></div>
                     <div class="row">
-                        <div class="col-md-6">
-                            <div data-bind="visible: useStoredProc">
-                            <select class="form-control" data-bind="select2Value: {}, options: Procs, optionsCaption: 'Choose Section...', optionsText: 'DisplayName', value: SelectedProc, visible: useStoredProc"></select>
-                            </div>
-                            <div data-bind="hidden: useStoredProc">
-                            <select class="form-control" data-bind="select2Value: {}, options: Tables, optionsCaption: 'Choose Section...', optionsText: 'tableName', value: SelectedTable, hidden: useStoredProc"></select>
+                        
+                        <div class="col-md-12" data-bind="disable: isFormulaField, hidden: useStoredProc">
+                            <div data-bind="with: textQuery.searchFields">
+                                <select id="search-field" class="form-control" data-bind="select2: {dropdownParent: $('#choose-data-card'), placeholder: 'Search for a Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults, headers: headers }, minimumInputLength: 2, allowClear: true }, value: selectedOption"></select>
                             </div>
                         </div>
 
-                        <div class="col-md-6" data-bind="disable: isFormulaField, hidden: useStoredProc">
-                            <div data-bind="with: textQuery.searchFields">
-                                <select id="search-field" class="form-control" data-bind="select2: {placeholder: 'Or Search for a Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults, headers: headers }, minimumInputLength: 2, allowClear: true }, value: selectedOption"></select>
+                        <div class="col-md-12">
+                            <div data-bind="visible: useStoredProc">
+                            <select class="form-control" data-bind="select2Value: {dropdownParent: $('#choose-data-card')}, options: Procs, optionsCaption: 'Choose Section...', optionsText: 'DisplayName', value: SelectedProc, visible: useStoredProc"></select>
+                            </div>
+                            <div data-bind="hidden: useStoredProc">
+                            <select class="form-control" data-bind="select2Value: {dropdownParent: $('#choose-data-card')}, options: Tables, optionsCaption: 'Or Choose Data Section...', optionsText: 'tableName', value: SelectedTable, hidden: useStoredProc"></select>
                             </div>
                         </div>
 
                         <div class="col-md-12 padded-div" data-bind="visible: ChooseFields().length>0">
                             <div class="small pull-left">
-                                Check the fields you would like to use in the Report
+                                Select data to use in the Report
                             </div>
                             <div class="pull-right btn-toolbar">
 
@@ -1210,7 +1159,7 @@
                             </div>
                         </div>
                         <div class="row container-fluid" data-bind="foreach: ChooseFields">
-                            <div class="col-md-3 col-sm-4 col-xs-6 list-group">
+                            <div class="col-md-12 col-sm-12 col-xs-12 list-group">
                                 <div class="list-group-item">
                                     <div class="checkbox">
                                         <label>
@@ -1223,6 +1172,98 @@
                         </div>
                     </div>
 
+                </div>
+
+                <br />
+                   <div class="card card-body">
+                        <div class="form-group row" data-bind="if: SaveReport">
+                            <label class="control-label h6">
+                                <i class="fa fa-file"></i> Report Name
+                            </label>
+                            <div>
+                                <input type="text" style="width: 100%;" class="form-control" required placeholder="Report Name" data-bind="value: ReportName">
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="control-label h6">
+                                <i class="fa fa-info-circle"></i> Description
+                            </label>
+                            <div>
+                                <textarea class="form-control" style="width: 100%;" rows="3" placeholder="Additional details (optional)" data-bind="value: ReportDescription"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="checkbox" data-bind="visible: isChart">
+                            <label>
+                                <input type="checkbox" data-bind="checked: ShowDataWithGraph" />
+                                Show Data along with Graph
+                            </label>
+                        </div>
+                        <div class="checkbox" data-bind="visible: CanSaveReports()">
+                            <label>
+                                <input type="checkbox" data-bind="checked: SaveReport">
+                                Save Report
+                            </label>
+                        </div>
+                        <div class="form-group row" data-bind="visible: SaveReport">
+                            <label class="control-label h6">
+                                <i class="fa fa-folder-open"></i> Choose Folder
+                            </label>
+                            <div>
+                                <select class="form-select" style="width: 100%;" data-bind="options: Folders, optionsText: 'FolderName', optionsValue: 'Id', value: FolderID"></select>
+                            </div>
+                        </div>
+                    </div>
+
+                <br />
+                </div>
+                <div class="col-md-8">
+                    <div class="card card-body">
+                    <h5><span class="fa fa-file"></span>&nbsp;Choose Visualization</h5>
+                    <div style="overflow-x: auto; white-space: nowrap;">
+                    <div class="btn-group" role="group" aria-label="Visualization Options">
+                        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('List'); }, css: { active: ReportType()=='List' }">
+                            <span class="fa fa-2x fa-list-alt"></span>
+                            <p>List</p>
+                        </button>
+                        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Summary'); }, css: { active: ReportType()=='Summary' }">
+                            <span class="fa fa-2x fa-table"></span>
+                            <p>Summary</p>
+                        </button>
+                        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Bar'); }, css: { active: ReportType()=='Bar' }">
+                            <span class="fa fa-2x fa-bar-chart"></span>
+                            <p>Bar</p>
+                        </button>
+                        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Pie'); }, css: { active: ReportType()=='Pie' }">
+                            <span class="fa fa-2x fa-pie-chart"></span>
+                            <p>Pie</p>
+                        </button>
+                        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Line'); }, css: { active: ReportType()=='Line' }">
+                            <span class="fa fa-2x fa-line-chart"></span>
+                            <p>Line</p>
+                        </button>
+                        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Map'); }, css: { active: ReportType().indexOf('Map')==0 }">
+                            <span class="fa fa-2x fa-globe"></span>
+                            <p>Map</p>
+                        </button>
+                        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Single'); }, css: { active: ReportType()=='Single' }">
+                            <span class="fa fa-2x fa-window-maximize"></span>
+                            <p>Widget</p>
+                        </button>
+                        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Treemap'); }, css: { active: ReportType()=='Treemap' }">
+                            <span class="fa fa-2x fa-window-restore"></span>
+                            <p>Treemap</p>
+                        </button>
+                        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Pivot'); }, css: { active: ReportType()=='Pivot' }">
+                            <span class="fa fa-2x fa-random"></span>
+                            <p>Transpose</p>
+                        </button>
+                    </div>
+                    </div>
+                </div>
+                
+                <div>
+
                     <div data-bind="if: isFunctionField" class="custom-field-design">
                         <br />
                         <br />
@@ -1234,7 +1275,7 @@
                                         <a href="#" class="btn btn-sm" title="Custom Field using Function" data-bind="click: function(){isFunctionField(!isFunctionField())}, text: isFunctionField()? 'Cancel': 'Function', css: {'btn-primary': !isFunctionField(), 'btn-danger': isFunctionField}"></a>
 
                                     </div>
-                                    <div class="col-md-12 padded-div" data-bind="visible: ChooseFields().length>0 && isFunctionField()">
+                                    <div class="col-md-12 padded-div" data-bind="visible: isFunctionField()">
                                         <div class="alert alert-info">
                                             You are now creating a Customized Field using Functions available.
                                         </div>
@@ -1250,7 +1291,7 @@
                                 <div class="form-group row">
                                     <label class="col-sm-2 control-label">Data Format</label>
                                     <div class="col-sm-10">
-                                        <select class="form-control form-control-sm" data-bind="value: formulaDataFormat" required>
+                                        <select class="form-select form-control-sm" data-bind="value: formulaDataFormat" required>
                                             <option>String</option>
                                             <option>Integer</option>
                                             <option>Decimal</option>
@@ -1277,7 +1318,7 @@
                                     <label class="col-sm-2 control-label">Select Function</label>
                                     <div class="col-sm-10" >
                                         <div data-bind="with: textQuery.searchFunctions">
-                                            <select id="search-function" class="form-control" data-bind="select2: {placeholder: 'Search for a Function...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults, headers: headers}, templateResult: templateResult, minimumInputLength: 2, allowClear: true }, select2Value: selectedOption"></select>
+                                            <select id="search-function" class="form-control" data-bind="select2: {placeholder: 'Search for a Function...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults, headers: headers}, templateResult: templateResult, minimumInputLength: 2, allowClear: true }, select2Value: {value: selectedOption}"></select>
                                         </div>
                                     </div>
                                 </div>
@@ -1297,7 +1338,7 @@
 
                                                 </label>
                                                 <div class="col-sm-6" >
-                                                    <select class="form-control" data-bind="required: Required, options: $parentContext.$parent.ChooseFields, optionsText: 'fieldName', value: selectedField, optionsCaption: 'Pick a field...'"></select>
+                                                    <select class="form-select" data-bind="required: Required, options: $parentContext.$parent.ChooseFields, optionsText: 'fieldName', value: selectedField, optionsCaption: 'Pick a field...'"></select>
                                                 </div>
                                             </div>
                                             <!-- /ko -->
@@ -1342,13 +1383,12 @@
                                 <div class="row">
                                     <div class="col-md-12 pull-right">
                                         <a href="#" class="btn btn-primary btn-sm" title="Save Custom Formula Field" data-bind="click: saveFormulaField, visible: isFormulaField">Save</a>
-                                        <a href="#" class="btn btn-sm" title="Custom Field using Formula" data-bind="click: function(){isFormulaField(!isFormulaField())}, text: isFormulaField()? 'Cancel': 'Customize', css: {'btn-primary': !isFormulaField(), 'btn-danger': isFormulaField}"></a>
+                                        <a href="#" class="btn btn-sm" title="Custom Field using Formula" data-bind="click: cancelFormulaField, text: isFormulaField()? 'Cancel': 'Customize', css: {'btn-primary': !isFormulaField(), 'btn-danger': isFormulaField}"></a>
 
                                     </div>
-                                    <div class="col-md-12 padded-div" data-bind="visible: ChooseFields().length>0 && isFormulaField()">
+                                    <div class="col-md-12 padded-div" data-bind="visible: isFormulaField()">
                                         <div class="alert alert-info">
-                                            You are now creating a Customized Field. Check Fields you want to use in the calculation, then choose the operations you want to perform, and click "Save" on the right above to add your Custom field.
-                                            Please note that Custom Field must be chosen in within the same Section and their data types must match.
+                                            You are now creating a Customized Field. Please select the fields you want to use in the calculation, then choose the operations you want to perform, and click "Save" above to add your Custom field.
                                         </div>
                                     </div>
                                 </div>
@@ -1379,7 +1419,7 @@
                                 <div class="form-group row">
                                     <label class="col-sm-2 control-label">Data Format</label>
                                     <div class="col-sm-10">
-                                        <select class="form-control form-control-sm" data-bind="value: formulaDataFormat" required>
+                                        <select class="form-select form-control-sm" data-bind="value: formulaDataFormat" required>
                                             <!-- ko ifnot: formulaOnlyHasDateFields -->
                                             <option>String</option>
                                             <option>Integer</option>
@@ -1439,8 +1479,10 @@
                         </div>
                         <div class="clearfix"></div>
                     </div>
-                    <div data-bind="if: SelectedFields().length>0">
-                        <hr />
+                </div>
+                <br />
+                    <div class="card card-body">
+                        <div>
                         <h5><span class="fa fa-table"></span>&nbsp;Selected data for the Report</h5>
                         <div>
                             <div data-bind="visible: ReportType()=='Bar'" class="card card-body" style="margin-bottom: 15px">
@@ -1471,6 +1513,9 @@
                             <div class="alert alert-info" data-bind="visible: ReportType()=='Pivot'">
                                 <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For Transpose, the first field below will be used to Pivot/Transpose the rows as columns, and it must be grouped.
                             </div>
+                             <div class="alert alert-info" data-bind="visible: ReportType()=='Single'">
+                                <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;Widget is a single value report that is ideal for placing on a Dashboard. All fields except one must be hidden for Widgets.
+                            </div>
                             <div data-bind="visible: ReportType()=='Map'" class="card card-body" style="margin-bottom: 15px">
                                 <div class="alert alert-info">
                                     <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For Map Graph, the first field below has to be a Region, like a Country.
@@ -1478,14 +1523,14 @@
                                 <div class="form-group row">
                                     <label class="col-sm-2 control-label">Map Display</label>
                                     <div class="col-sm-4">
-                                        <select class="form-control form-control-sm" data-bind="options: $parent.mapRegions, value: mapRegion"></select>
+                                        <select class="form-select form-control-sm" data-bind="options: $parent.mapRegions, value: mapRegion"></select>
                                     </div>
                                 </div>
                             </div>
                             <ul class="list-group" data-bind="sortable: { data: SelectedFields, options: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight' }, strategyMove: true }">
                                 <li class="list-group-item">
                                     <div class="row">
-                                        <div class="col">
+                                        <div class="col-5">
                                             <span class="sortable pull-left" style="padding-right: 15px;" data-bind="ifnot: $parent.useStoredProc">
                                                 <span class="fa fa-ellipsis-v" aria-hidden="true" title="Drag to reorder"></span>
                                             </span>
@@ -1493,54 +1538,54 @@
                                             <span data-bind="text: selectedFieldName"></span>
                                             <span data-bind="text: isFormulaField() ? '(' + fieldFormat() + ')' : ''"></span>
                                             <span data-bind="visible: !$parent.isFieldValidForYAxis($index(), fieldType, selectedAggregate()) && $parent.ReportType() !='Treemap'">
-                                                <span class="badge badge-danger" data-bind="visible: !groupInGraph()">Will not show in <span data-bind="text: $parent.ReportType"></span>Chart</span>
+                                                <span class="badge bg-danger" data-bind="visible: !groupInGraph()">Will not show in <span data-bind="text: $parent.ReportType"></span>Chart</span>
                                             </span>
                                         </div>
-                                        <div class="col">
+                                        <div class="col-7">
                                             <div class="pull-right" style="margin-top: -5px;" data-bind="if: $parent.AggregateReport() && !$parent.useStoredProc()">
-                                                <select class="form-control form-control-sm" data-bind="options: $parent.canDrilldown() && $index()>0 ? fieldAggregateWithDrilldown : fieldAggregate, value: selectedAggregate"></select>
+                                                <select class="form-select form-control-sm" data-bind="options: $parent.canDrilldown() && $index()>0 ? fieldAggregateWithDrilldown : fieldAggregate, value: selectedAggregate"></select>
                                             </div>
-                                            
-                                            <div class="pull-right" style="padding-right: 15px;" data-bind="ifnot: $parent.useStoredProc">
+
+                                            <div class="pull-right" style="padding-right: 10px;" data-bind="ifnot: $parent.useStoredProc">
                                                 <span class="fa fa-trash-o" title="Cannot Delete Required Filter" data-bind="visible: forceFilterForTable"></span>
                                                 <span class="fa fa-trash" style="cursor: pointer;" aria-hidden="true" title="Delete this Field" data-bind="click: $parent.RemoveField, hidden: forceFilterForTable"></span>
                                             </div>
-                                            <!--<div class="pull-right" style="padding-right: 15px;" data-bind="ifnot: $parent.useStoredProc">
+                                            <!--<div class="pull-right" style="padding-right: 10px;" data-bind="ifnot: $parent.useStoredProc">
                                                 <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ filterOnFly(!filterOnFly()); }, css: {active: filterOnFly()==true}">
                                                     <span class="fa fa-filter" aria-hidden="true" title="Filter by this field on the Report"></span>
                                                 </span>
                                             </div>-->
-                                            <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $parent.ReportType()!='Pivot'">
+                                            <div class="pull-right" style="padding-right: 10px;" data-bind="visible: $parent.ReportType()!='Pivot'">
                                                 <span class="button-box no-padding" tabindex="0" data-bind="click: toggleDisable, css: {active: disabled()==true}">
                                                     <span class="fa fa-close" aria-hidden="true" title="Do not include in Report"></span>
                                                 </span>
                                             </div>
-                                            <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $parent.ReportType()!='Pivot' && $parent.ReportType()!='List' && !$parent.useStoredProc()">
+                                            <div class="pull-right" style="padding-right: 10px;" data-bind="visible: $parent.ReportType()!='Pivot' && $parent.ReportType()!='List' && !$parent.useStoredProc()">
                                                 <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ hideInDetail(!hideInDetail()); }, css: {active: hideInDetail()==true}">
                                                     <span class="fa fa-eye-slash" aria-hidden="true" title="Hide in Details"></span>
                                                 </span>
                                             </div>
-                                            <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $parent.isFieldValidForYAxis($index(), fieldType, selectedAggregate())  && $parent.isChart() && $index()>0">
+                                            <div class="pull-right" style="padding-right: 10px;" data-bind="visible: $parent.isFieldValidForYAxis($index(), fieldType, selectedAggregate())  && $parent.isChart() && $index()>0">
                                                 <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ groupInGraph(!groupInGraph()); }, css: {active: groupInGraph()==false}">
                                                     <span class="fa fa-line-chart" aria-hidden="true" title="Include in series"></span>
                                                 </span>
                                             </div>
-                                            <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $parent.IncludeSubTotal()  &&  (['Int', 'Double', 'Money', 'Decimal', 'Currency'].indexOf(fieldType) >= 0 || ['Int', 'Double', 'Money', 'Decimal', 'Currency'].indexOf(fieldFormat()) >= 0)">
+                                            <div class="pull-right" style="padding-right: 10px;" data-bind="visible: $parent.IncludeSubTotal()  &&  (['Int', 'Double', 'Money', 'Decimal', 'Currency'].indexOf(fieldType) >= 0 || ['Int', 'Double', 'Money', 'Decimal', 'Currency'].indexOf(fieldFormat()) >= 0)">
                                                 <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ dontSubTotal(!dontSubTotal()); }, css: {active: dontSubTotal()==true}">
                                                     <span class="fa fa-plus-circle" aria-hidden="true" title="Don't add to Total row"></span>
                                                 </span>
                                             </div>
-                                            <div class="pull-right" style="padding-right: 15px;" data-bind="visible: $parent.ReportType()!='Pivot'">
+                                            <div class="pull-right" style="padding-right: 10px;" data-bind="visible: $parent.ReportType()!='Pivot'">
                                                 <span class="button-box no-padding" tabindex="0" data-bind="click: setupLinkField, css: {active: linkField()==true}">
                                                     <span class="fa fa-link" aria-hidden="true" title="Link to another Report or Url"></span>
                                                 </span>
                                             </div>
-                                            <div class="pull-right" style="padding-right: 15px;">
+                                            <div class="pull-right" style="padding-right: 10px;">
                                                 <span class="button-box no-padding" tabindex="0" data-bind="click: setupFieldOptions">
                                                     <span class="fa fa-gear" aria-hidden="true" title="More Options"></span>
                                                 </span>
                                             </div>
-                                            <div class="pull-right" style="padding-right: 15px;" data-bind="if: isFormulaField">
+                                            <div class="pull-right" style="padding-right: 10px;" data-bind="if: isFormulaField">
                                                 <span class="button-box no-padding" tabindex="0" data-bind="click: editFormulaField">
                                                     <span class="fa fa-pencil" aria-hidden="true" title="Edit Formula Field"></span>
                                                 </span>
@@ -1551,10 +1596,10 @@
                             </ul>
                         </div>
                     </div>
-                </div>
-                <br />
+                    </div>
+                    <br />
                 <div class="card card-body">
-                    <h5><span class="fa fa-filter"></span>&nbsp;Choose filters</h5>
+                    <h5><span class="fa fa-filter"></span>&nbsp;Choose Filters</h5>
 
                     <div class="row" style="padding: 10px 10px; overflow-x: auto;">
                         <div data-bind="if: useStoredProc" class="col-md-12">
@@ -1573,36 +1618,18 @@
                         <br />
                     </div>
                 </div>
-                <br />
-                <div data-bind="visible: SaveReport" class="card card-body">
-                    <h5><span class="fa fa-hourglass"></span>&nbsp;Choose Schedule</h5>
 
-                    <div style="padding: 10px 10px" data-bind="if: SaveReport">
-                        <div data-bind="template: {name: 'report-schedule'}"></div>
-                    </div>
-                </div>
                 <br />
-                <div class="card card-body">
-                    <div class="form-group row" data-bind="if: SaveReport">
-                        <label class="col-sm-2 control-label">Report Name</label>
-                        <div class="col-sm-10">
-                            <input type="text" style="width: 100%;" class="form-control" required placeholder="Report Name" data-bind="value: ReportName">
-                        </div>
-                    </div>
-                    <div class="form-group row">
-                        <label class="col-sm-2 control-label">Report Description</label>
-                        <div class="col-sm-10">
-                            <textarea class="form-control" style="width: 100%;" rows="3" placeholder="Optional Report Description" data-bind="value: ReportDescription"></textarea>
-                        </div>
-                    </div>
+                <div data-bind="hidden: useStoredProc" class="card card-body">
+                    <h5><span class="fa fa-sort"></span>&nbsp;Choose Sorting</h5>
                     <div data-bind="ifnot: useStoredProc">
                         <div class="form-group row">
                             <label class="col-sm-2 control-label">Sort By</label>
                             <div class="col-sm-6">
-                                <select class="form-control" required data-bind="options: SelectedFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: SortByField"></select>
+                                <select class="form-select" data-bind="options: SelectedFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: SortByField, optionsCaption: 'Select field to sort...', allowClear: true"></select>
                             </div>
                             <div class="col-sm-2">
-                                <button class="btn btn-sm btn-secondary" data-bind="text: !SortDesc() ? '▲ Sort Ascending' : 'Sort Descending ▼', click: function() { SortDesc(!SortDesc()); return false; }"></button>
+                                <button class="btn btn-sm btn-secondary" data-bind="text: !SortDesc() ? '▲ Ascending' : 'Descending ▼', click: function() { SortDesc(!SortDesc()); return false; }"></button>
                             </div>
                             <div class="col-sm-2">
                                 <button class="btn btn-sm btn-secondary" data-bind="click: addSortField">Add Sort Field</button>
@@ -1612,7 +1639,7 @@
                             <div class="form-group row">
                                 <label class="col-sm-2 control-label">&nbsp;&nbsp;Then Sort By</label>
                                 <div class="col-sm-4">
-                                    <select class="form-control" required data-bind="options: $parent.SelectedFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: sortByFieldId"></select>
+                                    <select class="form-select" required data-bind="options: $parent.SelectedFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: sortByFieldId"></select>
                                 </div>
                                 <div class="col-sm-2">
                                     <button class="btn btn-sm btn-secondary" data-bind="click: remove">Remove Sort Field</button>
@@ -1626,31 +1653,20 @@
                             </div>
                         </div>
                     </div>
+                </div>
+                <br />
+                <div data-bind="visible: SaveReport" class="card card-body">
+                    <h5><span class="fa fa-hourglass"></span>&nbsp;Choose Schedule</h5>
 
-                    <div class="checkbox" data-bind="visible: isChart">
-                        <label>
-                            <input type="checkbox" data-bind="checked: ShowDataWithGraph" />
-                            Show Data along with Graph
-                        </label>
-                    </div>
-                    <div class="checkbox" data-bind="visible: CanSaveReports()">
-                        <label>
-                            <input type="checkbox" data-bind="checked: SaveReport">
-                            Save Report
-                        </label>
-                    </div>
-                    <div class="form-group row" data-bind="visible: SaveReport">
-                        <label class="col-sm-2 control-label">Choose Folder</label>
-                        <div class="col-sm-10">
-                            <select class="form-control" style="width: 100%;" data-bind="options: Folders, optionsText: 'FolderName', optionsValue: 'Id', value: FolderID"></select>
-                        </div>
+                    <div style="padding: 10px 10px" data-bind="if: SaveReport">
+                        <div data-bind="template: {name: 'report-schedule'}"></div>
                     </div>
                 </div>
                 <br />
                 <div data-bind="ifnot: useStoredProc" class="card card-body">
                     <div class="row">
                         <div class="col-md-6">
-                            <h5><span class="fa fa-gear"></span>&nbsp;Other Settings</h5>
+                            <h5><span class="fa fa-gear"></span>&nbsp;Optional Settings</h5>
                             <div class="checkbox" data-bind="visible: ReportType()!='Pivot'">
                                 <label>
                                     <input type="checkbox" data-bind="checked: IncludeSubTotal" />
@@ -1676,30 +1692,30 @@
                                 </label>
                             </div>
                             <div class="form-group row">
-                                <div class="checkbox col-md-4">
+                                <div class="checkbox col-md-5">
                                     <label>
                                         <input type="checkbox" data-bind="checked: maxRecords" />
                                         Max Records
                                     </label>
                                 </div>
-                                <div class="col-md-6" data-bind="if: maxRecords">
+                                <div class="col-md-5" data-bind="if: maxRecords">
                                     <input type="number" style="width: 150px;" class="form-control" required placeholder="Only top n..." data-bind="value: OnlyTop, visible: maxRecords">
                                 </div>
                             </div>
                             <div class="form-group row">
-                                <div class="checkbox col-md-4">
+                                <div class="checkbox col-md-5">
                                    <label>
                                         <input type="checkbox" data-bind="checked: changePageSize" />
                                         Change Page Size
                                     </label>
                                 </div>
-                                <div class="col-md-6" data-bind="visible: changePageSize">
-                                    <select style="width: 150px;" class="form-control" data-bind="options: [10,30,50,100,150,200,500], value: DefaultPageSize"></select>
+                                <div class="col-md-5" data-bind="visible: changePageSize">
+                                    <select style="width: 150px;" class="form-select" data-bind="options: [10,30,50,100,150,200,500,1000], value: DefaultPageSize"></select>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <h5><span class="fa fa-paint-brush"></span>&nbsp;Pick Report Format</h5>
+                            <b><span class="fa fa-paint-brush"></span>&nbsp;Pick Report Format</b>
                             <div>
                                 <!-- ko foreach: tableStyles -->
                                 <div class="dropdown-option" data-bind="title: $data.name, click: $parent.selectStyle, css: {'dropdown-option-selected': $parent.selectedStyle() == $data.colorscheme}">
@@ -1719,12 +1735,16 @@
                 <div data-bind="visible: adminMode" class="card card-body">
                     <div data-bind="template: {name: 'manage-access-template'}"></div>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <a href="#" class="btn btn-danger" data-bind="click: cancelCreateReport">Cancel editing Report</a>
-                <button class="btn btn-primary" type="button" data-bind="visible: SaveReport() && CanSaveReports(), click: SaveWithoutRun" style="padding-right: 10px;">Save Report</button>
-                <button class="btn btn-primary" type="button" data-bind="text: SaveReport() && CanSaveReports()? 'Save & Run Report': 'Run Report', click: RunReport">Run Report</button>
-            </div>
+
+                </div>
+            </div>            
+        </div>
+        <div class="modal-footer">
+            <a href="#" class="btn btn-danger" data-bind="click: cancelCreateReport">Cancel editing Report</a>
+            <button class="btn btn-primary" type="button" data-bind="visible: SaveReport() && CanSaveReports(), click: SaveWithoutRun" style="padding-right: 10px;">Save Report</button>
+            <button class="btn btn-primary" type="button" data-bind="text: SaveReport() && CanSaveReports()? 'Save & Run Report': 'Run Report', click: RunReport">Run Report</button>
+        </div>
+
         </div>
     </div>
 </script>
@@ -1734,7 +1754,7 @@
         <div class="modal-content" data-bind="with: ChartDrillDownData">
             <div class="modal-header">
                 <h4 class="modal-title">Drilldown Data</h4>
-                <button type="button" class="close pull-right" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close pull-right" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <!-- ko if: DrillDownData -->
             <div class="modal-body">

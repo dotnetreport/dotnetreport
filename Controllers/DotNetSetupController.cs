@@ -11,7 +11,7 @@ namespace ReportBuilder.Web.Controllers
     public class DotNetSetupController : Controller
     {
         public async Task<IActionResult> Index(string databaseApiKey = "")
-        {           
+        {
             return View();
         }
 
@@ -89,7 +89,7 @@ namespace ReportBuilder.Web.Controllers
         {
             using (var client = new HttpClient())
             {
-                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetTables?account={1}&dataConnect={2}&clientId=&includeDoNotDisplay=true&includeColumns=true", Startup.StaticConfig.GetValue<string>("dotNetReport:apiUrl"), accountKey, dataConnectKey));
+                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetTables?account={1}&dataConnect={2}&clientId=&includeDoNotDisplay=true&includeColumns=true", DotNetReportHelper.StaticConfig.GetValue<string>("dotNetReport:apiUrl"), accountKey, dataConnectKey));
                 response.EnsureSuccessStatusCode();
                 var content = await response.Content.ReadAsStringAsync();
                 dynamic values = JsonConvert.DeserializeObject<dynamic>(content);
@@ -142,6 +142,7 @@ namespace ReportBuilder.Web.Controllers
                                 ForeignParentValueField = field.foreignParentValueField,
                                 ForeignParentTable = field.foreignParentTable,
                                 ForeignParentRequired = field.foreignParentRequired,
+                                ForeignFilterOnly = field.foreignFilterOnly,
 
                                 JsonStructure = field.jsonStructure,
                                 Selected = true
@@ -159,7 +160,7 @@ namespace ReportBuilder.Web.Controllers
         {
             using (var client = new HttpClient())
             {
-                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetFields?account={1}&dataConnect={2}&clientId={3}&tableId={4}&includeDoNotDisplay=true", Startup.StaticConfig.GetValue<string>("dotNetReport:apiUrl"), accountKey, dataConnectKey, "", tableId));
+                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetFields?account={1}&dataConnect={2}&clientId={3}&tableId={4}&includeDoNotDisplay=true", DotNetReportHelper.StaticConfig.GetValue<string>("dotNetReport:apiUrl"), accountKey, dataConnectKey, "", tableId));
 
                 response.EnsureSuccessStatusCode();
 
@@ -197,6 +198,7 @@ namespace ReportBuilder.Web.Controllers
                         ForeignParentValueField = item.foreignParentValue,
                         ForeignParentTable = item.foreignParentTable,
                         ForeignParentRequired = item.foreignParentRequired,
+                        ForeignFilterOnly = item.foreignFilterOnly,
 
                         JsonStructure = item.jsonStructure
                     };
@@ -217,6 +219,7 @@ namespace ReportBuilder.Web.Controllers
             if (!String.IsNullOrEmpty(accountKey) && !String.IsNullOrEmpty(dataConnectKey))
             {
                 currentTables = await GetApiTables(accountKey, dataConnectKey, true);
+                currentTables = currentTables.Where(x => !string.IsNullOrEmpty(x.TableName)).ToList();
             }
 
             var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey));
@@ -287,6 +290,7 @@ namespace ReportBuilder.Web.Controllers
                             column.ForeignParentValueField = matchColumn.ForeignParentValueField;
                             column.ForeignParentRequired = matchColumn.ForeignParentRequired;
                             column.JsonStructure = matchColumn.JsonStructure;
+                            column.ForeignFilterOnly = matchColumn.ForeignFilterOnly;
 
                             column.Selected = true;
                         }
@@ -329,11 +333,11 @@ namespace ReportBuilder.Web.Controllers
         {
             using (var client = new HttpClient())
             {
-                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetProcedures?account={1}&dataConnect={2}&clientId=", Startup.StaticConfig.GetValue<string>("dotNetReport:apiUrl"), accountKey, dataConnectKey));
+                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetProcedures?account={1}&dataConnect={2}&clientId=", DotNetReportHelper.StaticConfig.GetValue<string>("dotNetReport:apiUrl"), accountKey, dataConnectKey));
                 response.EnsureSuccessStatusCode();
                 var content = await response.Content.ReadAsStringAsync();
                 var tables = JsonConvert.DeserializeObject<List<TableViewModel>>(content);
-               
+
                 return tables;
             }
         }
@@ -359,7 +363,7 @@ namespace ReportBuilder.Web.Controllers
 
             }
         }
-       
+
         #endregion
     }
 }

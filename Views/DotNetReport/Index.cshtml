@@ -47,7 +47,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 vm.headerDesigner.resizeCanvas();
             });
         });
-    });        
+    });
 </script>
 }
 
@@ -80,7 +80,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
 
                             <li class="nav-item" data-bind="visible: CanManageFolders() || adminMode()">
                                 <a href="#" class="nav-link" data-bind="click: ManageFolder.newFolder">
-                                    <span class="fa fa-folder-o"></span> Add a new Folder
+                                    <span class="fa fa-folder-o"></span> Add Folder
                                 </a>
                             </li>
                             <li class="nav-item dropdown" data-bind="visible: (CanManageFolders() || adminMode()) && SelectedFolder()!=null">
@@ -95,6 +95,11 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             <li class="nav-item active" data-bind="visible: adminMode">
                                 <a href="#" class="nav-link" data-bind="click: function(){ initHeaderDesigner(); }">
                                     <span class="fa fa-arrow-up"></span> Report Header
+                                </a>
+                            </li>
+                            <li class="nav-item active" data-bind="visible: adminMode">
+                                <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#uploadFileModal" aria-haspopup="true" aria-expanded="false" title="Import Report from JSON file">
+                                    <span class="fa fa-upload"></span> Import Report
                                 </a>
                             </li>
                         </ul>
@@ -273,6 +278,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                         <a class="dropdown-item" href="#" data-bind="visible: hasDrilldown, click: function() {exportReport('excel-sub');}">
                                                             <span class="fa fa-file-excel-o"></span> Download Excel (Expanded)
                                                         </a>
+                                                        <a class="dropdown-item" href="#" data-bind="visible:$parent.adminMode, click: function() {exportReport('json');}">
+                                                            <span class="fa fa-file"></span> Export Json  
+                                                        </a>
                                                     </div>
 
                                                 </div>
@@ -364,7 +372,35 @@ Its Recommended you use it as is, and only change styling as needed to match you
             </div>
         </div>
     </div>
-    
+   <!-- Import Json File Modal -->
+<div class="modal" id="uploadFileModal" tabindex="-1" aria-labelledby="uploadFileModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" data-bind="with: ManageJsonFile">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadFileModalLabel">Import JSON File Upload</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="dropzone" class="dropzone"
+                     data-bind="event: {click: triggerFileInput }"
+                     style="border: 2px dashed #007bff; border-radius: 5px; padding: 30px; text-align: center; color: #007bff; cursor: pointer;">
+                     click to select files
+                </div>
+                <input type="file" id="fileInputJson"  accept=".json" style="display: none;" data-bind="event: { change: handleFileSelect }">
+                <div data-bind="visible: fileName">
+                    <p>Selected File: <span data-bind="text: fileName"></span></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" data-bind="click: uploadFile">Upload</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
     <div data-bind="if: ReportMode() == 'execute' || ReportMode() == 'Linked'">
 
          <div class="card">
@@ -374,7 +410,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                         <span class="navbar-toggler-icon"></span>
                     </button>
-                     <div class="collapse navbar-collapse" >
+                    <div class="collapse navbar-collapse" id="navbarSupportedContent">
                         <ul class="navbar-nav mr-auto">
 
                         </ul>
