@@ -858,7 +858,7 @@ var reportViewModel = function (options) {
 	self.barChartStacked = ko.observable();
 	self.DefaultPageSize = ko.observable();
 	self.FilterGroups = ko.observableArray();
-	self.PivotColumns = ko.observable
+	self.PivotColumns = ko.observable();
 	self.PivotColumnsWidth = ko.observable();
 	self.ReportColumns = ko.observable();
 	self.FilterGroups.subscribe(function (newArray) {
