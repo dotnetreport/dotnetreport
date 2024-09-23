@@ -4628,6 +4628,18 @@ var reportViewModel = function (options) {
 	}
 
 	self.downloadPdf = function () {
+		var reportData = self.BuildReportData();
+		reportData.DrillDownRowUsePlaceholders = true;
+		var pivotColumn = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' });
+		var pivotFunction = '';
+		if (pivotColumn) {
+			reportData.DrillDownRowUsePlaceholders = true;
+			var pivotColumnIndex = _.findIndex(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot'; });
+			if (pivotColumnIndex >= 0 && pivotColumnIndex < self.SelectedFields().length - 1) {
+				var nextValue = self.SelectedFields()[pivotColumnIndex + 1];
+				pivotFunction = nextValue.selectedAggregate();
+			}
+		}
 		self.downloadExport("DownloadPdf", {
 			reportId: self.ReportID(),
 			reportSql: self.currentSql(),
@@ -4638,7 +4650,10 @@ var reportViewModel = function (options) {
 			clientId: self.clientid || '',
 			userId: self.currentUserId || '',
 			userRoles: self.currentUserRole || '',
-			dataFilters: JSON.stringify(options.dataFilters)
+			dataFilters: JSON.stringify(options.dataFilters),
+			expandSqls: JSON.stringify(reportData),
+			pivotColumn: pivotColumn ? pivotColumn.fieldName : '',
+			pivotFunction: pivotColumn && pivotFunction ? pivotFunction : '',
 		}, 'pdf');
 	}
 

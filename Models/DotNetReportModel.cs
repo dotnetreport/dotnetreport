@@ -2276,7 +2276,7 @@ namespace ReportBuilder.Web.Models
             return text.Length * averageCharWidthInTwips;
         }
         public static async Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
-                    string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false)
+                    string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false,string expandSqls=null, string pivotColumn = null, string pivotFunction = null)
         {
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
             await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
@@ -2291,12 +2291,24 @@ namespace ReportBuilder.Web.Models
             var page = await browser.NewPageAsync();
             await page.SetRequestInterceptionAsync(true);
 
+            var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
+            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
             var data = GetDataTable(reportSql, connectKey);
 
             var qry = data.qry;
             var sqlFields = data.sqlFields;
             var dt = data.dt;
-
+            if (!string.IsNullOrEmpty(pivotColumn))
+            {
+                var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
+                dt = pd.dt;
+                if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
+                var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
+                sqlFields = sqlFields
+                    .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
+                    .ToList();
+                sqlFields.AddRange(dt.Columns.Cast<DataColumn>().Skip(sqlFields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
+            }
             var model = new DotNetReportResultModel
             {
                 ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dt, sqlFields, false),
