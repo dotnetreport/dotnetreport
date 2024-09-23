@@ -2451,12 +2451,27 @@ namespace ReportBuilder.Web.Models
                 }
             }
         }
-        public static byte[] GetCSVFile(string reportSql, string connectKey, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false)
+        public static async Task<byte[]> GetCSVFile(string reportSql, string connectKey, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, string expandSqls = null, string pivotColumn = null, string pivotFunction = null)
         {
             var data = GetDataTable(reportSql, connectKey);
             var dt = data.dt;
             var subTotals = new decimal[dt.Columns.Count];
-
+            var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
+            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+            var qry = data.qry;
+            var sqlFields = data.sqlFields;
+            if (!string.IsNullOrEmpty(pivotColumn))
+            {
+                var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
+                dt = pd.dt;
+                subTotals = new decimal[dt.Columns.Count];
+                if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
+                var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
+                sqlFields = sqlFields
+                    .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
+                    .ToList();
+                sqlFields.AddRange(dt.Columns.Cast<DataColumn>().Skip(sqlFields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
+            }
             //Build the CSV file data as a Comma separated string.
             string csv = string.Empty;
             for (int i = 0; i < dt.Columns.Count; i++)

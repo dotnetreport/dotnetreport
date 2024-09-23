@@ -4694,12 +4694,26 @@ var reportViewModel = function (options) {
 	}
 
 	self.downloadCsv = function () {
+		var reportData = self.BuildReportData();
+		var pivotColumn = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' });
+		var pivotFunction = '';
+		if (pivotColumn) {
+			reportData.DrillDownRowUsePlaceholders = true;
+			var pivotColumnIndex = _.findIndex(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot'; });
+			if (pivotColumnIndex >= 0 && pivotColumnIndex < self.SelectedFields().length - 1) {
+				var nextValue = self.SelectedFields()[pivotColumnIndex + 1];
+				pivotFunction = nextValue.selectedAggregate();
+			}
+		}
 		self.downloadExport("DownloadCsv", {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
 			columnDetails: self.getColumnDetails(),
-			includeSubTotal: self.IncludeSubTotal()
+			includeSubTotal: self.IncludeSubTotal(),
+			expandSqls: JSON.stringify(reportData),
+			pivotColumn: pivotColumn ? pivotColumn.fieldName : '',
+			pivotFunction: pivotColumn && pivotFunction ? pivotFunction : ''
 		}, 'csv');
 	}
 	self.downloadReportJson = function () {
