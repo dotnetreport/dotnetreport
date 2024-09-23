@@ -2395,12 +2395,26 @@ namespace ReportBuilder.Web.Models
         }
 
 
-        public static string GetXmlFile(string reportSql, string connectKey, string reportName)
+        public static async Task<string> GetXmlFile(string reportSql, string connectKey, string reportName, string expandSqls = null, string pivotColumn = null, string pivotFunction = null)
         {           
             var ds = new DataSet();
             var data = GetDataTable(reportSql, connectKey);
             var dt = data.dt;
-
+            var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
+            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+            var qry = data.qry;
+            var sqlFields = data.sqlFields;
+            if (!string.IsNullOrEmpty(pivotColumn))
+            {
+                var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
+                dt = pd.dt;
+                if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
+                var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
+                sqlFields = sqlFields
+                    .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
+                    .ToList();
+                sqlFields.AddRange(dt.Columns.Cast<DataColumn>().Skip(sqlFields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
+            }
             ds.Tables.Add(dt);
             ds.DataSetName = "data";
             foreach (DataColumn c in dt.Columns)

@@ -95,10 +95,10 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpPost]
-        public IActionResult DownloadXml(string reportSql, string connectKey, string reportName)
+        public async Task<IActionResult> DownloadXml(string reportSql, string connectKey, string reportName, string expandSqls= null, string pivotColumn = null, string pivotFunction = null)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            string xml = DotNetReportHelper.GetXmlFile(reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName));           
+            string xml = await DotNetReportHelper.GetXmlFile(reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName),expandSqls,pivotColumn,pivotFunction);           
             var data = System.Text.Encoding.UTF8.GetBytes(xml);
             Response.ContentType = "text/txt";
             return File(data, "text/txt", reportName + ".xml");
