@@ -261,11 +261,13 @@ namespace ReportBuilder.Web.Controllers
 
                     var dtPagedRun = new DataTable();
 
-                    totalRecords = databaseConnection.GetTotalRecords(connectionString, sqlCount, sql, qry.parameters);
-
                     if (!string.IsNullOrEmpty(pivotColumn))
                     {
                         sql = sql.Remove(sql.IndexOf("SELECT "), "SELECT ".Length).Insert(sql.IndexOf("SELECT "), "SELECT TOP 1 ");
+                    }
+                    else
+                    {
+                        totalRecords = databaseConnection.GetTotalRecords(connectionString, sqlCount, sql, qry.parameters);
                     }
 
                     dtPagedRun = databaseConnection.ExecuteQuery(connectionString, sql, qry.parameters);
@@ -281,17 +283,7 @@ namespace ReportBuilder.Web.Controllers
                     {
                         foreach (DataColumn c in dtPagedRun.Columns) { sqlFields.Add($"{c.ColumnName} AS {c.ColumnName}"); }
                     }
-                    if (!string.IsNullOrEmpty(pivotColumn) && subtotalMode)
-                    {
-                        var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dtPagedRun, sql, sqlFields, reportData, pivotColumn, pivotFunction, pageNumber, pageSize, sortBy, desc, true);
-                        dtPagedRun = pd.dt;
-                        pivotColumn = null;
-                        var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
-                        fields = fields
-                            .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
-                            .ToList();
-                        fields.AddRange(dtPagedRun.Columns.Cast<DataColumn>().Skip(fields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
-                    }
+                    
                     string[] series = { };
                     if (i == 0)
                     {
@@ -299,9 +291,10 @@ namespace ReportBuilder.Web.Controllers
 
                         if (!string.IsNullOrEmpty(pivotColumn))
                         {
-                            var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dtPagedRun, sql, sqlFields, reportData, pivotColumn, pivotFunction, pageNumber, pageSize, sortBy, desc);
+                            var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dtPagedRun, sql, sqlFields, reportData, pivotColumn, pivotFunction, pageNumber, pageSize, sortBy, desc, subtotalMode);
                             dtPagedRun = pd.dt; 
                             if (!string.IsNullOrEmpty(pd.sql)) sql = pd.sql;
+                            totalRecords =pd.totalRecords;
 
                             //var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dtPagedRun, sqlFields, reportData);
                             //dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn, pivotFunction, reportData);

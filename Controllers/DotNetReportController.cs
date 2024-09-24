@@ -103,10 +103,10 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpPost]
-        public ActionResult DownloadXml(string reportSql, string connectKey, string reportName)
+        public async Task<ActionResult> DownloadXml(string reportSql, string connectKey, string reportName, string expandSqls = null, string pivotColumn = null, string pivotFunction = null)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            var xml = DotNetReportHelper.GetXmlFile(reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName));
+            string xml = await DotNetReportHelper.GetXmlFile(reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName), expandSqls, pivotColumn, pivotFunction);
             Response.ClearContent();
 
             Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".xml");
@@ -119,11 +119,11 @@ namespace ReportBuilder.Web.Controllers
 
         [HttpPost]
         public async Task<ActionResult> DownloadPdf(string printUrl, int reportId, string reportSql, string connectKey, string reportName, bool expandAll,
-                                                                    string clientId = null, string userId = null, string userRoles = null, string dataFilters = "")
+                                                                    string clientId = null, string userId = null, string userRoles = null, string dataFilters = "", string expandSqls = null, string pivotColumn = null, string pivotFunction = null)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
             var pdf = await DotNetReportHelper.GetPdfFile(HttpUtility.UrlDecode(printUrl), reportId, reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName),
-                                                userId, clientId, userRoles, dataFilters, expandAll);
+                                                userId, clientId, userRoles, dataFilters, expandAll, expandSqls, pivotColumn, pivotFunction = null);
 
             return File(pdf, "application/pdf", reportName + ".pdf");
         }
@@ -161,11 +161,11 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpPost]
-        public ActionResult DownloadCsv(string reportSql, string connectKey, string reportName, string columnDetails = null, bool includeSubtotal = false)
+        public async Task<ActionResult> DownloadCsv(string reportSql, string connectKey, string reportName, string columnDetails = null, bool includeSubtotal = false, string expandSqls = null, string pivotColumn = null, string pivotFunction = null)
         {
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            var csv = DotNetReportHelper.GetCSVFile(reportSql, HttpUtility.UrlDecode(connectKey), columns, includeSubtotal);
+            var csv = await DotNetReportHelper.GetCSVFile(reportSql, HttpUtility.UrlDecode(connectKey), columns, includeSubtotal,expandSqls,pivotColumn,pivotFunction);
 
             Response.ClearContent();
             Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".csv");
