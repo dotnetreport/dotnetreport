@@ -130,7 +130,7 @@ namespace ReportBuilder.Web.Jobs
 
                                     case "CSV": 
                                         fileExt = ".csv";
-                                        fileData = DotNetReportHelper.GetCSVFile(reportToRun.ReportSql, reportToRun.ConnectKey);
+                                        fileData = await DotNetReportHelper.GetCSVFile(reportToRun.ReportSql, reportToRun.ConnectKey);
                                         break;
 
                                     case "WORD":

@@ -437,6 +437,7 @@ namespace ReportBuilder.Web.Models
                 var adapter = new SqlDataAdapter(command);
 
                 adapter.Fill(dt);
+                conn.Close();
             }
 
             return dt;
@@ -1070,13 +1071,13 @@ namespace ReportBuilder.Web.Models
             return dts;
         }
 
-        public async static Task<(DataTable dt, string sql)> GetPivotTable(IDatabaseConnection databaseConnection, string connectionString, DataTable dt, string sql, List<string> sqlFields, string reportDataJson, string pivotColumn, string pivotFunction, int pageNumber, int pageSize, string sortBy, bool desc, bool returnCount=false)
+        public async static Task<(DataTable dt, string sql, int totalRecords)> GetPivotTable(IDatabaseConnection databaseConnection, string connectionString, DataTable dt, string sql, List<string> sqlFields, string reportDataJson, string pivotColumn, string pivotFunction, int pageNumber, int pageSize, string sortBy, bool desc, bool returnSubtotal=false)
         {
             var pivotColumnOrder = GetPivotColumnOrder(reportDataJson);
             var dts = new DataTable();
             var drilldownRow = new List<string>();
             if (dt.Rows.Count == 0)
-                return (dts, "");
+                return (dts, "", 0);
 
             var dr = dt.Rows[0];
             int i = 0;
@@ -1084,20 +1085,20 @@ namespace ReportBuilder.Web.Models
             {
                 var col = sqlFields[i++]; //columns.FirstOrDefault(x => x.fieldName == dc.ColumnName) ?? new ReportHeaderColumn();
                 drilldownRow.Add($@"
-            {{
-                ""Value"":""{dr[dc]}"",
-                ""FormattedValue"":""{dr[dc]}"",
-                ""LabelValue"":""'{dr[dc]}'"",
-                ""NumericValue"":null,
-                ""Column"":{{
-                    ""SqlField"":""{col.Substring(0, col.LastIndexOf(" AS "))}"",
-                    ""ColumnName"":""{dc.ColumnName}"",
-                    ""DataType"":""{dc.DataType.ToString()}"",
-                    ""IsNumeric"":{(dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal" ? "true" : "false")},
-                    ""FormatType"":""""
-                }}
-            }}
-        ");
+                    {{
+                        ""Value"":""{dr[dc]}"",
+                        ""FormattedValue"":""{dr[dc]}"",
+                        ""LabelValue"":""'{dr[dc]}'"",
+                        ""NumericValue"":null,
+                        ""Column"":{{
+                            ""SqlField"":""{col.Substring(0, col.LastIndexOf(" AS "))}"",
+                            ""ColumnName"":""{dc.ColumnName}"",
+                            ""DataType"":""{dc.DataType.ToString()}"",
+                            ""IsNumeric"":{(dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal" ? "true" : "false")},
+                            ""FormatType"":""""
+                        }}
+                    }}
+                ");
             }
 
             var reportData = reportDataJson.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
@@ -1108,7 +1109,7 @@ namespace ReportBuilder.Web.Models
                 var lastWhereIndex = drilldownSql.LastIndexOf("WHERE");
                 var baseQuery = drilldownSql.Substring(0, lastWhereIndex) + " " + GetWhereClause(sql);
 
-                var baseDataTable = databaseConnection.ExecuteQuery(connectionString, baseQuery.Replace("SELECT ", "SELECT DISTINCT "));
+                var baseDataTable = databaseConnection.ExecuteQuery(connectionString, baseQuery.Replace("SELECT ", "SELECT "));
                 var distinctValues = baseDataTable
                     .AsEnumerable()
                     .Select(row => "[" + row.Field<string>(pivotColumn)?.Trim() + "]")
@@ -1122,42 +1123,46 @@ namespace ReportBuilder.Web.Models
                 var validFunctions = new[] { "Sum", "Count", "Avg" };
                 pivotFunction = validFunctions.Contains(pivotFunction) ? pivotFunction : "Max";
 
-                if (returnCount)
+                if (returnSubtotal)
                 {
                     var sqlQryforCount = $@"
-                SELECT 
-                    {string.Join(", ", distinctValues.Select(v => $"SUM(COALESCE({v}, 0)) AS {v}"))}
-                FROM (
-                    {baseQuery}
-                ) src
-                PIVOT (
-                    COUNT([{nextColumnName}]) 
-                    FOR [{pivotColumn}] IN ({string.Join(", ", distinctValues)})
-                ) AS pvt;";
+                        SELECT 
+                            {string.Join(", ", distinctValues.Select(v => $"SUM(COALESCE({v}, 0)) AS {v}"))}
+                        FROM (
+                            {baseQuery}
+                        ) src
+                        PIVOT (
+                            COUNT([{nextColumnName}]) 
+                            FOR [{pivotColumn}] IN ({string.Join(", ", distinctValues)})
+                        ) AS pvt;";
 
                     var countdata = databaseConnection.ExecuteQuery(connectionString, sqlQryforCount);
-                    return (countdata, sqlQryforCount);
+                    return (countdata, sqlQryforCount, 1);
                 }
                 else
                 {
                     var sqlQry = $@"
-                SELECT * FROM (
-                    {baseQuery}
-                ) src
-                PIVOT (
-                    {pivotFunction} ([{nextColumnName}])
-                    FOR [{pivotColumn}] IN ({string.Join(", ", distinctValues)})
-                ) AS pvt
-                ORDER BY {(string.IsNullOrEmpty(sortBy) ? "1" : sortBy) + (desc ? " DESC" : "")} 
-                                   OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY
-                                    ";
+                        SELECT * FROM (
+                            {baseQuery}
+                        ) src
+                        PIVOT (
+                            {pivotFunction} ([{nextColumnName}])
+                            FOR [{pivotColumn}] IN ({string.Join(", ", distinctValues)})
+                        ) AS pvt
+                        ";
 
+                    var sqlCount = $"SELECT COUNT(*) FROM ({sqlQry}) as countQry";
+                    var totalRecords = databaseConnection.GetTotalRecords(connectionString, sqlCount, sql);
+
+                    sqlQry = sqlQry + "\r\n" +
+                        $" ORDER BY {(string.IsNullOrEmpty(sortBy) ? "1" : "1" /*sortBy*/) + (desc ? " DESC" : "")} \r\n" +                     
+                        $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
                     dts = databaseConnection.ExecuteQuery(connectionString, sqlQry);
-                    return (dts, sqlQry);
+                    return (dts, sqlQry, totalRecords);
                 }
             }
 
-            return (dts, "");
+            return (dts, "", 0);
         }
 
         public async static Task<DataSet> GetDrillDownDataAlternate(IDatabaseConnection databaseConnection, string connectionString, DataTable dt, List<string> sqlFields, string reportDataJson)
@@ -2276,7 +2281,7 @@ namespace ReportBuilder.Web.Models
             return text.Length * averageCharWidthInTwips;
         }
         public static async Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
-                    string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false)
+                    string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false,string expandSqls=null, string pivotColumn = null, string pivotFunction = null)
         {
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
             await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
@@ -2291,12 +2296,24 @@ namespace ReportBuilder.Web.Models
             var page = await browser.NewPageAsync();
             await page.SetRequestInterceptionAsync(true);
 
+            var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
+            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
             var data = GetDataTable(reportSql, connectKey);
 
             var qry = data.qry;
             var sqlFields = data.sqlFields;
             var dt = data.dt;
-
+            if (!string.IsNullOrEmpty(pivotColumn))
+            {
+                var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
+                dt = pd.dt;
+                if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
+                var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
+                sqlFields = sqlFields
+                    .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
+                    .ToList();
+                sqlFields.AddRange(dt.Columns.Cast<DataColumn>().Skip(sqlFields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
+            }
             var model = new DotNetReportResultModel
             {
                 ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dt, sqlFields, false),
@@ -2383,12 +2400,26 @@ namespace ReportBuilder.Web.Models
         }
 
 
-        public static string GetXmlFile(string reportSql, string connectKey, string reportName)
+        public static async Task<string> GetXmlFile(string reportSql, string connectKey, string reportName, string expandSqls = null, string pivotColumn = null, string pivotFunction = null)
         {           
             var ds = new DataSet();
             var data = GetDataTable(reportSql, connectKey);
             var dt = data.dt;
-
+            var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
+            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+            var qry = data.qry;
+            var sqlFields = data.sqlFields;
+            if (!string.IsNullOrEmpty(pivotColumn))
+            {
+                var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
+                dt = pd.dt;
+                if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
+                var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
+                sqlFields = sqlFields
+                    .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
+                    .ToList();
+                sqlFields.AddRange(dt.Columns.Cast<DataColumn>().Skip(sqlFields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
+            }
             ds.Tables.Add(dt);
             ds.DataSetName = "data";
             foreach (DataColumn c in dt.Columns)
@@ -2439,12 +2470,27 @@ namespace ReportBuilder.Web.Models
                 }
             }
         }
-        public static byte[] GetCSVFile(string reportSql, string connectKey, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false)
+        public static async Task<byte[]> GetCSVFile(string reportSql, string connectKey, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, string expandSqls = null, string pivotColumn = null, string pivotFunction = null)
         {
             var data = GetDataTable(reportSql, connectKey);
             var dt = data.dt;
             var subTotals = new decimal[dt.Columns.Count];
-
+            var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
+            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+            var qry = data.qry;
+            var sqlFields = data.sqlFields;
+            if (!string.IsNullOrEmpty(pivotColumn))
+            {
+                var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
+                dt = pd.dt;
+                subTotals = new decimal[dt.Columns.Count];
+                if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
+                var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
+                sqlFields = sqlFields
+                    .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
+                    .ToList();
+                sqlFields.AddRange(dt.Columns.Cast<DataColumn>().Skip(sqlFields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
+            }
             //Build the CSV file data as a Comma separated string.
             string csv = string.Empty;
             for (int i = 0; i < dt.Columns.Count; i++)
@@ -2902,6 +2948,8 @@ namespace ReportBuilder.Web.Models
                         if (!sql.StartsWith("EXEC")) totalRecords = Math.Max(totalRecords, (int)command.ExecuteScalar());
 
                     }
+
+                    conn.Close();
                 }
             }
             catch (Exception ex)
@@ -2925,6 +2973,7 @@ namespace ReportBuilder.Web.Models
 
                     using (SqlCommand command = new SqlCommand(sql, conn))
                     {
+                        command.CommandTimeout = 60 * 5;
                         if (parameters != null)
                         {
                             if (sql.StartsWith("EXEC "))
@@ -2939,6 +2988,8 @@ namespace ReportBuilder.Web.Models
                             adapter.Fill(dataTable);
                         }
                     }
+
+                    conn.Close();
                 }
             }
             catch (Exception ex)
@@ -3025,6 +3076,8 @@ namespace ReportBuilder.Web.Models
                         if (!sql.StartsWith("EXEC"))
                             totalRecords = (int)command.ExecuteScalar();
                     }
+
+                    conn.Close();
                 }
             }
             catch (Exception ex)
@@ -3057,6 +3110,8 @@ namespace ReportBuilder.Web.Models
                             adapter.Fill(dataTable);
                         }
                     }
+
+                    conn.Close();
                 }
             }
             catch (Exception ex)
@@ -3143,6 +3198,8 @@ namespace ReportBuilder.Web.Models
                         if (!sql.StartsWith("EXEC"))
                             totalRecords = (int)command.ExecuteScalar();
                     }
+
+                    conn.Close();
                 }
             }
             catch (Exception ex)
@@ -3175,6 +3232,8 @@ namespace ReportBuilder.Web.Models
                             adapter.Fill(dataTable);
                         }
                     }
+
+                    conn.Close();
                 }
             }
             catch (Exception ex)
@@ -3266,6 +3325,8 @@ namespace ReportBuilder.Web.Models
                         if (!sql.StartsWith("EXEC"))
                             totalRecords = (int)command.ExecuteScalar();
                     }
+
+                    conn.Close();
                 }
             }
             catch (Exception ex)
@@ -3298,6 +3359,8 @@ namespace ReportBuilder.Web.Models
                             adapter.Fill(dataTable);
                         }
                     }
+
+                    conn.Close();
                 }
             }
             catch (Exception ex)
