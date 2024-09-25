@@ -3740,11 +3740,13 @@ var reportViewModel = function (options) {
 		}
 		function retrieveDimensions() {
 			var storedDimensions = localStorage.getItem('chart_dimensions_' + self.ReportID());
+			var chartElement = document.getElementById('chart_div_' + self.ReportID());
+			var parentElementHeight = document.getElementById('chart_div_' + self.ReportID()).parentElement.parentElement.parentElement.offsetHeight;
 			if (storedDimensions) {
 				var dimensions = JSON.parse(storedDimensions);
 				if (options.arrangeDashboard && !self.isExpanded()) {
 					chartOptions.width = dimensions.width || '100%';
-					chartOptions.height = dimensions.height || '450px';
+					chartOptions.height = !self.ShowDataWithGraph() ? parentElementHeight - 10 + 'px' : dimensions.height || '450px';
 				} else {
 					chartOptions.width = dimensions.fullWidth || '100%';
 					chartOptions.height = dimensions.fullHeight || '450px';
@@ -3752,8 +3754,10 @@ var reportViewModel = function (options) {
 			}
 			else {
 				chartOptions.width = '100%';
-				chartOptions.height = '450px';
+				chartOptions.height = !self.ShowDataWithGraph() ? parentElementHeight - 10 + 'px' : dimensions.height || '450px';
 			}
+			// Apply the calculated height to the chart container directly (optional)
+			chartElement.style.height = chartOptions.height;
 		}
 		// Call retrieveDimensions to load saved dimensions when the chart is initialized
 		retrieveDimensions();
