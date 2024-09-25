@@ -3572,7 +3572,7 @@ var reportViewModel = function (options) {
 				easing: 'out'
 			},
 		};
-		var prefixFormat = reportData.Columns[1].currencyFormat ? reportData.Columns[1].currencyFormat() : null;
+		var prefixFormat = reportData?.Columns[1]?.currencyFormat ? reportData?.Columns[1]?.currencyFormat() : null;
 		if (prefixFormat != null && prefixFormat != "") {
 			var formatter = new google.visualization.NumberFormat({
 				prefix: prefixFormat
