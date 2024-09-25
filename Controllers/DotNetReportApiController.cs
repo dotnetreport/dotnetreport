@@ -180,9 +180,9 @@ namespace ReportBuilder.Web.Controllers
         [AllowAnonymous]
         [HttpPost]
         public async Task<JsonResult> RunReportUnAuth(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, 
-            bool desc = false, string reportSeries = null, string pivotColumn = null, string pivotFunction = null, string reportData = null)
+            bool desc = false, string reportSeries = null, string pivotColumn = null, string pivotFunction = null, string reportData = null, bool subtotalMode = false)
         {
-            return await RunReport(reportSql, connectKey, reportType, pageNumber, pageSize, sortBy, desc, reportSeries, pivotColumn, pivotFunction, reportData);
+            return await RunReport(reportSql, connectKey, reportType, pageNumber, pageSize, sortBy, desc, reportSeries, pivotColumn, pivotFunction, reportData, subtotalMode);
         }
 
         public class SqlQuery
@@ -194,7 +194,7 @@ namespace ReportBuilder.Web.Controllers
         [ValidateAntiForgeryToken]
         [HttpPost]
         public async Task<JsonResult> RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, 
-            bool desc = false, string reportSeries = null, string pivotColumn = null, string pivotFunction = null, string reportData = null)
+            bool desc = false, string reportSeries = null, string pivotColumn = null, string pivotFunction = null, string reportData = null, bool subtotalMode = false)
         {
             var sql = "";
             var sqlCount = "";
@@ -261,11 +261,13 @@ namespace ReportBuilder.Web.Controllers
 
                     var dtPagedRun = new DataTable();
 
-                    totalRecords = databaseConnection.GetTotalRecords(connectionString, sqlCount, sql, qry.parameters);
-
                     if (!string.IsNullOrEmpty(pivotColumn))
                     {
                         sql = sql.Remove(sql.IndexOf("SELECT "), "SELECT ".Length).Insert(sql.IndexOf("SELECT "), "SELECT TOP 1 ");
+                    }
+                    else
+                    {
+                        totalRecords = databaseConnection.GetTotalRecords(connectionString, sqlCount, sql, qry.parameters);
                     }
 
                     dtPagedRun = databaseConnection.ExecuteQuery(connectionString, sql, qry.parameters);
@@ -281,7 +283,7 @@ namespace ReportBuilder.Web.Controllers
                     {
                         foreach (DataColumn c in dtPagedRun.Columns) { sqlFields.Add($"{c.ColumnName} AS {c.ColumnName}"); }
                     }
-
+                    
                     string[] series = { };
                     if (i == 0)
                     {
@@ -289,9 +291,10 @@ namespace ReportBuilder.Web.Controllers
 
                         if (!string.IsNullOrEmpty(pivotColumn))
                         {
-                            var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dtPagedRun, sql, sqlFields, reportData, pivotColumn, pivotFunction, pageNumber, pageSize, sortBy, desc);
+                            var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dtPagedRun, sql, sqlFields, reportData, pivotColumn, pivotFunction, pageNumber, pageSize, sortBy, desc, subtotalMode);
                             dtPagedRun = pd.dt; 
                             if (!string.IsNullOrEmpty(pd.sql)) sql = pd.sql;
+                            totalRecords =pd.totalRecords;
 
                             //var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dtPagedRun, sqlFields, reportData);
                             //dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn, pivotFunction, reportData);
