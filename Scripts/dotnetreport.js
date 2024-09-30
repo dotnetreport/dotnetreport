@@ -1,4 +1,4 @@
-﻿/// dotnet Report Builder view model v5.3.0
+﻿/// dotnet Report Builder view model v5.4.5
 /// License must be purchased for commercial use
 /// 2024 (c) www.dotnetreport.com
 
@@ -8,6 +8,7 @@ function formulaFieldViewModel(args) {
 
 	self.tableId = ko.observable(args.tableId);
 	self.fieldId = ko.observable(args.fieldId);
+	self.uiId = generateUniqueId();
 	self.isParenthesesStart = ko.observable(args.isParenthesesStart);
 	self.isParenthesesEnd = ko.observable(args.isParenthesesEnd);
 	self.formulaOperation = ko.observable(args.formulaOperation);
@@ -66,7 +67,8 @@ function linkFieldViewModel(args, options) {
 					self.allFields(_.map(report.SelectedParameters, function (x) {
 						return {
 							fieldId: x.ParameterId,
-							fieldName: x.ParameterName
+							fieldName: x.ParameterName,
+							uiId: generateUniqueId()
 						}
 					}));
 				}
@@ -856,6 +858,9 @@ var reportViewModel = function (options) {
 	self.barChartStacked = ko.observable();
 	self.DefaultPageSize = ko.observable();
 	self.FilterGroups = ko.observableArray();
+	self.PivotColumns = ko.observable();
+	self.PivotColumnsWidth = ko.observable();
+	self.ReportColumns = ko.observable();
 	self.FilterGroups.subscribe(function (newArray) {
 		if (newArray && newArray.length == 0) {
 			self.FilterGroups.push(new filterGroupViewModel({ isRoot: true, parent: self, options: options }));
@@ -1286,7 +1291,7 @@ var reportViewModel = function (options) {
 				options.reportWizard.modal('hide');
 
 				if (self.ReportMode() == 'dashboard') {
-					report.SaveReport(false);
+					//report.SaveReport(false);
 					return;
 				}
 				self.ReportMode("start");
@@ -1295,13 +1300,16 @@ var reportViewModel = function (options) {
 		});
 	};
 
-	self.FlyFilters = ko.computed(function () {
+	self.FlyFilters = ko.observableArray([]); 
+
+	self.setFlyFilters = function () {
 		var flyfilters = [];
 		_.forEach(self.FilterGroups(), function (e) {
-			_.forEach(e.Filters(), function (x) { if (x.IsFilterOnFly) flyfilters.push(x); });
+			_.forEach(e.Filters(), function (x) { if (x.Field().filterOnFly()) flyfilters.push(x); });
 		});
-		return flyfilters;
-	});
+
+		self.FlyFilters(flyfilters);
+	}
 
 	self.enabledFields = ko.computed(function () {
 		return _.filter(self.SelectedFields(), function (x) { return !x.disabled(); });
@@ -1401,6 +1409,97 @@ var reportViewModel = function (options) {
 		}
 	};
 
+	self.ManageJsonFile = {
+		file: ko.observable(null),
+		fileName: ko.observable(''),
+		triggerFileInput: function () {
+			$('#fileInputJson').click();
+		},
+		handleFileSelect: function (data, event) {
+			var selectedFile = event.target.files[0];
+			if (selectedFile && (selectedFile.type === "application/json" || selectedFile.name.endsWith('.json'))) {
+				self.ManageJsonFile.file(selectedFile);
+				self.ManageJsonFile.fileName(selectedFile.name);
+			} else {
+				self.ManageJsonFile.file(null);
+				self.ManageJsonFile.fileName('');
+				toastr.error('Only JSON files are allowed.');
+			}
+		},
+		uploadFile: function () {
+			var file = self.ManageJsonFile.file();
+			if (file != null) {
+				var reader = new FileReader();
+				reader.onload = function (event) {
+					try {
+						var report = JSON.parse(event.target.result);
+						var reportName = report.ReportName;
+						var reportId = report.ReportID;
+						var reportExists = _.some(self.SavedReports(), function (report) {
+							return report.reportName === reportName && report.reportId === reportId;
+						});
+						if (reportExists) {
+							handleOverwriteConfirmation(reportName, function (action) {
+								if (action === 'overwrite') {
+									self.RunReport(true, true, false, report);
+								} else if (action === 'duplicate') {
+									report.ReportID = 0;
+									report.ReportName = `Copy of ${reportName}`;
+									self.RunReport(true, true, false, report);
+								} else {
+									toastr.info('Upload canceled.');
+								}
+							});
+							$('#uploadFileModal').modal('hide');
+						} else {
+							report.ReportID = 0;
+							self.RunReport(true, true, false, report);
+							$('#uploadFileModal').modal('hide');
+						}
+						self.ManageJsonFile.file(null);
+						self.ManageJsonFile.fileName('');
+					} catch (e) {
+						toastr.error('Invalid JSON file.'+ e);
+					}
+				};
+				reader.onerror = function (event) {
+					toastr.error('Error reading file.');
+				};
+				reader.readAsText(file); // Read the file as text
+				function handleOverwriteConfirmation(reportName, callback) {
+					bootbox.dialog({
+						title: "Confirm Action",
+						message: `A report with the name "${reportName}" already exists. What would you like to do?`,
+						buttons: {
+							cancel: {
+								label: 'Cancel',
+								className: 'btn-secondary',
+								callback: function () {
+									callback('cancel');
+								}
+							},
+							duplicate: {
+								label: 'Make Copy',
+								className: 'btn-warning',
+								callback: function () {
+									callback('duplicate');
+								}
+							},
+							overwrite: {
+								label: 'Overwrite',
+								className: 'btn-primary',
+								callback: function () {
+									callback('overwrite');
+								}
+							}
+						}
+					});
+				}
+			} else {
+				toastr.error('No JSON file selected for upload.');
+			}
+		}
+	}; 
 	self.reportsInFolder = ko.computed(function () {
 		if (self.SelectedFolder() == null) {
 			return [];
@@ -1491,49 +1590,6 @@ var reportViewModel = function (options) {
 					}));
 				}
 			});
-		}
-	});
-	self.reportsInSearchCompute = ko.computed(function () {
-		var searchReports = self.searchReports();
-		var searchFieldId = self.searchFieldsInReport.selectedOption();
-
-		if (!searchReports) {
-			$('.select2-selection__placeholder').text('Search for text or select a field');
-			$('#search-report').val([]).trigger('change');
-		}
-
-		if (!searchReports && !searchFieldId) {
-			self.reportsInSearch([]);
-			return;
-		}
-
-		if (searchFieldId) {
-			ajaxcall({
-				url: options.apiUrl,
-				data: {
-					method: "/ReportApi/FindReportsByFieldId",
-					model: JSON.stringify({
-						fieldId: parseInt(searchFieldId),
-					})
-				}
-			}).done(function (reports) {
-				if (reports.d) { reports = reports.d; }
-				if (reports.length == 0) {
-					self.reportsInSearch([]);
-				}
-				else {
-					var foundReportIds = _.map(reports, function (x) { return x.reportId });
-					self.reportsInSearch(_.filter(self.SavedReports(), function (x) {
-						return foundReportIds.indexOf(x.reportId) >= 0;
-					}));
-				}
-			});
-
-		}
-		else {
-			self.reportsInSearch(_.filter(self.SavedReports(), function (x) {
-				return x.reportName.toLowerCase().indexOf(searchReports.toLowerCase()) >= 0 || x.reportDescription.toLowerCase().indexOf(searchReports.toLowerCase()) >= 0;
-			}));
 		}
 	});
 
@@ -1630,6 +1686,7 @@ var reportViewModel = function (options) {
 			}
 
 			e.Field = {
+				fieldId: e.Id,
 				hasForeignKey: e.ForeignKey,
 				fieldType: e.ParameterDataTypeString,
 				hasForeignParentKey: false,
@@ -1823,7 +1880,7 @@ var reportViewModel = function (options) {
 	self.formulaDataFormat = ko.observable('')
 	self.formulaDecimalPlaces = ko.observable();
 	self.selectedFunction = ko.observable();
-
+	self.currentFormulaField = ko.observable(null);
 	var codeEditor;
 	self.designFunctionField = function () {
 		if (self.isFunctionField()) {
@@ -1934,7 +1991,13 @@ var reportViewModel = function (options) {
 	self.isFormulaField.subscribe(function () {
 		self.clearFormulaField();
 	});
-
+	self.cancelFormulaField = function () {
+		self.isFormulaField(!self.isFormulaField());
+		if (self.currentFormulaField() != null) {
+			self.SelectedFields.push(self.currentFormulaField());
+			self.currentFormulaField(null);
+		}
+	};
 	self.removeField = function (field) {
 		bootbox.confirm("Are you sure you would like to remove this field?", function (r) {
 			if (r) {
@@ -2047,7 +2110,7 @@ var reportViewModel = function (options) {
 				});
 			}
 		}
-
+		self.currentFormulaField(field)
 		self.SelectedFields.remove(field);
 	}
 
@@ -2436,6 +2499,14 @@ var reportViewModel = function (options) {
 				barChartStacked: self.barChartStacked(),
 				barChartHorizontal: self.barChartHorizontal(),
 				DefaultPageSize: self.DefaultPageSize() || 30,
+				PivotColumns: self.PivotColumns(),
+				PivotColumnsWidth: _.map(self.ReportColumns(), function (column) {
+					return {
+						IsPivotField: column.IsPivotField,
+						FieldName: column.fieldName,
+						FieldWidth:column.fieldWidth()
+					};
+				})
 			}),
 			OnlyTop: self.maxRecords() ? self.OnlyTop() : null,
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : self.AggregateReport(),
@@ -2484,8 +2555,10 @@ var reportViewModel = function (options) {
 						customDateFormat: x.customDateFormat(),
 						currencyFormat: x.currencyFormat(),
 						fieldLabel2: x.fieldLabel2(),
+						drillDataFormat: x.drillDataFormat(),
 						functionConfig: x.functionConfig
 					}),
+					DrillDataFormat: x.drillDataFormat(),
 					FieldAlign: x.fieldAlign(),
 					FontColor: x.fontColor(),
 					BackColor: x.backColor(),
@@ -2583,19 +2656,25 @@ var reportViewModel = function (options) {
 		self.RunReport(false);
 	}
 
-	self.RunReport = function (saveOnly, skipValidation, dashboardRun) {
-
+	self.RunReport = function (saveOnly, skipValidation, dashboardRun,importJson) {
+		self.ReportResult().HasError(false);
 		saveOnly = saveOnly === true ? true : false;
 		skipValidation = skipValidation === true ? true : false;
+		self.setFlyFilters();
 
 		self.TotalSeries(self.AdditionalSeries().length);
 		if (self.TotalSeries() > 0) self.ReportMode('start');
 
 		if (self.ReportType() == 'Single') {
 			if (self.enabledFields().length != 1) {
-				toastr.error("All fields except one must be hidden for Single Value Report");
+				toastr.error("All fields except one must be hidden for Widget type report");
 				return;
 			}
+		}
+
+		if (_.filter(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' }).length > 1) {
+			toastr.error("Select only one field for Pivot.");
+			return;
 		}
 
 		if (!skipValidation && !self.validateReport()) {
@@ -2624,7 +2703,7 @@ var reportViewModel = function (options) {
 						data: JSON.stringify({
 							method: "/ReportApi/RunReport",
 							SaveReport: self.CanSaveReports() && !isComparison ? (saveOnly || self.SaveReport()) : false,
-							ReportJson: JSON.stringify(self.BuildReportData([], isComparison, i - 1)),
+							ReportJson: importJson ? JSON.stringify(importJson) : JSON.stringify(self.BuildReportData([], isComparison, i - 1)),
 							adminMode: self.adminMode(),
 							userIdForFilter: self.userIdForFilter,
 							SubTotalMode: false
@@ -2665,7 +2744,6 @@ var reportViewModel = function (options) {
 						if (saveOnly) {
 							return;
 						}
-
 						if (self.ReportMode().indexOf('export-') == 0) {
 
 							self.ReportID(_result.reportId);
@@ -2682,12 +2760,14 @@ var reportViewModel = function (options) {
 									self.downloadExcelWithDrilldown(); break;
 								case 'export-csv':
 									self.downloadCsv(); break;
+								case 'export-json':
+									self.downloadReportJson(); break;
 							}
 
 							self.ReportMode('start');
 							return;
 						}
-
+						self.LoadAllSavedReports(true);
 				if (options.samePageOnRun || dashboardRun) {
 					self.ReportID(_result.reportId);
 					self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, _.map(self.AdditionalSeries(), function (e, i) {
@@ -2795,7 +2875,8 @@ var reportViewModel = function (options) {
 				col.currencySymbol = col.currencyFormat ? col.currencyFormat() : null;
 				col.decimalPlacesDigit = col.decimalPlaces ? col.decimalPlaces() : null;
 				col.fieldFormating = col.fieldFormat ? col.fieldFormat() : null;
-				if (skipColDetails !== true) self.columnDetails.push(col);
+				col.IsPivotField = e.IsPivotField ;
+				if (skipColDetails !== true) self.columnDetails.push(ko.toJS(col));
 
 				e.decimalPlaces = col.decimalPlaces || ko.observable();
 				e.currencyFormat = col.currencyFormat || ko.observable();
@@ -2808,8 +2889,18 @@ var reportViewModel = function (options) {
 				e.fieldFormat = col.fieldFormat || ko.observable();
 				e.fieldLabel = col.fieldLabel || ko.observable();
 				e.fieldName = e.ColumnName || col.fieldName;
-				e.fieldWidth = col.fieldWidth || ko.observable();
+				e.fieldWidth = ko.computed(function () {
+					var foundColumn = self.PivotColumnsWidth()?.find(function (col) {
+						return col.FieldName === e.fieldName && col.IsPivotField === true;
+					});
+					if (foundColumn && foundColumn.FieldWidth) {
+						return ko.observable(foundColumn.FieldWidth);
+					} else {
+						return col.fieldWidth || ko.observable(); 
+					}
+				})();
 				e.fontBold = col.fontBold || ko.observable();
+				e.drillDataFormat = col.drillDataFormat || ko.observable();
 				e.headerFontBold = col.headerFontBold || ko.observable();
 				e.headerFontColor = col.headerFontColor || ko.observable();
 				e.headerBackColor = col.headerBackColor || ko.observable();
@@ -3079,7 +3170,7 @@ var reportViewModel = function (options) {
 
 			});
 		}
-
+		self.ReportColumns(result.ReportData.Columns);
 		processCols(result.ReportData.Columns);
 		if (self.useStoredProc()) {
 			result.ReportData.Columns = _.filter(result.ReportData.Columns, function (x) { return x.hideStoredProcColumn == false; });
@@ -3128,7 +3219,7 @@ var reportViewModel = function (options) {
 						e.isExpanded(false);
 						return;
 					}
-
+					self.ReportColumns(ddData.ReportData.Columns);
 					processCols(ddData.ReportData.Columns, true);
 					_.forEach(ddData.ReportData.Rows, function (dr) {
 						processRow(dr.Items, ddData.ReportData.Columns);
@@ -3212,8 +3303,32 @@ var reportViewModel = function (options) {
 			}
 			processRow(e.Items, result.ReportData.Columns);
 		});
+		function renderTable(data) {
+			const tableBody = document.getElementById('report-table-body' + self.ReportID());
+			if (tableBody) {
+				let rowsHTML = '';
+
+				data.forEach(row => {
+					rowsHTML += '<tr>';
+					row.Items.forEach(item => {
+						rowsHTML +=
+							`<td>
+							${item.FormattedValue}
+						</td>`;
+					});
+					rowsHTML += '</tr>';
+				});
+
+				// Replace the table body content in one go
+				tableBody.innerHTML = rowsHTML ? rowsHTML : '<tr><td>No records found</td></tr>';
+			}
+		}
 
 		reportResult.ReportData(result.ReportData);
+
+		if (self.ReportType() == 'List' || self.ShowExpandOption() || self.hasPivotColumn()) {
+			renderTable(result.ReportData.Rows);
+		}
 
 		self.pager.totalRecords(result.Pager.TotalRecords);
 		self.pager.pages(result.Pager.TotalPages);
@@ -3248,6 +3363,8 @@ var reportViewModel = function (options) {
 			}).done(function (subtotalsqlResult) {
 				if (subtotalsqlResult.d) { subtotalsqlResult = subtotalsqlResult.d; }
 				if (subtotalsqlResult.result) { subtotalsqlResult = subtotalsqlResult.result; }
+				var pivotData = self.preparePivotData();
+				var reportData = pivotData.pivotColumn != null ? self.BuildReportData() : '';
 				ajaxcall({
 					url: options.execReportUrl,
 					type: "POST",
@@ -3260,15 +3377,15 @@ var reportViewModel = function (options) {
 						sortBy: '',
 						desc: false,
 						reportSeries: '',
-						reportData: '',
-						pivotColumn: '',
-						pivotFunction: ''
+						reportData: pivotData.pivotColumn ? JSON.stringify(reportData) : '',
+						SubTotalMode: pivotData.pivotColumn ? true : false,
+						pivotColumn: pivotData.pivotColumn,
+						pivotFunction: pivotData.pivotFunction,
 					}),
 					noBlocking: self.ReportMode() == 'dashboard'
 				}).done(function (subtotalResult) {
 					if (subtotalResult.d) { subtotalResult = subtotalResult.d; }
 					if (subtotalResult.result) { subtotalResult = subtotalResult.result }
-
 					processCols(subtotalResult.ReportData.Columns, true);
 					_.forEach(subtotalResult.ReportData.Rows, function (dr) {
 						processRow(dr.Items, subtotalResult.ReportData.Columns);
@@ -3283,6 +3400,10 @@ var reportViewModel = function (options) {
 			self.allowTableResize();
 		}, 2000);
 	}
+
+	self.hasPivotColumn = ko.computed(function () {
+		return _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' }) != null;
+	});
 
 	self.executingReport = false;
 	self.ExecuteReport = function () {
@@ -3305,18 +3426,8 @@ var reportViewModel = function (options) {
 				}
 			}, options.samePageOnRun ? 1000 : 500);
 		}
-		var pivotColumn = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' });
-		var reportData = pivotColumn != null ? self.BuildReportData() : '';
-		var pivotFunction = '';
-
-		if (pivotColumn) {
-			reportData.DrillDownRowUsePlaceholders = true;
-			var pivotColumnIndex = _.findIndex(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot'; });
-			if (pivotColumnIndex >= 0 && pivotColumnIndex < self.SelectedFields().length - 1) {
-				var nextValue = self.SelectedFields()[pivotColumnIndex + 1];
-				pivotFunction = nextValue.selectedAggregate();
-			}
-		}
+		var pivotData = self.preparePivotData();
+		var reportData = pivotData.pivotColumn != null ? self.BuildReportData() : '';
 		if (!isPageSizeClick) self.pager.pageSize(self.DefaultPageSize());
 		return ajaxcall({
 			url: options.execReportUrl,
@@ -3330,9 +3441,9 @@ var reportViewModel = function (options) {
 				sortBy: self.pager.sortColumn() || '',
 				desc: self.pager.sortDescending() || false,
 				reportSeries: reportSeries || "",
-				pivotColumn: pivotColumn ? pivotColumn.fieldName : '',
-				pivotFunction: pivotColumn && pivotFunction ? pivotFunction : '',
-				reportData: pivotColumn ? JSON.stringify(reportData) : ''
+				pivotColumn: pivotData.pivotColumn,
+				pivotFunction: pivotData.pivotFunction,
+				reportData: pivotData.pivotColumn ? JSON.stringify(reportData) : ''
 			}),
 			noBlocking: self.ReportMode() == 'dashboard'
 		}).done(function (result) {
@@ -3465,9 +3576,16 @@ var reportViewModel = function (options) {
 				startup: true,
 				duration: 1000,
 				easing: 'out'
-			}
+			},
 		};
-
+		var prefixFormat = reportData.Columns[1].currencyFormat ? reportData.Columns[1].currencyFormat() : null;
+		if (prefixFormat != null && prefixFormat != "") {
+			var formatter = new google.visualization.NumberFormat({
+				prefix: prefixFormat
+			});
+			formatter.format(data, 1);
+			chartOptions.vAxis = { format: `${prefixFormat}#` }
+		}
 		if (options.chartSize) {
 			chartOptions.width = options.chartSize.width;
 			chartOptions.height = options.chartSize.height;
@@ -3478,7 +3596,6 @@ var reportViewModel = function (options) {
 			chartOptions.backgroundColor = self.colorScheme()[0], // Set the background color here
 				chartOptions.chartArea = { backgroundColor: self.colorScheme()[0] }
 		}
-
 		var chartDiv = document.getElementById('chart_div_' + self.ReportID());
 		var chart = null;
 		if (!chartDiv) return;
@@ -3587,6 +3704,8 @@ var reportViewModel = function (options) {
 				}
 			});
 		}
+
+		var chartWidth; var chartHeight;
 		function handlePointerDown(event) {
 			if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
 			event.preventDefault(); // Prevent default browser behavior
@@ -3719,6 +3838,7 @@ var reportViewModel = function (options) {
 		e.dateFormat = ko.observable(e.fieldSettings.dateFormat || '');
 		e.customDateFormat = ko.observable(e.fieldSettings.customDateFormat || '');
 		e.fieldLabel2 = ko.observable(e.fieldSettings.fieldLabel2 || '');
+		e.drillDataFormat = ko.observable(e.fieldSettings.drillDataFormat || '');
 		e.fieldAlign = ko.observable(e.fieldAlign);
 		e.fontColor = ko.observable(e.fontColor);
 		e.backColor = ko.observable(e.backColor);
@@ -3732,6 +3852,7 @@ var reportViewModel = function (options) {
 		e.fieldCondtionalFormats = ko.observableArray([]);
 		e.jsonColumnName = e.jsonColumnName;
 		e.isJsonColumn = e.jsonColumnName ? true : false;
+		e.uiId = generateUniqueId();
 
 		e.applyAllHeaderFontColor = ko.observable(false);
 		e.applyAllHeaderBackColor = ko.observable(false);
@@ -3830,7 +3951,8 @@ var reportViewModel = function (options) {
 				headerFontBold: e.headerFontBold(),
 				fieldWidth: e.fieldWidth(),
 				fieldConditionOp: e.fieldConditionOp(),
-				fieldConditionVal: e.fieldConditionVal
+				fieldConditionVal: e.fieldConditionVal,
+				drillDataFormat: e.drillDataFormat()
 			}
 
 			e.fieldCondtionalFormats([]);
@@ -3884,6 +4006,7 @@ var reportViewModel = function (options) {
 			e.dateFormat(self.currentFieldOptions.dateFormat);
 			e.customDateFormat(self.currentFieldOptions.customDateFormat);
 			e.fieldLabel2(self.currentFieldOptions.fieldLabel2);
+			e.drillDataFormat(self.currentFieldOptions.drillDataFormat);
 			e.fontColor(self.currentFieldOptions.fontColor);
 			e.backColor(self.currentFieldOptions.backColor);
 			e.headerFontColor(self.currentFieldOptions.headerFontColor);
@@ -3900,6 +4023,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.PopulateReport = function (report, filterOnFly, reportSeries) {
+
 		self.ReportID(report.ReportID);
 		self.mapRegion('');
 		if (report.ReportType.indexOf('Map') >= 0) {
@@ -3958,7 +4082,8 @@ var reportViewModel = function (options) {
 		self.barChartHorizontal(reportSettings.barChartHorizontal === true ? true : false);
 		self.barChartStacked(reportSettings.barChartStacked === true ? true : false);
 		self.DefaultPageSize(reportSettings.DefaultPageSize || 30);
-
+		self.PivotColumns(reportSettings.PivotColumns || null)
+		self.PivotColumnsWidth(reportSettings.PivotColumnsWidth || null)
 		if (self.ReportMode() == "execute") {
 			if (self.useReportHeader()) {
 				self.headerDesigner.init(true);
@@ -4216,7 +4341,9 @@ var reportViewModel = function (options) {
 		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey(), self.ReportSeries);
 		return false;
 	};
-
+	self.sortReportHeaderColumn = function () {
+		self.RunReport(false, true,false);
+	};
 	self.formatNumber = function (number, decPlaces) {
 		if (decPlaces === null) decPlaces = 2;
 		decPlaces = isNaN(decPlaces = Math.abs(decPlaces)) ? 2 : decPlaces;
@@ -4413,22 +4540,32 @@ var reportViewModel = function (options) {
 
 		document.addEventListener('mouseup', function () {
 			if (thItem && thItem.id && thItem.style) {
-				var col = _.find(self.SelectedFields(), { fieldId: parseInt(thItem.id) });
-				if (col) {
-					col.fieldWidth(thItem.style.width);
-				}
-				ajaxcall({
-					url: options.apiUrl,
-					noBlocking: true,
-					data: {
-						method: '/ReportApi/UpdateReportColumnWidth',
-						model: JSON.stringify({
-							width: thItem.style.width,
-							fieldId: parseInt(thItem.id),
-							reportId: parseInt(self.ReportID())
-						})
+				if (thItem.id.includes('pivot--')) {
+					var col = _.find(self.ReportColumns(), function (column) {
+						return column.fieldName.toString().toLowerCase() === thItem.id.replace('pivot--', '').toLowerCase();
+					});
+					if (col) {
+						col.fieldWidth(thItem.style.width);
 					}
-				});
+				}
+				else {
+					var col = _.find(self.SelectedFields(), { fieldId: parseInt(thItem.id) });
+					if (col) {
+						col.fieldWidth(thItem.style.width);
+					}
+					ajaxcall({
+						url: options.apiUrl,
+						noBlocking: true,
+						data: {
+							method: '/ReportApi/UpdateReportColumnWidth',
+							model: JSON.stringify({
+								width: thItem.style.width,
+								fieldId: parseInt(thItem.id),
+								reportId: parseInt(self.ReportID())
+							})
+						}
+					});
+				}
 			}
 			thItem = undefined;
 		});
@@ -4482,6 +4619,9 @@ var reportViewModel = function (options) {
 	}
 
 	self.downloadPdf = function () {
+		var reportData = self.BuildReportData();
+		reportData.DrillDownRowUsePlaceholders = true;
+		var pivotData = self.preparePivotData();
 		self.downloadExport("DownloadPdf", {
 			reportId: self.ReportID(),
 			reportSql: self.currentSql(),
@@ -4492,15 +4632,17 @@ var reportViewModel = function (options) {
 			clientId: self.clientid || '',
 			userId: self.currentUserId || '',
 			userRoles: self.currentUserRole || '',
-			dataFilters: JSON.stringify(options.dataFilters)
+			dataFilters: JSON.stringify(options.dataFilters),
+			expandSqls: JSON.stringify(reportData),
+			pivotColumn: pivotData.pivotColumn,
+			pivotFunction: pivotData.pivotFunction,
 		}, 'pdf');
 	}
 
 	self.runExcelDownload = function (expand) {
 		var reportData = self.BuildReportData();
 		reportData.DrillDownRowUsePlaceholders = true;
-		var pivotColumn = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' });
-
+		var pivotData = self.preparePivotData();
 		self.downloadExport("DownloadExcel", {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
@@ -4511,7 +4653,8 @@ var reportViewModel = function (options) {
 			columnDetails: self.getColumnDetails(),
 			includeSubTotal: self.IncludeSubTotal(),
 			pivot: self.ReportType() == 'Pivot',
-			pivotColumn: pivotColumn ? pivotColumn.fieldName : ''
+			pivotColumn: pivotData.pivotColumn,
+			pivotFunction: pivotData.pivotFunction,
 		}, 'xlsx');
 	}
 
@@ -4524,26 +4667,38 @@ var reportViewModel = function (options) {
 	}
 
 	self.downloadCsv = function () {
+		var reportData = self.BuildReportData();
+		var pivotData = self.preparePivotData();
 		self.downloadExport("DownloadCsv", {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
 			columnDetails: self.getColumnDetails(),
-			includeSubTotal: self.IncludeSubTotal()
+			includeSubTotal: self.IncludeSubTotal(),
+			expandSqls: JSON.stringify(reportData),
+			pivotColumn: pivotData.pivotColumn,
+			pivotFunction: pivotData.pivotFunction,
 		}, 'csv');
 	}
-
+	self.downloadReportJson = function () {
+		var reportData = self.BuildReportData();
+		downloadJson(JSON.stringify(reportData, null, 2), self.ReportName(), 'application/json')
+	};
 	self.downloadXml = function () {
+		var reportData = self.BuildReportData();
+		var pivotData = self.preparePivotData();
 		self.downloadExport("DownloadXml", {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
-			reportName: self.ReportName()
+			reportName: self.ReportName(),
+			expandSqls: JSON.stringify(reportData),
+			pivotColumn: pivotData.pivotColumn,
+			pivotFunction: pivotData.pivotFunction,
 		}, 'xml');
 	}
 	self.downloadWord = function () {
 		var reportData = self.BuildReportData();
-		reportData.DrillDownRowUsePlaceholders = true;
-		var pivotColumn = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' });
+		var pivotData = self.preparePivotData();
 		self.downloadExport("DownloadWord", {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
@@ -4554,10 +4709,25 @@ var reportViewModel = function (options) {
 			columnDetails: self.getColumnDetails(),
 			includeSubTotal: self.IncludeSubTotal(),
 			pivot: self.ReportType() == 'Pivot',
-			pivotColumn: pivotColumn ? pivotColumn.fieldName : ''
+			pivotColumn: pivotData.pivotColumn ,
+			pivotFunction: pivotData.pivotFunction,
 		}, 'docx');
 	}
-
+	self.preparePivotData = function () {
+		var pivotColumn = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot'; });
+		var pivotFunction = '';
+		if (pivotColumn) {
+			var pivotColumnIndex = _.findIndex(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot'; });
+			if (pivotColumnIndex >= 0 && pivotColumnIndex < self.SelectedFields().length - 1) {
+				var nextValue = self.SelectedFields()[pivotColumnIndex + 1];
+				pivotFunction = nextValue.selectedAggregate();
+			}
+		}
+		return {
+			pivotColumn: pivotColumn ? pivotColumn.fieldName : '',
+			pivotFunction: pivotColumn && pivotFunction ? pivotFunction : '',
+		};
+	};
 
 	// Unit tests
 	runUnitTests = function () {
@@ -4735,6 +4905,7 @@ var dashboardViewModel = function (options) {
 	self.procs = [];
 	self.folders = [];
 	self.ChartDrillDownData = ko.observable();
+	self.selectedStyle = ko.observable('default');
 	self.DontExecuteOnRun = ko.observable(false);
 	self.searchReports = ko.observable('');
 	self.arrangeDashboard = ko.observable(false);
@@ -5029,7 +5200,8 @@ var dashboardViewModel = function (options) {
 					report.SaveReport(true);
 					self.selectedReport(report);
 					setTimeout(function () {
-						options.reportWizard.modal('show');
+						var reportModel = new bootstrap.Modal(document.getElementById('modal-reportbuilder'));
+						reportModel.show();
 						if ($.unblockUI) {
 							$.unblockUI();
 						}
@@ -5090,7 +5262,10 @@ var dashboardViewModel = function (options) {
 					});
 				});
 
-				if (skipGridRefresh === true) return;
+				if (skipGridRefresh === true) {
+					self.skipGridRefresh = false;
+					return;
+				}
 
 				var grid = $('.grid-stack').data("gridstack");
 				grid.removeAll();

@@ -42,9 +42,17 @@ namespace ReportBuilder.Web.Controllers
             return settings;
         }
 
+        [ValidateAntiForgeryToken]
+        [HttpPost]
         public JsonResult GetLookupList(string lookupSql, string connectKey)
         {
+            var qry = new SqlQuery();
             var sql = DotNetReportHelper.Decrypt(lookupSql);
+            if (sql.StartsWith("{\"sql\""))
+            {
+                qry = JsonConvert.DeserializeObject<SqlQuery>(sql);
+                sql = qry.sql;
+            }
 
             // Uncomment if you want to restrict max records returned
             sql = sql.Replace("SELECT ", "SELECT TOP 500 ");
@@ -55,7 +63,7 @@ namespace ReportBuilder.Web.Controllers
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
 
-            dt = databaseConnection.ExecuteQuery(connectionString, sql);
+            dt = databaseConnection.ExecuteQuery(connectionString, sql, qry.parameters);
 
             var data = new List<object>();
             foreach (DataRow dr in dt.Rows)
@@ -86,7 +94,7 @@ namespace ReportBuilder.Web.Controllers
             return await ExecuteCallReportApi(method, model, settings);
         }
 
-
+        [ValidateAntiForgeryToken]
         [HttpPost]
         public async Task<JsonResult> PostReportApi(PostReportApiCallMode data)
         {
@@ -94,12 +102,33 @@ namespace ReportBuilder.Web.Controllers
             return await CallReportApi(method, JsonConvert.SerializeObject(data));
         }
 
+        [ValidateAntiForgeryToken]
         [HttpPost]
         public async Task<JsonResult> RunReportApi(DotNetReportApiCall data)
         {
             return await CallReportApi(data.Method, (new JavaScriptSerializer()).Serialize(data));
         }
+        public class ReportApiCallModel
+        {
+            public string method { get; set; }
+            public string model { get; set; }
+        }
 
+        [ValidateAntiForgeryToken]
+        [HttpPost]
+        public async Task<JsonResult> CallPostReportApi(ReportApiCallModel data)
+        {
+            return await CallReportApi(data.method, data.model);
+        }
+
+        [ValidateAntiForgeryToken]
+        [HttpPost]
+        public async Task<JsonResult> CallReportApi(ReportApiCallModel data)
+        {
+            return await CallReportApi(data.method, data.model);
+        }
+         
+        [HttpGet]
         public async Task<JsonResult> CallReportApi(string method, string model)
         {
             return string.IsNullOrEmpty(method) || string.IsNullOrEmpty(model) ? Json(new { }) : await ExecuteCallReportApi(method, model);
@@ -117,12 +146,21 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("clientId", settings.ClientId),
                     new KeyValuePair<string, string>("userId", settings.UserId),
                     new KeyValuePair<string, string>("userIdForSchedule", settings.UserIdForSchedule),
-                    new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole))
-                };
+                    new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
+                    new KeyValuePair<string, string>("useParameters", "false")
+            };
 
                 var data = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(model);
                 foreach (var key in data.Keys)
                 {
+                    if (key == "dataConnect" && data[key] != null)
+                    {
+                        keyvalues.RemoveAt(keyvalues.FindIndex(kv => kv.Key == "dataConnect"));
+                    }
+                    if (key == "account" && data[key] != null)
+                    {
+                        keyvalues.RemoveAt(keyvalues.FindIndex(kv => kv.Key == "account"));
+                    }
                     if ((key != "adminMode" || (key == "adminMode" && settings.CanUseAdminMode)) && data[key] != null)
                     {
                         keyvalues.Add(new KeyValuePair<string, string>(key, data[key].ToString()));
@@ -142,16 +180,26 @@ namespace ReportBuilder.Web.Controllers
         [AllowAnonymous]
         [HttpPost]
         public async Task<JsonResult> RunReportUnAuth(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, 
-            bool desc = false, string reportSeries = null, string pivotColumn = null, string pivotFunction = null, string reportData = null)
+            bool desc = false, string reportSeries = null, string pivotColumn = null, string pivotFunction = null, string reportData = null, bool subtotalMode = false)
         {
-            return await RunReport(reportSql, connectKey, reportType, pageNumber, pageSize, sortBy, desc, reportSeries, pivotColumn, pivotFunction, reportData);
+            return await RunReport(reportSql, connectKey, reportType, pageNumber, pageSize, sortBy, desc, reportSeries, pivotColumn, pivotFunction, reportData, subtotalMode);
         }
+
+        public class SqlQuery
+        {
+            public string sql { get; set; } = "";
+            public List<KeyValuePair<string, string>> parameters { get; set; } = null;
+        }
+
+        [ValidateAntiForgeryToken]
+        [HttpPost]
         public async Task<JsonResult> RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, 
-            bool desc = false, string reportSeries = null, string pivotColumn = null, string pivotFunction = null, string reportData = null)
+            bool desc = false, string reportSeries = null, string pivotColumn = null, string pivotFunction = null, string reportData = null, bool subtotalMode = false)
         {
             var sql = "";
             var sqlCount = "";
             int totalRecords = 0;
+            var qry = new SqlQuery();
 
             try
             {
@@ -168,6 +216,11 @@ namespace ReportBuilder.Web.Controllers
                 for (int i = 0; i < allSqls.Length; i++)
                 {
                     sql = DotNetReportHelper.Decrypt(HttpUtility.HtmlDecode(allSqls[i]));
+                    if (sql.StartsWith("{\"sql\""))
+                    {
+                        qry = JsonConvert.DeserializeObject<SqlQuery>(sql);
+                        sql = qry.sql;
+                    }
                     if (!sql.StartsWith("EXEC"))
                     {
                         var fromIndex = DotNetReportHelper.FindFromIndex(sql);
@@ -196,7 +249,7 @@ namespace ReportBuilder.Web.Controllers
                             }
                         }
 
-                        if (sql.Contains("ORDER BY") && !sql.Contains(" TOP "))
+                        if (sql.Contains("ORDER BY") && !sql.Contains(" TOP ") && string.IsNullOrEmpty(pivotColumn))
                             sql = sql + $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
 
                         if (sql.Contains("__jsonc__"))
@@ -208,9 +261,16 @@ namespace ReportBuilder.Web.Controllers
 
                     var dtPagedRun = new DataTable();
 
-                    totalRecords = databaseConnection.GetTotalRecords(connectionString, sqlCount, sql);
-                    dtPagedRun = databaseConnection.ExecuteQuery(connectionString, sql);
+                    if (!string.IsNullOrEmpty(pivotColumn))
+                    {
+                        sql = sql.Remove(sql.IndexOf("SELECT "), "SELECT ".Length).Insert(sql.IndexOf("SELECT "), "SELECT TOP 1 ");
+                    }
+                    else
+                    {
+                        totalRecords = databaseConnection.GetTotalRecords(connectionString, sqlCount, sql, qry.parameters);
+                    }
 
+                    dtPagedRun = databaseConnection.ExecuteQuery(connectionString, sql, qry.parameters);
                     dtPagedRun = await DotNetReportHelper.ExecuteCustomFunction(dtPagedRun, sql);
 
                     if (sql.StartsWith("EXEC"))
@@ -223,18 +283,27 @@ namespace ReportBuilder.Web.Controllers
                     {
                         foreach (DataColumn c in dtPagedRun.Columns) { sqlFields.Add($"{c.ColumnName} AS {c.ColumnName}"); }
                     }
-
+                    
                     string[] series = { };
                     if (i == 0)
                     {
                         fields.AddRange(sqlFields);
 
-                            if (!string.IsNullOrEmpty(pivotColumn))
-                            {
-                                var ds = DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dtPagedRun, sqlFields, reportData);
-                                dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn, pivotFunction);
-                                fields.AddRange(dtPagedRun.Columns.Cast<DataColumn>().Skip(fields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
-                            }
+                        if (!string.IsNullOrEmpty(pivotColumn))
+                        {
+                            var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dtPagedRun, sql, sqlFields, reportData, pivotColumn, pivotFunction, pageNumber, pageSize, sortBy, desc, subtotalMode);
+                            dtPagedRun = pd.dt; 
+                            if (!string.IsNullOrEmpty(pd.sql)) sql = pd.sql;
+                            totalRecords =pd.totalRecords;
+
+                            //var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dtPagedRun, sqlFields, reportData);
+                            //dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn, pivotFunction, reportData);
+                            var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
+                            fields = fields
+                                .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
+                                .ToList();
+                            fields.AddRange(dtPagedRun.Columns.Cast<DataColumn>().Skip(fields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
+                        }
 
                         dtPaged = dtPagedRun;
                         dtCols = dtPagedRun.Columns.Count;
@@ -296,11 +365,11 @@ namespace ReportBuilder.Web.Controllers
                     }
                 }                
 
-                sql = DotNetReportHelper.Decrypt(HttpUtility.HtmlDecode(allSqls[0]));
+                if (string.IsNullOrEmpty(pivotColumn)) sql = DotNetReportHelper.Decrypt(HttpUtility.HtmlDecode(allSqls[0]));
                 var model = new DotNetReportResultModel
                 {
                     ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dtPaged, fields),
-                    Warnings = GetWarnings(sql),
+                    //Warnings = GetWarnings(sql),
                     ReportSql = sql,
                     ReportDebug = Request.Url.Host.Contains("localhost"),
                     Pager = new DotNetReportPagerModel
@@ -355,7 +424,8 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("filterId", filterId.HasValue ? filterId.ToString() : ""),
                     new KeyValuePair<string, string>("filterValue", filterValue.ToString()),
                     new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
-                    new KeyValuePair<string, string>("dataFilters", JsonConvert.SerializeObject(settings.DataFilters))
+                    new KeyValuePair<string, string>("dataFilters", JsonConvert.SerializeObject(settings.DataFilters)),
+                    new KeyValuePair<string, string>("useParameters", "false")
                 });
 
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/RunLinkedReport"), content);
@@ -466,6 +536,7 @@ namespace ReportBuilder.Web.Controllers
             });
         }
 
+        [ValidateAntiForgeryToken]
         [HttpPost]
         public async Task<JsonResult> GetSchemaFromSql(SchemaFromSqlCall data)
         {
@@ -479,6 +550,9 @@ namespace ReportBuilder.Web.Controllers
                     Selected = true
                 };
 
+                if (string.IsNullOrEmpty(data.value) || !data.value.StartsWith("SELECT ")) {
+                    throw new Exception("Invalid SQL");
+                }
                 table.CustomTableSql = data.value;
 
                 var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(data.dataConnectKey));
@@ -635,11 +709,19 @@ namespace ReportBuilder.Web.Controllers
         {
         }
 
+        [ValidateAntiForgeryToken]
         [HttpPost]
         public async Task<JsonResult> SearchProcedure(SearchProcCall data)
         {
-            string value = data.value; string accountKey = data.accountKey; string dataConnectKey = data.dataConnectKey;
-            return Json(await GetSearchProcedure(value, accountKey, dataConnectKey), JsonRequestBehavior.AllowGet);
+            try{
+                string value = data.value; string accountKey = data.accountKey; string dataConnectKey = data.dataConnectKey;
+                return Json(await GetSearchProcedure(value, accountKey, dataConnectKey), JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                Response.StatusCode = 500;
+                return Json(new { ex.Message }, JsonRequestBehavior.AllowGet);
+            }
         }
 
         private async Task<List<TableViewModel>> GetSearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
@@ -650,12 +732,18 @@ namespace ReportBuilder.Web.Controllers
             {
                 // open the connection to the database 
                 conn.Open();
-                string spQuery = "SELECT ROUTINE_NAME, ROUTINE_DEFINITION, ROUTINE_SCHEMA FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_NAME LIKE '%" + value + "%' AND ROUTINE_TYPE = 'PROCEDURE'";
+                string spQuery = "SELECT ROUTINE_NAME, ROUTINE_DEFINITION, ROUTINE_SCHEMA FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_NAME LIKE ? AND ROUTINE_TYPE = 'PROCEDURE'";
                 OleDbCommand cmd = new OleDbCommand(spQuery, conn);
                 cmd.CommandType = CommandType.Text;
+                cmd.Parameters.Add(new OleDbParameter("?", $"%{value}%"));
                 DataTable dtProcedures = new DataTable();
                 dtProcedures.Load(cmd.ExecuteReader());
                 int count = 1;
+
+                if (dtProcedures.Rows.Count == 0)
+                {
+                    throw new Exception($"No stored procs found matching {value}");
+                }
                 foreach (DataRow dr in dtProcedures.Rows)
                 {
                     var procName = dr["ROUTINE_NAME"].ToString();

@@ -11,14 +11,14 @@ Its Recommended you use it as is, and only change styling as needed to match you
 -->
 
 @section head {
-<link href="~/lib/tributejs/tribute.css" rel="stylesheet" />
 }
 
 @section scripts {
 
-<script src="~/lib/tributejs/tribute.min.js"></script>
-<script type="text/javascript">
-    $(document).ready(function() {
+    <script type="text/javascript">
+    $(document).ready(function () {
+        var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
+
         ajaxcall({ url: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")' }).done(function(data) {
             var vm = new reportViewModel({
                 runReportUrl: '@Url.Action("Report")',
@@ -31,9 +31,10 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 apiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")',
                 runReportApiUrl: '@Url.Action("RunReportApi", "DotNetReportApi")',
                 getUsersAndRolesUrl: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")',
-                reportId: @(Context.Request.Query["reportId"].Any() ? Context.Request.Query["reportId"].First() : "0"),
+                reportId: queryParams.reportId || 0,
                 userSettings: data,
                 dataFilters: data.dataFilters,
+                getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
                 samePageOnRun: true
             });
 
@@ -48,14 +49,13 @@ Its Recommended you use it as is, and only change styling as needed to match you
         });
     });
 
-</script>
+    </script>
 }
 
 <div>
-    <br />
+    <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
     <h4>Smarter Report Builder <small style="color: red">(Beta)</small> </h4>
 
-    <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
     <p>
         What would you like to know? Try typing in below to search your data
     </p>
@@ -104,7 +104,6 @@ Its Recommended you use it as is, and only change styling as needed to match you
     <div data-bind="if: $root.adminMode()">
         <br />
         <br />
-        <hr />
         <code data-bind="html: ReportSql">
         </code>
     </div>

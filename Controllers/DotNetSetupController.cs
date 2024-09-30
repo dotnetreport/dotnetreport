@@ -141,6 +141,7 @@ namespace ReportBuilder.Web.Controllers
                                 ForeignParentValueField = field.foreignParentValueField,
                                 ForeignParentTable = field.foreignParentTable,
                                 ForeignParentRequired = field.foreignParentRequired,
+                                ForeignFilterOnly = field.foreignFilterOnly,
 
                                 JsonStructure = field.jsonStructure,
                                 Selected = true
@@ -196,6 +197,7 @@ namespace ReportBuilder.Web.Controllers
                         ForeignParentValueField = item.foreignParentValue,
                         ForeignParentTable = item.foreignParentTable,
                         ForeignParentRequired = item.foreignParentRequired,
+                        ForeignFilterOnly = item.foreignFilterOnly,
 
                         JsonStructure = item.jsonStructure
                     };
@@ -216,6 +218,7 @@ namespace ReportBuilder.Web.Controllers
             if (!String.IsNullOrEmpty(accountKey) && !String.IsNullOrEmpty(dataConnectKey))
             {
                 currentTables = await GetApiTables(accountKey, dataConnectKey, true);
+                currentTables = currentTables.Where(x => !string.IsNullOrEmpty(x.TableName)).ToList();
             }
 
             var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey));
@@ -286,6 +289,7 @@ namespace ReportBuilder.Web.Controllers
                             column.ForeignParentValueField = matchColumn.ForeignParentValueField;
                             column.ForeignParentRequired = matchColumn.ForeignParentRequired;
                             column.JsonStructure = matchColumn.JsonStructure;
+                            column.ForeignFilterOnly = matchColumn.ForeignFilterOnly;
 
                             column.Selected = true;
                         }
@@ -332,7 +336,7 @@ namespace ReportBuilder.Web.Controllers
                 response.EnsureSuccessStatusCode();
                 var content = await response.Content.ReadAsStringAsync();
                 var tables = JsonConvert.DeserializeObject<List<TableViewModel>>(content);
-               
+
                 return tables;
             }
         }
@@ -358,7 +362,7 @@ namespace ReportBuilder.Web.Controllers
 
             }
         }
-       
+
         #endregion
     }
 }
