@@ -1,7 +1,9 @@
 ﻿<%@ Page Title="Report Setup" Language="C#" MasterPageFile="~/DotNetReport/ReportLayout.Master" AutoEventWireup="true" CodeBehind="Setup.aspx.cs" Inherits="ReportBuilder.WebForms.DotNetReport.Setup" Async="true" %>
 
 <asp:Content ID="Content2" ContentPlaceHolderID="head" runat="server">
-    <link href="../Content/bootstrap-editable.css" rel="stylesheet" />
+    <link href="../Content/bootstrap-editable.css" rel="stylesheet" />    
+    <link href="../Content/tribute.css" rel="stylesheet" />
+
     <style type="text/css">
         .glyphicon-ok:before {
             content: "\f00c";
@@ -21,7 +23,8 @@
         }
     </style>
 </asp:Content>
-<asp:Content ID="Content1" ContentPlaceHolderID="scripts" runat="server">
+<asp:Content ID="Content1" ContentPlaceHolderID="scripts" runat="server">    
+    <script>$.fn.popover = { Constructor: {} };</script>
     <script src="../Scripts/tribute.min.js"></script>
     <script src="../Scripts/dotnetreport-setup.js"></script>
     <script src="../Scripts/knockout.mapping-latest.js"></script>
@@ -44,7 +47,7 @@
 
         $(document).ready(function () {
             var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
-            ajaxcall({
+           ajaxcall({
                 type: 'POST',
                 url: '/DotNetReport/ReportService.asmx/LoadSetupSchema',
                 data: JSON.stringify({
@@ -53,19 +56,22 @@
                 })
             }).done(function (model) {
                 if (model.d) model = model.d;
+                if (model.Result) model = model.Result;
                 var options = {
-                    model: model.Result,
-                    saveTableUrl: '<%= System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"] + "/ReportApi/SaveTable"%>',
-                    deleteTableUrl: '<%= System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"] + "/ReportApi/DeleteTable"%>',
-                    getRelationsUrl: '<%= System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"] + "/ReportApi/GetRelations"%>',
-                    getDataConnectionsUrl: '<%= System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"] + "/ReportApi/GetDataConnections"%>',
-                    saveRelationsUrl: '<%= System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"] + "/ReportApi/SaveRelations"%>',
-                    addDataConnectionUrl: '<%= System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"] + "/ReportApi/AddDataConnection"%>',
-                    saveProcUrl: '<%= System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"] + "/ReportApi/SaveProcedure"%>',
-                    deleteProcUrl: '<%= System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"] + "/ReportApi/DeleteProcedure"%>',
-                    reportsApiUrl: '<%= System.Configuration.ConfigurationManager.AppSettings["dotNetReport.apiUrl"]%>',
-                    searchProcUrl: '/DotNetReport/ReportService.asmx/SearchProcedure',
+                    model: model,
+                    saveTableUrl: '/ReportApi/SaveTableData',
+                    deleteTableUrl: '/ReportApi/DeleteTable',
+                    getRelationsUrl: '/ReportApi/GetRelations',
+                    getDataConnectionsUrl: '/ReportApi/GetDataConnections',
+                    saveRelationsUrl: '/ReportApi/SaveRelationsData',
+                    addDataConnectionUrl: '/ReportApi/AddDataConnection',
+                    saveProcUrl: '/ReportApi/SaveProcedureData',
+                    deleteProcUrl: '/ReportApi/DeleteProcedure',
+                    saveCustomFuncUrl: '/ReportApi/SaveCustomFunctionData',
+                    deleteCustomFuncUrl: '/ReportApi/DeleteCustomFunction',
+                    reportsApiUrl: '/DotNetReport/ReportService.asmx/CallReportApi',
                     getUsersAndRoles: '/DotNetReport/ReportService.asmx/GetUsersAndRoles',
+                    searchProcUrl: '/DotNetReport/ReportService.asmx/SearchProcedure',
                     getSchemaFromSql: '/DotNetReport/ReportService.asmx/GetSchemaFromSql',
                     apiUrl: '/DotNetReport/ReportService.asmx/CallReportApi',
                     onlyApi: queryParams.onlyApi !== 'false'
@@ -101,12 +107,13 @@
     <div>
         <!-- Nav tabs -->
         <ul class="nav nav-tabs" role="tablist">
-            <li role="presentation" class="nav-item"><a class="nav-link active" href="#tablesfields" aria-controls="home" role="tab" data-toggle="tab" data-bind="click: function() { customTableMode(false); }">Database Tables</a></li>
-            <li role="presentation" class="nav-item"><a class="nav-link" href="#tablesfields" aria-controls="custom" role="tab" data-toggle="tab" data-bind="click: function() { customTableMode(true); }">Custom Tables</a></li>
-            <li role="presentation" class="nav-item"><a class="nav-link" href="#relations" aria-controls="profile" role="tab" data-toggle="tab">Relations</a></li>
-            <li role="presentation" class="nav-item"><a class="nav-link" href="#procedure" aria-controls="procedure" role="tab" data-toggle="tab">Stored Procs</a></li>
-            <li role="presentation" class="nav-item"><a class="nav-link" href="#manageaccess" aria-controls="manageaccess" role="tab" data-toggle="tab">Manage Reports Access</a></li>
-            <li role="presentation" class="nav-item"><a class="nav-link" href="#connection" aria-controls="home" role="tab" data-toggle="tab">Data Connection</a></li>
+            <li role="presentation" class="nav-item"><a class="nav-link active" href="#tablesfields" aria-controls="home" role="tab" data-bs-toggle="tab" data-bind="click: function() { customTableMode(false); }">Database Tables</a></li>
+            <li role="presentation" class="nav-item"><a class="nav-link" href="#tablesfields" aria-controls="custom" role="tab" data-bs-toggle="tab" data-bind="click: function() { customTableMode(true); }">Custom Tables</a></li>
+            <li role="presentation" class="nav-item"><a class="nav-link" href="#relations" aria-controls="profile" role="tab" data-bs-toggle="tab">Relations</a></li>
+            <li role="presentation" class="nav-item"><a class="nav-link" href="#procedure" aria-controls="procedure" role="tab" data-bs-toggle="tab">Stored Procs</a></li>
+            <li role="presentation" class="nav-item" style="display: none;"><a class="nav-link" href="#functions" aria-controls="functions" role="tab" data-bs-toggle="tab">Custom Functions</a></li>
+            <li role="presentation" class="nav-item"><a class="nav-link" href="#manageaccess" aria-controls="manageaccess" role="tab" data-bs-toggle="tab">Manage Reports Access</a></li>
+            <li role="presentation" class="nav-item"><a class="nav-link" href="#connection" aria-controls="home" role="tab" data-bs-toggle="tab">Data Connection</a></li>
         </ul>
     </div>
     <br />
@@ -117,16 +124,16 @@
         <div role="tabpanel" class="tab-pane" id="connection">
             <b>Manage Database Connection</b>
             <p>
-                Select and manage Data you would like to allow access to in DNR to use in building Reports and Dashboards
+                Select and manage Data you would like to allow access to in Dotnet Report to use in building Reports and Dashboards
             </p>
             <div class="form-row" data-bind="visible: true">
                 <div class="form-group">
                     <div class="control-group">
-                        <select class="form-control" data-bind="options: DataConnections, optionsText: 'DataConnectName', optionsValue: 'DataConnectGuid', value: currentConnectionKey"></select>
+                        <select class="form-control" style="width:25%"  data-bind="options: DataConnections, optionsText: 'DataConnectName', optionsValue: 'DataConnectGuid', value: currentConnectionKey" ></select>
                         <div class="padded-top"></div>
-                        <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#connection-setup-modal">Manage DB Connection</button>
+                        <button class="btn btn-primary btn-sm" data-bind="visible: false" data-bs-toggle="modal" data-bs-target="#connection-setup-modal">Manage DB Connection</button>
                         <button class="btn btn-primary btn-sm" data-bind="click: switchConnection, visible: canSwitchConnection">Switch Connection</button>
-                        <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#add-connection-modal">Add New Connection</button>
+                        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#add-connection-modal">Add New Connection</button>
                         <button class="btn btn-primary btn-sm" data-bind="click: exportAll, visible: false">Export Connection</button>
                         <button class="btn btn-primary btn-sm" data-bind="click: importStart, visible: false">Import Connection</button>
                     </div>
@@ -152,10 +159,10 @@
             <b data-bind="text: customTableMode() ? 'Custom Tables' : 'Database Tables'"></b>
             <p>
                 <span data-bind="visible: $root.customTableMode">
-                    Define Custom Tables using SQL Select Query to use in DNR for Reporting and Analytics.
+                    Define Custom Tables using SQL Select Query to use in Dotnet Report for Reporting and Analytics.
                 </span>
                 <span data-bind="hidden: $root.customTableMode">
-                    Select Tables or Views from your Database to use in DNR for Reporting and Analytics.
+                    Select Tables or Views from your Database to use in Dotnet Report for Reporting and Analytics.
                 </span>
             </p>
 
@@ -166,12 +173,17 @@
                 <button class="btn btn-sm" onclick="closeall()">Close all</button>
                 <button class="btn btn-sm" data-bind="click: toggleShowAll, hidden: $root.customTableMode() || $root.onlyApi(), text: usedOnly() ? 'Show all' : 'Show used only'">Show used only</button>
                 <button class="btn btn-sm btn-primary" data-bind="click: $root.customSql.addNewCustomSqlTable, visible: $root.customTableMode">Add New Custom Table</button>
-                <button class="btn btn-sm btn-primary" data-bind="click: $root.loadFromDatabase, hidden: $root.customTableMode() || !$root.onlyApi()">Load all Database Tables</button>
+                <button class="btn btn-sm btn-primary" data-bind="click: $root.loadFromDatabase, hidden: $root.customTableMode() || !$root.onlyApi()">
+                    <span class="fa fa-database"></span> Load all Database Tables
+                </button>
+                <button class="btn btn-sm btn-primary" data-bind="hidden: $root.customTableMode()" data-bs-toggle="modal" data-bs-target="#uploadTablesFileModal" aria-haspopup="true" aria-expanded="false">
+                    <span class="fa fa-file"></span> Import Tables/Views
+                </button>
             </div>
             <div class="clearfix"></div>
             <hr />
             <div class="row">
-                <div class="form-group form-inline col-md-4" data-bind="with: pager">
+                <div class="d-flex flex-row align-items-center col-md-4" data-bind="with: pager">
                     <div data-bind="template: 'pager-template', data: $data"></div>
                 </div>
                 <div class="col-md-4" data-bind="ifnot: $root.customTableMode">
@@ -180,7 +192,7 @@
                     </div>
                 </div>
             </div>
-            <div class="menu row" style="margin-left: 20px;" data-bind="foreach: pagedTables">
+            <div class="menu g-3 mt-4" style="margin-left: 20px;" data-bind="foreach: pagedTables">
                 <div class="menu-category card" style="float: left;">
 
                     <div class="card-header clearfix" style="">
@@ -191,16 +203,19 @@
                                 <span data-bind="visible: IsView" class="label-sm">(view)</span>
                             </label>
                             <button class="btn btn-sm" title="Save this Table" data-bind="click: function(){$data.saveTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}"><i class="fa fa-floppy-o"></i></button>
-                            <button class="btn btn-sm" title="Manage Role Access" data-toggle="modal" data-target="#role-access-modal" data-bind="click: $root.selectAllowedRoles">
-                                <i class="fa fa-user"></i>
-                            </button>
                         </div>
-                        <a class="pull-right" data-toggle="collapse" data-bind="attr: {'data-target': '#table'+$index()}">
+                        <a class="pull-right" data-bs-toggle="collapse" data-bind="attr: {'data-bs-target': '#table'+$index()}">
                             <span class="fa fa-chevron-down"></span>
                         </a>
                     </div>
                     <div data-bind="attr: {id: 'table'+$index()}" class="panel-collapse collapse in">
                         <div class="card-body">
+                            <p class="pull-right">
+                                <button class="btn btn-sm" title="Manage Role Access" data-bs-toggle="modal" data-bs-target="#role-access-modal" data-bind="click: $root.selectAllowedRoles">
+                                    <i class="fa fa-user"></i>
+                                </button>
+                                <button class="btn btn-sm" title="Export this Table" data-bind="click: function(){$data.exportTableJson();}"><i class='fa fa-file'></i></button>
+                            </p>
                             <p>
                                 <label class="label-sm">Display Name</label><br />
                                 <span data-bind="editable: DisplayName"></span>
@@ -233,10 +248,10 @@
                                     <label>
                                         <input type="checkbox" data-bind="checked: Selected, enable: $parent.Selected()">
                                         <span data-bind="editable: DisplayName, attr: {title: 'DB field is ' + ColumnName()}"></span>
-                                        <label data-bind="visible: PrimaryKey" class="badge badge-primary">Primary</label>
-                                        <label data-bind="visible: ForeignKey" class="badge badge-info">Foreign</label>
+                                        <label data-bind="visible: PrimaryKey" class="badge text-bg-primary">Primary</label>
+                                        <label data-bind="visible: ForeignKey" class="badge text-bg-info text-white">Foreign</label>
                                     </label>
-                                    <button class="btn btn-sm pull-right" data-toggle="modal" data-target="#column-modal" title="All column options" data-bind="click: $root.selectColumn.bind($data, false)">...</button>
+                                    <button class="btn btn-sm pull-right" data-bs-toggle="modal" data-bs-target="#column-modal" title="All column options" data-bind="click: $root.selectColumn.bind($data, false)">...</button>
 
                                     <div class="btn btn-sm pull-right sortable">
                                         <span class="fa fa-arrows" aria-hidden="true" title="Drag to reorder"></span>
@@ -251,10 +266,14 @@
         <div role="tabpanel" class="tab-pane" id="relations">
             <b>Relations</b>
             <p>
-                Setup your Database Relations for DNR to produce dynamic queries
+                Setup your Database Relations for Dotnet Report to produce dynamic queries
             </p>
             <button class="btn btn-sm btn-primary" data-bind="click: AddJoin">Add new Join</button>&nbsp;
-            <button class="btn btn-sm btn-primary" data-bind="click: SaveJoins">Save Joins</button>
+            <button class="btn btn-sm btn-primary" data-bind="click: SaveJoins">Save Joins</button>&nbsp;
+            <button class="btn btn-sm btn-primary" data-bind="click: ExportJoins">Export Joins</button>&nbsp;
+            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadJoinsFileModal" aria-haspopup="true" aria-expanded="false">
+                <span class="fa fa-file"></span> Import Joins
+            </button>
             <br />
             <br />
             <form id="form-joins">
@@ -333,15 +352,18 @@
         <div id="procedure" class="tab-pane">
             <b>Stored Procedures</b>
             <p>
-                Select and manage Stored Procedures to use in DNR for more complex and coded Reports
+                Select and manage Stored Procedures to use in Dotnet Report for more complex and coded Reports
             </p>
             <hr />
-            <button class="btn btn-sm btn-primary" data-toggle="modal" data-target="#procedure-modal">Add Stored Procs from database</button>
+            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#procedure-modal">Add Stored Procs from database</button>
+            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadStoredProceduresFileModal" aria-haspopup="true" aria-expanded="false">
+                <span class="fa fa-file"></span> Import Stored Procedures
+            </button>
             <br />
             <div data-bind="if: Procedures.savedProcedures().length == 0">
                 No Stored Procedures have been setup yet.
             </div>
-            <div class="menu row" data-bind="foreach: Procedures.savedProcedures" style="margin-left: 20px; padding-top: 20px;">
+            <div class="menu g-3" data-bind="foreach: Procedures.savedProcedures" style="margin-left: 20px; padding-top: 20px;">
                 <div class="menu-category card" style="float: left;">
 
                     <div class="card-header clearfix" style="">
@@ -353,21 +375,26 @@
 
                             <button class="btn btn-sm" title="Save this Procedure" data-bind="click: function(){$root.saveProcedure($data.TableName, false);}">
                                 <span class="fa fa-save"></span>
-                            </button>
-                            <button class="btn btn-sm" title="Manage Role Access" data-toggle="modal" data-target="#role-access-modal" data-bind="click: $root.selectAllowedRoles">
-                                <i class="fa fa-user"></i>
-                            </button>
+                            </button>                           
                             <button class="btn btn-sm" title="Delete this Procedure" data-bind="click: function(){$data.deleteTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}">
                                 <span class="fa fa-trash"></span>
                             </button>
 
                         </div>
-                        <a class="pull-right" data-toggle="collapse" data-bind="attr: {'data-target': '#table'+$index()}">
+                        <a class="pull-right" data-bs-toggle="collapse" data-bind="attr: {'data-bs-target': '#table'+$index()}">
                             <span class="fa fa-chevron-down"></span>
                         </a>
                     </div>
                     <div data-bind="attr: {id: 'table'+$index()}" class="panel-collapse collapse in">
                         <div class="card-body">
+                            <p class="pull-right">
+                                <button class="btn btn-sm" title="Manage Role Access" data-bs-toggle="modal" data-bs-target="#role-access-modal" data-bind="click: $root.selectAllowedRoles">
+                                    <i class="fa fa-user"></i>
+                                </button>
+                                <button class="btn btn-sm" title="Export this Procedure" data-bind="click: function(){$root.exportProcedureJson($data.TableName);}">
+                                    <i class="fa fa-file"></i>
+                                </button>
+                            </p>
                             <p>
                                 <label class="label-sm">Display Name</label><br />
                                 <span data-bind="editable: DisplayName"></span>
@@ -382,9 +409,9 @@
                                 <div class="list-group-item">
                                     <label>
                                         <span data-bind="editable: DisplayName, attr: {title: 'DB field is ' + ColumnName()}"></span>
-                                        <span class="badge badge-info" data-bind="text: FieldType"></span>
+                                        <span class="badge text-bg-info text-white" data-bind="text: FieldType"></span>
                                     </label>
-                                    <button class="btn btn-sm pull-right" data-toggle="modal" data-target="#column-modal" title="All column options" data-bind="click: $root.selectColumn.bind($data, true)">...</button>
+                                    <button class="btn btn-sm pull-right" data-bs-toggle="modal" data-bs-target="#column-modal" title="All column options" data-bind="click: $root.selectColumn.bind($data, true)">...</button>
 
                                 </div>
                             </div>
@@ -394,10 +421,10 @@
                                 <div class="list-group-item">
                                     <label>
                                         <span data-bind="editable: DisplayName, attr: {title: 'DB field is ' + ParameterName()}"></span>
-                                        <span class="badge badge-info" data-bind="text: ParameterDataTypeString"></span>
+                                        <span class="badge text-bg-info text-white" data-bind="text: ParameterDataTypeString"></span>
                                         &nbsp;
                                         &nbsp;
-                                        <button class="btn btn-sm btn-primary pull-right" data-toggle="modal" data-target="#parameter-modal" title="All Parameter options" data-bind="click: $root.editParameter">...</button>
+                                        <button class="btn btn-sm btn-primary pull-right" data-bs-toggle="modal" data-bs-target="#parameter-modal" title="All Parameter options" data-bind="click: $root.editParameter">...</button>
                                     </label>
                                 </div>
                             </div>
@@ -407,9 +434,9 @@
             </div>
         </div>
         <div id="manageaccess" class="tab-pane">
-            <div data-bind="foreach: reportsAndFolders" class="card" style="margin-left: 20px;">
+            <div data-bind="foreach: reportsAndFolders" class="card">
                 <div class="card-body">
-                    <a class="btn btn-link" role="button" data-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }">
+                    <a class="btn btn-link" role="button" data-bs-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }">
                         <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: folder"></span>
                     </a>
                     <div class="collapse" data-bind="attr: {id: 'folder-' + folderId }">
@@ -430,28 +457,28 @@
 
                                         <div class="small" style="padding-top: 10px;">
                                             <b>Current Report Access</b><br />
-                                            Manage by User <span class="badge badge-info" data-bind="text: userId ? userId : 'Any User'"></span>
+                                            Manage by User <span class="badge text-bg-info text-white" data-bind="text: userId ? userId : 'Any User'"></span>
                                             <br />
-                                            View only by User <span class="badge badge-info" data-bind="text: (viewOnlyUserId ? viewOnlyUserId : (userId ? userId : 'Any User'))"></span>
+                                            View only by User <span class="badge text-bg-info text-white" data-bind="text: (viewOnlyUserId ? viewOnlyUserId : (userId ? userId : 'Any User'))"></span>
                                             <br />
                                             <div data-bind="if: deleteOnlyUserId">
-                                                Delete only by User <span class="badge badge-info" data-bind="text: deleteOnlyUserId"></span>
+                                                Delete only by User <span class="badge text-bg-info text-white" data-bind="text: deleteOnlyUserId"></span>
                                                 <br />
                                             </div>
                                             <div data-bind="if: userRole">
-                                                Manage by Role <span class="badge badge-info" data-bind="text: userRole ? userRole : 'Any Role'"></span>
+                                                Manage by Role <span class="badge text-bg-info text-white" data-bind="text: userRole ? userRole : 'Any Role'"></span>
                                                 <br />
                                             </div>
                                             <div data-bind="if: viewOnlyUserRole">
-                                                View only by Role <span class="badge badge-info" data-bind="text: viewOnlyUserRole ? viewOnlyUserRole : 'Any Role'"></span>
+                                                View only by Role <span class="badge text-bg-info text-white" data-bind="text: viewOnlyUserRole ? viewOnlyUserRole : 'Any Role'"></span>
                                                 <br />
                                             </div>
                                             <div data-bind="if: deleteOnlyUserRole">
-                                                Delete only by Role <span class="badge badge-info" data-bind="text: deleteOnlyUserRole ? deleteOnlyUserRole : 'Same as Manage'"></span>
+                                                Delete only by Role <span class="badge text-bg-info text-white" data-bind="text: deleteOnlyUserRole ? deleteOnlyUserRole : 'Same as Manage'"></span>
                                                 <br />
                                             </div>
                                             <div>
-                                                For Client <span class="badge badge-info" data-bind="text: clientId ? clientId : 'All Clients'"></span>
+                                                For Client <span class="badge text-bg-info text-white" data-bind="text: clientId ? clientId : 'All Clients'"></span>
                                                 <br />
                                             </div>
                                         </div>
@@ -477,6 +504,93 @@
                 </div>
             </div>
         </div>
+        <div role="tabpanel" class="tab-pane" id="functions" data-bind="with: Functions">
+            <b>Custom Functions</b>
+            <p>
+                Create and manage Custom Function that you can use in building Reports and Dashboards
+            </p>
+            <button class="btn btn-sm btn-primary" data-bind="click: createNewFunction">Add new Function</button>
+            <br />
+            <hr />
+
+            <div class="container-fluid card card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <input id="searchInput" class="form-control mb-2" type="text" placeholder="Search..." data-bind="value: search, valueUpdate: 'input', visible: functions().length > 0">
+                        <ul class="list-group" data-bind="foreach: filteredFunctions">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span data-bind="text: name"></span>
+                                <div>
+                                    <button class="btn btn-primary btn-sm" data-bind="click: $parent.selectFunction">Edit</button>
+                                    <button class="btn btn-danger btn-sm" data-bind="click: function() { $parent.deleteFunction($data) }">Delete</button>
+                                </div>
+                            </li>
+                        </ul>
+                        <div data-bind="if: functions().length == 0">
+                            No Functions found
+                        </div>
+                    </div>
+                    <div class="col-md-9" data-bind="with: selectedFunction">
+                        <div style="border-left: 1px solid; padding-left: 10px;">
+                            <div class="mb-3" data-bind="validationElement: functionName">
+                                <label for="functionName" class="form-label">Function Name</label>
+                                <input id="functionName" class="form-control" required data-bind="value: name, valueUpdate: 'input'" />
+                                <div class="invalid-feedback">Function Name is required.</div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="functionType" class="form-label">Function Type</label>
+                                <select id="functionType" class="form-control" data-bind="value: functionType, event: { change: $parent.updateCodeEditorMode }">
+                                    <option value="javascript">JavaScript</option>
+                                    <option value="csharp">C#</option>
+                                    <option value="sql">SQL</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="functionDescription" class="form-label">Description</label>
+                                <textarea id="functionDescription" class="form-control" data-bind="value: description, valueUpdate: 'input'" placeholder="Add any helpful description here for the user..."></textarea>
+                            </div>
+
+                            <div>
+                                <h4>Parameters</h4>
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Display Name</th>
+                                            <th>Description</th>
+                                            <th>Required</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody data-bind="foreach: parameters">
+                                        <tr>
+                                            <td>
+                                                <input class="form-control" data-bind="value: parameterName, valueUpdate: 'input'" />
+                                                <span class="text-danger" data-bind="visible: name.hasError, text: name.validationMessage"></span>
+                                            </td>
+                                            <td><input class="form-control" data-bind="value: displayName, valueUpdate: 'input'" /></td>
+                                            <td><input class="form-control" data-bind="value: description, valueUpdate: 'input'" placeholder="Friendly description for user..." /></td>
+                                            <td><input type="checkbox" data-bind="checked: required" /></td>
+                                            <td><button class="btn btn-sm btn-danger" data-bind="click: $parent.removeParameter">Remove</button></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <button class="btn btn-sm btn-primary" data-bind="click: addParameter">Add Parameter</button>
+                            </div>
+                            <br />
+                            <div class="mb-3">
+                                <label for="codeEditor" class="form-label">Write the <b>Code</b> for the function below:</label>
+                                <div style="border: 1px solid">
+                                    <textarea id="codeEditor" class="code-editor form-control" data-bind="value: code"></textarea>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" data-bind="click: $parent.saveFunction">Save</button>
+                            <button class="btn btn-secondary" data-bind="click: $parent.cancelEdit">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div> 
+        </div>
     </div>
 </div>
 
@@ -489,16 +603,16 @@
                     Manage
                     <label data-bind="text: ColumnName"></label>
                 </h4>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <p>Choose options that will determine how users interact with this column on Reports</p>
                 <div class="form-horizontal">
 
                     <ul class="nav nav-tabs" role="tablist" data-bind="if: $root.isStoredProcColumn() == false">
-                        <li role="presentation" class="nav-item"><a class="nav-link active" href="#column-main" aria-controls="home" role="tab" data-toggle="tab">Main Options</a></li>
-                        <li role="presentation" class="nav-item"><a class="nav-link" href="#column-foreign" aria-controls="profile" role="tab" data-toggle="tab">Foreign Key Options</a></li>
-                        <li role="presentation" class="nav-item"><a class="nav-link" href="#column-filter" aria-controls="procedure" role="tab" data-toggle="tab">Filter Options</a></li>
+                        <li role="presentation" class="nav-item"><a class="nav-link active" href="#column-main" aria-controls="home" role="tab" data-bs-toggle="tab">Main Options</a></li>
+                        <li role="presentation" class="nav-item"><a class="nav-link" href="#column-foreign" aria-controls="profile" role="tab" data-bs-toggle="tab">Foreign Key Options</a></li>
+                        <li role="presentation" class="nav-item"><a class="nav-link" href="#column-filter" aria-controls="procedure" role="tab" data-bs-toggle="tab">Filter Options</a></li>
                     </ul>
                     <div class="tab-content">
                         <br />
@@ -510,7 +624,7 @@
                                         <input class="form-control text-box single-line" data-val="true" data-val-required="The DisplayName field is required." id="DisplayName" name="DisplayName" type="text" value="First Name" data-bind="value: DisplayName, attr:{placeholder:'Ex First Name'}" placeholder="Ex First Name">
                                     </div>
                                     <div class="col-md-3 col-sm-3">
-                                        <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="This is a friendly name to display to your users"></span>
+                                        <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="This is a friendly name to display to your users"></span>
                                     </div>
                                 </div>
                             </div>
@@ -559,7 +673,7 @@
                                         </div>
                                     </div>
                                     <div class="col-md-3 col-sm-3">
-                                        <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="If this is checked, the column will not be displayed on Report Designer, but can still be used on Global Data Filters"></span>
+                                        <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="If this is checked, the column will not be displayed on Report Designer, but can still be used on Global Data Filters"></span>
                                     </div>
                                 </div>
                             </div>
@@ -571,7 +685,7 @@
                                         <textarea class="form-control text-box single-line" data-val="true" data-val-required="The DisplayName field is required." data-bind="value: JsonStructure, attr:{placeholder:'Please paste in Sample Json with all columns for this JSON data field'}" rows="5" ></textarea>
                                     </div>
                                     <div class="col-md-3 col-sm-3">
-                                        <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="You can paste in a sample Json blob with all the columns you want to use in this field"></span>
+                                        <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="You can paste in a sample Json blob with all the columns you want to use in this field"></span>
                                     </div>
                                 </div>
                             </div>
@@ -588,7 +702,7 @@
                                         </div>
                                     </div>
                                     <div class="col-md-2 col-sm-2">
-                                        <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="If this is checked, the column will always require the user to pick a filtered value"></span>
+                                        <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="If this is checked, the column will always require the user to pick a filtered value"></span>
                                     </div>
                                 </div>
                             </div>
@@ -603,7 +717,7 @@
                                         </div>
                                     </div>
                                     <div class="col-md-2 col-sm-2">
-                                        <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="If this is checked, the report will always require the user to pick a filter value if user picks the column in report"></span>
+                                        <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="If this is checked, the report will always require the user to pick a filter value if user picks the column in report"></span>
                                     </div>
                                 </div>
                             </div>
@@ -624,7 +738,7 @@
                                         </select>
                                     </div>
                                     <div class="col-md-2 col-sm-2">
-                                        <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="If this is selected, user will not be able to pick date range larger than this selection"></span>
+                                        <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="If this is selected, user will not be able to pick date range larger than this selection"></span>
                                     </div>
                                 </div>
                             </div>
@@ -641,7 +755,7 @@
                                         </div>
                                     </div>
                                     <div class="col-md-3 col-sm-3">
-                                        <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Foreign keys allows friendly selection in Filters using a Dropdown List"></span>
+                                        <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Foreign keys allows friendly selection in Filters using a Dropdown List"></span>
                                     </div>
                                 </div>
                             </div>
@@ -679,7 +793,7 @@
                                         <select class="form-control" id="ForeignKeyField" name="ForeignKeyField" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignKeyField, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" placeholder="Ex EmployeeId" style="display: none;"></select>
                                     </div>
                                     <div class="col-md-3 col-sm-3">
-                                        <span data-bind="visible:ForeignKey()" data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Foreign Key field is a Column from the Foreign table which is used as the Key field"></span>
+                                        <span data-bind="visible:ForeignKey()" data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Foreign Key field is a Column from the Foreign table which is used as the Key field"></span>
                                     </div>
                                 </div>
                             </div>
@@ -690,12 +804,28 @@
                                         <select class="form-control" id="ForeignValueField" name="ForeignValueField" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignValueField, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" placeholder="Ex EmployeeName" style="display: none;"></select>
                                     </div>
                                     <div class="col-md-3 col-sm-3">
-                                        <span data-bind="visible:ForeignKey()" data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Foreign Value field is a Column from the Foreign table which is used to display the value to the User in the Report Designer"></span>
+                                        <span data-bind="visible:ForeignKey()" data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Foreign Value field is a Column from the Foreign table which is used to display the value to the User in the Report Designer"></span>
                                     </div>
                                 </div>
                             </div>
 
                             <div data-bind="if: ForeignKey">
+                                <div class="control-group">
+                                    <div class="form-group row">
+                                        <label class="col-md-3 col-sm-3 control-label">Only for Filter?</label>
+                                        <div class="col-md-6 col-sm-6">
+                                            <div class="checkbox">
+                                                <label>
+                                                    <input class="check-box" type="checkbox" data-bind="checked:ForeignFilterOnly">
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3 col-sm-3">
+                                            <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Check this option if you would like to use this for Filtering only, and not for SQL Joins"></span>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="alert alert-info">
                                     You can setup a cascading filter by setting up a parent for the foreign key below
                                 </div>
@@ -710,7 +840,7 @@
                                             </div>
                                         </div>
                                         <div class="col-md-3 col-sm-3">
-                                            <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Foreign keys parent allows cascading dropdown selection in Filters"></span>
+                                            <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Foreign keys parent allows cascading dropdown selection in Filters"></span>
                                         </div>
                                     </div>
                                 </div>
@@ -734,7 +864,7 @@
                                             <select class="form-control" data-bind="options: ForeignJoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignParentKeyField, attr: {required: ForeignParentKey()?'True':null}" placeholder="Ex EmployeeId"></select>
                                         </div>
                                         <div class="col-md-3 col-sm-3">
-                                            <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Parent Key field is a Column from the Parent table which is used as the key in cascading filters"></span>
+                                            <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Parent Key field is a Column from the Parent table which is used as the key in cascading filters"></span>
                                         </div>
                                     </div>
                                 </div>
@@ -745,7 +875,7 @@
                                             <select class="form-control" data-bind="options: ForeignJoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignParentValueField, attr: {required: ForeignParentKey()?'True':null}" placeholder="Ex EmployeeName"></select>
                                         </div>
                                         <div class="col-md-3 col-sm-3">
-                                            <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Parent Value field is a Column from the Parent table which is used to display the value to the User in the Report Designer for cascading filters"></span>
+                                            <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Parent Value field is a Column from the Parent table which is used to display the value to the User in the Report Designer for cascading filters"></span>
                                         </div>
                                     </div>
                                 </div>
@@ -756,7 +886,7 @@
                                             <select class="form-control" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignParentApplyTo, attr: {required: ForeignParentKey()?'True':null}" placeholder="Ex EmployeeName"></select>
                                         </div>
                                         <div class="col-md-3 col-sm-3">
-                                            <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Foreign Key Filter Value field is a Column from the Foreign table where the selected parent filter will be applied for cascading filters"></span>
+                                            <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Foreign Key Filter Value field is a Column from the Foreign table where the selected parent filter will be applied for cascading filters"></span>
                                         </div>
                                     </div>
                                 </div>
@@ -771,7 +901,7 @@
                                             </div>
                                         </div>
                                         <div class="col-md-3 col-sm-3">
-                                            <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Foreign keys parent can be optional or set to required for cascading filters"></span>
+                                            <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Foreign keys parent can be optional or set to required for cascading filters"></span>
                                         </div>
                                     </div>
                                 </div>-->
@@ -779,10 +909,10 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button class="btn btn-secondary" title="Manage Role Access" data-toggle="modal" data-target="#role-access-modal" data-bind="click: $root.selectAllowedRoles">
+                        <button class="btn btn-secondary" title="Manage Role Access" data-bs-toggle="modal" data-bs-target="#role-access-modal" data-bind="click: $root.selectAllowedRoles">
                             <i class="fa fa-user"></i>Manage Role Access
                         </button>
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Done</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
                     </div>
                 </div>
             </div>
@@ -795,7 +925,7 @@
         <div class="modal-content ">
             <div class="modal-header">
                 <h4 class="modal-title">Add Stored Proc</h4>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="row">
@@ -810,8 +940,8 @@
                     </div>
                 </div>
                 <br />
-                <div class="menu row" style="margin-left: 20px;" data-bind="foreach: foundProcedures">
-                    <div class="menu-category card">
+                <div class="menu g-3" style="margin-left: 20px;" data-bind="foreach: foundProcedures">
+                    <div class="menu-category card" style="float:left">
                         <div class="card-header clearfix" style="">
                             <div class="pull-left">
                                 <label>
@@ -822,7 +952,7 @@
                                     <span class="fa fa-save"></span>
                                 </button>
                             </div>
-                            <a class="pull-right" data-toggle="collapse" data-bind="attr: {'data-target': '#sp_'+$index()}">
+                            <a class="pull-right" data-bs-toggle="collapse" data-bind="attr: {'data-bs-target': '#sp_'+$index()}">
                                 <span class="fa fa-chevron-down"></span>
                             </a>
                         </div>
@@ -835,7 +965,7 @@
                                 <div class="list-group" data-bind="foreach: Columns">
                                     <div class="list-group-item">
                                         <span data-bind="editable: DisplayName"></span>
-                                        <span class="badge badge-info" data-bind="text: FieldType"></span>
+                                        <span class="badge text-bg-info text-white" data-bind="text: FieldType"></span>
                                     </div>
                                 </div>
                                 <label class="small">Paramters</label>
@@ -843,7 +973,7 @@
                                 <div class="list-group" data-bind="foreach: Parameters">
                                     <div class="list-group-item">
                                         <span data-bind="editable: DisplayName"></span>
-                                        <span class="badge badge-info" data-bind="text: ParameterDataTypeString"></span><br />
+                                        <span class="badge text-bg-info text-white" data-bind="text: ParameterDataTypeString"></span><br />
                                         Default Value: <span data-bind="editable: ParameterValue"></span>
                                     </div>
                                 </div>
@@ -853,7 +983,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary" data-dismiss="modal">Done</button>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Done</button>
             </div>
         </div>
     </div>
@@ -867,7 +997,7 @@
                     Manage
                     <label data-bind="text: ParameterName"></label>
                 </h4>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <p>Choose options that will determine how users interact with this parameter on Reports</p>
@@ -879,7 +1009,7 @@
                                 <input class="form-control text-box single-line" data-val="true" data-val-required="The DisplayName field is required." name="DisplayName" type="text" value="First Name" data-bind="value: DisplayName, attr:{placeholder:'Ex First Name'}" placeholder="Ex First Name">
                             </div>
                             <div class="col-md-3 col-sm-3">
-                                <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="This is a friendly name to display to your users"></span>
+                                <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="This is a friendly name to display to your users"></span>
                             </div>
                         </div>
                     </div>
@@ -926,7 +1056,7 @@
                                 </div>
                             </div>
                             <div class="col-md-3 col-sm-3">
-                                <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Using lookup table allows friendly selection in report using a Dropdown List"></span>
+                                <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Using lookup table allows friendly selection in report using a Dropdown List"></span>
                             </div>
                         </div>
                     </div>
@@ -949,7 +1079,7 @@
                                 <select class="form-control" name="ForeignKeyField" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignKeyField, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" placeholder="Ex EmployeeId" style="display: none;"></select>
                             </div>
                             <div class="col-md-3 col-sm-3">
-                                <span data-bind="visible:ForeignKey()" data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Foreign Key field is a Column from the Foreign table which is used as the Key field"></span>
+                                <span data-bind="visible:ForeignKey()" data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Foreign Key field is a Column from the Foreign table which is used as the Key field"></span>
                             </div>
                         </div>
                     </div>
@@ -960,7 +1090,7 @@
                                 <select class="form-control" name="ForeignValueField" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignValueField, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" placeholder="Ex EmployeeName" style="display: none;"></select>
                             </div>
                             <div class="col-md-3 col-sm-3">
-                                <span data-bind="visible:ForeignKey()" data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Lookup Value field is a Column from the Lookup table which is used to display the value to the User in the Report Designer"></span>
+                                <span data-bind="visible:ForeignKey()" data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Lookup Value field is a Column from the Lookup table which is used to display the value to the User in the Report Designer"></span>
                             </div>
                         </div>
                     </div>
@@ -968,7 +1098,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Done</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
             </div>
         </div>
     </div>
@@ -979,7 +1109,7 @@
         <div class="modal-content" data-bind="with: editAllowedRoles">
             <div class="modal-header">
                 <h4 class="modal-title">Manage Access by Roles</h4>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <p>Choose User Roles that will have Access</p>
@@ -1002,7 +1132,7 @@
 
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Done</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
             </div>
         </div>
     </div>
@@ -1015,7 +1145,7 @@
         <div class="modal-content" data-bind="with: newDataConnection">
             <div class="modal-header">
                 <h4 class="modal-title">Add a new Data Connection</h4>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <p>Choose User Roles that will have Access</p>
@@ -1033,7 +1163,7 @@
                         <input class="form-control text-box" data-val="true" data-val-required="Connection Key is required." type="text" data-bind="value: ConnectionKey" placeholder="" id="add-conn-key">
                     </div>
                     <div class="col-md-3 col-sm-3">
-                        <span data-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="This is the Connection Key in your web.config for your SQL Connection String"></span>
+                        <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="This is the Connection Key in your web.config for your SQL Connection String"></span>
                     </div>
                 </div>
                 <div class="form-group row">
@@ -1064,20 +1194,13 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Enter Select SQL for your Data</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="form-group" data-bind="validationElement: customTableName">
                     <label for="custom-table-name">Custom Table Name</label>
                     <input type="text" class="form-control" name="customTableName" placeholder="Enter table name" data-bind="textInput: customTableName" required>
                     <div class="invalid-feedback">Custom Table Name is required.</div>
-                </div>
-                <div class="checkbox">
-                    <label>
-                        <input class="check-box" type="checkbox" data-bind="checked: useAi"> Use ChatGPT to build the query?
-                    </label>
                 </div>
                 <div data-bind="visible: useAi">
                     <p id="query-input" class="query-input">
@@ -1095,8 +1218,88 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" data-bind="click: executeSql">Save changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import Tables/Views Json File Modal -->
+<div class="modal" id="uploadTablesFileModal" tabindex="-1" aria-labelledby="uploadTablesFileModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" data-bind="with: ManageTablesJsonFile">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadTablesFileModalLabel">Import Tables/Views JSON File Upload</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="dropzone" class="dropzone"
+                     data-bind="event: {click: triggerTablesFileInput }"
+                     style="border: 2px dashed #007bff; border-radius: 5px; padding: 30px; text-align: center; color: #007bff; cursor: pointer;">
+                    click to select Json file
+                </div>
+                <input type="file" id="tablesFileInputJson" accept=".json" style="display: none;" data-bind="event: { change: handleTablesFileSelect }">
+                <div data-bind="visible: fileName">
+                    <p>Selected Tables/Views File: <span data-bind="text: fileName"></span></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" data-bind="click: uploadTablesFile">Upload</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import Joins Json File Modal -->
+<div class="modal" id="uploadJoinsFileModal" tabindex="-1" aria-labelledby="uploadJoinsFileModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" data-bind="with: ManageJoinsJsonFile">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadJoinsFileModalLabel">Import Joins JSON File Upload</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="dropzone" class="dropzone"
+                     data-bind="event: {click: triggerJoinsFileInput }"
+                     style="border: 2px dashed #007bff; border-radius: 5px; padding: 30px; text-align: center; color: #007bff; cursor: pointer;">
+                    click to select Json file
+                </div>
+                <input type="file" id="joinsFileInputJson" accept=".json" style="display: none;" data-bind="event: { change: handleJoinsFileSelect }">
+                <div data-bind="visible: fileName">
+                    <p>Selected Joins File: <span data-bind="text: fileName"></span></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" data-bind="click: uploadJoinsFile">Upload</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Import StoredProcedures Json File Modal -->
+<div class="modal" id="uploadStoredProceduresFileModal" tabindex="-1" aria-labelledby="uploadStoredProceduresFileModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" data-bind="with: ManageStoredProceduresJsonFile">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadStoredProceduresFileModalLabel">Import Stored Procedures JSON File Upload</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="dropzone" class="dropzone"
+                     data-bind="event: {click: triggerStoredProceduresFileInput }"
+                     style="border: 2px dashed #007bff; border-radius: 5px; padding: 30px; text-align: center; color: #007bff; cursor: pointer;">
+                    click to select Json file
+                </div>
+                <input type="file" id="storedProceduresFileInputJson" accept=".json" style="display: none;" data-bind="event: { change: handleStoredProceduresFileSelect }">
+                <div data-bind="visible: fileName">
+                    <p>Selected Stored Procedures File: <span data-bind="text: fileName"></span></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" data-bind="click: uploadStoredProceduresFile">Upload</button>
             </div>
         </div>
     </div>

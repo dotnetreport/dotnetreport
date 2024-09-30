@@ -166,6 +166,9 @@ var manageViewModel = function (options) {
 				})
 			})
 		}).done(function (result) {
+			if (result.d) result = result.d;
+			if (result.Result) result = result.Result;
+
 			self.DataConnections.push({
 				Id: result.Id,
 				DataConnectName: self.newDataConnection.Name(),
@@ -239,6 +242,9 @@ var manageViewModel = function (options) {
 				})
 			})
 		}).done(function (result) {
+			if (result.d) result = result.d;
+			if (result.Result) result = result.Result;
+
 			self.DataConnections(result);
 			self.currentConnectionKey(self.keys.DatabaseApiKey);
 		});
@@ -260,6 +266,7 @@ var manageViewModel = function (options) {
 			})
 		}).done(function (result) {
 			if (result.d) result = result.d;
+			if (result.Result) result = result.Result;
 			_.forEach(result, function (s) {
 				_.forEach(s.Columns, function (c) {
 					c.DisplayName = ko.observable(c.DisplayName);
@@ -308,6 +315,8 @@ var manageViewModel = function (options) {
 				})
 			})
 		}).done(function (result) {
+			if (result.d) result = result.d;
+			if (result.Result) result = result.Result;
 			if (!result) {
 				toastr.error('Error saving Procedure: ' + result.Message);
 				return false;
@@ -343,6 +352,8 @@ var manageViewModel = function (options) {
 				})
 			})
 		}).done(function (result) {
+			if (result.d) result = result.d;
+			if (result.Result) result = result.Result;
 			self.Joins($.map(result, function (item) {
 				return self.setupJoin(item);
 			}));
@@ -399,6 +410,8 @@ var manageViewModel = function (options) {
 				})
 			})
 		}).done(function (result) {
+			if (result.d) result = result.d;
+			if (result.Result) result = result.Result;
 			if (result == "Success") toastr.success("Changes saved successfully.");
 		});
 	};
@@ -760,6 +773,7 @@ var manageViewModel = function (options) {
 
 		ajaxcall({ url: options.getUsersAndRoles }).done(function (data) {
 			if (data.d) data = data.d;
+			if (data.Result) data = data.Result;
 			self.manageAccess = manageAccess(data);
 		});
 
@@ -1013,6 +1027,8 @@ var tablesViewModel = function (options) {
 					})
 				})
 			}).done(function (x) {
+				if (x.d) x = x.d;
+
 				if (x.success && x.tableId) {
 					t.Id(x.tableId)
 					toastr.success("Saved table " + e.DisplayName);
@@ -1485,6 +1501,7 @@ var customFunctionManageModel = function (options, keys) {
 				})
 			})
 		}).done(function (result) {
+			if (result.d) result = result.d;
 			if (!result) {
 				toastr.error('Error saving Function: ' + result.Message);
 				return false;

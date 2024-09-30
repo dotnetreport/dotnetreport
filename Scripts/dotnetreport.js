@@ -62,7 +62,7 @@ function linkFieldViewModel(args, options) {
 				}
 			}).done(function (report) {
 				if (report.d) { report = report.d; }
-				if (report.result) { report = report.result; }
+				if (report.Result) { report = report.Result; }
 				if (report.UseStoredProc) {
 					self.allFields(_.map(report.SelectedParameters, function (x) {
 						return {
@@ -375,7 +375,7 @@ function filterGroupViewModel(args) {
 				noBlocking: args.parent.ReportMode()=='dashboard'
 			}).done(function (result) {
 				if (result.d) { result = result.d; }
-				if (result.result) { result = result.result; }
+				if (result.Result) { result = result.Result; }
 				ajaxcall({
 					type: 'POST',
 					url: args.options.lookupListUrl,
@@ -383,7 +383,7 @@ function filterGroupViewModel(args) {
 					noBlocking: args.parent.ReportMode() == 'dashboard'
 				}).done(function (list) {
 					if (list.d) { list = list.d; }
-					if (list.result) { list = list.result; }
+					if (list.Result) { list = list.Result; }
 					var value = filter.Value();
 					lookupList(_.sortBy(list, 'text'));
 					if (value && !filter.Value()) {
@@ -426,7 +426,7 @@ function filterGroupViewModel(args) {
 							noBlocking: args.parent.ReportMode() == 'dashboard'
 						}).done(function (result) {
 							if (result.d) { result = result.d; }
-							if (result.result) { result = result.result; }
+							if (result.Result) { result = result.Result; }
 							ajaxcall({
 								type: 'POST',
 								url: args.options.lookupListUrl,
@@ -434,7 +434,7 @@ function filterGroupViewModel(args) {
 								noBlocking: args.parent.ReportMode() == 'dashboard'
 							}).done(function (list) {
 								if (list.d) { list = list.d; }
-								if (list.result) { list = list.result; }
+								if (list.Result) { list = list.Result; }
 								parentList(_.sortBy(list, 'text'));
 								if (parentIn.length > 0) {
 									filter.ParentIn(parentIn);
@@ -679,7 +679,7 @@ var headerDesigner = function (options) {
 			})
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
-			if (result.result) { result = result.result; }
+			if (result.Result) { result = result.Result; }
 			toastr.success('Report Header changes saved')
 		});
 	}
@@ -694,7 +694,7 @@ var headerDesigner = function (options) {
 			}
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
-			if (result.result) { result = result.result; }
+			if (result.Result) { result = result.Result; }
 			self.UseReportHeader(result.useReportHeader);
 			canvas.loadFromJSON(result.headerJson, canvas.renderAll.bind(canvas), function (o, obj) {
 				if (displayOnly === true)
@@ -734,7 +734,7 @@ var headerDesigner = function (options) {
 		var reader = new FileReader();
 		reader.onload = function (e) {
 			var img = new Image();
-			img.src = e.target.result;
+			img.src = e.target.Result;
 			img.onload = function () {
 				var image = new fabric.Image(img);
 				image.set({
@@ -1361,7 +1361,7 @@ var reportViewModel = function (options) {
 				}
 			}).done(function (result) {
 				if (result.d) { result = result.d; }
-				if (result.result) { result = result.result; }
+				if (result.Result) { result = result.Result; }
 				if (self.ManageFolder.IsNew()) {
 					self.Folders.push({
 						Id: result,
@@ -1432,7 +1432,7 @@ var reportViewModel = function (options) {
 				var reader = new FileReader();
 				reader.onload = function (event) {
 					try {
-						var report = JSON.parse(event.target.result);
+						var report = JSON.parse(event.target.Result);
 						var reportName = report.ReportName;
 						var reportId = report.ReportID;
 						var reportExists = _.some(self.SavedReports(), function (report) {
@@ -1705,14 +1705,14 @@ var reportViewModel = function (options) {
 					}
 				}).done(function (result) {
 					if (result.d) { result = result.d; }
-					if (result.result) { result = result.result; }
+					if (result.Result) { result = result.Result; }
 					ajaxcall({
 						type: 'POST',
 						url: options.lookupListUrl,
 						data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey })
 					}).done(function (list) {
 						if (list.d) { list = list.d; }
-						if (list.result) { list = list.result; }
+						if (list.Result) { list = list.Result; }
 						e.LookupList(list);
 					});
 				});
@@ -1815,7 +1815,7 @@ var reportViewModel = function (options) {
 			}
 		}).done(function (fields) {
 			if (fields.d) { fields = fields.d; }
-			if (fields.result) { fields = fields.result; }
+			if (fields.Result) { fields = fields.Result; }
 			var flds = _.map(fields, function (e, i) {
 				var match = _.filter(self.SelectedFields(), function (x) { return x.fieldId == e.fieldId && (e.fieldType != 'Json' || !x.jsonColumnName); });
 				if (match.length > 0) {
@@ -2711,7 +2711,7 @@ var reportViewModel = function (options) {
 						async: false
 					}).done(function (result) {
 						if (result.d) { result = result.d; }
-						if (result.result) { result = result.result; }
+						if (result.Result) { result = result.Result; }
 						_result = result;
 						self.allSqlQueries(self.allSqlQueries() + (self.allSqlQueries() ? ',' : '') + result.sql);
 
@@ -3206,12 +3206,13 @@ var reportViewModel = function (options) {
 						reportSeries: reportSeries || '',
 						pivotColumn: '',
 						pivotFunction: '',
-						reportData: ''
+						reportData: '',
+						subtotalMode: false
 					}),
 					noBlocking: true
 				}).done(function (ddData) {
 					if (ddData.d) { ddData = ddData.d; }
-					if (ddData.result) { ddData = ddData.result; }
+					if (ddData.Result) { ddData = ddData.Result; }
 					ddData.ReportData.IsDrillDown = ko.observable(true);
 					ddData.ReportData.CanExpandOption = ko.computed(function () { return self.ShowExpandOption(); });
 					if (ddData.HasError) {
@@ -3258,7 +3259,7 @@ var reportViewModel = function (options) {
 						noBlocking: true
 					}).done(function (ddResult) {
 						if (ddResult.d) { ddResult = ddResult.d; }
-						if (ddResult.result) { ddResult = ddResult.result; }
+						if (ddResult.Result) { ddResult = ddResult.Result; }
 						e.connectKey = ddResult.connectKey;
 						self.expandSqls.push({ index: index, sql: e.sql });
 
@@ -3362,7 +3363,7 @@ var reportViewModel = function (options) {
 				noBlocking: self.ReportMode()=='dashboard'
 			}).done(function (subtotalsqlResult) {
 				if (subtotalsqlResult.d) { subtotalsqlResult = subtotalsqlResult.d; }
-				if (subtotalsqlResult.result) { subtotalsqlResult = subtotalsqlResult.result; }
+				if (subtotalsqlResult.Result) { subtotalsqlResult = subtotalsqlResult.Result; }
 				var pivotData = self.preparePivotData();
 				var reportData = pivotData.pivotColumn != null ? self.BuildReportData() : '';
 				ajaxcall({
@@ -3385,7 +3386,7 @@ var reportViewModel = function (options) {
 					noBlocking: self.ReportMode() == 'dashboard'
 				}).done(function (subtotalResult) {
 					if (subtotalResult.d) { subtotalResult = subtotalResult.d; }
-					if (subtotalResult.result) { subtotalResult = subtotalResult.result }
+					if (subtotalResult.Result) { subtotalResult = subtotalResult.Result }
 					processCols(subtotalResult.ReportData.Columns, true);
 					_.forEach(subtotalResult.ReportData.Rows, function (dr) {
 						processRow(dr.Items, subtotalResult.ReportData.Columns);
@@ -3443,12 +3444,13 @@ var reportViewModel = function (options) {
 				reportSeries: reportSeries || "",
 				pivotColumn: pivotData.pivotColumn,
 				pivotFunction: pivotData.pivotFunction,
-				reportData: pivotData.pivotColumn ? JSON.stringify(reportData) : ''
+				reportData: pivotData.pivotColumn ? JSON.stringify(reportData) : '',
+				subtotalMode: false
 			}),
 			noBlocking: self.ReportMode() == 'dashboard'
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
-			if (result.result) { result = result.result; }
+			if (result.Result) { result = result.Result; }
 			self.processReportResult(result, reportSql, connectKey, reportSeries);
 		});
 	};
@@ -3798,7 +3800,7 @@ var reportViewModel = function (options) {
 			}
 		}).done(function (folders) {
 			if (folders.d) { folders = folders.d; }
-			if (folders.result) { folders = folders.result; }
+			if (folders.Result) { folders = folders.Result; }
 			self.SelectedFolder(null);
 			if (folderId) {
 				var match = _.filter(folders, function (x) { return x.Id == folderId; });
@@ -4166,7 +4168,7 @@ var reportViewModel = function (options) {
 					}
 				}).done(function (linkedReport) {
 					if (linkedReport.d) { linkedReport = linkedReport.d; }
-					if (linkedReport.result) { linkedReport = linkedReport.result; }
+					if (linkedReport.Result) { linkedReport = linkedReport.Result; }
 					if (queryParams.noparent == 'true') self.ReportMode('execute');
 
 					return self.ExecuteReportQuery(linkedReport.ReportSql, linkedReport.ConnectKey, reportSeries);
@@ -4205,7 +4207,7 @@ var reportViewModel = function (options) {
 			noBlocking: dontBlock === true
 		}).done(function (report) {
 			if (report.d) { report = report.d; }
-			if (report.result) { report = report.result; }
+			if (report.Result) { report = report.Result; }
 			self.useStoredProc(report.UseStoredProc);
 			self.ReportType(report.ReportType.indexOf('Map') >= 0 ? 'Map' : report.ReportType);
 			if (buildSql === true) options.reportSql = report.ReportSql;
@@ -4251,7 +4253,7 @@ var reportViewModel = function (options) {
 			}
 		}).done(function (reports) {
 			if (reports.d) { reports = reports.d; }
-			if (reports.result) { reports = reports.result; }
+			if (reports.Result) { reports = reports.Result; }
 			_.forEach(reports, function (e) {
 				e.runMode = false;
 				e.openReport = function () {
@@ -4444,7 +4446,7 @@ var reportViewModel = function (options) {
 			}
 		}).done(function (procs) {
 			if (procs.d) { procs = procs.d; }
-			if (procs.result) { procs = procs.result; }
+			if (procs.Result) { procs = procs.Result; }
 			self.Procs(procs);
 		});
 	};
@@ -4461,7 +4463,7 @@ var reportViewModel = function (options) {
 			}
 		}).done(function (tables) {
 			if (tables.d) { tables = tables.d; }
-			if (tables.result) { tables = tables.result; }
+			if (tables.Result) { tables = tables.Result; }
 
 			tables = _.sortBy(tables, function (x) { return x.tableName });
 			self.Tables(tables);
@@ -4495,7 +4497,7 @@ var reportViewModel = function (options) {
 					}
 				}).done(function (x) {
 					if (x.d) { x = x.d; }
-					if (x.result) { x = x.result; }
+					if (x.Result) { x = x.Result; }
 					x = x || {
 						allowUsersToCreateReports: true,
 						allowUsersToManageFolders: true
@@ -5085,7 +5087,7 @@ var dashboardViewModel = function (options) {
 			}
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
-			if (result.result) { result = result.result; }
+			if (result.Result) { result = result.Result; }
 			toastr.success("Dashboard saved successfully");
 			$('#add-dashboard-modal').modal('hide');
 			setTimeout(function () {
@@ -5392,8 +5394,8 @@ var dashboardViewModel = function (options) {
 			var setup = [];
 			if (allFolders[0].d) { allFolders[0] = allFolders[0].d; }
 			if (allReports[0].d) { allReports[0] = allReports[0].d; }
-			if (allFolders[0].result) { allFolders[0] = allFolders[0].result; }
-			if (allReports[0].result) { allReports[0] = allReports[0].result; }
+			if (allFolders[0].Result) { allFolders[0] = allFolders[0].Result; }
+			if (allReports[0].Result) { allReports[0] = allReports[0].Result; }
 
 			_.forEach(allFolders[0], function (x) {
 				var folderReports = _.filter(allReports[0], { folderId: x.Id });

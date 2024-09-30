@@ -439,7 +439,7 @@ namespace ReportBuilder.Web.Models
     {
         private readonly static string _configFileName = "appsettings.dotnetreport.json";
 
-        public static string GetConnectionString(string key, bool addOledbProvider = true)
+        public static string GetConnectionString(string key, bool addOledbProvider = false)
         {
             var connString = ConfigurationManager.ConnectionStrings[key].ConnectionString;
             if (connString == null)
@@ -474,7 +474,7 @@ namespace ReportBuilder.Web.Models
 
             using (var client = new HttpClient())
             {
-                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetDataConnectKey?account={1}&dataConnect={2}", connect.ApiUrl, connect.AccountApiKey, connect.DatabaseApiKey));
+                var response = client.GetAsync(String.Format("{0}/ReportApi/GetDataConnectKey?account={1}&dataConnect={2}", connect.ApiUrl, connect.AccountApiKey, connect.DatabaseApiKey)).Result;
 
                 if (!response.IsSuccessStatusCode)
                 {

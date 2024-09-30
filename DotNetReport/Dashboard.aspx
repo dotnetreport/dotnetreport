@@ -121,6 +121,8 @@
 </asp:Content>
 <asp:Content ID="Content2" ContentPlaceHolderID="body" runat="server">
 
+<div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
+
 <div class="row" style="display: none" data-bind="visible: currentDashboard">
     <div class="col-4" data-bind="with: currentDashboard">
         <h2 title="Switch Dashboard">
@@ -134,28 +136,27 @@
 </div>
 <div class="clearfix"></div>
 
-<div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
-
-<div class="row padded-top">
-    <div class="col-md-12">
-        <div style="padding: 10px 10px">
-            <div class="material-switch pull-right">
-                <input id="arrange-mode" type="checkbox" data-bind="checked: arrangeDashboard" />
-                <label for="arrange-mode" class="label-primary"></label>
+<div class="row">
+    <div class="col d-flex align-items-center">
+        <button class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" title="Edit Dashboard Settings" data-bind="click: editDashboard">Edit this Dashboard</button>
+        <button class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" title="Add a New Dashboard" data-bind="click: newDashboard">Add a new Dashboard</button>
+        <button class="btn btn-primary btn-sm" title="Refresh to Load All Reports" data-bind="click: RefreshAllReports"><span class="fa fa-refresh"></span> Refresh Dashboard</button>
+    </div>
+    <div class="col-auto d-flex align-items-center">
+        <div class="bubble-badge">
+            Arrange Dashboard
+            <div class="form-check form-switch ms-2">
+                <input class="form-check-input" id="arrange-mode" type="checkbox" data-bind="checked: arrangeDashboard">
             </div>
-            <div class="pull-right">Arrange this Dashboard</div>
         </div>
-
-        <button class="btn btn-primary btn-sm" onclick="return false;" data-toggle="modal" data-target="#add-dashboard-modal" title="Edit Dashboard Settings" data-bind="click: editDashboard"><span class="fa fa-pencil"></span> Edit this Dashboard</button>
-        <button class="btn btn-primary btn-sm" onclick="return false;" data-toggle="modal" data-target="#add-dashboard-modal" title="Add a New Dashboard" data-bind="click: newDashboard"><span class="fa fa-plus"></span> Add a new Dashboard</button>
-        <button class="btn btn-primary btn-sm" onclick="return false;" title="Refresh to Load All Reports" data-bind="click: RefreshAllReports"><span class="fa fa-refresh"></span> Refresh Dashboard</button>
     </div>
 </div>
+
 <div class="padded-top"></div>
 
 <div class="centered" style="display: none;" data-bind="visible: dashboards().length == 0 ">
     No Dashboards yet. Click below to Start<br />
-    <button onclick="return false;" class="btn btn-lg btn-primary" data-toggle="modal" data-target="#add-dashboard-modal"><i class="fa fa-dashboard"></i> Create a New Dashboard</button>
+    <button class="btn btn-lg btn-primary" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal"><i class="fa fa-dashboard"></i> Create a New Dashboard</button>
 </div>
 
 <div class="modal modal-fullscreen" id="add-dashboard-modal" role="dialog">
@@ -163,7 +164,7 @@
         <div class="modal-content" data-bind="with: dashboard">
             <div class="modal-header">
                 <h4 class="modal-title"><span data-bind="text: Id() ? 'Edit' : 'Add'"></span> Dashboard</h4>
-                <button onclick="return false;" type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="form-horizontal">
@@ -221,7 +222,7 @@
                 </div>
                 <div data-bind="if: !$parent.searchReports() " class="card" style="margin-left: 20px;">
                     <div class="card-body" data-bind="foreach: $parent.reportsAndFolders">
-                        <a class="btn btn-link" role="button" data-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }">
+                        <a class="btn btn-link" role="button" data-bs-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }">
                             <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: folder"></span>
                         </a>
                         <div class="collapse" data-bind="attr: {id: 'folder-' + folderId }">
@@ -246,8 +247,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button onclick="return false;" type="button" class="btn btn-danger" data-bind="click: $root.deleteDashboard, visible: Id">Delete Dashboard</button>
-                <button onclick="return false;" type="button" class="btn btn-primary" data-bind="click: $root.saveDashboard">Save Dashboard</button>
+                <button type="button" class="btn btn-danger" data-bind="click: $root.deleteDashboard, visible: Id">Delete Dashboard</button>
+                <button type="button" class="btn btn-primary" data-bind="click: $root.saveDashboard">Save Dashboard</button>
             </div>
         </div>
     </div>
@@ -267,7 +268,7 @@
         <div class="card" data-bind="attr: {class: 'card ' + panelStyle + ' grid-stack-item-content'}, css: { expanded: isExpanded }" style="overflow-y: hidden;">
             <div class="padded-div" style="padding-bottom: 0; margin-bottom: 0;">
                 <div class="pull-left">
-                    <button type="button" class="btn" data-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
+                    <button type="button" class="btn" data-bs-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
                         <span class="fa fa-ellipsis-v"></span>
                     </button>
                     <ul class="dropdown-menu small" style="z-index: 1001;">
@@ -277,7 +278,7 @@
                             </a>
                         </li>
                         <li class="dropdown-item" data-bind="visible: CanEdit">
-                            <a href="#" data-toggle="modal" data-target="#modal-reportbuilder" data-bind="click: openReport">
+                            <a href="#" data-bind="click: openReport">
                                 <span class="fa fa-pencil"></span> Edit
                             </a>
                         </li>
@@ -287,12 +288,17 @@
                             </a>
                         </li>
                         <li class="dropdown-item">
-                            <a href="#" data-bind="click: downloadPdfAlt">
+                            <a href="#" data-bind="click: downloadPdf">
                                 <span class="fa fa-file-pdf-o"></span> PDF
                             </a>
                         </li>
                         <li class="dropdown-item">
-                            <a data-bind="attr: {href: '/DotNetReport/Report.aspx?linkedreport=true&noparent=true&reportId=' + ReportID() }" target="_blank">
+                            <a href="#" data-bind="click: downloadWord">
+                                <span class="fa fa-file-word-o"></span> Word
+                            </a>
+                        </li>
+                        <li class="dropdown-item">
+                            <a data-bind="attr: {href: '/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + ReportID() }" target="_blank">
                                 <span class="fa fa-file"></span> Report
                             </a>
                         </li>
@@ -302,7 +308,8 @@
                                 <span class="fa fa-close"></span> Remove
                             </a>
                         </li>
-                        <li class="dropdown-item">
+
+                         <li class="dropdown-item">
                             <a href="#"  data-bind="click: function() { RefreshReport(ReportID()); }">
                                 <span class="fa fa-refresh"></span> Refresh
                             </a>

@@ -13,7 +13,6 @@ function ajaxcall(options) {
     var headers = new Headers();
     headers.append('Authorization', 'Bearer ' + token);
 
-    options.type = options.type || "POST";
     var validationToken = $('input[name="__RequestVerificationToken"]').val();
     if (options.type == 'POST' && validationToken) {
         options.headers = options.headers || {};
