@@ -261,6 +261,7 @@
     <Content Include="Content\toastr.min.css" />
     <Content Include="DotNetReport\Dashboard.aspx" />
     <Content Include="DotNetReport\Index.aspx" />
+    <Content Include="DotNetReport\Query.aspx" />
     <Content Include="DotNetReport\Report.aspx" />
     <Content Include="DotNetReport\ReportPrint.aspx" />
     <Content Include="DotNetReport\ReportService.asmx" />
@@ -498,6 +499,13 @@
     </Compile>
     <Compile Include="DotNetReport\Index.aspx.designer.cs">
       <DependentUpon>Index.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="DotNetReport\Query.aspx.cs">
+      <DependentUpon>Query.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="DotNetReport\Query.aspx.designer.cs">
+      <DependentUpon>Query.aspx</DependentUpon>
     </Compile>
     <Compile Include="DotNetReport\Report.aspx.cs">
       <DependentUpon>Report.aspx</DependentUpon>
