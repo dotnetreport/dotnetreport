@@ -3686,6 +3686,7 @@ var reportViewModel = function (options) {
 		if (self.ReportType() != 'Treemap') {
 			google.visualization.events.addListener(chart, 'ready', function () {
 				self.ChartData(chart.getImageURI());
+				window.chartImageUrl = chart.getImageURI();
 			});
 
 			// Add click event listener
