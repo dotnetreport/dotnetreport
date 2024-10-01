@@ -117,7 +117,7 @@ namespace ReportBuilder.Web.Jobs
 
                                 byte[] fileData;
                                 string fileExt = "";
-
+                                string imageData = "";
                                 switch ((schedule.Format ?? "Excel").ToUpper())
                                 {
                                     case "PDF":
@@ -132,7 +132,8 @@ namespace ReportBuilder.Web.Jobs
 
                                     case "WORD":
                                         fileExt = ".docx";
-                                        fileData = await DotNetReportHelper.GetWordFile(reportToRun.ReportSql,reportToRun.ConnectKey, reportToRun.ReportName, columns: columnDetails, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot");
+                                        imageData = await DotNetReportHelper.GetChartImage(JobScheduler.WebAppRootUrl + "/Report/ReportPrint", reportToRun.ReportId, reportToRun.ConnectKey, reportToRun.ReportSql);
+                                        fileData = await DotNetReportHelper.GetWordFile(reportToRun.ReportSql,reportToRun.ConnectKey, reportToRun.ReportName, columns: columnDetails, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot",chartData: imageData);
                                         break;
 
                                     case "EXCEL-SUB":
@@ -142,7 +143,8 @@ namespace ReportBuilder.Web.Jobs
                                     
                                     case "EXCEL":
                                     default:
-                                        fileData = await DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: columnDetails, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot");
+                                        imageData = await DotNetReportHelper.GetChartImage(JobScheduler.WebAppRootUrl + "/Report/ReportPrint", reportToRun.ReportId, reportToRun.ConnectKey, reportToRun.ReportSql);
+                                        fileData = await DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: columnDetails, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot",chartData: imageData);
                                         fileExt = ".xlsx";
                                         break;
                                 }
