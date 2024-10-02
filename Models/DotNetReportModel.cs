@@ -1108,13 +1108,28 @@ namespace ReportBuilder.Web.Models
             {
                 var lastWhereIndex = drilldownSql.LastIndexOf("WHERE");
                 var baseQuery = drilldownSql.Substring(0, lastWhereIndex) + " " + GetWhereClause(sql);
-
+                var monthNames = new List<string>
+                {
+                    "january", "february", "march", "april", "may", "june",
+                    "july", "august", "september", "october", "november", "december"
+                };
                 var baseDataTable = databaseConnection.ExecuteQuery(connectionString, baseQuery.Replace("SELECT ", "SELECT "));
                 var distinctValues = baseDataTable
                     .AsEnumerable()
                     .Select(row => "[" + Convert.ToString(row[pivotColumn])?.Trim() + "]")
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .Where(x=>x != "[]" && x.Length <=128)
+                    .OrderBy(x =>
+                    {
+                        string lowerTrimmedValue = x.Trim('[', ']').ToLower();
+                        int monthIndex = monthNames.IndexOf(lowerTrimmedValue);
+                        if (monthIndex >= 0)
+                        {
+                            return monthIndex;
+                        }
+                        return int.MaxValue; 
+                    })
+                    .ThenBy(x => x) 
                     .ToList();
                 distinctValues = (pivotColumnOrder.Count == distinctValues.Count && !pivotColumnOrder.Except(distinctValues).Any()) ? pivotColumnOrder : distinctValues;
 
