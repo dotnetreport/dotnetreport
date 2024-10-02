@@ -1112,7 +1112,7 @@ namespace ReportBuilder.Web.Models
                 var baseDataTable = databaseConnection.ExecuteQuery(connectionString, baseQuery.Replace("SELECT ", "SELECT "));
                 var distinctValues = baseDataTable
                     .AsEnumerable()
-                    .Select(row => "[" + row.Field<string>(pivotColumn)?.Trim() + "]")
+                    .Select(row => "[" + Convert.ToString(row[pivotColumn])?.Trim() + "]")
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .Where(x=>x != "[]" && x.Length <=128)
                     .ToList();
