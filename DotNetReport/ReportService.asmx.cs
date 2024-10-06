@@ -1,5 +1,4 @@
 ﻿using Newtonsoft.Json;
-using ReportBuilder.Web.Controllers;
 using ReportBuilder.Web.Models;
 using System;
 using System.Collections.Generic;
@@ -14,7 +13,6 @@ using System.Web;
 using System.Web.Script.Serialization;
 using System.Web.Script.Services;
 using System.Web.Services;
-using static ReportBuilder.Web.Controllers.DotNetReportApiController;
 
 namespace ReportBuilder.WebForms.DotNetReport
 {
@@ -27,6 +25,8 @@ namespace ReportBuilder.WebForms.DotNetReport
     [System.Web.Script.Services.ScriptService]
     public class ReportService : System.Web.Services.WebService
     {
+        public readonly static string dbtype = DbTypes.MS_SQL.ToString().Replace("_", " ");
+
         public DotNetReportSettings GetSettings()
         {
             var settings = new DotNetReportSettings
@@ -608,14 +608,14 @@ namespace ReportBuilder.WebForms.DotNetReport
                 var functions = new List<CustomFunctionModel>();
                 if (onlyApi)
                 {
-                    tables.AddRange(await DotNetSetupController.GetApiTables(connect.AccountApiKey, connect.DatabaseApiKey, true));
+                    tables.AddRange(await Setup.GetApiTables(connect.AccountApiKey, connect.DatabaseApiKey, true));
                 }
                 else
                 {
-                    tables.AddRange(await DotNetSetupController.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
-                    tables.AddRange(await DotNetSetupController.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
+                    tables.AddRange(await Setup.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
+                    tables.AddRange(await Setup.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
                 }
-                procedures.AddRange(await DotNetSetupController.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
+                procedures.AddRange(await Setup.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
                 //functions.AddRange(await DotNetReportHelper.GetApiFunctions(connect.AccountApiKey, connect.DatabaseApiKey));
 
                 var model = new ManageViewModel
@@ -768,7 +768,7 @@ namespace ReportBuilder.WebForms.DotNetReport
         private List<TableViewModel> GetSearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
         {
             var tables = new List<TableViewModel>();
-            var connString = DotNetReportHelper.GetConnectionString(dataConnectKey);
+            var connString = DotNetReportHelper.GetConnectionString(dataConnectKey, true);
             using (OleDbConnection conn = new OleDbConnection(connString))
             {
                 // open the connection to the database 

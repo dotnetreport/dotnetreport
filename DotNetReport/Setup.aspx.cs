@@ -188,6 +188,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                                 ForeignParentValueField = field.foreignParentValueField,
                                 ForeignParentTable = field.foreignParentTable,
                                 ForeignParentRequired = field.foreignParentRequired,
+                                ForeignFilterOnly = field.foreignFilterOnly,
 
                                 JsonStructure = field.jsonStructure,
                                 Selected = true
@@ -253,7 +254,7 @@ namespace ReportBuilder.WebForms.DotNetReport
             }
         }
 
-        public static async Task<List<TableViewModel>> GetTables(string type = "TABLE", string accountKey = null, string dataConnectKey = null)
+        public static async Task<List<TableViewModel>> GetTables(string type = "TABLE", string accountKey = "", string dataConnectKey = "")
         {
             var tables = new List<TableViewModel>();
 
@@ -261,10 +262,11 @@ namespace ReportBuilder.WebForms.DotNetReport
 
             if (!String.IsNullOrEmpty(accountKey) && !String.IsNullOrEmpty(dataConnectKey))
             {
-                currentTables = await GetApiTables(accountKey, dataConnectKey);
+                currentTables = await GetApiTables(accountKey, dataConnectKey, true);
+                currentTables = currentTables.Where(x => !string.IsNullOrEmpty(x.TableName)).ToList();
             }
 
-            var connString = await GetConnectionString(GetConnection(dataConnectKey));
+            var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey));
             using (OleDbConnection conn = new OleDbConnection(connString))
             {
                 // open the connection to the database 
@@ -280,10 +282,6 @@ namespace ReportBuilder.WebForms.DotNetReport
 
                     // see if this table is already in database
                     var matchTable = currentTables.FirstOrDefault(x => x.TableName.ToLower() == tableName.ToLower());
-                    if (matchTable != null)
-                    {
-                        matchTable.Columns = await GetApiFields(accountKey, dataConnectKey, matchTable.Id);
-                    }
 
                     var table = new TableViewModel
                     {
@@ -295,8 +293,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                         Selected = matchTable != null,
                         Columns = new List<ColumnViewModel>(),
                         AllowedRoles = matchTable != null ? matchTable.AllowedRoles : new List<string>(),
-                        AccountIdField = matchTable != null ? matchTable.AccountIdField : "",
-                        DoNotDisplay = matchTable != null ? matchTable.DoNotDisplay : false,
+                        AccountIdField = matchTable != null ? matchTable.AccountIdField : ""
                     };
 
                     var dtField = conn.GetOleDbSchemaTable(OleDbSchemaGuid.Columns, new object[] { null, null, tableName });
@@ -310,7 +307,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                             ColumnName = matchColumn != null ? matchColumn.ColumnName : dr["COLUMN_NAME"].ToString(),
                             DisplayName = matchColumn != null ? matchColumn.DisplayName : dr["COLUMN_NAME"].ToString(),
                             PrimaryKey = matchColumn != null ? matchColumn.PrimaryKey : dr["COLUMN_NAME"].ToString().ToLower().EndsWith("id") && idx == 0,
-                            DisplayOrder = matchColumn != null ? matchColumn.DisplayOrder : idx++,
+                            DisplayOrder = matchColumn != null ? matchColumn.DisplayOrder : idx,
                             FieldType = matchColumn != null ? matchColumn.FieldType : ConvertToJetDataType((int)dr["DATA_TYPE"]).ToString(),
                             AllowedRoles = matchColumn != null ? matchColumn.AllowedRoles : new List<string>()
                         };
@@ -336,16 +333,38 @@ namespace ReportBuilder.WebForms.DotNetReport
                             column.ForeignParentKeyField = matchColumn.ForeignParentKeyField;
                             column.ForeignParentValueField = matchColumn.ForeignParentValueField;
                             column.ForeignParentRequired = matchColumn.ForeignParentRequired;
+                            column.JsonStructure = matchColumn.JsonStructure;
+                            column.ForeignFilterOnly = matchColumn.ForeignFilterOnly;
 
                             column.Selected = true;
                         }
 
+                        idx++;
                         table.Columns.Add(column);
                     }
+
+                    // add columns not in db, but in dotnet report
+                    if (matchTable != null)
+                    {
+                        table.Columns.AddRange(matchTable.Columns.Where(x => !table.Columns.Select(c => c.Id).Contains(x.Id)).ToList());
+                    }
+
                     table.Columns = table.Columns.OrderBy(x => x.DisplayOrder).ToList();
                     tables.Add(table);
                 }
 
+                // add tables not in db, but in dotnet report
+                var notMatchedTables = currentTables.Where(x => !tables.Select(c => c.Id).Contains(x.Id) && ((type == "TABLE") ? !x.IsView : x.IsView)).ToList();
+                if (notMatchedTables.Any())
+                {
+                    foreach (var notMatchedTable in notMatchedTables)
+                    {
+                        notMatchedTable.Selected = true;
+                        notMatchedTable.Columns = await GetApiFields(accountKey, dataConnectKey, notMatchedTable.Id);
+                        notMatchedTable.Columns.ForEach(x => x.Selected = true);
+                    }
+                    tables.AddRange(notMatchedTables);
+                }
                 conn.Close();
                 conn.Dispose();
             }

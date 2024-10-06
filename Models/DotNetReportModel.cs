@@ -22,13 +22,10 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Net.Http;
-using Newtonsoft.Json;
 using A = DocumentFormat.OpenXml.Drawing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
 using System.Data.SqlClient;
-using static ReportBuilder.Web.Controllers.DotNetReportApiController;
-using ReportBuilder.Web.Models;
 
 namespace ReportBuilder.Web.Models
 {
@@ -114,6 +111,12 @@ namespace ReportBuilder.Web.Models
     {
         public List<DotNetReportDataRowModel> Rows { get; set; }
         public List<DotNetReportDataColumnModel> Columns { get; set; }
+    }
+
+    public class SqlQuery
+    {
+        public string sql { get; set; } = "";
+        public List<KeyValuePair<string, string>> parameters { get; set; } = null;
     }
 
     public class TableViewModel
@@ -438,6 +441,7 @@ namespace ReportBuilder.Web.Models
     public static class DotNetReportHelper
     {
         private readonly static string _configFileName = "appsettings.dotnetreport.json";
+        public readonly static string dbtype = DbTypes.MS_SQL.ToString().Replace("_", " ");
 
         public static string GetConnectionString(string key, bool addOledbProvider = false)
         {
