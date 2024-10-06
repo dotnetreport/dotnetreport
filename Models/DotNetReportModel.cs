@@ -1394,6 +1394,28 @@ namespace ReportBuilder.Web.Models
 
             return desiredOrder;
         }
+        static bool ContainsGroupInDetail(string jsonString)
+        {
+            if (string.IsNullOrEmpty(jsonString))
+                return false;
+            JObject jsonObject;
+            try
+            {
+                jsonObject = JObject.Parse(jsonString);
+            }
+            catch
+            {
+                return false;
+            }
+            if (jsonObject["GroupFunctionList"] == null)
+                return false;
+            JArray groupFunctionList = jsonObject["GroupFunctionList"] as JArray;
+            if (groupFunctionList == null || !groupFunctionList.Any())
+                return false;
+            return groupFunctionList.Any(item =>
+                item?["GroupFunc"]?.ToString() == "Group in Detail"
+            );
+        }
 
         public static DataTable PushDatasetIntoDataTable(DataTable tbl, DataSet dts, string pivotColumnName, string pivotFunction, string reportDataJson=null)
         {
@@ -1634,8 +1656,14 @@ namespace ReportBuilder.Web.Models
                                      }}
                                 ");
                         }
-
-                        var reportData = expandSqls.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(',', drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
+                        bool isGroupInDetailExist = ContainsGroupInDetail(expandSqls);
+                        var drillDownRowValue = $"\"DrillDownRow\": [{string.Join(',', drilldownRow)}]";
+                        var reportData = expandSqls.Replace("\"DrillDownRow\":[]", drillDownRowValue);
+                        // If Group in Detail does not exist, set IsAggregateReport to false
+                        if (!isGroupInDetailExist)
+                        {
+                            reportData = reportData.Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
+                        }
                         var drilldownSql = await RunReportApiCall(reportData);
                         if (drilldownSql.StartsWith("{\"sql\""))
                         {
