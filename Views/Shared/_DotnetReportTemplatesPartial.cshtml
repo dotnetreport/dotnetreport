@@ -1512,13 +1512,25 @@
 
                                         <div class="mb-3" data-bind="visible: isConditionalFunction">
                                             <label class="form-label">Condition Builder:</label>
-                                            <div class="input-group mb-3">
-                                                <select class="form-select" data-bind="options: availableFields, value: selectedConditionField, optionsCaption: 'Select field'"></select>
-                                                <select class="form-select" data-bind="options: availableOperators, value: selectedOperator"></select>
-                                                <input type="text" class="form-control" placeholder="Value to compare" data-bind="value: conditionValue">
-                                                <span class="input-group-text">THEN</span>
-                                                <input type="text" class="form-control" placeholder="Result" data-bind="value: result">
-                                            </div>
+                                                <div class="input-group mb-3">
+                                                    <!-- Select2 for Field Selection -->
+                                                    <div class="flex-grow-1">
+                                                        <select class="form-select" data-bind="select2: {dropdownParent: $('#choose-data-card'), placeholder: 'Select Field...', ajax: { url: $parent.textQuery.searchFields.url, dataType: 'json', data: $parent.textQuery.searchFields.query, processResults: $parent.textQuery.searchFields.processResults, headers: $parent.textQuery.searchFields.headers }, minimumInputLength: 2, allowClear: true }, value: selectedConditionField"></select>
+                                                    </div>
+
+                                                    <!-- Operator Select with Custom Width -->
+                                                    <div class="mx-2" style="width: 120px;">
+                                                        <select class="form-select" data-bind="options: availableOperators, value: selectedOperator"></select>
+                                                    </div>
+
+                                                    <!-- Condition Value Input -->
+                                                    <input type="text" class="form-control" placeholder="Value to compare" data-bind="value: conditionValue">
+
+                                                    <!-- THEN text and Result Input -->
+                                                    <span class="input-group-text">THEN</span>
+                                                    <input type="text" class="form-control" placeholder="Result" data-bind="value: result">
+                                                </div>
+
                                             <button class="btn btn-outline-primary" data-bind="click: addCondition">Add Condition</button>
                                             <ul class="list-group mt-3" data-bind="foreach: conditions">
                                                 <li class="list-group-item d-flex justify-content-between align-items-center">
