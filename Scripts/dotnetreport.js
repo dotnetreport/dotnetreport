@@ -1878,6 +1878,7 @@ var reportViewModel = function (options) {
 	self.formulaFields = ko.observableArray([]);
 	self.formulaFieldLabel = ko.observable('');
 	self.formulaDataFormat = ko.observable('')
+	self.formulaType = ko.observable('build');
 	self.formulaDecimalPlaces = ko.observable();
 	self.selectedFunction = ko.observable();
 	self.currentFormulaField = ko.observable(null);
@@ -1892,6 +1893,8 @@ var reportViewModel = function (options) {
 			codeEditor = new functionEditor(options);
 		}
 	}
+
+	self.customSqlField = new sqlFieldModel();
 
 	self.formulaOnlyHasDateFields = ko.computed(function () {
 		var allFields = self.formulaFields();
@@ -4764,6 +4767,166 @@ var reportViewModel = function (options) {
 	};
 
 };
+
+var sqlFieldModel = function (options) {
+	var self = this;
+
+	self.availableFields = ko.observableArray();
+	self.availableFunctionsGrouped = ko.observableArray([
+		{
+			text: 'Conditional Functions',
+			children: [
+				{ id: 'IIF', text: 'IIF (Conditional)', description: 'Return a value based on a condition.' },
+				{ id: 'CASE', text: 'CASE (Multiple Conditions)', description: 'Handle multiple conditions with corresponding results.' },
+				{ id: 'COALESCE', text: 'COALESCE (First Non-Null)', description: 'Return the first non-null value from a list.' },
+				{ id: 'NULLIF', text: 'NULLIF (Compare and Return Null)', description: 'Return NULL if two values are equal.' },
+				{ id: 'ISNULL', text: 'ISNULL (Replace Null)', description: 'Replace a NULL value with a specified replacement.' }
+			]
+		},
+		{
+			text: 'String Functions',
+			children: [
+				{ id: 'LEFT', text: 'LEFT (Extract Left)', description: 'Extract a specified number of characters from the left of a string.' },
+				{ id: 'RIGHT', text: 'RIGHT (Extract Right)', description: 'Extract a specified number of characters from the right of a string.' },
+				{ id: 'UPPER', text: 'UPPER (Convert to Uppercase)', description: 'Convert text to uppercase.' },
+				{ id: 'LOWER', text: 'LOWER (Convert to Lowercase)', description: 'Convert text to lowercase.' },
+				{ id: 'CONCAT', text: 'CONCAT (Concatenate Strings)', description: 'Concatenate two or more strings together.' },
+				{ id: 'TRIM', text: 'TRIM (Remove Spaces)', description: 'Remove leading and trailing spaces from a string.' },
+				{ id: 'SUBSTRING', text: 'SUBSTRING (Extract Substring)', description: 'Extract a substring from a string.' },
+				{ id: 'LENGTH', text: 'LENGTH (String Length)', description: 'Get the length of a string.' },
+				{ id: 'REPLACE', text: 'REPLACE (Replace Substring)', description: 'Replace all occurrences of a substring within a string.' }
+			]
+		},
+		{
+			text: 'Mathematical Functions',
+			children: [
+				{ id: 'ABS', text: 'ABS (Absolute Value)', description: 'Return the absolute (positive) value of a number.' },
+				{ id: 'ROUND', text: 'ROUND (Round Number)', description: 'Round a number to a specified number of decimal places.' },
+				{ id: 'CEIL', text: 'CEIL (Round Up)', description: 'Round a number up to the nearest integer.' },
+				{ id: 'FLOOR', text: 'FLOOR (Round Down)', description: 'Round a number down to the nearest integer.' },
+				{ id: 'MOD', text: 'MOD (Modulo)', description: 'Return the remainder of a division operation.' }
+			]
+		},
+		{
+			text: 'Date Functions',
+			children: [
+				{ id: 'YEAR', text: 'YEAR (Extract Year)', description: 'Extract the year from a date.' },
+				{ id: 'MONTH', text: 'MONTH (Extract Month)', description: 'Extract the month from a date.' },
+				{ id: 'DAY', text: 'DAY (Extract Day)', description: 'Extract the day from a date.' }
+			]
+		},
+		{
+			text: 'Other',
+			children: [
+				{ id: 'Other', text: 'Other (Custom SQL)', description: 'Manually enter a custom SQL expression.' }
+			]
+		}
+	]);
+
+	self.select2Options = {
+		data: self.availableFunctionsGrouped(),
+		templateResult: function (option) {
+			if (!option.id) {
+				return option.text;  // Group label (no description)
+			}
+			// Inline formatting of option
+			return $('<div>' + option.text + '<br><span style="font-size: 0.9em;">  ' + option.description + '</span></div>');
+		}
+	};
+
+	// User selections and input
+	self.selectedField = ko.observable();
+	self.selectedSqlFunction = ko.observable();
+	self.selectedConditionField = ko.observable();
+	self.inputValue = ko.observable();
+	self.customSQL = ko.observable('');
+	self.condition = ko.observable();
+	self.conditionValue = ko.observable();  // The value to compare against
+	self.result = ko.observable();
+	self.conditions = ko.observableArray([]);
+	self.fieldSql = ko.observable();
+	self.availableOperators = ko.observableArray(['=', '!=', '>', '<', '>=', '<=']);
+	self.selectedOperator = ko.observable();  // The operator selected by the user
+
+	self.requiresValue = ko.computed(function () {
+		return ['LEFT', 'RIGHT', 'SUBSTRING'].includes(self.selectedSqlFunction()); 
+	});
+
+	self.isConditionalFunction = ko.computed(function () {
+		return ['CASE', 'IIF', 'COALESCE', 'NULLIF', 'DECODE', 'ISNULL', 'IFNULL'].includes(self.selectedSqlFunction());  
+	});
+
+	self.addCondition = function () {
+		if (self.selectedConditionField() && self.conditionValue() && self.result() && self.selectedOperator()) {
+			self.conditions.push({
+				field: self.selectedConditionField(),
+				operator: self.selectedOperator(),
+				value: self.conditionValue(),
+				result: self.result(),
+				conditionDisplay: `${self.selectedConditionField()} ${self.selectedOperator()} ${self.conditionValue()} THEN ${self.result()}`
+			});
+			self.selectedConditionField('');
+			self.conditionValue('');
+			self.result('');
+			self.selectedOperator('');
+		}
+	};
+
+	self.removeCondition = function (item) {
+		self.conditions.remove(item);
+	};
+
+	// Generate SQL Statement
+	self.generateSQL = function () {
+		var field = self.selectedField();
+		var func = self.selectedSqlFunction();
+		var value = self.inputValue();
+		var sql = '';
+
+		// Handle custom SQL
+		if (func === 'Other') {
+			sql = self.customSQL();  
+		}
+
+		else if (func === 'IIF') {
+			if (self.conditions().length > 0) {
+				var condition = self.conditions()[0];
+				sql = `IIF(${field} ${condition.operator} ${condition.value}, ${condition.result}, ...)`;  // IIF logic using field
+			}
+		}
+
+		else if (func === 'CASE') {
+			sql = 'CASE ';
+			ko.utils.arrayForEach(self.conditions(), function (condition) {
+				sql += `WHEN ${field} ${condition.operator} ${condition.value} THEN ${condition.result} `;
+			});
+			sql += 'END';
+		}
+
+		else if (func === 'COALESCE') {
+			var coalesceConditions = self.conditions().map(function (c) {
+				return `${field} ${c.operator} ${c.value}`;
+			}).join(', ');
+			sql = `COALESCE(${coalesceConditions})`;
+		}
+
+		else if (func === 'NULLIF') {
+			if (self.conditions().length > 0) {
+				var condition = self.conditions()[0];
+				sql = `NULLIF(${field}, ${condition.value})`;  
+			}
+		}
+
+		else if (['LEFT', 'RIGHT', 'SUBSTRING'].includes(func)) {
+			sql = `${func}(${field}, ${value})`;  
+		}
+		else if (func) {
+			sql = `${func}(${field})`; 
+		}
+
+		self.fieldSql(sql);
+	};
+}
 
 var functionEditor = function (options) {
 	var editor = CodeMirror.fromTextArea(document.getElementById("function-code"), {

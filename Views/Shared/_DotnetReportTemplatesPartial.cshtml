@@ -1132,7 +1132,7 @@
                     </div>
                     <div class="clearfix"></div>
                     <div class="row">
-                        
+
                         <div class="col-md-12" data-bind="disable: isFormulaField, hidden: useStoredProc">
                             <div data-bind="with: textQuery.searchFields">
                                 <select id="search-field" class="form-control" data-bind="select2: {dropdownParent: $('#choose-data-card'), placeholder: 'Search for a Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults, headers: headers }, minimumInputLength: 2, allowClear: true }, value: selectedOption"></select>
@@ -1261,7 +1261,7 @@
                     </div>
                     </div>
                 </div>
-                
+
                 <div>
 
                     <div data-bind="if: isFunctionField" class="custom-field-design">
@@ -1419,7 +1419,7 @@
                                 <div class="form-group row">
                                     <label class="col-sm-2 control-label">Data Format</label>
                                     <div class="col-sm-10">
-                                        <select class="form-select form-control-sm" data-bind="value: formulaDataFormat" required>
+                                        <select class="form-select form-select-sm" data-bind="value: formulaDataFormat" required>
                                             <!-- ko ifnot: formulaOnlyHasDateFields -->
                                             <option>String</option>
                                             <option>Integer</option>
@@ -1441,10 +1441,20 @@
                                         <input type="number" class="form-control" data-bind="value: formulaDecimalPlaces" placeholder="Choose Decimal places (leave blank to not use rounding)" title="Choose Decimal places (leave blank to not use rounding)" />
                                     </div>
                                 </div>
+                                  <div class="form-group row">
+                                    <label class="col-sm-2 control-label">Field Builder Type</label>
+                                    <div class="col-sm-10">
+                                        <select class="form-select form-select-sm" data-bind="value: formulaType" required>
+                                            <option value="build">Simpler Calculation</option>
+                                            <option value="sql">Advanced Expression</option>
+                                        </select>
+                                    </div>
+                                </div>
 
-                                <div class="form-group row">
+                                <div class="form-group row" data-bind="if: formulaType()=='build'">
                                     <label class="col-sm-2 control-label">Field Formula</label>
                                     <div class="col-sm-10">
+                                        <div class="text-muted small" data-bind="visible: formulaFields().length == 0">Pick fields to build calculation</div>
                                         <div class="d-flex align-items-center flex-wrap" data-bind="foreach: formulaFields">
                                             <h3 class="me-3" data-bind="visible: setupFormula.isParenthesesStart" style="margin-top: 0;">(</h3>
                                             <div data-bind="if: !setupFormula.isParenthesesStart() && !setupFormula.isParenthesesEnd()" class="list-group me-3">
@@ -1474,6 +1484,51 @@
                                             </div>
                                         </div>
                                     </div>
+                                </div>
+
+                                <div data-bind="with: customSqlField, visible: formulaType()=='sql'">
+                                  <div class="row">
+                                    <div class="col-md-12">
+                                     
+                                      <div class="mb-3">
+                                        <label for="fieldSelect" class="form-label">Select Field:</label>
+                                        <select id="fieldSelect" class="form-select" data-bind="options: availableFields, value: selectedField, optionsCaption: 'Choose a field'"></select>
+                                      </div>
+
+                                      <div class="mb-3">
+                                        <label for="functionSelect" class="form-label">Select Function:</label>
+                                        <select id="functionSelect" class="form-select" data-bind="select2: select2Options, value: selectedSqlFunction"></select>
+                                      </div>
+
+                                      <div class="mb-3" data-bind="visible: requiresValue">
+                                        <label for="inputValue" class="form-label">Input Value:</label>
+                                        <input type="text" id="inputValue" class="form-control" data-bind="value: inputValue">
+                                      </div>
+
+                                      <div class="mb-3" data-bind="visible: selectedSqlFunction() == 'Other'">
+                                        <label for="customSQL" class="form-label">Custom SQL Expression:</label>
+                                        <textarea id="customSQL" class="form-control" data-bind="value: customSQL" rows="3" placeholder="Write your custom SQL"></textarea>
+                                      </div>
+
+                                        <div class="mb-3" data-bind="visible: isConditionalFunction">
+                                            <label class="form-label">Condition Builder:</label>
+                                            <div class="input-group mb-3">
+                                                <select class="form-select" data-bind="options: availableFields, value: selectedConditionField, optionsCaption: 'Select field'"></select>
+                                                <select class="form-select" data-bind="options: availableOperators, value: selectedOperator"></select>
+                                                <input type="text" class="form-control" placeholder="Value to compare" data-bind="value: conditionValue">
+                                                <span class="input-group-text">THEN</span>
+                                                <input type="text" class="form-control" placeholder="Result" data-bind="value: result">
+                                            </div>
+                                            <button class="btn btn-outline-primary" data-bind="click: addCondition">Add Condition</button>
+                                            <ul class="list-group mt-3" data-bind="foreach: conditions">
+                                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                    <span data-bind="text: conditionDisplay"></span>
+                                                    <button class="btn btn-sm btn-danger" data-bind="click: $parent.removeCondition">Remove</button>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                  </div>
                                 </div>
                             </div>
                         </div>
@@ -1737,7 +1792,7 @@
                 </div>
 
                 </div>
-            </div>            
+            </div>
         </div>
         <div class="modal-footer">
             <a href="#" class="btn btn-danger" data-bind="click: cancelCreateReport">Cancel editing Report</a>
