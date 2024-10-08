@@ -133,6 +133,23 @@ var manageViewModel = function (options) {
 		self.editAllowedRoles().AllowedRoles.push(self.newAllowedRole());
 		self.newAllowedRole(null);
 	}
+	self.editCategory = ko.observable();
+	self.newCategory = ko.observable();
+	self.selectedCategory = ko.observable();
+	self.manageCategory = function (e) {
+		self.editCategory(e);
+	}
+	self.removeCategory = function (e) {
+		self.editCategory().Categories.remove(e);
+	}
+	self.addCategory = function () {
+		if (!self.newCategory() || _.filter(self.editCategory().Categories(), function (x) { return x == self.newCategory(); }).length > 0) {
+			toastr.error("Please add a new unique Category");
+			return;
+		}
+		self.editCategory().Categories.push(self.newCategory());
+		self.newCategory(null);
+	}
 
 	self.newDataConnection = {
 		Name: ko.observable(),
