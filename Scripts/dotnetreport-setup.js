@@ -882,6 +882,9 @@ var manageViewModel = function (options) {
 
 var tablesViewModel = function (options) {
 	var self = this;
+	options.model.Tables.forEach(table => {
+		table.Categories = [];
+	});
 	self.model = ko.mapping.fromJS(_.sortBy(options.model.Tables, ['TableName']));
 
 	self.processTable = function (t) {
