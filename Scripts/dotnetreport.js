@@ -1896,6 +1896,12 @@ var reportViewModel = function (options) {
 
 	self.customSqlField = new sqlFieldModel();
 
+	self.customSqlField.isConditionalFunction.subscribe(function (value) {
+		if (value) {
+			self.textQuery.setupHints();
+		}
+	});
+
 	self.formulaOnlyHasDateFields = ko.computed(function () {
 		var allFields = self.formulaFields();
 		if (allFields.length <= 0) return false;
@@ -4790,7 +4796,6 @@ var sqlFieldModel = function (options) {
 				{ id: 'RIGHT', text: 'RIGHT (Extract Right)', description: 'Extract a specified number of characters from the right of a string.' },
 				{ id: 'UPPER', text: 'UPPER (Convert to Uppercase)', description: 'Convert text to uppercase.' },
 				{ id: 'LOWER', text: 'LOWER (Convert to Lowercase)', description: 'Convert text to lowercase.' },
-				{ id: 'CONCAT', text: 'CONCAT (Concatenate Strings)', description: 'Concatenate two or more strings together.' },
 				{ id: 'TRIM', text: 'TRIM (Remove Spaces)', description: 'Remove leading and trailing spaces from a string.' },
 				{ id: 'SUBSTRING', text: 'SUBSTRING (Extract Substring)', description: 'Extract a substring from a string.' },
 				{ id: 'LENGTH', text: 'LENGTH (String Length)', description: 'Get the length of a string.' },
@@ -4824,29 +4829,32 @@ var sqlFieldModel = function (options) {
 	]);
 
 	self.select2Options = {
+		placeholder: 'Select Function...',
 		data: self.availableFunctionsGrouped(),
 		templateResult: function (option) {
 			if (!option.id) {
-				return option.text;  // Group label (no description)
+				return option.text; 
 			}
-			// Inline formatting of option
 			return $('<div>' + option.text + '<br><span style="font-size: 0.9em;">  ' + option.description + '</span></div>');
 		}
 	};
 
-	// User selections and input
+	self.formatFieldSelection = function (option) {		
+		if (option && option.text) {
+			return `{${option.text}}`;
+		}
+		return option.text;		
+	}
+
 	self.selectedField = ko.observable();
 	self.selectedSqlFunction = ko.observable();
-	self.selectedConditionField = ko.observable();
 	self.inputValue = ko.observable();
 	self.customSQL = ko.observable('');
-	self.condition = ko.observable();
 	self.conditionValue = ko.observable();  // The value to compare against
-	self.result = ko.observable();
 	self.conditions = ko.observableArray([]);
 	self.fieldSql = ko.observable();
 	self.availableOperators = ko.observableArray(['=', '!=', '>', '<', '>=', '<=']);
-	self.selectedOperator = ko.observable();  // The operator selected by the user
+	self.selectedOperator = ko.observable();
 
 	self.requiresValue = ko.computed(function () {
 		return ['LEFT', 'RIGHT', 'SUBSTRING'].includes(self.selectedSqlFunction()); 
@@ -4857,17 +4865,21 @@ var sqlFieldModel = function (options) {
 	});
 
 	self.addCondition = function () {
-		if (self.selectedConditionField() && self.conditionValue() && self.result() && self.selectedOperator()) {
+		var conditionField = $('#condition-field').text();
+		var conditionValue = $('#condition-value').text();
+		var conditionResult = $('#condition-result').text();
+
+		if (conditionField && conditionValue && conditionResult && self.selectedOperator()) {
 			self.conditions.push({
-				field: self.selectedConditionField(),
+				field: conditionField,
 				operator: self.selectedOperator(),
-				value: self.conditionValue(),
-				result: self.result(),
-				conditionDisplay: `${self.selectedConditionField()} ${self.selectedOperator()} ${self.conditionValue()} THEN ${self.result()}`
+				value: conditionValue,
+				result: conditionResult,
+				conditionDisplay: `${conditionField} ${self.selectedOperator()} ${conditionValue} THEN ${conditionResult}`
 			});
-			self.selectedConditionField('');
-			self.conditionValue('');
-			self.result('');
+			$('#condition-field').text('');
+			$('#condition-value').text('');
+			$('#condition-result').text('');
 			self.selectedOperator('');
 		}
 	};
@@ -4876,52 +4888,52 @@ var sqlFieldModel = function (options) {
 		self.conditions.remove(item);
 	};
 
-	// Generate SQL Statement
 	self.generateSQL = function () {
 		var field = self.selectedField();
 		var func = self.selectedSqlFunction();
 		var value = self.inputValue();
+		var final = $('#condition-else').text() || 'NULL';
+
 		var sql = '';
 
-		// Handle custom SQL
-		if (func === 'Other') {
-			sql = self.customSQL();  
-		}
-
-		else if (func === 'IIF') {
-			if (self.conditions().length > 0) {
-				var condition = self.conditions()[0];
-				sql = `IIF(${field} ${condition.operator} ${condition.value}, ${condition.result}, ...)`;  // IIF logic using field
+		function buildNestedIIF(conditions, index) {
+			if (index >= conditions.length) {
+				return final;
 			}
+
+			var condition = conditions[index];
+			var trueValue = condition.result || 'NULL';
+			var falseValue = buildNestedIIF(conditions, index + 1);  // Recursively handle false case
+
+			return `IIF(${condition.field} ${condition.operator} ${condition.value}, ${trueValue}, ${falseValue})`;
 		}
 
-		else if (func === 'CASE') {
+		if (func === 'IIF') {
+			if (self.conditions().length > 0) {
+				sql = buildNestedIIF(self.conditions(), 0);
+			}
+		} else if (func === 'CASE') {
 			sql = 'CASE ';
 			ko.utils.arrayForEach(self.conditions(), function (condition) {
-				sql += `WHEN ${field} ${condition.operator} ${condition.value} THEN ${condition.result} `;
+				sql += `WHEN ${condition.field} ${condition.operator} ${condition.value} THEN ${condition.result} `;
 			});
-			sql += 'END';
-		}
-
-		else if (func === 'COALESCE') {
+			sql += `ELSE ${final || 'NULL'} END`;  // Use final condition or NULL
+		} else if (func === 'COALESCE') {
 			var coalesceConditions = self.conditions().map(function (c) {
-				return `${field} ${c.operator} ${c.value}`;
+				return `${c.field} ${c.operator} ${c.value}`;
 			}).join(', ');
-			sql = `COALESCE(${coalesceConditions})`;
-		}
-
-		else if (func === 'NULLIF') {
+			sql = `COALESCE(${coalesceConditions}, ${final || 'NULL'})`;  // Default to final condition or NULL
+		} else if (func === 'NULLIF') {
 			if (self.conditions().length > 0) {
 				var condition = self.conditions()[0];
-				sql = `NULLIF(${field}, ${condition.value})`;  
+				sql = `NULLIF(${condition.field}, ${condition.value})`;
 			}
-		}
-
-		else if (['LEFT', 'RIGHT', 'SUBSTRING'].includes(func)) {
-			sql = `${func}(${field}, ${value})`;  
-		}
-		else if (func) {
-			sql = `${func}(${field})`; 
+		} else if (['LEFT', 'RIGHT', 'SUBSTRING'].includes(func)) {
+			sql = `${func}({${field}}, ${value})`;
+		} else if (func == 'Other') {
+			sql = $('#custom-sql').text();
+		} else if (func) {
+			sql = `${func}({${field}})`; 
 		}
 
 		self.fieldSql(sql);

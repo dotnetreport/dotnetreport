@@ -547,6 +547,21 @@ select.is-invalid ~ span .select2-selection {
         cursor: pointer;
     }
 
+.hint-input {
+    outline: none;
+    border: 1px solid #eee;
+    padding: 3px 5px;
+    border-radius: 2px;
+    cursor: text;
+}
+
+    .hint-input a {
+        background-color: transparent;
+        color: #2ba6cb !important;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
 .report-layout-footer {
     font-size: 10pt;
     position: fixed;
