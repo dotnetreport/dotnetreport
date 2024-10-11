@@ -133,24 +133,61 @@ var manageViewModel = function (options) {
 		self.editAllowedRoles().AllowedRoles.push(self.newAllowedRole());
 		self.newAllowedRole(null);
 	}
-	self.editCategory = ko.observable();
-	self.newCategory = ko.observable();
-	self.selectedCategory = ko.observable();
-	self.manageCategory = function (e) {
-		self.editCategory(e);
-	}
-	self.removeCategory = function (e) {
-		self.editCategory().Categories.remove(e);
-	}
+
+	self.Categories = ko.observableArray([]); // Use observableArray to hold an array of objects.
+	self.newCategoryName = ko.observable();
+	self.newCategoryDescription = ko.observable();
+	self.selectedCategory = ko.observableArray([]);
 	self.addCategory = function () {
-		if (!self.newCategory() || _.filter(self.editCategory().Categories(), function (x) { return x == self.newCategory(); }).length > 0) {
+		if (!self.newCategoryName() || _.filter(self.Categories(), function (x) { return x.name === self.newCategoryName(); }).length > 0) {
 			toastr.error("Please add a new unique Category");
 			return;
 		}
-		self.editCategory().Categories.push(self.newCategory());
-		self.newCategory(null);
-	}
+		self.Categories.push({
+			Name: self.newCategoryName(),
+			Description: self.newCategoryDescription()
+		});
+		self.newCategoryName(null);
+		self.newCategoryDescription(null);
+	};
 
+	self.removeCategory = function (category) {
+		self.Categories.remove(category);
+	};
+	self.saveCategories = function () {
+		ajaxcall({
+			url: options.apiUrl,
+			type: 'POST',
+			data: JSON.stringify({
+				method: options.saveCategoriesUrl,
+				model: JSON.stringify({
+					account: self.keys.AccountApiKey,
+					dataConnect: self.keys.DatabaseApiKey,
+					categories: self.Categories()
+				})
+			})
+		}).done(function (x) {
+			if (x.success) {
+				toastr.success("Saved Categories ");
+			} else {
+				toastr.error("Error saving Categories ");
+			}
+		});
+	};
+	self.LoadCategories = function () {
+		ajaxcall({
+			url: options.reportsApiUrl,
+			data: JSON.stringify({
+				method: options.getCategoriesUrl,
+				model: JSON.stringify({
+					account: self.keys.AccountApiKey,
+					dataConnect: self.keys.DatabaseApiKey
+				})
+			})
+		}).done(function (result) {
+			self.Categories(result);
+		});
+	}
 	self.newDataConnection = {
 		Name: ko.observable(),
 		ConnectionKey: ko.observable(),
@@ -882,9 +919,6 @@ var manageViewModel = function (options) {
 
 var tablesViewModel = function (options) {
 	var self = this;
-	options.model.Tables.forEach(table => {
-		table.Categories = [];
-	});
 	self.model = ko.mapping.fromJS(_.sortBy(options.model.Tables, ['TableName']));
 
 	self.processTable = function (t) {

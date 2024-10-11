@@ -53,6 +53,9 @@
             ajaxcall({ url: '@Url.Action("LoadSetupSchema", "DotNetReportApi")' + '?databaseApiKey=' + (queryParams.databaseApiKey || '') + '&onlyApi=' + (queryParams.onlyApi === 'false' ? false : true) }).done(function(model) {
                 var options = {
                     model: model,
+                    saveCategoriesUrl: '/ReportApi/SaveCategories',
+                    getCategoriesUrl: '/ReportApi/GetCategories',
+                    getCategoriesDataUrl: '/ReportApi/SaveCategoriesData',
                     saveTableUrl: '/ReportApi/SaveTableData',
                     deleteTableUrl: '/ReportApi/DeleteTable',
                     getRelationsUrl: '/ReportApi/GetRelations',
@@ -76,7 +79,7 @@
                 vm.setupManageAccess();            
                 ko.applyBindings(vm);
                 vm.LoadDataConnections();
-
+				vm.LoadCategories();
                 vm.customSql.textQuery.setupQuery();
             });
         });
@@ -171,6 +174,9 @@
                 <button class="btn btn-sm btn-primary" data-bind="hidden: $root.customTableMode()" data-bs-toggle="modal" data-bs-target="#uploadTablesFileModal" aria-haspopup="true" aria-expanded="false">
                     <span class="fa fa-file"></span> Import Tables/Views
                 </button>
+                <button class="btn btn-sm btn-primary" title="Manage Category" data-bs-toggle="modal" data-bs-target="#category-modal">
+                    <span class="fa fa-server"></span> Manage Category 
+                </button>
             </div>
             <div class="clearfix"></div>
             <hr />
@@ -227,21 +233,6 @@
                             </div>
                             <div data-bind="if: CustomTable">
                                 <button data-bind="click: $root.customSql.viewCustomSql.bind($data)" class="btn btn-sm btn-secondary">View Custom Sql</button>
-                            </div>
-                            <div class="p-2">
-                                <!-- Show a message when there are no categories -->
-                                <span class="text-danger" data-bind="visible:Categories().length === 0">
-                                     Add Category Item (Optional)
-                                </span>
-                                <select class="form-select form-select-sm pull-left" data-bind="visible: Categories().length > 0,foreach: Categories, value: $root.selectedCategory" style="margin-right: 10px; width: auto;">
-                                    <option data-bind="value: $data, text: $data"></option>
-                                </select>
-                                <p class="pull-right">
-                                    <button class="btn btn-sm" title="Manage Category" data-bs-toggle="modal" data-bs-target="#category-modal" data-bind="click: $root.manageCategory">
-                                        Manage Category <i class="fa fa-server"></i>
-                                    </button>
-                                </p>
-                            
                             </div>
                         </div>
                         
@@ -1147,31 +1138,47 @@
 
 <div class="modal" id="category-modal" role="dialog" tabindex="-2">
     <div class="modal-dialog" role="document">
-        <div class="modal-content" data-bind="with: editCategory">
+        <div class="modal-content">
             <div class="modal-header">
                 <h4 class="modal-title">Manage Categories</h4>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <p>Manage Categories</p>
-                <div class="list-group" data-bind="foreach: Categories">
-                    <div class="list-group-item" style="padding-top: 2px; padding-bottom: 2px;">
-                        <span data-bind="text: $data"></span>
-                        <button class="btn btn-sm btn-danger pull-right"><i class="fa fa-trash" data-bind="click: $root.removeCategory"></i></button>
+                <!-- Iterate over each category object in the Categories array -->
+                <div class="list-group" data-bind="foreach: $root.Categories">
+                    <div class="list-group-item d-flex justify-content-between align-items-center" style="padding: 10px; border-radius: 8px; margin-bottom: 5px;">
+                        <!-- Display category name and description -->
+                        <div>
+                            <strong data-bind="text: Name"></strong> -
+                            <span data-bind="text: Description" style="color: #6c757d;"></span>
+                        </div>
+                        <!-- Remove button -->
+                        <button class="btn btn-danger btn-sm" data-bind="click: $root.removeCategory">
+                            <i class="fa fa-trash"></i>
+                        </button>
                     </div>
                 </div>
-
-                <div class="row">
-                    <div class="col-10">
-                        <input class="form-control" type="text" data-bind="value: $root.newCategory" placeholder="Ex Sales">
+                <div class="container">
+                    <div class="row mb-2">
+                        <div class="col-12">
+                            <input class="form-control" type="text" data-bind="value: $root.newCategoryName" placeholder="Category Name">
+                        </div>
                     </div>
-                    <div class="col-2">
-                        <button class="btn btn-primary" data-bind="click: $root.addCategory">Add</button>
+                    <div class="row mb-2">
+                        <div class="col-12">
+                            <input class="form-control" type="text" data-bind="value: $root.newCategoryDescription" placeholder="Description">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12">
+                            <button class="btn btn-primary w-100" data-bind="click: $root.addCategory">Add</button>
+                        </div>
                     </div>
                 </div>
-
             </div>
             <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bind="click: $root.saveCategories">Save</button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
             </div>
         </div>
