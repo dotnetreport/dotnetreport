@@ -1491,12 +1491,12 @@
                                     <div class="col-md-12">
 
                                       <div class="mb-3">
-                                        <label for="functionSelect" class="form-label">Select Function:</label>
+                                        <label for="functionSelect" class="form-label">Select Data Operation:</label>
                                         <select id="functionSelect" class="form-select" data-bind="select2: select2Options, value: selectedSqlFunction"></select>
                                       </div>
 
                                        <div class="mb-3" data-bind="hidden: isConditionalFunction() || selectedSqlFunction() == 'Other'">
-                                        <label class="form-label">Select Field:</label>
+                                        <label class="form-label">Select the Data Field to use:</label>
                                         <select class="form-select" 
                                              data-bind="select2: {
                                                 dropdownParent: $('#choose-data-card'),
@@ -1513,16 +1513,22 @@
                                             }, select2Text: selectedField"></select>
                                       </div>
 
-                                      <div class="mb-3" data-bind="visible: requiresValue">
-                                        <label for="inputValue" class="form-label">Input Value:</label>
-                                        <input type="text" id="inputValue" class="form-control" data-bind="value: inputValue">
+                                      <div class="mb-3" data-bind="if: requiresValue">
+                                        <label for="inputValue" class="form-label">Provide the relevant value to use:</label>
+                                        <input type="text" id="inputValue" class="form-control" data-bind="value: inputValue" required />
                                       </div>
 
                                       <div class="mb-3" data-bind="visible: selectedSqlFunction() == 'Other'">
                                         <label for="custom-sql" class="form-label">Custom SQL Expression:</label>
+                                        <p class="text-muted">
+                                              Build your custom SQL Expression below by selecting data fields, adding calculations or using SQL keywords as needed. For string values, remember to enclose them in single quotes ('')
+                                        </p>
                                         <p id="custom-sql" class="hint-input" contenteditable="true" placeholder="Write your custom SQL"></p>
                                       </div>
                                       <div data-bind="visible: isConditionalFunction">
+                                          <p class="text-muted">
+                                              Build your conditional logic below by selecting data fields, adding calculations and defining conditions as needed, and provide corresponding results. For string values, remember to enclose them in single quotes ('')
+                                          </p>
                                         <div class="input-group mb-3">
                                             <div class="flex-grow-1">
                                                 <p class="hint-input" id="condition-field" contenteditable="true" placeholder="Field to compare" title="Field to compare"></p>
@@ -1557,9 +1563,8 @@
                                                 <p class="hint-input" id="condition-else" contenteditable="true" placeholder="Default Result" title="Default Result"></p>
                                             </div>
                                         </div>
-                                    </div>
-                                       <button class="btn btn-outline-primary" data-bind="click: generateSQL">Build Sql</button>
-                                       <p data-bind="text: fieldSql"></p>
+                                      </div>
+                                      
                                     </div>
                                   </div>
                                 </div>
