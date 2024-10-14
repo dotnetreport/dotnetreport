@@ -2089,22 +2089,18 @@ var reportViewModel = function (options) {
 		self.formulaDataFormat(field.fieldFormat());
 		self.formulaDecimalPlaces(field.decimalPlaces());
 		self.formulaFields([]);
-
 		if (field.formulaItems().length > 0) {
-			var tableId = _.find(field.formulaItems(), function (x) { return x.tableId() > 0 }).tableId();
-			var match = _.find(self.Tables(), { tableId: tableId });
-			if (tableId && match) {
-				self.SelectedTable(match);
+			var uniqueTableIds = _.uniq(_.map(field.formulaItems(), function (x) { return x.tableId(); })).filter(function (id) { return id > 0; }); // Ensure tableId > 0
+			var tableMatches = _.filter(self.Tables(), function (t) { return _.includes(uniqueTableIds, t.tableId); });
+			for (let match of tableMatches) {
 				self.loadTableFields(match).done(function (x) {
 					var formulaItems = field.formulaItems();
 					_.forEach(formulaItems, function (e) {
 						var fieldMatch = _.find(self.ChooseFields(), function (m) { return m.fieldId == e.fieldId() });
-						if (!fieldMatch) {
-							var field = self.getEmptyFormulaField();
-							var fieldMatch = self.setupField(Object.assign({}, field));
+						if (fieldMatch) {
+							fieldMatch.setupFormula = e;  
+							self.formulaFields.push(fieldMatch);
 						}
-						fieldMatch.setupFormula = e;
-						self.formulaFields.push(fieldMatch);
 					});
 
 				});
