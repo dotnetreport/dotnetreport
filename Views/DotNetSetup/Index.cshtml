@@ -53,9 +53,8 @@
             ajaxcall({ url: '@Url.Action("LoadSetupSchema", "DotNetReportApi")' + '?databaseApiKey=' + (queryParams.databaseApiKey || '') + '&onlyApi=' + (queryParams.onlyApi === 'false' ? false : true) }).done(function(model) {
                 var options = {
                     model: model,
-                    saveCategoriesUrl: '/ReportApi/SaveCategories',
+                    saveCategoriesUrl: '/ReportApi/SaveCategoriesData',
                     getCategoriesUrl: '/ReportApi/GetCategories',
-                    getCategoriesDataUrl: '/ReportApi/SaveCategoriesData',
                     saveTableUrl: '/ReportApi/SaveTableData',
                     deleteTableUrl: '/ReportApi/DeleteTable',
                     getRelationsUrl: '/ReportApi/GetRelations',
