@@ -176,7 +176,8 @@ var manageViewModel = function (options) {
 	};
 	self.LoadCategories = function () {
 		ajaxcall({
-			url: options.reportsApiUrl,
+			url: options.apiUrl,
+			type: 'POST',
 			data: JSON.stringify({
 				method: options.getCategoriesUrl,
 				model: JSON.stringify({
