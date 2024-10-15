@@ -3293,7 +3293,7 @@ var reportViewModel = function (options) {
 			}
 			processRow(e.Items, result.ReportData.Columns);
 		});
-		function renderTable(data) {
+		function renderTableSimple(data) {
 			const tableBody = document.getElementById('report-table-body' + self.ReportID());
 			if (tableBody) {
 				let rowsHTML = '';
@@ -3314,11 +3314,91 @@ var reportViewModel = function (options) {
 			}
 		}
 
+		function renderTable(data, columnsData) {
+			const transformedData = data.map(row => {
+				const rowData = {};
+				row.Items.forEach((item, index) => {
+					const column = columnsData[index];
+					if (column) {
+						rowData[column.ColumnName] = item.FormattedValue;
+					}
+				});
+				rowData.row = row;
+				return rowData;
+			});
+
+			const columns = columnsData.map(col => {
+				let filterType;
+
+				switch (col.DataType) {
+					case 'System.String':
+						filterType = "input";
+						break;
+					case 'System.Int32':
+					case 'System.Int64':
+					case 'System.Double':
+						filterType = "number";
+						break;
+					case 'System.Boolean':
+						filterType = "select";
+						break;
+					default:
+						filterType = "input";
+				}
+
+				return {
+					title: col.fieldName || col.ColumnName || "Column",
+					field: col.ColumnName,
+					sorter: col.IsNumeric ? "number" : "string",
+					hozAlign: col.IsNumeric ? "right" : "left",
+					formatter: "html",
+					formatterParams: {
+						style: {
+							backgroundColor: col.backColor || '',
+							color: col.fontColor || '',
+							fontWeight: col.fontBold ? 'bold' : 'normal'
+						}
+					},
+					bottomCalc: col.IsNumeric ? "sum" : undefined, // Calculate total for numeric columns
+					bottomCalcFormatter: col.IsNumeric ? function (cell) {
+						const val = cell.getValue();
+						if (val === "NA" || val === "NaN") return ''; // Handle invalid values
+						return val.toLocaleString(); // Format as needed
+					} : undefined
+				};
+			});
+
+			if (self.canDrilldown()) {
+				columns.unshift({
+					formatter: function (cell, formatterParams) {
+						const rowData = cell.getData().row;
+
+						return "<span class='expand-collapse-btn'>" + (rowData.isExpanded() ? '-' : '+') + "</span>"; 			
+					},
+					width: 30,
+					hozAlign: "center",
+					headerSort: false,
+					cellClick: function (e, cell) {
+						const row = cell.getData().row;
+						row.toggle();
+					}
+				});
+			}
+
+			const table = new Tabulator(`#report-div-body${self.ReportID()}`, {
+				maxHeight: "800px",
+				layout: "fitColumns",
+				data: transformedData,
+				autoColumns: false,
+				columns: columns,
+				placeholder: "No records found"
+			});
+
+		}
+
 		reportResult.ReportData(result.ReportData);
 
-		if (self.ReportType() == 'List' || self.ShowExpandOption() || self.hasPivotColumn()) {
-			renderTable(result.ReportData.Rows);
-		}
+		renderTable(result.ReportData.Rows, self.ReportColumns());
 
 		self.pager.totalRecords(result.Pager.TotalRecords);
 		self.pager.pages(result.Pager.TotalPages);
@@ -3382,6 +3462,39 @@ var reportViewModel = function (options) {
 					});
 
 					self.ReportResult().SubTotals(subtotalResult.ReportData.Rows);
+					const subtotals = self.ReportResult().SubTotals(); // Get the subtotals from KO observable
+
+					let footerHTML = '<tfoot>';
+
+					subtotals.forEach(subtotalRow => {
+						footerHTML += '<tr class="sub-total">';
+
+						subtotalRow.Items.forEach((item, index) => {
+							const col = item.Column;
+							if (item.Value !== 'NA' && item.Value !== 'NaN') {
+								const style = `
+                            background-color: ${item._backColor || ''};
+                            color: ${item._fontColor || ''};
+                            font-weight: ${item._fontBold ? 'bold' : 'normal'};
+                            text-align: ${col.IsNumeric ? 'right' : 'left'};
+                        `;
+
+								footerHTML += `
+                            <td style="${style}">
+                                <span>${item.FormattedValue || ''}</span>
+                            </td>
+                        `;
+							}
+						});
+
+						footerHTML += '</tr>';
+					});
+
+					footerHTML += '</tfoot>';
+
+					// Append the generated footer to the existing table
+					$(`#report-div-body${self.ReportID()}`).closest('table').append(footerHTML);
+
 				});
 			});
 		}
