@@ -139,8 +139,15 @@ var manageViewModel = function (options) {
 	self.newCategoryDescription = ko.observable();
 	self.selectedCategory = ko.observableArray([]);
 	self.addCategory = function () {
-		if (!self.newCategoryName() || _.filter(self.Categories(), function (x) { return x.name === self.newCategoryName(); }).length > 0) {
-			toastr.error("Please add a new unique Category");
+		const newName = self.newCategoryName() ? self.newCategoryName().trim() : '';
+		const newDescription = self.newCategoryDescription() ? self.newCategoryDescription().trim() : '';
+		if (!newName || !newDescription) {
+			toastr.error("Category Name and Description cannot be empty.");
+			return;
+		}
+		const isDuplicateName = _.filter(self.Categories(), function (x) { return x.Name === newName; }).length > 0;
+		if (isDuplicateName) {
+			toastr.error("Category Name must be unique.");
 			return;
 		}
 		self.Categories.push({

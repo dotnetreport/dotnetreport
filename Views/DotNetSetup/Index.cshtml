@@ -1143,38 +1143,40 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p>Manage Categories</p>
-                <!-- Iterate over each category object in the Categories array -->
-                <div class="list-group" data-bind="foreach: $root.Categories">
-                    <div class="list-group-item d-flex justify-content-between align-items-center" style="padding: 10px; border-radius: 8px; margin-bottom: 5px;">
-                        <!-- Display category name and description -->
-                        <div>
-                            <strong data-bind="text: Name"></strong> -
-                            <span data-bind="text: Description" style="color: #6c757d;"></span>
-                        </div>
-                        <!-- Remove button -->
+                <!-- Table for Categories -->
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Category Name</th>
+                            <th>Description</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody data-bind="foreach: $root.Categories">
+                        <tr>
+                            <td data-bind="editable: Name"></td>
+                            <td data-bind="editable: Description" style="color: #6c757d;"></td>
+                             <td>
                         <button class="btn btn-danger btn-sm" data-bind="click: $root.removeCategory">
                             <i class="fa fa-trash"></i>
                         </button>
-                    </div>
-                </div>
-                <div class="container">
-                    <div class="row mb-2">
-                        <div class="col-12">
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td>
                             <input class="form-control" type="text" data-bind="value: $root.newCategoryName" placeholder="Category Name">
-                        </div>
-                    </div>
-                    <div class="row mb-2">
-                        <div class="col-12">
+                            </td>
+                            <td>
                             <input class="form-control" type="text" data-bind="value: $root.newCategoryDescription" placeholder="Description">
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-12">
-                            <button class="btn btn-primary w-100" data-bind="click: $root.addCategory">Add</button>
-                        </div>
-                    </div>
-                </div>
+                            </td>
+                            <td>
+                                <button class="btn btn-primary" data-bind="click: $root.addCategory">Add</button>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-primary" data-bind="click: $root.saveCategories">Save</button>
