@@ -241,7 +241,10 @@
                         <button class="btn btn-sm btn-link label-sm" data-bind="click: selectAllColumns, visible: Selected">Select All</button>
                         <div class="list-group" data-bind="sortable: { data: Columns, options: { handle: '.sortable', cursor: 'move' }, afterMove: $parent.columnSorted }">
                             <div class="list-group-item">
-                                <div class="checkbox">
+                                <div data-bind="if: $parent.DynamicColumns()">
+                                    <span data-bind="html: DisplayName, attr: {title: 'DB field is ' + ColumnName()}"></span>
+                                </div>
+                                <div class="checkbox" data-bind="if: !$parent.DynamicColumns()">
                                     <label>
                                         <input type="checkbox" data-bind="checked: Selected, enable: $parent.Selected()">
                                         <span data-bind="editable: DisplayName, attr: {title: 'DB field is ' + ColumnName()}"></span>
@@ -1258,9 +1261,19 @@
                 </div>
 
                 <div class="form-group" data-bind="validationElement: customSql">
-                    <label for="custom-sql">Custom SQL</label> | <a href="#" data-bind="click: beautifySql">Beautify Sql</a>
+                    <label for="custom-sql">Custom SQL</label> | 
+                    <label>
+                        <input type="checkbox" data-bind="checked: dynamicColumns">
+                        <span title="Setup a table that returns dynamic columns to pick from">Table with Dynamic Columns</span>
+                    </label> | 
+                    <a href="#" data-bind="click: beautifySql">Beautify Sql</a>
                     <textarea class="form-control" style="height: 240px;" name="customSql" data-bind="textInput: customSql" required></textarea>
                     <div class="invalid-feedback">Custom SQL is required.</div>
+
+                    <div data-bind="if: dynamicColumns">
+                        <label>Add SQL code to use the dynamic column</label>
+                        <textarea class="form-control" style="height: 240px;" name="columnTranslation" data-bind="textInput: columnTranslation" required></textarea>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">

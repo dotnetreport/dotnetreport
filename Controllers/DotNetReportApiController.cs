@@ -593,26 +593,36 @@ namespace ReportBuilder.Web.Controllers
                     cmd.CommandType = CommandType.Text;
                     using (OleDbDataReader reader = cmd.ExecuteReader())
                     {
+                        var idx = 0;
                         // Get the column metadata using schema.ini file
                         DataTable schemaTable = new DataTable();
-                        schemaTable = reader.GetSchemaTable();
-                        var idx = 0;
 
-                        foreach (DataRow dr in schemaTable.Rows)
+                        if (data.dynamicColumns)
                         {
-                            var column = new ColumnViewModel
+                            while (reader.Read())
                             {
-                                ColumnName = dr["ColumnName"].ToString(),
-                                DisplayName = dr["ColumnName"].ToString(),
-                                PrimaryKey = dr["ColumnName"].ToString().ToLower().EndsWith("id") && idx == 0,
-                                DisplayOrder = idx,
-                                FieldType = DotNetSetupController.ConvertToJetDataType((int)dr["ProviderType"]).ToString(),
-                                AllowedRoles = new List<string>(),
-                                Selected = true
-                            };
+                                table.Columns.Add(new ColumnViewModel { ColumnName = Convert.ToString(reader[0]), DisplayName = Convert.ToString(reader[0]) });
+                            }
+                        }
+                        else
+                        {
+                            schemaTable = reader.GetSchemaTable();
+                            foreach (DataRow dr in schemaTable.Rows)
+                            {
+                                var column = new ColumnViewModel
+                                {
+                                    ColumnName = dr["ColumnName"].ToString(),
+                                    DisplayName = dr["ColumnName"].ToString(),
+                                    PrimaryKey = dr["ColumnName"].ToString().ToLower().EndsWith("id") && idx == 0,
+                                    DisplayOrder = idx,
+                                    FieldType = DotNetSetupController.ConvertToJetDataType((int)dr["ProviderType"]).ToString(),
+                                    AllowedRoles = new List<string>(),
+                                    Selected = true
+                                };
 
-                            idx++;
-                            table.Columns.Add(column);
+                                idx++;
+                                table.Columns.Add(column);
+                            }
                         }
                         table.Columns = table.Columns.OrderBy(x => x.DisplayOrder).ToList();
                     }
@@ -736,7 +746,8 @@ namespace ReportBuilder.Web.Controllers
         public class SearchProcCall { 
             public string value { get; set; } 
             public string accountKey { get; set; } 
-            public string dataConnectKey { get; set; } 
+            public string dataConnectKey { get; set; }
+            public bool dynamicColumns { get; set; } = false;
         }
 
         public class SchemaFromSqlCall : SearchProcCall

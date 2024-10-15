@@ -100,46 +100,62 @@ namespace ReportBuilder.Web.Controllers
                         DoNotDisplay = item.doNotDisplay,
                         CustomTable = item.customTable,
                         CustomTableSql = Convert.ToBoolean(item.customTable) == true ? DotNetReportHelper.Decrypt(Convert.ToString(item.customTableSql)) : "",
+                        DynamicColumns = item.dynamicColumns,
+                        DynamicColumnTranslation = Convert.ToBoolean(item.dynamicColumns) == true ? DotNetReportHelper.Decrypt(Convert.ToString(item.dynamicColumnTranslation)) : "",
                         Columns = new List<ColumnViewModel>(),
                         Selected = true
                     };
 
                     if (loadColumns)
                     {
-                        foreach (var field in item.fields)
+                        if (table.DynamicColumns)
                         {
-                            table.Columns.Add(new ColumnViewModel
+                            var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey));
+                            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection();
+
+                            var dt = databaseConnection.ExecuteQuery(connString, table.CustomTableSql);
+                            foreach (DataRow dr in dt.Rows)
                             {
-                                Id = field.fieldId,
-                                ColumnName = field.fieldDbName,
-                                DisplayName = field.fieldName,
-                                FieldType = field.fieldType,
-                                PrimaryKey = field.isPrimary,
-                                ForeignKey = field.hasForeignKey,
-                                DisplayOrder = field.fieldOrder,
-                                ForeignKeyField = field.foreignKey,
-                                ForeignValueField = field.foreignValue,
-                                ForeignJoin = field.foreignJoin,
-                                ForeignTable = field.foreignTable,
-                                DoNotDisplay = field.doNotDisplay,
-                                ForceFilter = field.forceFilter,
-                                ForceFilterForTable = field.forceFilterForTable,
-                                RestrictedDateRange = field.restrictedDateRange,
-                                RestrictedEndDate = field.restrictedEndDate,
-                                RestrictedStartDate = field.restrictedStartDate,
-                                AllowedRoles = field.columnRoles.ToObject<List<string>>(),
+                                table.Columns.Add(new ColumnViewModel { ColumnName = Convert.ToString(dr[0]), DisplayName = Convert.ToString(dr[0]) });
+                            }
+                        }
+                        else
+                        {
+                            foreach (var field in item.fields)
+                            {
+                                table.Columns.Add(new ColumnViewModel
+                                {
+                                    Id = field.fieldId,
+                                    ColumnName = field.fieldDbName,
+                                    DisplayName = field.fieldName,
+                                    FieldType = field.fieldType,
+                                    PrimaryKey = field.isPrimary,
+                                    ForeignKey = field.hasForeignKey,
+                                    DisplayOrder = field.fieldOrder,
+                                    ForeignKeyField = field.foreignKey,
+                                    ForeignValueField = field.foreignValue,
+                                    ForeignJoin = field.foreignJoin,
+                                    ForeignTable = field.foreignTable,
+                                    DoNotDisplay = field.doNotDisplay,
+                                    ForceFilter = field.forceFilter,
+                                    ForceFilterForTable = field.forceFilterForTable,
+                                    RestrictedDateRange = field.restrictedDateRange,
+                                    RestrictedEndDate = field.restrictedEndDate,
+                                    RestrictedStartDate = field.restrictedStartDate,
+                                    AllowedRoles = field.columnRoles.ToObject<List<string>>(),
 
-                                ForeignParentKey = field.hasForeignParentKey,
-                                ForeignParentApplyTo = field.foreignParentApplyTo,
-                                ForeignParentKeyField = field.foreignParentKeyField,
-                                ForeignParentValueField = field.foreignParentValueField,
-                                ForeignParentTable = field.foreignParentTable,
-                                ForeignParentRequired = field.foreignParentRequired,
-                                ForeignFilterOnly = field.foreignFilterOnly,
+                                    ForeignParentKey = field.hasForeignParentKey,
+                                    ForeignParentApplyTo = field.foreignParentApplyTo,
+                                    ForeignParentKeyField = field.foreignParentKeyField,
+                                    ForeignParentValueField = field.foreignParentValueField,
+                                    ForeignParentTable = field.foreignParentTable,
+                                    ForeignParentRequired = field.foreignParentRequired,
+                                    ForeignFilterOnly = field.foreignFilterOnly,
 
-                                JsonStructure = field.jsonStructure,
-                                Selected = true
-                            });
+                                    JsonStructure = field.jsonStructure,
+                                    Selected = true
+                                });
+                            }
                         }
                     }
 

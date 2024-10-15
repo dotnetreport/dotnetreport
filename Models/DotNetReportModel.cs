@@ -138,6 +138,8 @@ namespace ReportBuilder.Web.Models
 
         public bool CustomTable { get; set; }
         public string CustomTableSql { get; set; }
+        public bool DynamicColumns { get; set; }
+        public string DynamicColumnTranslation { get; set; }
     }
 
     public class ParameterViewModel
@@ -2976,7 +2978,7 @@ namespace ReportBuilder.Web.Models
 
     public static class DatabaseConnectionFactory
     {
-        public static IDatabaseConnection GetConnection(string dbtype)
+        public static IDatabaseConnection GetConnection(string dbtype = "")
         {
             IDatabaseConnection databaseConnection;
             switch (dbtype.ToLower())

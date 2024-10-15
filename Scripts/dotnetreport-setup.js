@@ -1051,7 +1051,9 @@ var tablesViewModel = function (options) {
 				return;
 			}
 
-			if (_.filter(e.Columns, function (x) { return x.Selected; }).length == 0) {
+			if (e.DynamicColumns) {
+				e.Columns = []
+			} else if (_.filter(e.Columns, function (x) { return x.Selected; }).length == 0) {
 				toastr.error("Cannot save table " + e.DisplayName + ", no columns selected");
 				return;
 			}
@@ -1254,6 +1256,8 @@ var customSqlModel = function (options, keys, tables) {
 	self.customTableName = ko.observable();
 	self.customSql = ko.observable();
 	self.useAi = ko.observable(false);
+	self.dynamicColumns = ko.observable(false);
+	self.columnTranslation = ko.observable('{column}');
 	self.textQuery = new textQuery(options);
 	self.selectedTable = null;
 	var validator = new validation();
@@ -1272,6 +1276,8 @@ var customSqlModel = function (options, keys, tables) {
 		validator.clearForm('#custom-sql-modal');
 		self.customTableName(e.TableName());
 		self.customSql(e.CustomTableSql());
+		self.dynamicColumns(e.DynamicColumns());
+		self.columnTranslation(e.DynamicColumnTranslation());
 		$('#custom-sql-modal').modal('show');
 	}
 	
@@ -1334,6 +1340,10 @@ var customSqlModel = function (options, keys, tables) {
 			valid = false;
 		}
 
+		if (self.dynamicColumns() && self.columnTranslation().indexOf('{column}') < 0) {
+			toastr.error("You must use {column} in the code to use the dynamic column");
+			valid = false;
+		}
 		var matchTable = _.find(tables.model(), function (x) {
 			return x.TableName() == self.customTableName() && (!self.selectedTable || self.selectedTable.Id != x.Id());
 		});
@@ -1352,6 +1362,7 @@ var customSqlModel = function (options, keys, tables) {
 			type: 'POST',
 			data: JSON.stringify({
 				value: self.customSql(),
+				dynamicColumns: self.dynamicColumns(),
 				accountKey: keys.AccountApiKey,
 				dataConnectKey: keys.DatabaseApiKey
 			})
@@ -1366,6 +1377,8 @@ var customSqlModel = function (options, keys, tables) {
 			if (!self.selectedTable) {
 				result.TableName = self.customTableName();
 				result.DisplayName = self.customTableName();
+				result.DynamicColumns = self.dynamicColumns();
+				result.DynamicColumnTranslation = self.columnTranslation() ? self.columnTranslation() : "{column}";
 				var t = ko.mapping.fromJS(result);
 
 				tables.model.push(tables.processTable(t));
@@ -1374,6 +1387,8 @@ var customSqlModel = function (options, keys, tables) {
 				var table = _.find(tables.model(), function (x) { return x.Id() == self.selectedTable.Id; });
 				table.TableName(self.customTableName());
 				table.CustomTableSql(self.customSql());
+				table.DynamicColumns(self.dynamicColumns());
+				table.DynamicColumnTranslation(self.columnTranslation() ? self.columnTranslation() : "{column}");
 
 				_.forEach(result.Columns, function (c) {
 					// if column id matches, update display name and data type, otherwise add it
