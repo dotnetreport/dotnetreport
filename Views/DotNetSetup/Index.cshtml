@@ -1157,6 +1157,20 @@
                             <td data-bind="editable: Name"></td>
                             <td data-bind="editable: Description" style="color: #6c757d;"></td>
                              <td>
+                                <input type="text" data-bind="value: Name, visible: $root.editingCategoryIndex() === $index()" class="form-control" />
+                                <span id="cat-name" data-bind="text: Name, visible: $root.editingCategoryIndex() !== $index(), attr: { id: Id ? 'cat-name-' + Id :undefined }" style="color: #6c757d;"></span>
+                            </td>
+                            <td>
+                                <input type="text" data-bind="value: Description, visible: $root.editingCategoryIndex() === $index()" class="form-control" />
+                                <span id="cat-desc" data-bind="text: Description, visible: $root.editingCategoryIndex() !== $index(), attr: { id: Id ? 'cat-desc-' + Id :undefined }" style="color: #6c757d;"></span>
+                            </td>
+                            <td class="d-flex">
+                                <button class="btn btn-primary btn-sm" data-bind="visible: $root.editingCategoryIndex() !== $index() && Id !== 0, click: function() { $root.toggleEdit($index()) }">
+                                    <i class="fa fa-edit"></i>
+                                </button>
+                                <button class="btn btn-success btn-sm" data-bind="visible: $root.editingCategoryIndex() === $index() && Id !== 0, click: function() { $root.saveCategory($index()) }" style="margin-left: 5px;">
+                                    <i class="fa fa-save"></i>
+                                </button>
                         <button class="btn btn-danger btn-sm" data-bind="click: $root.removeCategory">
                             <i class="fa fa-trash"></i>
                         </button>

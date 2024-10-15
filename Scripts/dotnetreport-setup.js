@@ -138,6 +138,7 @@ var manageViewModel = function (options) {
 	self.newCategoryName = ko.observable();
 	self.newCategoryDescription = ko.observable();
 	self.selectedCategory = ko.observableArray([]);
+	self.editingCategoryIndex = ko.observable(-1); // Use an index to track which category is being edited
 	self.addCategory = function () {
 		const newName = self.newCategoryName() ? self.newCategoryName().trim() : '';
 		const newDescription = self.newCategoryDescription() ? self.newCategoryDescription().trim() : '';
@@ -152,7 +153,8 @@ var manageViewModel = function (options) {
 		}
 		self.Categories.push({
 			Name: self.newCategoryName(),
-			Description: self.newCategoryDescription()
+			Description: self.newCategoryDescription(),
+			Id:0
 		});
 		self.newCategoryName(null);
 		self.newCategoryDescription(null);
@@ -161,7 +163,37 @@ var manageViewModel = function (options) {
 	self.removeCategory = function (category) {
 		self.Categories.remove(category);
 	};
+	// Toggle edit mode for a category
+	self.toggleEdit = function (index) {
+		if (self.editingCategoryIndex() === index) {
+			self.editingCategoryIndex(-1); // Stop editing if it's already being edited
+		} else {
+			self.editingCategoryIndex(index); // Set the index to the category being edited
+		}
+	};
+	self.saveCategory = function (index) {
+		const category = self.Categories()[index]; // Get the currently editing category
+		const name = category.Name ? category.Name.trim() : '';
+		const description = category.Description ? category.Description.trim() : '';
+		if (!name || !description) {
+			toastr.error("Category Name and Description cannot be empty.");
+			return;
+		}
+		const isDuplicateName = self.Categories().some((cat, idx) => idx !== index && cat.Name === name);
+		if (isDuplicateName) {
+			toastr.error("Category Name must be unique.");
+			return;
+		}
+		document.getElementById(`cat-name-${category.Id}`).textContent = name
+		document.getElementById(`cat-desc-${category.Id}`).textContent = description
+		self.editingCategoryIndex(-1);
+	};
 	self.saveCategories = function () {
+
+		if (self.editingCategoryIndex() !== -1) {
+			toastr.error("Please finish editing the current category before saving.");
+			return; // Exit the function if editing
+		}
 		ajaxcall({
 			url: options.apiUrl,
 			type: 'POST',
@@ -1023,6 +1055,7 @@ var tablesViewModel = function (options) {
 		}
 
 		t.exportTableJson = function () {
+			debugger
 			var e = ko.mapping.toJS(t, {
 				'ignore': ["saveTable", "JoinTable", "ForeignJoinTable"]
 			});
