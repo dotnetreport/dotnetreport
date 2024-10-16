@@ -1147,7 +1147,7 @@
             <div class="modal-body">
                 <div class="list-group" data-bind="foreach: $root.Categories">
                     <div class="list-group-item" style="padding-top: 2px; padding-bottom: 2px;">
-                        <input type="checkbox" data-bind="checked: $root.isCategorySelected($data, $parent.Categories), checkedValue: Id " />
+                        <input type="checkbox" data-bind="checked: $parent.Categories, checkedValue: $data" />
                         <span data-bind="text: Name"></span> <!-- Display category name -->
                     </div>
                 </div>
