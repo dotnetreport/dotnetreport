@@ -2646,7 +2646,7 @@ var reportViewModel = function (options) {
 	self.ValidateTableJoins = function () {
 		var tableIds = _.uniq(_.chain(self.SelectedFields())
 			.filter(function (x) {
-				return x.tableId || x.tableId > 0;
+				return (x.tableId || x.tableId > 0) && (!x.dynamicTableId);
 			})
 			.map(function (x) {
 				return x.tableId;
