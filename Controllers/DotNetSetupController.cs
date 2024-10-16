@@ -97,6 +97,7 @@ namespace ReportBuilder.Web.Controllers
                         TableName = item.tableDbName,
                         DisplayName = item.tableName,
                         AllowedRoles = item.tableRoles.ToObject<List<string>>(),
+                        Categories=item.tableCategories.ToObject<List<CategoryViewModel>>(),
                         DoNotDisplay = item.doNotDisplay,
                         CustomTable = item.customTable,
                         CustomTableSql = Convert.ToBoolean(item.customTable) == true ? DotNetReportHelper.Decrypt(Convert.ToString(item.customTableSql)) : "",

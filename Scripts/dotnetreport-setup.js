@@ -134,10 +134,18 @@ var manageViewModel = function (options) {
 		self.newAllowedRole(null);
 	}
 
+	self.manageCategories = ko.observable();
+	self.selectedCategory = function (e) {
+		self.manageCategories(e);
+	}
+	self.isCategorySelected = function (category, selectedCategories) {
+		return ko.utils.arrayFirst(selectedCategories(), function (item,index) {
+			return item.CategoryId() === category.Id; // Match Id with CategoryId
+		}) !== null; // Return true if a match is found
+	};
 	self.Categories = ko.observableArray([]); // Use observableArray to hold an array of objects.
 	self.newCategoryName = ko.observable();
 	self.newCategoryDescription = ko.observable();
-	self.selectedCategory = ko.observableArray([]);
 	self.editingCategoryIndex = ko.observable(-1); // Use an index to track which category is being edited
 	self.addCategory = function () {
 		const newName = self.newCategoryName() ? self.newCategoryName().trim() : '';
@@ -1055,7 +1063,6 @@ var tablesViewModel = function (options) {
 		}
 
 		t.exportTableJson = function () {
-			debugger
 			var e = ko.mapping.toJS(t, {
 				'ignore': ["saveTable", "JoinTable", "ForeignJoinTable"]
 			});
