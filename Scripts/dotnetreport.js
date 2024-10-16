@@ -1804,34 +1804,91 @@ var reportViewModel = function (options) {
 	});
 
 	self.loadTableFields = function (table) {
-		return ajaxcall({
-			url: options.apiUrl,
-			data: {
-				method: "/ReportApi/GetFields",
-				model: JSON.stringify({
-					tableId: table.tableId,
-					includeDoNotDisplay: false,
+		if (table.dynamicColumns == true) {
+			return ajaxcall({
+				url: options.getSchemaFromSql,
+				type: 'POST',
+				data: JSON.stringify({
+					value: table.customTableSql,
+					dynamicColumns: true,
+					dataConnectKey: '',
+					accountKey: ''
 				})
-			}
-		}).done(function (fields) {
-			if (fields.d) { fields = fields.d; }
-			if (fields.result) { fields = fields.result; }
-			var flds = _.map(fields, function (e, i) {
-				var match = _.filter(self.SelectedFields(), function (x) { return x.fieldId == e.fieldId && (e.fieldType != 'Json' || !x.jsonColumnName); });
-				if (match.length > 0) {
-					return match[0];
-				}
-				else {
+			}).done(function (_table) {
+				if (_table.d) { _table = _table.d; }
+				if (_table.result) { _table = _table.result; }
+				var flds = _.map(_table.Columns, function (x, i) {
+					var e = {
+						fieldId: x.Id,
+						fieldName: x.DisplayName,
+						fieldAggregate: [],
+						fieldFilter: [],
+						fieldType:  x.FieldType,
+						isPrimary:  x.PrimaryKey,
+						fieldDbName:  x.FieldName,
+						fieldOrder:  x.DisplayOrder,
+						hasForeignKey:  x.ForeignKey,
+						foreignJoin:  x.ForeignJoin,
+						foreignKey:  x.ForeignKeyField,
+						foreignValue:  x.ForeignValueField,
+						foreignTable:  x.ForeignTable,
+						doNotDisplay:  x.DoNotDisplay,
+						forceFilter:  x.ForceFilter,
+						forceFilterForTable:  x.ForceFilterForTable,
+						restrictedDateRange:  x.RestrictedDateRange,
+						restrictedStartDate:  x.RestrictedStartDate,
+						restrictedEndDate:  x.RestrictedEndDate,
+
+						hasForeignParentKey:  x.ForeignParentKey,
+						foreignParentApplyTo:  x.ForeignParentApplyTo,
+						foreignParentKeyField:  x.ForeignParentKeyField,
+						foreignParentValueField:  x.ForeignParentValueField,
+						foreignParentTable:  x.ForeignParentTable,
+						foreignParentRequired:  x.ForeignParentRequired,
+						jsonStructure:  x.FieldType == "Json" ? x.JsonStructure : "",
+						foreignFilterOnly:  x.ForeignFilterOnly,
+						dynamicTableId: table.tableId,
+						columnRoles: []
+					};
+
 					e.tableName = table.tableName;
 					e.tableId = table.tableId;
 					return self.setupField(e);
-				}
+				});
+
+				self.ChooseFields(flds);
+				self.selectedTableFields = flds;
 			});
+		}
+		else { 
+			return ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/GetFields",
+					model: JSON.stringify({
+						tableId: table.tableId,
+						includeDoNotDisplay: false,
+					})
+				}
+			}).done(function (fields) {
+				if (fields.d) { fields = fields.d; }
+				if (fields.result) { fields = fields.result; }
+				var flds = _.map(fields, function (e, i) {
+					var match = _.filter(self.SelectedFields(), function (x) { return x.fieldId == e.fieldId && (e.fieldType != 'Json' || !x.jsonColumnName); });
+					if (match.length > 0) {
+						return match[0];
+					}
+					else {
+						e.tableName = table.tableName;
+						e.tableId = table.tableId;
+						return self.setupField(e);
+					}
+				});
 
-			self.ChooseFields(flds);
-			self.selectedTableFields = flds;
-		});
-
+				self.ChooseFields(flds);
+				self.selectedTableFields = flds;
+			});
+		}
 	}
 
 	self.SelectedTable.subscribe(function (table) {
@@ -2560,7 +2617,8 @@ var reportViewModel = function (options) {
 					FieldWidth: x.fieldWidth(),
 					FieldConditionOp: x.fieldConditionOp(),
 					FieldConditionVal: JSON.stringify(x.fieldConditionVal),
-					JsonColumnName: x.isJsonColumn && x.jsonColumnName ? x.jsonColumnName : ''
+					JsonColumnName: x.isJsonColumn && x.jsonColumnName ? x.jsonColumnName : '',
+					DynamicTableId: x.dynamicTableId
 				};
 			}),
 			Schedule: self.scheduleBuilder.toJs(),

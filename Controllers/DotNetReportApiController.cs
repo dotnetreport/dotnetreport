@@ -565,6 +565,17 @@ namespace ReportBuilder.Web.Controllers
             });
         }
 
+        private static string TryDecrypt(string sql)
+        {
+            try
+            {
+                return DotNetReportHelper.Decrypt(sql);
+            }catch (Exception ex)
+            {
+                return sql;
+            }
+        }
+
         [ValidateAntiForgeryToken]
         [HttpPost]
         public async Task<IActionResult> GetSchemaFromSql([FromBody] SchemaFromSqlCall data)
@@ -578,6 +589,8 @@ namespace ReportBuilder.Web.Controllers
                     CustomTable = true,
                     Selected = true
                 };
+
+                data.value = TryDecrypt(data.value);
 
                 if (string.IsNullOrEmpty(data.value) || !data.value.StartsWith("SELECT ")) {
                     throw new Exception("Invalid SQL");
