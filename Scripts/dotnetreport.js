@@ -1315,7 +1315,12 @@ var reportViewModel = function (options) {
 	self.enabledFields = ko.computed(function () {
 		return _.filter(self.SelectedFields(), function (x) { return !x.disabled(); });
 	});
-
+	self.FilteredFields = ko.computed(function () {
+		return ko.utils.arrayFilter(self.SelectedFields(), function (item) {
+			return item.fieldId !== undefined && item.fieldId !== null && item.fieldId != 0 &&
+				item.tableId !== undefined && item.tableId !== null && item.tableId != 0;
+		});
+	});
 	self.scheduleBuilder = new scheduleBuilder(self.userIdForSchedule, options.getTimeZonesUrl);
 
 	self.ManageFolder = {

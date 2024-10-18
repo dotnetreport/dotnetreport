@@ -1630,7 +1630,7 @@
                         <div class="form-group row">
                             <label class="col-sm-2 control-label">Sort By</label>
                             <div class="col-sm-6">
-                                <select class="form-select" data-bind="options: SelectedFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: SortByField, optionsCaption: 'Select field to sort...', allowClear: true"></select>
+                                <select class="form-select" data-bind="options: FilteredFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: SortByField, optionsCaption: 'Select field to sort...', allowClear: true"></select>
                             </div>
                             <div class="col-sm-2">
                                 <button class="btn btn-sm btn-secondary" data-bind="text: !SortDesc() ? '▲ Ascending' : 'Descending ▼', click: function() { SortDesc(!SortDesc()); return false; }"></button>
@@ -1643,7 +1643,7 @@
                             <div class="form-group row">
                                 <label class="col-sm-2 control-label">&nbsp;&nbsp;Then Sort By</label>
                                 <div class="col-sm-4">
-                                    <select class="form-select" required data-bind="options: $parent.SelectedFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: sortByFieldId"></select>
+                                    <select class="form-select" required data-bind="options: $parent.FilteredFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: sortByFieldId"></select>
                                 </div>
                                 <div class="col-sm-2">
                                     <button class="btn btn-sm btn-secondary" data-bind="click: remove">Remove Sort Field</button>
