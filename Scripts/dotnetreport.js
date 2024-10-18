@@ -3580,13 +3580,15 @@ var reportViewModel = function (options) {
 				easing: 'out'
 			},
 		};
-		var prefixFormat = reportData?.Columns[1]?.currencyFormat ? reportData?.Columns[1]?.currencyFormat() : null;
-		if (prefixFormat != null && prefixFormat != "") {
-			var formatter = new google.visualization.NumberFormat({
-				prefix: prefixFormat
-			});
-			formatter.format(data, 1);
-			chartOptions.vAxis = { format: `${prefixFormat}#` }
+		if (reportData?.Columns[1]?.fieldFormat() === 'Currency') {
+			var prefixFormat = reportData?.Columns[1]?.currencyFormat ? reportData?.Columns[1]?.currencyFormat() : null;
+			if (prefixFormat != null && prefixFormat != "") {
+				var formatter = new google.visualization.NumberFormat({
+					prefix: prefixFormat
+				});
+				formatter.format(data, 1);
+				chartOptions.vAxis = { format: `${prefixFormat}#` }
+			}
 		}
 		if (options.chartSize) {
 			chartOptions.width = options.chartSize.width;
