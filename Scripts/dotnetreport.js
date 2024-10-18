@@ -826,6 +826,7 @@ var reportViewModel = function (options) {
 	self.ReportID = ko.observable();
 
 	self.Tables = ko.observableArray([]);
+	self.CategorizedTables = ko.observableArray([]);
 	self.Procs = ko.observableArray([]);
 	self.SelectedTable = ko.observable();
 	self.SelectedProc = ko.observable();
@@ -4471,6 +4472,44 @@ var reportViewModel = function (options) {
 
 			tables = _.sortBy(tables, function (x) { return x.tableName });
 			self.Tables(tables);
+			const categorizedTables = [];
+			tables.forEach(function (table) {
+				if (table.tableCategories && table.tableCategories.length > 0) {
+					table.tableCategories.forEach(function (category) {
+						let categoryGroup = categorizedTables.find(function (cat) {
+							return cat.categoryId === category.CategoryId;
+						});
+						if (!categoryGroup) {
+							categoryGroup = {
+								categoryId: category.CategoryId,
+								categoryName: category.Name,
+								tables: []
+							};
+							categorizedTables.push(categoryGroup);
+						}
+						categoryGroup.tables.push(table);
+					});
+				} else {
+					let withoutCategoryGroup = categorizedTables.find(function (cat) {
+						return cat.categoryId === 'without_category';
+					});
+					if (!withoutCategoryGroup) {
+						withoutCategoryGroup = {
+							categoryId: 'without_category',
+							categoryName: '--------------------------',
+							tables: []
+						};
+						categorizedTables.push(withoutCategoryGroup);
+					}
+					withoutCategoryGroup.tables.push(table);
+				}
+			});
+			categorizedTables.sort((a, b) => {
+				if (a.categoryName === '--------------------------') return 1; 
+				if (b.categoryName === '--------------------------') return -1; 
+				return a.categoryName.localeCompare(b.categoryName); 
+			});
+			self.CategorizedTables(categorizedTables);
 		});
 	};
 
