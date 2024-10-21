@@ -115,6 +115,20 @@ namespace ReportBuilder.Web.Controllers
             return File(pdf, "application/pdf", reportName + ".pdf");
         }
 
+        [HttpPost]
+        public async Task<IActionResult> DownloadAllPdf(string pdfreportsdata)
+        {
+            var pdfBytesList = new List<byte[]>();
+            var ListofRerpots = pdfreportsdata != null ? JsonConvert.DeserializeObject<List<PdfReportModel>>(pdfreportsdata):null;
+            foreach (var report in ListofRerpots)
+            {
+                var pdf = await DotNetReportHelper.GetPdfFile(report.printUrl,report.reportId,HttpUtility.HtmlDecode(report.reportSql),HttpUtility.UrlDecode(report.connectKey),HttpUtility.UrlDecode(report.reportName),report.userId,
+                    report.clientId,report.userRoles,report.dataFilters,report.expandAll,report.expandSqls,report.pivotColumn,report.pivotFunction);
+                pdfBytesList.Add(pdf);
+            }
+            var combinedPdf = DotNetReportHelper.GetCombinePdfFile(pdfBytesList);
+            return File(combinedPdf, "application/pdf", "CombinedReports.pdf");
+        }
 
         [HttpPost]
         public async Task<IActionResult> DownloadWord(string reportSql, string connectKey, string reportName,  bool allExpanded, string expandSqls, string chartData = null, string columnDetails = null, bool includeSubtotal = false, bool pivot = false,string pivotColumn= null, string pivotFunction = null)

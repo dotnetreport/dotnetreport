@@ -5382,6 +5382,33 @@ var dashboardViewModel = function (options) {
 	self.RefreshAllReports = function () {
 		self.loadDashboardReports(options.reports, true);
 	}
+	self.PrintAllReports = function () {
+		const reports = self.reports();
+		const allreports = [];
+		_.forEach(reports, function (report) {
+			const reportData = report.BuildReportData();
+			const pivotData = report.preparePivotData();
+			allreports.push({
+				reportId: report.ReportID(),
+				reportSql: report.currentSql(),
+				connectKey: report.currentConnectKey(),
+				reportName: report.ReportName(),
+				expandAll: report.allExpanded(),
+				printUrl: options.printReportUrl,
+				clientId: report.clientid || '',
+				userId: report.currentUserId || '',
+				userRoles: report.currentUserRole || '',
+				dataFilters: JSON.stringify(options.dataFilters),
+				expandSqls: JSON.stringify(reportData),
+				pivotColumn: pivotData.pivotColumn,
+				pivotFunction: pivotData.pivotFunction,
+			});
+		});
+		reports[0]?.downloadExport("DownloadAllPdf", {
+			pdfreportsdata: JSON.stringify(allreports)
+		}, 'pdf');
+	}
+
 	self.RunReport = function () {
 		_.forEach(self.reports(), function (report) {
 			var filterApplied = false;
