@@ -886,7 +886,7 @@ namespace ReportBuilder.Web.Models
         {
             int parenthesesCount = 0;
 
-            for (int i = 0; i < sql.Length - 4; i++)  // -4 because "FROM" has 4 characters
+            for (int i = 0; i < sql.Length - 5; i++)  // -4 because "FROM" has 4 characters
             {
                 if (sql[i] == '(')
                 {
@@ -896,7 +896,7 @@ namespace ReportBuilder.Web.Models
                 {
                     parenthesesCount--;
                 }
-                else if (parenthesesCount == 0 && sql.Substring(i, 4).Equals("FROM", StringComparison.OrdinalIgnoreCase))
+                else if (parenthesesCount == 0 && sql.Substring(i, 5).Equals("FROM ", StringComparison.OrdinalIgnoreCase))
                 {
                     return i;
                 }
