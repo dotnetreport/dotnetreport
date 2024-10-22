@@ -2350,7 +2350,7 @@ namespace ReportBuilder.Web.Models
                     string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false,string expandSqls=null, string pivotColumn = null, string pivotFunction = null)
         {
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
-            //await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
+            await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
             var executablePath = "";
             foreach (var d in Directory.GetDirectories($"{installPath}\\chrome"))
             {
