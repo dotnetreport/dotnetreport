@@ -31,6 +31,7 @@ using A = DocumentFormat.OpenXml.Drawing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
 using static ReportBuilder.Web.Controllers.DotNetReportApiController;
+using PdfSharp.Pdf.IO;
 
 namespace ReportBuilder.Web.Models
 {
@@ -138,6 +139,13 @@ namespace ReportBuilder.Web.Models
 
         public bool CustomTable { get; set; }
         public string CustomTableSql { get; set; }
+        public List<CategoryViewModel> Categories { get; set; }
+    }
+    public class CategoryViewModel
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
     }
 
     public class ParameterViewModel
@@ -399,7 +407,22 @@ namespace ReportBuilder.Web.Models
         public bool isCurrency { get; set; }
         public bool isJsonColumn { get; set; }
     }
-
+    public class PdfReportModel
+    {
+        public int reportId { get; set; }
+        public string reportSql { get; set; }
+        public string connectKey { get; set; }
+        public string reportName { get; set; }
+        public bool expandAll { get; set; }
+        public string printUrl { get; set; }
+        public string clientId { get; set; }
+        public string userId { get; set; }
+        public string userRoles { get; set; }
+        public string dataFilters { get; set; }
+        public string expandSqls { get; set; }
+        public string pivotColumn { get; set; }
+        public string pivotFunction { get; set; }
+    }
     public interface IDnrDataConnection
     {
         string DbConnection { get; set; }
@@ -2327,7 +2350,7 @@ namespace ReportBuilder.Web.Models
                     string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false,string expandSqls=null, string pivotColumn = null, string pivotFunction = null)
         {
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
-            await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
+            //await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
             var executablePath = "";
             foreach (var d in Directory.GetDirectories($"{installPath}\\chrome"))
             {
@@ -2441,7 +2464,28 @@ namespace ReportBuilder.Web.Models
             await page.PdfAsync(pdfFile, pdfOptions);
             return File.ReadAllBytes(pdfFile);
         }
-
+        
+        public static byte[] GetCombinePdfFile(List<byte[]> pdfFiles)
+        {
+            using (var outputDocument = new PdfDocument())
+            {
+                foreach (var pdf in pdfFiles)
+                {
+                    using (var inputDocument = PdfReader.Open(new MemoryStream(pdf), PdfDocumentOpenMode.Import))
+                    {
+                        for (int i = 0; i < inputDocument.PageCount; i++)
+                        {
+                            outputDocument.AddPage(inputDocument.Pages[i]);
+                        }
+                    }
+                }
+                using (var ms = new MemoryStream())
+                {
+                    outputDocument.Save(ms);
+                    return ms.ToArray();
+                }
+            }
+        }
         public static async Task<string> GetChartImage(string printUrl, int reportId, string connectKey, string reportSql = null, string dataFilters = "")
         {
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";

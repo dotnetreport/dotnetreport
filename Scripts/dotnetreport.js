@@ -826,6 +826,7 @@ var reportViewModel = function (options) {
 	self.ReportID = ko.observable();
 
 	self.Tables = ko.observableArray([]);
+	self.CategorizedTables = ko.observableArray([]);
 	self.Procs = ko.observableArray([]);
 	self.SelectedTable = ko.observable();
 	self.SelectedProc = ko.observable();
@@ -1314,7 +1315,12 @@ var reportViewModel = function (options) {
 	self.enabledFields = ko.computed(function () {
 		return _.filter(self.SelectedFields(), function (x) { return !x.disabled(); });
 	});
-
+	self.FilteredFields = ko.computed(function () {
+		return ko.utils.arrayFilter(self.SelectedFields(), function (item) {
+			return item.fieldId !== undefined && item.fieldId !== null && item.fieldId != 0 &&
+				item.tableId !== undefined && item.tableId !== null && item.tableId != 0;
+		});
+	});
 	self.scheduleBuilder = new scheduleBuilder(self.userIdForSchedule, options.getTimeZonesUrl);
 
 	self.ManageFolder = {
@@ -2105,26 +2111,34 @@ var reportViewModel = function (options) {
 		self.formulaDataFormat(field.fieldFormat());
 		self.formulaDecimalPlaces(field.decimalPlaces());
 		self.formulaFields([]);
-
 		if (field.formulaItems().length > 0) {
-			var tableId = _.find(field.formulaItems(), function (x) { return x.tableId() > 0 }).tableId();
-			var match = _.find(self.Tables(), { tableId: tableId });
-			if (tableId && match) {
-				self.SelectedTable(match);
-				self.loadTableFields(match).done(function (x) {
+			var uniqueTableIds = _.uniq(_.map(field.formulaItems(), function (x) { return x.tableId(); })).filter(function (id) { return id > 0; }); // Ensure tableId > 0
+			var tableMatches = _.filter(self.Tables(), function (t) { return _.includes(uniqueTableIds, t.tableId); });
+			var loadPromises = [];
+			for (let match of tableMatches) {
+				var loadPromise = self.loadTableFields(match).done(function (x) {
 					var formulaItems = field.formulaItems();
 					_.forEach(formulaItems, function (e) {
 						var fieldMatch = _.find(self.ChooseFields(), function (m) { return m.fieldId == e.fieldId() });
-						if (!fieldMatch) {
-							var field = self.getEmptyFormulaField();
-							var fieldMatch = self.setupField(Object.assign({}, field));
+						if (fieldMatch) {
+							fieldMatch.setupFormula = e;
+							self.formulaFields.push(fieldMatch);
 						}
-						fieldMatch.setupFormula = e;
-						self.formulaFields.push(fieldMatch);
 					});
-
 				});
+				loadPromises.push(loadPromise);
 			}
+			$.when.apply($, loadPromises).done(function () {
+				var formulaItems = field.formulaItems();
+				_.forEach(formulaItems, function (e) {
+					if (e.fieldId() === 0) { // Check if id is 0
+						var field = self.getEmptyFormulaField();
+						var fieldMatch = self.setupField(Object.assign({}, field));
+						fieldMatch.setupFormula = e; // Assign setupFormula
+						self.formulaFields.push(fieldMatch);
+					}
+				});
+			});
 		}
 
 		if (self.formulaType() == 'sql') {
@@ -2154,9 +2168,8 @@ var reportViewModel = function (options) {
 			toastr.error("Please correct validation issues");
 			return;
 		}
-
 		_.forEach(self.formulaFields(), function (e) {
-			e.tableId = e.tableId || self.SelectedTable().tableId;
+			e.tableId = e.tableId;
 		});
 
 		var field = self.getEmptyFormulaField();
@@ -3604,13 +3617,15 @@ var reportViewModel = function (options) {
 				easing: 'out'
 			},
 		};
-		var prefixFormat = reportData?.Columns[1]?.currencyFormat ? reportData?.Columns[1]?.currencyFormat() : null;
-		if (prefixFormat != null && prefixFormat != "") {
-			var formatter = new google.visualization.NumberFormat({
-				prefix: prefixFormat
-			});
-			formatter.format(data, 1);
-			chartOptions.vAxis = { format: `${prefixFormat}#` }
+		if (reportData?.Columns[1]?.fieldFormat() === 'Currency') {
+			var prefixFormat = reportData?.Columns[1]?.currencyFormat ? reportData?.Columns[1]?.currencyFormat() : null;
+			if (prefixFormat != null && prefixFormat != "") {
+				var formatter = new google.visualization.NumberFormat({
+					prefix: prefixFormat
+				});
+				formatter.format(data, 1);
+				chartOptions.vAxis = { format: `${prefixFormat}#` }
+			}
 		}
 		if (options.chartSize) {
 			chartOptions.width = options.chartSize.width;
@@ -4498,6 +4513,44 @@ var reportViewModel = function (options) {
 
 			tables = _.sortBy(tables, function (x) { return x.tableName });
 			self.Tables(tables);
+			const categorizedTables = [];
+			tables.forEach(function (table) {
+				if (table.tableCategories && table.tableCategories.length > 0) {
+					table.tableCategories.forEach(function (category) {
+						let categoryGroup = categorizedTables.find(function (cat) {
+							return cat.categoryId === category.CategoryId;
+						});
+						if (!categoryGroup) {
+							categoryGroup = {
+								categoryId: category.CategoryId,
+								categoryName: category.Name,
+								tables: []
+							};
+							categorizedTables.push(categoryGroup);
+						}
+						categoryGroup.tables.push(table);
+					});
+				} else {
+					let withoutCategoryGroup = categorizedTables.find(function (cat) {
+						return cat.categoryId === 'without_category';
+					});
+					if (!withoutCategoryGroup) {
+						withoutCategoryGroup = {
+							categoryId: 'without_category',
+							categoryName: '--------------------------',
+							tables: []
+						};
+						categorizedTables.push(withoutCategoryGroup);
+					}
+					withoutCategoryGroup.tables.push(table);
+				}
+			});
+			categorizedTables.sort((a, b) => {
+				if (a.categoryName === '--------------------------') return 1; 
+				if (b.categoryName === '--------------------------') return -1; 
+				return a.categoryName.localeCompare(b.categoryName); 
+			});
+			self.CategorizedTables(categorizedTables);
 		});
 	};
 
@@ -5572,6 +5625,33 @@ var dashboardViewModel = function (options) {
 	self.RefreshAllReports = function () {
 		self.loadDashboardReports(options.reports, true);
 	}
+	self.PrintAllReports = function () {
+		const reports = self.reports();
+		const allreports = [];
+		_.forEach(reports, function (report) {
+			const reportData = report.BuildReportData();
+			const pivotData = report.preparePivotData();
+			allreports.push({
+				reportId: report.ReportID(),
+				reportSql: report.currentSql(),
+				connectKey: report.currentConnectKey(),
+				reportName: report.ReportName(),
+				expandAll: report.allExpanded(),
+				printUrl: options.printReportUrl,
+				clientId: report.clientid || '',
+				userId: report.currentUserId || '',
+				userRoles: report.currentUserRole || '',
+				dataFilters: JSON.stringify(options.dataFilters),
+				expandSqls: JSON.stringify(reportData),
+				pivotColumn: pivotData.pivotColumn,
+				pivotFunction: pivotData.pivotFunction,
+			});
+		});
+		reports[0]?.downloadExport("DownloadAllPdf", {
+			pdfreportsdata: JSON.stringify(allreports)
+		}, 'pdf');
+	}
+
 	self.RunReport = function () {
 		_.forEach(self.reports(), function (report) {
 			var filterApplied = false;
