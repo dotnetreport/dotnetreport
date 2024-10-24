@@ -4970,7 +4970,8 @@ var dashboardViewModel = function (options) {
 		Id: ko.observable(currentDash.id),
 		Name: ko.observable(currentDash.name),
 		Description: ko.observable(currentDash.description),
-		manageAccess: manageAccess(options)
+		manageAccess: manageAccess(options),
+		scheduleBuilder: new scheduleBuilder(options.userId, options.getTimeZonesUrl)
 	};
 	self.dateFormatMappings = {
 		'United States': 'mm/dd/yy',
@@ -5008,6 +5009,7 @@ var dashboardViewModel = function (options) {
 			self.dashboard.Id(currentDash.id);
 			self.dashboard.Name(currentDash.name);
 			self.dashboard.Description(currentDash.description);
+			self.dashboard.scheduleBuilder(currentDash.schedule);
 			self.currentDashboard(currentDash);
 			self.loadDashboardReports(reports);
 		});
@@ -5045,7 +5047,7 @@ var dashboardViewModel = function (options) {
 		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.deleteOnlyUserRoles, '');
 		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.deleteOnlyUsers, '');
 		self.dashboard.manageAccess.clientId('');
-
+		self.dashboard.scheduleBuilder.clear();
 		_.forEach(self.reportsAndFolders(), function (f) {
 			_.forEach(f.reports, function (r) {
 				r.selected(false);
@@ -5127,7 +5129,8 @@ var dashboardViewModel = function (options) {
 			viewOnlyUserRoles: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.viewOnlyUserRoles),
 			deleteOnlyUserRoles: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.deleteOnlyUserRoles),
 			clientIdToUpdate: self.dashboard.manageAccess.clientId(),
-			adminMode: self.adminMode()
+			adminMode: self.adminMode(),
+			schedule: self.dashboard.scheduleBuilder.toJs(),
 		};
 
 		ajaxcall({
