@@ -5386,7 +5386,7 @@ var dashboardViewModel = function (options) {
 	self.RefreshAllReports = function () {
 		self.loadDashboardReports(options.reports, true);
 	}
-	self.PrintAllReports = function () {
+	self.ExportAllPdfReports = function () {
 		const reports = self.reports();
 		const allreports = [];
 		_.forEach(reports, function (report) {
@@ -5409,8 +5409,33 @@ var dashboardViewModel = function (options) {
 			});
 		});
 		reports[0]?.downloadExport("DownloadAllPdf", {
-			pdfreportsdata: JSON.stringify(allreports)
+			reportdata: JSON.stringify(allreports)
 		}, 'pdf');
+	}
+
+	self.ExportAllExcelReports = function () {
+		const reports = self.reports();
+		const allreports = [];
+		_.forEach(reports, function (report) {
+			const reportData = report.BuildReportData();
+			const pivotData = report.preparePivotData();
+			allreports.push({
+				reportSql: report.currentSql(),
+				connectKey: report.currentConnectKey(),
+				reportName: report.ReportName(),
+				expandAll: false,
+				expandSqls: JSON.stringify(reportData),
+				chartData: report.ChartData() || '',
+				columnDetails: report.getColumnDetails(),
+				includeSubTotal: report.IncludeSubTotal(),
+				pivot: report.ReportType() == 'Pivot',
+				pivotColumn: pivotData.pivotColumn,
+				pivotFunction: pivotData.pivotFunction,
+			});
+		});
+		reports[0]?.downloadExport("DownloadAllExcel", {
+			reportdata: JSON.stringify(allreports)
+		}, 'xlsx');
 	}
 
 	self.RunReport = function () {

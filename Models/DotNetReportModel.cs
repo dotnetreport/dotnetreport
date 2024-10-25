@@ -407,7 +407,7 @@ namespace ReportBuilder.Web.Models
         public bool isCurrency { get; set; }
         public bool isJsonColumn { get; set; }
     }
-    public class PdfReportModel
+    public class ExportReportModel
     {
         public int reportId { get; set; }
         public string reportSql { get; set; }
@@ -422,6 +422,10 @@ namespace ReportBuilder.Web.Models
         public string expandSqls { get; set; }
         public string pivotColumn { get; set; }
         public string pivotFunction { get; set; }
+        public string chartData { get; set; }
+        public string columnDetails { get; set; }
+        public bool includeSubTotal { get; set; }
+        public bool pivot { get; set; }
     }
     public interface IDnrDataConnection
     {
@@ -2484,6 +2488,26 @@ namespace ReportBuilder.Web.Models
                     outputDocument.Save(ms);
                     return ms.ToArray();
                 }
+            }
+        }
+        public static byte[] GetCombineExcelFile(List<byte[]> excelFiles, List<string> sheetNames)
+        {
+            using (var package = new ExcelPackage())
+            {
+                for (int i = 0; i < excelFiles.Count; i++)
+                {
+                    var fileBytes = excelFiles[i];
+                    var sheetName = sheetNames[i] ?? $"Sheet{i + 1}";
+
+                    using (var stream = new MemoryStream(fileBytes))
+                    using (var tempPackage = new ExcelPackage(stream))
+                    {
+                        var tempSheet = tempPackage.Workbook.Worksheets[0];
+                        var newSheet = package.Workbook.Worksheets.Add(sheetName, tempSheet);
+                    }
+                }
+
+                return package.GetAsByteArray();
             }
         }
         public static async Task<string> GetChartImage(string printUrl, int reportId, string connectKey, string reportSql = null, string dataFilters = "")
