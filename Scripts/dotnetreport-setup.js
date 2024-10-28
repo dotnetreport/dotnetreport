@@ -134,6 +134,61 @@ var manageViewModel = function (options) {
 		self.newAllowedRole(null);
 	}
 
+	self.Categories = ko.observableArray([]); // Use observableArray to hold an array of objects.
+	self.newCategoryName = ko.observable();
+	self.newCategoryDescription = ko.observable();
+	self.selectedCategory = ko.observableArray([]);
+	self.addCategory = function () {
+		if (!self.newCategoryName() || _.filter(self.Categories(), function (x) { return x.name === self.newCategoryName(); }).length > 0) {
+			toastr.error("Please add a new unique Category");
+			return;
+		}
+		self.Categories.push({
+			Name: self.newCategoryName(),
+			Description: self.newCategoryDescription()
+		});
+		self.newCategoryName(null);
+		self.newCategoryDescription(null);
+	};
+
+	self.removeCategory = function (category) {
+		self.Categories.remove(category);
+	};
+	self.saveCategories = function () {
+		ajaxcall({
+			url: options.apiUrl,
+			type: 'POST',
+			data: JSON.stringify({
+				method: options.saveCategoriesUrl,
+				model: JSON.stringify({
+					account: self.keys.AccountApiKey,
+					dataConnect: self.keys.DatabaseApiKey,
+					categories: self.Categories()
+				})
+			})
+		}).done(function (x) {
+			if (x.success) {
+				toastr.success("Saved Categories ");
+			} else {
+				toastr.error("Error saving Categories ");
+			}
+		});
+	};
+	self.LoadCategories = function () {
+		ajaxcall({
+			url: options.apiUrl,
+			type: 'POST',
+			data: JSON.stringify({
+				method: options.getCategoriesUrl,
+				model: JSON.stringify({
+					account: self.keys.AccountApiKey,
+					dataConnect: self.keys.DatabaseApiKey
+				})
+			})
+		}).done(function (result) {
+			self.Categories(result);
+		});
+	}
 	self.newDataConnection = {
 		Name: ko.observable(),
 		ConnectionKey: ko.observable(),
@@ -996,7 +1051,9 @@ var tablesViewModel = function (options) {
 				return;
 			}
 
-			if (_.filter(e.Columns, function (x) { return x.Selected; }).length == 0) {
+			if (e.DynamicColumns) {
+				e.Columns = []
+			} else if (_.filter(e.Columns, function (x) { return x.Selected; }).length == 0) {
 				toastr.error("Cannot save table " + e.DisplayName + ", no columns selected");
 				return;
 			}
@@ -1199,6 +1256,8 @@ var customSqlModel = function (options, keys, tables) {
 	self.customTableName = ko.observable();
 	self.customSql = ko.observable();
 	self.useAi = ko.observable(false);
+	self.dynamicColumns = ko.observable(false);
+	self.columnTranslation = ko.observable('{column}');
 	self.textQuery = new textQuery(options);
 	self.selectedTable = null;
 	var validator = new validation();
@@ -1217,6 +1276,8 @@ var customSqlModel = function (options, keys, tables) {
 		validator.clearForm('#custom-sql-modal');
 		self.customTableName(e.TableName());
 		self.customSql(e.CustomTableSql());
+		self.dynamicColumns(e.DynamicColumns());
+		self.columnTranslation(e.DynamicColumnTranslation());
 		$('#custom-sql-modal').modal('show');
 	}
 	
@@ -1279,6 +1340,10 @@ var customSqlModel = function (options, keys, tables) {
 			valid = false;
 		}
 
+		if (self.dynamicColumns() && self.columnTranslation().indexOf('{column}') < 0) {
+			toastr.error("You must use {column} in the code to use the dynamic column");
+			valid = false;
+		}
 		var matchTable = _.find(tables.model(), function (x) {
 			return x.TableName() == self.customTableName() && (!self.selectedTable || self.selectedTable.Id != x.Id());
 		});
@@ -1297,6 +1362,7 @@ var customSqlModel = function (options, keys, tables) {
 			type: 'POST',
 			data: JSON.stringify({
 				value: self.customSql(),
+				dynamicColumns: self.dynamicColumns(),
 				accountKey: keys.AccountApiKey,
 				dataConnectKey: keys.DatabaseApiKey
 			})
@@ -1311,6 +1377,8 @@ var customSqlModel = function (options, keys, tables) {
 			if (!self.selectedTable) {
 				result.TableName = self.customTableName();
 				result.DisplayName = self.customTableName();
+				result.DynamicColumns = self.dynamicColumns();
+				result.DynamicColumnTranslation = self.columnTranslation() ? self.columnTranslation() : "{column}";
 				var t = ko.mapping.fromJS(result);
 
 				tables.model.push(tables.processTable(t));
@@ -1319,6 +1387,8 @@ var customSqlModel = function (options, keys, tables) {
 				var table = _.find(tables.model(), function (x) { return x.Id() == self.selectedTable.Id; });
 				table.TableName(self.customTableName());
 				table.CustomTableSql(self.customSql());
+				table.DynamicColumns(self.dynamicColumns());
+				table.DynamicColumnTranslation(self.columnTranslation() ? self.columnTranslation() : "{column}");
 
 				_.forEach(result.Columns, function (c) {
 					// if column id matches, update display name and data type, otherwise add it
