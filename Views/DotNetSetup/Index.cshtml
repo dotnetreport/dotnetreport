@@ -54,6 +54,8 @@
             ajaxcall({ url: '@Url.Action("LoadSetupSchema", "DotNetReportApi")' + '?databaseApiKey=' + (queryParams.databaseApiKey || '') + '&onlyApi=' + (queryParams.onlyApi === 'false' ? false : true) }).done(function(model) {
                 var options = {
                     model: model,
+                    saveCategoriesUrl: '/ReportApi/SaveCategoriesData',
+                    getCategoriesUrl: '/ReportApi/GetCategories',
                     saveTableUrl: '/ReportApi/SaveTableData',
                     deleteTableUrl: '/ReportApi/DeleteTable',
                     getRelationsUrl: '/ReportApi/GetRelations',
@@ -77,7 +79,7 @@
                 vm.setupManageAccess();            
                 ko.applyBindings(vm);
                 vm.LoadDataConnections();
-
+				vm.LoadCategories();
                 vm.customSql.textQuery.setupQuery();
             });
         });
@@ -172,6 +174,9 @@
                 <button class="btn btn-sm btn-primary" data-bind="hidden: $root.customTableMode()" data-bs-toggle="modal" data-bs-target="#uploadTablesFileModal" aria-haspopup="true" aria-expanded="false">
                     <span class="fa fa-file"></span> Import Tables/Views
                 </button>
+                <button class="btn btn-sm btn-primary" title="Manage Category" data-bs-toggle="modal" data-bs-target="#category-modal">
+                    <span class="fa fa-server"></span> Manage Category 
+                </button>
             </div>
             <div class="clearfix"></div>
             <hr />
@@ -230,14 +235,17 @@
                                 <button data-bind="click: $root.customSql.viewCustomSql.bind($data)" class="btn btn-sm btn-secondary">View Custom Sql</button>
                             </div>
                         </div>
-
+                        
                         <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Columns().length"></span> Columns</label>
                         <button class="btn btn-sm btn-link label-sm" data-bind="click: autoFormat, visible: Selected">Auto Format</button>
                         <button class="btn btn-sm btn-link label-sm" data-bind="click: unselectAllColumns, visible: Selected">Unselect All</button>
                         <button class="btn btn-sm btn-link label-sm" data-bind="click: selectAllColumns, visible: Selected">Select All</button>
                         <div class="list-group" data-bind="sortable: { data: Columns, options: { handle: '.sortable', cursor: 'move' }, afterMove: $parent.columnSorted }">
                             <div class="list-group-item">
-                                <div class="checkbox">
+                                <div data-bind="if: $parent.DynamicColumns()">
+                                    <span data-bind="html: DisplayName, attr: {title: 'DB field is ' + ColumnName()}"></span>
+                                </div>
+                                <div class="checkbox" data-bind="if: !$parent.DynamicColumns()">
                                     <label>
                                         <input type="checkbox" data-bind="checked: Selected, enable: $parent.Selected()">
                                         <span data-bind="editable: DisplayName, attr: {title: 'DB field is ' + ColumnName()}"></span>
@@ -1097,7 +1105,7 @@
     </div>
 </div>
 
-<div class="modal fade" id="role-access-modal" role="dialog" tabindex="-2">
+<div class="modal" id="role-access-modal" role="dialog" tabindex="-2">
     <div class="modal-dialog" role="document">
         <div class="modal-content" data-bind="with: editAllowedRoles">
             <div class="modal-header">
@@ -1125,6 +1133,55 @@
 
             </div>
             <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="category-modal" role="dialog" tabindex="-2">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Manage Categories</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Manage Categories</p>
+                <!-- Iterate over each category object in the Categories array -->
+                <div class="list-group" data-bind="foreach: $root.Categories">
+                    <div class="list-group-item d-flex justify-content-between align-items-center" style="padding: 10px; border-radius: 8px; margin-bottom: 5px;">
+                        <!-- Display category name and description -->
+                        <div>
+                            <strong data-bind="text: Name"></strong> -
+                            <span data-bind="text: Description" style="color: #6c757d;"></span>
+                        </div>
+                        <!-- Remove button -->
+                        <button class="btn btn-danger btn-sm" data-bind="click: $root.removeCategory">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="container">
+                    <div class="row mb-2">
+                        <div class="col-12">
+                            <input class="form-control" type="text" data-bind="value: $root.newCategoryName" placeholder="Category Name">
+                        </div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-12">
+                            <input class="form-control" type="text" data-bind="value: $root.newCategoryDescription" placeholder="Description">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12">
+                            <button class="btn btn-primary w-100" data-bind="click: $root.addCategory">Add</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bind="click: $root.saveCategories">Save</button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
             </div>
         </div>
@@ -1205,9 +1262,19 @@
                 </div>
 
                 <div class="form-group" data-bind="validationElement: customSql">
-                    <label for="custom-sql">Custom SQL</label> | <a href="#" data-bind="click: beautifySql">Beautify Sql</a>
+                    <label for="custom-sql">Custom SQL</label> | 
+                    <label>
+                        <input type="checkbox" data-bind="checked: dynamicColumns">
+                        <span title="Setup a table that returns dynamic columns to pick from">Table with Dynamic Columns</span>
+                    </label> | 
+                    <a href="#" data-bind="click: beautifySql">Beautify Sql</a>
                     <textarea class="form-control" style="height: 240px;" name="customSql" data-bind="textInput: customSql" required></textarea>
                     <div class="invalid-feedback">Custom SQL is required.</div>
+
+                    <div data-bind="if: dynamicColumns">
+                        <label>Add SQL code to use the dynamic column</label>
+                        <textarea class="form-control" style="height: 240px;" name="columnTranslation" data-bind="textInput: columnTranslation" required></textarea>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">

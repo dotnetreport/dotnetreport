@@ -1804,34 +1804,91 @@ var reportViewModel = function (options) {
 	});
 
 	self.loadTableFields = function (table) {
-		return ajaxcall({
-			url: options.apiUrl,
-			data: {
-				method: "/ReportApi/GetFields",
-				model: JSON.stringify({
-					tableId: table.tableId,
-					includeDoNotDisplay: false,
+		if (table.dynamicColumns == true) {
+			return ajaxcall({
+				url: options.getSchemaFromSql,
+				type: 'POST',
+				data: JSON.stringify({
+					value: table.customTableSql,
+					dynamicColumns: true,
+					dataConnectKey: '',
+					accountKey: ''
 				})
-			}
-		}).done(function (fields) {
-			if (fields.d) { fields = fields.d; }
-			if (fields.result) { fields = fields.result; }
-			var flds = _.map(fields, function (e, i) {
-				var match = _.filter(self.SelectedFields(), function (x) { return x.fieldId == e.fieldId && (e.fieldType != 'Json' || !x.jsonColumnName); });
-				if (match.length > 0) {
-					return match[0];
-				}
-				else {
+			}).done(function (_table) {
+				if (_table.d) { _table = _table.d; }
+				if (_table.result) { _table = _table.result; }
+				var flds = _.map(_table.Columns, function (x, i) {
+					var e = {
+						fieldId: x.Id,
+						fieldName: x.DisplayName,
+						fieldAggregate: [],
+						fieldFilter: [],
+						fieldType:  x.FieldType,
+						isPrimary:  x.PrimaryKey,
+						fieldDbName:  x.FieldName,
+						fieldOrder:  x.DisplayOrder,
+						hasForeignKey:  x.ForeignKey,
+						foreignJoin:  x.ForeignJoin,
+						foreignKey:  x.ForeignKeyField,
+						foreignValue:  x.ForeignValueField,
+						foreignTable:  x.ForeignTable,
+						doNotDisplay:  x.DoNotDisplay,
+						forceFilter:  x.ForceFilter,
+						forceFilterForTable:  x.ForceFilterForTable,
+						restrictedDateRange:  x.RestrictedDateRange,
+						restrictedStartDate:  x.RestrictedStartDate,
+						restrictedEndDate:  x.RestrictedEndDate,
+
+						hasForeignParentKey:  x.ForeignParentKey,
+						foreignParentApplyTo:  x.ForeignParentApplyTo,
+						foreignParentKeyField:  x.ForeignParentKeyField,
+						foreignParentValueField:  x.ForeignParentValueField,
+						foreignParentTable:  x.ForeignParentTable,
+						foreignParentRequired:  x.ForeignParentRequired,
+						jsonStructure:  x.FieldType == "Json" ? x.JsonStructure : "",
+						foreignFilterOnly:  x.ForeignFilterOnly,
+						dynamicTableId: table.tableId,
+						columnRoles: []
+					};
+
 					e.tableName = table.tableName;
 					e.tableId = table.tableId;
 					return self.setupField(e);
-				}
+				});
+
+				self.ChooseFields(flds);
+				self.selectedTableFields = flds;
 			});
+		}
+		else { 
+			return ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/GetFields",
+					model: JSON.stringify({
+						tableId: table.tableId,
+						includeDoNotDisplay: false,
+					})
+				}
+			}).done(function (fields) {
+				if (fields.d) { fields = fields.d; }
+				if (fields.result) { fields = fields.result; }
+				var flds = _.map(fields, function (e, i) {
+					var match = _.filter(self.SelectedFields(), function (x) { return x.fieldId == e.fieldId && (e.fieldType != 'Json' || !x.jsonColumnName); });
+					if (match.length > 0) {
+						return match[0];
+					}
+					else {
+						e.tableName = table.tableName;
+						e.tableId = table.tableId;
+						return self.setupField(e);
+					}
+				});
 
-			self.ChooseFields(flds);
-			self.selectedTableFields = flds;
-		});
-
+				self.ChooseFields(flds);
+				self.selectedTableFields = flds;
+			});
+		}
 	}
 
 	self.SelectedTable.subscribe(function (table) {
@@ -2089,22 +2146,18 @@ var reportViewModel = function (options) {
 		self.formulaDataFormat(field.fieldFormat());
 		self.formulaDecimalPlaces(field.decimalPlaces());
 		self.formulaFields([]);
-
 		if (field.formulaItems().length > 0) {
-			var tableId = _.find(field.formulaItems(), function (x) { return x.tableId() > 0 }).tableId();
-			var match = _.find(self.Tables(), { tableId: tableId });
-			if (tableId && match) {
-				self.SelectedTable(match);
+			var uniqueTableIds = _.uniq(_.map(field.formulaItems(), function (x) { return x.tableId(); })).filter(function (id) { return id > 0; }); // Ensure tableId > 0
+			var tableMatches = _.filter(self.Tables(), function (t) { return _.includes(uniqueTableIds, t.tableId); });
+			for (let match of tableMatches) {
 				self.loadTableFields(match).done(function (x) {
 					var formulaItems = field.formulaItems();
 					_.forEach(formulaItems, function (e) {
 						var fieldMatch = _.find(self.ChooseFields(), function (m) { return m.fieldId == e.fieldId() });
-						if (!fieldMatch) {
-							var field = self.getEmptyFormulaField();
-							var fieldMatch = self.setupField(Object.assign({}, field));
+						if (fieldMatch) {
+							fieldMatch.setupFormula = e;  
+							self.formulaFields.push(fieldMatch);
 						}
-						fieldMatch.setupFormula = e;
-						self.formulaFields.push(fieldMatch);
 					});
 
 				});
@@ -2564,7 +2617,8 @@ var reportViewModel = function (options) {
 					FieldWidth: x.fieldWidth(),
 					FieldConditionOp: x.fieldConditionOp(),
 					FieldConditionVal: JSON.stringify(x.fieldConditionVal),
-					JsonColumnName: x.isJsonColumn && x.jsonColumnName ? x.jsonColumnName : ''
+					JsonColumnName: x.isJsonColumn && x.jsonColumnName ? x.jsonColumnName : '',
+					DynamicTableId: x.dynamicTableId
 				};
 			}),
 			Schedule: self.scheduleBuilder.toJs(),
@@ -2592,7 +2646,7 @@ var reportViewModel = function (options) {
 	self.ValidateTableJoins = function () {
 		var tableIds = _.uniq(_.chain(self.SelectedFields())
 			.filter(function (x) {
-				return x.tableId || x.tableId > 0;
+				return (x.tableId || x.tableId > 0) && (!x.dynamicTableId);
 			})
 			.map(function (x) {
 				return x.tableId;
@@ -3297,7 +3351,7 @@ var reportViewModel = function (options) {
 			}
 			processRow(e.Items, result.ReportData.Columns);
 		});
-		function renderTable(data) {
+		function renderTableSimple(data) {
 			const tableBody = document.getElementById('report-table-body' + self.ReportID());
 			if (tableBody) {
 				let rowsHTML = '';
@@ -3318,11 +3372,91 @@ var reportViewModel = function (options) {
 			}
 		}
 
+		function renderTable(data, columnsData) {
+			const transformedData = data.map(row => {
+				const rowData = {};
+				row.Items.forEach((item, index) => {
+					const column = columnsData[index];
+					if (column) {
+						rowData[column.ColumnName] = item.FormattedValue;
+					}
+				});
+				rowData.row = row;
+				return rowData;
+			});
+
+			const columns = columnsData.map(col => {
+				let filterType;
+
+				switch (col.DataType) {
+					case 'System.String':
+						filterType = "input";
+						break;
+					case 'System.Int32':
+					case 'System.Int64':
+					case 'System.Double':
+						filterType = "number";
+						break;
+					case 'System.Boolean':
+						filterType = "select";
+						break;
+					default:
+						filterType = "input";
+				}
+
+				return {
+					title: col.fieldName || col.ColumnName || "Column",
+					field: col.ColumnName,
+					sorter: col.IsNumeric ? "number" : "string",
+					hozAlign: col.IsNumeric ? "right" : "left",
+					formatter: "html",
+					formatterParams: {
+						style: {
+							backgroundColor: col.backColor || '',
+							color: col.fontColor || '',
+							fontWeight: col.fontBold ? 'bold' : 'normal'
+						}
+					},
+					bottomCalc: col.IsNumeric ? "sum" : undefined, // Calculate total for numeric columns
+					bottomCalcFormatter: col.IsNumeric ? function (cell) {
+						const val = cell.getValue();
+						if (val === "NA" || val === "NaN") return ''; // Handle invalid values
+						return val.toLocaleString(); // Format as needed
+					} : undefined
+				};
+			});
+
+			if (self.canDrilldown()) {
+				columns.unshift({
+					formatter: function (cell, formatterParams) {
+						const rowData = cell.getData().row;
+
+						return "<span class='expand-collapse-btn'>" + (rowData.isExpanded() ? '-' : '+') + "</span>"; 			
+					},
+					width: 30,
+					hozAlign: "center",
+					headerSort: false,
+					cellClick: function (e, cell) {
+						const row = cell.getData().row;
+						row.toggle();
+					}
+				});
+			}
+
+			const table = new Tabulator(`#report-div-body${self.ReportID()}`, {
+				maxHeight: "800px",
+				layout: "fitColumns",
+				data: transformedData,
+				autoColumns: false,
+				columns: columns,
+				placeholder: "No records found"
+			});
+
+		}
+
 		reportResult.ReportData(result.ReportData);
 
-		if (self.ReportType() == 'List' || self.ShowExpandOption() || self.hasPivotColumn()) {
-			renderTable(result.ReportData.Rows);
-		}
+		renderTable(result.ReportData.Rows, self.ReportColumns());
 
 		self.pager.totalRecords(result.Pager.TotalRecords);
 		self.pager.pages(result.Pager.TotalPages);
@@ -3386,6 +3520,39 @@ var reportViewModel = function (options) {
 					});
 
 					self.ReportResult().SubTotals(subtotalResult.ReportData.Rows);
+					const subtotals = self.ReportResult().SubTotals(); // Get the subtotals from KO observable
+
+					let footerHTML = '<tfoot>';
+
+					subtotals.forEach(subtotalRow => {
+						footerHTML += '<tr class="sub-total">';
+
+						subtotalRow.Items.forEach((item, index) => {
+							const col = item.Column;
+							if (item.Value !== 'NA' && item.Value !== 'NaN') {
+								const style = `
+                            background-color: ${item._backColor || ''};
+                            color: ${item._fontColor || ''};
+                            font-weight: ${item._fontBold ? 'bold' : 'normal'};
+                            text-align: ${col.IsNumeric ? 'right' : 'left'};
+                        `;
+
+								footerHTML += `
+                            <td style="${style}">
+                                <span>${item.FormattedValue || ''}</span>
+                            </td>
+                        `;
+							}
+						});
+
+						footerHTML += '</tr>';
+					});
+
+					footerHTML += '</tfoot>';
+
+					// Append the generated footer to the existing table
+					$(`#report-div-body${self.ReportID()}`).closest('table').append(footerHTML);
+
 				});
 			});
 		}
@@ -3572,7 +3739,7 @@ var reportViewModel = function (options) {
 				easing: 'out'
 			},
 		};
-		var prefixFormat = reportData.Columns[1].currencyFormat ? reportData.Columns[1].currencyFormat() : null;
+		var prefixFormat = reportData?.Columns[1]?.currencyFormat ? reportData?.Columns[1]?.currencyFormat() : null;
 		if (prefixFormat != null && prefixFormat != "") {
 			var formatter = new google.visualization.NumberFormat({
 				prefix: prefixFormat
@@ -3686,6 +3853,7 @@ var reportViewModel = function (options) {
 		if (self.ReportType() != 'Treemap') {
 			google.visualization.events.addListener(chart, 'ready', function () {
 				self.ChartData(chart.getImageURI());
+				window.chartImageUrl = chart.getImageURI();
 			});
 
 			// Add click event listener
@@ -3740,11 +3908,13 @@ var reportViewModel = function (options) {
 		}
 		function retrieveDimensions() {
 			var storedDimensions = localStorage.getItem('chart_dimensions_' + self.ReportID());
+			var chartElement = document.getElementById('chart_div_' + self.ReportID());
+			var parentElementHeight = document.getElementById('chart_div_' + self.ReportID()).parentElement.parentElement.parentElement.offsetHeight;
 			if (storedDimensions) {
 				var dimensions = JSON.parse(storedDimensions);
 				if (options.arrangeDashboard && !self.isExpanded()) {
 					chartOptions.width = dimensions.width || '100%';
-					chartOptions.height = dimensions.height || '450px';
+					chartOptions.height =dimensions.height || '450px';
 				} else {
 					chartOptions.width = dimensions.fullWidth || '100%';
 					chartOptions.height = dimensions.fullHeight || '450px';
@@ -3752,8 +3922,13 @@ var reportViewModel = function (options) {
 			}
 			else {
 				chartOptions.width = '100%';
-				chartOptions.height = '450px';
+				chartOptions.height ='450px';
 			}
+			if (options.reportMode =='dashboard') {
+				chartOptions.height = !self.ShowDataWithGraph() ? parentElementHeight - 10 + 'px' :  '450px';
+			// Apply the calculated height to the chart container directly (optional)
+			chartElement.style.height = chartOptions.height;
+		}
 		}
 		// Call retrieveDimensions to load saved dimensions when the chart is initialized
 		retrieveDimensions();
