@@ -2510,6 +2510,75 @@ namespace ReportBuilder.Web.Models
                 return package.GetAsByteArray();
             }
         }
+        public static byte[] GetCombineWordFile(List<byte[]> wordFiles)
+        {
+            using (MemoryStream memStream = new MemoryStream())
+            {
+                using (WordprocessingDocument wordDocument = WordprocessingDocument.Create(memStream, WordprocessingDocumentType.Document))
+                {
+                    MainDocumentPart mainPart = wordDocument.AddMainDocumentPart();
+                    mainPart.Document = new Document(new Body());
+                    for (int i = 0; i < wordFiles.Count; i++)
+                    {
+                        byte[] wordFile = wordFiles[i];
+                        using (MemoryStream tempStream = new MemoryStream(wordFile))
+                        using (WordprocessingDocument tempDoc = WordprocessingDocument.Open(tempStream, false))
+                        {
+                            Body tempBody = tempDoc.MainDocumentPart.Document.Body.CloneNode(true) as Body;
+                            foreach (var element in tempBody.Elements())
+                            {
+                                mainPart.Document.Body.AppendChild(element.CloneNode(true));
+                            }
+                            if (i < wordFiles.Count - 1)
+                            {
+                                mainPart.Document.Body.AppendChild(new Paragraph(new Run(new Break() { Type = BreakValues.Page })));
+                            }
+                        }
+                    }
+                    mainPart.Document.Save();
+                }
+                return memStream.ToArray();
+            }
+        }
+        public static byte[] GetCombineWordFileAlt(List<byte[]> wordFiles)
+        {
+            using (MemoryStream memStream = new MemoryStream())
+            {
+                using (WordprocessingDocument wordDocument = WordprocessingDocument.Create(memStream, WordprocessingDocumentType.Document))
+                {
+                    MainDocumentPart mainPart = wordDocument.AddMainDocumentPart();
+                    mainPart.Document = new Document(new Body());
+
+                    foreach (var wordFile in wordFiles)
+                    {
+                        using (MemoryStream tempStream = new MemoryStream(wordFile))
+                        using (WordprocessingDocument tempDoc = WordprocessingDocument.Open(tempStream, false))
+                        {
+                            // Copy all images from tempDoc to the main document
+                            foreach (var imagePart in tempDoc.MainDocumentPart.ImageParts)
+                            {
+                                var newImagePart = mainPart.AddImagePart(imagePart.ContentType);
+                                newImagePart.FeedData(imagePart.GetStream());
+                            }
+
+                            // Clone the body content and append it to the main document
+                            Body tempBody = tempDoc.MainDocumentPart.Document.Body.CloneNode(true) as Body;
+                            foreach (var element in tempBody.Elements())
+                            {
+                                mainPart.Document.Body.AppendChild(element.CloneNode(true));
+                            }
+
+                            // Add a page break between documents if necessary
+                            mainPart.Document.Body.AppendChild(new Paragraph(new Run(new Break() { Type = BreakValues.Page })));
+                        }
+                    }
+
+                    mainPart.Document.Save();
+                }
+
+                return memStream.ToArray();
+            }
+        }
         public static async Task<string> GetChartImage(string printUrl, int reportId, string connectKey, string reportSql = null, string dataFilters = "")
         {
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";

@@ -5437,6 +5437,30 @@ var dashboardViewModel = function (options) {
 			reportdata: JSON.stringify(allreports)
 		}, 'xlsx');
 	}
+	self.ExportAllWordReports = function () {
+		const reports = self.reports();
+		const allreports = [];
+		_.forEach(reports, function (report) {
+			const reportData = report.BuildReportData();
+			const pivotData = report.preparePivotData();
+			allreports.push({
+				reportSql: report.currentSql(),
+				connectKey: report.currentConnectKey(),
+				reportName: report.ReportName(),
+				expandAll: false,
+				expandSqls: JSON.stringify(reportData),
+				chartData: report.ChartData() || '',
+				columnDetails: report.getColumnDetails(),
+				includeSubTotal: report.IncludeSubTotal(),
+				pivot: report.ReportType() == 'Pivot',
+				pivotColumn: pivotData.pivotColumn,
+				pivotFunction: pivotData.pivotFunction,
+			});
+		});
+		reports[0]?.downloadExport("DownloadAllWord", {
+			reportdata: JSON.stringify(allreports)
+		}, 'docx');
+	}
 
 	self.RunReport = function () {
 		_.forEach(self.reports(), function (report) {

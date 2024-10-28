@@ -149,6 +149,25 @@ namespace ReportBuilder.Web.Controllers
             return File(combinedExcel, "application/vnd.ms-excel", "CombinedReports.xlsx");
         }
         [HttpPost]
+        public async Task<IActionResult> DownloadAllWord(string reportdata)
+        {
+            var wordbyteList = new List<byte[]>();
+            var ListofReports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
+            foreach (var report in ListofReports)
+            {
+                report.reportSql = HttpUtility.HtmlDecode(report.reportSql);
+                report.chartData = HttpUtility.UrlDecode(report.chartData)?.Replace(" ", " +");
+                var columns = report.columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(report.columnDetails));
+                var wordreport = await DotNetReportHelper.GetWordFile(report.reportSql, report.connectKey, HttpUtility.UrlDecode(report.reportName), report.chartData, report.expandAll, HttpUtility.UrlDecode(report.expandSqls), columns, report.includeSubTotal, report.pivot, report.pivotColumn, report.pivotFunction);
+                wordbyteList.Add(wordreport);
+            }
+            // Combine all Excel files into one workbook
+            var combinedWord = DotNetReportHelper.GetCombineWordFileAlt(wordbyteList);
+            Response.Headers.Add("content-disposition", "attachment; filename=CombinedReports.docx");
+            Response.ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            return File(combinedWord, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "CombinedReports.docx");
+        }
+        [HttpPost]
         public async Task<IActionResult> DownloadWord(string reportSql, string connectKey, string reportName,  bool allExpanded, string expandSqls, string chartData = null, string columnDetails = null, bool includeSubtotal = false, bool pivot = false,string pivotColumn= null, string pivotFunction = null)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
