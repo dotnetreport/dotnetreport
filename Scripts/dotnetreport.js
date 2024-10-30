@@ -2099,27 +2099,20 @@ var reportViewModel = function (options) {
 		if (field.formulaItems().length > 0) {
 			var uniqueTableIds = _.uniq(_.map(field.formulaItems(), function (x) { return x.tableId(); })).filter(function (id) { return id > 0; }); // Ensure tableId > 0
 			var tableMatches = _.filter(self.Tables(), function (t) { return _.includes(uniqueTableIds, t.tableId); });
-			var loadPromises = [];
-			for (let match of tableMatches) {
-				var loadPromise = self.loadTableFields(match).done(function (x) {
-					var formulaItems = field.formulaItems();
-					_.forEach(formulaItems, function (e) {
-						var fieldMatch = _.find(self.ChooseFields(), function (m) { return m.fieldId == e.fieldId() });
-						if (fieldMatch) {
-							fieldMatch.setupFormula = e;
-							self.formulaFields.push(fieldMatch);
-						}
-					});
-				});
-				loadPromises.push(loadPromise);
-			}
-			$.when.apply($, loadPromises).done(function () {
-				var formulaItems = field.formulaItems();
-				_.forEach(formulaItems, function (e) {
-					if (e.fieldId() === 0) { // Check if id is 0
-						var field = self.getEmptyFormulaField();
-						var fieldMatch = self.setupField(Object.assign({}, field));
-						fieldMatch.setupFormula = e; // Assign setupFormula
+			const loadPromises = tableMatches.map(match => {
+				return self.loadTableFields(match);
+			});
+			$.when(...loadPromises).done(() => {
+				const formulaItems = field.formulaItems();
+				_.forEach(formulaItems, e => {
+					let fieldMatch = _.find(self.ChooseFields(), m => m.fieldId === e.fieldId());
+					if (fieldMatch) {
+						fieldMatch.setupFormula = e;
+						self.formulaFields.push(fieldMatch);
+					} else if (e.fieldId() === 0) {
+						const emptyField = self.getEmptyFormulaField();
+						fieldMatch = self.setupField({ ...emptyField });
+						fieldMatch.setupFormula = e;
 						self.formulaFields.push(fieldMatch);
 					}
 				});
