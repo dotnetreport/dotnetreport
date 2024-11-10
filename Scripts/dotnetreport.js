@@ -4625,10 +4625,7 @@ var reportViewModel = function (options) {
 	}
 
 	self.downloadExport = function (url, data, ext) {
-		if ($.blockUI) {
-			$.blockUI({ baseZ: 500 });
-		}
-
+		
 		ajaxcall({
 			type: 'POST',
 			url: (options.runExportUrl || '/DotNetReport/') + url,
@@ -4637,6 +4634,8 @@ var reportViewModel = function (options) {
 			},
 			contentType: "application/x-www-form-urlencoded; charset=UTF-8",
 			data: data,
+			progressBarMessage: 'Exporting...',
+			useProgressBar: true,
 			success: function (data) {
 				var a = document.createElement('a');
 				var url = window.URL.createObjectURL(data);
@@ -4649,6 +4648,7 @@ var reportViewModel = function (options) {
 				if ($.unblockUI) {
 					$.unblockUI();
 				}
+				this.hideProgress();
 			},
 			error: function () {
 				if ($.unblockUI) {

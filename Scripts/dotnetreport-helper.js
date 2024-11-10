@@ -2,8 +2,48 @@
 
 // Ajax call wrapper function
 function ajaxcall(options) {
-    var noBlocking = options.noBlocking === true ? true : false
-    if ($.blockUI && !noBlocking) {
+    var noBlocking = options.noBlocking === true ? true : false;
+    var useProgressBar = options.useProgressBar === true;
+    var progressBarMessage = options.progressBarMessage || "Processing..."; 
+    var progressBarId = 'ajaxProgressBarPopup';
+
+    if (useProgressBar && !document.getElementById(progressBarId)) {
+        $('body').append(`
+            <div id="${progressBarId}" class="progress-popup" style="position: fixed; top: 20px; right: 20px; z-index: 1050; width: 300px; display: none; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; box-shadow: 0px 0px 10px rgba(0,0,0,0.1);">
+                <div class="progress-popup-header" style="padding: 8px 12px; font-weight: bold; cursor: move; background: #007bff; color: #fff; border-top-left-radius: 8px; border-top-right-radius: 8px;">
+                    <span>${progressBarMessage}</span>
+                    <button type="button" class="close" style="background: none; border: none; color: #fff; float: right; font-size: 20px; line-height: 1;" onclick="$('#${progressBarId}').hide();">&times;</button>
+                </div>
+                <div class="progress" style="height: 10px; margin: 12px;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+            </div>
+        `);
+
+        $('#' + progressBarId).draggable({ handle: ".progress-popup-header" });
+    }
+
+    var $progressBarPopup = $('#' + progressBarId);
+    var $progressBar = $progressBarPopup.find('.progress-bar');
+
+    function showProgress() {
+        $progressBarPopup.find('.progress-popup-header span').text(progressBarMessage); // Set message text
+        $progressBarPopup.show();
+        $progressBar.css('width', '0%').attr('aria-valuenow', 0);
+    }
+
+    function updateProgress(value) {
+        $progressBar.css('width', value + '%').attr('aria-valuenow', value);
+    }
+
+    function hideProgress() {
+        $progressBarPopup.fadeOut();
+    }
+
+    options.hideProgress = hideProgress;
+
+    // Show blocking spinner if not using progress bar
+    if ($.blockUI && !noBlocking && !useProgressBar) {
         $.blockUI({ baseZ: 500 });
     }
 
@@ -19,12 +59,35 @@ function ajaxcall(options) {
         options.headers['RequestVerificationToken'] = validationToken;
     }
 
-    if (options.success) {
-        options.beforeSend = function (x) {
-            if (token && !options.url.startsWith("https://dotnetreport.com")) {
-                x.setRequestHeader("Authorization", "Bearer " + token);
-            }
+    var beforeSend = function (x) {
+        if (token && !options.url.startsWith("https://dotnetreport.com")) {
+            x.setRequestHeader("Authorization", "Bearer " + token);
         }
+        if (useProgressBar) showProgress();
+    }
+    var xhr = function () {
+        var xhr = new window.XMLHttpRequest();
+        if (useProgressBar) {
+            xhr.upload.addEventListener("progress", function (evt) {
+                if (evt.lengthComputable) {
+                    var percentComplete = Math.round((evt.loaded / evt.total) * 100);
+                    updateProgress(percentComplete);  // Update progress as upload progresses
+                }
+            }, false);
+            xhr.addEventListener("progress", function (evt) {
+                if (evt.lengthComputable) {
+                    var percentComplete = Math.round((evt.loaded / evt.total) * 100);
+                    updateProgress(percentComplete);  // Update progress as download progresses
+                }
+            }, false);
+        }
+        return xhr;
+    }
+
+    if (options.success) {
+        options.beforeSend = beforeSend;
+        options.xhr = xhr;
+
         return $.ajax(options);
     }
 
@@ -37,42 +100,55 @@ function ajaxcall(options) {
         contentType: options.contentType || "application/json; charset=utf-8",
         headers: options.headers || {},
         async: options.async === false ? options.async : true,
-        beforeSend: function (x) {
-            if (token && !options.url.startsWith("https://dotnetreport.com")) {
-                x.setRequestHeader("Authorization", "Bearer " + token);
-            }
-        }
+        xhr: xhr,
+        beforeSend: beforeSend
     }).done(function (data) {
-        if ($.unblockUI && !noBlocking) {
+        if (useProgressBar) {
+            hideProgress();
+        } else if ($.unblockUI && !noBlocking) {
             $.unblockUI();
             setTimeout(function () { $.unblockUI(); }, 1000);
         }
         delete options;
     }).fail(function (jqxhr, status, error) {
+        if (useProgressBar) {
+            hideProgress();
+        }
         if ($.unblockUI) {
             $.unblockUI();
         }
         delete options;
-        if (jqxhr.responseJSON && jqxhr.responseJSON.d) jqxhr.responseJSON = jqxhr.responseJSON.d;
-        if (jqxhr.responseJSON && jqxhr.responseJSON.Result && jqxhr.responseJSON.Result.Message) jqxhr.responseJSON = jqxhr.responseJSON.Result;
-        var msg = jqxhr.responseJSON && jqxhr.responseJSON.Message ? "\n" + jqxhr.responseJSON.Message : "";
-
-        if (error == "Conflict") {
-            toastr.error("Conflict detected. Please ensure the record is not a duplicate and that it has no related records." + msg);
-        } else if (error == "Bad Request") {
-            toastr.error("Validation failed for your request. Please make sure the data provided is correct." + msg);
-        } else if (error == "Unauthorized") {
-            toastr.error("You are not authorized to make that request." + msg);
-        } else if (error == "Forbidden") {
-            location.reload(true);
-        } else if (error == "Not Found") {
-            toastr.error("Record not found." + msg);
-        } else if (error == "Internal Server Error") {
-            toastr.error("The system was unable to complete your request. <br>Service Reponse: " + msg);
-        } else {
-            toastr.error(status + ": " + msg);
-        }
+        handleAjaxError(jqxhr, status, error);
     });
+}
+
+function handleAjaxError(jqxhr, status, error) {
+    if (jqxhr.responseJSON && jqxhr.responseJSON.d) jqxhr.responseJSON = jqxhr.responseJSON.d;
+    if (jqxhr.responseJSON && jqxhr.responseJSON.Result && jqxhr.responseJSON.Result.Message) jqxhr.responseJSON = jqxhr.responseJSON.Result;
+    var msg = jqxhr.responseJSON && jqxhr.responseJSON.Message ? "\n" + jqxhr.responseJSON.Message : "";
+
+    switch (error) {
+        case "Conflict":
+            toastr.error("Conflict detected. Please ensure the record is not a duplicate and that it has no related records." + msg);
+            break;
+        case "Bad Request":
+            toastr.error("Validation failed for your request. Please make sure the data provided is correct." + msg);
+            break;
+        case "Unauthorized":
+            toastr.error("You are not authorized to make that request." + msg);
+            break;
+        case "Forbidden":
+            location.reload(true);
+            break;
+        case "Not Found":
+            toastr.error("Record not found." + msg);
+            break;
+        case "Internal Server Error":
+            toastr.error("The system was unable to complete your request. <br>Service Response: " + msg);
+            break;
+        default:
+            toastr.error(status + ": " + msg);
+    }
 }
 
 function downloadJson(content, fileName, contentType) {
