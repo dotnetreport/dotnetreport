@@ -4,8 +4,9 @@
 function ajaxcall(options) {
     var noBlocking = options.noBlocking === true ? true : false;
     var useProgressBar = options.useProgressBar === true;
-    var progressBarMessage = options.progressBarMessage || "Processing..."; 
+    var progressBarMessage = options.progressBarMessage || "Processing...";
     var progressBarId = 'ajaxProgressBarPopup';
+    var progressInterval;
 
     if (useProgressBar && !document.getElementById(progressBarId)) {
         $('body').append(`
@@ -25,19 +26,30 @@ function ajaxcall(options) {
 
     var $progressBarPopup = $('#' + progressBarId);
     var $progressBar = $progressBarPopup.find('.progress-bar');
+    var currentProgress = 0;
 
     function showProgress() {
         $progressBarPopup.find('.progress-popup-header span').text(progressBarMessage); // Set message text
         $progressBarPopup.show();
-        $progressBar.css('width', '0%').attr('aria-valuenow', 0);
-    }
+        currentProgress = 0;
+        $progressBar.css('width', currentProgress + '%').attr('aria-valuenow', currentProgress);
 
-    function updateProgress(value) {
-        $progressBar.css('width', value + '%').attr('aria-valuenow', value);
+        progressInterval = setInterval(function () {
+            if (currentProgress < 90) { // Incrementally go up to 90%
+                currentProgress += 10;
+                $progressBar.css('width', currentProgress + '%').attr('aria-valuenow', currentProgress);
+            }
+        }, 500);
+    }
+    
+    function completeProgress() {
+        clearInterval(progressInterval); 
+        $progressBar.css('width', '100%').attr('aria-valuenow', 100);
+        setTimeout(hideProgress, 500); 
     }
 
     function hideProgress() {
-        $progressBarPopup.fadeOut();
+        $progressBarPopup.hide();
     }
 
     options.hideProgress = hideProgress;
@@ -70,14 +82,14 @@ function ajaxcall(options) {
         if (useProgressBar) {
             xhr.upload.addEventListener("progress", function (evt) {
                 if (evt.lengthComputable) {
-                    var percentComplete = Math.round((evt.loaded / evt.total) * 100);
-                    updateProgress(percentComplete);  // Update progress as upload progresses
+                    var percentComplete = Math.min(90, Math.round((evt.loaded / evt.total) * 90)); // Cap to 90%
+                    $progressBar.css('width', percentComplete + '%').attr('aria-valuenow', percentComplete);
                 }
             }, false);
             xhr.addEventListener("progress", function (evt) {
                 if (evt.lengthComputable) {
-                    var percentComplete = Math.round((evt.loaded / evt.total) * 100);
-                    updateProgress(percentComplete);  // Update progress as download progresses
+                    var percentComplete = Math.min(90, Math.round((evt.loaded / evt.total) * 90)); // Cap to 90%
+                    $progressBar.css('width', percentComplete + '%').attr('aria-valuenow', percentComplete);
                 }
             }, false);
         }
@@ -104,8 +116,9 @@ function ajaxcall(options) {
         beforeSend: beforeSend
     }).done(function (data) {
         if (useProgressBar) {
-            hideProgress();
-        } else if ($.unblockUI && !noBlocking) {
+            completeProgress(); 
+        }
+        if ($.unblockUI && !noBlocking) {
             $.unblockUI();
             setTimeout(function () { $.unblockUI(); }, 1000);
         }
