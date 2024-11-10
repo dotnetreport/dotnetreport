@@ -278,12 +278,10 @@
                 </div>
                 <div class="card card-body mb-3">
                     <h5><i class="fa fa-hourglass"></i>&nbsp;Choose Schedule</h5>
-                    <div style="padding: 10px 10px" data-bind="if: $parent.adminMode">
-                        <div data-bind="template: {name: 'report-schedule'}"></div>
-                    </div>
+                    <div data-bind="template: {name: 'report-schedule'}"></div>
                 </div>
 
-                <div data-bind="if: $parent.adminMode" class="card card-body mb-3">
+                <div data-bind="visible: $parent.adminMode" class="card card-body mb-3">
                     <div data-bind="template: {name: 'manage-access-template'}"></div>
                 </div>
             </div>
