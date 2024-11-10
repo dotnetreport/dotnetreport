@@ -1144,9 +1144,10 @@
                             <select class="form-control" data-bind="select2Value: {dropdownParent: $('#choose-data-card')}, options: Procs, optionsCaption: 'Choose Section...', optionsText: 'DisplayName', value: SelectedProc, visible: useStoredProc"></select>
                             </div>
                             <div data-bind="hidden: useStoredProc">
-                                 <select id="category-tables" class="form-control"  data-bind="hidden: useStoredProc,foreach: CategorizedTables,value: SelectedTable,select2Value: {dropdownParent: $('#choose-data-card')}, optionsCaption: 'Or Choose Data Section...'">
+                                 <select id="category-tables" class="form-control"  data-bind="foreach: CategorizedTables, value: SelectedTable, select2Value: {dropdownParent: $('#choose-data-card'), placeHolder: 'Choose Data Section...'}, optionsCaption: 'Choose Data Section...'">
+                                     <option value="">Choose Data Section...</option>
                                      <optgroup data-bind="attr: {label: categoryName}, foreach: tables">
-                                                  <option data-bind="text: tableName, value: $data"></option>
+                                         <option data-bind="text: tableName, value: $data"></option>
                                      </optgroup>
                                  </select>
                             </div>
@@ -1157,7 +1158,7 @@
                                 Select data to use in the Report
                             </div>
                             <div class="pull-right btn-toolbar">
-
+                                <a href="#" class="btn btn-secondary btn-sm" data-bind="click: function(){SelectedTable('')}, visible: !isFormulaField()">Clear</a>
                                 <a href="#" class="btn btn-secondary btn-sm" data-bind="click: MoveAllFields, visible: !isFormulaField()">Select all</a>
                                 <a href="#" class="btn btn-secondary btn-sm" data-bind="click: RemoveSelectedFields, visible: !isFormulaField()">Remove all</a>
                             </div>

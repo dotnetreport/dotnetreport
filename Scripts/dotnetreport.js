@@ -1,4 +1,4 @@
-﻿/// dotnet Report Builder view model v5.5.5
+﻿/// dotnet Report Builder view model v5.5.6
 /// License must be purchased for commercial use
 /// 2024 (c) www.dotnetreport.com
 
@@ -1846,7 +1846,7 @@ var reportViewModel = function (options) {
 		self.SelectedProc(null);
 		self.lastPickedField(null);
 		self.jsonFields([]);
-		if (table == null) {
+		if (!table) {
 			self.ChooseFields([]);
 			self.selectedTableFields = [];
 			return;
