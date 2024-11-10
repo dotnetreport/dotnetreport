@@ -831,6 +831,7 @@ var reportViewModel = function (options) {
 	self.SelectedTable = ko.observable();
 	self.SelectedProc = ko.observable();
 
+	self.CustomChooseFields = ko.observableArray([]);
 	self.ChooseFields = ko.observableArray([]); // List of fields to show in First List to choose from
 	self.ChosenFields = ko.observableArray([]); // List of fields selected by user in the First List
 	self.selectedTableFields = [];
@@ -1696,7 +1697,8 @@ var reportViewModel = function (options) {
 				hasForeignKey: e.ForeignKey,
 				fieldType: e.ParameterDataTypeString,
 				hasForeignParentKey: false,
-				dateFormat: ko.observable()
+				dateFormat: ko.observable(),
+				uiId: generateUniqueId(),
 			}
 			e.LookupList = ko.observableArray([]);
 			if (e.Value()) {
@@ -2111,27 +2113,26 @@ var reportViewModel = function (options) {
 		self.formulaDataFormat(field.fieldFormat());
 		self.formulaDecimalPlaces(field.decimalPlaces());
 		self.formulaFields([]);
+		self.CustomChooseFields([]);
 		if (field.formulaItems().length > 0) {
 			var uniqueTableIds = _.uniq(_.map(field.formulaItems(), function (x) { return x.tableId(); })).filter(function (id) { return id > 0; }); // Ensure tableId > 0
 			var tableMatches = _.filter(self.Tables(), function (t) { return _.includes(uniqueTableIds, t.tableId); });
 			var loadPromises = [];
 			for (let match of tableMatches) {
 				var loadPromise = self.loadTableFields(match).done(function (x) {
-					var formulaItems = field.formulaItems();
-					_.forEach(formulaItems, function (e) {
-						var fieldMatch = _.find(self.ChooseFields(), function (m) { return m.fieldId == e.fieldId() });
-						if (fieldMatch) {
-							fieldMatch.setupFormula = e;
-							self.formulaFields.push(fieldMatch);
-						}
-					});
+					self.CustomChooseFields.push(...self.ChooseFields());
 				});
 				loadPromises.push(loadPromise);
 			}
 			$.when.apply($, loadPromises).done(function () {
 				var formulaItems = field.formulaItems();
 				_.forEach(formulaItems, function (e) {
-					if (e.fieldId() === 0) { // Check if id is 0
+					var fieldMatch = _.find(self.CustomChooseFields(), function (m) { return m.fieldId == e.fieldId() });
+					if (fieldMatch) {
+						fieldMatch.setupFormula = e;
+						self.formulaFields.push(fieldMatch);
+					}
+					else if (e.fieldId() === 0) { // Check if id is 0
 						var field = self.getEmptyFormulaField();
 						var fieldMatch = self.setupField(Object.assign({}, field));
 						fieldMatch.setupFormula = e; // Assign setupFormula
@@ -5212,7 +5213,8 @@ var dashboardViewModel = function (options) {
 		Id: ko.observable(currentDash.id),
 		Name: ko.observable(currentDash.name),
 		Description: ko.observable(currentDash.description),
-		manageAccess: manageAccess(options)
+		manageAccess: manageAccess(options),
+		scheduleBuilder: new scheduleBuilder(options.userId, options.getTimeZonesUrl)
 	};
 	self.dateFormatMappings = {
 		'United States': 'mm/dd/yy',
@@ -5250,6 +5252,7 @@ var dashboardViewModel = function (options) {
 			self.dashboard.Id(currentDash.id);
 			self.dashboard.Name(currentDash.name);
 			self.dashboard.Description(currentDash.description);
+			self.dashboard.scheduleBuilder.fromJs(currentDash.schedule);
 			self.currentDashboard(currentDash);
 			self.loadDashboardReports(reports);
 		});
@@ -5287,7 +5290,7 @@ var dashboardViewModel = function (options) {
 		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.deleteOnlyUserRoles, '');
 		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.deleteOnlyUsers, '');
 		self.dashboard.manageAccess.clientId('');
-
+		self.dashboard.scheduleBuilder.clear();
 		_.forEach(self.reportsAndFolders(), function (f) {
 			_.forEach(f.reports, function (r) {
 				r.selected(false);
@@ -5369,7 +5372,8 @@ var dashboardViewModel = function (options) {
 			viewOnlyUserRoles: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.viewOnlyUserRoles),
 			deleteOnlyUserRoles: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.deleteOnlyUserRoles),
 			clientIdToUpdate: self.dashboard.manageAccess.clientId(),
-			adminMode: self.adminMode()
+			adminMode: self.adminMode(),
+			schedule: self.dashboard.scheduleBuilder.toJs(),
 		};
 
 		ajaxcall({
@@ -5625,7 +5629,7 @@ var dashboardViewModel = function (options) {
 	self.RefreshAllReports = function () {
 		self.loadDashboardReports(options.reports, true);
 	}
-	self.PrintAllReports = function () {
+	self.ExportAllPdfReports = function () {
 		const reports = self.reports();
 		const allreports = [];
 		_.forEach(reports, function (report) {
@@ -5648,8 +5652,57 @@ var dashboardViewModel = function (options) {
 			});
 		});
 		reports[0]?.downloadExport("DownloadAllPdf", {
-			pdfreportsdata: JSON.stringify(allreports)
+			reportdata: JSON.stringify(allreports)
 		}, 'pdf');
+	}
+
+	self.ExportAllExcelReports = function () {
+		const reports = self.reports();
+		const allreports = [];
+		_.forEach(reports, function (report) {
+			const reportData = report.BuildReportData();
+			const pivotData = report.preparePivotData();
+			allreports.push({
+				reportSql: report.currentSql(),
+				connectKey: report.currentConnectKey(),
+				reportName: report.ReportName(),
+				expandAll: false,
+				expandSqls: JSON.stringify(reportData),
+				chartData: report.ChartData() || '',
+				columnDetails: report.getColumnDetails(),
+				includeSubTotal: report.IncludeSubTotal(),
+				pivot: report.ReportType() == 'Pivot',
+				pivotColumn: pivotData.pivotColumn,
+				pivotFunction: pivotData.pivotFunction,
+			});
+		});
+		reports[0]?.downloadExport("DownloadAllExcel", {
+			reportdata: JSON.stringify(allreports)
+		}, 'xlsx');
+	}
+	self.ExportAllWordReports = function () {
+		const reports = self.reports();
+		const allreports = [];
+		_.forEach(reports, function (report) {
+			const reportData = report.BuildReportData();
+			const pivotData = report.preparePivotData();
+			allreports.push({
+				reportSql: report.currentSql(),
+				connectKey: report.currentConnectKey(),
+				reportName: report.ReportName(),
+				expandAll: false,
+				expandSqls: JSON.stringify(reportData),
+				chartData: report.ChartData() || '',
+				columnDetails: report.getColumnDetails(),
+				includeSubTotal: report.IncludeSubTotal(),
+				pivot: report.ReportType() == 'Pivot',
+				pivotColumn: pivotData.pivotColumn,
+				pivotFunction: pivotData.pivotFunction,
+			});
+		});
+		reports[0]?.downloadExport("DownloadAllWord", {
+			reportdata: JSON.stringify(allreports)
+		}, 'docx');
 	}
 
 	self.RunReport = function () {

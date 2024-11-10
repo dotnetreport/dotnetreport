@@ -154,7 +154,9 @@
         <button class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" title="Edit Dashboard Settings" data-bind="click: editDashboard">Edit this Dashboard</button>
         <button class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" title="Add a New Dashboard" data-bind="click: newDashboard">Add a new Dashboard</button>
         <button class="btn btn-primary btn-sm" title="Refresh to Load All Reports" data-bind="click: RefreshAllReports"><span class="fa fa-refresh"></span> Refresh Dashboard</button>
-        <button class="btn btn-primary btn-sm" title="Print All Reports" data-bind="click: PrintAllReports"><span class="fa fa-file-pdf-o"></span> Print All Reports</button>
+        <button class="btn btn-primary btn-sm" title="Export All Pdf Reports" data-bind="click: ExportAllPdfReports"><span class="fa fa-file-pdf-o"></span> Export  All Pdf Reports</button>
+        <button class="btn btn-primary btn-sm" title="Export All Excel Reports" data-bind="click: ExportAllExcelReports"><span class="fa fa-file-excel-o"></span> Export All Excel Reports</button>
+        <button class="btn btn-primary btn-sm" title="Export All Word Reports" data-bind="click: ExportAllWordReports"><span class="fa fa-file-word-o"></span> Export All Word Reports</button>
     </div>
     <div class="col-auto d-flex align-items-center">
         <div class="bubble-badge">
@@ -258,6 +260,12 @@
                 <div data-bind="if: $parent.adminMode">
                     <hr />
                     <div data-bind="template: {name: 'manage-access-template'}"></div>
+                </div>
+                <div data-bind="if: $parent.adminMode" class="card card-body">
+                    <h5><span class="fa fa-hourglass"></span>&nbsp;Choose Schedule</h5>
+                    <div style="padding: 10px 10px" data-bind="if: $parent.adminMode">
+                        <div data-bind="template: {name: 'report-schedule'}"></div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">

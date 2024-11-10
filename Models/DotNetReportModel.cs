@@ -407,7 +407,7 @@ namespace ReportBuilder.Web.Models
         public bool isCurrency { get; set; }
         public bool isJsonColumn { get; set; }
     }
-    public class PdfReportModel
+    public class ExportReportModel
     {
         public int reportId { get; set; }
         public string reportSql { get; set; }
@@ -422,6 +422,10 @@ namespace ReportBuilder.Web.Models
         public string expandSqls { get; set; }
         public string pivotColumn { get; set; }
         public string pivotFunction { get; set; }
+        public string chartData { get; set; }
+        public string columnDetails { get; set; }
+        public bool includeSubTotal { get; set; }
+        public bool pivot { get; set; }
     }
     public interface IDnrDataConnection
     {
@@ -2350,7 +2354,7 @@ namespace ReportBuilder.Web.Models
                     string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false,string expandSqls=null, string pivotColumn = null, string pivotFunction = null)
         {
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
-            //await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
+            await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
             var executablePath = "";
             foreach (var d in Directory.GetDirectories($"{installPath}\\chrome"))
             {
@@ -2484,6 +2488,95 @@ namespace ReportBuilder.Web.Models
                     outputDocument.Save(ms);
                     return ms.ToArray();
                 }
+            }
+        }
+        public static byte[] GetCombineExcelFile(List<byte[]> excelFiles, List<string> sheetNames)
+        {
+            using (var package = new ExcelPackage())
+            {
+                for (int i = 0; i < excelFiles.Count; i++)
+                {
+                    var fileBytes = excelFiles[i];
+                    var sheetName = sheetNames[i] ?? $"Sheet{i + 1}";
+
+                    using (var stream = new MemoryStream(fileBytes))
+                    using (var tempPackage = new ExcelPackage(stream))
+                    {
+                        var tempSheet = tempPackage.Workbook.Worksheets[0];
+                        var newSheet = package.Workbook.Worksheets.Add(sheetName, tempSheet);
+                    }
+                }
+
+                return package.GetAsByteArray();
+            }
+        }
+        public static byte[] GetCombineWordFile(List<byte[]> wordFiles)
+        {
+            using (MemoryStream memStream = new MemoryStream())
+            {
+                using (WordprocessingDocument wordDocument = WordprocessingDocument.Create(memStream, WordprocessingDocumentType.Document))
+                {
+                    MainDocumentPart mainPart = wordDocument.AddMainDocumentPart();
+                    mainPart.Document = new Document(new Body());
+                    for (int i = 0; i < wordFiles.Count; i++)
+                    {
+                        byte[] wordFile = wordFiles[i];
+                        using (MemoryStream tempStream = new MemoryStream(wordFile))
+                        using (WordprocessingDocument tempDoc = WordprocessingDocument.Open(tempStream, false))
+                        {
+                            Body tempBody = tempDoc.MainDocumentPart.Document.Body.CloneNode(true) as Body;
+                            foreach (var element in tempBody.Elements())
+                            {
+                                mainPart.Document.Body.AppendChild(element.CloneNode(true));
+                            }
+                            if (i < wordFiles.Count - 1)
+                            {
+                                mainPart.Document.Body.AppendChild(new Paragraph(new Run(new Break() { Type = BreakValues.Page })));
+                            }
+                        }
+                    }
+                    mainPart.Document.Save();
+                }
+                return memStream.ToArray();
+            }
+        }
+        public static byte[] GetCombineWordFileAlt(List<byte[]> wordFiles)
+        {
+            using (MemoryStream memStream = new MemoryStream())
+            {
+                using (WordprocessingDocument wordDocument = WordprocessingDocument.Create(memStream, WordprocessingDocumentType.Document))
+                {
+                    MainDocumentPart mainPart = wordDocument.AddMainDocumentPart();
+                    mainPart.Document = new Document(new Body());
+
+                    foreach (var wordFile in wordFiles)
+                    {
+                        using (MemoryStream tempStream = new MemoryStream(wordFile))
+                        using (WordprocessingDocument tempDoc = WordprocessingDocument.Open(tempStream, false))
+                        {
+                            // Copy all images from tempDoc to the main document
+                            foreach (var imagePart in tempDoc.MainDocumentPart.ImageParts)
+                            {
+                                var newImagePart = mainPart.AddImagePart(imagePart.ContentType);
+                                newImagePart.FeedData(imagePart.GetStream());
+                            }
+
+                            // Clone the body content and append it to the main document
+                            Body tempBody = tempDoc.MainDocumentPart.Document.Body.CloneNode(true) as Body;
+                            foreach (var element in tempBody.Elements())
+                            {
+                                mainPart.Document.Body.AppendChild(element.CloneNode(true));
+                            }
+
+                            // Add a page break between documents if necessary
+                            mainPart.Document.Body.AppendChild(new Paragraph(new Run(new Break() { Type = BreakValues.Page })));
+                        }
+                    }
+
+                    mainPart.Document.Save();
+                }
+
+                return memStream.ToArray();
             }
         }
         public static async Task<string> GetChartImage(string printUrl, int reportId, string connectKey, string reportSql = null, string dataFilters = "")
