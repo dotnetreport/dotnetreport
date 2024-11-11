@@ -54,6 +54,8 @@
             ajaxcall({ url: '@Url.Action("LoadSetupSchema", "DotNetReportApi")' + '?databaseApiKey=' + (queryParams.databaseApiKey || '') + '&onlyApi=' + (queryParams.onlyApi === 'false' ? false : true) }).done(function(model) {
                 var options = {
                     model: model,
+                    saveCategoriesUrl: '/ReportApi/SaveCategoriesData',
+                    getCategoriesUrl: '/ReportApi/GetCategories',
                     saveTableUrl: '/ReportApi/SaveTableData',
                     deleteTableUrl: '/ReportApi/DeleteTable',
                     getRelationsUrl: '/ReportApi/GetRelations',
@@ -77,7 +79,7 @@
                 vm.setupManageAccess();            
                 ko.applyBindings(vm);
                 vm.LoadDataConnections();
-
+				vm.LoadCategories();
                 vm.customSql.textQuery.setupQuery();
             });
         });
@@ -172,6 +174,9 @@
                 <button class="btn btn-sm btn-primary" data-bind="hidden: $root.customTableMode()" data-bs-toggle="modal" data-bs-target="#uploadTablesFileModal" aria-haspopup="true" aria-expanded="false">
                     <span class="fa fa-file"></span> Import Tables/Views
                 </button>
+                <button class="btn btn-sm btn-primary" title="Manage Category" data-bs-toggle="modal" data-bs-target="#category-modal">
+                    <span class="fa fa-server"></span> Manage Category 
+                </button>
             </div>
             <div class="clearfix"></div>
             <hr />
@@ -204,6 +209,9 @@
                     <div data-bind="attr: {id: 'table'+$index()}" class="panel-collapse collapse in">
                         <div class="card-body">
                             <p class="pull-right">
+                                <button class="btn btn-sm" title="Manage Category" data-bs-toggle="modal" data-bs-target="#category-manage-modal" data-bind="click: $root.selectedCategory">
+                                    <i class="fa fa-gear"></i>
+                                </button>
                                 <button class="btn btn-sm" title="Manage Role Access" data-bs-toggle="modal" data-bs-target="#role-access-modal" data-bind="click: $root.selectAllowedRoles">
                                     <i class="fa fa-user"></i>
                                 </button>
@@ -230,7 +238,7 @@
                                 <button data-bind="click: $root.customSql.viewCustomSql.bind($data)" class="btn btn-sm btn-secondary">View Custom Sql</button>
                             </div>
                         </div>
-
+                        
                         <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Columns().length"></span> Columns</label>
                         <button class="btn btn-sm btn-link label-sm" data-bind="click: autoFormat, visible: Selected">Auto Format</button>
                         <button class="btn btn-sm btn-link label-sm" data-bind="click: unselectAllColumns, visible: Selected">Unselect All</button>
@@ -1097,7 +1105,7 @@
     </div>
 </div>
 
-<div class="modal fade" id="role-access-modal" role="dialog" tabindex="-2">
+<div class="modal" id="role-access-modal" role="dialog" tabindex="-2">
     <div class="modal-dialog" role="document">
         <div class="modal-content" data-bind="with: editAllowedRoles">
             <div class="modal-header">
@@ -1125,6 +1133,93 @@
 
             </div>
             <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal" id="category-manage-modal" role="dialog" tabindex="-2">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content" data-bind="with: manageCategories">
+            <div class="modal-header">
+                <h4 class="modal-title">Manage Categories</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="list-group" data-bind="foreach: $root.Categories">
+                    <div class="checkbox list-group-item" style="padding-top: 2px; padding-bottom: 2px;">
+                        <label>
+                        <input type="checkbox" data-bind="checked: $parent.Categories, checkedValue: $data" />
+                        <span data-bind="text: Name"></span> <!-- Display category name -->
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal" id="category-modal" role="dialog" tabindex="-2">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Manage Categories</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Table for Categories -->
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Category Name</th>
+                            <th>Description</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody data-bind="foreach: $root.Categories">
+                        <tr>
+                            <td>
+                                <input type="text" data-bind="value: Name, visible: $root.editingCategoryIndex() === $index()" class="form-control" />
+                                <span id="cat-name" data-bind="text: Name, visible: $root.editingCategoryIndex() !== $index(), attr: { id: Id ? 'cat-name-' + Id :undefined }" style="color: #6c757d;"></span>
+                            </td>
+                            <td>
+                                <input type="text" data-bind="value: Description, visible: $root.editingCategoryIndex() === $index()" class="form-control" />
+                                <span id="cat-desc" data-bind="text: Description, visible: $root.editingCategoryIndex() !== $index(), attr: { id: Id ? 'cat-desc-' + Id :undefined }" style="color: #6c757d;"></span>
+                            </td>
+                            <td class="d-flex">
+                                <button class="btn btn-primary btn-sm" data-bind="visible: $root.editingCategoryIndex() !== $index() && Id !== 0, click: function() { $root.toggleEdit($index()) }">
+                                    <i class="fa fa-edit"></i>
+                                </button>
+                                <button class="btn btn-success btn-sm" data-bind="visible: $root.editingCategoryIndex() === $index() && Id !== 0, click: function() { $root.saveCategory($index()) }" style="margin-left: 5px;">
+                                    <i class="fa fa-save"></i>
+                                </button>
+                                <button class="btn btn-danger btn-sm" data-bind="click: $root.removeCategory">
+                                    <i class="fa fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td>
+                                <input class="form-control" type="text" data-bind="value: $root.newCategoryName" placeholder="Category Name">
+                            </td>
+                            <td>
+                                <input class="form-control" type="text" data-bind="value: $root.newCategoryDescription" placeholder="Description">
+                            </td>
+                            <td>
+                                <button class="btn btn-primary" data-bind="click: $root.addCategory">Add</button>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bind="click: $root.saveCategories">Save</button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
             </div>
         </div>
