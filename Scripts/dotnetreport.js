@@ -4655,6 +4655,7 @@ var reportViewModel = function (options) {
 					$.unblockUI();
 				}
 				toastr.error("Error downloading file");
+				this.hideProgress();
 			}
 		});
 	}
