@@ -66,8 +66,8 @@ namespace ReportBuilder.Web.Controllers
                 ClientId = clientId,
                 UserId = userId,
                 CurrentUserRoles = currentUserRole,
-                DataFilters = HttpUtility.HtmlDecode(dataFilters),
-                ReportData = HttpUtility.HtmlDecode(reportData)
+                DataFilters = HttpUtility.UrlDecode(dataFilters),
+                ReportData = HttpUtility.UrlDecode(reportData)
             };
 
             return View(model);
@@ -84,7 +84,8 @@ namespace ReportBuilder.Web.Controllers
         }
 
 
-        [HttpPost]        public async Task<ActionResult> DownloadExcel(string reportSql, string connectKey, string reportName, bool allExpanded, string expandSqls, string chartData = null, string columnDetails = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
+        [HttpPost]        
+        public async Task<ActionResult> DownloadExcel(string reportSql, string connectKey, string reportName, bool allExpanded, string expandSqls, string chartData = null, string columnDetails = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
             chartData = HttpUtility.UrlDecode(chartData);
@@ -132,16 +133,17 @@ namespace ReportBuilder.Web.Controllers
         public async Task<ActionResult> DownloadAllPdf(string reportdata)
         {
             var pdfBytesList = new List<byte[]>();
-            var ListofReports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) :null;
+             var ListofReports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) :null;
             foreach (var report in ListofReports)
             {
-                var pdf = await DotNetReportHelper.GetPdfFile(report.printUrl,report.reportId,HttpUtility.HtmlDecode(report.reportSql),HttpUtility.UrlDecode(report.connectKey),HttpUtility.UrlDecode(report.reportName),report.userId,
-                    report.clientId,report.userRoles,report.dataFilters,report.expandAll,report.expandSqls,report.pivotColumn,report.pivotFunction);
+                var pdf = await DotNetReportHelper.GetPdfFile(report.printUrl, report.reportId, HttpUtility.HtmlDecode(report.reportSql), HttpUtility.UrlDecode(report.connectKey), HttpUtility.UrlDecode(report.reportName), report.userId,
+                    report.clientId, report.userRoles, report.dataFilters, report.expandAll, report.expandSqls, report.pivotColumn, report.pivotFunction);
                 pdfBytesList.Add(pdf);
             }
             var combinedPdf = DotNetReportHelper.GetCombinePdfFile(pdfBytesList);
             return File(combinedPdf, "application/pdf", "CombinedReports.pdf");
         }
+
         [HttpPost]
         public async Task<ActionResult> DownloadAllExcel(string reportdata)
         {
@@ -157,10 +159,16 @@ namespace ReportBuilder.Web.Controllers
             }
             // Combine all Excel files into one workbook
             var combinedExcel = DotNetReportHelper.GetCombineExcelFile(excelbyteList, ListofReports.Select(r => r.reportName).ToList());
-            Response.Headers.Add("content-disposition", "attachment; filename=CombinedReports.xlsx");
+            Response.ClearContent();
+
+            Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode("Dashboard") + ".xlsx");
             Response.ContentType = "application/vnd.ms-excel";
-            return File(combinedExcel, "application/vnd.ms-excel", "CombinedReports.xlsx");
+            Response.BinaryWrite(combinedExcel);
+            Response.End();
+
+            return View();
         }
+
         [HttpPost]
         public async Task<ActionResult> DownloadAllWord(string reportdata)
         {
@@ -176,10 +184,15 @@ namespace ReportBuilder.Web.Controllers
             }
             // Combine all Excel files into one workbook
             var combinedWord = DotNetReportHelper.GetCombineWordFileAlt(wordbyteList);
-            Response.Headers.Add("content-disposition", "attachment; filename=CombinedReports.docx");
+
+            Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode("Dashboard") + ".docx");
             Response.ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-            return File(combinedWord, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "CombinedReports.docx");
+            Response.BinaryWrite(combinedWord);
+            Response.End();
+
+            return View();
         }
+
         [HttpPost]
         public async Task<ActionResult> DownloadWord(string reportSql, string connectKey, string reportName,  bool allExpanded, string expandSqls, string chartData = null, string columnDetails = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
         {
