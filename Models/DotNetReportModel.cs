@@ -2666,6 +2666,7 @@ namespace ReportBuilder.Web.Models
             var ds = new DataSet();
             var data = GetDataTable(reportSql, connectKey);
             var dt = data.dt;
+            RemoveColumnsBySubstring(dt, "__prm__");
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
             var qry = data.qry;
