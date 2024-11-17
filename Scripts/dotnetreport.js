@@ -4624,7 +4624,7 @@ var reportViewModel = function (options) {
 		});
 	}
 
-	self.downloadExport = function (url, data, ext) {
+	self.downloadExport = function (url, data, ext,reportName) {
 		
 		ajaxcall({
 			type: 'POST',
@@ -4640,7 +4640,7 @@ var reportViewModel = function (options) {
 				var a = document.createElement('a');
 				var url = window.URL.createObjectURL(data);
 				a.href = url;
-				a.download = self.ReportName() + '.' + ext;
+				a.download = reportName ? reportName + '.' + ext : self.ReportName() + '.' + ext;
 				document.body.append(a);
 				a.click();
 				a.remove();
@@ -4655,6 +4655,7 @@ var reportViewModel = function (options) {
 					$.unblockUI();
 				}
 				toastr.error("Error downloading file");
+				this.hideProgress();
 			}
 		});
 	}
@@ -5410,7 +5411,7 @@ var dashboardViewModel = function (options) {
 		});
 		reports[0]?.downloadExport("DownloadAllPdf", {
 			reportdata: JSON.stringify(allreports)
-		}, 'pdf');
+		}, 'pdf','CombinedReport');
 	}
 
 	self.ExportAllExcelReports = function () {
@@ -5435,7 +5436,7 @@ var dashboardViewModel = function (options) {
 		});
 		reports[0]?.downloadExport("DownloadAllExcel", {
 			reportdata: JSON.stringify(allreports)
-		}, 'xlsx');
+		}, 'xlsx', 'CombinedReport');
 	}
 	self.ExportAllWordReports = function () {
 		const reports = self.reports();
@@ -5459,7 +5460,7 @@ var dashboardViewModel = function (options) {
 		});
 		reports[0]?.downloadExport("DownloadAllWord", {
 			reportdata: JSON.stringify(allreports)
-		}, 'docx');
+		}, 'docx', 'CombinedReport');
 	}
 
 	self.RunReport = function () {

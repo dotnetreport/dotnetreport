@@ -2505,6 +2505,23 @@ namespace ReportBuilder.Web.Models
                         using (MemoryStream tempStream = new MemoryStream(wordFile))
                         using (WordprocessingDocument tempDoc = WordprocessingDocument.Open(tempStream, false))
                         {
+                            // Copy each image part to the main document
+                            foreach (var imagePart in tempDoc.MainDocumentPart.ImageParts)
+                            {
+                                var newImagePart = mainPart.AddImagePart(imagePart.ContentType);
+                                newImagePart.FeedData(imagePart.GetStream());
+                                string newRelId = mainPart.GetIdOfPart(newImagePart);
+                                // Update references in the body to the new image part ID
+                                foreach (var drawing in tempDoc.MainDocumentPart.Document.Body.Descendants<Drawing>())
+                                {
+                                    var blip = drawing.Descendants<A.Blip>().FirstOrDefault();
+                                    if (blip != null && blip.Embed.HasValue)
+                                    {
+                                        blip.Embed = newRelId;
+                                    }
+                                }
+                            }
+                            // Copy the document body elements
                             Body tempBody = tempDoc.MainDocumentPart.Document.Body.CloneNode(true) as Body;
                             foreach (var element in tempBody.Elements())
                             {
@@ -2518,45 +2535,6 @@ namespace ReportBuilder.Web.Models
                     }
                     mainPart.Document.Save();
                 }
-                return memStream.ToArray();
-            }
-        }
-        public static byte[] GetCombineWordFileAlt(List<byte[]> wordFiles)
-        {
-            using (MemoryStream memStream = new MemoryStream())
-            {
-                using (WordprocessingDocument wordDocument = WordprocessingDocument.Create(memStream, WordprocessingDocumentType.Document))
-                {
-                    MainDocumentPart mainPart = wordDocument.AddMainDocumentPart();
-                    mainPart.Document = new Document(new Body());
-
-                    foreach (var wordFile in wordFiles)
-                    {
-                        using (MemoryStream tempStream = new MemoryStream(wordFile))
-                        using (WordprocessingDocument tempDoc = WordprocessingDocument.Open(tempStream, false))
-                        {
-                            // Copy all images from tempDoc to the main document
-                            foreach (var imagePart in tempDoc.MainDocumentPart.ImageParts)
-                            {
-                                var newImagePart = mainPart.AddImagePart(imagePart.ContentType);
-                                newImagePart.FeedData(imagePart.GetStream());
-                            }
-
-                            // Clone the body content and append it to the main document
-                            Body tempBody = tempDoc.MainDocumentPart.Document.Body.CloneNode(true) as Body;
-                            foreach (var element in tempBody.Elements())
-                            {
-                                mainPart.Document.Body.AppendChild(element.CloneNode(true));
-                            }
-
-                            // Add a page break between documents if necessary
-                            mainPart.Document.Body.AppendChild(new Paragraph(new Run(new Break() { Type = BreakValues.Page })));
-                        }
-                    }
-
-                    mainPart.Document.Save();
-                }
-
                 return memStream.ToArray();
             }
         }
