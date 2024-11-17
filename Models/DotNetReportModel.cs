@@ -731,8 +731,22 @@ namespace ReportBuilder.Web.Models
             return "";
         }
 
+        private static void RemoveColumnsBySubstring(DataTable dt, string substring)
+        {
+            if (dt == null || string.IsNullOrEmpty(substring))
+                return;
+
+            for (int i = dt.Columns.Count - 1; i >= 0; i--) // Loop from the end to avoid index shifting
+            {
+                if (dt.Columns[i].ColumnName.Contains(substring))
+                {
+                    dt.Columns.RemoveAt(i); // Remove the column
+                }
+            }
+        }
         private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool loadHeader = true, string chartData = null)
         {
+            RemoveColumnsBySubstring(dt, "__prm__");
             ws.Cells[rowstart, colstart].LoadFromDataTable(dt, loadHeader);
             if (loadHeader) ws.Cells[rowstart, colstart, rowstart, colstart + dt.Columns.Count -1].Style.Font.Bold = true;
             if (!string.IsNullOrEmpty(chartData) && chartData != "undefined")
@@ -2074,6 +2088,7 @@ namespace ReportBuilder.Web.Models
             var qry = data.qry;
             var sqlFields = data.sqlFields;
             var dt = data.dt;
+            RemoveColumnsBySubstring(dt, "__prm__");
             var subTotals = new decimal[dt.Columns.Count];
 
             if (pivot) dt = Transpose(dt);
