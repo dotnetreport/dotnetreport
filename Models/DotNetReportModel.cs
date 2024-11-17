@@ -802,7 +802,16 @@ namespace ReportBuilder.Web.Models
                 {
                     if (isNumeric && !(formatColumn?.dontSubTotal ?? false))
                     {
-                        ws.Cells[dt.Rows.Count + rowstart + 1, i].Formula = $"=SUM({ws.Cells[rowstart, i].Address}:{ws.Cells[dt.Rows.Count + rowstart, i].Address})";
+                        dynamic subtotal = 0; // Use dynamic to handle any numeric type
+                        for (int rowIndex = 0; rowIndex < dt.Rows.Count; rowIndex++)
+                        {
+                            var cellValue = dt.Rows[rowIndex][i - 1];
+                            if (cellValue != null && decimal.TryParse(cellValue.ToString(), out decimal numericValue))
+                            {
+                                subtotal += numericValue; // Add numeric values
+                            }
+                        }
+                        ws.Cells[dt.Rows.Count + rowstart + 1, i].Value = subtotal;
                         ws.Cells[dt.Rows.Count + rowstart + 1, i].Style.Font.Bold = true;
                     }
                 }
