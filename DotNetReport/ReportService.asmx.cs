@@ -1,5 +1,4 @@
 ﻿using Newtonsoft.Json;
-using PuppeteerSharp;
 using ReportBuilder.Web.Models;
 using System;
 using System.Collections.Generic;
@@ -11,7 +10,6 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web;
-using System.Web.Mvc;
 using System.Web.Script.Serialization;
 using System.Web.Script.Services;
 using System.Web.Services;
