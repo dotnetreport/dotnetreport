@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using PuppeteerSharp;
 using ReportBuilder.Web.Models;
 using System;
 using System.Collections.Generic;
@@ -10,6 +11,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web;
+using System.Web.Mvc;
 using System.Web.Script.Serialization;
 using System.Web.Script.Services;
 using System.Web.Services;
@@ -474,6 +476,70 @@ namespace ReportBuilder.WebForms.DotNetReport
         }
 
         [WebMethod(EnableSession = true)]
+        public void DownloadAllPdf(string reportdata)
+        {
+            var pdfBytesList = new List<byte[]>();
+            var ListofReports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
+            foreach (var report in ListofReports)
+            {
+                var pdf = DotNetReportHelper.GetPdfFile(report.printUrl, report.reportId, HttpUtility.HtmlDecode(report.reportSql), HttpUtility.UrlDecode(report.connectKey), HttpUtility.UrlDecode(report.reportName), report.userId,
+                    report.clientId, report.userRoles, report.dataFilters, report.expandAll, report.expandSqls, report.pivotColumn, report.pivotFunction);
+                pdfBytesList.Add(pdf);
+            }
+            var combinedPdf = DotNetReportHelper.GetCombinePdfFile(pdfBytesList);
+
+            Context.Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode("Dashboard") + ".pdf");
+            Context.Response.ContentType = "application/pdf";
+            Context.Response.BinaryWrite(combinedPdf);
+            Context.Response.End();
+        }
+
+        [WebMethod(EnableSession = true)]
+        public async Task DownloadAllExcel(string reportdata)
+        {
+            var excelbyteList = new List<byte[]>();
+            var ListofReports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
+            foreach (var report in ListofReports)
+            {
+                report.reportSql = HttpUtility.HtmlDecode(report.reportSql);
+                report.chartData = HttpUtility.UrlDecode(report.chartData)?.Replace(" ", " +");
+                var columns = report.columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(report.columnDetails));
+                var excelreport = await DotNetReportHelper.GetExcelFile(report.reportSql, report.connectKey, HttpUtility.UrlDecode(report.reportName), report.chartData, report.expandAll, HttpUtility.UrlDecode(report.expandSqls), columns, report.includeSubTotal, report.pivot, report.pivotColumn, report.pivotFunction);
+                excelbyteList.Add(excelreport);
+            }
+            // Combine all Excel files into one workbook
+            var combinedExcel = DotNetReportHelper.GetCombineExcelFile(excelbyteList, ListofReports.Select(r => r.reportName).ToList());
+            Context.Response.ClearContent();
+
+            Context.Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode("Dashboard") + ".xlsx");
+            Context.Response.ContentType = "application/vnd.ms-excel";
+            Context.Response.BinaryWrite(combinedExcel);
+            Context.Response.End();
+        }
+
+        [WebMethod(EnableSession = true)]
+        public async Task DownloadAllWord(string reportdata)
+        {
+            var wordbyteList = new List<byte[]>();
+            var ListofReports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
+            foreach (var report in ListofReports)
+            {
+                report.reportSql = HttpUtility.HtmlDecode(report.reportSql);
+                report.chartData = HttpUtility.UrlDecode(report.chartData)?.Replace(" ", " +");
+                var columns = report.columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(report.columnDetails));
+                var wordreport = await DotNetReportHelper.GetWordFile(report.reportSql, report.connectKey, HttpUtility.UrlDecode(report.reportName), report.chartData, report.expandAll, HttpUtility.UrlDecode(report.expandSqls), columns, report.includeSubTotal, report.pivot, report.pivotColumn, report.pivotFunction);
+                wordbyteList.Add(wordreport);
+            }
+            // Combine all Excel files into one workbook
+            var combinedWord = DotNetReportHelper.GetCombineWordFile(wordbyteList);
+
+            Context.Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode("Dashboard") + ".docx");
+            Context.Response.ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            Context.Response.BinaryWrite(combinedWord);
+            Context.Response.End();
+        }
+
+        [WebMethod(EnableSession = true)]
         public async Task DownloadExcel(string reportSql, string connectKey, string reportName, bool allExpanded, string expandSqls, string columnDetails = null, bool includeSubtotal = false, string chartData = "")
         {
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
@@ -485,7 +551,6 @@ namespace ReportBuilder.WebForms.DotNetReport
             Context.Response.ContentType = "application/vnd.ms-excel";
             Context.Response.BinaryWrite(excel);
             Context.Response.End();
-
         }
 
         [WebMethod(EnableSession = true)]
@@ -512,7 +577,6 @@ namespace ReportBuilder.WebForms.DotNetReport
             Context.Response.ContentType = "text/txt";
             Context.Response.Write(xml);
             Context.Response.End();
-
         }
 
         [WebMethod(EnableSession = true)]
@@ -556,7 +620,6 @@ namespace ReportBuilder.WebForms.DotNetReport
             Context.Response.ContentType = "text/csv";
             Context.Response.BinaryWrite(excel);
             Context.Response.End();
-
         }
 
         [WebMethod(EnableSession = true)]

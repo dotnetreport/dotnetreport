@@ -1,4 +1,4 @@
-﻿<%@ Page Title="" Language="C#" AutoEventWireup="true" CodeBehind="ReportPrint.aspx.cs" Inherits="ReportBuilder.WebForms.DotNetReport.ReportPrint" Async="false" %>
+﻿<%@ Page Title="" Language="C#" AutoEventWireup="true" CodeBehind="ReportPrint.aspx.cs" Inherits="ReportBuilder.WebForms.DotNetReport.ReportPrint" Async="false" validateRequest="false" %>
 
 <!DOCTYPE html>
 <html>

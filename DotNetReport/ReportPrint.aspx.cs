@@ -37,8 +37,8 @@ namespace ReportBuilder.WebForms.DotNetReport
             string userId = Request.Form["userId"];
             string clientId = Request.Form["clientId"];
             string currentUserRole = Request.Form["currentUserRole"];
-            string dataFilters = Request.Form["dataFilters"] ?? "";
-            string reportData = Request.Form["reportData"] ?? "";
+            string dataFilters = HttpUtility.HtmlDecode(Request.Form["dataFilters"]) ?? "";
+            string reportData = HttpUtility.HtmlDecode(Request.Unvalidated["reportData"]) ?? "";
 
             Session["reportPrint"] = "true";
             Session["userId"] = userId;
@@ -49,8 +49,8 @@ namespace ReportBuilder.WebForms.DotNetReport
             {
                 ReportId = reportId,
                 ReportType = reportType,
-                ReportName = HttpUtility.UrlDecode(reportName),
-                ReportDescription = HttpUtility.UrlDecode(reportDescription),
+                ReportName = HttpUtility.HtmlDecode(reportName),
+                ReportDescription = HttpUtility.HtmlDecode(reportDescription),
                 ReportSql = reportSql,
                 ConnectKey = connectKey,
                 IncludeSubTotals = includeSubTotal,
@@ -62,8 +62,8 @@ namespace ReportBuilder.WebForms.DotNetReport
                 UserId = userId,
                 ClientId = clientId,
                 CurrentUserRoles = currentUserRole,
-                DataFilters = HttpUtility.UrlDecode(dataFilters),
-                ReportData = HttpUtility.UrlDecode(reportData)
+                DataFilters = dataFilters,
+                ReportData = reportData
             };
 
         }
