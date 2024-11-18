@@ -832,7 +832,8 @@ namespace ReportBuilder.Web.Controllers
                         {
                             ColumnName = dt.Rows[i].ItemArray[0].ToString(),
                             DisplayName = dt.Rows[i].ItemArray[0].ToString(),
-                            FieldType = DotNetSetupController.ConvertToJetDataType((int)dt.Rows[i]["ProviderType"]).ToString()
+                            FieldType = DotNetSetupController.ConvertToJetDataType((int)dt.Rows[i]["ProviderType"]).ToString(),
+                            AllowedRoles = new List<string>()
                         };
                         columnViewModels.Add(column);
                     }
@@ -842,7 +843,8 @@ namespace ReportBuilder.Web.Controllers
                         SchemaName = dr["ROUTINE_SCHEMA"].ToString(),
                         DisplayName = procName,
                         Parameters = parameterViewModels,
-                        Columns = columnViewModels
+                        Columns = columnViewModels,
+                        AllowedRoles = new List<string>()
                     });
                     count++;
                 }
