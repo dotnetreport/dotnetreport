@@ -3589,8 +3589,8 @@ var reportViewModel = function (options) {
 		var chartOptions = {
 			'title': self.ReportName(),
 			animation: {
-				startup: true,
-				duration: 1000,
+				startup: false,
+				duration: 0,
 				easing: 'out'
 			},
 		};
