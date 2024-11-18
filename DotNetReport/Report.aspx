@@ -218,7 +218,7 @@
             </div>
             </div>
             <br />
-            <span>Report ran on: <%=DateTime.Now.ToShortDateString() %> <%=@DateTime.Now.ToShortTimeString() %></span>         
+            <span>Report ran on: <%=DateTime.Now.ToShortDateString() %> <%=DateTime.Now.ToShortTimeString() %></span>         
         </div>
     </div>
     <div data-bind="if: HasError">

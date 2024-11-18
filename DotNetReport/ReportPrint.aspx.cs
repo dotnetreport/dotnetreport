@@ -6,12 +6,12 @@ namespace ReportBuilder.WebForms.DotNetReport
 {
     public partial class ReportPrint : System.Web.UI.Page
     {
-        private DotNetReportModel _model;
-        public DotNetReportModel Model
+        private DotNetReportPrintModel _model;
+        public DotNetReportPrintModel Model
         {
             get
             {
-                return _model ?? new DotNetReportModel();
+                return _model ?? new DotNetReportPrintModel();
             }
             set
             {
@@ -37,14 +37,15 @@ namespace ReportBuilder.WebForms.DotNetReport
             string userId = Request.Form["userId"];
             string clientId = Request.Form["clientId"];
             string currentUserRole = Request.Form["currentUserRole"];
-
+            string dataFilters = Request.Form["dataFilters"] ?? "";
+            string reportData = Request.Form["reportData"] ?? "";
 
             Session["reportPrint"] = "true";
             Session["userId"] = userId;
             Session["clientId"] = clientId;
             Session["currentUserRole"] = currentUserRole;
 
-            Model = new DotNetReportModel
+            Model = new DotNetReportPrintModel
             {
                 ReportId = reportId,
                 ReportType = reportType,
@@ -56,7 +57,13 @@ namespace ReportBuilder.WebForms.DotNetReport
                 ShowUniqueRecords = showUniqueRecords,
                 ShowDataWithGraph = showDataWithGraph,
                 SelectedFolder = selectedFolder,
-                ReportFilter = reportFilter // json data to setup filter correctly again
+                ReportFilter = reportFilter, // json data to setup filter correctly again
+
+                UserId = userId,
+                ClientId = clientId,
+                CurrentUserRoles = currentUserRole,
+                DataFilters = HttpUtility.UrlDecode(dataFilters),
+                ReportData = HttpUtility.UrlDecode(reportData)
             };
 
         }

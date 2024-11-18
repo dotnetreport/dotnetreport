@@ -2310,11 +2310,11 @@ namespace ReportBuilder.Web.Models
             int averageCharWidthInTwips = 120;
             return text.Length * averageCharWidthInTwips;
         }
-        public static async Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
+        public static byte[] GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
                     string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false, string expandSqls = null, string pivotColumn = null, string pivotFunction = null)
         {
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
-            await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
+            new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
             var executablePath = "";
             foreach (var d in Directory.GetDirectories(installPath))
             {
@@ -2322,113 +2322,127 @@ namespace ReportBuilder.Web.Models
                 if (File.Exists(executablePath)) break;
             }
 
-            var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = true, ExecutablePath = executablePath });
-            var page = await browser.NewPageAsync();
-            await page.SetRequestInterceptionAsync(true);
-
-            var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
-            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
-            var data = GetDataTable(reportSql, connectKey);
-
-            var qry = data.qry;
-            var sqlFields = data.sqlFields;
-            var dt = data.dt;
-            if (!string.IsNullOrEmpty(pivotColumn))
+            try
             {
-                var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
-                dt = pd.dt;
-                if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
-                var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
-                sqlFields = sqlFields
-                    .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
-                    .ToList();
-                sqlFields.AddRange(dt.Columns.Cast<DataColumn>().Skip(sqlFields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
-            }
-            var model = new DotNetReportResultModel
-            {
-                ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dt, sqlFields, false),
-                Warnings = "",
-                ReportSql = qry.sql,
-                ReportDebug = false,
-                Pager = new DotNetReportPagerModel
+                var file = Task.Run(async () =>
                 {
-                    CurrentPage = 1,
-                    PageSize = 100000,
-                    TotalRecords = dt.Rows.Count,
-                    TotalPages = 1
-                }
-            };
+                    var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = true, ExecutablePath = executablePath });
+                    var page = await browser.NewPageAsync();
+                    await page.SetRequestInterceptionAsync(true);
 
-            var formPosted = false;
-            var formData = new StringBuilder();
-            formData.AppendLine("<html><body>");
-            formData.AppendLine($"<form action=\"{printUrl}\" method=\"post\">");
-            formData.AppendLine($"<input name=\"reportSql\" value=\"{HttpUtility.UrlEncode(reportSql)}\" />");
-            formData.AppendLine($"<input name=\"connectKey\" value=\"{HttpUtility.UrlEncode(connectKey)}\" />");
-            formData.AppendLine($"<input name=\"reportId\" value=\"{reportId}\" />");
-            formData.AppendLine($"<input name=\"pageNumber\" value=\"{1}\" />");
-            formData.AppendLine($"<input name=\"pageSize\" value=\"{99999}\" />");
-            formData.AppendLine($"<input name=\"userId\" value=\"{userId}\" />");
-            formData.AppendLine($"<input name=\"clientId\" value=\"{clientId}\" />");
-            formData.AppendLine($"<input name=\"currentUserRole\" value=\"{currentUserRole}\" />");
-            formData.AppendLine($"<input name=\"expandAll\" value=\"{expandAll}\" />");
-            formData.AppendLine($"<input name=\"dataFilters\" value=\"{HttpUtility.UrlEncode(dataFilters)}\" />");
-            formData.AppendLine($"<input name=\"reportData\" value=\"{HttpUtility.UrlEncode(JsonConvert.SerializeObject(model))}\" />");
-            formData.AppendLine($"</form>");
-            formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");
-            formData.AppendLine("</body></html>");
+                    var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
+                    IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+                    var data = GetDataTable(reportSql, connectKey);
 
-            page.Request += async (sender, e) =>
-            {
-                if (formPosted)
-                {
-                    await e.Request.ContinueAsync();
-                    return;
-                }
+                    var qry = data.qry;
+                    var sqlFields = data.sqlFields;
+                    var dt = data.dt;
+                    if (!string.IsNullOrEmpty(pivotColumn))
+                    {
+                        var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
+                        dt = pd.dt;
+                        if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
+                        var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
+                        sqlFields = sqlFields
+                            .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
+                            .ToList();
+                        sqlFields.AddRange(dt.Columns.Cast<DataColumn>().Skip(sqlFields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
+                    }
 
-                await e.Request.RespondAsync(new ResponseData
-                {
-                    Status = System.Net.HttpStatusCode.OK,
-                    Body = formData.ToString()
-                });
+                    var model = new DotNetReportResultModel
+                    {
+                        ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dt, sqlFields, false),
+                        Warnings = "",
+                        ReportSql = qry.sql,
+                        ReportDebug = false,
+                        Pager = new DotNetReportPagerModel
+                        {
+                            CurrentPage = 1,
+                            PageSize = 100000,
+                            TotalRecords = dt.Rows.Count,
+                            TotalPages = 1
+                        }
+                    };
 
-                formPosted = true;
-            };
+                    var formPosted = false;
+                    var formData = new StringBuilder();
+                    formData.AppendLine("<html><body>");
+                    formData.AppendLine($"<form action=\"{printUrl}\" method=\"post\">");
+                    formData.AppendLine($"<input name=\"reportSql\" value=\"{HttpUtility.HtmlEncode(reportSql)}\" />");
+                    formData.AppendLine($"<input name=\"connectKey\" value=\"{HttpUtility.HtmlEncode(connectKey)}\" />");
+                    formData.AppendLine($"<input name=\"reportId\" value=\"{reportId}\" />");
+                    formData.AppendLine($"<input name=\"pageNumber\" value=\"{1}\" />");
+                    formData.AppendLine($"<input name=\"pageSize\" value=\"{99999}\" />");
+                    formData.AppendLine($"<input name=\"userId\" value=\"{userId}\" />");
+                    formData.AppendLine($"<input name=\"clientId\" value=\"{clientId}\" />");
+                    formData.AppendLine($"<input name=\"currentUserRole\" value=\"{currentUserRole}\" />");
+                    formData.AppendLine($"<input name=\"expandAll\" value=\"{expandAll}\" />");
+                    formData.AppendLine($"<input name=\"dataFilters\" value=\"{HttpUtility.HtmlEncode(dataFilters)}\" />");
+                    formData.AppendLine($"<input name=\"reportData\" value=\"{HttpUtility.HtmlEncode(JsonConvert.SerializeObject(model))}\" />");
+                    formData.AppendLine($"</form>");
+                    formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");
+                    formData.AppendLine("</body></html>");
 
-            await page.GoToAsync(printUrl, new NavigationOptions
-            {
-                WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
-            });
+                    page.Request += async (sender, e) =>
+                    {
+                        if (formPosted)
+                        {
+                            await e.Request.ContinueAsync();
+                            return;
+                        }
 
-            await page.WaitForSelectorAsync(".report-inner", new WaitForSelectorOptions { Visible = true });
+                        await e.Request.RespondAsync(new ResponseData
+                        {
+                            Status = System.Net.HttpStatusCode.OK,
+                            Body = formData.ToString()
+                        });
 
-            int height = await page.EvaluateExpressionAsync<int>("document.body.offsetHeight");
-            int width = await page.EvaluateExpressionAsync<int>("$('table').width()");
-            var pdfFile = Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
+                        formPosted = true;
+                    };
 
-            var pdfOptions = new PdfOptions
-            {
-                PrintBackground = true,
-                PreferCSSPageSize = false,
-                MarginOptions = new MarginOptions() { Top = "0.75in", Bottom = "0.75in", Left = "0.1in", Right = "0.1in" }
-            };
+                    await page.GoToAsync(printUrl, new NavigationOptions
+                    {
+                        WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
+                    });
 
-            if (width < 900)
-            {
-                pdfOptions.Format = PaperFormat.Letter;
-                pdfOptions.Landscape = false;
+                    await page.WaitForSelectorAsync(".report-inner", new WaitForSelectorOptions { Visible = true });
+
+                    int height = await page.EvaluateExpressionAsync<int>("document.body.offsetHeight");
+                    int width = await page.EvaluateExpressionAsync<int>("$('table').width()");
+                    var pdfFile = Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
+
+                    var pdfOptions = new PdfOptions
+                    {
+                        PrintBackground = true,
+                        PreferCSSPageSize = false,
+                        MarginOptions = new MarginOptions() { Top = "0.75in", Bottom = "0.75in", Left = "0.1in", Right = "0.1in" }
+                    };
+
+                    if (width < 900)
+                    {
+                        pdfOptions.Format = PaperFormat.Letter;
+                        pdfOptions.Landscape = false;
+                    }
+                    else
+                    {
+                        await page.SetViewportAsync(new ViewPortOptions { Width = width });
+                        await page.AddStyleTagAsync(new AddTagOptions { Content = "@page {size: landscape }" });
+                        pdfOptions.Width = $"{width}px";
+                    }
+
+                    await page.PdfAsync(pdfFile, pdfOptions);
+                    return File.ReadAllBytes(pdfFile);
+
+                }).GetAwaiter().GetResult();
+
+                return file;
             }
-            else
+            catch (Exception ex)
             {
-                await page.SetViewportAsync(new ViewPortOptions { Width = width });
-                await page.AddStyleTagAsync(new AddTagOptions { Content = "@page {size: landscape }" });
-                pdfOptions.Width = $"{width}px";
+                throw ex;
             }
-
-            await page.PdfAsync(pdfFile, pdfOptions);
-            return File.ReadAllBytes(pdfFile);
         }
-        
+
         public static byte[] GetCombinePdfFile(List<byte[]> pdfFiles)
         {
             using (var outputDocument = new PdfDocument())

@@ -54,6 +54,9 @@
                             apiUrl: svc + "CallReportApi",
                             runReportApiUrl: svc + "RunReportApi",
                             reportMode: "execute",
+                            reportWizard: $("#modal-reportbuilder"),
+                            linkModal: $("#linkModal"),
+                            fieldOptionsModal: $("#fieldOptionsModal"),
                             reports: reports,
                             dashboards: dashboards,
                             users: data.users,
@@ -141,6 +144,28 @@
         <button class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" title="Edit Dashboard Settings" data-bind="click: editDashboard">Edit this Dashboard</button>
         <button class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" title="Add a New Dashboard" data-bind="click: newDashboard">Add a new Dashboard</button>
         <button class="btn btn-primary btn-sm" title="Refresh to Load All Reports" data-bind="click: RefreshAllReports"><span class="fa fa-refresh"></span> Refresh Dashboard</button>
+        <div class="btn-group">
+            <button type="button" class="btn btn-primary btn-sm me-2 dropdown-toggle" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <span class="fa fa-download"></span> Export <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu">
+                <li class="dropdown-item">
+                    <a href="#" data-bind="click: ExportAllPdfReports">
+                        <span class="fa fa-file-pdf-o"></span> Pdf
+                    </a>
+                </li>
+                <li class="dropdown-item">
+                    <a href="#" data-bind="click: ExportAllExcelReports">
+                        <span class="fa fa-file-excel-o"></span> Excel
+                    </a>
+                </li>
+                <li class="dropdown-item">
+                    <a href="#" data-bind="click: ExportAllWordReports">
+                        <span class="fa fa-file-word-o"></span> Word
+                    </a>
+                </li>
+            </ul>
+        </div>
     </div>
     <div class="col-auto d-flex align-items-center">
         <div class="bubble-badge">
@@ -159,90 +184,94 @@
     <button class="btn btn-lg btn-primary" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal"><i class="fa fa-dashboard"></i> Create a New Dashboard</button>
 </div>
 
-<div class="modal modal-fullscreen" id="add-dashboard-modal" role="dialog">
+<div class="modal modal-fullscreen" id="add-dashboard-modal" tabindex="-1" aria-labelledby="add-dashboard-modal-label" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content" data-bind="with: dashboard">
             <div class="modal-header">
-                <h4 class="modal-title"><span data-bind="text: Id() ? 'Edit' : 'Add'"></span> Dashboard</h4>
+                <h4 class="modal-title" id="add-dashboard-modal-label"><span data-bind="text: Id() ? 'Edit' : 'Add'"></span> Dashboard</h4>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div class="form-horizontal">
-                    <div class="control-group">
-                        <div class="form-group row">
-                            <label class="col-md-3 col-sm-3 control-label">Name</label>
-                            <div class="col-md-6 col-sm-6">
-                                <input class="form-control text-box" style="width: 100%;" data-val="true" data-val-required="Dashboard Name is required." type="text" data-bind="value: Name" placeholder="Dashboard Name, ex Sales, Accounting" id="add-dash-name" required />
-                            </div>
+                <div class="mb-4 card card-body">
+                    <div class="row mb-3">
+                        <label class="col-md-3 col-form-label">Name</label>
+                        <div class="col-md-6">
+                            <input class="form-control" data-val="true" data-val-required="Dashboard Name is required." type="text" data-bind="value: Name" placeholder="Dashboard Name, e.g., Sales, Accounting" id="add-dash-name" required />
                         </div>
-                        <div class="form-group row">
-                            <label class="col-md-3 col-sm-3 control-label">Description</label>
-                            <div class="col-md-6 col-sm-6">
-                                <textarea class="form-control text-box" style="width: 100%;" data-bind="value: Description" placeholder="Optional Description for the Dashboard">
-                                    </textarea>
-                            </div>
+                    </div>
+                    <div class="row mb-3">
+                        <label class="col-md-3 col-form-label">Description</label>
+                        <div class="col-md-6">
+                            <textarea class="form-control" data-bind="value: Description" placeholder="Optional Description for the Dashboard"></textarea>
                         </div>
                     </div>
                 </div>
-                <hr />
-                <div class="control-group row m-2">
-                    <div class="col-md-6 col-sm-6">
-                        <h5><span class="fa fa-paperclip"></span> Choose Reports for the Dashboard </h5>
-                    </div>
-                    <div class="col-md-6 col-sm-6">
-                        <input type="text" class="form-control text-box" style="width: 100%;" placeholder="Search Report by Name or Description..." data-bind="textInput: $parent.searchReports" />
-                    </div>
-                </div>
-                <div data-bind="if: $parent.searchReports() &&  $parent.reportsInSearch().length==0">
-                    <div class="card">
-                        <div class="card-body">
-                                No Reports found matching your Search
+
+                <div class="mb-4 card card-body">
+                    <div class="row align-items-center mb-3">
+                        <div class="col-md-6">
+                            <h5><i class="fa fa-paperclip"></i> Choose Reports for the Dashboard</h5>
+                        </div>
+                        <div class="col-md-6">
+                            <input type="text" class="form-control" placeholder="Search Report by Name or Description..." data-bind="textInput: $parent.searchReports" />
                         </div>
                     </div>
-                </div>
-                <div data-bind="if: $parent.searchReports() &&  $parent.reportsInSearch().length>0">
-                    <div  class="card" style="margin-left: 20px;">
-                        <div class="card-body">
-                            <div>
-                                <ul class="list-group" data-bind="foreach: $parent.reportsInSearch">
-                                    <li class="list-group-item">
-                                        <div class="checkbox">
-                                            <label class="list-group-item-heading">
-                                                <input type="checkbox" data-bind="checked: selected">
-                                                <span class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie', 'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map', 'fa-window-restore': reportType=='Treemap'}" style="font-size: 14pt; color: #808080"></span>
-                                                <span data-bind="highlightedText: { text: reportName, highlight: $parent.searchReports, css: 'highlight' }"></span>
-                                            </label>
-                                        </div>
-                                        <p class="list-group-item-text small" data-bind="text: reportDescription"></p>
-                                    </li>
-                                </ul>
-                            </div>
+
+                    <div data-bind="if: $parent.searchReports() && $parent.reportsInSearch().length==0">
+                        <div class="card card-body">
+                            No reports found matching your search.
                         </div>
                     </div>
-                </div>
-                <div data-bind="if: !$parent.searchReports() " class="card" style="margin-left: 20px;">
-                    <div class="card-body" data-bind="foreach: $parent.reportsAndFolders">
-                        <a class="btn btn-link" role="button" data-bs-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }">
-                            <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: folder"></span>
-                        </a>
-                        <div class="collapse" data-bind="attr: {id: 'folder-' + folderId }">
-                            <ul class="list-group" data-bind="foreach: reports">
-                                <li class="list-group-item">
-                                    <div class="checkbox">
-                                        <label class="list-group-item-heading">
-                                            <input type="checkbox" data-bind="checked: selected">
-                                            <span class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie', 'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map', 'fa-window-restore': reportType=='Treemap'}" style="font-size: 14pt; color: #808080"></span>
-                                            <span data-bind="text: reportName"></span>
-                                        </label>
+                    <div data-bind="if: $parent.searchReports() &&  $parent.reportsInSearch().length>0">
+                        <ul class="list-group" data-bind="foreach: $parent.reportsInSearch">
+                            <li class="list-group-item">
+                                <div class="checkbox">
+                                    <label class="list-group-item-heading">
+                                        <input type="checkbox" data-bind="checked: selected">
+                                        <span class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie', 'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map', 'fa-window-restore': reportType=='Treemap'}" style="font-size: 14pt; color: #808080"></span>
+                                        <span data-bind="highlightedText: { text: reportName, highlight: $parent.searchReports, css: 'highlight' }"></span>
+                                    </label>
+                                </div>
+                                <p class="list-group-item-text small" data-bind="text: reportDescription"></p>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div data-bind="if: !$parent.searchReports()" class="list-group mb-3">
+                        <div data-bind="foreach: $parent.reportsAndFolders">
+                            <div class="list-group-item">
+                                <a role="button" class="d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }" style="text-decoration: none; font-weight: normal;">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fa fa-folder me-2" style="color: #ffd800"></i>
+                                        <span data-bind="text: folder"></span>
                                     </div>
-                                    <p class="list-group-item-text small" data-bind="text: reportDescription"></p>
-                                </li>
-                            </ul>
+                                    <i class="fa fa-chevron-down"></i>
+                                </a>
+                                <div class="collapse mt-2" data-bind="attr: {id: 'folder-' + folderId }">
+                                    <ul class="list-group list-group-flush" data-bind="foreach: reports">
+                                        <li class="list-group-item">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" data-bind="checked: selected">
+                                                <label class="form-check-label">
+                                                    <i class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie', 'fa-line-chart': reportType=='Line', 'fa-globe': reportType=='Map', 'fa-window-restore': reportType=='Treemap'}" style="font-size: 14pt; color: #808080"></i>
+                                                    <span data-bind="text: reportName"></span>
+                                                </label>
+                                            </div>
+                                            <small class="text-muted" data-bind="text: reportDescription"></small>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
                     </div>
+
                 </div>
-                <div data-bind="if: $parent.adminMode">
-                    <hr />
+                <div class="card card-body mb-3">
+                    <h5><i class="fa fa-hourglass"></i>&nbsp;Choose Schedule</h5>
+                    <div data-bind="template: {name: 'report-schedule'}"></div>
+                </div>
+
+                <div data-bind="visible: $parent.adminMode" class="card card-body mb-3">
                     <div data-bind="template: {name: 'manage-access-template'}"></div>
                 </div>
             </div>
@@ -362,5 +391,4 @@
 <div class="modal" id="linkModal" tabindex="-1" role="dialog" aria-hidden="true" data-bind="with: selectedReport">
     <div data-bind="template: {name: 'report-link-edit', data: $data}"></div>
 </div>
-
 </asp:Content>

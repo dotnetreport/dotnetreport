@@ -516,6 +516,20 @@ namespace ReportBuilder.WebForms.DotNetReport
         }
 
         [WebMethod(EnableSession = true)]
+        public void DownloadPdf(string printUrl, int reportId, string reportSql, string connectKey, string reportName, bool expandAll,
+                                                       string clientId = null, string userId = null, string userRoles = null, string dataFilters = "", string expandSqls = null, string pivotColumn = null, string pivotFunction = null)
+        {
+            reportSql = HttpUtility.HtmlDecode(reportSql);
+            var pdf = DotNetReportHelper.GetPdfFile(HttpUtility.UrlDecode(printUrl), reportId, reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName),
+                                userId, clientId, userRoles, dataFilters, expandAll, expandSqls, pivotColumn, pivotFunction = null);
+
+            Context.Response.AddHeader("content-disposition", "attachment; filename=" + reportName + ".pdf");
+            Context.Response.ContentType = "application/pdf";
+            Context.Response.BinaryWrite(pdf);
+            Context.Response.End();
+        }
+
+        [WebMethod(EnableSession = true)]
         public void DownloadPdfAlt(string reportSql, string connectKey, string reportName, string chartData = null, string columnDetails = null, bool includeSubtotal = false)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);

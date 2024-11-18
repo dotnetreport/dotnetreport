@@ -1141,15 +1141,10 @@
 
                         <div class="col-md-12">
                             <div data-bind="visible: useStoredProc">
-                            <select class="form-control" data-bind="select2Value: {dropdownParent: $('#choose-data-card')}, options: Procs, optionsCaption: 'Choose Section...', optionsText: 'DisplayName', value: SelectedProc, visible: useStoredProc"></select>
+                                <select class="form-control" data-bind="select2Value: {dropdownParent: $('#choose-data-card')}, options: Procs, optionsCaption: 'Choose Section...', optionsText: 'DisplayName', value: SelectedProc, visible: useStoredProc"></select>
                             </div>
                             <div data-bind="hidden: useStoredProc">
-                                 <select id="category-tables" class="form-control"  data-bind="foreach: CategorizedTables, value: SelectedTable, select2Value: {dropdownParent: $('#choose-data-card'), placeHolder: 'Choose Data Section...'}, optionsCaption: 'Choose Data Section...'">
-                                     <option value="">Choose Data Section...</option>
-                                     <optgroup data-bind="attr: {label: categoryName}, foreach: tables">
-                                         <option data-bind="text: tableName, value: $data"></option>
-                                     </optgroup>
-                                 </select>
+                                <select class="form-control" data-bind="select2Value: {dropdownParent: $('#choose-data-card')}, options: Tables, optionsCaption: 'Or Choose Data Section...', optionsText: 'tableName', value: SelectedTable, hidden: useStoredProc"></select>
                             </div>
                         </div>
 
