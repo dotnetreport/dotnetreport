@@ -716,8 +716,22 @@ namespace ReportBuilder.Web.Models
             return "";
         }
 
+        private static void RemoveColumnsBySubstring(DataTable dt, string substring)
+        {
+            if (dt == null || string.IsNullOrEmpty(substring))
+                return;
+
+            for (int i = dt.Columns.Count - 1; i >= 0; i--) // Loop from the end to avoid index shifting
+            {
+                if (dt.Columns[i].ColumnName.Contains(substring))
+                {
+                    dt.Columns.RemoveAt(i); // Remove the column
+                }
+            }
+        }
         private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool loadHeader = true, string chartData = null)
         {
+            RemoveColumnsBySubstring(dt, "__prm__");
             ws.Cells[rowstart, colstart].LoadFromDataTable(dt, loadHeader);
             if (loadHeader) ws.Cells[rowstart, colstart, rowstart, colstart + dt.Columns.Count - 1].Style.Font.Bold = true;
             if (!string.IsNullOrEmpty(chartData) && chartData != "undefined")
@@ -735,7 +749,7 @@ namespace ReportBuilder.Web.Models
             int i = colstart; var isNumeric = false;
             foreach (DataColumn dc in dt.Columns)
             {
-                var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName)) ?? new ReportHeaderColumn();
+                var formatColumn = columns?[i-1];
                 string decimalFormat = new string('0', formatColumn.decimalPlacesDigit.GetValueOrDefault());
                 isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
                 if (!string.IsNullOrEmpty(formatColumn.fieldLabel))
@@ -787,7 +801,16 @@ namespace ReportBuilder.Web.Models
                 {
                     if (isNumeric && !(formatColumn?.dontSubTotal ?? false))
                     {
-                        ws.Cells[dt.Rows.Count + rowstart + 1, i].Formula = $"=SUM({ws.Cells[rowstart, i].Address}:{ws.Cells[dt.Rows.Count + rowstart, i].Address})";
+                        dynamic subtotal = 0; // Use dynamic to handle any numeric type
+                        for (int rowIndex = 0; rowIndex < dt.Rows.Count; rowIndex++)
+                        {
+                            var cellValue = dt.Rows[rowIndex][i - 1];
+                            if (cellValue != null && decimal.TryParse(cellValue.ToString(), out decimal numericValue))
+                            {
+                                subtotal += numericValue; // Add numeric values
+                            }
+                        }
+                        ws.Cells[dt.Rows.Count + rowstart + 1, i].Value = subtotal;
                         ws.Cells[dt.Rows.Count + rowstart + 1, i].Style.Font.Bold = true;
                     }
                 }
@@ -2025,6 +2048,7 @@ namespace ReportBuilder.Web.Models
             var qry = data.qry;
             var sqlFields = data.sqlFields;
             var dt = data.dt;
+            RemoveColumnsBySubstring(dt, "__prm__");
             var subTotals = new decimal[dt.Columns.Count];
 
             if (pivot) dt = Transpose(dt);
@@ -2616,6 +2640,7 @@ namespace ReportBuilder.Web.Models
             var ds = new DataSet();
             var data = GetDataTable(reportSql, connectKey);
             var dt = data.dt;
+            RemoveColumnsBySubstring(dt, "__prm__");
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
             var qry = data.qry;
