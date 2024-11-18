@@ -26,6 +26,11 @@ using A = DocumentFormat.OpenXml.Drawing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
 using System.Data.SqlClient;
+using ReportBuilder.Web.Models;
+using PdfSharp.Pdf.IO;
+using System.Web;
+using PuppeteerSharp;
+using PuppeteerSharp.Media;
 
 namespace ReportBuilder.Web.Models
 {
@@ -133,12 +138,19 @@ namespace ReportBuilder.Web.Models
         public List<ColumnViewModel> Columns { get; set; }
 
         public DataTable dataTable { get; set; }
-        public List<ParameterViewModel> Parameters { get; set; }
-        public List<string> AllowedRoles { get; set; }
+        public List<ParameterViewModel> Parameters { get; set; } = new List<ParameterViewModel>();
+        public List<string> AllowedRoles { get; set; } = new List<string>();
         public bool? DoNotDisplay { get; set; } = false;
 
         public bool CustomTable { get; set; }
         public string CustomTableSql { get; set; }
+        public List<CategoryViewModel> Categories { get; set; } = new List<CategoryViewModel>();
+    }
+    public class CategoryViewModel
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
     }
 
     public class ParameterViewModel
@@ -400,7 +412,26 @@ namespace ReportBuilder.Web.Models
         public bool isCurrency { get; set; }
         public bool isJsonColumn { get; set; }
     }
-
+    public class ExportReportModel
+    {
+        public int reportId { get; set; }
+        public string reportSql { get; set; }
+        public string connectKey { get; set; }
+        public string reportName { get; set; }
+        public bool expandAll { get; set; }
+        public string printUrl { get; set; }
+        public string clientId { get; set; }
+        public string userId { get; set; }
+        public string userRoles { get; set; }
+        public string dataFilters { get; set; }
+        public string expandSqls { get; set; }
+        public string pivotColumn { get; set; }
+        public string pivotFunction { get; set; }
+        public string chartData { get; set; }
+        public string columnDetails { get; set; }
+        public bool includeSubTotal { get; set; }
+        public bool pivot { get; set; }
+    }
     public interface IDnrDataConnection
     {
         string DbConnection { get; set; }
@@ -1064,13 +1095,28 @@ namespace ReportBuilder.Web.Models
             {
                 var lastWhereIndex = drilldownSql.LastIndexOf("WHERE");
                 var baseQuery = drilldownSql.Substring(0, lastWhereIndex) + " " + GetWhereClause(sql);
-
+                var monthNames = new List<string>
+                {
+                    "january", "february", "march", "april", "may", "june",
+                    "july", "august", "september", "october", "november", "december"
+                };
                 var baseDataTable = databaseConnection.ExecuteQuery(connectionString, baseQuery.Replace("SELECT ", "SELECT "));
                 var distinctValues = baseDataTable
                     .AsEnumerable()
-                    .Select(row => "[" + row.Field<string>(pivotColumn)?.Trim() + "]")
+                    .Select(row => "[" + Convert.ToString(row[pivotColumn])?.Trim() + "]")
                     .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .Where(x => x != "[]" && x.Length <= 128)
+                    .Where(x=>x != "[]" && x.Length <=128)
+                    .OrderBy(x =>
+                    {
+                        string lowerTrimmedValue = x.Trim('[', ']').ToLower();
+                        int monthIndex = monthNames.IndexOf(lowerTrimmedValue);
+                        if (monthIndex >= 0)
+                        {
+                            return monthIndex;
+                        }
+                        return int.MaxValue; 
+                    })
+                    .ThenBy(x => x) 
                     .ToList();
                 distinctValues = (pivotColumnOrder.Count == distinctValues.Count && !pivotColumnOrder.Except(distinctValues).Any()) ? pivotColumnOrder : distinctValues;
 
@@ -1335,6 +1381,28 @@ namespace ReportBuilder.Web.Models
 
             return desiredOrder;
         }
+        static bool ContainsGroupInDetail(string jsonString)
+        {
+            if (string.IsNullOrEmpty(jsonString))
+                return false;
+            JObject jsonObject;
+            try
+            {
+                jsonObject = JObject.Parse(jsonString);
+            }
+            catch
+            {
+                return false;
+            }
+            if (jsonObject["GroupFunctionList"] == null)
+                return false;
+            JArray groupFunctionList = jsonObject["GroupFunctionList"] as JArray;
+            if (groupFunctionList == null || !groupFunctionList.Any())
+                return false;
+            return groupFunctionList.Any(item =>
+                item?["GroupFunc"]?.ToString() == "Group in Detail"
+            );
+        }
 
         public static DataTable PushDatasetIntoDataTable(DataTable tbl, DataSet dts, string pivotColumnName, string pivotFunction, string reportDataJson = null)
         {
@@ -1575,8 +1643,14 @@ namespace ReportBuilder.Web.Models
                                      }}
                                 ");
                         }
-
-                        var reportData = expandSqls.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
+                        bool isGroupInDetailExist = ContainsGroupInDetail(expandSqls);
+                        var drillDownRowValue = $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]";
+                        var reportData = expandSqls.Replace("\"DrillDownRow\":[]", drillDownRowValue);
+                        // If Group in Detail does not exist, set IsAggregateReport to false
+                        if (!isGroupInDetailExist)
+                        {
+                            reportData = reportData.Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
+                        }
                         var drilldownSql = RunReportApiCall(reportData);
                         if (drilldownSql.StartsWith("{\"sql\""))
                         {
@@ -2235,6 +2309,292 @@ namespace ReportBuilder.Web.Models
             // Note: 1 inch = 1440 twips, and average character width can vary. Adjust this multiplier as needed.
             int averageCharWidthInTwips = 120;
             return text.Length * averageCharWidthInTwips;
+        }
+        public static async Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
+                    string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false, string expandSqls = null, string pivotColumn = null, string pivotFunction = null)
+        {
+            var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
+            await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
+            var executablePath = "";
+            foreach (var d in Directory.GetDirectories(installPath))
+            {
+                executablePath = $"{d}\\chrome-win\\chrome.exe";
+                if (File.Exists(executablePath)) break;
+            }
+
+            var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = true, ExecutablePath = executablePath });
+            var page = await browser.NewPageAsync();
+            await page.SetRequestInterceptionAsync(true);
+
+            var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
+            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+            var data = GetDataTable(reportSql, connectKey);
+
+            var qry = data.qry;
+            var sqlFields = data.sqlFields;
+            var dt = data.dt;
+            if (!string.IsNullOrEmpty(pivotColumn))
+            {
+                var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
+                dt = pd.dt;
+                if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
+                var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
+                sqlFields = sqlFields
+                    .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
+                    .ToList();
+                sqlFields.AddRange(dt.Columns.Cast<DataColumn>().Skip(sqlFields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
+            }
+            var model = new DotNetReportResultModel
+            {
+                ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dt, sqlFields, false),
+                Warnings = "",
+                ReportSql = qry.sql,
+                ReportDebug = false,
+                Pager = new DotNetReportPagerModel
+                {
+                    CurrentPage = 1,
+                    PageSize = 100000,
+                    TotalRecords = dt.Rows.Count,
+                    TotalPages = 1
+                }
+            };
+
+            var formPosted = false;
+            var formData = new StringBuilder();
+            formData.AppendLine("<html><body>");
+            formData.AppendLine($"<form action=\"{printUrl}\" method=\"post\">");
+            formData.AppendLine($"<input name=\"reportSql\" value=\"{HttpUtility.UrlEncode(reportSql)}\" />");
+            formData.AppendLine($"<input name=\"connectKey\" value=\"{HttpUtility.UrlEncode(connectKey)}\" />");
+            formData.AppendLine($"<input name=\"reportId\" value=\"{reportId}\" />");
+            formData.AppendLine($"<input name=\"pageNumber\" value=\"{1}\" />");
+            formData.AppendLine($"<input name=\"pageSize\" value=\"{99999}\" />");
+            formData.AppendLine($"<input name=\"userId\" value=\"{userId}\" />");
+            formData.AppendLine($"<input name=\"clientId\" value=\"{clientId}\" />");
+            formData.AppendLine($"<input name=\"currentUserRole\" value=\"{currentUserRole}\" />");
+            formData.AppendLine($"<input name=\"expandAll\" value=\"{expandAll}\" />");
+            formData.AppendLine($"<input name=\"dataFilters\" value=\"{HttpUtility.UrlEncode(dataFilters)}\" />");
+            formData.AppendLine($"<input name=\"reportData\" value=\"{HttpUtility.UrlEncode(JsonConvert.SerializeObject(model))}\" />");
+            formData.AppendLine($"</form>");
+            formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");
+            formData.AppendLine("</body></html>");
+
+            page.Request += async (sender, e) =>
+            {
+                if (formPosted)
+                {
+                    await e.Request.ContinueAsync();
+                    return;
+                }
+
+                await e.Request.RespondAsync(new ResponseData
+                {
+                    Status = System.Net.HttpStatusCode.OK,
+                    Body = formData.ToString()
+                });
+
+                formPosted = true;
+            };
+
+            await page.GoToAsync(printUrl, new NavigationOptions
+            {
+                WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
+            });
+
+            await page.WaitForSelectorAsync(".report-inner", new WaitForSelectorOptions { Visible = true });
+
+            int height = await page.EvaluateExpressionAsync<int>("document.body.offsetHeight");
+            int width = await page.EvaluateExpressionAsync<int>("$('table').width()");
+            var pdfFile = Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
+
+            var pdfOptions = new PdfOptions
+            {
+                PrintBackground = true,
+                PreferCSSPageSize = false,
+                MarginOptions = new MarginOptions() { Top = "0.75in", Bottom = "0.75in", Left = "0.1in", Right = "0.1in" }
+            };
+
+            if (width < 900)
+            {
+                pdfOptions.Format = PaperFormat.Letter;
+                pdfOptions.Landscape = false;
+            }
+            else
+            {
+                await page.SetViewportAsync(new ViewPortOptions { Width = width });
+                await page.AddStyleTagAsync(new AddTagOptions { Content = "@page {size: landscape }" });
+                pdfOptions.Width = $"{width}px";
+            }
+
+            await page.PdfAsync(pdfFile, pdfOptions);
+            return File.ReadAllBytes(pdfFile);
+        }
+        
+        public static byte[] GetCombinePdfFile(List<byte[]> pdfFiles)
+        {
+            using (var outputDocument = new PdfDocument())
+            {
+                foreach (var pdf in pdfFiles)
+                {
+                    using (var inputDocument = PdfReader.Open(new MemoryStream(pdf), PdfDocumentOpenMode.Import))
+                    {
+                        for (int i = 0; i < inputDocument.PageCount; i++)
+                        {
+                            outputDocument.AddPage(inputDocument.Pages[i]);
+                        }
+                    }
+                }
+                using (var ms = new MemoryStream())
+                {
+                    outputDocument.Save(ms);
+                    return ms.ToArray();
+                }
+            }
+        }
+        public static byte[] GetCombineExcelFile(List<byte[]> excelFiles, List<string> sheetNames)
+        {
+            using (var package = new ExcelPackage())
+            {
+                for (int i = 0; i < excelFiles.Count; i++)
+                {
+                    var fileBytes = excelFiles[i];
+                    var sheetName = sheetNames[i] ?? $"Sheet{i + 1}";
+
+                    using (var stream = new MemoryStream(fileBytes))
+                    using (var tempPackage = new ExcelPackage(stream))
+                    {
+                        var tempSheet = tempPackage.Workbook.Worksheets[1];
+                        var newSheet = package.Workbook.Worksheets.Add(sheetName, tempSheet);
+                    }
+                }
+
+                return package.GetAsByteArray();
+            }
+        }
+        public static byte[] GetCombineWordFile(List<byte[]> wordFiles)
+        {
+            using (MemoryStream memStream = new MemoryStream())
+            {
+                using (WordprocessingDocument wordDocument = WordprocessingDocument.Create(memStream, WordprocessingDocumentType.Document))
+                {
+                    MainDocumentPart mainPart = wordDocument.AddMainDocumentPart();
+                    mainPart.Document = new Document(new Body());
+                    for (int i = 0; i < wordFiles.Count; i++)
+                    {
+                        byte[] wordFile = wordFiles[i];
+                        using (MemoryStream tempStream = new MemoryStream(wordFile))
+                        using (WordprocessingDocument tempDoc = WordprocessingDocument.Open(tempStream, false))
+                        {
+                            // Copy each image part to the main document
+                            foreach (var imagePart in tempDoc.MainDocumentPart.ImageParts)
+                            {
+                                var newImagePart = mainPart.AddImagePart(imagePart.ContentType);
+                                newImagePart.FeedData(imagePart.GetStream());
+                                string newRelId = mainPart.GetIdOfPart(newImagePart);
+                                // Update references in the body to the new image part ID
+                                foreach (var drawing in tempDoc.MainDocumentPart.Document.Body.Descendants<Drawing>())
+                                {
+                                    var blip = drawing.Descendants<A.Blip>().FirstOrDefault();
+                                    if (blip != null && blip.Embed.HasValue)
+                                    {
+                                        blip.Embed = newRelId;
+                                    }
+                                }
+                            }
+                            // Copy the document body elements
+                            Body tempBody = tempDoc.MainDocumentPart.Document.Body.CloneNode(true) as Body;
+                            foreach (var element in tempBody.Elements())
+                            {
+                                mainPart.Document.Body.AppendChild(element.CloneNode(true));
+                            }
+                            if (i < wordFiles.Count - 1)
+                            {
+                                mainPart.Document.Body.AppendChild(new Paragraph(new Run(new Break() { Type = BreakValues.Page })));
+                            }
+                        }
+                    }
+                    mainPart.Document.Save();
+                }
+                return memStream.ToArray();
+            }
+        }
+        public static async Task<string> GetChartImage(string printUrl, int reportId, string connectKey, string reportSql = null, string dataFilters = "")
+        {
+            var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
+            await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
+            var executablePath = "";
+            foreach (var d in Directory.GetDirectories($"{installPath}\\chrome"))
+            {
+                executablePath = $"{d}\\chrome-win64\\chrome.exe";
+                if (File.Exists(executablePath)) break;
+            }
+            var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = true, ExecutablePath = executablePath });
+            var page = await browser.NewPageAsync();
+            await page.SetRequestInterceptionAsync(true);
+
+            var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
+            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+            var data = GetDataTable(reportSql, connectKey);
+
+            var qry = data.qry;
+            var sqlFields = data.sqlFields;
+            var dt = data.dt;
+            var model = new DotNetReportResultModel
+            {
+                ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dt, sqlFields, false),
+                Warnings = "",
+                ReportSql = qry.sql,
+                ReportDebug = false,
+                Pager = new DotNetReportPagerModel
+                {
+                    CurrentPage = 1,
+                    PageSize = 100000,
+                    TotalRecords = dt.Rows.Count,
+                    TotalPages = 1
+                }
+            };
+
+            var formPosted = false;
+            var formData = new StringBuilder();
+            formData.AppendLine("<html><body>");
+            formData.AppendLine($"<form action=\"{printUrl}\" method=\"post\">");
+            formData.AppendLine($"<input name=\"reportSql\" value=\"{HttpUtility.UrlEncode(reportSql)}\" />");
+            formData.AppendLine($"<input name=\"connectKey\" value=\"{HttpUtility.UrlEncode(connectKey)}\" />");
+            formData.AppendLine($"<input name=\"reportId\" value=\"{reportId}\" />");
+            formData.AppendLine($"<input name=\"pageNumber\" value=\"{1}\" />");
+            formData.AppendLine($"<input name=\"pageSize\" value=\"{99999}\" />");
+            formData.AppendLine($"<input name=\"dataFilters\" value=\"{HttpUtility.UrlEncode(dataFilters)}\" />");
+            formData.AppendLine($"<input name=\"reportData\" value=\"{HttpUtility.UrlEncode(JsonConvert.SerializeObject(model))}\" />");
+            formData.AppendLine($"</form>");
+            formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");
+            formData.AppendLine("</body></html>");
+
+            page.Request += async (sender, e) =>
+            {
+                if (formPosted)
+                {
+                    await e.Request.ContinueAsync();
+                    return;
+                }
+
+                await e.Request.RespondAsync(new ResponseData
+                {
+                    Status = System.Net.HttpStatusCode.OK,
+                    Body = formData.ToString()
+                });
+
+                formPosted = true;
+            };
+            // Navigate to the chart URL
+            await page.GoToAsync(printUrl, new NavigationOptions
+            {
+                WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
+            });
+
+            // Wait for the chart element to be visible
+            await page.WaitForSelectorAsync(".report-inner", new WaitForSelectorOptions { Visible = true });
+            var imageData = await page.EvaluateExpressionAsync<string>("window.chartImageUrl");
+            await page.EvaluateExpressionAsync("delete window.chartImageUrl;");
+            return imageData;
         }
 
         public static async Task<string> GetXmlFile(string reportSql, string connectKey, string reportName, string expandSqls = null, string pivotColumn = null, string pivotFunction = null)

@@ -134,6 +134,108 @@ var manageViewModel = function (options) {
 		self.newAllowedRole(null);
 	}
 
+	self.manageCategories = ko.observable();
+	self.selectedCategory = function (e) {
+		self.manageCategories(e);
+	}
+	self.isCategorySelected = function (category, selectedCategories) {
+		return ko.utils.arrayFirst(selectedCategories(), function (item,index) {
+			return item.CategoryId() === category.Id; // Match Id with CategoryId
+		}) !== null; // Return true if a match is found
+	};
+	self.Categories = ko.observableArray([]); // Use observableArray to hold an array of objects.
+	self.newCategoryName = ko.observable();
+	self.newCategoryDescription = ko.observable();
+	self.editingCategoryIndex = ko.observable(-1); // Use an index to track which category is being edited
+	self.addCategory = function () {
+		const newName = self.newCategoryName() ? self.newCategoryName().trim() : '';
+		const newDescription = self.newCategoryDescription() ? self.newCategoryDescription().trim() : '';
+		if (!newName || !newDescription) {
+			toastr.error("Category Name and Description cannot be empty.");
+			return;
+		}
+		const isDuplicateName = _.filter(self.Categories(), function (x) { return x.Name === newName; }).length > 0;
+		if (isDuplicateName) {
+			toastr.error("Category Name must be unique.");
+			return;
+		}
+		self.Categories.push({
+			Name: self.newCategoryName(),
+			Description: self.newCategoryDescription(),
+			Id:0
+		});
+		self.newCategoryName(null);
+		self.newCategoryDescription(null);
+	};
+
+	self.removeCategory = function (category) {
+		self.Categories.remove(category);
+	};
+	// Toggle edit mode for a category
+	self.toggleEdit = function (index) {
+		if (self.editingCategoryIndex() === index) {
+			self.editingCategoryIndex(-1); // Stop editing if it's already being edited
+		} else {
+			self.editingCategoryIndex(index); // Set the index to the category being edited
+		}
+	};
+	self.saveCategory = function (index) {
+		const category = self.Categories()[index]; // Get the currently editing category
+		const name = category.Name ? category.Name.trim() : '';
+		const description = category.Description ? category.Description.trim() : '';
+		if (!name || !description) {
+			toastr.error("Category Name and Description cannot be empty.");
+			return;
+		}
+		const isDuplicateName = self.Categories().some((cat, idx) => idx !== index && cat.Name === name);
+		if (isDuplicateName) {
+			toastr.error("Category Name must be unique.");
+			return;
+		}
+		document.getElementById(`cat-name-${category.Id}`).textContent = name
+		document.getElementById(`cat-desc-${category.Id}`).textContent = description
+		self.editingCategoryIndex(-1);
+	};
+	self.saveCategories = function () {
+
+		if (self.editingCategoryIndex() !== -1) {
+			toastr.error("Please finish editing the current category before saving.");
+			return; // Exit the function if editing
+		}
+		ajaxcall({
+			url: options.apiUrl,
+			type: 'POST',
+			data: JSON.stringify({
+				method: options.saveCategoriesUrl,
+				model: JSON.stringify({
+					account: self.keys.AccountApiKey,
+					dataConnect: self.keys.DatabaseApiKey,
+					categories: self.Categories()
+				})
+			})
+		}).done(function (x) {
+			if (x.success) {
+				toastr.success("Saved Categories ");
+			} else {
+				toastr.error("Error saving Categories ");
+			}
+		});
+	};
+	self.LoadCategories = function () {
+		ajaxcall({
+			url: options.apiUrl,
+			type: 'POST',
+			data: JSON.stringify({
+				method: options.getCategoriesUrl,
+				model: JSON.stringify({
+					account: self.keys.AccountApiKey,
+					dataConnect: self.keys.DatabaseApiKey
+				})
+			})
+		}).done(function (result) {
+			self.Categories(result);
+		});
+	}
 	self.newDataConnection = {
 		Name: ko.observable(),
 		ConnectionKey: ko.observable(),

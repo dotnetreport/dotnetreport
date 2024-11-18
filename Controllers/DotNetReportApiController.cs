@@ -366,6 +366,12 @@ namespace ReportBuilder.Web.Controllers
                 }                
 
                 if (string.IsNullOrEmpty(pivotColumn)) sql = DotNetReportHelper.Decrypt(HttpUtility.HtmlDecode(allSqls[0]));
+
+                if (dtPaged.Rows.Count > pageSize)
+                {
+                    dtPaged = dtPaged.AsEnumerable().Skip((pageNumber - 1) * pageSize).Take(pageSize).CopyToDataTable();
+                }
+
                 var model = new DotNetReportResultModel
                 {
                     ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dtPaged, fields),
@@ -790,7 +796,8 @@ namespace ReportBuilder.Web.Controllers
                         {
                             ColumnName = dt.Rows[i].ItemArray[0].ToString(),
                             DisplayName = dt.Rows[i].ItemArray[0].ToString(),
-                            FieldType = DotNetSetupController.ConvertToJetDataType((int)dt.Rows[i]["ProviderType"]).ToString()
+                            FieldType = DotNetSetupController.ConvertToJetDataType((int)dt.Rows[i]["ProviderType"]).ToString(),
+                            AllowedRoles = new List<string>()
                         };
                         columnViewModels.Add(column);
                     }
@@ -800,7 +807,8 @@ namespace ReportBuilder.Web.Controllers
                         SchemaName = dr["ROUTINE_SCHEMA"].ToString(),
                         DisplayName = procName,
                         Parameters = parameterViewModels,
-                        Columns = columnViewModels
+                        Columns = columnViewModels,
+                        AllowedRoles = new List<string>()
                     });
                     count++;
                 }
