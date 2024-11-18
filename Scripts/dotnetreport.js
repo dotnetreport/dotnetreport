@@ -4436,7 +4436,18 @@ var reportViewModel = function (options) {
 				$(curInputs[i]).addClass("is-invalid");
 			}
 		}
-
+		// Check if "Date To" is smaller than "Date From" //currenlty Worked on mm/dd/year format
+		var fromDate = $(".from-date").val(); 
+		var toDate = $(".to-date").val();     
+		if (fromDate && toDate) {
+			var from = new Date(fromDate);
+			var to = new Date(toDate);
+			if (to < from) {
+				isValid = false;
+				toastr.error("The 'To' date cannot be earlier than the 'From' date.");
+				$(".to-date").addClass("is-invalid");
+			}
+		}
 		_.forEach(self.SavedReports(), function (e) {
 			if (e.reportName == self.ReportName() && e.reportId != self.ReportID()) {
 				isValid = false;
