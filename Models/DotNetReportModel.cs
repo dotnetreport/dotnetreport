@@ -135,13 +135,13 @@ namespace ReportBuilder.Web.Models
         public List<ColumnViewModel> Columns { get; set; }
 
         public DataTable dataTable { get; set; }
-        public List<ParameterViewModel> Parameters { get; set; }
-        public List<string> AllowedRoles { get; set; }
+        public List<ParameterViewModel> Parameters { get; set; } = new List<ParameterViewModel>();
+        public List<string> AllowedRoles { get; set; } = new List<string>();
         public bool? DoNotDisplay { get; set; } = false;
 
         public bool CustomTable { get; set; }
         public string CustomTableSql { get; set; }
-        public List<CategoryViewModel> Categories { get; set; }
+        public List<CategoryViewModel> Categories { get; set; } = new List<CategoryViewModel>();
     }
     public class CategoryViewModel
     {

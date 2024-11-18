@@ -183,7 +183,7 @@ namespace ReportBuilder.Web.Controllers
                 wordbyteList.Add(wordreport);
             }
             // Combine all Excel files into one workbook
-            var combinedWord = DotNetReportHelper.GetCombineWordFileAlt(wordbyteList);
+            var combinedWord = DotNetReportHelper.GetCombineWordFile(wordbyteList);
 
             Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode("Dashboard") + ".docx");
             Response.ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
