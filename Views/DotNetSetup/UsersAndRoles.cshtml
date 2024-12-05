@@ -63,9 +63,9 @@
 
                 var options = {
                     model: model,
-                    reportsApiUrl: model.ApiUrl,
+                    reportsApiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")',
                     getUsersAndRoles: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")',
-                    apiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")',
+                    apiUrl: '@Url.Action("CallPostReportApi", "DotNetReportApi")',
                     ExistingUsersUrl: '@Url.Action("ExistingUsersTable", "DotNetUserApi")',
                     ExistingRoleUrl: '@Url.Action("ExistingRoleTable", "DotNetUserApi")',
                     ExistingUserRoleUrl: '@Url.Action("ExistingUserRoleTable", "DotNetUserApi")',
@@ -78,7 +78,7 @@
                     DeleteUserDataUrl: '@Url.Action("DeleteUser", "DotNetUserApi")',
                     DeleteRoleDataUrl: '@Url.Action("DeleteRole", "DotNetUserApi")',
                     DeleteUserRoleDataUrl: '@Url.Action("DeleteUserRole", "DotNetUserApi")',
-                    LoadRolesUrl: '@Url.Action("LoadRolesData","DotNetUserApi")',
+                    LoadRolesUrl: '@Url.Action("LoadRolesData", "DotNetUserApi")',
                     UpdateUserConfigSettingUrl: '@Url.Action("UpdateUserConfigSetting", "DotNetReportApi")',
                     saveAppSettingUrl: '@Url.Action("SaveAppSettings", "DotNetReportApi")',
                     getAppSettingUrl: '@Url.Action("AppSettings", "DotNetReportApi")',
@@ -99,7 +99,7 @@
 @section dboptions {
     <a class="bg-dark list-group-item list-group-item-action" href="/dotnetsetup/" >
         <div class="d-flex w-100 justify-content-start align-items-center">
-            <span class="fa fa-database fa-fw mr-3"></span>
+            <span class="fa fa-database fa-fw me-3"></span>
             <span class="menu-collapsed">DB Connections</span>
         </div>
     </a>
@@ -107,7 +107,7 @@
 
 @section useroptions {
 
-        <a class="bg-dark list-group-item list-group-item-action" href="#useroptions" aria-controls="home" role="tab" data-bs-toggle="tab">
+        <a class="bg-dark list-group-item list-group-item-action active" href="#useroptions" aria-controls="home" role="tab" data-bs-toggle="tab">
         <div class="d-flex w-100 justify-content-start align-items-center">
             <span class="fa fa-gear fa-fw me-3"></span>
             <span class="menu-collapsed">Configuration</span>
@@ -539,6 +539,7 @@
             </div>
 
     </div>
+</div>
 </div>
 
 <div class="modal fade" id="role-access-modal" role="dialog" tabindex="-2">

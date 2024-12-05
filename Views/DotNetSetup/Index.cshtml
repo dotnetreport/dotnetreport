@@ -92,7 +92,7 @@
 }
 
 @section dboptions {
-    <a class="bg-dark list-group-item list-group-item-action" href="#connection" aria-controls="home" role="tab" data-bs-toggle="tab">
+    <a class="bg-dark list-group-item list-group-item-action active" href="#connection" aria-controls="home" role="tab" data-bs-toggle="tab">
         <div class="d-flex w-100 justify-content-start align-items-center">
             <span class="fa fa-database fa-fw me-3"></span>
             <span class="menu-collapsed">DB Connections</span>
@@ -132,7 +132,7 @@
 @section useroptions {
     <a href="/dotnetsetup/usersandroles" class="bg-dark list-group-item list-group-item-action">
         <div class="d-flex w-100 justify-content-start align-items-center">
-            <span class="fa fa-users fa-fw mr-3"></span>
+            <span class="fa fa-users fa-fw me-3"></span>
             <span class="menu-collapsed">Users and Roles</span>
         </div>
     </a>
@@ -146,13 +146,13 @@
     <div class="d-sm-block d-md-none">
         <!-- Nav tabs -->
         <ul class="nav nav-tabs" role="tablist">
-            <li role="presentation" class="nav-item"><a class="nav-link active" href="#tablesfields" aria-controls="home" role="tab" data-bs-toggle="tab" data-bind="click: function() { customTableMode(false); }">Database Tables</a></li>
+            <li role="presentation" class="nav-item"><a class="nav-link" href="#tablesfields" aria-controls="home" role="tab" data-bs-toggle="tab" data-bind="click: function() { customTableMode(false); }">Database Tables</a></li>
             <li role="presentation" class="nav-item"><a class="nav-link" href="#tablesfields" aria-controls="custom" role="tab" data-bs-toggle="tab" data-bind="click: function() { customTableMode(true); }">Custom Tables</a></li>
             <li role="presentation" class="nav-item"><a class="nav-link" href="#relations" aria-controls="profile" role="tab" data-bs-toggle="tab">Relations</a></li>
             <li role="presentation" class="nav-item"><a class="nav-link" href="#procedure" aria-controls="procedure" role="tab" data-bs-toggle="tab">Stored Procs</a></li>
             <li role="presentation" class="nav-item" style="display: none;"><a class="nav-link" href="#functions" aria-controls="functions" role="tab" data-bs-toggle="tab">Custom Functions</a></li>
             <li role="presentation" class="nav-item"><a class="nav-link" href="#manageaccess" aria-controls="manageaccess" role="tab" data-bs-toggle="tab">Manage Reports Access</a></li>
-            <li role="presentation" class="nav-item"><a class="nav-link" href="#connection" aria-controls="home" role="tab" data-bs-toggle="tab">Data Connection</a></li>
+            <li role="presentation" class="nav-item"><a class="nav-link active" href="#connection" aria-controls="home" role="tab" data-bs-toggle="tab">Data Connection</a></li>
         </ul>
     </div>
     <br />
@@ -170,7 +170,7 @@
                     <div class="control-group">
                         <select class="form-control" style="width:25%"  data-bind="options: DataConnections, optionsText: 'DataConnectName', optionsValue: 'DataConnectGuid', value: currentConnectionKey" ></select>
                         <div class="padded-top"></div>
-                        <button class="btn btn-primary btn-sm" data-bind="visible: false" data-bs-toggle="modal" data-bs-target="#connection-setup-modal">Manage DB Connection</button>
+                        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#connection-setup-modal">Manage DB Connection</button>
                         <button class="btn btn-primary btn-sm" data-bind="click: switchConnection, visible: canSwitchConnection">Switch Connection</button>
                         <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#add-connection-modal">Add New Connection</button>
                         <button class="btn btn-primary btn-sm" data-bind="click: exportAll, visible: false">Export Connection</button>
@@ -1269,25 +1269,24 @@
 </div>
 
 
-<div class="modal" id="connection-setup-modal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog">
+<div class="modal fade" id="connection-setup-modal" tabindex="-1" aria-labelledby="connectionSetupLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" data-bind="with: DbConfig">
 
             <div class="modal-header">
-                <h5 class="modal-title" id="myModalLabel">
-                    Database Connection Setup
-                </h5>
-                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
-
+                <h5 class="modal-title" id="connectionSetupLabel">Database Connection Setup</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
+
             <div class="modal-body">
                 <div class="alert alert-warning">
-                    <i class="fa fa-warning"></i> Your Database Connection is stored in your application settings file and is used securely and locally only
+                    <i class="fa fa-warning"></i> Your Database Connection is stored in your application settings file and is used securely and locally only.
                 </div>
-                <div class="form-group row">
-                    <label class="col-md-4 col-sm-4 control-label">Database Type</label>
+
+                <div class="mb-3 row">
+                    <label class="col-md-4 col-sm-4 col-form-label">Database Type</label>
                     <div class="col-md-8 col-sm-8">
-                        <select class="form-control form-control-sm" data-bind="value: DatabaseType" required data-val-required="Database Type is required.">
+                        <select class="form-select form-select-sm" data-bind="value: DatabaseType" required>
                             <option>MS SQL</option>
                             <option>MySQL</option>
                             <option>Postgre Sql</option>
@@ -1296,8 +1295,8 @@
                     </div>
                 </div>
 
-                <div class="form-group row">
-                    <label class="col-md-4 col-sm-4 control-label">Connection Type</label>
+                <div class="mb-3 row">
+                    <label class="col-md-4 col-sm-4 col-form-label">Connection Type</label>
                     <div class="col-md-8 col-sm-8">
                         <div class="form-check">
                             <input class="form-check-input" type="radio" name="connectionType" id="rbConnectionKey" value="Key" data-bind="checked: ConnectionType">
@@ -1310,52 +1309,49 @@
                     </div>
                 </div>
 
-                <div data-bind="if: ConnectionType() ==  'Key'">
-
+                <div data-bind="if: ConnectionType() == 'Key'">
                     <div class="alert alert-info">
                         Please enter the "Key" from your appSettings.json or web.config (for older versions) for the Connection String you would like to use.
                     </div>
-
-                    <div class="form-group row">
-                        <label class="col-md-4 col-sm-4 control-label">Connection Key</label>
+                    <div class="mb-3 row">
+                        <label class="col-md-4 col-sm-4 col-form-label">Connection Key</label>
                         <div class="col-md-8 col-sm-8">
-                            <input class="form-control text-box" required type="text" data-bind="value: ConnectionKey">
+                            <input class="form-control" required type="text" data-bind="value: ConnectionKey">
                             <div class="invalid-feedback">Connection Key is required.</div>
                         </div>
                     </div>
                 </div>
 
-                <div data-bind="if: ConnectionType() ==  'Build'">
-                    <div data-bind="if: DatabaseType() === 'OleDB'" class="form-group row">
-                        <label class="col-md-4 col-sm-4 control-label">Provider Name</label>
+                <div data-bind="if: ConnectionType() == 'Build'">
+                    <div data-bind="if: DatabaseType() === 'OleDB'" class="mb-3 row">
+                        <label class="col-md-4 col-sm-4 col-form-label">Provider Name</label>
                         <div class="col-md-8 col-sm-8">
-                            <input class="form-control text-box" required type="text" data-bind="value: ProviderName">
+                            <input class="form-control" required type="text" data-bind="value: ProviderName">
                             <div class="invalid-feedback">Database Provider is required.</div>
                         </div>
                     </div>
-                    <div class="form-group row">
-                        <label class="col-md-4 col-sm-4 control-label">Database Server</label>
+                    <div class="mb-3 row">
+                        <label class="col-md-4 col-sm-4 col-form-label">Database Server</label>
                         <div class="col-md-8 col-sm-8">
-                            <input class="form-control text-box" required type="text" data-bind="value: DatabaseHost">
+                            <input class="form-control" required type="text" data-bind="value: DatabaseHost">
                             <div class="invalid-feedback">Database Server/Host is required.</div>
                         </div>
                     </div>
-                    <div class="form-group row">
-                        <label class="col-md-4 col-sm-4 control-label">Database Port</label>
+                    <div class="mb-3 row">
+                        <label class="col-md-4 col-sm-4 col-form-label">Database Port</label>
                         <div class="col-md-4 col-sm-4">
-                            <input class="form-control text-box" type="text" data-bind="value: DatabasePort">
+                            <input class="form-control" type="text" data-bind="value: DatabasePort">
                         </div>
                     </div>
-                    <div class="form-group row">
-                        <label class="col-md-4 col-sm-4 control-label">Database Name</label>
+                    <div class="mb-3 row">
+                        <label class="col-md-4 col-sm-4 col-form-label">Database Name</label>
                         <div class="col-md-8 col-sm-8">
-                            <input class="form-control text-box" required type="text" data-bind="value: DatabaseName">
+                            <input class="form-control" required type="text" data-bind="value: DatabaseName">
                             <div class="invalid-feedback">Database Name is required.</div>
                         </div>
                     </div>
-
-                    <div class="form-group row">
-                        <label class="col-md-4 col-sm-4 control-label">Authentication Type</label>
+                    <div class="mb-3 row">
+                        <label class="col-md-4 col-sm-4 col-form-label">Authentication Type</label>
                         <div class="col-md-8 col-sm-8">
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="authenticationType" id="integratedSecurity" value="Integrated" data-bind="checked: AuthenticationType">
@@ -1367,33 +1363,34 @@
                             </div>
                         </div>
                     </div>
-
                     <div data-bind="if: AuthenticationType() == 'Username'">
-                        <div class="form-group row">
-                            <label class="col-md-4 col-sm-4 control-label">User Name</label>
+                        <div class="mb-3 row">
+                            <label class="col-md-4 col-sm-4 col-form-label">User Name</label>
                             <div class="col-md-8 col-sm-8">
-                                <input class="form-control text-box" required type="text" data-bind="value: Username">
+                                <input class="form-control" required type="text" data-bind="value: Username">
                                 <div class="invalid-feedback">Database Username is required.</div>
                             </div>
                         </div>
-                        <div class="form-group row">
-                            <label class="col-md-4 col-sm-4 control-label">Password</label>
+                        <div class="mb-3 row">
+                            <label class="col-md-4 col-sm-4 col-form-label">Password</label>
                             <div class="col-md-8 col-sm-8">
-                                <input class="form-control text-box" required type="password" data-bind="value: Password">
+                                <input class="form-control" required type="password" data-bind="value: Password">
                                 <div class="invalid-feedback">Database Password is required.</div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" data-bind="click: function() { testDbConfig($root.keys.AccountApiKey, $root.keys.DatabaseApiKey); }">Test Connection</button>
                 <button type="button" class="btn btn-primary" data-bind="click: function() { saveDbConfig($root.keys.AccountApiKey, $root.keys.DatabaseApiKey); }">Save Settings</button>
             </div>
         </div>
     </div>
 </div>
+
 <!-- Import Tables/Views Json File Modal -->
 <div class="modal" id="uploadTablesFileModal" tabindex="-1" aria-labelledby="uploadTablesFileModalLabel" aria-hidden="true">
     <div class="modal-dialog">

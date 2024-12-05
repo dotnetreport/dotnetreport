@@ -154,12 +154,6 @@
 
                 @RenderSection("useroptions")
 
-                <a href="#top" data-bs-toggle="sidebar-collapse" class="bg-dark list-group-item list-group-item-action d-flex align-items-center">
-                    <div class="d-flex w-100 justify-content-start align-items-center">
-                        <span id="collapse-icon" class="fa fa-2x me-3"></span>
-                        <span id="collapse-text" class="menu-collapsed">Collapse</span>
-                    </div>
-                </a>
             </div>
         </div><!-- sidebar-container END -->
         <!-- MAIN -->
@@ -177,6 +171,7 @@
     @await Html.PartialAsync("_DotnetReportTemplatesPartial")
     @await Html.PartialAsync("_DotnetReportJsLibrariesPartial")
 
+    @Html.AntiForgeryToken()
     @RenderSection("scripts", required: false)
 
     <script>
