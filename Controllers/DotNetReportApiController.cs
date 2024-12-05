@@ -37,11 +37,17 @@ namespace ReportBuilder.Web.Controllers
                 DataConnectApiToken = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken") // Your Data Connect Api Token from your http://dotnetreport.com Account            };
             };
 
+            var appSettings = DotNetReportHelper.GetAppSettings();
             var userConfig = "";
             var dbConfig = DotNetReportHelper.GetDbConnectionSettings(settings.AccountApiToken, settings.DataConnectApiToken);
             if (dbConfig != null && dbConfig["UserConfig"] != null)
             {
                 userConfig = dbConfig["UserConfig"].ToString();
+            }
+
+            if (!string.IsNullOrEmpty(appSettings.backendApiUrl))
+            {
+                settings.ApiUrl = appSettings.backendApiUrl;
             }
 
             // Populate the values below using your Application Roles/Claims if applicable
@@ -503,7 +509,7 @@ namespace ReportBuilder.Web.Controllers
         [HttpGet]
         public async Task<IActionResult> GetDashboards(bool adminMode = false)
         {
-            var model = await GetDashboardsData(adminMode);
+            var model = await GetDashboardsData(adminMode);          
             return Ok(model);
         }
 
