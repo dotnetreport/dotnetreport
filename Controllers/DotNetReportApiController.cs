@@ -267,11 +267,13 @@ namespace ReportBuilder.Web.Controllers
 
                     var dtPagedRun = new DataTable();
 
-                    totalRecords = databaseConnection.GetTotalRecords(connectionString, sqlCount, sql, qry.parameters);
-
                     if (!string.IsNullOrEmpty(pivotColumn))
                     {
                         sql = sql.Remove(sql.IndexOf("SELECT "), "SELECT ".Length).Insert(sql.IndexOf("SELECT "), "SELECT TOP 1 ");
+                    }
+                    else
+                    {
+                        totalRecords = databaseConnection.GetTotalRecords(connectionString, sqlCount, sql, qry.parameters);
                     }
 
                     dtPagedRun = databaseConnection.ExecuteQuery(connectionString, sql, qry.parameters);
@@ -287,17 +289,7 @@ namespace ReportBuilder.Web.Controllers
                     {
                         foreach (DataColumn c in dtPagedRun.Columns) { sqlFields.Add($"{c.ColumnName} AS {c.ColumnName}"); }
                     }
-                    if (!string.IsNullOrEmpty(pivotColumn) && subtotalMode)
-                    {
-                        var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dtPagedRun, sql, sqlFields, reportData, pivotColumn, pivotFunction, pageNumber, pageSize, sortBy, desc, true);
-                        dtPagedRun = pd.dt;
-                        pivotColumn = null;
-                        var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
-                        fields = fields
-                            .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
-                            .ToList();
-                        fields.AddRange(dtPagedRun.Columns.Cast<DataColumn>().Skip(fields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
-                    }
+                    
                     string[] series = { };
                     if (i == 0)
                     {
@@ -305,9 +297,10 @@ namespace ReportBuilder.Web.Controllers
 
                         if (!string.IsNullOrEmpty(pivotColumn))
                         {
-                            var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dtPagedRun, sql, sqlFields, reportData, pivotColumn, pivotFunction, pageNumber, pageSize, sortBy, desc);
+                            var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dtPagedRun, sql, sqlFields, reportData, pivotColumn, pivotFunction, pageNumber, pageSize, sortBy, desc, subtotalMode);
                             dtPagedRun = pd.dt; 
                             if (!string.IsNullOrEmpty(pd.sql)) sql = pd.sql;
+                            totalRecords =pd.totalRecords;
 
                             //var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dtPagedRun, sqlFields, reportData);
                             //dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn, pivotFunction, reportData);
@@ -379,6 +372,12 @@ namespace ReportBuilder.Web.Controllers
                 }                
 
                 if (string.IsNullOrEmpty(pivotColumn)) sql = DotNetReportHelper.Decrypt(HttpUtility.HtmlDecode(allSqls[0]));
+
+                if (dtPaged.Rows.Count > pageSize)
+                {
+                    dtPaged = dtPaged.AsEnumerable().Skip((pageNumber - 1) * pageSize).Take(pageSize).CopyToDataTable();
+                }
+
                 var model = new DotNetReportResultModel
                 {
                     ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dtPaged, fields),
@@ -803,7 +802,8 @@ namespace ReportBuilder.Web.Controllers
                         {
                             ColumnName = dt.Rows[i].ItemArray[0].ToString(),
                             DisplayName = dt.Rows[i].ItemArray[0].ToString(),
-                            FieldType = DotNetSetupController.ConvertToJetDataType((int)dt.Rows[i]["ProviderType"]).ToString()
+                            FieldType = DotNetSetupController.ConvertToJetDataType((int)dt.Rows[i]["ProviderType"]).ToString(),
+                            AllowedRoles = new List<string>()
                         };
                         columnViewModels.Add(column);
                     }
@@ -813,7 +813,8 @@ namespace ReportBuilder.Web.Controllers
                         SchemaName = dr["ROUTINE_SCHEMA"].ToString(),
                         DisplayName = procName,
                         Parameters = parameterViewModels,
-                        Columns = columnViewModels
+                        Columns = columnViewModels,
+                        AllowedRoles = new List<string>()
                     });
                     count++;
                 }

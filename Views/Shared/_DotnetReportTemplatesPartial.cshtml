@@ -8,9 +8,9 @@
         <!-- /ko -->
         <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
         From
-        <input required class="form-control" data-bind="datepicker: $parent.fmtValue, datepickerOptions: {value: $parent.Value, dateFormat: dateFormat() === 'Custom' ? customDateFormat().replace(/yyyy/g, 'yy') : $root.dateFormatMappings[dateFormat()]}" />
+        <input required class="form-control from-date" data-bind="datepicker: $parent.fmtValue, datepickerOptions: {value: $parent.Value, dateFormat: dateFormat() === 'Custom' ? customDateFormat().replace(/yyyy/g, 'yy') : $root.dateFormatMappings[dateFormat()]}" />
         to
-        <input data-bind="datepicker: $parent.fmtValue2, datepickerOptions: {value: $parent.Value2, dateFormat: dateFormat() === 'Custom' ? customDateFormat().replace(/yyyy/g, 'yy') : $root.dateFormatMappings[dateFormat()]}" class="form-control" required />
+        <input data-bind="datepicker: $parent.fmtValue2, datepickerOptions: {value: $parent.Value2, dateFormat: dateFormat() === 'Custom' ? customDateFormat().replace(/yyyy/g, 'yy') : $root.dateFormatMappings[dateFormat()]}" class="form-control to-date" required />
         <!-- /ko -->
         <!-- ko if: ['range'].indexOf($parent.Operator()) != -1 -->
         <select data-bind="value: $parent.Value" class="form-select" required>
@@ -676,7 +676,7 @@
         <div class="form-check">
             <input class="form-check-input" type="checkbox" data-bind="checked: hasSchedule" id="scheduleReportCheckbox">
             <label class="form-check-label" for="scheduleReportCheckbox">
-                Schedule Report
+                Set Schedule to send by Email
             </label>
         </div>
         <div data-bind="if: hasSchedule">
@@ -742,7 +742,7 @@
                     <div class="col-sm-2">
                         <select class="form-select" data-bind="value: format">
                             <option value="EXCEL">Excel</option>
-                            <option data-bind="visible: $parent.canDrilldown()" value="EXCEL-SUB">Excel (Expanded)</option>
+                            @* <option data-bind="visible: $parent.canDrilldown()" value="EXCEL-SUB">Excel (Expanded)</option> *@
                             <option value="CSV">CSV</option>
                             <option value="PDF">PDF</option>
                             <option value="WORD">Word</option>
@@ -1148,7 +1148,12 @@
                             <select class="form-control" data-bind="select2Value: {dropdownParent: $('#choose-data-card')}, options: Procs, optionsCaption: 'Choose Section...', optionsText: 'DisplayName', value: SelectedProc, visible: useStoredProc"></select>
                             </div>
                             <div data-bind="hidden: useStoredProc">
-                            <select class="form-control" data-bind="select2Value: {dropdownParent: $('#choose-data-card')}, options: Tables, optionsCaption: 'Or Choose Data Section...', optionsText: 'tableName', value: SelectedTable, hidden: useStoredProc"></select>
+                                 <select id="category-tables" class="form-control"  data-bind="foreach: CategorizedTables, value: SelectedTable, select2Value: {dropdownParent: $('#choose-data-card'), placeHolder: 'Choose Data Section...'}, optionsCaption: 'Choose Data Section...'">
+                                     <option value="">Choose Data Section...</option>
+                                     <optgroup data-bind="attr: {label: categoryName}, foreach: tables">
+                                         <option data-bind="text: tableName, value: $data"></option>
+                                     </optgroup>
+                                 </select>
                             </div>
                         </div>
 
@@ -1157,7 +1162,7 @@
                                 Select data to use in the Report
                             </div>
                             <div class="pull-right btn-toolbar">
-
+                                <a href="#" class="btn btn-secondary btn-sm" data-bind="click: function(){SelectedTable('')}, visible: !isFormulaField()">Clear</a>
                                 <a href="#" class="btn btn-secondary btn-sm" data-bind="click: MoveAllFields, visible: !isFormulaField()">Select all</a>
                                 <a href="#" class="btn btn-secondary btn-sm" data-bind="click: RemoveSelectedFields, visible: !isFormulaField()">Remove all</a>
                             </div>
@@ -1630,7 +1635,7 @@
                         <div class="form-group row">
                             <label class="col-sm-2 control-label">Sort By</label>
                             <div class="col-sm-6">
-                                <select class="form-select" data-bind="options: SelectedFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: SortByField, optionsCaption: 'Select field to sort...', allowClear: true"></select>
+                                <select class="form-select" data-bind="options: FilteredFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: SortByField, optionsCaption: 'Select field to sort...', allowClear: true"></select>
                             </div>
                             <div class="col-sm-2">
                                 <button class="btn btn-sm btn-secondary" data-bind="text: !SortDesc() ? '▲ Ascending' : 'Descending ▼', click: function() { SortDesc(!SortDesc()); return false; }"></button>
@@ -1643,7 +1648,7 @@
                             <div class="form-group row">
                                 <label class="col-sm-2 control-label">&nbsp;&nbsp;Then Sort By</label>
                                 <div class="col-sm-4">
-                                    <select class="form-select" required data-bind="options: $parent.SelectedFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: sortByFieldId"></select>
+                                    <select class="form-select" required data-bind="options: $parent.FilteredFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: sortByFieldId"></select>
                                 </div>
                                 <div class="col-sm-2">
                                     <button class="btn btn-sm btn-secondary" data-bind="click: remove">Remove Sort Field</button>
