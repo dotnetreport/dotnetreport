@@ -48,6 +48,10 @@ function ajaxcall(options) {
             setTimeout(function () { $.unblockUI(); }, 1000);
         }
         delete options;
+
+        if (data.IsError && data.Message) {
+            toastr.error(data.Message);
+        }
     }).fail(function (jqxhr, status, error) {
         if ($.unblockUI) {
             $.unblockUI();
