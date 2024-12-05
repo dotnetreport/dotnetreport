@@ -4470,7 +4470,18 @@ var reportViewModel = function (options) {
 				$(curInputs[i]).addClass("is-invalid");
 			}
 		}
-
+		// Check if "Date To" is smaller than "Date From" //currenlty Worked on mm/dd/year format
+		var fromDate = $(".from-date").val(); 
+		var toDate = $(".to-date").val();     
+		if (fromDate && toDate) {
+			var from = new Date(fromDate);
+			var to = new Date(toDate);
+			if (to < from) {
+				isValid = false;
+				toastr.error("The 'To' date cannot be earlier than the 'From' date.");
+				$(".to-date").addClass("is-invalid");
+			}
+		}
 		_.forEach(self.SavedReports(), function (e) {
 			if (e.reportName == self.ReportName() && e.reportId != self.ReportID()) {
 				isValid = false;
@@ -4658,11 +4669,8 @@ var reportViewModel = function (options) {
 		});
 	}
 
-	self.downloadExport = function (url, data, ext) {
-		if ($.blockUI) {
-			$.blockUI({ baseZ: 500 });
-		}
-
+	self.downloadExport = function (url, data, ext,reportName) {
+		
 		ajaxcall({
 			type: 'POST',
 			url: (options.runExportUrl || '/DotNetReport/') + url,
@@ -4671,11 +4679,13 @@ var reportViewModel = function (options) {
 			},
 			contentType: "application/x-www-form-urlencoded; charset=UTF-8",
 			data: data,
+			progressBarMessage: 'Exporting...',
+			useProgressBar: true,
 			success: function (data) {
 				var a = document.createElement('a');
 				var url = window.URL.createObjectURL(data);
 				a.href = url;
-				a.download = self.ReportName() + '.' + ext;
+				a.download = reportName ? reportName + '.' + ext : self.ReportName() + '.' + ext;
 				document.body.append(a);
 				a.click();
 				a.remove();
@@ -4683,12 +4693,14 @@ var reportViewModel = function (options) {
 				if ($.unblockUI) {
 					$.unblockUI();
 				}
+				this.hideProgress();
 			},
 			error: function () {
 				if ($.unblockUI) {
 					$.unblockUI();
 				}
 				toastr.error("Error downloading file");
+				this.hideProgress();
 			}
 		});
 	}
@@ -5653,7 +5665,7 @@ var dashboardViewModel = function (options) {
 		});
 		reports[0]?.downloadExport("DownloadAllPdf", {
 			reportdata: JSON.stringify(allreports)
-		}, 'pdf');
+		}, 'pdf','CombinedReport');
 	}
 
 	self.ExportAllExcelReports = function () {
@@ -5678,7 +5690,7 @@ var dashboardViewModel = function (options) {
 		});
 		reports[0]?.downloadExport("DownloadAllExcel", {
 			reportdata: JSON.stringify(allreports)
-		}, 'xlsx');
+		}, 'xlsx', 'CombinedReport');
 	}
 	self.ExportAllWordReports = function () {
 		const reports = self.reports();
@@ -5702,7 +5714,7 @@ var dashboardViewModel = function (options) {
 		});
 		reports[0]?.downloadExport("DownloadAllWord", {
 			reportdata: JSON.stringify(allreports)
-		}, 'docx');
+		}, 'docx', 'CombinedReport');
 	}
 
 	self.RunReport = function () {

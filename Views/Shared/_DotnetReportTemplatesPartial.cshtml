@@ -8,9 +8,9 @@
         <!-- /ko -->
         <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
         From
-        <input required class="form-control" data-bind="datepicker: $parent.fmtValue, datepickerOptions: {value: $parent.Value, dateFormat: dateFormat() === 'Custom' ? customDateFormat().replace(/yyyy/g, 'yy') : $root.dateFormatMappings[dateFormat()]}" />
+        <input required class="form-control from-date" data-bind="datepicker: $parent.fmtValue, datepickerOptions: {value: $parent.Value, dateFormat: dateFormat() === 'Custom' ? customDateFormat().replace(/yyyy/g, 'yy') : $root.dateFormatMappings[dateFormat()]}" />
         to
-        <input data-bind="datepicker: $parent.fmtValue2, datepickerOptions: {value: $parent.Value2, dateFormat: dateFormat() === 'Custom' ? customDateFormat().replace(/yyyy/g, 'yy') : $root.dateFormatMappings[dateFormat()]}" class="form-control" required />
+        <input data-bind="datepicker: $parent.fmtValue2, datepickerOptions: {value: $parent.Value2, dateFormat: dateFormat() === 'Custom' ? customDateFormat().replace(/yyyy/g, 'yy') : $root.dateFormatMappings[dateFormat()]}" class="form-control to-date" required />
         <!-- /ko -->
         <!-- ko if: ['range'].indexOf($parent.Operator()) != -1 -->
         <select data-bind="value: $parent.Value" class="form-select" required>
@@ -672,7 +672,7 @@
         <div class="form-check">
             <input class="form-check-input" type="checkbox" data-bind="checked: hasSchedule" id="scheduleReportCheckbox">
             <label class="form-check-label" for="scheduleReportCheckbox">
-                Schedule Report
+                Set Schedule to send by Email
             </label>
         </div>
         <div data-bind="if: hasSchedule">

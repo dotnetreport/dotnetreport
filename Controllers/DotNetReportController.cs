@@ -161,8 +161,7 @@ namespace ReportBuilder.Web.Controllers
                 var wordreport = await DotNetReportHelper.GetWordFile(report.reportSql, report.connectKey, HttpUtility.UrlDecode(report.reportName), report.chartData, report.expandAll, HttpUtility.UrlDecode(report.expandSqls), columns, report.includeSubTotal, report.pivot, report.pivotColumn, report.pivotFunction);
                 wordbyteList.Add(wordreport);
             }
-            // Combine all Excel files into one workbook
-            var combinedWord = DotNetReportHelper.GetCombineWordFileAlt(wordbyteList);
+            var combinedWord = DotNetReportHelper.GetCombineWordFile(wordbyteList);
             Response.Headers.Add("content-disposition", "attachment; filename=CombinedReports.docx");
             Response.ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
             return File(combinedWord, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "CombinedReports.docx");
