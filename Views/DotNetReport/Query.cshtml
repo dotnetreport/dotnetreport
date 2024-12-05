@@ -36,18 +36,19 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 linkModal: $("#linkModal"),
                 fieldOptionsModal: $("#fieldOptionsModal"),
                 lookupListUrl: '@Url.Action("GetLookupList", "DotNetReportApi")',
-                apiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")',
+                apiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")' + "?dataConnect=" + selectedDb,
                 runReportApiUrl: '@Url.Action("RunReportApi", "DotNetReportApi")',
                 getUsersAndRolesUrl: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")',
                 reportId: queryParams.reportId || 0,
                 userSettings: data,
                 dataFilters: data.dataFilters,
                 getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
+                printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, this.Request.Url.Scheme)",
                 samePageOnRun: true
             });
 
             var switchVm = {
-                databases: [{ name: 'Northwind', key: '62a126b4-a863-4fd4-8d91-185558b64ea2' }, { name: 'Epedimics', key: 'aa514357-42b9-42fc-8e56-a2d9fe1a1d89' }, { name: 'Charity Database', key: '2dd1cfe7-9e91-4d9f-9bec-3f688499fe37' }, { name: 'Point of Sale', key: '7a6a5694-7b2d-4df7-b15a-00a414b620e3' }],
+                databases: [{ name: 'Northwind', key: '62a126b4-a863-4fd4-8d91-185558b64ea2' }, { name: 'Epedimics', key: 'aa514357-42b9-42fc-8e56-a2d9fe1a1d89' }, { name: 'Secondary Database', key: '2dd1cfe7-9e91-4d9f-9bec-3f688499fe37' }, { name: 'Point of Sale', key: '7a6a5694-7b2d-4df7-b15a-00a414b620e3' }],
                 themes: ['Default', 'Cerulean', 'Cosmo', 'Cyborg', 'Darkly', 'Flatly', 'Journal', 'Lumen', 'Slate', 'Lux', 'Materia', 'Minty', 'Morph', 'Quartz', 'Sandstone', 'Simplex', 'Sketchy', 'Slate', 'Superhero', 'United'],
                 selectedDb: ko.observable(selectedDb),
                 selectedTheme: ko.observable(selectedTheme)
