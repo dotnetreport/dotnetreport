@@ -38,7 +38,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 fieldOptionsModal: $("#fieldOptionsModal"),
                 lookupListUrl: '@Url.Action("GetLookupList", "DotNetReportApi")',
                 apiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")' + "?dataConnect=" + selectedDb,
-                runReportApiUrl: '@Url.Action("RunReportApi", "DotNetReportApi")',
+                runReportApiUrl: '@Url.Action("RunReportApi", "DotNetReportApi")' + "?dataConnect=" + selectedDb,
                 getUsersAndRolesUrl: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")',
                 reportId: queryParams.reportId || 0,
                 userSettings: data,

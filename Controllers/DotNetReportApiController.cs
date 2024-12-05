@@ -139,7 +139,14 @@ namespace ReportBuilder.Web.Controllers
         }
 
         private async Task<JsonResult> ExecuteCallReportApi(string method, string model, DotNetReportSettings settings = null)
-        { 
+        {
+            if (settings == null)
+            {
+                string dataConnect = Request.QueryString["dataConnect"];
+                settings = GetSettings();
+                settings.DataConnectApiToken = dataConnect;
+            }
+
             if (method== "/ReportApi/Ignore")
             {
                 Response.StatusCode = 500;
