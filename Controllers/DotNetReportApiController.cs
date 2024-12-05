@@ -126,7 +126,10 @@ namespace ReportBuilder.Web.Controllers
         [HttpPost]
         public async Task<JsonResult> CallReportApi(ReportApiCallModel data)
         {
-            return await CallReportApi(data.method, data.model);
+            string dataConnect = Request.QueryString["dataConnect"];
+            var settings = GetSettings();
+            settings.DataConnectApiToken = dataConnect;
+            return await ExecuteCallReportApi(data.method, data.model, settings);
         }
          
         [HttpGet]
@@ -451,19 +454,21 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpPost]
-        public async Task<JsonResult> GetDashboards(bool adminMode = false)
+        public async Task<JsonResult> GetDashboards(bool adminMode = false, string dataConnect = "")
         {
-            var model = await GetDashboardsData(adminMode);
+            var model = await GetDashboardsData(adminMode, dataConnect);
             return Json(model, JsonRequestBehavior.AllowGet);
         }
 
 
         [HttpPost]
-        public async Task<JsonResult> LoadSavedDashboard(int? id = null, bool adminMode = false)
+        public async Task<JsonResult> LoadSavedDashboard(int? id = null, bool adminMode = false, string dataConnect = "")
         {
             var settings = GetSettings();
+            if (!string.IsNullOrEmpty(dataConnect)) settings.DataConnectApiToken = dataConnect;
+
             var model = new List<DotNetDasboardReportModel>();
-            var dashboards = (await GetDashboardsData(adminMode));
+            var dashboards = (await GetDashboardsData(adminMode, dataConnect));
             if (!id.HasValue && dashboards.Count > 0)
             {
                 id = dashboards.First().Id;
@@ -492,9 +497,10 @@ namespace ReportBuilder.Web.Controllers
             return Json(model);
         }
 
-        private async Task<List<dynamic>> GetDashboardsData(bool adminMode = false)
+        private async Task<List<dynamic>> GetDashboardsData(bool adminMode = false, string dataConnect = "")
         {
             var settings = GetSettings();
+            if (!string.IsNullOrEmpty(dataConnect)) settings.DataConnectApiToken = dataConnect;
 
             using (var client = new HttpClient())
             {

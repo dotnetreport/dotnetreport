@@ -327,6 +327,9 @@
     <div class="row" style="margin-bottom: 10px;">
         <div class="d-flex justify-content-end align-items-center">
             <div class="bubble-badge d-flex align-items-center flex-wrap">
+                <label class="me-2 mb-0">Switch Database:&nbsp;</label>
+                <select class="form-select form-select-sm" style="width: 150px;" data-bind="options: switchVm.databases, value: switchVm.selectedDb, optionsText: 'name', optionsValue: 'key'"></select>
+                <div style="margin-left: 10px;margin-right: 10px"></div>
                 <label class="me-2 mb-0">Switch Theme:&nbsp;</label>
                 <select class="form-select form-select-sm" style="width: 150px;" data-bind="options: switchVm.themes, value: switchVm.selectedTheme"></select>
                 <div style="margin-left: 10px;margin-right: 10px"></div>

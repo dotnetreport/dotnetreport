@@ -36,11 +36,7 @@
             var dashboards = [];
             var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
             var adminMode = queryParams.adminMode == 'true' ? 'true' : 'false';
-
-
             var selectedDb = localStorage.getItem('dotnetreport-selectedDb') || '62a126b4-a863-4fd4-8d91-185558b64ea2';
-            var apiUrl = '@Url.Action("CallReportApi")' + "?dataConnect=" + selectedDb;
-
             var selectedTheme = localStorage.getItem('dotnetreport-selectedTheme') || 'Default';
             if (selectedTheme != 'Default') {
                 const themeUrl = 'https://cdnjs.cloudflare.com/ajax/libs/bootswatch/5.1.3/' + selectedTheme.toLowerCase() + '/bootstrap.min.css';
@@ -50,7 +46,7 @@
             }
 
 
-            ajaxcall({ url: '@Url.Action("GetDashboards", "DotNetReportApi")' + '?adminMode=' + adminMode }).done(function(dashboardData) {
+            ajaxcall({ url: '@Url.Action("GetDashboards", "DotNetReportApi")' + '?adminMode=' + adminMode + "&dataConnect=" + selectedDb }).done(function(dashboardData) {
                 _.forEach(dashboardData, function(d) {
                     dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles });
                 });
@@ -58,7 +54,7 @@
                 var dashboardId = parseInt(queryParams.id || 0);
                 if (!dashboardId && dashboards.length > 0) { dashboardId = dashboards[0].id; }
 
-                ajaxcall({ url: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")' + '?id=' + dashboardId + '&adminMode=' + adminMode, noBlocking: true }).done(function (reportsData) {
+                ajaxcall({ url: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")' + '?id=' + dashboardId + '&adminMode=' + adminMode + "&dataConnect=" + selectedDb, noBlocking: true }).done(function (reportsData) {
                     _.forEach(reportsData, function (r) {
                         reports.push({ reportSql: r.ReportSql, reportId: r.ReportId, reportFilter: r.ReportFilter, connectKey: r.ConnectKey, x: r.X, y: r.Y, width: r.Width, height: r.Height });
                     });
@@ -69,7 +65,7 @@
                             execReportUrl: "@Url.Action("RunReport", "DotNetReportApi")",
                             reportWizard: $("#filter-panel"),
                             lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
-                            apiUrl: "@Url.Action("CallReportApi", "DotNetReportApi")",
+                            apiUrl: "@Url.Action("CallReportApi", "DotNetReportApi")" + "?dataConnect=" + selectedDb,
                             runReportApiUrl: "@Url.Action("RunReportApi", "DotNetReportApi")",
                             reportMode: "execute",
                             reportWizard: $("#modal-reportbuilder"),
