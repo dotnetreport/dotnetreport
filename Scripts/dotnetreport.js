@@ -2398,7 +2398,7 @@ var reportViewModel = function (options) {
 					Operator: e.Operator(),
 					Value1: e.Operator() == "in" || e.Operator() == "not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' ? "blank" : e.Value()),
 					Value2: e.Value2(),
-					ParentIn: e.ParentIn().join(","),
+					ParentIn: (e.ParentIn() || []).join(","),
 					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
 				} : null;
 
