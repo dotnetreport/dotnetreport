@@ -1132,7 +1132,7 @@
                     </div>
                     <div class="clearfix"></div>
                     <div class="row">
-                        
+
                         <div class="col-md-12" data-bind="disable: isFormulaField, hidden: useStoredProc">
                             <div data-bind="with: textQuery.searchFields">
                                 <select id="search-field" class="form-control" data-bind="select2: {dropdownParent: $('#choose-data-card'), placeholder: 'Search for a Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults, headers: headers }, minimumInputLength: 2, allowClear: true }, value: selectedOption"></select>
@@ -1261,7 +1261,7 @@
                     </div>
                     </div>
                 </div>
-                
+
                 <div>
 
                     <div data-bind="if: isFunctionField" class="custom-field-design">
@@ -1396,7 +1396,7 @@
                                     <div class="col-sm-6 small">
                                         Setup your Formula for calculating this Field
                                     </div>
-                                    <div class="col-sm-6 right-align">
+                                    <div class="col-sm-6 right-align" data-bind="visible: formulaType()=='build'">
                                         <a href="#" class="btn btn-secondary btn-sm" data-bind="click: addFormulaParentheses">Add ( )</a>
                                         <a href="#" class="btn btn-secondary btn-sm" title="Add Today" data-bind="visible: formulaOnlyHasDateFields() || formulaFields().length == 0, click: addFormulaDateToday">Add Today</a>
                                         <a href="#" class="btn btn-secondary btn-sm" title="Add a Constant Value" data-bind="click: addFormulaConstantValue">Add Value</a>
@@ -1419,7 +1419,7 @@
                                 <div class="form-group row">
                                     <label class="col-sm-2 control-label">Data Format</label>
                                     <div class="col-sm-10">
-                                        <select class="form-select form-control-sm" data-bind="value: formulaDataFormat" required>
+                                        <select class="form-select form-select-sm" data-bind="value: formulaDataFormat" required>
                                             <!-- ko ifnot: formulaOnlyHasDateFields -->
                                             <option>String</option>
                                             <option>Integer</option>
@@ -1441,10 +1441,20 @@
                                         <input type="number" class="form-control" data-bind="value: formulaDecimalPlaces" placeholder="Choose Decimal places (leave blank to not use rounding)" title="Choose Decimal places (leave blank to not use rounding)" />
                                     </div>
                                 </div>
+                                  <div class="form-group row">
+                                    <label class="col-sm-2 control-label">Field Builder Type</label>
+                                    <div class="col-sm-10">
+                                        <select class="form-select form-select-sm" data-bind="value: formulaType" required>
+                                            <option value="build">Simple Calculation</option>
+                                            <option value="sql">Advanced Expression</option>
+                                        </select>
+                                    </div>
+                                </div>
 
-                                <div class="form-group row">
+                                <div class="form-group row" data-bind="if: formulaType()=='build'">
                                     <label class="col-sm-2 control-label">Field Formula</label>
                                     <div class="col-sm-10">
+                                        <div class="text-muted small" data-bind="visible: formulaFields().length == 0">Pick fields to build calculation</div>
                                         <div class="d-flex align-items-center flex-wrap" data-bind="foreach: formulaFields">
                                             <h3 class="me-3" data-bind="visible: setupFormula.isParenthesesStart" style="margin-top: 0;">(</h3>
                                             <div data-bind="if: !setupFormula.isParenthesesStart() && !setupFormula.isParenthesesEnd()" class="list-group me-3">
@@ -1475,8 +1485,91 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                <div data-bind="with: customSqlField, visible: formulaType()=='sql'">
+                                  <div class="row">
+                                    <div class="col-md-12">
+
+                                      <div class="mb-3">
+                                        <label for="functionSelect" class="form-label">Select Data Operation:</label>
+                                        <select id="functionSelect" class="form-select" data-bind="select2: select2Options, value: selectedSqlFunction"></select>
+                                      </div>
+
+                                       <div class="mb-3" data-bind="hidden: isConditionalFunction() || selectedSqlFunction() == 'Other'">
+                                        <label class="form-label">Select the Data Field to use:</label>
+                                        <select class="form-select" 
+                                             data-bind="select2: {
+                                                dropdownParent: $('#choose-data-card'),
+                                                placeholder: 'Select Field...',
+                                                ajax: {
+                                                    url: $parent.textQuery.searchFields.url,
+                                                    dataType: 'json',
+                                                    data: $parent.textQuery.searchFields.query,
+                                                    processResults: $parent.textQuery.searchFields.processResults,
+                                                    headers: $parent.textQuery.searchFields.headers
+                                                },
+                                                minimumInputLength: 2,
+                                                allowClear: true
+                                            }, select2Text: selectedField"></select>
+                                      </div>
+
+                                      <div class="mb-3" data-bind="if: requiresValue">
+                                        <label for="inputValue" class="form-label">Provide the relevant value to use:</label>
+                                        <input type="text" id="inputValue" class="form-control" data-bind="value: inputValue" required />
+                                      </div>
+
+                                      <div class="mb-3" data-bind="visible: selectedSqlFunction() == 'Other'">
+                                        <label for="custom-sql" class="form-label">Custom SQL Expression:</label>
+                                        <p class="text-muted">
+                                              Build your custom SQL Expression below by selecting data fields, adding calculations or using SQL keywords as needed. For string values, remember to enclose them in single quotes ('')
+                                        </p>
+                                        <p id="custom-sql" class="hint-input" contenteditable="true" placeholder="Write your custom SQL"></p>
+                                      </div>
+                                      <div data-bind="visible: isConditionalFunction">
+                                          <p class="text-muted">
+                                              Build your conditional logic below by selecting data fields, adding calculations and defining conditions as needed, and provide corresponding results. For string values, remember to enclose them in single quotes ('')
+                                          </p>
+                                        <div class="input-group mb-3">
+                                            <div class="flex-grow-1">
+                                                <p class="hint-input" id="condition-field" contenteditable="true" placeholder="Field to compare" title="Field to compare"></p>
+                                            </div>
+
+                                            <div class="mx-2" style="width: 120px;">
+                                                <select class="form-select form-select-sm" data-bind="options: availableOperators, value: selectedOperator"></select>
+                                            </div>
+
+                                            <div class="flex-grow-1">
+                                                <p class="hint-input" id="condition-value" contenteditable="true" placeholder="Value to compare" title="Value to compare"></p>
+                                            </div>
+
+                                            <span class="input-group-text" style="max-height: 32px;">THEN</span>
+
+                                            <div class="flex-grow-1">
+                                                <p class="hint-input" id="condition-result" contenteditable="true" placeholder="Condition Result" title="Condition Result"></p>
+                                            </div>
+                                        </div>
+
+                                        <button class="btn btn-outline-primary" data-bind="click: addCondition">Add Condition</button>
+                                        <ul class="list-group mt-3" data-bind="foreach: conditions">
+                                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                <span data-bind="text: conditionDisplay"></span>
+                                                <button class="btn btn-sm btn-danger" data-bind="click: $parent.removeCondition">Remove</button>
+                                            </li>
+                                        </ul>
+
+                                        <div class="input-group mb-3" style="padding-top: 5px;">
+                                            <span class="input-group-text" style="max-height: 32px;">ELSE</span>
+                                            <div class="flex-grow-1">
+                                                <p class="hint-input" id="condition-else" contenteditable="true" placeholder="Default Result" title="Default Result"></p>
+                                            </div>
+                                        </div>
+                                      </div>
+                                      
+                                    </div>
+                                  </div>
+                                </div>
                             </div>
-                        </div>
+                         </div>
                         <div class="clearfix"></div>
                     </div>
                 </div>
@@ -1737,7 +1830,7 @@
                 </div>
 
                 </div>
-            </div>            
+            </div>
         </div>
         <div class="modal-footer">
             <a href="#" class="btn btn-danger" data-bind="click: cancelCreateReport">Cancel editing Report</a>

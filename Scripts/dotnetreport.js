@@ -1886,6 +1886,7 @@ var reportViewModel = function (options) {
 	self.formulaFields = ko.observableArray([]);
 	self.formulaFieldLabel = ko.observable('');
 	self.formulaDataFormat = ko.observable('')
+	self.formulaType = ko.observable('build');
 	self.formulaDecimalPlaces = ko.observable();
 	self.selectedFunction = ko.observable();
 	self.currentFormulaField = ko.observable(null);
@@ -1900,6 +1901,14 @@ var reportViewModel = function (options) {
 			codeEditor = new functionEditor(options);
 		}
 	}
+
+	self.customSqlField = new sqlFieldModel({adminMode: self.adminMode});
+
+	self.customSqlField.isConditionalFunction.subscribe(function (value) {
+		if (value) {
+			self.textQuery.setupHints();
+		}
+	});
 
 	self.formulaOnlyHasDateFields = ko.computed(function () {
 		var allFields = self.formulaFields();
@@ -1981,7 +1990,11 @@ var reportViewModel = function (options) {
 			hasForeignKey: false,
 			fieldFilter: ["=", "<>", ">=", ">", "<", "<="],
 			formulaItems: self.formulaFields(),
-			forceFilterForTable: false
+			forceFilterForTable: false,
+			fieldSettings: {
+				formulaType: self.formulaType(),
+				customSqlField: self.formulaType() == 'sql' ? self.customSqlField.toJSON() : {}
+			}
 		};
 	};
 
@@ -1994,6 +2007,8 @@ var reportViewModel = function (options) {
 		self.formulaFieldLabel('');
 		self.formulaDataFormat('String');
 		self.formulaDecimalPlaces(null);
+		self.customSqlField.clear();
+		self.formulaType('build');
 	};
 
 	self.isFormulaField.subscribe(function () {
@@ -2003,6 +2018,7 @@ var reportViewModel = function (options) {
 		self.isFormulaField(!self.isFormulaField());
 		if (self.currentFormulaField() != null) {
 			self.SelectedFields.push(self.currentFormulaField());
+			self.customSqlField.clear();
 			self.currentFormulaField(null);
 		}
 	};
@@ -2025,7 +2041,6 @@ var reportViewModel = function (options) {
 				toastr.error("Please select a function to use");
 				return;
 			}
-
 
 			self.formulaFields([]);
 			var func = self.selectedFunction();
@@ -2093,6 +2108,7 @@ var reportViewModel = function (options) {
 			self.isFormulaField(true);
 		}
 
+		self.formulaType(field.formulaType);
 		self.formulaFieldLabel(field.fieldName);
 		self.formulaDataFormat(field.fieldFormat());
 		self.formulaDecimalPlaces(field.decimalPlaces());
@@ -2125,15 +2141,28 @@ var reportViewModel = function (options) {
 				});
 			});
 		}
+
+		if (self.formulaType() == 'sql') {
+			self.customSqlField.fromJs(field.customSqlField);
+		}
+
 		self.currentFormulaField(field)
 		self.SelectedFields.remove(field);
 	}
 
 	self.saveFormulaField = function () {
 
-		if (self.formulaFields().length == 0) {
+		if (self.formulaType() != 'sql' && self.formulaFields().length == 0) {
 			toastr.error('Please select some items for the Custom Field');
 			return;
+		}
+
+		if (self.formulaType() == 'sql') {
+			var sql = self.customSqlField.generateSQL();
+			if (!sql) {
+				toastr.error('Please build an expression for the Custom Field');
+				return;
+			}
 		}
 
 		if (!self.validateReport(true)) {
@@ -2570,7 +2599,9 @@ var reportViewModel = function (options) {
 						currencyFormat: x.currencyFormat(),
 						fieldLabel2: x.fieldLabel2(),
 						drillDataFormat: x.drillDataFormat(),
-						functionConfig: x.functionConfig
+						formulaType: x.formulaType,
+						functionConfig: x.functionConfig,
+						customSqlField: x.customSqlField 
 					}),
 					DrillDataFormat: x.drillDataFormat(),
 					FieldAlign: x.fieldAlign(),
@@ -2927,6 +2958,7 @@ var reportViewModel = function (options) {
 				e.jsonColumnName = col.jsonColumnName;
 				e.isJsonColumn = col.fieldType == 'Json';
 				e.functionConfig = col.functionConfig;
+				e.customSqlField = col.customSqlField;
 				e.outerGroup = ko.observable(false);
 				e.colIndex = i;
 				e.pagerIndex = function ($parents) {
@@ -3857,6 +3889,7 @@ var reportViewModel = function (options) {
 		e.isFormulaField = ko.observable(e.isFormulaField);
 		e.functionId = ko.observable(e.functionId);
 		e.functionConfig = e.fieldSettings.functionConfig || {};
+		e.customSqlField = e.fieldSettings.customSqlField || {};
 		e.fieldFormat = ko.observable(e.fieldFormat);
 		e.fieldLabel = ko.observable(e.fieldLabel);
 		e.decimalPlaces = ko.observable(e.decimalPlaces);
@@ -3865,6 +3898,7 @@ var reportViewModel = function (options) {
 		e.customDateFormat = ko.observable(e.fieldSettings.customDateFormat || '');
 		e.fieldLabel2 = ko.observable(e.fieldSettings.fieldLabel2 || '');
 		e.drillDataFormat = ko.observable(e.fieldSettings.drillDataFormat || '');
+		e.formulaType = e.fieldSettings.formulaType || 'build';
 		e.fieldAlign = ko.observable(e.fieldAlign);
 		e.fontColor = ko.observable(e.fontColor);
 		e.backColor = ko.observable(e.backColor);
@@ -4841,6 +4875,215 @@ var reportViewModel = function (options) {
 	};
 
 };
+
+var sqlFieldModel = function (options) {
+	var self = this;
+	options = options || {};
+
+	self.availableFields = ko.observableArray();
+	var availableFunctions = [
+		{
+			text: 'Conditional Functions',
+			children: [
+				{ id: 'IIF', text: 'IIF (Conditional)', description: 'Return a value based on a condition.' },
+				{ id: 'CASE', text: 'CASE (Multiple Conditions)', description: 'Handle multiple conditions with corresponding results.' },
+				{ id: 'COALESCE', text: 'COALESCE (First Non-Null)', description: 'Return the first non-null value from a list.' },
+				{ id: 'NULLIF', text: 'NULLIF (Compare and Return Null)', description: 'Return NULL if two values are equal.' },
+				{ id: 'ISNULL', text: 'ISNULL (Replace Null)', description: 'Replace a NULL value with a specified replacement.' }
+			]
+		},
+		{
+			text: 'String Functions',
+			children: [
+				{ id: 'LEFT', text: 'LEFT (Extract Left)', description: 'Extract a specified number of characters from the left of a string.' },
+				{ id: 'RIGHT', text: 'RIGHT (Extract Right)', description: 'Extract a specified number of characters from the right of a string.' },
+				{ id: 'UPPER', text: 'UPPER (Convert to Uppercase)', description: 'Convert text to uppercase.' },
+				{ id: 'LOWER', text: 'LOWER (Convert to Lowercase)', description: 'Convert text to lowercase.' },
+				{ id: 'TRIM', text: 'TRIM (Remove Spaces)', description: 'Remove leading and trailing spaces from a string.' },
+				{ id: 'SUBSTRING', text: 'SUBSTRING (Extract Substring)', description: 'Extract a substring from a string.' },
+				{ id: 'LENGTH', text: 'LENGTH (String Length)', description: 'Get the length of a string.' },
+				{ id: 'REPLACE', text: 'REPLACE (Replace Substring)', description: 'Replace all occurrences of a substring within a string.' }
+			]
+		},
+		{
+			text: 'Mathematical Functions',
+			children: [
+				{ id: 'ABS', text: 'ABS (Absolute Value)', description: 'Return the absolute (positive) value of a number.' },
+				{ id: 'ROUND', text: 'ROUND (Round Number)', description: 'Round a number to a specified number of decimal places.' },
+				{ id: 'CEIL', text: 'CEIL (Round Up)', description: 'Round a number up to the nearest integer.' },
+				{ id: 'FLOOR', text: 'FLOOR (Round Down)', description: 'Round a number down to the nearest integer.' },
+				{ id: 'MOD', text: 'MOD (Modulo)', description: 'Return the remainder of a division operation.' }
+			]
+		},
+		{
+			text: 'Date Functions',
+			children: [
+				{ id: 'YEAR', text: 'YEAR (Extract Year)', description: 'Extract the year from a date.' },
+				{ id: 'MONTH', text: 'MONTH (Extract Month)', description: 'Extract the month from a date.' },
+				{ id: 'DAY', text: 'DAY (Extract Day)', description: 'Extract the day from a date.' }
+			]
+		}		
+	]
+	
+	self.availableFunctionsGrouped = ko.observableArray(availableFunctions);
+
+	if (options.adminMode) {
+		options.adminMode.subscribe(function (x) {
+			if (x) {
+				self.availableFunctionsGrouped.push({
+					text: 'Other',
+					children: [
+						{ id: 'Other', text: 'Other (Custom SQL)', description: 'Manually enter a custom SQL expression.' }
+					]
+				});
+			} else {
+				self.availableFunctionsGrouped(availableFunctions);
+			}
+		});
+	}
+
+	self.select2Options = {
+		placeholder: 'Select Function...',
+		data: self.availableFunctionsGrouped(),
+		templateResult: function (option) {
+			if (!option.id) {
+				return option.text; 
+			}
+			return $('<div>' + option.text + '<br><span style="font-size: 0.9em;">  ' + option.description + '</span></div>');
+		}
+	};
+
+	self.formatFieldSelection = function (option) {		
+		if (option && option.text) {
+			return `{${option.text}}`;
+		}
+		return option.text;		
+	}
+
+	self.selectedField = ko.observable();
+	self.selectedSqlFunction = ko.observable();
+	self.inputValue = ko.observable();
+	self.customSQL = ko.observable('');
+	self.conditionValue = ko.observable();  // The value to compare against
+	self.conditions = ko.observableArray([]);
+	self.fieldSql = ko.observable();
+	self.availableOperators = ko.observableArray(['=', '!=', '>', '<', '>=', '<=']);
+	self.selectedOperator = ko.observable();
+
+	self.toJSON = function () {
+		return {
+			selectedField: self.selectedField(),
+			selectedSqlFunction: self.selectedSqlFunction(),
+			inputValue: self.inputValue(),
+			fieldSql: self.generateSQL(),
+			customSQL: self.customSQL(),
+			conditions: self.conditions(),
+			elseCase: $('#condition-else').text()
+		};
+	}
+
+	self.fromJs = function (x) {
+		self.selectedField(x.selectedField);
+		self.selectedSqlFunction(x.selectedSqlFunction);
+		self.inputValue(x.inputValue);
+		self.fieldSql(x.fieldSql);
+		self.customSQL(x.customSQL);
+		self.conditions(x.conditions);
+		$('#condition-else').text(x.elseCase);
+	}
+
+	self.clear = function () {
+		self.selectedField(null);
+		self.selectedSqlFunction(null);
+		self.inputValue(null);
+		self.customSQL('');
+		self.conditions([]);
+	}
+
+	self.requiresValue = ko.computed(function () {
+		return ['LEFT', 'RIGHT', 'SUBSTRING'].includes(self.selectedSqlFunction()); 
+	});
+
+	self.isConditionalFunction = ko.computed(function () {
+		return ['CASE', 'IIF', 'COALESCE', 'NULLIF', 'DECODE', 'ISNULL', 'IFNULL'].includes(self.selectedSqlFunction());  
+	});
+
+	self.addCondition = function () {
+		var conditionField = $('#condition-field').text();
+		var conditionValue = $('#condition-value').text();
+		var conditionResult = $('#condition-result').text();
+
+		if (conditionField && conditionValue && conditionResult && self.selectedOperator()) {
+			self.conditions.push({
+				field: conditionField,
+				operator: self.selectedOperator(),
+				value: conditionValue,
+				result: conditionResult,
+				conditionDisplay: `${conditionField} ${self.selectedOperator()} ${conditionValue} THEN ${conditionResult}`
+			});
+			$('#condition-field').text('');
+			$('#condition-value').text('');
+			$('#condition-result').text('');
+			self.selectedOperator('');
+		}
+	};
+
+	self.removeCondition = function (item) {
+		self.conditions.remove(item);
+	};
+
+	self.generateSQL = function () {
+		var field = self.selectedField();
+		var func = self.selectedSqlFunction();
+		var value = self.inputValue();
+		var final = $('#condition-else').text() || 'NULL';
+
+		var sql = '';
+
+		function buildNestedIIF(conditions, index) {
+			if (index >= conditions.length) {
+				return final;
+			}
+
+			var condition = conditions[index];
+			var trueValue = condition.result || 'NULL';
+			var falseValue = buildNestedIIF(conditions, index + 1);  // Recursively handle false case
+
+			return `IIF(${condition.field} ${condition.operator} ${condition.value}, ${trueValue}, ${falseValue})`;
+		}
+
+		if (func === 'IIF') {
+			if (self.conditions().length > 0) {
+				sql = buildNestedIIF(self.conditions(), 0);
+			}
+		} else if (func === 'CASE') {
+			sql = 'CASE ';
+			ko.utils.arrayForEach(self.conditions(), function (condition) {
+				sql += `WHEN ${condition.field} ${condition.operator} ${condition.value} THEN ${condition.result} `;
+			});
+			sql += `ELSE ${final || 'NULL'} END`;  // Use final condition or NULL
+		} else if (func === 'COALESCE') {
+			var coalesceConditions = self.conditions().map(function (c) {
+				return `${c.field} ${c.operator} ${c.value}`;
+			}).join(', ');
+			sql = `COALESCE(${coalesceConditions}, ${final || 'NULL'})`;  // Default to final condition or NULL
+		} else if (func === 'NULLIF') {
+			if (self.conditions().length > 0) {
+				var condition = self.conditions()[0];
+				sql = `NULLIF(${condition.field}, ${condition.value})`;
+			}
+		} else if (['LEFT', 'RIGHT', 'SUBSTRING'].includes(func)) {
+			sql = `${func}({${field}}, ${value})`;
+		} else if (func == 'Other') {
+			sql = $('#custom-sql').text();
+		} else if (func) {
+			sql = `${func}({${field}})`; 
+		}
+
+		self.fieldSql(sql);
+		return sql;
+	};
+}
 
 var functionEditor = function (options) {
 	var editor = CodeMirror.fromTextArea(document.getElementById("function-code"), {
