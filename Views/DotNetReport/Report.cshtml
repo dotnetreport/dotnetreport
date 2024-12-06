@@ -47,7 +47,7 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
                 AllSqlQuries: "@Model.ReportSql",
                 userSettings: data,
                 dataFilters: data.dataFilters,
-                runExportUrl: "/demo/DotNetReport/",
+                runExportUrl: "@Url.Action("/", "DotNetReport")",
                 printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, this.Request.Url.Scheme)",
                 getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")'
             });
