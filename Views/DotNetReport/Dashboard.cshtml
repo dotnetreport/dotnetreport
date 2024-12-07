@@ -136,53 +136,46 @@
 
 <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
 
-<div class="row" style="display: none" data-bind="visible: currentDashboard">
-    <div class="col-4" data-bind="with: currentDashboard">
-        <h2 title="Switch Dashboard">
-            <select class="form-control select-as-text" title="Switch Dashboard" data-bind="select2: {minimumResultsForSearch: Infinity}, options: $parent.dashboards, optionsText: 'name', optionsValue: 'id', value: $parent.selectDashboard"></select>
-        </h2>
-        <p data-bind="text: description"></p>
-    </div>
-    <div class="col-4">
-        &nbsp;
-    </div>
-</div>
-<div class="clearfix"></div>
 
-<div class="row">
-    <div class="col d-flex align-items-center">
-        <button class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" title="Edit Dashboard Settings" data-bind="click: editDashboard">Edit this Dashboard</button>
-        <button class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" title="Add a New Dashboard" data-bind="click: newDashboard">Add a new Dashboard</button>
-        <button class="btn btn-primary btn-sm" title="Refresh to Load All Reports" data-bind="click: RefreshAllReports"><span class="fa fa-refresh"></span> Refresh Dashboard</button>
-        <div class="btn-group">
-            <button type="button" class="btn btn-primary btn-sm me-2 dropdown-toggle" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                <span class="fa fa-download"></span> Export <span class="caret"></span>
-            </button>
-            <ul class="dropdown-menu">
-                <li class="dropdown-item">
-                    <a href="#" data-bind="click: ExportAllPdfReports">
-                        <span class="fa fa-file-pdf-o"></span> Pdf
-                    </a>
-                </li>
-                <li class="dropdown-item">
-                    <a href="#" data-bind="click: ExportAllExcelReports">
-                        <span class="fa fa-file-excel-o"></span> Excel
-                    </a>
-                </li>
-                <li class="dropdown-item">
-                    <a href="#" data-bind="click: ExportAllWordReports">
-                        <span class="fa fa-file-word-o"></span> Word
-                    </a>
-                </li>
-            </ul>
+<div class="d-flex justify-content-between align-items-center bg-light border-bottom p-2 top-menu-toolbar">
+    <div class="row" style="display: none" data-bind="visible: currentDashboard">
+        <div data-bind="with: currentDashboard">
+            <h2 title="Switch Dashboard">
+                <select class="form-control select-as-text" title="Switch Dashboard" data-bind="select2: {minimumResultsForSearch: Infinity}, options: $parent.dashboards, optionsText: 'name', optionsValue: 'id', value: $parent.selectDashboard"></select>
+            </h2>
+            <p data-bind="text: description"></p>
         </div>
     </div>
-    <div class="col-auto d-flex align-items-center">
-        <div class="bubble-badge">
-            Arrange Dashboard
+    <div class="clearfix"></div>
+    <div class="d-flex align-items-center gap-2">
+        <button class="toolbar-button btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard">
+            <i class="fa fa-plus"></i>
+            <span>Add</span>
+        </button>
+        <button class="toolbar-button btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: editDashboard">
+            <i class="fa fa-pencil"></i>
+            <span>Edit</span>
+        </button>
+        <button class="toolbar-button btn btn-light btn-sm" data-bind="click: RefreshAllReports">
+            <i class="fa fa-refresh"></i>
+            <span>Refresh</span>
+        </button>
+        <div class="dropdown">
+            <button class="toolbar-button btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fa fa-download"></i>
+                <span>Export</span>
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#" data-bind="click: ExportAllPdfReports"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
+                <li><a class="dropdown-item" href="#" data-bind="click: ExportAllExcelReports"><i class="fa fa-file-excel-o"></i> Excel</a></li>
+                <li><a class="dropdown-item" href="#" data-bind="click: ExportAllWordReports"><i class="fa fa-file-word-o"></i> Word</a></li>
+            </ul>
+        </div>
+        <div class="toolbar-button btn btn-light btn-sm">
             <div class="form-check form-switch ms-2">
                 <input class="form-check-input" id="arrange-mode" type="checkbox" data-bind="checked: arrangeDashboard">
             </div>
+            <span>Arrange</span>
         </div>
     </div>
 </div>
@@ -252,7 +245,7 @@
                             <div class="list-group-item">
                                 <a role="button" class="d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }" style="text-decoration: none; font-weight: normal;">
                                     <div class="d-flex align-items-center">
-                                        <i class="fa fa-folder me-2" style="color: #ffd800"></i>
+                                        <i class="fa fa-folder me-2 text-secondary"></i>
                                         <span data-bind="text: folder"></span>
                                     </div>
                                     <i class="fa fa-chevron-down"></i>
@@ -348,8 +341,8 @@
                             </a>
                         </li>
 
-                         <li class="dropdown-item">
-                            <a href="#"  data-bind="click: function() { RefreshReport(ReportID()); }">
+                        <li class="dropdown-item">
+                            <a href="#" data-bind="click: function() { RefreshReport(ReportID()); }">
                                 <span class="fa fa-refresh"></span> Refresh
                             </a>
                         </li>
@@ -361,7 +354,7 @@
                     <a class="btn btn-link" data-bind="click: toggleExpand"><span class="fa" data-bind="css: {'fa-expand': !isExpanded(), 'fa-minus': isExpanded() }, visible: ReportType() != 'Single'"></span></a>
                 </div>
             </div>
-            <div class="card-body list-overflow-auto" style="padding-top: 0; margin-top: 0;">               
+            <div class="card-body list-overflow-auto" style="padding-top: 0; margin-top: 0;">
                 <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
                 <div data-bind="template: {name: 'fly-filter-template'}, visible: showFlyFilters"></div>
                 <div data-bind="with: ReportResult" class="small">

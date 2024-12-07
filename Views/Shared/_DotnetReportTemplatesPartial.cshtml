@@ -469,10 +469,10 @@
                 <div data-bind="visible: !isRoot">
                     <div class="pull-left">
                         <div class="btn-group btn-group-toggle btn-group-sm" data-bs-toggle="buttons" role="group">
-                        <label class="btn btn-primary active" style="margin-right: 0px;" >
+                        <label class="btn btn-light active" style="margin-right: 0px;" >
                             <input type="radio" name="andoroption" data-bind="checked: AndOr, checkedValue: 'And'"> And
                         </label>
-                        <label class="btn btn-primary">
+                        <label class="btn btn-light active">
                             <input type="radio" name="andoroption" data-bind="checked: AndOr, checkedValue: 'Or'"> Or
                         </label>
                         </div>
@@ -627,8 +627,8 @@
         <div class="rule-container" >
             <div data-bind="template: {name: 'filter-group'}"></div>
             <div>
-                <button class="btn btn-sm btn-primary" data-bind="click: AddFilterGroup">Add Group</button>
-                <button class="btn btn-sm btn-primary" data-bind="click: AddFilter">Add Filter</button>
+                <button class="btn btn-sm btn-outline-secondary" data-bind="click: AddFilterGroup">Add Group</button>
+                <button class="btn btn-sm btn-outline-secondary" data-bind="click: AddFilter">Add Filter</button>
             </div>
         </div>
     </div>
@@ -1117,17 +1117,17 @@
                 <div class="card card-body" id="choose-data-card">
                     <h5><span class="fa fa-database"></span>&nbsp;Choose Data for Report</h5>
                     <div>
-                        <div class="pull-left" role="group" data-bind="if: ReportID() <= 0">
-                            <label class="btn btn-sm btn-primary active" style="margin-right: 0px;" title="You can change the Data source only when creating a new report, changing this will clear all selections">
+                        <div class="pull-left btn-group btn-group-toggle" role="group" data-bind="if: ReportID() <= 0">
+                            <label class="btn btn-sm btn-light active" style="margin-right: 0px;" title="You can change the Data source only when creating a new report, changing this will clear all selections">
                                 <input type="radio" name="dataoption" id="table" checked data-bind="checked: useStoredProc, checkedValue: false"> Dynamic
                             </label>
-                            <label class="btn btn-sm btn-primary">
+                            <label class="btn btn-sm btn-light active">
                                 <input type="radio" name="dataoption" id="proc" value="1" data-bind="checked: useStoredProc, checkedValue: true"> Predefined
                             </label>
                         </div>
                         <div class="pull-right">
-                            <a href="#" class="btn btn-sm" title="Add Custom Field using Formula" data-bind="hidden: isFunctionField() || useStoredProc(), click: cancelFormulaField, text: isFormulaField()? 'Cancel': 'Custom Field', css: {'btn-primary': !isFormulaField(), 'btn-danger': isFormulaField}"></a>
-                            <a href="#" class="btn btn-sm" title="Add Custom Field using Function" data-bind="hidden: true || isFormulaField() || useStoredProc(), click: function(){designFunctionField()}, text: isFunctionField()? 'Cancel': 'Function Field', css: {'btn-primary': !isFunctionField(), 'btn-danger': isFunctionField}"></a>
+                            <a href="#" class="btn btn-secondary btn-sm" title="Add Custom Field using Formula" data-bind="hidden: isFunctionField() || useStoredProc(), click: cancelFormulaField, text: isFormulaField()? 'Cancel': 'Custom Field', css: {'btn-primary': !isFormulaField(), 'btn-danger': isFormulaField}"></a>
+                            <a href="#" class="btn btn-secondary btn-sm" title="Add Custom Field using Function" data-bind="hidden: true || isFormulaField() || useStoredProc(), click: function(){designFunctionField()}, text: isFunctionField()? 'Cancel': 'Function Field', css: {'btn-primary': !isFunctionField(), 'btn-danger': isFunctionField}"></a>
                         </div>
                     </div>
                     <div class="clearfix"></div>
@@ -1278,7 +1278,6 @@
                                     <div class="col-md-12 pull-right">
                                         <a href="#" class="btn btn-primary btn-sm" title="Save Custom Function Field" data-bind="click: saveFunctionField, visible: isFunctionField">Save</a>
                                         <a href="#" class="btn btn-sm" title="Custom Field using Function" data-bind="click: function(){isFunctionField(!isFunctionField())}, text: isFunctionField()? 'Cancel': 'Function', css: {'btn-primary': !isFunctionField(), 'btn-danger': isFunctionField}"></a>
-
                                     </div>
                                     <div class="col-md-12 padded-div" data-bind="visible: isFunctionField()">
                                         <div class="alert alert-info">
@@ -1379,21 +1378,19 @@
                             </div>
                         </div>
                     </div>
-
+                    
                     <div data-bind="if: isFormulaField" class="custom-field-design">
                         <br />
                         <br />
                         <div class="card">
+                            <div class="card-header">
+                                <b>Build Custom Field</b>
+                            </div>
                             <div class="card-body">
                                 <div class="row">
-                                    <div class="col-md-12 pull-right">
-                                        <a href="#" class="btn btn-primary btn-sm" title="Save Custom Formula Field" data-bind="click: saveFormulaField, visible: isFormulaField">Save</a>
-                                        <a href="#" class="btn btn-sm" title="Custom Field using Formula" data-bind="click: cancelFormulaField, text: isFormulaField()? 'Cancel': 'Customize', css: {'btn-primary': !isFormulaField(), 'btn-danger': isFormulaField}"></a>
-
-                                    </div>
-                                    <div class="col-md-12 padded-div" data-bind="visible: isFormulaField()">
+                                    <div class="col-md-12" data-bind="visible: isFormulaField()">
                                         <div class="alert alert-info">
-                                            You are now creating a Customized Field. Please select the fields you want to use in the calculation, then choose the operations you want to perform, and click "Save" above to add your Custom field.
+                                            You are now creating a Customized Field. Please select the fields you want to use in the calculation, then choose the operations you want to perform, and click "Save" to add your Custom field.
                                         </div>
                                     </div>
                                 </div>
@@ -1487,6 +1484,11 @@
                                                     <!-- /ko -->
                                                 </select>
                                             </div>
+                                        </div>
+                                        <hr />
+                                        <div class="col-md-12">
+                                            <a href="#" class="btn btn-primary btn-sm" title="Save Custom Formula Field" data-bind="click: saveFormulaField, visible: isFormulaField">Save</a>
+                                            <a href="#" class="btn btn-sm" title="Custom Field using Formula" data-bind="click: cancelFormulaField, text: isFormulaField()? 'Cancel': 'Customize', css: {'btn-primary': !isFormulaField(), 'btn-danger': isFormulaField}"></a>
                                         </div>
                                     </div>
                                 </div>
@@ -1730,7 +1732,7 @@
                                 <button class="btn btn-sm btn-secondary" data-bind="text: !SortDesc() ? '▲ Ascending' : 'Descending ▼', click: function() { SortDesc(!SortDesc()); return false; }"></button>
                             </div>
                             <div class="col-sm-2">
-                                <button class="btn btn-sm btn-secondary" data-bind="click: addSortField">Add Sort Field</button>
+                                <button class="btn btn-sm btn-secondary" data-bind="click: addSortField">Add Sort</button>
                             </div>
                         </div>
                         <div data-bind="foreach: SortFields">
@@ -1740,13 +1742,13 @@
                                     <select class="form-select" required data-bind="options: $parent.FilteredFields, optionsText: 'selectedFieldName', optionsValue: 'fieldId', value: sortByFieldId"></select>
                                 </div>
                                 <div class="col-sm-2">
-                                    <button class="btn btn-sm btn-secondary" data-bind="click: remove">Remove Sort Field</button>
+                                    <button class="btn btn-sm btn-secondary" data-bind="click: remove">Remove Sort</button>
                                 </div>
                                 <div class="col-sm-2">
-                                    <button class="btn btn-sm btn-secondary" data-bind="text: !sortDesc() ? '▲ Sort Ascending' : 'Sort Descending ▼', click: function() { sortDesc(!sortDesc()); return false; }"></button>
+                                    <button class="btn btn-sm btn-secondary" data-bind="text: !sortDesc() ? '▲ Ascending' : 'Descending ▼', click: function() { sortDesc(!sortDesc()); return false; }"></button>
                                 </div>
                                 <div class="col-sm-2">
-                                    <button class="btn btn-sm btn-secondary" data-bind="click: $parent.addSortField">Add Sort Field</button>
+                                    <button class="btn btn-sm btn-secondary" data-bind="click: $parent.addSortField">Add Sort</button>
                                 </div>
                             </div>
                         </div>

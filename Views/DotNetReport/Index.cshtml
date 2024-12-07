@@ -75,7 +75,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
 
                             <li class="nav-item active" data-bind="visible: CanSaveReports() || adminMode()">
                                 <a href="#" class="nav-link" data-bind="click: createNewReport" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
-                                    <span class="fa fa-plus"></span> Create a New Report
+                                    <span class="fa fa-plus"></span> New Report
                                 </a>
                             </li>
 
@@ -93,7 +93,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <a class="dropdown-item" href="#" data-bind="click: ManageFolder.deleteFolder">Delete Selected Folder</a>
                                 </div>
                             </li>
-                            <li class="nav-item active" data-bind="visible: adminMode">
+                            <li class="nav-item active" data-bind="visible: adminMode() && SelectedFolder() ==null">
                                 <a href="#" class="nav-link" data-bind="click: function(){ initHeaderDesigner(); }">
                                     <span class="fa fa-arrow-up"></span> Report Header
                                 </a>
@@ -179,7 +179,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         <p>Please choose Folders below to view Reports</p>
                         <ul class="folder-list" data-bind="foreach: Folders">
                             <li data-bind="click: function(){ $parent.SelectedFolder($data); }">
-                                <span class="fa fa-3x fa-folder" style="color: #ffd800"></span>
+                                <span class="fa fa-3x fa-folder text-secondary"></span>
                                 <span class="desc" data-bind="text: FolderName"></span>
                             </li>
                         </ul>
@@ -188,8 +188,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         <div class="clearfix">
                             <p class="pull-left">Please choose a Report from this Folder</p>
                             <div class="pull-right">
-                                <a href="#" data-bind="click: function(){ SelectedFolder(null); searchReports(''); $('#search-report').val([]).trigger('change');}">
-                                    ..back to Folders List
+                                <a href="#" class="btn btn-light" data-bind="click: function(){ SelectedFolder(null); searchReports(''); $('#search-report').val([]).trigger('change');}">
+                                    ..back to Folders
                                 </a>
                             </div>
                         </div>
@@ -258,18 +258,18 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             <div class="d-none d-md-block">
                                                 <br />
                                                 <span data-bind="if: $root.CanSaveReports() || $root.adminMode() ">
-                                                    <button class="btn btn-sm btn-secondary" data-bind="click: openReport, visible: canEdit" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
-                                                        <span class="fa fa-edit" aria-hidden="true"></span>Edit
+                                                    <button class="btn btn-sm btn-outline-secondary" data-bind="click: openReport, visible: canEdit" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
+                                                        <span class="fa fa-edit" aria-hidden="true"></span> Edit
                                                     </button>
-                                                    <button class="btn btn-sm btn-secondary" data-bind="click: copyReport" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
-                                                        <span class="fa fa-copy" aria-hidden="true"></span>Copy
+                                                    <button class="btn btn-sm btn-outline-secondary" data-bind="click: copyReport" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
+                                                        <span class="fa fa-copy" aria-hidden="true"></span> Copy
                                                     </button>
                                                 </span>
                                                 <div class="btn-group">
-                                                    <button type="button" class="btn btn-sm btn-primary" data-bind="click: runReport">
-                                                        <span class="fa fa-gears" aria-hidden="true"></span>Run
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bind="click: runReport">
+                                                        <span class="fa fa-gears" aria-hidden="true"></span> Run
                                                     </button>
-                                                    <button type="button" class="btn btn-sm btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" style="margin-left: -4px;">
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" style="margin-left: -4px;">
                                                         <span class="sr-only"></span>
                                                     </button>
                                                     <div class="dropdown-menu dropdown-menu-right">
@@ -286,27 +286,27 @@ Its Recommended you use it as is, and only change styling as needed to match you
 
                                                 </div>
 
-                                                <button class="btn btn-sm btn-danger" data-bind="click: deleteReport, visible: canDelete">
-                                                    <span class="fa fa-trash" aria-hidden="true"></span>Delete
+                                                <button class="btn btn-sm btn-outline-secondary" data-bind="click: deleteReport, visible: canDelete">
+                                                    <span class="fa fa-trash" aria-hidden="true"></span> Delete
                                                 </button>
                                                 <br />
                                             </div>
 
                                             <div class="d-block d-md-none">
                                                 <span data-bind="if: $root.CanSaveReports() || $root.adminMode()">
-                                                    <button class="btn btn-sm btn-secondary" title="Edit Report" data-bind="click: openReport, visible: canEdit" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
+                                                    <button class="btn btn-sm btn-outline-secondary" title="Edit Report" data-bind="click: openReport, visible: canEdit" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
                                                         <span class="fa fa-edit" aria-hidden="true"></span>
                                                     </button>
-                                                    <button class="btn btn-sm btn-secondary" data-bind="click: copyReport" title="Copy Report" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
+                                                    <button class="btn btn-sm btn-light" data-bind="click: copyReport" title="Copy Report" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
                                                         <span class="fa fa-copy" aria-hidden="true"></span>
                                                     </button>
                                                 </span>
                                                
                                                 <div class="btn-group">
-                                                    <button class="btn btn-sm btn-primary" data-bind="click: runReport" title="Run Report">
+                                                    <button class="btn btn-sm btn-outline-secondary" data-bind="click: runReport" title="Run Report">
                                                         <span class="fa fa-gears" aria-hidden="true"></span>
                                                     </button>
-                                                    <button type="button" class="btn btn-sm btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" style="margin-left: -4px;">
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" style="margin-left: -4px;">
                                                         <span class="sr-only"></span>
                                                     </button>
                                                     <div class="dropdown-menu">
@@ -319,7 +319,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                     </div>
                                                 </div>
 
-                                                <button class="btn btn-sm btn-danger" title="Delete Report" data-bind="click: deleteReport, visible: canDelete">
+                                                <button class="btn btn-sm btn-outline-secondary" title="Delete Report" data-bind="click: deleteReport, visible: canDelete">
                                                     <span class="fa fa-trash" aria-hidden="true"></span>
                                                 </button>
                                             </div>
@@ -412,55 +412,62 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         <span class="navbar-toggler-icon"></span>
                     </button>
                     <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                        <ul class="navbar-nav mr-auto">
-
-                        </ul>
-                        <div class="form-inline my-5 my-md-0">
-                            <button data-bind="click: function() {$root.ReportMode('start');}" class="btn btn-primary">
-                                Back to Reports
+                        <ul class="navbar-nav me-auto"></ul>
+                        <div class="d-flex align-items-center gap-2">
+                            <button class="toolbar-button btn btn-light btn-sm" data-bind="click: function() {$root.ReportMode('start');}">
+                                <i class="fa fa-arrow-left"></i>
+                                <span>Back to Reports</span>
                             </button>
-                            <button class="btn btn-primary" data-bind="visible: ReportMode()=='linked'">
-                                Back to Parent Report
+                            <button class="toolbar-button btn btn-light btn-sm" data-bind="visible: ReportMode()=='linked'">
+                                <i class="fa fa-arrow-circle-left"></i>
+                                <span>Back to Parent Report</span>
                             </button>
-                            <a href="#" class="btn btn-primary" data-bind="visible: $root.CanEdit()" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
-                                Edit Report
+                            <a href="#" class="toolbar-button btn btn-light btn-sm" data-bind="visible: $root.CanEdit()" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
+                                <i class="fa fa-edit"></i>
+                                <span>Edit Report</span>
                             </a>
-                            <button class="btn btn-primary" data-bind="click: RefreshReport">Refresh Report</button>
-                            <button class="btn btn-primary" data-bind="visible: CanSaveReports(), click: SaveWithoutRun">Save Report</button>
-
-                            <div class="btn-group">
-                                <button type="button" class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                    <span class="fa fa-download"></span> Export <span class="caret"></span>
+                            <button class="toolbar-button btn btn-light btn-sm" data-bind="click: RefreshReport, visible: false">
+                                <i class="fa fa-refresh"></i>
+                                <span>Refresh</span>
+                            </button>
+                            <button class="toolbar-button btn btn-light btn-sm" data-bind="visible: CanSaveReports(), click: SaveWithoutRun">
+                                <i class="fa fa-save"></i>
+                                <span>Save Report</span>
+                            </button>
+                            <div class="dropdown">
+                                <button type="button" class="toolbar-button btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fa fa-download"></i>
+                                    <span>Export</span>
                                 </button>
                                 <ul class="dropdown-menu">
                                     <li class="dropdown-item">
                                         <a href="#" data-bind="click: downloadPdf">
-                                            <span class="fa fa-file-pdf-o"></span> Pdf
+                                            <i class="fa fa-file-pdf-o"></i> Pdf
                                         </a>
                                     </li>
                                     <li class="dropdown-item">
                                         <a href="#" data-bind="click: downloadExcel">
-                                            <span class="fa fa-file-excel-o"></span> Excel
+                                            <i class="fa fa-file-excel-o"></i> Excel
                                         </a>
                                     </li>
                                     <li class="dropdown-item" data-bind="visible: canDrilldown">
                                         <a href="#" data-bind="click: downloadExcelWithDrilldown">
-                                            <span class="fa fa-file-excel-o"></span> Excel (Expanded)
+                                            <i class="fa fa-file-excel-o"></i> Excel (Expanded)
                                         </a>
                                     </li>
                                     <li class="dropdown-item">
                                         <a href="#" data-bind="click: downloadCsv">
-                                            <span class="fa fa-file-excel-o"></span> Csv
+                                            <i class="fa fa-file-excel-o"></i> Csv
                                         </a>
                                     </li>
                                     <li class="dropdown-item">
                                         <a href="#" data-bind="click: downloadXml">
-                                            <span class="fa fa-file-code-o"></span> Xml
+                                            <i class="fa fa-file-code-o"></i> Xml
                                         </a>
                                     </li>
                                     <li class="dropdown-item">
                                         <a href="#" data-bind="click: downloadWord">
-                                            <span class="fa fa-file-word-o"></span> Word
+                                            <i class="fa fa-file-word-o"></i> Word
                                         </a>
                                     </li>
                                 </ul>

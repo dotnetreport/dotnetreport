@@ -458,7 +458,7 @@ select.is-invalid ~ span .select2-selection {
 .query-builder .rules-group-container {
     padding: 10px;
     padding-bottom: 6px;
-    border: 1px solid #dcc896;
+    border: 1px solid #ccc;
 }
 
 .query-builder .rules-group-header {
