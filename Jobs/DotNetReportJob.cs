@@ -124,7 +124,7 @@ namespace ReportBuilder.Web.Jobs
                                     response.EnsureSuccessStatusCode();
 
                                     content = await response.Content.ReadAsStringAsync();
-                                    reportToRun = JsonConvert.DeserializeObject<DotNetReportModel>(content);
+                                    reportToRun = JsonConvert.DeserializeObject<DotNetReportScheduleModel>(content);
 
                                     response = await client.GetAsync($"{apiUrl}/ReportApi/LoadReportColumnDetails?account={accountApiKey}&dataConnect={databaseApiKey}&reportId={report.ReportId}&clientId={clientId}");
                                     response.EnsureSuccessStatusCode();
@@ -158,8 +158,7 @@ namespace ReportBuilder.Web.Jobs
                                         {
                                             foreach (var r in reportsToRun)
                                             {
-                                                imageData = await DotNetReportHelper.GetChartImage(JobScheduler.WebAppRootUrl + "/Report/ReportPrint", r.ReportId, r.ConnectKey, r.ReportSql);
-                                                fileData = DotNetReportHelper.GetPdfFileAlt(r.ReportSql, r.ConnectKey, r.ReportName, imageData, r.Columns, r.IncludeSubTotals);
+                                                fileData = DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/Report/ReportPrint.aspx", r.ReportId, r.ReportSql, r.ConnectKey, r.ReportName, schedule.UserId, clientId, JsonConvert.SerializeObject(schedule.DataFilters));
                                                 files.Add(fileData);
                                             }
 
@@ -167,8 +166,7 @@ namespace ReportBuilder.Web.Jobs
                                         }
                                         else
                                         {
-                                            imageData = await DotNetReportHelper.GetChartImage(JobScheduler.WebAppRootUrl + "/Report/ReportPrint", reportToRun.ReportId, reportToRun.ConnectKey, reportToRun.ReportSql);
-                                            fileData = DotNetReportHelper.GetPdfFileAlt(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, imageData, columnDetails, reportToRun.IncludeSubTotals);
+                                            fileData = DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/Report/ReportPrint.aspx", reportToRun.ReportId, reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, schedule.UserId, clientId, JsonConvert.SerializeObject(schedule.DataFilters));
                                         }
                                         fileExt = ".pdf"; 
                                         break;
@@ -183,7 +181,7 @@ namespace ReportBuilder.Web.Jobs
                                         {
                                             foreach (var r in reportsToRun)
                                             {
-                                                imageData = await DotNetReportHelper.GetChartImage(JobScheduler.WebAppRootUrl + "/Report/ReportPrint", r.ReportId, r.ConnectKey, r.ReportSql);
+                                                imageData = await DotNetReportHelper.GetChartImage(JobScheduler.WebAppRootUrl + "/Report/ReportPrint.aspx", r.ReportId, r.ConnectKey, r.ReportSql);
                                                 fileData = await DotNetReportHelper.GetWordFile(r.ReportSql, r.ConnectKey, r.ReportName, columns: r.Columns, includeSubtotal: r.IncludeSubTotals, pivot: r.ReportType == "Pivot", chartData: imageData);
                                                 files.Add(fileData);
                                             }
@@ -193,7 +191,7 @@ namespace ReportBuilder.Web.Jobs
                                         else
                                         {
                                             fileExt = ".docx";
-                                            imageData = await DotNetReportHelper.GetChartImage(JobScheduler.WebAppRootUrl + "/Report/ReportPrint", reportToRun.ReportId, reportToRun.ConnectKey, reportToRun.ReportSql);
+                                            imageData = await DotNetReportHelper.GetChartImage(JobScheduler.WebAppRootUrl + "/Report/ReportPrint.aspx", reportToRun.ReportId, reportToRun.ConnectKey, reportToRun.ReportSql);
                                             fileData = await DotNetReportHelper.GetWordFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: columnDetails, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot", chartData: imageData);
                                         }
                                         break;
