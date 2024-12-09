@@ -5153,7 +5153,7 @@ var dashboardViewModel = function (options) {
 			deleteOnlyUserRoles: self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.deleteOnlyUserRoles),
 			clientIdToUpdate: self.dashboard.manageAccess.clientId(),
 			adminMode: self.adminMode(),
-			schedule: self.dashboard.scheduleBuilder.toJs(),
+			schedule: JSON.stringify(self.dashboard.scheduleBuilder.toJs()),
 		};
 
 		ajaxcall({
