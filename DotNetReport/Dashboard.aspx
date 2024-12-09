@@ -31,7 +31,7 @@
             ajaxcall({ url: svc + 'GetDashboards', data: { adminMode: adminMode } }).done(function (dashboardData) {
                 if (dashboardData.d) { dashboardData = dashboardData.d; }
                 _.forEach(dashboardData, function (d) {
-                    dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles });
+                    dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, schedule: d.Schedule, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles });
                 });
 
                 var dashboardId = parseInt(queryParams.id || 0);
