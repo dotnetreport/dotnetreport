@@ -440,7 +440,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                     new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
                 });
 
-                var response = client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/LoadSavedDashboard"), content).Result;
+                var response = client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/LoadDashboardData"), content).Result;
                 var stringContent = response.Content.ReadAsStringAsync().Result;
 
                 model = JsonConvert.DeserializeObject<List<DotNetDasboardReportModel>>(stringContent);
