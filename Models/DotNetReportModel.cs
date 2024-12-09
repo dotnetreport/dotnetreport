@@ -59,6 +59,11 @@ namespace ReportBuilder.Web.Models
         public string ReportData { get; set; }
     }
 
+    public class DotNetReportScheduleModel : DotNetReportModel
+    {
+        public List<ReportHeaderColumn> Columns { get; set; } = new List<ReportHeaderColumn>();
+    } 
+
     public class DotNetReportPrintModel : DotNetReportModel
     {
         public string ClientId { get; set; }
