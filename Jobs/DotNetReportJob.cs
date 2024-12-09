@@ -193,7 +193,7 @@ namespace ReportBuilder.Web.Jobs
                                         {
                                             foreach (var r in reportsToRun)
                                             {
-                                                imageData = await DotNetReportHelper.GetChartImage(JobScheduler.WebAppRootUrl + "/Report/ReportPrint", r.ReportId, r.ConnectKey, r.ReportSql);
+                                                imageData = await DotNetReportHelper.GetChartImage(JobScheduler.WebAppRootUrl + "/Report/ReportPrint.aspx", r.ReportId, r.ConnectKey, r.ReportSql);
                                                 fileData = await DotNetReportHelper.GetExcelFile(r.ReportSql, r.ConnectKey, r.ReportName, columns: r.Columns, includeSubtotal: r.IncludeSubTotals, pivot: r.ReportType == "Pivot", chartData: imageData);
                                                 files.Add(fileData);
                                             }
@@ -202,7 +202,7 @@ namespace ReportBuilder.Web.Jobs
                                         }
                                         else
                                         {
-                                            imageData = await DotNetReportHelper.GetChartImage(JobScheduler.WebAppRootUrl + "/Report/ReportPrint", reportToRun.ReportId, reportToRun.ConnectKey, reportToRun.ReportSql);
+                                            imageData = await DotNetReportHelper.GetChartImage(JobScheduler.WebAppRootUrl + "/Report/ReportPrint.aspx", reportToRun.ReportId, reportToRun.ConnectKey, reportToRun.ReportSql);
                                             fileData = await DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: reportToRun.Columns, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot", chartData: imageData);
                                             fileExt = ".xlsx";
                                         }
