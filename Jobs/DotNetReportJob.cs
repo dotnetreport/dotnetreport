@@ -105,39 +105,25 @@ namespace ReportBuilder.Web.Jobs
 
                             if (schedule.NextRun.HasValue && DateTime.Now >= schedule.NextRun && (!String.IsNullOrEmpty(schedule.LastRun) || lastRun <= schedule.NextRun))
                             {
+                                var isDashboard = report.DashboardId > 0;
+                                var itemId = isDashboard ? report.DashboardId : report.ReportId;
+
+                                response = await client.GetAsync($"{apiUrl}/ReportApi/RunScheduledItem?account={accountApiKey}&dataConnect={databaseApiKey}&scheduleId={schedule.Id}&id={itemId}&localRunTime={schedule.NextRun.Value:yyyy-MM-ddTHH:mm:ss}&isDashboard={isDashboard}&clientId={clientId}&dataFilters={schedule.DataFilters}");
+                                response.EnsureSuccessStatusCode();
+
+                                content = await response.Content.ReadAsStringAsync();
+
                                 DotNetReportScheduleModel reportToRun = null;
-                                List<ReportHeaderColumn> columnDetails = null;
                                 List<DotNetReportScheduleModel> reportsToRun = null;
 
-                                if (report.ReportId > 0)
+                                if (isDashboard)
                                 {
-                                    // need to run this report
-                                    response = await client.GetAsync($"{apiUrl}/ReportApi/RunScheduledReport?account={accountApiKey}&dataConnect={databaseApiKey}&scheduleId={schedule.Id}&reportId={report.ReportId}&localRunTime={schedule.NextRun.Value.ToShortDateString()} {schedule.NextRun.Value.ToShortTimeString()}&clientId={clientId}&dataFilters={schedule.DataFilters}");
-                                    response.EnsureSuccessStatusCode();
-
-                                    content = await response.Content.ReadAsStringAsync();
-                                    reportToRun = JsonConvert.DeserializeObject<DotNetReportScheduleModel>(content);
-
-                                    response = await client.GetAsync($"{apiUrl}/ReportApi/LoadReportColumnDetails?account={accountApiKey}&dataConnect={databaseApiKey}&reportId={report.ReportId}&clientId={clientId}");
-                                    response.EnsureSuccessStatusCode();
-
-                                    content = await response.Content.ReadAsStringAsync();
-                                    columnDetails = JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(content);
-                                }
-                                else if (report.DashboardId > 0)
-                                {
-                                    response = await client.GetAsync($"{apiUrl}/ReportApi/RunScheduledDashboard?account={accountApiKey}&dataConnect={databaseApiKey}&scheduleId={schedule.Id}&dashboardId={report.DashboardId}&localRunTime={schedule.NextRun.Value.ToShortDateString()} {schedule.NextRun.Value.ToShortTimeString()}&clientId={clientId}&dataFilters={schedule.DataFilters}");
-                                    response.EnsureSuccessStatusCode();
-
-                                    content = await response.Content.ReadAsStringAsync();
                                     reportsToRun = JsonConvert.DeserializeObject<List<DotNetReportScheduleModel>>(content);
                                 }
                                 else
                                 {
-                                    // Invalid report or dashboard, can't run
-                                    continue;
+                                    reportToRun = JsonConvert.DeserializeObject<DotNetReportScheduleModel>(content);
                                 }
-
 
                                 var files = new List<byte[]>();
                                 byte[] fileData;
@@ -166,7 +152,7 @@ namespace ReportBuilder.Web.Jobs
 
                                     case "CSV": 
                                         fileExt = ".csv";
-                                        fileData = await DotNetReportHelper.GetCSVFile(reportToRun.ReportSql, reportToRun.ConnectKey);
+                                        fileData = await DotNetReportHelper.GetCSVFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.Columns, reportToRun.IncludeSubTotals);
                                         break;
 
                                     case "WORD":
@@ -185,12 +171,12 @@ namespace ReportBuilder.Web.Jobs
                                         {
                                             fileExt = ".docx";
                                             imageData = await DotNetReportHelper.GetChartImage(JobScheduler.WebAppRootUrl + "/Report/ReportPrint", reportToRun.ReportId, reportToRun.ConnectKey, reportToRun.ReportSql);
-                                            fileData = await DotNetReportHelper.GetWordFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: columnDetails, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot", chartData: imageData);
+                                            fileData = await DotNetReportHelper.GetWordFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: reportToRun.Columns, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot", chartData: imageData);
                                         }
                                         break;
 
                                     case "EXCEL-SUB":
-                                        fileData = await DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: columnDetails, allExpanded: true, expandSqls: reportToRun.ReportData, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot");
+                                        fileData = await DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: reportToRun.Columns, allExpanded: true, expandSqls: reportToRun.ReportData, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot");
                                         fileExt = ".xlsx";
                                         break;
                                     
@@ -210,7 +196,7 @@ namespace ReportBuilder.Web.Jobs
                                         else
                                         {
                                             imageData = await DotNetReportHelper.GetChartImage(JobScheduler.WebAppRootUrl + "/Report/ReportPrint", reportToRun.ReportId, reportToRun.ConnectKey, reportToRun.ReportSql);
-                                            fileData = await DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: columnDetails, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot", chartData: imageData);
+                                            fileData = await DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: reportToRun.Columns, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot", chartData: imageData);
                                             fileExt = ".xlsx";
                                         }
                                         break;
