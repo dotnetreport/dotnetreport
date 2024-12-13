@@ -1910,6 +1910,14 @@ var reportViewModel = function (options) {
 		}
 	});
 
+	self.customSqlField.selectedSqlFunction.subscribe(function (value) {
+		if (value == 'Other') {
+			setTimeout(function () {
+				self.textQuery.setupHints();
+			}, 500);
+		}
+	});
+
 	self.formulaOnlyHasDateFields = ko.computed(function () {
 		var allFields = self.formulaFields();
 		if (allFields.length <= 0) return false;
@@ -4963,22 +4971,35 @@ var sqlFieldModel = function (options) {
 		return {
 			selectedField: self.selectedField(),
 			selectedSqlFunction: self.selectedSqlFunction(),
-			inputValue: self.inputValue(),
-			fieldSql: self.generateSQL(),
-			customSQL: self.customSQL(),
-			conditions: self.conditions(),
-			elseCase: $('#condition-else').text()
+			inputValue: encodeURIComponent(self.inputValue()),
+			fieldSql: encodeURIComponent(self.generateSQL()),
+			customSQL: encodeURIComponent(self.customSQL()),
+			conditions: (self.conditions() || []).map(c => {
+				c.field = encodeURIComponent(c.field);
+				c.value = encodeURIComponent(c.value);
+				c.result = encodeURIComponent(c.result);
+				c.conditionDisplay = encodeURIComponent(c.conditionDisplay);
+				return c;
+			}),
+			elseCase: encodeURIComponent($('#condition-else').text())
 		};
 	}
 
 	self.fromJs = function (x) {
 		self.selectedField(x.selectedField);
 		self.selectedSqlFunction(x.selectedSqlFunction);
-		self.inputValue(x.inputValue);
-		self.fieldSql(x.fieldSql);
-		self.customSQL(x.customSQL);
-		self.conditions(x.conditions);
-		$('#condition-else').text(x.elseCase);
+		self.inputValue(decodeURIComponent(x.inputValue));
+		self.fieldSql(decodeURIComponent(x.fieldSql));
+		self.customSQL(decodeURIComponent(x.customSQL));
+		self.conditions((x.conditions ||[]).map(c => {
+			c.field = decodeURIComponent(c.field);
+			c.value = decodeURIComponent(c.value);
+			c.result = decodeURIComponent(c.result);
+			c.conditionDisplay = decodeURIComponent(c.conditionDisplay);
+			return c;
+		}));
+		$('#condition-else').text(decodeURIComponent(x.elseCase));
+		$('#custom-sql').text(self.fieldSql());
 	}
 
 	self.clear = function () {
