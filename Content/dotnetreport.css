@@ -1224,3 +1224,54 @@ tfoot tr.sub-total {
         position: static; /* Disable sticky on smaller screens */
     }
 }
+
+.toolbar-button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 80px;
+    font-size: 12px;
+    text-align: center;
+    border: 1px solid #d1d5db;
+    padding: 5px;
+    border-radius: 5px;
+    margin: 0px;
+}
+
+    .toolbar-button i {
+        font-size: 14px;
+    }
+
+    .toolbar-button span {
+        font-size: 10px;
+        margin-top: 3px;
+    }
+
+.top-menu-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 10px;
+}
+
+@media (max-width: 768px) {
+    .toolbar-button {
+        min-width: 50px;
+        margin: 1px;
+    }
+
+        .toolbar-button i {
+            font-size: 12px;
+        }
+
+        .toolbar-button span {
+            font-size: 8px;
+        }
+
+    .top-menu-toolbar {
+        justify-content: center;
+    }
+}
