@@ -221,8 +221,13 @@ namespace ReportBuilder.Web.Controllers
                 currentTables = await GetApiTables(accountKey, dataConnectKey, true);
                 currentTables = currentTables.Where(x => !string.IsNullOrEmpty(x.TableName)).ToList();
             }
-
-            var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey));
+            var connect = DotNetReportHelper.GetConnection(dataConnectKey);
+            var dbConfig = DotNetReportHelper.GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey,true);
+            if (dbConfig == null)
+            {
+                throw new Exception("Data Connection settings not found");
+            }
+            string connString = DotNetReportHelper.AddOleDbToConnectionString(dbConfig["ConnectionString"].ToString());
             using (OleDbConnection conn = new OleDbConnection(connString))
             {
                 // open the connection to the database 

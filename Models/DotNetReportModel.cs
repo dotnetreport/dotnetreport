@@ -479,7 +479,14 @@ namespace ReportBuilder.Web.Models
 
             return connString;
         }
-
+        public static string AddOleDbToConnectionString(string connString)
+        {
+            if (!connString.ToLower().StartsWith("provider"))
+            {
+                connString = "Provider=sqloledb;" + connString;
+            }
+            return connString;
+        }
         public static ConnectViewModel GetConnection(string databaseApiKey = "")
         {
             return new ConnectViewModel
