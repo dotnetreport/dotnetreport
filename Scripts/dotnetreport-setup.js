@@ -161,9 +161,12 @@ var manageViewModel = function (options) {
 	};
 	self.AddAllRelations = function () {
 		var tables = self.Tables.availableTables();
-
+		if (tables.length == 0) {
+			toastr.error("Please select some tables first");
+			return;
+		}
 		function isIdField(fieldName) {
-			return fieldName.endsWith("Id");
+			return fieldName.endsWith("Id") || fieldName.endsWith("ID");
 		}
 
 		bootbox.confirm("Do you want to add suggested joins for fields ending in 'Id'?", function (confirmed) {
@@ -171,64 +174,67 @@ var manageViewModel = function (options) {
 				return;
 			}
 
-			for (var i = 0; i < tables.length; i++) {
-				for (var j = i + 1; j < tables.length; j++) {
-					var table1 = tables[i];
-					var table2 = tables[j];
+			const newJoins = [];
+			const existingJoins = new Set(self.Joins().map((join) =>
+				`${join.TableId()}-${join.JoinedTableId()}-${join.JoinFieldName()}`
+			));
+			const processedTables = new Set([tables[0]?.Id()]); // Initialize with the first table ID
 
-					table1.Columns().forEach(function (col1) {
-						if (!isIdField(col1.ColumnName())) {
-							return;
-						}
-
-						table2.Columns().forEach(function (col2) {
-							if (!isIdField(col2.ColumnName())) {
-								return;
-							}
-
-							if (col1.ColumnName() === col2.ColumnName()) {
-								var existingJoin1 = self.Joins().some(function (join) {
-									return join.TableId() === table1.Id() &&
-										join.JoinedTableId() === table2.Id() &&
-										join.FieldName() === col1.ColumnName() &&
-										join.JoinFieldName() === col2.ColumnName();
-								});
-
-								var existingJoin2 = self.Joins().some(function (join) {
-									return join.TableId() === table2.Id() &&
-										join.JoinedTableId() === table1.Id() &&
-										join.FieldName() === col2.ColumnName() &&
-										join.JoinFieldName() === col1.ColumnName();
-								});
-
-								if (!existingJoin1) {
-									self.Joins.push(self.setupJoin({
-										TableId: table1.Id(),
-										JoinedTableId: table2.Id(),
-										JoinType: self.JoinTypes[0],
-										FieldName: col1.ColumnName(),
-										JoinFieldName: col2.ColumnName()
-									}));
-								}
-
-								if (!existingJoin2) {
-									self.Joins.push(self.setupJoin({
-										TableId: table2.Id(),
-										JoinedTableId: table1.Id(),
-										JoinType: self.JoinTypes[0],
-										FieldName: col2.ColumnName(),
-										JoinFieldName: col1.ColumnName()
-									}));
-								}
-							}
-						});
-					});
+			tables.forEach((table1) => {
+				if (processedTables.has(table1.Id())) {
+					return;
 				}
-			}
+
+				const table1Name = table1.TableName();
+				const table1PrimaryKey = table1.Columns()[0].ColumnName();
+				const table1Columns = table1.Columns().filter((col) => isIdField(col.ColumnName()));
+
+				tables.forEach((table2) => {
+					if (table1.Id() === table2.Id() || processedTables.has(table2.Id())) {
+						return;
+					}
+
+					const table2PrimaryKey = table2.Columns()[0].ColumnName();
+					const table2Columns = table2.Columns().filter((col) => isIdField(col.ColumnName()));
+
+					table2Columns.forEach((c) => {
+						if (col2.ColumnName() === `${table1Name}Id` || col2.ColumnName() === `${table1Name}ID`) {
+							const joinKey1 = `${table1.Id()}-${table2.Id()}-${c.ColumnName()}`;
+
+							if (!existingJoins.has(joinKey1)) {
+								newJoins.push(self.setupJoin({
+									TableId: table1.Id(),
+									JoinedTableId: table2.Id(),
+									JoinType: self.JoinTypes[0],
+									FieldName: table1PrimaryKey,
+									JoinFieldName: c.ColumnName(),
+								}));
+								existingJoins.add(joinKey1);
+							}
+
+							const joinKey2 = `${table2.Id()}-${table1.Id()}-${table1PrimaryKey}`;
+
+							if (!existingJoins.has(joinKey2)) {
+								newJoins.push(self.setupJoin({
+									TableId: table2.Id(),
+									JoinedTableId: table1.Id(),
+									JoinType: self.JoinTypes[0],
+									FieldName: c.ColumnName(),
+									JoinFieldName: table1PrimaryKey,
+								}));
+								existingJoins.add(joinKey2);
+							}
+						}
+					});
+
+				});
+
+				processedTables.add(table1.Id());
+			});
+
+			self.Joins.push.apply(self.Joins, newJoins);
 		});
 	};
-
-
 
 	self.editColumn = ko.observable();
 	self.isStoredProcColumn = ko.observable();
