@@ -300,6 +300,25 @@ ko.bindingHandlers.select2Value = {
     }
 };
 
+ko.bindingHandlers.select2Text = {
+    init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+        var options = allBindings.get('select2') || {};
+
+        $(element).select2(options);
+
+        $(element).on('select2:select', function (event) {
+            var selectedText = event.params.data.text;
+            var value = valueAccessor();
+            value(selectedText);  // Set the observable to the selected text instead of the id
+        });
+    },
+    update: function (element, valueAccessor, allBindings) {
+        var value = ko.unwrap(valueAccessor());
+        $(element).val(value).trigger('change');
+    }
+};
+
+
 ko.bindingHandlers.highlightedText = {
     update: function (element, valueAccessor) {
         var options = valueAccessor();
@@ -581,8 +600,8 @@ var textQuery = function (options) {
             data: {
                 method: "/ReportApi/ParseQuery",
                 model: JSON.stringify({
-                    token: token,
-                    text: text
+                    token: encodeURIComponent(token),
+                    text: encodeURIComponent(text)
                 })
             }
         });
@@ -646,7 +665,7 @@ var textQuery = function (options) {
             return params.term ? {
                 method: "/ReportApi/ParseQuery",
                 model: JSON.stringify({
-                    token: params.term,
+                    token: encodeURIComponent(params.term),
                     text: ''
                 })
             } : null;
@@ -719,17 +738,19 @@ var textQuery = function (options) {
         }
     }
 
-    self.addQueryItem = function (newItem) {
-        if (self.usingFilter() && !self.filterField) {
-            self.filterField = newItem;
-            return;
-        }
+    self.addQueryItem = function (newItem, skipFilter) {
+        if (skipFilter != true) {
 
-        if (self.usingFilter() && self.filterField) {
-            // add to filters
-            return;
-        }
+            if (self.usingFilter() && !self.filterField) {
+                self.filterField = newItem;
+                return;
+            }
 
+            if (self.usingFilter() && self.filterField) {
+                // add to filters
+                return;
+            }
+        }
         // add to columns
         var match = _.find(self.queryItems, { 'value': newItem.value });
         if (!match) {
@@ -751,7 +772,9 @@ var textQuery = function (options) {
         return containsFilter;
     }
 
-    self.setupQuery = function () {
+    self.getTributeAttributes = function (options) {
+        options = options || { concatFilterAndQuery: true, wrapText: false };
+
         var tributeAttributes = {
             allowSpaces: true,
             autocompleteMode: true,
@@ -767,13 +790,18 @@ var textQuery = function (options) {
                 self.ParseQuery(token, "").done(function (results) {
                     if (results.d) results = results.d;
                     var items = _.map(results, function (x) {
-                        return { value: x.fieldId, key: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey, searchKey: x.tableDisplay + ' > ' + x.fieldDisplay };
+                        var item = { value: x.fieldId, key: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey, searchKey: x.tableDisplay + ' > ' + x.fieldDisplay };
+                        if (options.wrapText) {
+                            item.key = `{${item.key}}`;
+                        }
+                        return item;
                     });
-
-                    if (self.usingFilter() && self.filterField != null) {
-                        items = items.concat(self.FilterMethods);
-                    } else {
-                        items = items.concat(self.QueryMethods);
+                    if (options.concatFilterAndQuery) {
+                        if (self.usingFilter() && self.filterField != null) {
+                            items = items.concat(self.FilterMethods);
+                        } else {
+                            items = items.concat(self.QueryMethods);
+                        }
                     }
                     callback(items);
                 });
@@ -795,6 +823,30 @@ var textQuery = function (options) {
             }
         };
 
+        return tributeAttributes;
+    }
+
+    self.setupHints = function () {
+        var tributeAttributes = self.getTributeAttributes({ concatFilterAndQuery: false, wrapText: true });
+        var tribute = new Tribute(tributeAttributes);
+
+        var hintInputs = document.querySelectorAll(".hint-input");
+        hintInputs.forEach(function (inputElement) {
+            tribute.attach(inputElement);
+
+            inputElement.addEventListener("tribute-replaced", function (e) {
+                self.addQueryItem(e.detail.item.original, true);
+            });
+
+            inputElement.addEventListener("menuItemRemoved", function (e) {
+                self.queryItems.remove(e.detail.item.original);
+            });
+        });
+
+    }
+
+    self.setupQuery = function () {       
+        var tributeAttributes = self.getTributeAttributes();
         var tribute = new Tribute(tributeAttributes);
         tribute.attach(document.getElementById("query-input"));
 

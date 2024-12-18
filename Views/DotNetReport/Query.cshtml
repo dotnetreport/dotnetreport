@@ -10,13 +10,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
 
 -->
 
-@section head {
-<link href="~/lib/tributejs/tribute.css" rel="stylesheet" />
-}
-
 @section scripts {
 
-<script src="~/lib/tributejs/tribute.min.js"></script>
 <script type="text/javascript">
     $(document).ready(function() {
         ajaxcall({ url: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")' }).done(function(data) {

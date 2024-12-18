@@ -135,7 +135,7 @@ namespace ReportBuilder.Web.Models
         public int DisplayOrder { get; set; }
         public string AccountIdField { get; set; }
 
-        public List<ColumnViewModel> Columns { get; set; }
+        public List<ColumnViewModel> Columns { get; set; } = new List<ColumnViewModel>();
 
         public DataTable dataTable { get; set; }
         public List<ParameterViewModel> Parameters { get; set; } = new List<ParameterViewModel>();
@@ -161,8 +161,8 @@ namespace ReportBuilder.Web.Models
         public string ParameterValue { get; set; }
         public string ParameterDataTypeString { get; set; }
         public Type ParameterDataTypeCLR { get; set; }
-        public OleDbType ParamterDataTypeOleDbType { get; set; }
-        public int ParamterDataTypeOleDbTypeInteger { get; set; }
+        public OleDbType ParamterDataTypeOleDbType { get; set; } = OleDbType.VarChar;
+        public int ParamterDataTypeOleDbTypeInteger { get; set; } = 0;
         public bool Required { get; set; }
         public bool ForeignKey { get; set; }
         public string ForeignTable { get; set; }
@@ -259,7 +259,7 @@ namespace ReportBuilder.Web.Models
         public string RestrictedDateRange { get; set; }
         public DateTime? RestrictedStartDate { get; set; }
         public DateTime? RestrictedEndDate { get; set; }
-        public List<string> AllowedRoles { get; set; }
+        public List<string> AllowedRoles { get; set; } = new List<string>();
         public bool ForeignParentKey { get; set; }
         public string ForeignParentTable { get; set; }
         public string ForeignParentApplyTo { get; set; }
