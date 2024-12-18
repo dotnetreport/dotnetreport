@@ -145,6 +145,8 @@ namespace ReportBuilder.Web.Models
         public bool CustomTable { get; set; }
         public string CustomTableSql { get; set; }
         public List<CategoryViewModel> Categories { get; set; } = new List<CategoryViewModel>();
+        public bool DynamicColumns { get; set; }
+        public string DynamicColumnTranslation { get; set; }
     }
     public class CategoryViewModel
     {
@@ -3121,7 +3123,7 @@ namespace ReportBuilder.Web.Models
 
     public static class DatabaseConnectionFactory
     {
-        public static IDatabaseConnection GetConnection(string dbtype)
+        public static IDatabaseConnection GetConnection(string dbtype = "")
         {
             IDatabaseConnection databaseConnection;
             switch (dbtype.ToLower())
