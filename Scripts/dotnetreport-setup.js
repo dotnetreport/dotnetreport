@@ -198,7 +198,7 @@ var manageViewModel = function (options) {
 					const table2Columns = table2.Columns().filter((col) => isIdField(col.ColumnName()));
 
 					table2Columns.forEach((c) => {
-						if (col2.ColumnName() === `${table1Name}Id` || col2.ColumnName() === `${table1Name}ID`) {
+						if (c.ColumnName() === `${table1Name}Id` || c.ColumnName() === `${table1Name}ID`) {
 							const joinKey1 = `${table1.Id()}-${table2.Id()}-${c.ColumnName()}`;
 
 							if (!existingJoins.has(joinKey1)) {
