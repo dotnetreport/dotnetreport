@@ -7,26 +7,6 @@
 @section head{
     <link href="~/lib/x-editable-bs4/css/bootstrap-editable.css" rel="stylesheet" />
     <link href="~/lib/tributejs/tribute.css" rel="stylesheet" />
-
-    <style type="text/css">
-        .glyphicon-ok:before {
-            content: "\f00c";
-        }
-
-        .glyphicon-remove:before {
-            content: "\f00d";
-        }
-
-        .glyphicon {
-            display: inline-block;
-            font: normal normal normal 14px/1 FontAwesome;
-            font-size: inherit;
-            text-rendering: auto;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
-    </style>
-
 }
 @section scripts{
     <script>$.fn.popover = { Constructor: {} };</script>
@@ -37,8 +17,7 @@
     <script src="~/lib/knockout-x-editable/knockout.x-editable.min.js"></script>
     <script type="text/javascript">        
         $.fn.editable.defaults.mode = 'inline';
-        $('.helptip').tooltip();
-
+        
         function closeall() {
             $('.panel-collapse.in')
                 .collapse('hide');
@@ -59,6 +38,7 @@
                     deleteTableUrl: '/ReportApi/DeleteTable',
                     getRelationsUrl: '/ReportApi/GetRelations',
                     getDataConnectionsUrl: '/ReportApi/GetDataConnections',
+                    updateDataConnectionUrl: '/ReportApi/UpdateDataConnection',
                     saveRelationsUrl: '/ReportApi/SaveRelationsData',
                     addDataConnectionUrl: '/ReportApi/AddDataConnection',
                     saveProcUrl: '/ReportApi/SaveProcedureData',
@@ -115,9 +95,9 @@
 <div class="fix-content" style="display: none;" data-bind="visible: true">
     <div class="tab-content">
         <div role="tabpanel" class="tab-pane" id="connection">
-            <b>Manage Database Connection</b>
+            <b>Manage Data Connection</b>
             <p>
-                Select and manage Data you would like to allow access to in Dotnet Report to use in building Reports and Dashboards
+                Data Connection groups data schemas (including tables and stored procedures and other configuration), Reports, and Dashboards into a single environment. You can create multiple Data Connections and easily switch between them for separate environment management.
             </p>
             <div class="form-row" data-bind="visible: true">
                 <div class="form-group">
@@ -126,7 +106,8 @@
                         <div class="padded-top"></div>
                         <button class="btn btn-primary btn-sm" data-bind="visible: false" data-bs-toggle="modal" data-bs-target="#connection-setup-modal">Manage DB Connection</button>
                         <button class="btn btn-primary btn-sm" data-bind="click: switchConnection, visible: canSwitchConnection">Switch Connection</button>
-                        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#add-connection-modal">Add New Connection</button>
+                        <button class="btn btn-primary btn-sm" data-bind="click: editDataConnectionModal, hidden: canSwitchConnection" data-bs-toggle="modal" data-bs-target="#add-connection-modal">Edit Connection</button>
+                        <button class="btn btn-primary btn-sm" data-bind="click: newDataConnectionModal" data-bs-toggle="modal" data-bs-target="#add-connection-modal">Add New Connection</button>
                         <button class="btn btn-primary btn-sm" data-bind="click: exportAll, visible: false">Export Connection</button>
                         <button class="btn btn-primary btn-sm" data-bind="click: importStart, visible: false">Import Connection</button>
                     </div>
@@ -642,7 +623,7 @@
                                         <input class="form-control text-box single-line" data-val="true" data-val-required="The DisplayName field is required." id="DisplayName" name="DisplayName" type="text" value="First Name" data-bind="value: DisplayName, attr:{placeholder:'Ex First Name'}" placeholder="Ex First Name">
                                     </div>
                                     <div class="col-md-3 col-sm-3">
-                                        <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="This is a friendly name to display to your users"></span>
+                                        <span data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" title="This is a friendly name to display to your users"></span>
                                     </div>
                                 </div>
                             </div>
@@ -691,7 +672,7 @@
                                         </div>
                                     </div>
                                     <div class="col-md-3 col-sm-3">
-                                        <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="If this is checked, the column will not be displayed on Report Designer, but can still be used on Global Data Filters"></span>
+                                        <span data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" title="If this is checked, the column will not be displayed on Report Designer, but can still be used on Global Data Filters"></span>
                                     </div>
                                 </div>
                             </div>
@@ -703,7 +684,7 @@
                                         <textarea class="form-control text-box single-line" data-val="true" data-val-required="The DisplayName field is required." data-bind="value: JsonStructure, attr:{placeholder:'Please paste in Sample Json with all columns for this JSON data field'}" rows="5" ></textarea>
                                     </div>
                                     <div class="col-md-3 col-sm-3">
-                                        <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="You can paste in a sample Json blob with all the columns you want to use in this field"></span>
+                                        <span data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" title="You can paste in a sample Json blob with all the columns you want to use in this field"></span>
                                     </div>
                                 </div>
                             </div>
@@ -720,7 +701,7 @@
                                         </div>
                                     </div>
                                     <div class="col-md-2 col-sm-2">
-                                        <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="If this is checked, the column will always require the user to pick a filtered value"></span>
+                                        <span data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" title="If this is checked, the column will always require the user to pick a filtered value"></span>
                                     </div>
                                 </div>
                             </div>
@@ -735,7 +716,7 @@
                                         </div>
                                     </div>
                                     <div class="col-md-2 col-sm-2">
-                                        <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="If this is checked, the report will always require the user to pick a filter value if user picks the column in report"></span>
+                                        <span data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" title="If this is checked, the report will always require the user to pick a filter value if user picks the column in report"></span>
                                     </div>
                                 </div>
                             </div>
@@ -756,7 +737,7 @@
                                         </select>
                                     </div>
                                     <div class="col-md-2 col-sm-2">
-                                        <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="If this is selected, user will not be able to pick date range larger than this selection"></span>
+                                        <span data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" title="If this is selected, user will not be able to pick date range larger than this selection"></span>
                                     </div>
                                 </div>
                             </div>
@@ -773,7 +754,7 @@
                                         </div>
                                     </div>
                                     <div class="col-md-3 col-sm-3">
-                                        <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Foreign keys allows friendly selection in Filters using a Dropdown List"></span>
+                                        <span data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" title="Foreign keys allows friendly selection in Filters using a Dropdown List"></span>
                                     </div>
                                 </div>
                             </div>
@@ -811,7 +792,7 @@
                                         <select class="form-control" id="ForeignKeyField" name="ForeignKeyField" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignKeyField, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" placeholder="Ex EmployeeId" style="display: none;"></select>
                                     </div>
                                     <div class="col-md-3 col-sm-3">
-                                        <span data-bind="visible:ForeignKey()" data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Foreign Key field is a Column from the Foreign table which is used as the Key field"></span>
+                                        <span data-bind="visible:ForeignKey()" data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Foreign Key field is a Column from the Foreign table which is used as the Key field"></span>
                                     </div>
                                 </div>
                             </div>
@@ -822,7 +803,7 @@
                                         <select class="form-control" id="ForeignValueField" name="ForeignValueField" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignValueField, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" placeholder="Ex EmployeeName" style="display: none;"></select>
                                     </div>
                                     <div class="col-md-3 col-sm-3">
-                                        <span data-bind="visible:ForeignKey()" data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Foreign Value field is a Column from the Foreign table which is used to display the value to the User in the Report Designer"></span>
+                                        <span data-bind="visible:ForeignKey()" data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Foreign Value field is a Column from the Foreign table which is used to display the value to the User in the Report Designer"></span>
                                     </div>
                                 </div>
                             </div>
@@ -839,7 +820,7 @@
                                             </div>
                                         </div>
                                         <div class="col-md-3 col-sm-3">
-                                            <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Check this option if you would like to use this for Filtering only, and not for SQL Joins"></span>
+                                            <span data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" title="Check this option if you would like to use this for Filtering only, and not for SQL Joins"></span>
                                         </div>
                                     </div>
                                 </div>
@@ -858,7 +839,7 @@
                                             </div>
                                         </div>
                                         <div class="col-md-3 col-sm-3">
-                                            <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Foreign keys parent allows cascading dropdown selection in Filters"></span>
+                                            <span data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" title="Foreign keys parent allows cascading dropdown selection in Filters"></span>
                                         </div>
                                     </div>
                                 </div>
@@ -882,7 +863,7 @@
                                             <select class="form-control" data-bind="options: ForeignJoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignParentKeyField, attr: {required: ForeignParentKey()?'True':null}" placeholder="Ex EmployeeId"></select>
                                         </div>
                                         <div class="col-md-3 col-sm-3">
-                                            <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Parent Key field is a Column from the Parent table which is used as the key in cascading filters"></span>
+                                            <span data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" title="Parent Key field is a Column from the Parent table which is used as the key in cascading filters"></span>
                                         </div>
                                     </div>
                                 </div>
@@ -893,7 +874,7 @@
                                             <select class="form-control" data-bind="options: ForeignJoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignParentValueField, attr: {required: ForeignParentKey()?'True':null}" placeholder="Ex EmployeeName"></select>
                                         </div>
                                         <div class="col-md-3 col-sm-3">
-                                            <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Parent Value field is a Column from the Parent table which is used to display the value to the User in the Report Designer for cascading filters"></span>
+                                            <span data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" title="Parent Value field is a Column from the Parent table which is used to display the value to the User in the Report Designer for cascading filters"></span>
                                         </div>
                                     </div>
                                 </div>
@@ -904,7 +885,7 @@
                                             <select class="form-control" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignParentApplyTo, attr: {required: ForeignParentKey()?'True':null}" placeholder="Ex EmployeeName"></select>
                                         </div>
                                         <div class="col-md-3 col-sm-3">
-                                            <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Foreign Key Filter Value field is a Column from the Foreign table where the selected parent filter will be applied for cascading filters"></span>
+                                            <span data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" title="Foreign Key Filter Value field is a Column from the Foreign table where the selected parent filter will be applied for cascading filters"></span>
                                         </div>
                                     </div>
                                 </div>
@@ -919,7 +900,7 @@
                                             </div>
                                         </div>
                                         <div class="col-md-3 col-sm-3">
-                                            <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Foreign keys parent can be optional or set to required for cascading filters"></span>
+                                            <span data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" title="Foreign keys parent can be optional or set to required for cascading filters"></span>
                                         </div>
                                     </div>
                                 </div>-->
@@ -1027,7 +1008,7 @@
                                 <input class="form-control text-box single-line" data-val="true" data-val-required="The DisplayName field is required." name="DisplayName" type="text" value="First Name" data-bind="value: DisplayName, attr:{placeholder:'Ex First Name'}" placeholder="Ex First Name">
                             </div>
                             <div class="col-md-3 col-sm-3">
-                                <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="This is a friendly name to display to your users"></span>
+                                <span data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" title="This is a friendly name to display to your users"></span>
                             </div>
                         </div>
                     </div>
@@ -1074,7 +1055,7 @@
                                 </div>
                             </div>
                             <div class="col-md-3 col-sm-3">
-                                <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Using lookup table allows friendly selection in report using a Dropdown List"></span>
+                                <span data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" title="Using lookup table allows friendly selection in report using a Dropdown List"></span>
                             </div>
                         </div>
                     </div>
@@ -1097,7 +1078,7 @@
                                 <select class="form-control" name="ForeignKeyField" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignKeyField, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" placeholder="Ex EmployeeId" style="display: none;"></select>
                             </div>
                             <div class="col-md-3 col-sm-3">
-                                <span data-bind="visible:ForeignKey()" data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Foreign Key field is a Column from the Foreign table which is used as the Key field"></span>
+                                <span data-bind="visible:ForeignKey()" data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Foreign Key field is a Column from the Foreign table which is used as the Key field"></span>
                             </div>
                         </div>
                     </div>
@@ -1108,7 +1089,7 @@
                                 <select class="form-control" name="ForeignValueField" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignValueField, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" placeholder="Ex EmployeeName" style="display: none;"></select>
                             </div>
                             <div class="col-md-3 col-sm-3">
-                                <span data-bind="visible:ForeignKey()" data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Lookup Value field is a Column from the Lookup table which is used to display the value to the User in the Report Designer"></span>
+                                <span data-bind="visible:ForeignKey()" data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Lookup Value field is a Column from the Lookup table which is used to display the value to the User in the Report Designer"></span>
                             </div>
                         </div>
                     </div>
@@ -1249,7 +1230,7 @@
     <div class="modal-dialog" role="document">
         <div class="modal-content" data-bind="with: newDataConnection">
             <div class="modal-header">
-                <h4 class="modal-title">Add a new Data Connection</h4>
+                <h4 class="modal-title"><span data-bind="text: $root.editingDataConnection() ? 'Edit' : 'Add a new'"></span> Data Connection</h4>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -1268,10 +1249,21 @@
                         <input class="form-control text-box" data-val="true" data-val-required="Connection Key is required." type="text" data-bind="value: ConnectionKey" placeholder="" id="add-conn-key">
                     </div>
                     <div class="col-md-3 col-sm-3">
-                        <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="This is the Connection Key in your web.config for your SQL Connection String"></span>
+                        <span data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" title="This is the Connection Key in your application settings for your SQL Connection String"></span>
                     </div>
                 </div>
-                <div class="form-group row">
+                <div class="form-group row" data-bind="visible: $root.editingDataConnection">
+                    <div class="check-box col-md-9 col-sm-9">
+                        <label>
+                            <input type="checkbox" data-bind="checked: UseSchema">
+                            Use Schema
+                        </label>
+                    </div>
+                    <div class="col-md-3 col-sm-3">
+                        <span data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" title="Use Schema in SQL when building query"></span>
+                    </div>
+                </div>
+                <div class="form-group row" data-bind="hidden: $root.editingDataConnection">
                     <div class="check-box col-md-12">
                         <label>
                             <input type="checkbox" data-bind="checked: copySchema">
@@ -1286,8 +1278,9 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bind="click: $root.addDataConnection">Create</button>
+            <div class="modal-footer">                
+                <button type="button" class="btn btn-secondary" data-bind="click: $root.updateDataConnection, visible: $root.editingDataConnection()">Update</button>
+                <button type="button" class="btn btn-secondary" data-bind="click: $root.addDataConnection, visible: !$root.editingDataConnection()">Create</button>
             </div>
         </div>
     </div>

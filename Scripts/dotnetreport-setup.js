@@ -372,8 +372,65 @@ var manageViewModel = function (options) {
 	self.newDataConnection = {
 		Name: ko.observable(),
 		ConnectionKey: ko.observable(),
+		UseSchema: ko.observable(),
 		copySchema: ko.observable(false),
-		copyFrom: ko.observable()
+		copyFrom: ko.observable(),
+	}
+	self.editingDataConnection = ko.observable(false);
+
+	self.editDataConnectionModal = function () {
+		self.editingDataConnection(true);
+		var dc = self.DataConnections().find(x => self.currentConnectionKey() == x.DataConnectGuid);
+
+		if (!dc) {
+			toastr.error('Could not find Data Connection Details');
+			return;
+		}
+		self.newDataConnection.Name(dc.DataConnectName);
+		self.newDataConnection.ConnectionKey(dc.ConnectionKey);
+		self.newDataConnection.UseSchema(dc.UseSchema);
+	}
+	self.newDataConnectionModal = function () {
+		self.editingDataConnection(false);
+		self.newDataConnection.Name('');
+		self.newDataConnection.ConnectionKey('');
+		self.newDataConnection.UseSchema(false);
+	}
+
+	self.updateDataConnection = function () {
+		$(".form-group").removeClass("has-error");
+		if (!self.newDataConnection.Name()) {
+			$("#add-conn-name").closest(".form-group").addClass("has-error");
+			return false;
+		}
+		if (!self.newDataConnection.ConnectionKey()) {
+			$("#add-conn-key").closest(".form-group").addClass("has-error");
+			return false;
+		}
+
+		ajaxcall({
+			url: options.apiUrl,
+			type: 'POST',
+			data: JSON.stringify({
+				method: options.updateDataConnectionUrl,
+				model: JSON.stringify({
+					account: self.keys.AccountApiKey,
+					dataConnect: self.currentConnectionKey(),
+					useSchema: self.newDataConnection.UseSchema(),
+					connectionKey: self.newDataConnection.ConnectionKey(),
+					connectName: self.newDataConnection.Name()
+				})
+			})
+		}).done(function (result) {			
+			var dc = self.DataConnections().find(x => self.currentConnectionKey() == x.DataConnectGuid);
+			dc.DataConnectName = self.newDataConnection.Name();
+			dc.ConnectionKey = self.newDataConnection.ConnectionKey();
+			dc.UseSchema = self.newDataConnection.UseSchema();
+			toastr.success("Data Connection updated successfully");
+			$('#add-connection-modal').modal('hide');
+		});
+
+		return true;
 	}
 
 	self.addDataConnection = function () {
@@ -405,7 +462,8 @@ var manageViewModel = function (options) {
 				Id: result.Id,
 				DataConnectName: self.newDataConnection.Name(),
 				ConnectionKey: self.newDataConnection.ConnectionKey(),
-				DataConnectGuid: result.DataConnectGuid
+				DataConnectGuid: result.DataConnectGuid,
+				UseSchema: result.UseSchema || false
 			});
 
 			self.newDataConnection.Name('');
