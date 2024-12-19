@@ -4663,7 +4663,7 @@ var reportViewModel = function (options) {
 					if (!withoutCategoryGroup) {
 						withoutCategoryGroup = {
 							categoryId: 'without_category',
-							categoryName: '--------------------------',
+							categoryName: '   ',
 							tables: []
 						};
 						categorizedTables.push(withoutCategoryGroup);
@@ -4672,8 +4672,8 @@ var reportViewModel = function (options) {
 				}
 			});
 			categorizedTables.sort((a, b) => {
-				if (a.categoryName === '--------------------------') return 1; 
-				if (b.categoryName === '--------------------------') return -1; 
+				if (a.categoryName === '   ') return 1; 
+				if (b.categoryName === '   ') return -1; 
 				return a.categoryName.localeCompare(b.categoryName); 
 			});
 			self.CategorizedTables(categorizedTables);

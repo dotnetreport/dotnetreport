@@ -1144,8 +1144,8 @@
                             <select class="form-control" data-bind="select2Value: {dropdownParent: $('#choose-data-card')}, options: Procs, optionsCaption: 'Choose Section...', optionsText: 'DisplayName', value: SelectedProc, visible: useStoredProc"></select>
                             </div>
                             <div data-bind="hidden: useStoredProc">
-                                 <select id="category-tables" class="form-control"  data-bind="foreach: CategorizedTables, value: SelectedTable, select2Value: {dropdownParent: $('#choose-data-card'), placeHolder: 'Choose Data Section...'}, optionsCaption: 'Choose Data Section...'">
-                                     <option value="">Choose Data Section...</option>
+                                 <select id="category-tables" class="form-control"  data-bind="foreach: CategorizedTables, select2Value: {dropdownParent: $('#choose-data-card'), allowClear: true, placeholder: 'Choose Data Section...', optionsText: 'tableName'}, value: SelectedTable">
+                                     <option value="" data-bind="visible: $index()==0"></option>
                                      <optgroup data-bind="attr: {label: categoryName}, foreach: tables">
                                          <option data-bind="text: tableName, value: $data"></option>
                                      </optgroup>
@@ -1162,6 +1162,9 @@
                                 <a href="#" class="btn btn-secondary btn-sm" data-bind="click: MoveAllFields, visible: !isFormulaField()">Select all</a>
                                 <a href="#" class="btn btn-secondary btn-sm" data-bind="click: RemoveSelectedFields, visible: !isFormulaField()">Remove all</a>
                             </div>
+                        </div>
+                        <div data-bind="with: SelectedTable">
+                            <b><span data-bind="text: tableName"></span></b>
                         </div>
                         <div class="row container-fluid" data-bind="foreach: ChooseFields">
                             <div class="col-md-12 col-sm-12 col-xs-12 list-group">
