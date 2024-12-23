@@ -458,7 +458,7 @@ select.is-invalid ~ span .select2-selection {
 .query-builder .rules-group-container {
     padding: 10px;
     padding-bottom: 6px;
-    border: 1px solid #dcc896;
+    border: 1px solid #ccc;
 }
 
 .query-builder .rules-group-header {
@@ -541,6 +541,21 @@ select.is-invalid ~ span .select2-selection {
 }
 
     .query-input a {
+        background-color: transparent;
+        color: #2ba6cb !important;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+.hint-input {
+    outline: none;
+    border: 1px solid #eee;
+    padding: 3px 5px;
+    border-radius: 2px;
+    cursor: text;
+}
+
+    .hint-input a {
         background-color: transparent;
         color: #2ba6cb !important;
         text-decoration: none;
@@ -1209,3 +1224,59 @@ tfoot tr.sub-total {
         position: static; /* Disable sticky on smaller screens */
     }
 }
+/*
+.toolbar-button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    font-size: 12px;
+    text-align: center;
+    border: 1px solid #d1d5db;
+    padding: 5px;
+    border-radius: 5px;
+    margin: 5px;
+}
+
+    .toolbar-button i {
+        font-size: 14px;
+        color: #6b7280;
+    }
+
+    .toolbar-button span {
+        font-size: 10px;
+        color: #6b7280;
+        margin-top: 3px;
+    }
+
+.top-menu-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 10px;
+}
+
+@media (max-width: 768px) {
+    .toolbar-button {
+        width: 50px;
+        height: 50px;
+        margin: 1px;
+    }
+
+        .toolbar-button i {
+            font-size: 12px;
+        }
+
+        .toolbar-button span {
+            font-size: 8px;
+        }
+
+    .top-menu-toolbar {
+        justify-content: center;
+    }
+}
+*/
