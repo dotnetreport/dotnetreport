@@ -1812,34 +1812,91 @@ var reportViewModel = function (options) {
 	});
 
 	self.loadTableFields = function (table) {
-		return ajaxcall({
-			url: options.apiUrl,
-			data: {
-				method: "/ReportApi/GetFields",
-				model: JSON.stringify({
-					tableId: table.tableId,
-					includeDoNotDisplay: false,
+		if (table.dynamicColumns == true) {
+			return ajaxcall({
+				url: options.getSchemaFromSql,
+				type: 'POST',
+				data: JSON.stringify({
+					value: table.customTableSql,
+					dynamicColumns: true,
+					dataConnectKey: '',
+					accountKey: ''
 				})
-			}
-		}).done(function (fields) {
-			if (fields.d) { fields = fields.d; }
-			if (fields.result) { fields = fields.result; }
-			var flds = _.map(fields, function (e, i) {
-				var match = _.filter(self.SelectedFields(), function (x) { return x.fieldId == e.fieldId && (e.fieldType != 'Json' || !x.jsonColumnName); });
-				if (match.length > 0) {
-					return match[0];
-				}
-				else {
+			}).done(function (_table) {
+				if (_table.d) { _table = _table.d; }
+				if (_table.result) { _table = _table.result; }
+				var flds = _.map(_table.Columns, function (x, i) {
+					var e = {
+						fieldId: x.Id,
+						fieldName: x.DisplayName,
+						fieldAggregate: [],
+						fieldFilter: [],
+						fieldType:  x.FieldType,
+						isPrimary:  x.PrimaryKey,
+						fieldDbName:  x.FieldName,
+						fieldOrder:  x.DisplayOrder,
+						hasForeignKey:  x.ForeignKey,
+						foreignJoin:  x.ForeignJoin,
+						foreignKey:  x.ForeignKeyField,
+						foreignValue:  x.ForeignValueField,
+						foreignTable:  x.ForeignTable,
+						doNotDisplay:  x.DoNotDisplay,
+						forceFilter:  x.ForceFilter,
+						forceFilterForTable:  x.ForceFilterForTable,
+						restrictedDateRange:  x.RestrictedDateRange,
+						restrictedStartDate:  x.RestrictedStartDate,
+						restrictedEndDate:  x.RestrictedEndDate,
+
+						hasForeignParentKey:  x.ForeignParentKey,
+						foreignParentApplyTo:  x.ForeignParentApplyTo,
+						foreignParentKeyField:  x.ForeignParentKeyField,
+						foreignParentValueField:  x.ForeignParentValueField,
+						foreignParentTable:  x.ForeignParentTable,
+						foreignParentRequired:  x.ForeignParentRequired,
+						jsonStructure:  x.FieldType == "Json" ? x.JsonStructure : "",
+						foreignFilterOnly:  x.ForeignFilterOnly,
+						dynamicTableId: table.tableId,
+						columnRoles: []
+					};
+
 					e.tableName = table.tableName;
 					e.tableId = table.tableId;
 					return self.setupField(e);
-				}
+				});
+
+				self.ChooseFields(flds);
+				self.selectedTableFields = flds;
 			});
+		}
+		else { 
+			return ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/GetFields",
+					model: JSON.stringify({
+						tableId: table.tableId,
+						includeDoNotDisplay: false,
+					})
+				}
+			}).done(function (fields) {
+				if (fields.d) { fields = fields.d; }
+				if (fields.result) { fields = fields.result; }
+				var flds = _.map(fields, function (e, i) {
+					var match = _.filter(self.SelectedFields(), function (x) { return x.fieldId == e.fieldId && (e.fieldType != 'Json' || !x.jsonColumnName); });
+					if (match.length > 0) {
+						return match[0];
+					}
+					else {
+						e.tableName = table.tableName;
+						e.tableId = table.tableId;
+						return self.setupField(e);
+					}
+				});
 
-			self.ChooseFields(flds);
-			self.selectedTableFields = flds;
-		});
-
+				self.ChooseFields(flds);
+				self.selectedTableFields = flds;
+			});
+		}
 	}
 
 	self.SelectedTable.subscribe(function (table) {
@@ -2617,7 +2674,8 @@ var reportViewModel = function (options) {
 					FieldWidth: x.fieldWidth(),
 					FieldConditionOp: x.fieldConditionOp(),
 					FieldConditionVal: JSON.stringify(x.fieldConditionVal),
-					JsonColumnName: x.isJsonColumn && x.jsonColumnName ? x.jsonColumnName : ''
+					JsonColumnName: x.isJsonColumn && x.jsonColumnName ? x.jsonColumnName : '',
+					DynamicTableId: x.dynamicTableId
 				};
 			}),
 			Schedule: self.scheduleBuilder.toJs(),
@@ -2645,7 +2703,7 @@ var reportViewModel = function (options) {
 	self.ValidateTableJoins = function () {
 		var tableIds = _.uniq(_.chain(self.SelectedFields())
 			.filter(function (x) {
-				return x.tableId || x.tableId > 0;
+				return (x.tableId || x.tableId > 0) && (!x.dynamicTableId);
 			})
 			.map(function (x) {
 				return x.tableId;
@@ -4446,6 +4504,29 @@ var reportViewModel = function (options) {
 
 		return true;
 	};
+	function parseDate(dateString, format) {
+		const formatParts = format.split(/[-/\.]/); // Split the format into parts using dot, hyphen, or slash
+		const dateParts = dateString.split(/[-/\.]/); // Split the date string into parts
+		let day, month, year;
+		formatParts.forEach((part, index) => {
+			if (part.toLowerCase().includes('d')) {
+				day = parseInt(dateParts[index], 10);
+			} else if (part.toLowerCase().includes('m')) {
+				month = parseInt(dateParts[index], 10) - 1; // Months are 0-based in JavaScript
+			} else if (part.toLowerCase().includes('y')) {
+				year = parseInt(dateParts[index], 10);
+				if (year < 100) { // If it's a 2-digit year, convert to 4-digit year
+					year += 2000; // Assumes years are in the 2000s, adjust as needed
+				}
+			}
+		});
+		if (day && month !== undefined && year) {
+			return new Date(year, month, day);
+		} else {
+			//throw new Error('Invalid date or format');
+		}
+	}
+
 	self.validateFieldOptions = function () {
 		if (options.fieldOptionsModal == null) return;
 		var curInputs = options.fieldOptionsModal.find("input[required], select[required]"),
@@ -4478,18 +4559,43 @@ var reportViewModel = function (options) {
 				$(curInputs[i]).addClass("is-invalid");
 			}
 		}
-		// Check if "Date To" is smaller than "Date From" //currenlty Worked on mm/dd/year format
-		var fromDate = $(".from-date").val(); 
-		var toDate = $(".to-date").val();     
-		if (fromDate && toDate) {
-			var from = new Date(fromDate);
-			var to = new Date(toDate);
-			if (to < from) {
-				isValid = false;
-				toastr.error("The 'To' date cannot be earlier than the 'From' date.");
-				$(".to-date").addClass("is-invalid");
+
+		var filteredInputs = Array.from(curInputs).filter(input =>
+			input.classList.contains('from-date') || input.classList.contains('to-date')
+		);
+		var pairs = [];
+		var fromDate = null;
+		filteredInputs.forEach(input => {
+			if (input.classList.contains('from-date')) {
+				fromDate = input; // Store the from-date element
+			} else if (input.classList.contains('to-date') && fromDate) {
+				pairs.push([fromDate, input]); // Pair from-date with to-date
+				fromDate = null; // Reset after pairing
 			}
-		}
+		});
+		pairs.forEach(([fromInput, toInput]) => {
+			const fromContext = ko.contextFor(fromInput);
+			const toContext = ko.contextFor(toInput);
+			if (fromContext && toContext) {
+				// Determine the date format
+				var defaultFormat = "mm/dd/yyyy"; // Default format
+				var fromDateFormat = fromContext.$data.dateFormat() ? fromContext.$root.dateFormatMappings[fromContext.$data.dateFormat()] : defaultFormat;
+				var toDateFormat = fromContext.$data.dateFormat() ? toContext.$root.dateFormatMappings[toContext.$data.dateFormat()] : defaultFormat;
+				var fromDateValue = fromInput.value;
+				var toDateValue = toInput.value;
+				if (fromDateValue && toDateValue) {
+					var fromDate = parseDate(fromDateValue, fromDateFormat).toISOString();
+					var toDate = parseDate(toDateValue, toDateFormat).toISOString();
+					if (new Date(toDate) < new Date(fromDate)) {
+						isValid = false;
+						toastr.error("The 'To' date cannot be earlier than the 'From' date.");
+						toInput.classList.add("is-invalid");
+					} else {
+						toInput.classList.remove("is-invalid");
+					}
+				}
+			} 
+		});
 		_.forEach(self.SavedReports(), function (e) {
 			if (e.reportName == self.ReportName() && e.reportId != self.ReportID()) {
 				isValid = false;
@@ -4557,7 +4663,7 @@ var reportViewModel = function (options) {
 					if (!withoutCategoryGroup) {
 						withoutCategoryGroup = {
 							categoryId: 'without_category',
-							categoryName: '--------------------------',
+							categoryName: '   ',
 							tables: []
 						};
 						categorizedTables.push(withoutCategoryGroup);
@@ -4566,8 +4672,8 @@ var reportViewModel = function (options) {
 				}
 			});
 			categorizedTables.sort((a, b) => {
-				if (a.categoryName === '--------------------------') return 1; 
-				if (b.categoryName === '--------------------------') return -1; 
+				if (a.categoryName === '   ') return 1; 
+				if (b.categoryName === '   ') return -1; 
 				return a.categoryName.localeCompare(b.categoryName); 
 			});
 			self.CategorizedTables(categorizedTables);
