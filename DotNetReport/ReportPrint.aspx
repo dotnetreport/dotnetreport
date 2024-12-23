@@ -16,7 +16,7 @@
     <link href="../Content/font-awesome.min.css" rel="stylesheet" />
     <link href="../Content/css/select2.min.css" rel="stylesheet" />
     <link href="../Content/dotnetreport.css?v=4.2.0" rel="stylesheet" />
-        <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <style type="text/css">
         .report-view {
             margin: 0 50px 0 50px;
@@ -51,7 +51,7 @@
     </style>
 </head>
 
-<body>
+<body>    
     <form id="form1" runat="server">
     <div data-bind="with: ReportResult">
         <div class="report-view" data-bind="with: $root">
@@ -60,6 +60,13 @@
                 <h2 data-bind="text: ReportName"></h2>
                 <p data-bind="html: ReportDescription">
                 </p>
+
+                <!--<div data-bind="with: $root">
+                        <div class="" data-bind="ifnot: EditFiltersOnReport">
+                            <div data-bind="template: {name: 'fly-filter-template'}"></div>
+                            <div style="padding-bottom: 20px;"></div>
+                        </div>
+                    </div>-->
 
                 <div data-bind="with: ReportResult">
                     <div data-bind="template: 'report-template', data: $data"></div>
@@ -265,7 +272,7 @@
                 <!-- ko foreach: FlyFilters -->
                 <div class="row">
                     <div class="col-sm-5 col-xs-4">
-                        <div data-bind="with: Field" >
+                        <div data-bind="with: Field">
                             <div data-bind="if: $parent.Apply">
                                 <label>
                                     <span data-bind="text: selectedFilterName"></span>
@@ -275,7 +282,7 @@
                     </div>
                     <div data-bind="with: Field" class="col-sm-2 col-xs-3">
                         <div class="form-group" data-bind="if: $parent.Apply">
-                            <span data-bind="text: $parent.Operator" ></span>
+                            <span data-bind="text: $parent.Operator"></span>
                         </div>
                     </div>
                     <div data-bind="with: Field" class="col-sm-5 col-xs-5">
@@ -298,7 +305,7 @@
             <span data-bind="text: $parent.Value"></span>
             <!-- /ko -->
             <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
-            From &nbsp; 
+            From &nbsp;
             <span data-bind="text: $parent.Value"></span>
             to &nbsp;
             <span data-bind="text: $parent.Value2"></span>
@@ -306,27 +313,27 @@
             <!-- ko if: ['range'].indexOf($parent.Operator()) != -1 -->
             <span data-bind="text: $parent.Value"></span>
             <div data-bind="if: $parent.Value().indexOf('Today +') >= 0 || $parent.Value().indexOf('Today -') >= 0">
-                <span type="number" style="width: 80px;" data-bind="text: $parent.Value2" ></span><span> days</span>
+                <span type="number" style="width: 80px;" data-bind="text: $parent.Value2"></span><span> days</span>
             </div>
             <!-- /ko -->
             <!-- /ko -->
             <!-- ko if: ['Int','Money','Float','Double'].indexOf(fieldType) != -1 -->
             <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
-            <span type="number" data-bind="text: $parent.Value, disable: $parent.Operator() == 'is default'" ></span>
+            <span type="number" data-bind="text: $parent.Value, disable: $parent.Operator() == 'is default'"></span>
             <!-- /ko -->
             <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
             From &nbsp;
-            <span type="number" data-bind="text: $parent.Value" ></span>
+            <span type="number" data-bind="text: $parent.Value"></span>
             to &nbsp;
-            <span type="number" data-bind="text: $parent.Value2" ></span>
+            <span type="number" data-bind="text: $parent.Value2"></span>
             <!-- /ko -->
             <!-- /ko -->
             <!-- ko if: fieldType=='Boolean' && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
             <span data-bind="text: $parent.Value== '0' ? 'No' : 'Yes'">
-           </span>
+            </span>
             <!-- /ko -->
             <!-- ko if: ['Int','Money','Float','Double','Date','DateTime','Boolean'].indexOf(fieldType) == -1 && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
-            <span type="text" data-bind="text: $parent.Value, disable: $parent.Operator() == 'is default'" ></span>
+            <span type="text" data-bind="text: $parent.Value, disable: $parent.Operator() == 'is default'"></span>
             <!-- /ko -->
             <!-- /ko -->
             <!-- ko if: hasForeignKey && $parent.Operator() != 'all' -->

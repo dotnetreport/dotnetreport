@@ -125,6 +125,8 @@
 <asp:Content ID="Content2" ContentPlaceHolderID="body" runat="server">
 
 
+<div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
+
 <div class="d-flex justify-content-between align-items-center bg-light border-bottom p-2 top-menu-toolbar">
     <div class="row" style="display: none" data-bind="visible: currentDashboard">
         <div data-bind="with: currentDashboard">
@@ -161,15 +163,9 @@
         </div>
         <div class="toolbar-button btn btn-light btn-sm">
             <div class="form-check form-switch ms-2">
-                <input class="form-check-input" id="arrange-mode" type="checkbox" data-bind="checked: arrangeDashboard">
+                <input class="form-check-input" type="checkbox" data-bind="checked: arrangeDashboard">
             </div>
             <span>Arrange</span>
-        </div>
-        <div class="toolbar-button btn btn-light btn-sm" data-bind="visible: allowAdmin" style="display: none;">
-            <div class="form-check form-switch ms-2">
-                <input class="form-check-input" type="checkbox" data-bind="checked: adminMode">
-            </div>
-            <span>Admin Mode</span>
         </div>
     </div>
 </div>

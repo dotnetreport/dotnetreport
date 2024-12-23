@@ -230,7 +230,7 @@
 <script type="text/html" id="report-pivot">
         <div class="table-responsive" data-bind="with: ReportData">
         <table class="table table-striped table-hover table-condensed">
-            <thead>
+            <thead style="position: sticky; top: -1px; z-index: 2;">
                 <tr>
                     <th></th>
                     <!-- ko foreach: Rows -->
@@ -263,7 +263,7 @@
 <script type="text/html" id="report-table">
     <div class="table-responsive" >
         <table class="table table-hover table-condensed" data-bind="attr: {class: 'table table-striped table-hover table-condensed ' + $parents[2].selectedStyle()}">
-            <thead data-bind="if: $parents[2].ReportType() != 'Single'">
+            <thead style="position: sticky; top: -1px; z-index: 2;" data-bind="if: $parents[2].ReportType() != 'Single'">
                 <tr class="no-highlight" data-bind="sortableColumns: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight',selectedFields: $parents[2].SelectedFields }">
                     <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !IsDrillDown() && !CanExpandOption() && !$parents[2].hasPivotColumn() -->
                     <th style="width: 30px; border-left: 1px solid;"></th>
@@ -809,6 +809,7 @@
                     <div class="col-sm-2">
                         <select class="form-select" data-bind="value: format">
                             <option value="EXCEL">Excel</option>
+                            @* <option data-bind="visible: $parent.canDrilldown()" value="EXCEL-SUB">Excel (Expanded)</option> *@
                             <option value="CSV">CSV</option>
                             <option value="PDF">PDF</option>
                             <option value="WORD">Word</option>
@@ -1214,7 +1215,12 @@
                                 <select class="form-control" data-bind="select2Value: {dropdownParent: $('#choose-data-card')}, options: Procs, optionsCaption: 'Choose Section...', optionsText: 'DisplayName', value: SelectedProc, visible: useStoredProc"></select>
                             </div>
                             <div data-bind="hidden: useStoredProc">
-                                <select class="form-control" data-bind="select2Value: {dropdownParent: $('#choose-data-card')}, options: Tables, optionsCaption: 'Or Choose Data Section...', optionsText: 'tableName', value: SelectedTable, hidden: useStoredProc"></select>
+                                 <select id="category-tables" class="form-control"  data-bind="foreach: CategorizedTables, select2Value: {dropdownParent: $('#choose-data-card'), allowClear: true, placeholder: 'Choose Data Section...', optionsText: 'tableName'}, value: SelectedTable">
+                                     <option value="" data-bind="visible: $index()==0"></option>
+                                     <optgroup data-bind="attr: {label: categoryName}, foreach: tables">
+                                         <option data-bind="text: tableName, value: $data"></option>
+                                     </optgroup>
+                                 </select>
                             </div>
                         </div>
 
@@ -1228,13 +1234,16 @@
                                 <a href="#" class="btn btn-secondary btn-sm" data-bind="click: RemoveSelectedFields, visible: !isFormulaField()">Remove all</a>
                             </div>
                         </div>
+                        <div data-bind="with: SelectedTable">
+                            <b><span data-bind="text: tableName"></span></b>
+                        </div>
                         <div class="row container-fluid" data-bind="foreach: ChooseFields">
                             <div class="col-md-12 col-sm-12 col-xs-12 list-group">
                                 <div class="list-group-item">
                                     <div class="checkbox">
                                         <label>
                                             <input type="checkbox" data-bind="checkedInArray: {array: $parent.isFormulaField() ? $parent.formulaFields : $parent.SelectedFields, value: $data}">
-                                            <span data-bind="text: fieldName"></span>
+                                            <span data-bind="html: fieldName"></span>
                                         </label>
                                     </div>
                                 </div>
@@ -1549,6 +1558,11 @@
                                                     <!-- /ko -->
                                                 </select>
                                             </div>
+                                        </div>
+                                        <hr />
+                                        <div class="col-md-12">
+                                            <a href="#" class="btn btn-primary btn-sm" title="Save Custom Formula Field" data-bind="click: saveFormulaField, visible: isFormulaField">Save</a>
+                                            <a href="#" class="btn btn-sm" title="Custom Field using Formula" data-bind="click: cancelFormulaField, text: isFormulaField()? 'Cancel': 'Customize', css: {'btn-primary': !isFormulaField(), 'btn-danger': isFormulaField}"></a>
                                         </div>
                                     </div>
                                 </div>
@@ -1922,8 +1936,9 @@
             </div>
             <!-- ko if: DrillDownData -->
             <div class="modal-body">
+                <div style="overflow-x: auto; max-height: 500px; overflow-y: auto;">
                 <table class="table table-striped table-hover table-condensed" data-bind="with: DrillDownData, attr: {class: 'table table-striped table-hover table-condensed ' + $parent.selectedStyle()}">
-                    <thead>
+                    <thead style="position: sticky; top: -1px; z-index: 2;">
                         <tr class="no-highlight">
                             <!-- ko foreach: Columns -->
                             <th data-bind="attr: { id: fieldId }, css: {'right-align': IsNumeric}, style: {'width': fieldWidth, 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
@@ -1956,6 +1971,7 @@
                         <!-- /ko -->
                     </tbody>
                 </table>
+                </div>
             </div>
             <div class="modal-footer">
                 <div class="col-xs-12 col-centered" data-bind="with: pager">
