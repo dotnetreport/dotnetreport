@@ -611,8 +611,8 @@ var textQuery = function (options) {
             data: {
                 method: "/ReportApi/ParseQuery",
                 model: JSON.stringify({
-                    token: token,
-                    text: text
+                    token: encodeURIComponent(token),
+                    text: encodeURIComponent(text)
                 })
             }
         });
@@ -676,7 +676,7 @@ var textQuery = function (options) {
             return params.term ? JSON.stringify({
                 method: "/ReportApi/ParseQuery",
                 model: JSON.stringify({
-                    token: params.term,
+                    token: encodeURIComponent(params.term),
                     text: ''
                 })
             }) : null;
