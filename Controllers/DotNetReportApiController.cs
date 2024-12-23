@@ -36,7 +36,7 @@ namespace ReportBuilder.Web.Controllers
             settings.Users = new List<dynamic>(); // Populate all your application's user, ex  { "Jane", "John" } or { new { id="1", text="Jane" }, new { id="2", text="John" }}
             settings.UserRoles = new List<string>(); // Populate all your application's user roles, ex  { "Admin", "Normal" }       
             settings.CanUseAdminMode = true; // Set to true only if current user can use Admin mode to setup reports, dashboard and schema
-            settings.DataFilters = new { }; // add global data filters to apply as needed https://dotnetreport.com/kb/docs/advance-topics/global-filters/
+            settings.DataFilters = new { }; // add global data filters to apply as needed https://dotnetreport.com/docs/advance-topics/global-filters/
 
             return settings;
         }
@@ -710,38 +710,38 @@ namespace ReportBuilder.Web.Controllers
                     throw new Exception("Not Authorized to access this Resource");
                 }
 
-            var connect = DotNetReportHelper.GetConnection(databaseApiKey);
-            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
-            var tables = new List<TableViewModel>();
-            var procedures = new List<TableViewModel>();
-            var functions = new List<CustomFunctionModel>();
-            if (onlyApi)
-            {
-                tables.AddRange(await DotNetReportHelper.GetApiTables(connect.AccountApiKey, connect.DatabaseApiKey, true));
-            }
-            else
-            {
-                tables.AddRange(await databaseConnection.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
-                tables.AddRange(await databaseConnection.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
-            }
-            procedures.AddRange(await DotNetReportHelper.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
-            functions.AddRange(await DotNetReportHelper.GetApiFunctions(connect.AccountApiKey, connect.DatabaseApiKey));
+                var connect = DotNetReportHelper.GetConnection(databaseApiKey);
+                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+                var tables = new List<TableViewModel>();
+                var procedures = new List<TableViewModel>();
+                var functions = new List<CustomFunctionModel>();
+                if (onlyApi)
+                {
+                    tables.AddRange(await DotNetReportHelper.GetApiTables(connect.AccountApiKey, connect.DatabaseApiKey, true));
+                }
+                else
+                {
+                    tables.AddRange(await databaseConnection.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
+                    tables.AddRange(await databaseConnection.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
+                }
+                procedures.AddRange(await DotNetReportHelper.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
+                functions.AddRange(await DotNetReportHelper.GetApiFunctions(connect.AccountApiKey, connect.DatabaseApiKey));
 
-            var model = new ManageViewModel
-            {
-                ApiUrl = connect.ApiUrl,
-                AccountApiKey = connect.AccountApiKey,
-                DatabaseApiKey = connect.DatabaseApiKey,
-                Tables = tables,
-                Procedures = procedures,
-                Functions = functions
-            };
+                var model = new ManageViewModel
+                {
+                    ApiUrl = connect.ApiUrl,
+                    AccountApiKey = connect.AccountApiKey,
+                    DatabaseApiKey = connect.DatabaseApiKey,
+                    Tables = tables,
+                    Procedures = procedures,
+                    Functions = functions
+                };
 
                 return new JsonResult { Data = model, MaxJsonLength = int.MaxValue };
             }
             catch (Exception ex)
             {
-                Response.StatusCode = 500; 
+                Response.StatusCode = 500;
                 return Json(new { ex.Message }, JsonRequestBehavior.AllowGet);
             }
         }
@@ -761,7 +761,8 @@ namespace ReportBuilder.Web.Controllers
         [HttpPost]
         public async Task<JsonResult> SearchProcedure(SearchProcCall data)
         {
-            try{
+            try
+            {
                 string value = data.value; string accountKey = data.accountKey; string dataConnectKey = data.dataConnectKey;
                 IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
 
