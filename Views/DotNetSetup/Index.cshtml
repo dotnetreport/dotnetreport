@@ -50,6 +50,7 @@
                     searchProcUrl: '@Url.Action("SearchProcedure", "DotNetReportApi")',
                     getSchemaFromSql: '@Url.Action("GetSchemaFromSql", "DotNetReportApi")',
                     apiUrl: '@Url.Action("CallPostReportApi", "DotNetReportApi")',
+                    getPreviewFromSqlUrl: "@Url.Action("GetPreviewFromSql", "DotNetReportApi")",
                     onlyApi: queryParams.onlyApi !== 'false'
                 };
 
@@ -181,6 +182,7 @@
                                 <span data-bind="visible: IsView" class="label-sm">(view)</span>
                             </label>
                             <button class="btn btn-sm" title="Save this Table" data-bind="click: function(){$data.saveTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}"><i class="fa fa-floppy-o"></i></button>
+                            <button class="btn btn-sm" title="Preview this Table" data-bind="click: function(){$data.previewTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}"><i class="fa fa-table"></i></button>
                         </div>
                         <a class="pull-right" data-bs-toggle="collapse" data-bind="attr: {'data-bs-target': '#table'+$index()}">
                             <span class="fa fa-chevron-down"></span>
@@ -1287,6 +1289,43 @@
     </div>
 </div>
 <div class="clearfix"></div>
+
+<div class="modal" id="data-preview-modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" data-bind="with: previewData">
+            <div class="modal-header">
+                <h4 class="modal-title">Preview Table</h4>
+                <button type="button" class="btn-close pull-right" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div style="overflow-x: auto; max-height: 500px; overflow-y: auto;">
+                <table class="table table-striped table-hover table-condensed">
+                    <thead style="position: sticky; top: -1px; z-index: 2; background-color: #f8f9fa;">
+                            <tr>
+                            <!-- ko foreach: Columns -->
+                            <th>                                
+                                <span data-bind="text: ColumnName, attr: { title: DataType.replace('System.', '') }"></span>
+                            </th>
+                            <!-- /ko -->
+                        </tr>
+                    </thead>
+                    <tbody>                       
+                        <!-- ko foreach: Rows  -->
+                        <tr>
+                            <!-- ko foreach: Items -->
+                            <td >
+                                <span data-bind="html: FormattedValue"></span>
+                            </td>
+                            <!-- /ko-->
+                        </tr>
+                        <!-- /ko -->
+                    </tbody>
+                </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="modal" id="custom-sql-modal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" data-bind="with: customSql">

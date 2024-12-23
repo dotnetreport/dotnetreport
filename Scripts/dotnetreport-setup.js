@@ -10,8 +10,9 @@ var manageViewModel = function (options) {
 		DatabaseApiKey: options.model.DatabaseApiKey
 	};
 
+	self.previewData = ko.observable();
 	self.DataConnections = ko.observableArray([]);
-	self.Tables = new tablesViewModel(options);
+	self.Tables = new tablesViewModel(options, self.keys, self.previewData);
 	self.Procedures = new proceduresViewModel(options);
 	self.DbConfig = {};
 	self.UserAndRolesConfig = {};
@@ -1156,7 +1157,7 @@ var manageViewModel = function (options) {
 
 }
 
-var tablesViewModel = function (options) {
+var tablesViewModel = function (options, keys, previewData) {
 	var self = this;
 	self.model = ko.mapping.fromJS(_.sortBy(options.model.Tables, ['TableName']));
 
@@ -1236,6 +1237,13 @@ var tablesViewModel = function (options) {
 			});
 		}
 
+		t.Selected.subscribe(function (x) {
+			if (x) {
+				t.selectAllColumns();
+				t.autoFormat();
+			}
+		});
+
 		t.autoFormat = function (e) {
 			_.forEach(t.Columns(), function (c) {
 				var displayName = c.DisplayName();
@@ -1260,6 +1268,35 @@ var tablesViewModel = function (options) {
 			var exportJson = JSON.stringify(e, null,2)
 			downloadJson(exportJson, e.TableName + (e.IsView ? ' (View)' : '') + '.json', 'application/json');
 		}
+
+		t.previewTable = function (apiKey, dbKey) {
+			previewData(null);
+			var sql = !t.CustomTable()
+							? `SELECT TOP 100 * FROM ${(t.SchemaName() ? '['+t.SchemaName()+'].' : '')}[${t.TableName()}]`
+							: t.CustomTableSql().replace(/^SELECT/, "SELECT TOP 100");
+			
+			return ajaxcall({
+				url: options.getPreviewFromSqlUrl,
+				type: "POST",
+				data: JSON.stringify({
+					value: sql,
+					accountKey: keys.AccountApiKey,
+					dataConnectKey: keys.DatabaseApiKey,
+					dynamicColumns: false
+				})
+			}).done(function (result) {
+				if (result.d) result = result.d;
+
+				if (result.errorMessage) {
+					toastr.error("Could not execute Query. Please check your query and try again. Error: " + result.errorMessage);
+					return;
+				}
+
+				previewData(result.ReportData);
+				$('#data-preview-modal').modal('show');
+			});
+		}
+
 		t.saveTable = function (apiKey, dbKey,jsonTable) {
 			var e = ko.mapping.toJS(t, {
 				'ignore': ["saveTable", "JoinTable", "ForeignJoinTable"]

@@ -615,6 +615,64 @@ namespace ReportBuilder.Web.Controllers
                 return new JsonResult(new { ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
             }
         }
+
+
+        [ValidateAntiForgeryToken]
+        [HttpPost]
+        public async Task<IActionResult> GetPreviewFromSql(SchemaFromSqlCall data)
+        {
+            string reportSql = data.value;
+            int pageNumber = 1;
+            int pageSize = 100;
+            var sql = "";
+
+            try
+            {
+                if (string.IsNullOrEmpty(reportSql))
+                {
+                    throw new Exception("Query not found");
+                }
+                sql = TryDecrypt(HttpUtility.HtmlDecode(reportSql));
+
+
+                List<string> fields = new List<string>();
+                List<string> sqlFields = new List<string>();
+                // Execute sql
+                var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(data.dataConnectKey), false);
+                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+                var dtPaged = databaseConnection.ExecuteQuery(connString, sql);
+
+                var model = new DotNetReportResultModel
+                {
+                    ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dtPaged, fields),
+                    ReportSql = sql,
+                    ReportDebug = Request.Host.Host.Contains("localhost"),
+                    Pager = new DotNetReportPagerModel
+                    {
+                        CurrentPage = pageNumber,
+                        PageSize = pageSize,
+                        TotalRecords = 100,
+                        TotalPages = 1
+                    }
+                };
+
+                return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+            }
+
+            catch (Exception ex)
+            {
+                var model = new DotNetReportResultModel
+                {
+                    ReportData = new DotNetReportDataModel(),
+                    ReportSql = sql,
+                    HasError = true,
+                    Exception = ex.Message,
+                    ReportDebug = Request.Host.Host.Contains("localhost"),
+                };
+
+                return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+            }
+        }
         private SortedList<string, string> GetTimezones()
         {
             var timeZones = TimeZoneInfo.GetSystemTimeZones();
