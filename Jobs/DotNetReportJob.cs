@@ -58,17 +58,28 @@ namespace ReportBuilder.Web.Jobs
 
     public class DotNetReportJob : IJob
     {
+        private readonly IConfigurationRoot _configuration;
+        public readonly static string _configFileName = "appsettings.dotnetreport.json";
+
+        public DotNetReportJob()
+        {
+            var builder = new ConfigurationBuilder()
+           .SetBasePath(Directory.GetCurrentDirectory())
+           .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+
+            _configuration = builder.Build();
+        }
         async Task IJob.Execute(IJobExecutionContext context)
         {
-            var apiUrl = Startup.StaticConfig.GetValue<string>("dotNetReport:apiUrl");
-            var accountApiKey = Startup.StaticConfig.GetValue<string>("dotNetReport:accountApiToken");
-            var databaseApiKey = Startup.StaticConfig.GetValue<string>("dotNetReport:dataconnectApiToken");
+            var apiUrl = _configuration.GetValue<string>("dotNetReport:apiUrl");
+            var accountApiKey = _configuration.GetValue<string>("dotNetReport:accountApiToken");
+            var databaseApiKey = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken");
 
-            var fromEmail = Startup.StaticConfig.GetValue<string>("email:fromemail");
-            var fromName = Startup.StaticConfig.GetValue<string>("email:fromname");
-            var mailServer = Startup.StaticConfig.GetValue<string>("email:server");
-            var mailUserName = Startup.StaticConfig.GetValue<string>("email:username");
-            var mailPassword = Startup.StaticConfig.GetValue<string>("email:password");
+            var fromEmail = _configuration.GetValue<string>("email:fromemail");
+            var fromName = _configuration.GetValue<string>("email:fromname");
+            var mailServer = _configuration.GetValue<string>("email:server");
+            var mailUserName = _configuration.GetValue<string>("email:username");
+            var mailPassword = _configuration.GetValue<string>("email:password");
 
             var clientId = ""; // you can specify client id here if needed
 
