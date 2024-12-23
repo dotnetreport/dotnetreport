@@ -155,8 +155,8 @@
                 <button class="btn btn-sm btn-primary" data-bind="hidden: $root.customTableMode()" data-bs-toggle="modal" data-bs-target="#uploadTablesFileModal" aria-haspopup="true" aria-expanded="false">
                     <span class="fa fa-file"></span> Import Tables/Views
                 </button>
-                <button class="btn btn-sm btn-primary" title="Manage Category" data-bs-toggle="modal" data-bs-target="#category-modal">
-                    <span class="fa fa-server"></span> Manage Category 
+                <button class="btn btn-sm btn-primary" title="Manage Categories" data-bs-toggle="modal" data-bs-target="#category-modal">
+                    <span class="fa fa-server"></span> Manage Categories
                 </button>
             </div>
             <div class="clearfix"></div>
@@ -1143,7 +1143,7 @@
     <div class="modal-dialog" role="document">
         <div class="modal-content" data-bind="with: manageCategories">
             <div class="modal-header">
-                <h4 class="modal-title">Manage Categories</h4>
+                <b class="modal-title">Manage Categories for <span data-bind="text: TableName"></span></b>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -1168,10 +1168,13 @@
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h4 class="modal-title">Manage Categories</h4>
+                <b class="modal-title">Manage Categories</b>                
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <p>
+                    You can organize the display of tables in the Report Designer by assigning categories here.
+                </p>
                 <!-- Table for Categories -->
                 <table class="table table-bordered">
                     <thead>
@@ -1213,7 +1216,7 @@
                                 <input class="form-control" type="text" data-bind="value: $root.newCategoryDescription" placeholder="Description">
                             </td>
                             <td>
-                                <button class="btn btn-primary" data-bind="click: $root.addCategory">Add</button>
+                                <button class="btn btn-primary btn-sm" data-bind="click: $root.addCategory">Add</button>
                             </td>
                         </tr>
                     </tfoot>

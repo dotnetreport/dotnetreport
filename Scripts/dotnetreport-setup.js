@@ -284,8 +284,8 @@ var manageViewModel = function (options) {
 	self.addCategory = function () {
 		const newName = self.newCategoryName() ? self.newCategoryName().trim() : '';
 		const newDescription = self.newCategoryDescription() ? self.newCategoryDescription().trim() : '';
-		if (!newName || !newDescription) {
-			toastr.error("Category Name and Description cannot be empty.");
+		if (!newName) {
+			toastr.error("Please provide Category Name");
 			return;
 		}
 		const isDuplicateName = _.filter(self.Categories(), function (x) { return x.Name === newName; }).length > 0;
@@ -317,8 +317,8 @@ var manageViewModel = function (options) {
 		const category = self.Categories()[index]; // Get the currently editing category
 		const name = category.Name ? category.Name.trim() : '';
 		const description = category.Description ? category.Description.trim() : '';
-		if (!name || !description) {
-			toastr.error("Category Name and Description cannot be empty.");
+		if (!name) {
+			toastr.error("Please provide Category Name");
 			return;
 		}
 		const isDuplicateName = self.Categories().some((cat, idx) => idx !== index && cat.Name === name);
@@ -367,6 +367,12 @@ var manageViewModel = function (options) {
 				})
 			})
 		}).done(function (result) {
+			if (result.d) result = result.d;
+			self.Tables.model().forEach(function (t) {
+				t.Categories(_.map(t.Categories(), function (e) {
+					return result.find(r => r.Id === e.Id());
+				}).filter(Boolean));
+			});
 			self.Categories(result);
 		});
 	}
