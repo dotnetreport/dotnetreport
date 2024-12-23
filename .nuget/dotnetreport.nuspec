@@ -1,16 +1,16 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
   <metadata>
-    <id>dotNetReport.mvc</id>
-    <version>5.5.0</version>
-    <authors>dotnetReport Builder</authors>
-    <owners>dotnetReport Builder</owners>
+    <id>dotnetreport.mvc</id>
+    <version>6.0.0-beta</version>
+    <authors>Dotnet Report Builder</authors>
+    <owners>Dotnet Report Builder</owners>
     <projectUrl>https://dotnetreport.com/</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <description>.Net Ad Hoc Report Builder and Embedded Analytics for MVC that allows programmers to easily add Report building functionality to their ASP .NET Web Application</description>
-    <releaseNotes>Added new Features, bug fixes</releaseNotes>
-    <copyright>(c) dotnet Report Builder</copyright>
-    <tags>embedded analytics, report generator, sql reporting tools, visual studio report designer, ad-hoc reporting, asp .net mvc report, report builder, ad hoc adhoc reports, viewer, reportviewer, sql builder mvc, web forms, query builder,mvc reporting,custom query,query maker, dotnetreport</tags>
+    <description>Dotnet Report is a powerful .NET Embedded Analytics and Reporting Solution that simplifies adding customizable, user-friendly report-building and data visualization features to your ASP.NET Web Applications. Designed for developers, it offers seamless integration, intuitive interfaces, and robust reporting capabilities to empower end-users with actionable insights. Perfect for businesses looking to enhance data-driven decision-making and streamline reporting workflows.</description>
+    <releaseNotes>New features and bug fixes</releaseNotes>
+    <copyright>(c) Dotnet Report Builder</copyright>
+    <tags>embedded analytics, .NET reporting tools, .NET Core report builder, SQL reporting tools, Visual Studio report designer, ad-hoc reporting, ASP.NET MVC report builder, ad-hoc reports, report viewer, SQL query builder, ASP.NET Web Forms, MVC reporting tools, custom query builder, query maker, Dotnet Report, .NET analytics solution, web reporting, interactive dashboards</tags>
     <dependencies>
       <dependency id="Bootbox.JS" version="6.0.0" />
       <dependency id="bootstrap" version="5.3.3" />
