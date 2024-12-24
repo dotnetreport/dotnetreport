@@ -1275,3 +1275,8 @@ tfoot tr.sub-total {
         justify-content: center;
     }
 }
+
+.arrow-wrapper {
+    margin-top: 10px;
+    text-align: left;
+}

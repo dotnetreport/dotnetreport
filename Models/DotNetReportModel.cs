@@ -1001,12 +1001,12 @@ namespace ReportBuilder.Web.Models
                         TableName = item.tableDbName,
                         DisplayName = item.tableName,
                         AllowedRoles = item.tableRoles.ToObject<List<string>>(),
-                        Categories= ((JArray)item.tableCategories).ToObject<List<dynamic>>().Select(c => new CategoryViewModel { Id = c.CategoryId, Name = c.Name, Description = c.Description }).ToList(),
+                        Categories= item.tableCategories != null ? ((JArray)item.tableCategories).ToObject<List<dynamic>>().Select(c => new CategoryViewModel { Id = c.CategoryId, Name = c.Name, Description = c.Description }).ToList() : new List<CategoryViewModel>(),
                         DoNotDisplay = item.doNotDisplay,
                         CustomTable = item.customTable,
                         CustomTableSql = Convert.ToBoolean(item.customTable) == true ? DotNetReportHelper.Decrypt(Convert.ToString(item.customTableSql)) : "",
-                        DynamicColumns = item.dynamicColumns,
-                        DynamicColumnTranslation = Convert.ToBoolean(item.dynamicColumns) == true ? DotNetReportHelper.Decrypt(Convert.ToString(item.dynamicColumnTranslation)) : "",
+                        DynamicColumns = item.dynamicColumns != null ? Convert.ToBoolean(item.dynamicColumns) : false,
+                        DynamicColumnTranslation = item.dynamicColumns != null && Convert.ToBoolean(item.dynamicColumns) == true ? DotNetReportHelper.Decrypt(Convert.ToString(item.dynamicColumnTranslation)) : "",
                         Columns = new List<ColumnViewModel>(),
                         Selected = true
                     };
