@@ -855,6 +855,8 @@ var reportViewModel = function (options) {
 	self.HideReportHeader = ko.observable(false);
 	self.maxRecords = ko.observable(false);
 	self.changePageSize = ko.observable(false);
+	self.noHeaderRow = ko.observable(false);
+	self.noDashboardBorders = ko.observable(false);
 	self.OnlyTop = ko.observable();
 	self.barChartHorizontal = ko.observable();
 	self.barChartStacked = ko.observable();
@@ -1634,6 +1636,8 @@ var reportViewModel = function (options) {
 		self.selectedFunction(null);
 		self.maxRecords(false);
 		self.changePageSize(false);
+		self.noHeaderRow(false);
+		self.noDashboardBorders(false);
 		self.OnlyTop(null);
 		self.lastPickedField(null);
 		self.OuterGroupColumns([]);
@@ -2602,6 +2606,8 @@ var reportViewModel = function (options) {
 				barChartStacked: self.barChartStacked(),
 				barChartHorizontal: self.barChartHorizontal(),
 				DefaultPageSize: self.DefaultPageSize() || 30,
+				noHeaderRow: self.noHeaderRow(),
+				noDashboardBorders: self.noDashboardBorders(),
 				PivotColumns: self.PivotColumns(),
 				PivotColumnsWidth: _.map(self.ReportColumns(), function (column) {
 					return {
@@ -4200,6 +4206,8 @@ var reportViewModel = function (options) {
 		self.barChartHorizontal(reportSettings.barChartHorizontal === true ? true : false);
 		self.barChartStacked(reportSettings.barChartStacked === true ? true : false);
 		self.DefaultPageSize(reportSettings.DefaultPageSize || 30);
+		self.noHeaderRow(reportSettings.noHeaderRow);
+		self.noDashboardBorders(reportSettings.noDashboardBorders);
 		self.PivotColumns(reportSettings.PivotColumns || null)
 		self.PivotColumnsWidth(reportSettings.PivotColumnsWidth || null)
 		if (self.ReportMode() == "execute") {
@@ -5668,7 +5676,7 @@ var dashboardViewModel = function (options) {
 						_.forEach(fg.Filters(), function (f) {
 							if (f.IsFilterOnFly
 								//&& f.Field().fieldType == 'DateTime'
-								&& _.filter(self.FlyFilters(), function (x) { return f.Field().fieldId == x.Field().fieldId; }).length == 0
+								&& _.filter(self.FlyFilters(), function (x) { return (f.Field().fieldId == x.Field().fieldId) || (f.Field().hasForeignKey && x.Field().hasForeignKey && f.Field().foreignTable == x.Field().foreignTable && f.Field().foreignKey == x.Field().foreignKey); }).length == 0
 							) {
 								var filter = {
 									AndOr: ko.observable(' AND '),
@@ -5850,7 +5858,9 @@ var dashboardViewModel = function (options) {
 			_.forEach(self.FlyFilters(), function (combinedFilter) {
 				_.forEach(report.FilterGroups(), function (fg) {
 					_.forEach(fg.Filters(), function (f) {
-						if (f.IsFilterOnFly && combinedFilter.Field().fieldId == f.Field().fieldId) {
+						if (f.IsFilterOnFly && combinedFilter.Field().fieldId == f.Field().fieldId
+							|| (f.Field().hasForeignKey && combinedFilter.Field().hasForeignKey && f.Field().foreignTable == combinedFilter.Field().foreignTable && f.Field().foreignKey == combinedFilter.Field().foreignKey)
+						) {
 							f.Operator(combinedFilter.Operator());
 							f.Value(combinedFilter.Value());
 							f.Value2(combinedFilter.Value2());
