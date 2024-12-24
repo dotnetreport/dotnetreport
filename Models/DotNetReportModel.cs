@@ -3596,11 +3596,7 @@ namespace ReportBuilder.Web.Models
 
                     // see if this table is already in database
                     var matchTable = currentTables.FirstOrDefault(x => x.TableName.ToLower() == tableName.ToLower());
-                    if (matchTable != null)
-                    {
-                        matchTable.Columns = await DotNetReportHelper.GetApiFields(accountKey, dataConnectKey, matchTable.Id);
-                    }
-
+                    
                     var table = new TableViewModel
                     {
                         Id = matchTable != null ? matchTable.Id : 0,
@@ -3651,16 +3647,36 @@ namespace ReportBuilder.Web.Models
                             column.ForeignParentKeyField = matchColumn.ForeignParentKeyField;
                             column.ForeignParentValueField = matchColumn.ForeignParentValueField;
                             column.ForeignParentRequired = matchColumn.ForeignParentRequired;
+                            column.JsonStructure = matchColumn.JsonStructure;
+                            column.ForeignFilterOnly = matchColumn.ForeignFilterOnly;
 
                             column.Selected = true;
                         }
 
                         table.Columns.Add(column);
                     }
+                    // add columns not in db, but in dotnet report
+                    if (matchTable != null)
+                    {
+                        table.Columns.AddRange(matchTable.Columns.Where(x => !table.Columns.Select(c => c.Id).Contains(x.Id)).ToList());
+                    }
+
                     table.Columns = table.Columns.OrderBy(x => x.DisplayOrder).ToList();
                     tables.Add(table);
                 }
 
+                // add tables not in db, but in dotnet report
+                var notMatchedTables = currentTables.Where(x => !tables.Select(c => c.Id).Contains(x.Id) && ((type == "TABLE") ? !x.IsView : x.IsView)).ToList();
+                if (notMatchedTables.Any())
+                {
+                    foreach (var notMatchedTable in notMatchedTables)
+                    {
+                        notMatchedTable.Selected = true;
+                        notMatchedTable.Columns = await DotNetReportHelper.GetApiFields(accountKey, dataConnectKey, notMatchedTable.Id);
+                        notMatchedTable.Columns.ForEach(x => x.Selected = true);
+                    }
+                    tables.AddRange(notMatchedTables);
+                }
                 conn.Close();
                 conn.Dispose();
             }
