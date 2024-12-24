@@ -21,7 +21,8 @@ var manageViewModel = function (options) {
 	self.pager.totalRecords(self.Tables.model().length);
 	self.onlyApi = ko.observable(options.onlyApi);
 	self.ChartDrillDownData = null;
-
+	self.activeTable = ko.observable();
+	self.activeProcedure = ko.observable();
 	self.loadFromDatabase = function() {
 		bootbox.confirm("Confirm loading all Tables and Views from the database? Note: This action will discard unsaved changes and it may take some time.", function (r) {
 			if (r) {
