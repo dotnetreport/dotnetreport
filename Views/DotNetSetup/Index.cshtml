@@ -50,8 +50,6 @@
             ajaxcall({ url: '@Url.Action("LoadSetupSchema", "DotNetReportApi")' + '?databaseApiKey=' + (queryParams.databaseApiKey || '') + '&onlyApi=' + (queryParams.onlyApi === 'false' ? false : true) }).done(function(model) {
                 var options = {
                     model: model,
-                    saveCategoriesUrl: '/ReportApi/SaveCategoriesData',
-                    getCategoriesUrl: '/ReportApi/GetCategories',
                     saveTableUrl: '/ReportApi/SaveTableData',
                     deleteTableUrl: '/ReportApi/DeleteTable',
                     getRelationsUrl: '/ReportApi/GetRelations',
@@ -63,6 +61,10 @@
                     deleteProcUrl: '/ReportApi/DeleteProcedure',
                     saveCustomFuncUrl: '/ReportApi/SaveCustomFunctionData',
                     deleteCustomFuncUrl: '/ReportApi/DeleteCustomFunction',
+                    getSchedulesUrl: '/ReportApi/GetScheduledReportsAndDashboards',
+                    deleteScheduleUrl: '/ReportApi/DeleteSchedule',
+                    saveCategoriesUrl: '/ReportApi/SaveCategoriesData',
+                    getCategoriesUrl: '/ReportApi/GetCategories',
                     reportsApiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")',
                     getUsersAndRoles: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")',
                     searchProcUrl: '@Url.Action("SearchProcedure", "DotNetReportApi")',
@@ -75,6 +77,7 @@
                 var vm = new manageViewModel(options);
                 vm.LoadJoins();
                 vm.setupManageAccess();
+                vm.LoadSchedules();
                 vm.LoadCategories();
                 ko.applyBindings(vm);
                 vm.LoadDataConnections();
@@ -100,14 +103,48 @@
     <div>
         <!-- Nav tabs -->
         <ul class="nav nav-tabs" role="tablist">
-            <li role="presentation" class="nav-item"><a class="nav-link active" href="#tablesfields" aria-controls="home" role="tab" data-bs-toggle="tab" data-bind="click: function() { customTableMode(false); activeTable(null);}">Database Tables</a></li>
-            <li role="presentation" class="nav-item"><a class="nav-link" href="#tablesfields" aria-controls="custom" role="tab" data-bs-toggle="tab" data-bind="click: function() { customTableMode(true); activeTable(null); }">Custom Tables</a></li>
-            <li role="presentation" class="nav-item"><a class="nav-link" href="#relations" aria-controls="profile" role="tab" data-bs-toggle="tab">Relations</a></li>
-            <li role="presentation" class="nav-item"><a class="nav-link" href="#procedure" aria-controls="procedure" role="tab" data-bs-toggle="tab">Stored Procs</a></li>
-            <li role="presentation" class="nav-item" style="display: none;"><a class="nav-link" href="#functions" aria-controls="functions" role="tab" data-bs-toggle="tab">Custom Functions</a></li>
-            <li role="presentation" class="nav-item"><a class="nav-link" href="#manageaccess" aria-controls="manageaccess" role="tab" data-bs-toggle="tab">Manage Reports Access</a></li>
-            <li role="presentation" class="nav-item"><a class="nav-link" href="#connection" aria-controls="home" role="tab" data-bs-toggle="tab">Data Connection</a></li>
+            <li role="presentation" class="nav-item">
+                <a class="nav-link active" href="#tablesfields" aria-controls="home" role="tab" data-bs-toggle="tab" data-bind="click: function() { customTableMode(false); activeTable(null);}">
+                    <i class="fa fa-database"></i> Database Tables
+                </a>
+            </li>
+            <li role="presentation" class="nav-item">
+                <a class="nav-link" href="#tablesfields" aria-controls="custom" role="tab" data-bs-toggle="tab" data-bind="click: function() { customTableMode(true); activeTable(null); }">
+                    <i class="fa fa-table"></i> Custom Tables
+                </a>
+            </li>
+            <li role="presentation" class="nav-item">
+                <a class="nav-link" href="#relations" aria-controls="profile" role="tab" data-bs-toggle="tab">
+                    <i class="fa fa-link"></i> Relations
+                </a>
+            </li>
+            <li role="presentation" class="nav-item">
+                <a class="nav-link" href="#procedure" aria-controls="procedure" role="tab" data-bs-toggle="tab">
+                    <i class="fa fa-code"></i> Stored Procs
+                </a>
+            </li>
+            <li role="presentation" class="nav-item">
+                <a class="nav-link" href="#schedules" aria-controls="schedules" role="tab" data-bs-toggle="tab">
+                    <i class="fa fa-clock-o"></i> Schedules
+                </a>
+            </li>
+            <li role="presentation" class="nav-item" style="display: none;">
+                <a class="nav-link" href="#functions" aria-controls="functions" role="tab" data-bs-toggle="tab">
+                    <i class="fa fa-cogs"></i> Custom Functions
+                </a>
+            </li>
+            <li role="presentation" class="nav-item">
+                <a class="nav-link" href="#manageaccess" aria-controls="manageaccess" role="tab" data-bs-toggle="tab">
+                    <i class="fa fa-user"></i> Manage Access
+                </a>
+            </li>
+            <li role="presentation" class="nav-item">
+                <a class="nav-link" href="#connection" aria-controls="home" role="tab" data-bs-toggle="tab">
+                    <i class="fa fa-plug"></i> Data Connection
+                </a>
+            </li>
         </ul>
+
     </div>
     <br />
 </div>
@@ -422,9 +459,10 @@
             </button>
             <br />
             <div data-bind="if: Procedures.savedProcedures().length == 0">
+                <br />
                 No Stored Procedures have been setup yet.
             </div>
-            <div class="row">
+            <div class="row" data-bind="if: Procedures.savedProcedures().length > 0">
                 <!-- Left Panel for Stored Procedure Names -->
                 <div class="col-3 border-end" style="height: 100vh; overflow-y: auto;">
                     <div class="menu g-3" data-bind="foreach: Procedures.savedProcedures" style="margin-left: 20px; padding-top: 20px;">
@@ -662,6 +700,59 @@
                             <button class="btn btn-primary" data-bind="click: $parent.saveFunction">Save</button>
                             <button class="btn btn-secondary" data-bind="click: $parent.cancelEdit">Cancel</button>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div role="tabpanel" class="tab-pane" id="schedules">
+            <b>Scheduled Reports</b>
+            <p>
+                View Schedules setup for sending Reports and Dashboards
+            </p>
+            <hr />
+
+            <div class="row">
+                <div class="col-md-12">
+                    <div data-bind="visible: schedules().length === 0">                            
+                        <i class="fa fa-exclamation-circle"></i> No scheduled Reports or Dashboards available.
+                    </div>
+                    <div class="table-responsive" data-bind="if: schedules().length > 0">
+                        <table class="table table-condensed table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th style="border-top: none;"><i class="fa fa-clock-o"></i> Schedule</th>
+                                    <th style="border-top: none;"><i class="fa fa-envelope"></i> Email To</th>
+                                    <th style="border-top: none;"><i class="fa fa-file"></i> Format</th>
+                                    <th style="border-top: none;"><i class="fa fa-history"></i> Last Run</th>
+                                    <th style="border-top: none;"><i class="fa fa-user"></i> User ID</th>
+                                    <th style="border-top: none;"><i class="fa fa-globe"></i> Time Zone</th>
+                                    <th style="border-top: none;"><i class="fa fa-cogs"></i> Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody data-bind="foreach: schedules">                                    
+                                <tr >
+                                    <td colspan="7">                                        
+                                        For <span class="text-muted" data-bind="text: DashboardId === 0 ? 'Report' : 'Dashboard'"></span> <b><span data-bind="text: Name"></span></b>
+                                    </td>
+                                </tr>
+                                <!-- ko foreach: Schedules -->
+                                <tr>
+                                    <td data-bind="text: ScheduleDisplay"></td>
+                                    <td data-bind="text: EmailTo"></td>
+                                    <td data-bind="text: Format"></td>
+                                    <td data-bind="text: LastRun"></td>
+                                    <td data-bind="text: UserId ? UserId : 'N/A'"></td>
+                                    <td data-bind="text: Timezone ? Timezone : 'N/A'"></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-danger" data-bind="click: $root.deleteSchedule">
+                                            <i class="fa fa-trash"></i> Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                                <!-- /ko -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>

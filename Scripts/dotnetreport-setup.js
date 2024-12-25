@@ -1,4 +1,4 @@
-﻿/// dotnet Report Builder view model v5.3.1
+﻿/// dotnet Report Builder view model v6.0.0
 /// License must be purchased for commercial use
 /// 2024 (c) www.dotnetreport.com
 
@@ -23,6 +23,7 @@ var manageViewModel = function (options) {
 	self.ChartDrillDownData = null;
 	self.activeTable = ko.observable();
 	self.activeProcedure = ko.observable();
+	self.schedules = ko.observableArray([]);
 	self.loadFromDatabase = function() {
 		bootbox.confirm("Confirm loading all Tables and Views from the database? Note: This action will discard unsaved changes and it may take some time.", function (r) {
 			if (r) {
@@ -356,6 +357,46 @@ var manageViewModel = function (options) {
 			}
 		});
 	};
+
+	self.deleteSchedule = function (e) {
+		bootbox.confirm("Are you sure you would like to delete this Schedule? This cannot be undone.", function (r) {
+			if (r) {
+				ajaxcall({
+					url: options.apiUrl,
+					type: 'POST',
+					data: JSON.stringify({
+						method: options.deleteScheduleUrl,
+						model: JSON.stringify({
+							scheduleId: e.Id,
+							account: self.keys.AccountApiKey,
+							dataConnect: self.keys.DatabaseApiKey,
+						})
+					})
+				}).done(function () {
+					toastr.success("Deleted Schedule");
+					self.LoadSchedules();
+				});
+			}
+		});
+	}
+
+	self.LoadSchedules = function () {
+		ajaxcall({
+			url: options.apiUrl,
+			type: 'POST',
+			data: JSON.stringify({
+				method: options.getSchedulesUrl,
+				model: JSON.stringify({
+					account: self.keys.AccountApiKey,
+					dataConnect: self.keys.DatabaseApiKey
+				})
+			})
+		}).done(function (result) {
+			if (result.d) result = result.d;
+			
+			self.schedules(result);
+		});
+	}
 	self.LoadCategories = function () {
 		ajaxcall({
 			url: options.apiUrl,
