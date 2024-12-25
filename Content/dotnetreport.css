@@ -1280,3 +1280,32 @@ tfoot tr.sub-total {
     margin-top: 10px;
     text-align: left;
 }
+
+.dropdown-hover:hover > .dropdown-menu {
+    display: block;
+    position: absolute;
+    left: 100%;
+    top: 0;
+    margin-top: 0;
+}
+
+.dropdown-menu {
+    display: none;
+}
+
+.dropdown-hover:hover > .dropdown-menu {
+    display: block;
+}
+
+.dropdown-menu {
+    z-index: 1050; /* Ensure it appears above other elements */
+    min-width: 10rem;
+}
+
+.dropdown-menu.small {
+    font-size: 10pt;
+
+}
+    .dropdown-menu.small a {
+       
+    }
