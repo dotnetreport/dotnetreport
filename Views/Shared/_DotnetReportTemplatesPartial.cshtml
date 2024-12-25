@@ -1497,8 +1497,13 @@
                                     <div class="col-md-12">
 
                                       <div class="mb-3">
-                                        <label for="functionSelect" class="form-label">Select Data Operation:</label>
-                                        <select id="functionSelect" class="form-select" data-bind="select2: select2Options, value: selectedSqlFunction"></select>
+                                        <label class="form-label">Select Data Operation:</label>
+                                        <select class="form-select" data-bind="select2: {
+                                                dropdownParent: $('#choose-data-card'),
+		                                        placeholder: 'Select Function...',
+		                                        data: availableFunctionsGrouped(),
+		                                        templateResult: templateResult
+	                                        }, value: selectedSqlFunction"></select>
                                       </div>
 
                                        <div class="mb-3" data-bind="hidden: isConditionalFunction() || selectedSqlFunction() == 'Other'">

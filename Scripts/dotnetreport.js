@@ -5033,36 +5033,23 @@ var sqlFieldModel = function (options) {
 				{ id: 'MONTH', text: 'MONTH (Extract Month)', description: 'Extract the month from a date.' },
 				{ id: 'DAY', text: 'DAY (Extract Day)', description: 'Extract the day from a date.' }
 			]
+		},
+		{
+			text: 'Other',
+			children: [
+				{ id: 'Other', text: 'Other (Custom SQL)', description: 'Manually enter a custom SQL expression.' }
+			]
 		}		
 	]
 	
 	self.availableFunctionsGrouped = ko.observableArray(availableFunctions);
 
-	if (options.adminMode) {
-		options.adminMode.subscribe(function (x) {
-			if (x) {
-				self.availableFunctionsGrouped.push({
-					text: 'Other',
-					children: [
-						{ id: 'Other', text: 'Other (Custom SQL)', description: 'Manually enter a custom SQL expression.' }
-					]
-				});
-			} else {
-				self.availableFunctionsGrouped(availableFunctions);
-			}
-		});
-	}
-
-	self.select2Options = {
-		placeholder: 'Select Function...',
-		data: self.availableFunctionsGrouped(),
-		templateResult: function (option) {
-			if (!option.id) {
-				return option.text; 
-			}
-			return $('<div>' + option.text + '<br><span style="font-size: 0.9em;">  ' + option.description + '</span></div>');
+	self.templateResult = function (option) {
+		if (!option.id) {
+			return option.text;
 		}
-	};
+		return $('<div>' + option.text + '<br><span style="font-size: 0.9em;">  ' + option.description + '</span></div>');
+	}
 
 	self.formatFieldSelection = function (option) {		
 		if (option && option.text) {
