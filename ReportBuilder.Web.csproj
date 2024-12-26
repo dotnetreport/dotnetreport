@@ -257,14 +257,6 @@
     <Content Include="Content\themes\base\tabs.css" />
     <Content Include="Content\themes\base\theme.css" />
     <Content Include="Content\themes\base\tooltip.css" />
-    <Content Include="Content\themes\cosmos.min.css" />
-    <Content Include="Content\themes\cyborg.min.css" />
-    <Content Include="Content\themes\default.min.css" />
-    <Content Include="Content\themes\flatly.min.css" />
-    <Content Include="Content\themes\lumen.min.css" />
-    <Content Include="Content\themes\slate.min.css" />
-    <Content Include="Content\themes\superhero.min.css" />
-    <Content Include="Content\themes\united.min.css" />
     <Content Include="Content\toastr.css" />
     <Content Include="Content\toastr.min.css" />
     <Content Include="Content\tribute.css" />
@@ -384,7 +376,6 @@
     <Content Include="Scripts\jquery-3.7.1.slim.min.js" />
     <Content Include="Scripts\jquery-ui-1-13.3.js" />
     <Content Include="Scripts\jquery-ui-1.13.3.min.js" />
-    <None Include="Properties\PublishProfiles\FTPProfile.pubxml" />
     <Content Include="Scripts\jquery.blockUI.js" />
     <None Include="Scripts\jquery.validate-vsdoc.js" />
     <Content Include="Scripts\jquery.validate.js" />
@@ -488,7 +479,6 @@
     <Compile Include="Controllers\DotNetReportController.cs" />
     <Compile Include="Controllers\DotNetSetupController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
-    <Compile Include="Controllers\ReportController.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
@@ -529,8 +519,6 @@
     <Content Include="Scripts\jquery-3.7.1.slim.min.map" />
     <Content Include="Scripts\jquery-3.7.1.min.map" />
     <Content Include="Views\DotNetReport\Query.cshtml" />
-    <Content Include="Views\Report\Index.cshtml" />
-    <Content Include="Views\Report\Dashboard.cshtml" />
     <Content Include="Views\Home\Index.cshtml" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>

@@ -30,81 +30,98 @@
 
 <body>
     <link type="text/css" rel="stylesheet" media="all" href="~/Content/themes/default.min.css" id="theme-css" />
-    <nav class="navbar navbar-expand-lg navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow ">
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow">
         <a class="navbar-brand col-md-3 col-lg-2 mr-0 px-3" href="#" id="mainNavImage">
-            <img src="~/Content/img/report-logo.png" width="120" />
+            <img src="~/Content/img/report-logo.png" width="120" alt="Report Logo" />
         </a>
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNavDropdown">
-            <ul class="navbar-nav mr-auto">
+            <ul class="navbar-nav me-auto">
             </ul>
-            <ul class="navbar-nav ">
+            <ul class="navbar-nav">
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         Resources
                     </a>
-                    <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-                        <a class="dropdown-item" href="https://dotnetreport.com/schedule-demo">Schedule Demo</a>
-                        <a class="dropdown-item" href="https://dotnetreport.com/app">Free Trial</a>
-                        <a class="dropdown-item" href="https://dotnetreport.com/features">Features</a>
-                        <div class="dropdown-divider"></div>
-
-                        <a class="dropdown-item" href="https://www.nuget.org/packages/dotNetReport/" target="_blank"><i class="fa fa-gift"></i> Nuget</a>
-                        <a class="dropdown-item" href="https://github.com/dotnetreport" target="_blank"><i class="fa fa-github"></i> Github</a>
-                        <a class="dropdown-item" href="https://dotnetreport.com/knowledgebase" target="_blank"><i class="fa fa-book"></i> Knowledgebase</a>
-                    </div>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                        <li><a class="dropdown-item" href="https://dotnetreport.com/schedule-demo">Schedule Demo</a></li>
+                        <li><a class="dropdown-item" href="https://dotnetreport.com/app">Free Trial</a></li>
+                        <li><a class="dropdown-item" href="https://dotnetreport.com/features">Features</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="https://www.nuget.org/packages/dotNetReport/" target="_blank"><i class="fa fa-gift"></i> Nuget</a></li>
+                        <li><a class="dropdown-item" href="https://github.com/dotnetreport" target="_blank"><i class="fa fa-github"></i> Github</a></li>
+                        <li><a class="dropdown-item" href="https://dotnetreport.com/docs" target="_blank"><i class="fa fa-book"></i> Knowledgebase</a></li>
+                    </ul>
                 </li>
             </ul>
         </div>
-
-        <form class="form-inline">
-            <button class="btn btn-primary" onclick="return showDemoHelp();">Help with Demo</button>
+        <form class="d-flex">
+            <button class="btn btn-primary me-2" onclick="return showDemoHelp();">Help with Demo</button>
             <a class="btn btn-primary" href="https://dotnetreport.com/app">Start my Free Trial!</a>
         </form>
     </nav>
 
+
     @Html.AntiForgeryToken()
     <div class="container-fluid">
         <div class="row">
-            <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse">
-                <div class="sidebar-sticky pt-3">
+            <!-- Sidebar -->
+            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse" id="sidebarMenu">
+                <div class="position-sticky pt-3">
                     <ul class="nav flex-column">
-                        <li class="nav-item" id="sidebarMenu">
-                            <a class="nav-link" href="@Url.Action("Dashboard","DotNetReport")"><i class='fa fa-fw fa-dashboard'></i> Dashboard</a>
-                        </li>
-
                         <li class="nav-item">
-                            <a class="nav-link" href="@Url.Action("Index","DotNetReport")"><i class="fa fa-fw fa-file"></i> Reports</a>
+                            <a class="nav-link" href="@Url.Action("Dashboard", "DotNetReport")">
+                                <i class="fa fa-fw fa-dashboard"></i> Dashboard
+                            </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="@Url.Action("Query","DotNetReport")"><i class="fa fa-fw fa-lightbulb-o"></i> Smart Query (beta)</a>
+                            <a class="nav-link" href="@Url.Action("Index", "DotNetReport")">
+                                <i class="fa fa-fw fa-file"></i> Reports
+                            </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-muted"><i class="fa fa-fw fa-user-circle"></i> Customers</a>
+                            <a class="nav-link" href="@Url.Action("Query", "DotNetReport")">
+                                <i class="fa fa-fw fa-lightbulb-o"></i> Smart Query <span class="text-muted fa fa-info-circle" title="Beta"></span>
+                            </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-muted"><i class="fa fa-fw fa-money"></i> Orders</a>
+                            <a class="nav-link text-muted">
+                                <i class="fa fa-fw fa-user-circle"></i> Customers
+                            </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-muted"><i class="fa fa-fw fa-product-hunt"></i> Products</a>
+                            <a class="nav-link text-muted">
+                                <i class="fa fa-fw fa-money"></i> Orders
+                            </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-muted"><i class="fa fa-fw fa-user"></i> Profile</a>
-                        </li>
-
-                        <li class="nav-item">
-                            <a class="nav-link" href="@Url.Action("Index","DotnetSetup")"><i class="fa fa-fw fa-gears"></i> Data Configuration (admin only)</a>
+                            <a class="nav-link text-muted">
+                                <i class="fa fa-fw fa-product-hunt"></i> Products
+                            </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-muted"><i class="fa fa-fw fa-power-off"></i> Log Out</a>
+                            <a class="nav-link text-muted">
+                                <i class="fa fa-fw fa-user"></i> Profile
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="@Url.Action("Index", "DotnetSetup")">
+                                <i class="fa fa-fw fa-gears"></i> Configure Data <span class="text-muted fa fa-info-circle" title="Admin Only"></span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-muted">
+                                <i class="fa fa-fw fa-power-off"></i> Log Out
+                            </a>
                         </li>
                     </ul>
                 </div>
             </nav>
 
-            <main role="main" class="col-md-9 ml-sm-auto col-lg-10 px-md-4">
+            <!-- Main Content -->
+            <main role="main" class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
                 <div class="pt-3 pb-2 mb-3">
                     <div id="alertplaceholder"></div>
                     @RenderBody()
@@ -115,6 +132,7 @@
             </main>
         </div>
     </div>
+
     <div class="report-layout-footer">
         <!-- ########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
         <p>Ad Hoc Reporting and Dashboard powered by <a href="http://www.dotNetReport.com" target="_blank">dotnetreport</a>. Copyright © www.dotnetreport.com.</p>
