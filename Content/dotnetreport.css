@@ -458,7 +458,7 @@ select.is-invalid ~ span .select2-selection {
 .query-builder .rules-group-container {
     padding: 10px;
     padding-bottom: 6px;
-    border: 1px solid #dcc896;
+    border: 1px solid #ccc;
 }
 
 .query-builder .rules-group-header {
@@ -541,6 +541,21 @@ select.is-invalid ~ span .select2-selection {
 }
 
     .query-input a {
+        background-color: transparent;
+        color: #2ba6cb !important;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+.hint-input {
+    outline: none;
+    border: 1px solid #eee;
+    padding: 3px 5px;
+    border-radius: 2px;
+    cursor: text;
+}
+
+    .hint-input a {
         background-color: transparent;
         color: #2ba6cb !important;
         text-decoration: none;
@@ -1209,3 +1224,88 @@ tfoot tr.sub-total {
         position: static; /* Disable sticky on smaller screens */
     }
 }
+
+.toolbar-button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 80px;
+    font-size: 12px;
+    text-align: center;
+    border: 1px solid #d1d5db;
+    padding: 5px;
+    border-radius: 5px;
+    margin: 0px;
+}
+
+    .toolbar-button i {
+        font-size: 14px;
+    }
+
+    .toolbar-button span {
+        font-size: 10px;
+        margin-top: 3px;
+    }
+
+.top-menu-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 10px;
+}
+
+@media (max-width: 768px) {
+    .toolbar-button {
+        min-width: 50px;
+        margin: 1px;
+    }
+
+        .toolbar-button i {
+            font-size: 12px;
+        }
+
+        .toolbar-button span {
+            font-size: 8px;
+        }
+
+    .top-menu-toolbar {
+        justify-content: center;
+    }
+}
+
+.arrow-wrapper {
+    margin-top: 10px;
+    text-align: left;
+}
+
+.dropdown-hover:hover > .dropdown-menu {
+    display: block;
+    position: absolute;
+    left: 100%;
+    top: 0;
+    margin-top: 0;
+}
+
+.dropdown-menu {
+    display: none;
+}
+
+.dropdown-hover:hover > .dropdown-menu {
+    display: block;
+}
+
+.dropdown-menu {
+    z-index: 1050; /* Ensure it appears above other elements */
+    min-width: 10rem;
+}
+
+.dropdown-menu.small {
+    font-size: 10pt;
+
+}
+    .dropdown-menu.small a {
+       
+    }

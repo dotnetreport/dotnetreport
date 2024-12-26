@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
 using ReportBuilder.Web.Models;
 using System.Data;
-using System.Data.OleDb;
 using System.Net;
 using System.Text;
 using System.Text.Json;
@@ -615,6 +614,17 @@ namespace ReportBuilder.Web.Controllers
             });
         }
 
+        private static string TryDecrypt(string sql)
+        {
+            try
+            {
+                return DotNetReportHelper.Decrypt(sql);
+            }catch (Exception ex)
+            {
+                return sql;
+            }
+        }
+
         [ValidateAntiForgeryToken]
         [HttpPost]
         public async Task<IActionResult> GetSchemaFromSql([FromBody] SchemaFromSqlCall data)
@@ -629,51 +639,82 @@ namespace ReportBuilder.Web.Controllers
                     Selected = true
                 };
 
-                if (string.IsNullOrEmpty(data.value) || !data.value.StartsWith("SELECT ")) {
+                data.value = TryDecrypt(data.value);
+
+                if (string.IsNullOrEmpty(data.value) || !data.value.StartsWith("SELECT ", StringComparison.OrdinalIgnoreCase))
+                {
                     throw new Exception("Invalid SQL");
                 }
                 table.CustomTableSql = data.value;
 
-                var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(data.dataConnectKey));
-                using (OleDbConnection conn = new OleDbConnection(connString))
-                {
-                    // open the connection to the database 
-                    conn.Open();
-                    OleDbCommand cmd = new OleDbCommand(data.value, conn);
-                    cmd.CommandType = CommandType.Text;
-                    using (OleDbDataReader reader = cmd.ExecuteReader())
-                    {
-                        // Get the column metadata using schema.ini file
-                        DataTable schemaTable = new DataTable();
-                        schemaTable = reader.GetSchemaTable();
-                        var idx = 0;
+                var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(data.dataConnectKey), false);
+                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+                table = await databaseConnection.GetSchemaFromSql(connString, table, data.value, data.dynamicColumns);
 
-                        foreach (DataRow dr in schemaTable.Rows)
-                        {
-                            var column = new ColumnViewModel
-                            {
-                                ColumnName = dr["ColumnName"].ToString(),
-                                DisplayName = dr["ColumnName"].ToString(),
-                                PrimaryKey = dr["ColumnName"].ToString().ToLower().EndsWith("id") && idx == 0,
-                                DisplayOrder = idx,
-                                FieldType = DotNetSetupController.ConvertToJetDataType((int)dr["ProviderType"]).ToString(),
-                                AllowedRoles = new List<string>(),
-                                Selected = true
-                            };
-
-                            idx++;
-                            table.Columns.Add(column);
-                        }
-                        table.Columns = table.Columns.OrderBy(x => x.DisplayOrder).ToList();
-                    }
-
-                    return new JsonResult(table, new JsonSerializerOptions() { PropertyNamingPolicy = null });
-                }
+                return new JsonResult(table, new JsonSerializerOptions() { PropertyNamingPolicy = null });
             }
             catch (Exception ex)
             {
                 Response.StatusCode = 500;
                 return new JsonResult(new { ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+            }
+        }
+
+
+        [ValidateAntiForgeryToken]
+        [HttpPost]
+        public async Task<IActionResult> GetPreviewFromSql(SchemaFromSqlCall data)
+        {
+            string reportSql = data.value;
+            int pageNumber = 1;
+            int pageSize = 100;
+            var sql = "";
+
+            try
+            {
+                if (string.IsNullOrEmpty(reportSql))
+                {
+                    throw new Exception("Query not found");
+                }
+                sql = TryDecrypt(HttpUtility.HtmlDecode(reportSql));
+
+
+                List<string> fields = new List<string>();
+                List<string> sqlFields = new List<string>();
+                // Execute sql
+                var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(data.dataConnectKey), false);
+                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+                var dtPaged = databaseConnection.ExecuteQuery(connString, sql);
+
+                var model = new DotNetReportResultModel
+                {
+                    ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dtPaged, fields),
+                    ReportSql = sql,
+                    ReportDebug = Request.Host.Host.Contains("localhost"),
+                    Pager = new DotNetReportPagerModel
+                    {
+                        CurrentPage = pageNumber,
+                        PageSize = pageSize,
+                        TotalRecords = 100,
+                        TotalPages = 1
+                    }
+                };
+
+                return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+            }
+
+            catch (Exception ex)
+            {
+                var model = new DotNetReportResultModel
+                {
+                    ReportData = new DotNetReportDataModel(),
+                    ReportSql = sql,
+                    HasError = true,
+                    Exception = ex.Message,
+                    ReportDebug = Request.Host.Host.Contains("localhost"),
+                };
+
+                return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
             }
         }
         private SortedList<string, string> GetTimezones()
@@ -749,23 +790,22 @@ namespace ReportBuilder.Web.Controllers
                 }
 
                 var connect = DotNetReportHelper.GetConnection(databaseApiKey);
+                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
                 var tables = new List<TableViewModel>();
                 var procedures = new List<TableViewModel>();
                 var functions = new List<CustomFunctionModel>();
-                if (onlyApi.HasValue)
+                if (onlyApi.GetValueOrDefault())
                 {
-                    if (onlyApi.Value)
-                    {
-                        tables.AddRange(await DotNetSetupController.GetApiTables(connect.AccountApiKey, connect.DatabaseApiKey, true));
-                    }
-                    else
-                    {
-                        tables.AddRange(await DotNetSetupController.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
-                        tables.AddRange(await DotNetSetupController.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
-                    }
-                    procedures.AddRange(await DotNetSetupController.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey)); 
-                    functions.AddRange(await DotNetReportHelper.GetApiFunctions(connect.AccountApiKey, connect.DatabaseApiKey));
+                    tables.AddRange(await DotNetReportHelper.GetApiTables(connect.AccountApiKey, connect.DatabaseApiKey, true));
                 }
+                else
+                {
+                    tables.AddRange(await databaseConnection.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
+                    tables.AddRange(await databaseConnection.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
+                }
+                procedures.AddRange(await DotNetReportHelper.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
+                functions.AddRange(await DotNetReportHelper.GetApiFunctions(connect.AccountApiKey, connect.DatabaseApiKey));
+
                 var dbConfig = DotNetReportHelper.GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey) ?? new JObject();
                 var model = new ManageViewModel
                 {
@@ -946,7 +986,8 @@ namespace ReportBuilder.Web.Controllers
         public class SearchProcCall { 
             public string value { get; set; } 
             public string accountKey { get; set; } 
-            public string dataConnectKey { get; set; } 
+            public string dataConnectKey { get; set; }
+            public bool dynamicColumns { get; set; } = false;
         }
 
         public class SchemaFromSqlCall : SearchProcCall
@@ -960,7 +1001,9 @@ namespace ReportBuilder.Web.Controllers
             try
             {
                 string value = data.value; string accountKey = data.accountKey; string dataConnectKey = data.dataConnectKey;
-                return new JsonResult(await GetSearchProcedure(value, accountKey, dataConnectKey), new JsonSerializerOptions() { PropertyNamingPolicy = null });
+                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+
+                return new JsonResult(await databaseConnection.GetSearchProcedure(value, accountKey, dataConnectKey), new JsonSerializerOptions() { PropertyNamingPolicy = null });
             }
             catch (Exception ex)
 
@@ -968,94 +1011,7 @@ namespace ReportBuilder.Web.Controllers
                 Response.StatusCode = 500;
                 return new JsonResult(new { ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
             }
-        }
-
-        private async Task<List<TableViewModel>> GetSearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
-        {
-            var tables = new List<TableViewModel>();
-            var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey));
-            using (OleDbConnection conn = new OleDbConnection(connString))
-            {
-                // open the connection to the database 
-                conn.Open();
-                string spQuery = "SELECT ROUTINE_NAME, ROUTINE_DEFINITION, ROUTINE_SCHEMA FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_NAME LIKE ? AND ROUTINE_TYPE = 'PROCEDURE'";
-                OleDbCommand cmd = new OleDbCommand(spQuery, conn);
-                cmd.CommandType = CommandType.Text;
-                cmd.Parameters.Add(new OleDbParameter("?", $"%{value}%"));
-                DataTable dtProcedures = new DataTable();
-                dtProcedures.Load(cmd.ExecuteReader());
-                int count = 1;
-
-                if (dtProcedures.Rows.Count == 0)
-                {
-                    throw new Exception($"No stored procs found matching {value}");
-                }
-                foreach (DataRow dr in dtProcedures.Rows)
-                {
-                    var procName = dr["ROUTINE_NAME"].ToString();
-                    var procSchema = dr["ROUTINE_SCHEMA"].ToString();
-                    cmd = new OleDbCommand(procName, conn);
-                    cmd.CommandType = CommandType.StoredProcedure;
-                    // Get the parameters.
-                    OleDbCommandBuilder.DeriveParameters(cmd);
-                    List<ParameterViewModel> parameterViewModels = new List<ParameterViewModel>();
-                    foreach (OleDbParameter param in cmd.Parameters)
-                    {
-                        if (param.Direction == ParameterDirection.Input)
-                        {
-                            var parameter = new ParameterViewModel
-                            {
-                                ParameterName = param.ParameterName,
-                                DisplayName = param.ParameterName,
-                                ParameterValue = param.Value != null ? param.Value.ToString() : "",
-                                ParamterDataTypeOleDbTypeInteger = Convert.ToInt32(param.OleDbType),
-                                ParamterDataTypeOleDbType = param.OleDbType,
-                                ParameterDataTypeString = DotNetSetupController.GetType(DotNetSetupController.ConvertToJetDataType(Convert.ToInt32(param.OleDbType))).Name
-                            };
-                            if (parameter.ParameterDataTypeString.StartsWith("Int")) parameter.ParameterDataTypeString = "Int";
-                            parameterViewModels.Add(parameter);
-                        }
-                    }
-                    DataTable dt = new DataTable();
-                    cmd = new OleDbCommand($"[{procSchema}].[{procName}]", conn);
-                    cmd.CommandType = CommandType.StoredProcedure;
-                    foreach (var data in parameterViewModels)
-                    {
-                        cmd.Parameters.Add(new OleDbParameter { Value = DBNull.Value, ParameterName = data.ParameterName, Direction = ParameterDirection.Input, IsNullable = true });
-                    }
-                    OleDbDataReader reader = cmd.ExecuteReader();
-                    dt = reader.GetSchemaTable();
-
-                    if (dt == null) continue;
-
-                    // Store the table names in the class scoped array list of table names
-                    List<ColumnViewModel> columnViewModels = new List<ColumnViewModel>();
-                    for (int i = 0; i < dt.Rows.Count; i++)
-                    {
-                        var column = new ColumnViewModel
-                        {
-                            ColumnName = dt.Rows[i].ItemArray[0].ToString(),
-                            DisplayName = dt.Rows[i].ItemArray[0].ToString(),
-                            FieldType = DotNetSetupController.ConvertToJetDataType((int)dt.Rows[i]["ProviderType"]).ToString()
-                        };
-                        columnViewModels.Add(column);
-                    }
-                    tables.Add(new TableViewModel
-                    {
-                        TableName = procName,
-                        SchemaName = dr["ROUTINE_SCHEMA"].ToString(),
-                        DisplayName = procName,
-                        Parameters = parameterViewModels,
-                        Columns = columnViewModels
-                    });
-                    count++;
-                }
-                conn.Close();
-                conn.Dispose();
-            }
-            return tables;
-        }
-
+        }       
     }
 
 }

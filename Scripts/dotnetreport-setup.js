@@ -1,4 +1,4 @@
-﻿/// dotnet Report Builder view model v5.3.1
+﻿/// dotnet Report Builder view model v6.0.0
 /// License must be purchased for commercial use
 /// 2024 (c) www.dotnetreport.com
 
@@ -9,16 +9,22 @@ var manageViewModel = function (options) {
 		DatabaseApiKey: options.model.DatabaseApiKey
 	};
 
+	self.previewData = ko.observable();
 	self.DataConnections = ko.observableArray([]);
-	self.Tables = new tablesViewModel(options);
+	self.Tables = new tablesViewModel(options, self.keys, self.previewData);
 	self.Procedures = new proceduresViewModel(options);
 	self.DbConfig = new dbConnectionViewModel(options);
 	self.UserAndRolesConfig = new usersAndRolesViewModel(options);
 	self.Functions = new customFunctionManageModel(options, self.keys);
 	self.pager = new pagerViewModel({autoPage: true});
 	self.pager.totalRecords(self.Tables.model().length);
-	self.onlyApi = ko.observable(options.onlyApi)
+	self.onlyApi = ko.observable(options.onlyApi);
+	self.ChartDrillDownData = null;
+	self.activeTable = ko.observable();
+	self.activeProcedure = ko.observable();
+	self.schedules = ko.observableArray([]);
 	self.SettingPage = new settingPageViewModel(options);
+
 	self.loadFromDatabase = function() {
 		bootbox.confirm("Confirm loading all Tables and Views from the database? Note: This action will discard unsaved changes and it may take some time.", function (r) {
 			if (r) {
@@ -99,7 +105,6 @@ var manageViewModel = function (options) {
 		joinTable: ko.observable(),
 		joinField: ko.observable()
 	}
-
 	self.filteredJoins = ko.computed(function () {
 		var primaryTableFilter = self.JoinFilters.primaryTable();
 		var primaryFieldFilter = self.JoinFilters.primaryField();
@@ -119,6 +124,140 @@ var manageViewModel = function (options) {
 	});
 
 	self.JoinTypes = ["INNER", "LEFT", "LEFT OUTER", "RIGHT", "RIGHT OUTER"];
+
+	self.filterJoinsSorted = function () {
+		ko.toJS(self.filteredJoins());
+	};
+
+	self.sortDirection = {
+		primaryTable: ko.observable(true),  // true for ascending, false for descending
+		primaryField: ko.observable(true),
+		joinType: ko.observable(true),
+		joinTable: ko.observable(true),
+		joinField: ko.observable(true)
+	};
+	// Sorting functions
+	self.sortByPrimaryTable = function () {
+		var direction = self.sortDirection.primaryTable();
+		self.Joins.sort(function (a, b) {
+			var aValue = a.JoinTable().DisplayName().toLowerCase();
+			var bValue = b.JoinTable().DisplayName().toLowerCase();
+			return direction ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+		});
+		self.sortDirection.primaryTable(!direction);
+	};
+	self.sortByField = function () {
+		var direction = self.sortDirection.primaryField();
+		self.Joins.sort(function (a, b) {
+			var aValue = a.FieldName().toLowerCase();
+			var bValue = b.FieldName().toLowerCase();
+			return direction ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+		});
+		self.sortDirection.primaryField(!direction);
+	};
+	self.sortByJoinType = function () {
+		var direction = self.sortDirection.joinType();
+		self.Joins.sort(function (a, b) {
+			var aValue = a.JoinType().toLowerCase();
+			var bValue = b.JoinType().toLowerCase();
+			return direction ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+		});
+		self.sortDirection.joinType(!direction);
+	};
+	self.sortByJoinTable = function () {
+		var direction = self.sortDirection.joinTable();
+		self.Joins.sort(function (a, b) {
+			var aValue = a.OtherTable().DisplayName().toLowerCase();
+			var bValue = b.OtherTable().DisplayName().toLowerCase();
+			return direction ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+		});
+		self.sortDirection.joinTable(!direction);
+	};
+	self.sortByJoinField = function () {
+		var direction = self.sortDirection.joinField();
+		self.Joins.sort(function (a, b) {
+			var aValue = a.JoinFieldName().toLowerCase();
+			var bValue = b.JoinFieldName().toLowerCase();
+			return direction ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+		});
+		self.sortDirection.joinField(!direction);
+	};
+	self.AddAllRelations = function () {
+		var tables = self.Tables.availableTables();
+		if (tables.length == 0) {
+			toastr.error("Please select some tables first");
+			return;
+		}
+		function isIdField(fieldName) {
+			return fieldName.endsWith("Id") || fieldName.endsWith("ID");
+		}
+
+		bootbox.confirm("Do you want to add suggested joins for fields ending in 'Id'?", function (confirmed) {
+			if (!confirmed) {
+				return;
+			}
+
+			const newJoins = [];
+			const existingJoins = new Set(self.Joins().map((join) =>
+				`${join.TableId()}-${join.JoinedTableId()}-${join.JoinFieldName()}`
+			));
+			const processedTables = new Set([tables[0]?.Id()]); // Initialize with the first table ID
+
+			tables.forEach((table1) => {
+				if (processedTables.has(table1.Id())) {
+					return;
+				}
+
+				const table1Name = table1.TableName();
+				const table1PrimaryKey = table1.Columns()[0].ColumnName();
+				const table1Columns = table1.Columns().filter((col) => isIdField(col.ColumnName()));
+
+				tables.forEach((table2) => {
+					if (table1.Id() === table2.Id() || processedTables.has(table2.Id())) {
+						return;
+					}
+
+					const table2PrimaryKey = table2.Columns()[0].ColumnName();
+					const table2Columns = table2.Columns().filter((col) => isIdField(col.ColumnName()));
+
+					table2Columns.forEach((c) => {
+						if (c.ColumnName() === `${table1Name}Id` || c.ColumnName() === `${table1Name}ID`) {
+							const joinKey1 = `${table1.Id()}-${table2.Id()}-${c.ColumnName()}`;
+
+							if (!existingJoins.has(joinKey1)) {
+								newJoins.push(self.setupJoin({
+									TableId: table1.Id(),
+									JoinedTableId: table2.Id(),
+									JoinType: self.JoinTypes[0],
+									FieldName: table1PrimaryKey,
+									JoinFieldName: c.ColumnName(),
+								}));
+								existingJoins.add(joinKey1);
+							}
+
+							const joinKey2 = `${table2.Id()}-${table1.Id()}-${table1PrimaryKey}`;
+
+							if (!existingJoins.has(joinKey2)) {
+								newJoins.push(self.setupJoin({
+									TableId: table2.Id(),
+									JoinedTableId: table1.Id(),
+									JoinType: self.JoinTypes[0],
+									FieldName: c.ColumnName(),
+									JoinFieldName: table1PrimaryKey,
+								}));
+								existingJoins.add(joinKey2);
+							}
+						}
+					});
+
+				});
+
+				processedTables.add(table1.Id());
+			});
+
+			self.Joins.push.apply(self.Joins, newJoins);
+		});
+	};
 
 	self.editColumn = ko.observable();
 	self.isStoredProcColumn = ko.observable();
@@ -151,11 +290,216 @@ var manageViewModel = function (options) {
 		self.newAllowedRole(null);
 	}
 
+	self.manageCategories = ko.observable();
+	self.selectedCategory = function (e) {
+		self.manageCategories(e);
+	}
+	self.isCategorySelected = function (category, selectedCategories) {
+		return ko.utils.arrayFirst(selectedCategories(), function (item,index) {
+			return item.CategoryId() === category.Id; // Match Id with CategoryId
+		}) !== null; // Return true if a match is found
+	};
+	self.Categories = ko.observableArray([]); // Use observableArray to hold an array of objects.
+	self.newCategoryName = ko.observable();
+	self.newCategoryDescription = ko.observable();
+	self.editingCategoryIndex = ko.observable(-1); // Use an index to track which category is being edited
+	self.addCategory = function () {
+		const newName = self.newCategoryName() ? self.newCategoryName().trim() : '';
+		const newDescription = self.newCategoryDescription() ? self.newCategoryDescription().trim() : '';
+		if (!newName) {
+			toastr.error("Please provide Category Name");
+			return;
+		}
+		const isDuplicateName = _.filter(self.Categories(), function (x) { return x.Name === newName; }).length > 0;
+		if (isDuplicateName) {
+			toastr.error("Category Name must be unique.");
+			return;
+		}
+		self.Categories.push({
+			Name: self.newCategoryName(),
+			Description: self.newCategoryDescription(),
+			Id:0
+		});
+		self.newCategoryName(null);
+		self.newCategoryDescription(null);
+	};
+
+	self.removeCategory = function (category) {
+		self.Categories.remove(category);
+	};
+	// Toggle edit mode for a category
+	self.toggleEdit = function (index) {
+		if (self.editingCategoryIndex() === index) {
+			self.editingCategoryIndex(-1); // Stop editing if it's already being edited
+		} else {
+			self.editingCategoryIndex(index); // Set the index to the category being edited
+		}
+	};
+	self.saveCategory = function (index) {
+		const category = self.Categories()[index]; // Get the currently editing category
+		const name = category.Name ? category.Name.trim() : '';
+		const description = category.Description ? category.Description.trim() : '';
+		if (!name) {
+			toastr.error("Please provide Category Name");
+			return;
+		}
+		const isDuplicateName = self.Categories().some((cat, idx) => idx !== index && cat.Name === name);
+		if (isDuplicateName) {
+			toastr.error("Category Name must be unique.");
+			return;
+		}
+		document.getElementById(`cat-name-${category.Id}`).textContent = name
+		document.getElementById(`cat-desc-${category.Id}`).textContent = description
+		self.editingCategoryIndex(-1);
+	};
+	self.saveCategories = function () {
+
+		if (self.editingCategoryIndex() !== -1) {
+			toastr.error("Please finish editing the current category before saving.");
+			return; // Exit the function if editing
+		}
+		ajaxcall({
+			url: options.apiUrl,
+			type: 'POST',
+			data: JSON.stringify({
+				method: options.saveCategoriesUrl,
+				model: JSON.stringify({
+					account: self.keys.AccountApiKey,
+					dataConnect: self.keys.DatabaseApiKey,
+					categories: self.Categories()
+				})
+			})
+		}).done(function (x) {
+			if (x.success) {
+				toastr.success("Saved Categories ");
+			} else {
+				toastr.error("Error saving Categories ");
+			}
+		});
+	};
+
+	self.deleteSchedule = function (e) {
+		bootbox.confirm("Are you sure you would like to delete this Schedule? This cannot be undone.", function (r) {
+			if (r) {
+				ajaxcall({
+					url: options.apiUrl,
+					type: 'POST',
+					data: JSON.stringify({
+						method: options.deleteScheduleUrl,
+						model: JSON.stringify({
+							scheduleId: e.Id,
+							account: self.keys.AccountApiKey,
+							dataConnect: self.keys.DatabaseApiKey,
+						})
+					})
+				}).done(function () {
+					toastr.success("Deleted Schedule");
+					self.LoadSchedules();
+				});
+			}
+		});
+	}
+
+	self.LoadSchedules = function () {
+		ajaxcall({
+			url: options.apiUrl,
+			type: 'POST',
+			data: JSON.stringify({
+				method: options.getSchedulesUrl,
+				model: JSON.stringify({
+					account: self.keys.AccountApiKey,
+					dataConnect: self.keys.DatabaseApiKey
+				})
+			})
+		}).done(function (result) {
+			if (result.d) result = result.d;
+			
+			self.schedules(result);
+		});
+	}
+	self.LoadCategories = function () {
+		ajaxcall({
+			url: options.apiUrl,
+			type: 'POST',
+			data: JSON.stringify({
+				method: options.getCategoriesUrl,
+				model: JSON.stringify({
+					account: self.keys.AccountApiKey,
+					dataConnect: self.keys.DatabaseApiKey
+				})
+			})
+		}).done(function (result) {
+			if (result.d) result = result.d;
+			self.Tables.model().forEach(function (t) {
+				t.Categories(_.map(t.Categories(), function (e) {
+					return result.find(r => r.Id === e.Id());
+				}).filter(Boolean));
+			});
+			self.Categories(result);
+		});
+	}
 	self.newDataConnection = {
 		Name: ko.observable(),
 		ConnectionKey: ko.observable(),
+		UseSchema: ko.observable(),
 		copySchema: ko.observable(false),
-		copyFrom: ko.observable()
+		copyFrom: ko.observable(),
+	}
+	self.editingDataConnection = ko.observable(false);
+
+	self.editDataConnectionModal = function () {
+		self.editingDataConnection(true);
+		var dc = self.DataConnections().find(x => self.currentConnectionKey() == x.DataConnectGuid);
+
+		if (!dc) {
+			toastr.error('Could not find Data Connection Details');
+			return;
+		}
+		self.newDataConnection.Name(dc.DataConnectName);
+		self.newDataConnection.ConnectionKey(dc.ConnectionKey);
+		self.newDataConnection.UseSchema(dc.UseSchema);
+	}
+	self.newDataConnectionModal = function () {
+		self.editingDataConnection(false);
+		self.newDataConnection.Name('');
+		self.newDataConnection.ConnectionKey('');
+		self.newDataConnection.UseSchema(false);
+	}
+
+	self.updateDataConnection = function () {
+		$(".form-group").removeClass("has-error");
+		if (!self.newDataConnection.Name()) {
+			$("#add-conn-name").closest(".form-group").addClass("has-error");
+			return false;
+		}
+		if (!self.newDataConnection.ConnectionKey()) {
+			$("#add-conn-key").closest(".form-group").addClass("has-error");
+			return false;
+		}
+
+		ajaxcall({
+			url: options.apiUrl,
+			type: 'POST',
+			data: JSON.stringify({
+				method: options.updateDataConnectionUrl,
+				model: JSON.stringify({
+					account: self.keys.AccountApiKey,
+					dataConnect: self.currentConnectionKey(),
+					useSchema: self.newDataConnection.UseSchema(),
+					connectionKey: self.newDataConnection.ConnectionKey(),
+					connectName: self.newDataConnection.Name()
+				})
+			})
+		}).done(function (result) {			
+			var dc = self.DataConnections().find(x => self.currentConnectionKey() == x.DataConnectGuid);
+			dc.DataConnectName = self.newDataConnection.Name();
+			dc.ConnectionKey = self.newDataConnection.ConnectionKey();
+			dc.UseSchema = self.newDataConnection.UseSchema();
+			toastr.success("Data Connection updated successfully");
+			$('#add-connection-modal').modal('hide');
+		});
+
+		return true;
 	}
 
 	self.addDataConnection = function () {
@@ -187,7 +531,8 @@ var manageViewModel = function (options) {
 				Id: result.Id,
 				DataConnectName: self.newDataConnection.Name(),
 				ConnectionKey: self.newDataConnection.ConnectionKey(),
-				DataConnectGuid: result.DataConnectGuid
+				DataConnectGuid: result.DataConnectGuid,
+				UseSchema: result.UseSchema || false
 			});
 
 			self.newDataConnection.Name('');
@@ -1470,7 +1815,7 @@ var dbConnectionViewModel = function(options) {
 	};
 }
 
-var tablesViewModel = function (options) {
+var tablesViewModel = function (options, keys, previewData) {
 	var self = this;
 	self.model = ko.mapping.fromJS(_.sortBy(options.model.Tables, ['TableName']));
 
@@ -1550,6 +1895,13 @@ var tablesViewModel = function (options) {
 			});
 		}
 
+		t.Selected.subscribe(function (x) {
+			if (x) {
+				t.selectAllColumns();
+				t.autoFormat();
+			}
+		});
+
 		t.autoFormat = function (e) {
 			_.forEach(t.Columns(), function (c) {
 				var displayName = c.DisplayName();
@@ -1574,6 +1926,35 @@ var tablesViewModel = function (options) {
 			var exportJson = JSON.stringify(e, null,2)
 			downloadJson(exportJson, e.TableName + (e.IsView ? ' (View)' : '') + '.json', 'application/json');
 		}
+
+		t.previewTable = function (apiKey, dbKey) {
+			previewData(null);
+			var sql = !t.CustomTable()
+							? `SELECT TOP 100 * FROM ${(t.SchemaName() ? '['+t.SchemaName()+'].' : '')}[${t.TableName()}]`
+							: t.CustomTableSql().replace(/^SELECT/, "SELECT TOP 100");
+			
+			return ajaxcall({
+				url: options.getPreviewFromSqlUrl,
+				type: "POST",
+				data: JSON.stringify({
+					value: sql,
+					accountKey: keys.AccountApiKey,
+					dataConnectKey: keys.DatabaseApiKey,
+					dynamicColumns: false
+				})
+			}).done(function (result) {
+				if (result.d) result = result.d;
+
+				if (result.errorMessage) {
+					toastr.error("Could not execute Query. Please check your query and try again. Error: " + result.errorMessage);
+					return;
+				}
+
+				previewData(result.ReportData);
+				$('#data-preview-modal').modal('show');
+			});
+		}
+
 		t.saveTable = function (apiKey, dbKey,jsonTable) {
 			var e = ko.mapping.toJS(t, {
 				'ignore': ["saveTable", "JoinTable", "ForeignJoinTable"]
@@ -1603,7 +1984,9 @@ var tablesViewModel = function (options) {
 				return;
 			}
 
-			if (_.filter(e.Columns, function (x) { return x.Selected; }).length == 0) {
+			if (e.DynamicColumns) {
+				e.Columns = []
+			} else if (_.filter(e.Columns, function (x) { return x.Selected; }).length == 0) {
 				toastr.error("Cannot save table " + e.DisplayName + ", no columns selected");
 				return;
 			}
@@ -1806,6 +2189,8 @@ var customSqlModel = function (options, keys, tables) {
 	self.customTableName = ko.observable();
 	self.customSql = ko.observable();
 	self.useAi = ko.observable(false);
+	self.dynamicColumns = ko.observable(false);
+	self.columnTranslation = ko.observable('{column}');
 	self.textQuery = new textQuery(options);
 	self.selectedTable = null;
 	var validator = new validation();
@@ -1824,6 +2209,8 @@ var customSqlModel = function (options, keys, tables) {
 		validator.clearForm('#custom-sql-modal');
 		self.customTableName(e.TableName());
 		self.customSql(e.CustomTableSql());
+		self.dynamicColumns(e.DynamicColumns());
+		self.columnTranslation(e.DynamicColumnTranslation());
 		$('#custom-sql-modal').modal('show');
 	}
 	
@@ -1886,6 +2273,10 @@ var customSqlModel = function (options, keys, tables) {
 			valid = false;
 		}
 
+		if (self.dynamicColumns() && self.columnTranslation().indexOf('{column}') < 0) {
+			toastr.error("You must use {column} in the code to use the dynamic column");
+			valid = false;
+		}
 		var matchTable = _.find(tables.model(), function (x) {
 			return x.TableName() == self.customTableName() && (!self.selectedTable || self.selectedTable.Id != x.Id());
 		});
@@ -1904,6 +2295,7 @@ var customSqlModel = function (options, keys, tables) {
 			type: 'POST',
 			data: JSON.stringify({
 				value: self.customSql(),
+				dynamicColumns: self.dynamicColumns(),
 				accountKey: keys.AccountApiKey,
 				dataConnectKey: keys.DatabaseApiKey
 			})
@@ -1918,6 +2310,8 @@ var customSqlModel = function (options, keys, tables) {
 			if (!self.selectedTable) {
 				result.TableName = self.customTableName();
 				result.DisplayName = self.customTableName();
+				result.DynamicColumns = self.dynamicColumns();
+				result.DynamicColumnTranslation = self.columnTranslation() ? self.columnTranslation() : "{column}";
 				var t = ko.mapping.fromJS(result);
 
 				tables.model.push(tables.processTable(t));
@@ -1926,6 +2320,8 @@ var customSqlModel = function (options, keys, tables) {
 				var table = _.find(tables.model(), function (x) { return x.Id() == self.selectedTable.Id; });
 				table.TableName(self.customTableName());
 				table.CustomTableSql(self.customSql());
+				table.DynamicColumns(self.dynamicColumns());
+				table.DynamicColumnTranslation(self.columnTranslation() ? self.columnTranslation() : "{column}");
 
 				_.forEach(result.Columns, function (c) {
 					// if column id matches, update display name and data type, otherwise add it
