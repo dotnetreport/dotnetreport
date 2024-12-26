@@ -3,7 +3,7 @@
     Layout = "~/Views/shared/_Layout.ReportSetup.cshtml";
 }
 
-@section head{
+@section head {
     <link href="~/lib/x-editable-bs4/css/bootstrap-editable.css" rel="stylesheet" />
     <link href="~/lib/tributejs/tribute.css" rel="stylesheet" />
 
@@ -31,8 +31,8 @@
         }
     </style>
 }
-@section scripts{
-        <script>$.fn.popover = { Constructor: {} };</script>
+@section scripts {
+    <script>$.fn.popover = { Constructor: {} };</script>
     <script src="~/lib/tributejs/tribute.min.js"></script>
     <script src="~/js/dotnetreport-setup.js"></script>
     <script src="~/lib/knockout-mapping/knockout.mapping.js"></script>
@@ -88,7 +88,7 @@
                 vm.setupManageAccess();
                 ko.applyBindings(vm);
                 vm.UserAndRolesConfig.init();
-               
+
             });
         });
 
@@ -97,7 +97,7 @@
 
 
 @section dboptions {
-    <a class="bg-dark list-group-item list-group-item-action" href="/dotnetsetup/" >
+    <a class="bg-dark list-group-item list-group-item-action" href="/dotnetsetup/">
         <div class="d-flex w-100 justify-content-start align-items-center">
             <span class="fa fa-database fa-fw me-3"></span>
             <span class="menu-collapsed">DB Connections</span>
@@ -107,7 +107,7 @@
 
 @section useroptions {
 
-        <a class="bg-dark list-group-item list-group-item-action active" href="#useroptions" aria-controls="home" role="tab" data-bs-toggle="tab">
+    <a class="bg-dark list-group-item list-group-item-action active" href="#useroptions" aria-controls="home" role="tab" data-bs-toggle="tab">
         <div class="d-flex w-100 justify-content-start align-items-center">
             <span class="fa fa-gear fa-fw me-3"></span>
             <span class="menu-collapsed">Configuration</span>
@@ -141,7 +141,7 @@
     <div class="alert alert-danger">
         Do not expose this Setup Tool to end users who should not have access to it. Ideally, only Developers should be given access to this utility.
     </div>
-    
+
     <div class="d-sm-block d-md-none">
         <!-- Nav tabs -->
         <ul class="nav nav-tabs" role="tablist">
@@ -175,7 +175,7 @@
                                 Use Dotnet Report with just your own Account login.
                                 <div class="padded-top"></div>
                                 <div class="padded-div small alert alert-danger">
-                                    <i class="fa fa-lightbulb-o"></i> This option is NOT recommended as it can be used only with a single user login. You will not be able to add other users or give access to your Reports and Dashboards to other users. 
+                                    <i class="fa fa-lightbulb-o"></i> This option is NOT recommended as it can be used only with a single user login. You will not be able to add other users or give access to your Reports and Dashboards to other users.
                                 </div>
                             </div>
                         </div>
@@ -265,14 +265,14 @@
             <div data-bind="if: selectedUserConfig() == 'api-managed'">
                 <div class="alert alert-info">
                     Your selected option is <b>Using your API or SSO</b>. With this option, you can provide your API URL or SSO Redirect URL below.<br />
-                    Your Authorization Service must return JSON or Claims in the format described below. 
+                    Your Authorization Service must return JSON or Claims in the format described below.
                 </div>
             </div>
 
             <div data-bind="if: selectedUserConfig() == 'dnr-managed'">
                 <div class="alert alert-info">
                     Your selected option is <b>Managed by Dotnet Report</b>. With this option, you can create and manage your users who will access the system below. <br />
-                    Users and Roles will be managed using Standard ASP.NET Individual Account Identity. It uses "AspNetUsers" and "AspNetUserRoles" tables. If these tables don't exist in your database, they will be created, otherwise existing tables will be used. 
+                    Users and Roles will be managed using Standard ASP.NET Individual Account Identity. It uses "AspNetUsers" and "AspNetUserRoles" tables. If these tables don't exist in your database, they will be created, otherwise existing tables will be used.
                 </div>
                 <div>
                     <!-- Nav tabs -->
@@ -284,8 +284,8 @@
                 </div>
 
                 <div class="tab-content">
-                    <div id="setup-users" class="tab-pane active padded-top">                        
-                        <div class="col-lg-12 col-md-8 col-sm-8">                         
+                    <div id="setup-users" class="tab-pane active padded-top">
+                        <div class="col-lg-12 col-md-8 col-sm-8">
                             <div class="padded-top">
                                 <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createUserModal">Create New User</button>
                             </div>
@@ -352,7 +352,7 @@
 
                     <div id="setup-useruserroles" class="tab-pane padded-top">
                         <div class="col-lg-12 col-md-8 col-sm-8">
-                                <div class="padded-top">
+                            <div class="padded-top">
                                 <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createUserRoleModal">Assign New Role To User</button>
                             </div>
                             <br />
@@ -370,7 +370,7 @@
                                         <td data-bind="text: UserName"></td>
                                         <td data-bind="text: RoleName"></td>
                                         <td>
-                                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editUserRoleModal" data-bind="click: function() { $parent.openEditUserRoleModal($data); }"">Edit</button>
+                                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editUserRoleModal" data-bind="click: function() { $parent.openEditUserRoleModal($data); }" ">Edit</button>
                                             <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteUserRoleModal" data-bind="click: function() { $parent.openDeleteUserRoleModal($data); }">Delete</button>
                                         </td>
                                         <!-- Add more columns as needed -->
@@ -474,9 +474,9 @@
                         <div class="card-body">
                             <form id="appSettingsForm" data-bind="with: SettingPage">
                                 <label for="backendApiUrl">Backend Service API Url:</label>
-                                <input type="text" class="form-control"  required  data-bind="value: backendApiUrl">
+                                <input type="text" class="form-control" required data-bind="value: backendApiUrl">
                                 <div class="invalid-feedback">BackendApiUrl is required.</div>
-                                <div >
+                                <div>
                                     <label for="themeSelect">Application Theme:</label>
                                     <select class="form-control" id="themeSelect" data-bind="options: appThemes,
                                                optionsText: 'name',
@@ -486,7 +486,7 @@
                                     <br>
                                     <div class="invalid-feedback">Application Theme is required.</div>
                                 </div>
-                                <div >
+                                <div>
                                     <label for="timezone">Default time zone:</label>
                                     <select class="form-control" id="timezoneSelect" data-bind="options: timeZones,
                                                optionsText: 'displayName',
@@ -496,40 +496,40 @@
                                     <br>
                                     <div class="invalid-feedback">Select timezone is required.</div>
                                 </div>
-                            <div >
-                                        <div class="card-body">
-                                            <h5 class="card-title">Scheduled Job Email Settings:</h5>
-                                            <div class="form-group">
-                                                <label for="emailUsername">Email Username:</label>
-                                            <input type="text" class="form-control"  required data-bind="value: emailUsername">
-                                                <div class="invalid-feedback">Email Username is required.</div>
-                                            </div>
-                                            <div class="form-group">
-                                                <label for="emailPassword">Email Password:</label>
-                                            <input type="password" class="form-control"  required data-bind="value: emailPassword">
-                                                <div class="invalid-feedback">Email Password is required.</div>
-                                            </div>
-                                            <div class="form-group">
-                                                <label for="emailServer">Email Server:</label>
-                                                <input type="text" class="form-control"  required data-bind="value: emailServer">
-                                                <div class="invalid-feedback">Email Server is required.</div>
-                                            </div>
-                                            <div class="form-group">
-                                                <label for="emailPort">Email Port:</label>
-                                                <input type="text" class="form-control"  required data-bind="value: emailPort">
-                                                 <div class="invalid-feedback">Email Port is required.</div>
-                                            </div>
-                                              <div class="form-group">
-                                                <label for="emailName">From Email Name:</label>
-                                            <input type="text" class="form-control"  required data-bind="value: emailName">
-                                                <div class="invalid-feedback">Email Name is required.</div>
-                                            </div>
-                                            <div class="form-group">
-                                                <label for="emailaddress">From Email:</label>
-                                            <input type="email" class="form-control"  required  data-bind="value: emailAddress">
-                                                <div class="invalid-feedback">From Email is required.</div>
-                                            </div>
+                                <div>
+                                    <div class="card-body">
+                                        <h5 class="card-title">Scheduled Job Email Settings:</h5>
+                                        <div class="form-group">
+                                            <label for="emailUsername">Email Username:</label>
+                                            <input type="text" class="form-control" data-bind="value: emailUsername">
+                                            <div class="invalid-feedback">Email Username is required.</div>
                                         </div>
+                                        <div class="form-group">
+                                            <label for="emailPassword">Email Password:</label>
+                                            <input type="password" class="form-control" data-bind="value: emailPassword">
+                                            <div class="invalid-feedback">Email Password is required.</div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="emailServer">Email Server:</label>
+                                            <input type="text" class="form-control" data-bind="value: emailServer">
+                                            <div class="invalid-feedback">Email Server is required.</div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="emailPort">Email Port:</label>
+                                            <input type="text" class="form-control" data-bind="value: emailPort">
+                                            <div class="invalid-feedback">Email Port is required.</div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="emailName">From Email Name:</label>
+                                            <input type="text" class="form-control" data-bind="value: emailName">
+                                            <div class="invalid-feedback">Email Name is required.</div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="emailaddress">From Email:</label>
+                                            <input type="email" class="form-control" data-bind="value: emailAddress">
+                                            <div class="invalid-feedback">From Email is required.</div>
+                                        </div>
+                                    </div>
                                 </div>
                                 <button type="button" id="saveAppSettings" class="btn btn-primary" data-bind="click: saveAppSettings">Save</button>
                             </form>
@@ -537,9 +537,8 @@
                     </div>
                 </div>
             </div>
-
+        </div>
     </div>
-</div>
 </div>
 
 <div class="modal" id="role-access-modal" role="dialog" tabindex="-2">
@@ -831,7 +830,7 @@
                 <p>Are you sure you want to delete this User Role?</p>
                 <!-- Hidden input for Role ID -->
                 <input type="hidden" id="deleteUserId" data-bind="value: userId">
-                @*<input type="hidden" id="deleteRoleId" data-bind="value: roleId">*@
+                                            @*<input type="hidden" id="deleteRoleId" data-bind="value: roleId">*@
             </div>
             <div class="modal-footer" data-bind="with: UserAndRolesConfig">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>

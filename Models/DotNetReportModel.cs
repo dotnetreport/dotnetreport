@@ -3201,7 +3201,7 @@ namespace ReportBuilder.Web.Models
                 var emptyConfig = new JObject();
                 System.IO.File.WriteAllText(_configFilePath, emptyConfig.ToString(Newtonsoft.Json.Formatting.Indented));
             }
-
+            
             string configContent = System.IO.File.ReadAllText(_configFilePath);
 
             var config = JObject.Parse(configContent);
@@ -3217,7 +3217,7 @@ namespace ReportBuilder.Web.Models
                 emailPort = appSetting?["email"]?["port"]?.ToString(),
                 emailUserName = appSetting?["email"]?["username"]?.ToString(),
                 emailPassword = appSetting?["email"]?["password"]?.ToString(),
-                backendApiUrl = appSetting?["BaseApiUrl"]?.ToString() ?? "https://dotnetreport.com/api",
+                backendApiUrl = appSetting?["BaseApiUrl"]?.ToString() ?? _configuration.GetValue<string>("dotNetReport:apiUrl"),
                 timeZone = appSetting?["TimeZone"]?.ToString() ?? "-6",
                 appThemes = appSetting?["AppTheme"]?.ToString() ?? "default"
             };
