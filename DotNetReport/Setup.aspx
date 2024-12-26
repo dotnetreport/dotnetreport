@@ -3,6 +3,24 @@
 <asp:Content ID="Content2" ContentPlaceHolderID="head" runat="server">
     <link href="../Content/bootstrap-editable.css" rel="stylesheet" />    
     <link href="../Content/tribute.css" rel="stylesheet" />
+    <style type="text/css">
+        .glyphicon-ok:before {
+            content: "\f00c";
+        }
+
+        .glyphicon-remove:before {
+            content: "\f00d";
+        }
+
+        .glyphicon {
+            display: inline-block;
+            font: normal normal normal 14px/1 FontAwesome;
+            font-size: inherit;
+            text-rendering: auto;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+    </style>
 </asp:Content>
 <asp:Content ID="Content1" ContentPlaceHolderID="scripts" runat="server">    
     <script>$.fn.popover = { Constructor: {} };</script>
@@ -39,21 +57,24 @@
                 if (model.Result) model = model.Result;
                 var options = {
                     model: model,
-                    saveCategoriesUrl: '/ReportApi/SaveCategoriesData',
-                    getCategoriesUrl: '/ReportApi/GetCategories',
                     saveTableUrl: '/ReportApi/SaveTableData',
                     deleteTableUrl: '/ReportApi/DeleteTable',
                     getRelationsUrl: '/ReportApi/GetRelations',
                     getDataConnectionsUrl: '/ReportApi/GetDataConnections',
+                    updateDataConnectionUrl: '/ReportApi/UpdateDataConnection',
                     saveRelationsUrl: '/ReportApi/SaveRelationsData',
                     addDataConnectionUrl: '/ReportApi/AddDataConnection',
                     saveProcUrl: '/ReportApi/SaveProcedureData',
                     deleteProcUrl: '/ReportApi/DeleteProcedure',
                     saveCustomFuncUrl: '/ReportApi/SaveCustomFunctionData',
                     deleteCustomFuncUrl: '/ReportApi/DeleteCustomFunction',
+                    getSchedulesUrl: '/ReportApi/GetScheduledReportsAndDashboards',
+                    deleteScheduleUrl: '/ReportApi/DeleteSchedule',
+                    saveCategoriesUrl: '/ReportApi/SaveCategoriesData',
+                    getCategoriesUrl: '/ReportApi/GetCategories',
                     reportsApiUrl: '/DotNetReport/ReportService.asmx/CallReportApi',
                     getUsersAndRoles: '/DotNetReport/ReportService.asmx/GetUsersAndRoles',
-                    searchProcUrl: '/DotNetReport/ReportService.asmx/SearchProcedure',
+                    searchProcUrl: '/DotNetReport/ReportService.asmx/SearchProcedure',                    
                     getSchemaFromSql: '/DotNetReport/ReportService.asmx/GetSchemaFromSql',
                     apiUrl: '/DotNetReport/ReportService.asmx/CallReportApi',
                     getPreviewFromSqlUrl: '/DotNetReport/ReportService.asmx/GetPreviewFromSql',
@@ -63,6 +84,8 @@
                 var vm = new manageViewModel(options);
                 vm.LoadJoins();
                 vm.setupManageAccess();
+                vm.LoadSchedules();
+                vm.LoadCategories();
                 ko.applyBindings(vm);
                 vm.LoadDataConnections();
 
@@ -90,14 +113,48 @@
     <div>
         <!-- Nav tabs -->
         <ul class="nav nav-tabs" role="tablist">
-            <li role="presentation" class="nav-item"><a class="nav-link active" href="#tablesfields" aria-controls="home" role="tab" data-bs-toggle="tab" data-bind="click: function() { customTableMode(false); }">Database Tables</a></li>
-            <li role="presentation" class="nav-item"><a class="nav-link" href="#tablesfields" aria-controls="custom" role="tab" data-bs-toggle="tab" data-bind="click: function() { customTableMode(true); }">Custom Tables</a></li>
-            <li role="presentation" class="nav-item"><a class="nav-link" href="#relations" aria-controls="profile" role="tab" data-bs-toggle="tab">Relations</a></li>
-            <li role="presentation" class="nav-item"><a class="nav-link" href="#procedure" aria-controls="procedure" role="tab" data-bs-toggle="tab">Stored Procs</a></li>
-            <li role="presentation" class="nav-item" style="display: none;"><a class="nav-link" href="#functions" aria-controls="functions" role="tab" data-bs-toggle="tab">Custom Functions</a></li>
-            <li role="presentation" class="nav-item"><a class="nav-link" href="#manageaccess" aria-controls="manageaccess" role="tab" data-bs-toggle="tab">Manage Reports Access</a></li>
-            <li role="presentation" class="nav-item"><a class="nav-link" href="#connection" aria-controls="home" role="tab" data-bs-toggle="tab">Data Connection</a></li>
+            <li role="presentation" class="nav-item">
+                <a class="nav-link active" href="#tablesfields" aria-controls="home" role="tab" data-bs-toggle="tab" data-bind="click: function() { customTableMode(false); activeTable(null);}">
+                    <i class="fa fa-database"></i> Database Tables
+                </a>
+            </li>
+            <li role="presentation" class="nav-item">
+                <a class="nav-link" href="#tablesfields" aria-controls="custom" role="tab" data-bs-toggle="tab" data-bind="click: function() { customTableMode(true); activeTable(null); }">
+                    <i class="fa fa-table"></i> Custom Tables
+                </a>
+            </li>
+            <li role="presentation" class="nav-item">
+                <a class="nav-link" href="#relations" aria-controls="profile" role="tab" data-bs-toggle="tab">
+                    <i class="fa fa-link"></i> Relations
+                </a>
+            </li>
+            <li role="presentation" class="nav-item">
+                <a class="nav-link" href="#procedure" aria-controls="procedure" role="tab" data-bs-toggle="tab">
+                    <i class="fa fa-code"></i> Stored Procs
+                </a>
+            </li>
+            <li role="presentation" class="nav-item">
+                <a class="nav-link" href="#schedules" aria-controls="schedules" role="tab" data-bs-toggle="tab">
+                    <i class="fa fa-clock-o"></i> Schedules
+                </a>
+            </li>
+            <li role="presentation" class="nav-item" style="display: none;">
+                <a class="nav-link" href="#functions" aria-controls="functions" role="tab" data-bs-toggle="tab">
+                    <i class="fa fa-cogs"></i> Custom Functions
+                </a>
+            </li>
+            <li role="presentation" class="nav-item">
+                <a class="nav-link" href="#manageaccess" aria-controls="manageaccess" role="tab" data-bs-toggle="tab">
+                    <i class="fa fa-user"></i> Manage Access
+                </a>
+            </li>
+            <li role="presentation" class="nav-item">
+                <a class="nav-link" href="#connection" aria-controls="home" role="tab" data-bs-toggle="tab">
+                    <i class="fa fa-plug"></i> Data Connection
+                </a>
+            </li>
         </ul>
+
     </div>
     <br />
 </div>
@@ -112,7 +169,7 @@
             <div class="form-row" data-bind="visible: true">
                 <div class="form-group">
                     <div class="control-group">
-                        <select class="form-select" style="width:25%"  data-bind="options: DataConnections, optionsText: 'DataConnectName', optionsValue: 'DataConnectGuid', value: currentConnectionKey" ></select>
+                        <select class="form-select" style="width:25%" data-bind="options: DataConnections, optionsText: 'DataConnectName', optionsValue: 'DataConnectGuid', value: currentConnectionKey"></select>
                         <div class="padded-top"></div>
                         <button class="btn btn-primary btn-sm" data-bind="visible: false" data-bs-toggle="modal" data-bs-target="#connection-setup-modal">Manage DB Connection</button>
                         <button class="btn btn-primary btn-sm" data-bind="click: switchConnection, visible: canSwitchConnection">Switch Connection</button>
@@ -151,10 +208,8 @@
             </p>
 
             <div data-bind="with: Tables">
-                <input type="text" class="form-control input-sm" placeholder="Filter Tables for..." data-bind="value: tableFilter, valueUpdate: 'afterkeydown'" style="float: left; width: 140px;">
+                <input type="text" class="form-control input-sm" placeholder="Filter Tables for..." data-bind="value: tableFilter, valueUpdate: 'afterkeydown'" style="float: left; width: 180px; margin-right: 5px;">
                 <button class="btn btn-sm" data-bind="click: clearTableFilter,  visible: tableFilter()!='' && tableFilter()!=null"><span class="fa fa-remove"></span></button>
-                <button class="btn btn-sm" onclick="openall()" style="margin-left: 15px;">Open all</button>
-                <button class="btn btn-sm" onclick="closeall()">Close all</button>
                 <button class="btn btn-sm" data-bind="click: toggleShowAll, hidden: $root.customTableMode() || $root.onlyApi(), text: usedOnly() ? 'Show all' : 'Show used only'">Show used only</button>
                 <button class="btn btn-sm btn-primary" data-bind="click: $root.customSql.addNewCustomSqlTable, visible: $root.customTableMode">Add New Custom Table</button>
                 <button class="btn btn-sm btn-primary" data-bind="click: $root.loadFromDatabase, hidden: $root.customTableMode() || !$root.onlyApi()">
@@ -169,86 +224,128 @@
             </div>
             <div class="clearfix"></div>
             <hr />
+           
             <div class="row">
-                <div class="d-flex flex-row align-items-center col-md-4" data-bind="with: pager">
-                    <div data-bind="template: 'pager-template', data: $data"></div>
-                </div>
-                <div class="col-md-4" data-bind="ifnot: $root.customTableMode">
-                    <div>
-                        <span data-bind="text: Tables.model().length"></span> Tables/Views <span data-bind="text: $root.onlyApi() ? 'configured and used' : 'read from database'"></span>
-                    </div>
-                </div>
-            </div>
-            <div class="menu g-3 mt-4" style="margin-left: 20px;" data-bind="foreach: pagedTables">
-                <div class="menu-category card" style="float: left;">
-
-                    <div class="card-header clearfix" style="">
-                        <div class="checkbox pull-left">
-                            <label>
-                                <input type="checkbox" data-bind="checked: Selected">
-                                <span data-bind="text: TableName"></span>
-                                <span data-bind="visible: IsView" class="label-sm">(view)</span>
-                            </label>
-                            <button class="btn btn-sm" title="Save this Table" data-bind="click: function(){$data.saveTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}"><i class="fa fa-floppy-o"></i></button>
-                            <button class="btn btn-sm" title="Preview this Table" data-bind="click: function(){$data.previewTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}"><i class="fa fa-table"></i></button>
-                        </div>
-                        <a class="pull-right" data-bs-toggle="collapse" data-bind="attr: {'data-bs-target': '#table'+$index()}">
-                            <span class="fa fa-chevron-down"></span>
-                        </a>
-                    </div>
-                    <div data-bind="attr: {id: 'table'+$index()}" class="panel-collapse collapse in">
-                        <div class="card-body">
-                            <p class="pull-right">
-                                <button class="btn btn-sm" title="Manage Category" data-bs-toggle="modal" data-bs-target="#category-manage-modal" data-bind="click: $root.selectedCategory">
-                                    <i class="fa fa-gear"></i>
-                                </button>
-                                <button class="btn btn-sm" title="Manage Role Access" data-bs-toggle="modal" data-bs-target="#role-access-modal" data-bind="click: $root.selectAllowedRoles">
-                                    <i class="fa fa-user"></i>
-                                </button>
-                                <button class="btn btn-sm" title="Export this Table" data-bind="click: function(){$data.exportTableJson();}"><i class='fa fa-file'></i></button>
-                            </p>
-                            <p>
-                                <label class="label-sm">Display Name</label><br />
-                                <span data-bind="editable: DisplayName"></span>
-                            </p>
-                            <p>
-                                <label class="label-sm">Schema Name</label><br />
-                                <span data-bind="editable: SchemaName"></span>
-                            </p>
-                            <p>
-                                <label class="label-sm">Account Id Field</label><br />
-                                <span data-bind="editable: AccountIdField"></span>
-                            </p>
-                            <div class="checkbox">
-                                <label>
-                                    <input class="check-box" data-val="true" type="checkbox" value="true" data-bind="checked: DoNotDisplay" title="Do not display this table for selecting in reports"> Do Not Display
-                                </label>
-                            </div>
-                            <div data-bind="if: CustomTable">
-                                <button data-bind="click: $root.customSql.viewCustomSql.bind($data)" class="btn btn-sm btn-secondary">View Custom Sql</button>
+                <div class="col-3 border-end" style="height: 100vh; overflow-y: auto;">
+                    <div class="row">                        
+                        <div data-bind="ifnot: $root.customTableMode">
+                            <div class="alert alert-info">
+                                <span data-bind="text: Tables.model().length"></span> Tables/Views
+                                <span data-bind="text: $root.onlyApi() ? 'configured and used' : 'read from database'"></span>
                             </div>
                         </div>
-                        
-                        <label style="padding-left: 15px;" class="label-sm"><span data-bind="text: Columns().length"></span> Columns</label>
-                        <button class="btn btn-sm btn-link label-sm" data-bind="click: autoFormat, visible: Selected">Auto Format</button>
-                        <button class="btn btn-sm btn-link label-sm" data-bind="click: unselectAllColumns, visible: Selected">Unselect All</button>
-                        <button class="btn btn-sm btn-link label-sm" data-bind="click: selectAllColumns, visible: Selected">Select All</button>
-                        <div class="list-group" data-bind="sortable: { data: Columns, options: { handle: '.sortable', cursor: 'move' }, afterMove: $parent.columnSorted }">
-                            <div class="list-group-item">
-                                <div data-bind="if: $parent.DynamicColumns()">
-                                    <span data-bind="html: DisplayName, attr: {title: 'DB field is ' + ColumnName()}"></span>
-                                </div>
-                                <div class="checkbox" data-bind="if: !$parent.DynamicColumns()">
+                    </div>
+                    <div class="menu g-3" data-bind="foreach: pagedTables">
+                        <div class="menu-category card">
+                            <div class="card-header clearfix">
+                                <div class="checkbox pull-left">
                                     <label>
-                                        <input type="checkbox" data-bind="checked: Selected, enable: $parent.Selected()">
-                                        <span data-bind="editable: DisplayName, attr: {title: 'DB field is ' + ColumnName()}"></span>
-                                        <label data-bind="visible: PrimaryKey" class="badge text-bg-primary">Primary</label>
-                                        <label data-bind="visible: ForeignKey" class="badge text-bg-info text-white">Foreign</label>
+                                        <input type="checkbox" data-bind="checked: Selected" title="Check to use in Dotnet Report, uncheck to Remove">
+                                        <span data-bind="text: TableName"></span>
+                                        <span data-bind="visible: IsView" class="label-sm">(view)</span>
                                     </label>
-                                    <button class="btn btn-sm pull-right" data-bs-toggle="modal" data-bs-target="#column-modal" title="All column options" data-bind="click: $root.selectColumn.bind($data, false)">...</button>
+                                    <button class="btn btn-sm" title="Save this Table" data-bind="click: function() { saveTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey); }">
+                                        <i class="fa fa-floppy-o"></i>
+                                    </button>
+                                    <button class="btn btn-sm" title="Preview this Table" data-bind="click: function() { previewTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey); }">
+                                        <i class="fa fa-table"></i>
+                                    </button>
+                                </div>
+                                <a class="pull-right" data-bind="click: function() { $root.activeTable($data); }">
+                                    <span class="fa fa-chevron-right"></span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="d-flex flex-row align-items-center col-md-12" data-bind="with: pager">
+                            <div data-bind="template: 'pager-template', data: $data"></div>
+                        </div>
+                    </div>
 
-                                    <div class="btn btn-sm pull-right sortable">
-                                        <span class="fa fa-arrows" aria-hidden="true" title="Drag to reorder"></span>
+                </div>
+
+                <div class="col-9">
+                    <div data-bind="visible: pagedTables().length === 0">
+                        <div data-bind="visible: pagedTables().length === 0">
+                            <svg style="width: 40px; float: left;" fill="#000000" viewBox="0 0 24 24" id="curve-arrow-up-7" data-name="Flat Line" xmlns="http://www.w3.org/2000/svg" class="icon flat-line" transform="rotate(-45)"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round" stroke="#CCCCCC" stroke-width="0.048"></g><g id="SVGRepo_iconCarrier"><path id="primary" d="M18,21A13.17,13.17,0,0,1,9,8.51V3" style="fill: none; stroke: #000000; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2;"></path><polyline id="primary-2" data-name="primary" points="12 6 9 3 6 6" style="fill: none; stroke: #000000; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2;"></polyline></g></svg>
+                            <div class="mt-3 fw-bold" style="float: left;"> No <span data-bind="visible: $root.customTableMode">Custom </span> Tables added yet, click "<span data-bind="text: customTableMode() ? 'Add New Custom Table' : 'Load All Tables'"></span>" to get started!</div>
+                        </div>
+                    </div>
+                    <div data-bind="with: activeTable">
+                        <div class="card my-3">
+                            <div class="card-header">
+                                <h5>
+                                    <input type="checkbox" data-bind="checked: Selected" title="Check to use in Dotnet Report, uncheck to Remove">
+                                    <span data-bind="text: TableName"></span>
+                                    <span data-bind="visible: IsView" class="label-sm">(view)</span>
+                                </h5>
+                                <button class="btn btn-sm" title="Save this Table" data-bind="click: function() { saveTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey); }">
+                                    <i class="fa fa-floppy-o"></i> Save Changes
+                                </button>
+                                <button class="btn btn-sm" title="Preview this Table" data-bind="click: function() { previewTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey); }">
+                                    <i class="fa fa-table"></i> Preview Data
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <p class="pull-right">
+                                    <button class="btn btn-sm" title="Manage Category" data-bs-toggle="modal" data-bs-target="#category-manage-modal" data-bind="click: $root.selectedCategory">
+                                        <i class="fa fa-gear"></i>
+                                    </button>
+                                    <button class="btn btn-sm" title="Manage Role Access" data-bs-toggle="modal" data-bs-target="#role-access-modal" data-bind="click: $root.selectAllowedRoles">
+                                        <i class="fa fa-user"></i>
+                                    </button>
+                                    <button class="btn btn-sm" title="Export this Table" data-bind="click: function() { exportTableJson(); }">
+                                        <i class="fa fa-file"></i>
+                                    </button>
+                                </p>
+                                <p>
+                                    <label class="label-sm">Display Name</label><br />
+                                    <span data-bind="editable: DisplayName"></span>
+                                </p>
+                                <p>
+                                    <label class="label-sm">Schema Name</label><br />
+                                    <span data-bind="editable: SchemaName"></span>
+                                </p>
+                                <p style="display: none;"><!-- deprecated -->
+                                    <label class="label-sm">Account Id Field</label><br />
+                                    <span data-bind="editable: AccountIdField"></span>
+                                </p>
+                                <div class="checkbox">
+                                    <label>
+                                        <input class="check-box" data-val="true" type="checkbox" value="true" data-bind="checked: DoNotDisplay">
+                                        Do Not Display
+                                    </label>
+                                </div>
+                                <div data-bind="if: CustomTable">
+                                    <button class="btn btn-sm btn-secondary" data-bind="click: $root.customSql.viewCustomSql.bind($data)">View Custom SQL</button>
+                                </div>
+
+                                <div class="d-flex align-items-center justify-content-end gap-2">
+                                    <label class="label-sm m-0"><span data-bind="text: Columns().length"></span> Columns</label>
+                                    <button class="btn btn-sm btn-outline-secondary" data-bind="click: autoFormat, visible: Selected">Auto Format</button>
+                                    <button class="btn btn-sm btn-outline-secondary" data-bind="click: unselectAllColumns, visible: Selected">Unselect All</button>
+                                    <button class="btn btn-sm btn-outline-secondary" data-bind="click: selectAllColumns, visible: Selected">Select All</button>
+                                </div>
+                            </div>
+
+                            <div class="list-group" data-bind="sortable: { data: Columns, options: { handle: '.sortable', cursor: 'move' }, afterMove: $root.columnSorted }">
+                                <div class="list-group-item">
+                                    <div data-bind="if: $parent.DynamicColumns()">
+                                        <span data-bind="html: DisplayName, attr: { title: 'DB field is ' + ColumnName() }"></span>
+                                    </div>
+                                    <div class="checkbox" data-bind="if: !$parent.DynamicColumns()">
+                                        <label>
+                                            <input type="checkbox" data-bind="checked: Selected, enable: $parent.Selected()">
+                                            <span data-bind="editable: DisplayName, attr: { title: 'DB field is ' + ColumnName() }"></span>
+                                            <span class="badge text-bg-info text-white" data-bind="text: FieldType"></span>
+                                            <label data-bind="visible: PrimaryKey" class="badge text-bg-primary">Primary</label>
+                                            <label data-bind="visible: ForeignKey" class="badge text-bg-info text-white">Foreign</label>
+                                        </label>
+                                        <button class="btn btn-sm pull-right" data-bs-toggle="modal" data-bs-target="#column-modal" title="All column options" data-bind="click: $root.selectColumn.bind($data, false)">...</button>
+                                        <div class="btn btn-sm pull-right sortable">
+                                            <span class="fa fa-arrows" aria-hidden="true" title="Drag to reorder"></span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -262,7 +359,7 @@
             <p>
                 Setup your Database Relations for Dotnet Report to produce dynamic queries
             </p>
-            <button class="btn btn-sm btn-primary" data-bind="click: AddAllRelations">Auto Add Joins</button>           
+            <button class="btn btn-sm btn-primary" data-bind="click: AddAllRelations">Auto Add Joins</button>
             <button class="btn btn-sm btn-primary" data-bind="click: AddJoin">Add new Join</button>&nbsp;
             <button class="btn btn-sm btn-primary" data-bind="click: SaveJoins">Save Joins</button>&nbsp;
             <button class="btn btn-sm btn-primary" data-bind="click: ExportJoins">Export Joins</button>&nbsp;
@@ -366,77 +463,92 @@
             </button>
             <br />
             <div data-bind="if: Procedures.savedProcedures().length == 0">
+                <br />
                 No Stored Procedures have been setup yet.
             </div>
-            <div class="menu g-3" data-bind="foreach: Procedures.savedProcedures" style="margin-left: 20px; padding-top: 20px;">
-                <div class="menu-category card" style="float: left;">
-
-                    <div class="card-header clearfix" style="">
-                        <div class="pull-left">
-                            <label>
-                                <span data-bind="text: TableName"></span>
-                                <span class="label-xs">Procedure</span>
-                            </label>
-
-                            <button class="btn btn-sm" title="Save this Procedure" data-bind="click: function(){$root.saveProcedure($data.TableName, false);}">
-                                <span class="fa fa-save"></span>
-                            </button>                           
-                            <button class="btn btn-sm" title="Delete this Procedure" data-bind="click: function(){$data.deleteTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey);}">
-                                <span class="fa fa-trash"></span>
-                            </button>
-
-                        </div>
-                        <a class="pull-right" data-bs-toggle="collapse" data-bind="attr: {'data-bs-target': '#table'+$index()}">
-                            <span class="fa fa-chevron-down"></span>
-                        </a>
-                    </div>
-                    <div data-bind="attr: {id: 'table'+$index()}" class="panel-collapse collapse in">
-                        <div class="card-body">
-                            <p class="pull-right">
-                                <button class="btn btn-sm" title="Manage Role Access" data-bs-toggle="modal" data-bs-target="#role-access-modal" data-bind="click: $root.selectAllowedRoles">
-                                    <i class="fa fa-user"></i>
-                                </button>
-                                <button class="btn btn-sm" title="Export this Procedure" data-bind="click: function(){$root.exportProcedureJson($data.TableName);}">
-                                    <i class="fa fa-file"></i>
-                                </button>
-                            </p>
-                            <p>
-                                <label class="label-sm">Display Name</label><br />
-                                <span data-bind="editable: DisplayName"></span>
-                            </p>
-                            <p>
-                                <label class="label-sm">Schema Name</label><br />
-                                <span data-bind="editable: SchemaName"></span>
-                            </p>
-                            <label class="small">Columns</label>
-
-                            <div class="list-group" data-bind="foreach: Columns">
-                                <div class="list-group-item">
+            <div class="row" data-bind="if: Procedures.savedProcedures().length > 0">
+                <!-- Left Panel for Stored Procedure Names -->
+                <div class="col-3 border-end" style="height: 100vh; overflow-y: auto;">
+                    <div class="menu g-3" data-bind="foreach: Procedures.savedProcedures" style="margin-left: 20px; padding-top: 20px;">
+                        <div class="menu-category card">
+                            <div class="card-header clearfix">
+                                <div class="pull-left">
                                     <label>
-                                        <span data-bind="editable: DisplayName, attr: {title: 'DB field is ' + ColumnName()}"></span>
-                                        <span class="badge text-bg-info text-white" data-bind="text: FieldType"></span>
+                                        <span data-bind="text: TableName"></span>
                                     </label>
-                                    <button class="btn btn-sm pull-right" data-bs-toggle="modal" data-bs-target="#column-modal" title="All column options" data-bind="click: $root.selectColumn.bind($data, true)">...</button>
-
+                                    <button class="btn btn-sm" title="Save this Procedure" data-bind="click: function() { $root.saveProcedure($data.TableName, false); }">
+                                        <span class="fa fa-save"></span>
+                                    </button>
+                                    <button class="btn btn-sm" title="Delete this Procedure" data-bind="click: function() { $data.deleteTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey); }">
+                                        <span class="fa fa-trash"></span>
+                                    </button>
                                 </div>
+                                <!-- Click to activate procedure -->
+                                <a class="pull-right" data-bind="click: function() { $root.activeProcedure($data); }">
+                                    <span class="fa fa-chevron-right"></span>
+                                </a>
                             </div>
-                            <label class="small">Parameters</label>
+                        </div>
+                    </div>
+                </div>
 
-                            <div class="list-group" data-bind="foreach: Parameters">
-                                <div class="list-group-item">
-                                    <label>
-                                        <span data-bind="editable: DisplayName, attr: {title: 'DB field is ' + ParameterName()}"></span>
-                                        <span class="badge text-bg-info text-white" data-bind="text: ParameterDataTypeString"></span>
-                                        &nbsp;
-                                        &nbsp;
-                                        <button class="btn btn-sm btn-primary pull-right" data-bs-toggle="modal" data-bs-target="#parameter-modal" title="All Parameter options" data-bind="click: $root.editParameter">...</button>
-                                    </label>
+                <!-- Right Panel for Stored Procedure Details -->
+                <div class="col-9">
+                    <div data-bind="with: activeProcedure">
+                        <div class="card my-3">
+                            <div class="card-header">
+                                <h5 data-bind="text: TableName"></h5>
+                                <button class="btn btn-sm" title="Save this Procedure" data-bind="click: function() { $root.saveProcedure($data.TableName, false); }">
+                                    <span class="fa fa-save"></span> Save Changes
+                                </button>
+                                <button class="btn btn-sm" title="Delete this Procedure" data-bind="click: function() { $data.deleteTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey); }">
+                                    <span class="fa fa-trash"></span> Delete
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <p class="pull-right">
+                                    <button class="btn btn-sm" title="Manage Role Access" data-bs-toggle="modal" data-bs-target="#role-access-modal" data-bind="click: $root.selectAllowedRoles">
+                                        <i class="fa fa-user"></i>
+                                    </button>
+                                    <button class="btn btn-sm" title="Export this Procedure" data-bind="click: function() { $root.exportProcedureJson($data.TableName); }">
+                                        <i class="fa fa-file"></i>
+                                    </button>
+                                </p>
+                                <p>
+                                    <label class="label-sm">Display Name</label><br />
+                                    <span data-bind="editable: DisplayName"></span>
+                                </p>
+                                <p>
+                                    <label class="label-sm">Schema Name</label><br />
+                                    <span data-bind="editable: SchemaName"></span>
+                                </p>
+                                <label class="small">Columns</label>
+                                <div class="list-group" data-bind="foreach: Columns">
+                                    <div class="list-group-item">
+                                        <label>
+                                            <span data-bind="editable: DisplayName, attr: { title: 'DB field is ' + ColumnName() }"></span>
+                                            <span class="badge text-bg-info text-white" data-bind="text: FieldType"></span>
+                                        </label>
+                                        <button class="btn btn-sm pull-right" data-bs-toggle="modal" data-bs-target="#column-modal" title="All column options" data-bind="click: $root.selectColumn.bind($data, true)">...</button>
+                                    </div>
+                                </div>
+                                <label class="small">Parameters</label>
+                                <div class="list-group" data-bind="foreach: Parameters">
+                                    <div class="list-group-item">
+                                        <label>
+                                            <span data-bind="editable: DisplayName, attr: { title: 'DB field is ' + ParameterName() }"></span>
+                                            <span class="badge text-bg-info text-white" data-bind="text: ParameterDataTypeString"></span>
+                                            &nbsp;&nbsp;
+                                            <button class="btn btn-sm btn-primary pull-right" data-bs-toggle="modal" data-bs-target="#parameter-modal" title="All Parameter options" data-bind="click: $root.editParameter">...</button>
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
         </div>
         <div id="manageaccess" class="tab-pane">
             <div data-bind="foreach: reportsAndFolders" class="card">
@@ -492,7 +604,7 @@
                                         <button class="btn btn-sm btn-primary" data-bind="click: function() { changeAccess(!changeAccess())}, text: !changeAccess() ? 'Change Access': 'Cancel Changing Access', hidden: changeAccess">Change Access</button>
                                     </div>
 
-                                    <div data-bind="if: changeAccess" class="col-md-9" >
+                                    <div data-bind="if: changeAccess" class="col-md-9">
                                         <div style="border-left: 1px solid; padding-left: 10px;">
                                             <div data-bind="template: {name: 'manage-access-template', data: $root }"></div>
                                             <br />
@@ -594,7 +706,60 @@
                         </div>
                     </div>
                 </div>
-            </div> 
+            </div>
+        </div>
+
+        <div role="tabpanel" class="tab-pane" id="schedules">
+            <b>Scheduled Reports</b>
+            <p>
+                View Schedules setup for sending Reports and Dashboards
+            </p>
+            <hr />
+
+            <div class="row">
+                <div class="col-md-12">
+                    <div data-bind="visible: schedules().length === 0">                            
+                        <i class="fa fa-exclamation-circle"></i> No scheduled Reports or Dashboards available.
+                    </div>
+                    <div class="table-responsive" data-bind="if: schedules().length > 0">
+                        <table class="table table-condensed table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th style="border-top: none;"><i class="fa fa-clock-o"></i> Schedule</th>
+                                    <th style="border-top: none;"><i class="fa fa-envelope"></i> Email To</th>
+                                    <th style="border-top: none;"><i class="fa fa-file"></i> Format</th>
+                                    <th style="border-top: none;"><i class="fa fa-history"></i> Last Run</th>
+                                    <th style="border-top: none;"><i class="fa fa-user"></i> User ID</th>
+                                    <th style="border-top: none;"><i class="fa fa-globe"></i> Time Zone</th>
+                                    <th style="border-top: none;"><i class="fa fa-cogs"></i> Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody data-bind="foreach: schedules">                                    
+                                <tr >
+                                    <td colspan="7">                                        
+                                        For <span class="text-muted" data-bind="text: DashboardId === 0 ? 'Report' : 'Dashboard'"></span> <b><span data-bind="text: Name"></span></b>
+                                    </td>
+                                </tr>
+                                <!-- ko foreach: Schedules -->
+                                <tr>
+                                    <td data-bind="text: ScheduleDisplay"></td>
+                                    <td data-bind="text: EmailTo"></td>
+                                    <td data-bind="text: Format"></td>
+                                    <td data-bind="text: LastRun"></td>
+                                    <td data-bind="text: UserId ? UserId : 'N/A'"></td>
+                                    <td data-bind="text: Timezone ? Timezone : 'N/A'"></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-danger" data-bind="click: $root.deleteSchedule">
+                                            <i class="fa fa-trash"></i> Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                                <!-- /ko -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -687,7 +852,7 @@
                                 <div class="form-group row">
                                     <label class="col-md-3 col-sm-3 control-label">JSON Data Structure</label>
                                     <div class="col-md-6 col-sm-6">
-                                        <textarea class="form-control text-box single-line" data-val="true" data-val-required="The DisplayName field is required." data-bind="value: JsonStructure, attr:{placeholder:'Please paste in Sample Json with all columns for this JSON data field'}" rows="5" ></textarea>
+                                        <textarea class="form-control text-box single-line" data-val="true" data-val-required="The DisplayName field is required." data-bind="value: JsonStructure, attr:{placeholder:'Please paste in Sample Json with all columns for this JSON data field'}" rows="5"></textarea>
                                     </div>
                                     <div class="col-md-3 col-sm-3">
                                         <span data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" title="You can paste in a sample Json blob with all the columns you want to use in this field"></span>
@@ -1150,11 +1315,14 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <div data-bind="visble: $root.Categories().lenth == 0">
+                    No categories have been set up yet.
+                </div>
                 <div class="list-group" data-bind="foreach: $root.Categories">
                     <div class="checkbox list-group-item" style="padding-top: 2px; padding-bottom: 2px;">
                         <label>
-                        <input type="checkbox" data-bind="checked: $parent.Categories, checkedValue: $data" />
-                        <span data-bind="text: Name"></span> <!-- Display category name -->
+                            <input type="checkbox" data-bind="checked: $parent.Categories, checkedValue: $data" />
+                            <span data-bind="text: Name"></span> <!-- Display category name -->
                         </label>
                     </div>
                 </div>
@@ -1171,7 +1339,7 @@
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <b class="modal-title">Manage Categories</b>                
+                <b class="modal-title">Manage Categories</b>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -1287,7 +1455,7 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">                
+            <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bind="click: $root.updateDataConnection, visible: $root.editingDataConnection()">Update</button>
                 <button type="button" class="btn btn-secondary" data-bind="click: $root.addDataConnection, visible: !$root.editingDataConnection()">Create</button>
             </div>
@@ -1305,28 +1473,28 @@
             </div>
             <div class="modal-body">
                 <div style="overflow-x: auto; max-height: 500px; overflow-y: auto;">
-                <table class="table table-striped table-hover table-condensed">
-                    <thead style="position: sticky; top: -1px; z-index: 2; background-color: #f8f9fa;">
+                    <table class="table table-striped table-hover table-condensed">
+                        <thead style="position: sticky; top: -1px; z-index: 2; background-color: #f8f9fa;">
                             <tr>
-                            <!-- ko foreach: Columns -->
-                            <th>                                
-                                <span data-bind="text: ColumnName, attr: { title: DataType.replace('System.', '') }"></span>
-                            </th>
+                                <!-- ko foreach: Columns -->
+                                <th>
+                                    <span data-bind="text: ColumnName, attr: { title: DataType.replace('System.', '') }"></span>
+                                </th>
+                                <!-- /ko -->
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- ko foreach: Rows  -->
+                            <tr>
+                                <!-- ko foreach: Items -->
+                                <td>
+                                    <span data-bind="html: FormattedValue"></span>
+                                </td>
+                                <!-- /ko-->
+                            </tr>
                             <!-- /ko -->
-                        </tr>
-                    </thead>
-                    <tbody>                       
-                        <!-- ko foreach: Rows  -->
-                        <tr>
-                            <!-- ko foreach: Items -->
-                            <td >
-                                <span data-bind="html: FormattedValue"></span>
-                            </td>
-                            <!-- /ko-->
-                        </tr>
-                        <!-- /ko -->
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -1356,11 +1524,11 @@
                 </div>
 
                 <div class="form-group" data-bind="validationElement: customSql">
-                    <label for="custom-sql">Custom SQL</label> | 
+                    <label for="custom-sql">Custom SQL</label> |
                     <label>
                         <input type="checkbox" data-bind="checked: dynamicColumns">
                         <span title="Setup a table that returns dynamic columns to pick from">Table with Dynamic Columns</span>
-                    </label> | 
+                    </label> |
                     <a href="#" data-bind="click: beautifySql">Beautify Sql</a>
                     <textarea class="form-control" style="height: 240px;" name="customSql" data-bind="textInput: customSql" required></textarea>
                     <div class="invalid-feedback">Custom SQL is required.</div>
