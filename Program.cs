@@ -9,7 +9,6 @@ builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
 
-Startup.StaticConfig = builder.Configuration; //<--- Add this line manually
 JobScheduler.Start(); //<--- Add this line manually
 
 
