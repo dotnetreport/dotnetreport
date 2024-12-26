@@ -37,14 +37,9 @@
             var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
             var adminMode = queryParams.adminMode == 'true' ? 'true' : 'false';
             var selectedDb = localStorage.getItem('dotnetreport-selectedDb') || '62a126b4-a863-4fd4-8d91-185558b64ea2';
-            var selectedTheme = localStorage.getItem('dotnetreport-selectedTheme') || 'Default';
-            if (selectedTheme != 'Default') {
-                const themeUrl = 'https://cdnjs.cloudflare.com/ajax/libs/bootswatch/5.1.3/' + selectedTheme.toLowerCase() + '/bootstrap.min.css';
-                document.getElementById('theme-css').href = themeUrl;
-            } else {
-                document.getElementById('theme-css').href = '/Content/themes/' + selectedTheme.toLowerCase() + '.min.css';
-            }
-
+            var selectedTheme = '@(Request.QueryString["theme"] != null ? Request.QueryString["theme"] : "")' ||localStorage.getItem('dotnetreport-selectedTheme') || 'Default';
+            const themeUrl = 'https://cdnjs.cloudflare.com/ajax/libs/bootswatch/5.1.3/' + selectedTheme.toLowerCase() + '/bootstrap.min.css';
+            document.getElementById('theme-css').href = themeUrl;
 
             ajaxcall({ url: '@Url.Action("GetDashboards", "DotNetReportApi")' + '?adminMode=' + adminMode + "&dataConnect=" + selectedDb }).done(function(dashboardData) {
                 _.forEach(dashboardData, function(d) {
