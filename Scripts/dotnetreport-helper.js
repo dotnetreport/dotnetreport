@@ -673,13 +673,13 @@ var textQuery = function (options) {
         url: options.apiUrl,
         headers: { "Authorization": "Bearer " + token },
         query: function (params) {
-            return params.term ? JSON.stringify({
+            return params.term ?{
                 method: "/ReportApi/ParseQuery",
                 model: JSON.stringify({
                     token: encodeURIComponent(params.term),
                     text: ''
                 })
-            }) : null;
+            } : null;
         },
         processResults: function (data) {
             if (data.d) data = data.d;

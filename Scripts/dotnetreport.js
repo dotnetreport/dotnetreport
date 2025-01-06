@@ -1545,14 +1545,14 @@ var reportViewModel = function (options) {
 			self.searchReports(params.term);
 			$('.select2-selection__placeholder').text(params.term);
 			if (params.term && params.term.length <= 2) return;
-			return JSON.stringify(params.term ? {
+			return params.term ? {
 				method: "/ReportApi/ParseQuery",
 				model: JSON.stringify({
 					token: params.term,
 					text: '',
 					onlyInReports: true
 				})
-			} : {});
+			} : {};
 		},
 		processResults: function (data) {
 			if (data.d) data = data.d;
