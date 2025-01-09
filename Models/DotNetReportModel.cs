@@ -790,7 +790,7 @@ namespace ReportBuilder.Web.Models
                     picture.SetSize(400, 300); // Set the size of the image in pixels (width, height)
                 }
             }
-            int i = colstart; var isNumeric = false;
+            int i = 1; var isNumeric = false;
             foreach (DataColumn dc in dt.Columns)
             {
                 var formatColumn = columns?[i-1];
