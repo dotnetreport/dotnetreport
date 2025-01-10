@@ -797,11 +797,11 @@ namespace ReportBuilder.Web.Models
                 var formatColumn = columns?[counter - 1];
                 string decimalFormat = new string('0', formatColumn.decimalPlacesDigit.GetValueOrDefault());
                 isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
-                if (!string.IsNullOrEmpty(formatColumn.fieldLabel))
+                if (rowstart == 3 & !string.IsNullOrEmpty(formatColumn.fieldLabel))
                 {
                     ws.Cells[rowstart, i].Value = formatColumn.fieldLabel;
                 }
-                if (isexpanded && !string.IsNullOrEmpty(formatColumn.fieldLabel2))
+                if (rowstart == 3 & isexpanded && !string.IsNullOrEmpty(formatColumn.fieldLabel2))
                 {
                     ws.Cells[rowstart, i].Value = formatColumn.fieldLabel2;
                 }
