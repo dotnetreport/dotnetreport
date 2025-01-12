@@ -672,8 +672,19 @@ var textQuery = function (options) {
         selectedOption: ko.observable(),
         url: options.apiUrl,
         headers: { "Authorization": "Bearer " + token },
+        dataType: 'json',
+        contentType: 'application/json',
+        data: function (params) {
+            return params.term ? JSON.stringify({
+                method: "/ReportApi/ParseQuery",
+                model: JSON.stringify({
+                    token: encodeURIComponent(params.term),
+                    text: ''
+                })
+            }) : null;
+        },
         query: function (params) {
-            return params.term ?{
+            return params.term ? {
                 method: "/ReportApi/ParseQuery",
                 model: JSON.stringify({
                     token: encodeURIComponent(params.term),
