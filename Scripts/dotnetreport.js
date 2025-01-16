@@ -3290,6 +3290,13 @@ var reportViewModel = function (options) {
 		var validFieldNames = _.map(result.ReportData.Columns, 'SqlField');
 		result.ReportData.IsDrillDown = ko.observable(false);
 		result.ReportData.CanExpandOption = ko.computed(function () { return self.ShowExpandOption(); });
+		result.ReportData.calculateRate = function () {
+			if (result.ReportData.Rows.length <= 1) return null;
+			var currentValue = parseFloat(result.ReportData.Rows[0].Items[0].Value) || 0;
+			var nextValue = parseFloat(result.ReportData.Rows[1].Items[0].Value) || 0;
+			if (nextValue === 0) return null; // Avoid division by zero
+			return (((currentValue - nextValue) / nextValue) * 100).toFixed(1);
+		};
 		_.forEach(result.ReportData.Rows, function (e) {
 			e.DrillDownData = ko.observable(null);
 			e.pager = new pagerViewModel({ pageSize: self.DefaultPageSize() });
