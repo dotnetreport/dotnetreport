@@ -140,23 +140,23 @@
 
 
 <div class="row" style="display: none" data-bind="visible: currentDashboard">
-    <div class="col-12">
-        <ul class="nav nav-tabs" data-bind="foreach: dashboards">
-            <li class="nav-item">
-                <h2>
-                <a class="nav-link" href="#" data-bind="text: name, click: function() { $parent.selectDashboard(id);}, css: { 'active': $parent.currentDashboard().id === id, 'selected-tab': $parent.currentDashboard().id === id }"></a>
-                </h2>
-            </li>
-        </ul>
+        <div class="col-12">
+            <ul class="nav nav-tabs ui-sortable" data-bind="sortable: { data: dashboards, options: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight',start: function () { $root.dragging(true); }, stop: function () { $root.dragging(false);$root.updateDashboardOrder(); } }, strategyMove: true }">
+                <li class="nav-item">
+                    <h2>
+                        <a class="nav-link sortable" href="#" data-bind="text: name, click: function() { if (!$parent.dragging()) $parent.selectDashboard(id);}, css: { 'active': $parent.currentDashboard().id === id, 'selected-tab': $parent.currentDashboard().id === id }"></a>
+                    </h2>
+                </li>
+            </ul>
+        </div>
     </div>
-</div>
 
 <div class="d-flex justify-content-between align-items-center bg-light border-bottom p-2 top-menu-toolbar">
     <div class="row" style="display: none" data-bind="visible: currentDashboard">
         <div data-bind="with: currentDashboard">
             <h2 title="Switch Dashboard">
                 <span data-bind="text: name"span>
-                <!--<select class="form-control select-as-text" title="Switch Dashboard" data-bind="select2: {minimumResultsForSearch: Infinity}, options: $parent.dashboards, optionsText: 'name', optionsValue: 'id', value: $parent.selectDashboard"></select>-->
+                    <!--<select class="form-control select-as-text" title="Switch Dashboard" data-bind="select2: {minimumResultsForSearch: Infinity}, options: $parent.dashboards, optionsText: 'name', optionsValue: 'id', value: $parent.selectDashboard"></select>-->
             </h2>
             <p data-bind="text: description"></p>
         </div>

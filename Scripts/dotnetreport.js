@@ -5370,6 +5370,7 @@ var dashboardViewModel = function (options) {
 		'Chinese': 'yy/mm/dd'
 	};
 	self.currentDashboard = ko.observable(currentDash);
+	self.dragging = ko.observable(false); // Track dragging state
 	self.selectDashboard = ko.observable(currentDash.id);
 	self.loadDashboard = function (dashboardId) {
 		ajaxcall({
@@ -5402,6 +5403,19 @@ var dashboardViewModel = function (options) {
 			self.loadDashboardReports(reports);
 		});
 	}
+	self.updateDashboardOrder = function () {
+		var updatedOrder = self.dashboards().map(d => d.id);
+		ajaxcall({
+			url: options.apiUrl,
+			noBlocking: true,
+			data: {
+				method: '/ReportApi/SaveDashboardOrder',
+				model: JSON.stringify({
+					dashboardOrderIds: updatedOrder
+				})
+			}
+		});
+	};
 
 	self.selectDashboard.subscribe(function (newValue) {
 		if (newValue != self.currentDashboard().id) {
