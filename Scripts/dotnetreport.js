@@ -5871,7 +5871,7 @@ var dashboardViewModel = function (options) {
 			});
 
 			if (filterApplied) {
-				report.RunReport();
+				report.RunReport(false, false, true);
 			}
 		});
 	}
