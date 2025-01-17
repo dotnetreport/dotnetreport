@@ -42,92 +42,97 @@
                     $("#noaccountModal").modal('show');
                     return;
                 }
-
-                _.forEach(dashboardData, function (d) {
-                    dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, schedule: d.schedule, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles });
-                });
-
-                var dashboardId = parseInt(queryParams.id || 0);
-                if (!dashboardId && dashboards.length > 0) { dashboardId = dashboards[0].id; }
-
-                ajaxcall({ url: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")' + '?id=' + dashboardId + '&adminMode=' + adminMode, noBlocking: true }).done(function (reportsData) {
-                    _.forEach(reportsData, function (r) {
-                        reports.push({ reportSql: r.ReportSql, reportId: r.ReportId, reportFilter: r.ReportFilter, connectKey: r.ConnectKey, x: r.X, y: r.Y, width: r.Width, height: r.Height });
+                
+                ajaxcall({ url: '@Url.Action("GetDashboardsSortOrder", "DotNetReportApi")' + '?adminMode=' + adminMode, noBlocking: true }).done(function (dashboardSortOrderData) {
+                    const orderedDashboards = dashboardSortOrderData.map(id => {
+                        return dashboardData.find(d => d.Id === id);
+                    });
+                    _.forEach(orderedDashboards, function (d) {
+                        dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, schedule: d.schedule, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles });
                     });
 
-                    ajaxcall({ url: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")', noBlocking: true }).done(function (data) {
-                        var vm = new dashboardViewModel({
-                            runReportUrl: "@Url.Action("Report")",
-                            execReportUrl: "@Url.Action("RunReport", "DotNetReportApi")",
-                            reportWizard: $("#filter-panel"),
-                            lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
-                            apiUrl: "@Url.Action("CallReportApi", "DotNetReportApi")",
-                            runReportApiUrl: "@Url.Action("RunReportApi", "DotNetReportApi")",
-                            getSchemaFromSql: '@Url.Action("GetSchemaFromSql", "DotNetReportApi")',
-                            reportMode: "execute",
-                            reportWizard: $("#modal-reportbuilder"),
-                            linkModal: $("#linkModal"),
-                            fieldOptionsModal: $("#fieldOptionsModal"),
-                            reports: reports,
-                            dashboards: dashboards,
-                            users: data.users,
-                            userRoles: data.userRoles,
-                            allowAdmin: data.allowAdminMode,
-                            dataFilters: data.dataFilters,
-                            dashboardId: dashboardId,
-                            runExportUrl: "",
-                            printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, this.Request.Url.Scheme)",
-                            loadSavedDashbordUrl: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")',
-                            getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")'
+                    var dashboardId = parseInt(queryParams.id || 0);
+                    if (!dashboardId && dashboards.length > 0) { dashboardId = dashboards[0].id; }
+
+                    ajaxcall({ url: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")' + '?id=' + dashboardId + '&adminMode=' + adminMode, noBlocking: true }).done(function (reportsData) {
+                        _.forEach(reportsData, function (r) {
+                            reports.push({ reportSql: r.ReportSql, reportId: r.ReportId, reportFilter: r.ReportFilter, connectKey: r.ConnectKey, x: r.X, y: r.Y, width: r.Width, height: r.Height });
                         });
 
-                        vm.init().done(function () {
-                            if ($.unblockUI) {
-                                $.unblockUI();
-                            }
-                            ko.applyBindings(vm);
-                            $(function () {
-                                var options = {
-                                    cellHeight: 80,
-                                    verticalMargin: 10
-                                };
-                                $('.grid-stack').gridstack(options);
-                                $('.grid-stack').on('change', function (event, items) {
-                                    _.forEach(items, function (x) {
-                                        vm.updatePosition(x);
-                                    });
-                                });
-                                $('.grid-stack').on('resizestop', function (event, item) {
-                                    var e = $(event.target).find('.report-chart');
-                                    var d = $(event.target).find('table');
-                                    if (e.length > 0 && d.length == 0) {
-                                        //e.height(item.size.height - e[0].offsetTop - 40);
-                                        vm.drawChart();
-                                    }
-                                });
+                        ajaxcall({ url: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")', noBlocking: true }).done(function (data) {
+                            var vm = new dashboardViewModel({
+                                runReportUrl: "@Url.Action("Report")",
+                                execReportUrl: "@Url.Action("RunReport", "DotNetReportApi")",
+                                reportWizard: $("#filter-panel"),
+                                lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
+                                apiUrl: "@Url.Action("CallReportApi", "DotNetReportApi")",
+                                runReportApiUrl: "@Url.Action("RunReportApi", "DotNetReportApi")",
+                                getSchemaFromSql: '@Url.Action("GetSchemaFromSql", "DotNetReportApi")',
+                                reportMode: "execute",
+                                reportWizard: $("#modal-reportbuilder"),
+                                linkModal: $("#linkModal"),
+                                fieldOptionsModal: $("#fieldOptionsModal"),
+                                reports: reports,
+                                dashboards: dashboards,
+                                users: data.users,
+                                userRoles: data.userRoles,
+                                allowAdmin: data.allowAdminMode,
+                                dataFilters: data.dataFilters,
+                                dashboardId: dashboardId,
+                                runExportUrl: "",
+                                printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, this.Request.Url.Scheme)",
+                                loadSavedDashbordUrl: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")',
+                                getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")'
                             });
 
-                            setTimeout(function () {
-                                vm.drawChart();
-
-                                var items = $('.grid-stack-item');
-                                _.forEach(items, function (x) {
-                                    var e = $(x).find('.report-chart');
-                                    var d = $(x).find('table');
-                                    if (e.length > 0 && x.clientHeight && d.length == 0) {
-                                        //e.height(x.clientHeight - e[0].offsetTop - 40);
-                                    }
+                            vm.init().done(function () {
+                                if ($.unblockUI) {
+                                    $.unblockUI();
+                                }
+                                ko.applyBindings(vm);
+                                $(function () {
+                                    var options = {
+                                        cellHeight: 80,
+                                        verticalMargin: 10
+                                    };
+                                    $('.grid-stack').gridstack(options);
+                                    $('.grid-stack').on('change', function (event, items) {
+                                        _.forEach(items, function (x) {
+                                            vm.updatePosition(x);
+                                        });
+                                    });
+                                    $('.grid-stack').on('resizestop', function (event, item) {
+                                        var e = $(event.target).find('.report-chart');
+                                        var d = $(event.target).find('table');
+                                        if (e.length > 0 && d.length == 0) {
+                                            //e.height(item.size.height - e[0].offsetTop - 40);
+                                            vm.drawChart();
+                                        }
+                                    });
                                 });
 
+                                setTimeout(function () {
+                                    vm.drawChart();
+
+                                    var items = $('.grid-stack-item');
+                                    _.forEach(items, function (x) {
+                                        var e = $(x).find('.report-chart');
+                                        var d = $(x).find('table');
+                                        if (e.length > 0 && x.clientHeight && d.length == 0) {
+                                            //e.height(x.clientHeight - e[0].offsetTop - 40);
+                                        }
+                                    });
+
+                                    vm.drawChart();
+                                    var grid = $('.grid-stack').data("gridstack");
+                                    grid.disable();
+
+                                }, 1000);
+                            });
+
+                            $(window).resize(function () {
                                 vm.drawChart();
-                                var grid = $('.grid-stack').data("gridstack");
-                                grid.disable();
-
-                            }, 1000);
-                        });
-
-                        $(window).resize(function () {
-                            vm.drawChart();
+                            });
                         });
                     });
                 });
