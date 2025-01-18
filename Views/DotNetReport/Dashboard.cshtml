@@ -43,10 +43,6 @@
                     return;
                 }
                 
-                ajaxcall({ url: '@Url.Action("GetDashboardsSortOrder", "DotNetReportApi")' + '?adminMode=' + adminMode, noBlocking: true }).done(function (dashboardSortOrderData) {
-                    const orderedDashboards = dashboardSortOrderData.map(id => {
-                        return dashboardData.find(d => d.Id === id);
-                    });
                     _.forEach(orderedDashboards, function (d) {
                         dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, schedule: d.schedule, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles });
                     });
@@ -136,7 +132,6 @@
                         });
                     });
                 });
-            });
         });
     </script>
 }

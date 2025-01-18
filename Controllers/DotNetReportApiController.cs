@@ -508,32 +508,6 @@ namespace ReportBuilder.Web.Controllers
                 return model;
             }
         }
-        [HttpPost]
-        public async Task<JsonResult> GetDashboardsSortOrder(bool adminMode = false)
-        {
-            var model = await GetDashboardsSortOrderData(adminMode);
-            return Json(model, JsonRequestBehavior.AllowGet);
-        }
-        private async Task<List<dynamic>> GetDashboardsSortOrderData(bool adminMode = false)
-        {
-            var settings = GetSettings();
-            using (var client = new HttpClient())
-            {
-                var content = new FormUrlEncodedContent(new[]
-                {
-                    new KeyValuePair<string, string>("account", settings.AccountApiToken),
-                    new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
-                    new KeyValuePair<string, string>("clientId", settings.ClientId),
-                    new KeyValuePair<string, string>("userId", settings.UserId),
-                    new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
-                    new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
-                });
-                var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/GetDashboardsSortOrder"), content);
-                var stringContent = await response.Content.ReadAsStringAsync();
-                var model = (new JavaScriptSerializer()).Deserialize<List<dynamic>>(stringContent);
-                return model;
-            }
-        }
         public JsonResult GetUsersAndRoles()
         {
             // These report permission settings will be applied by default to any new report user creates, leave black to allow access to all
