@@ -75,13 +75,22 @@
         <!-- ko if: !hasForeignKey-->
         <!-- ko if: fieldType=='DateTime'-->
         <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 -->
-        <input class="form-control" data-bind="datepicker: $parent.fmtValue, datepickerOptions: {value: $parent.Value, dateFormat: dateFormat() === 'Custom' ? customDateFormat().replace(/yyyy/g, 'yy') : $root.dateFormatMappings[dateFormat()]}" required />
+        <input class="form-control" data-bind="datepicker: $parent.fmtValue, datepickerOptions: {value: $parent.Value, dateFormat: dateFormat() === 'Custom' ? customDateFormat().replace(/yyyy/g, 'yy') : $root.dateFormatMappings[dateFormat()]}" required />        
+        <!-- ko if: fieldFormat()=='Time' || fieldFormat()=='Date and Time'-->
+        <input class="form-control"  type="time" data-bind="value:$parent.Valuetime">
+        <!-- /ko -->
         <!-- /ko -->
         <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
         From
         <input required class="form-control from-date" data-bind="datepicker: $parent.fmtValue, datepickerOptions: {value: $parent.Value, dateFormat: dateFormat() === 'Custom' ? customDateFormat().replace(/yyyy/g, 'yy') : $root.dateFormatMappings[dateFormat()]}" />
+        <!-- ko if: fieldFormat()=='Time' || fieldFormat()=='Date and Time'-->
+        <input class="form-control"  type="time" data-bind="value:$parent.Valuetime">
+        <!-- /ko -->
         to
         <input data-bind="datepicker: $parent.fmtValue2, datepickerOptions: {value: $parent.Value2, dateFormat: dateFormat() === 'Custom' ? customDateFormat().replace(/yyyy/g, 'yy') : $root.dateFormatMappings[dateFormat()]}" class="form-control to-date" required />
+        <!-- ko if: fieldFormat()=='Time' || fieldFormat()=='Date and Time'-->
+        <input class="form-control"  type="time" data-bind="value:$parent.Valuetime2">
+        <!-- /ko -->
         <!-- /ko -->
         <!-- ko if: ['range'].indexOf($parent.Operator()) != -1 -->
         <select data-bind="value: $parent.Value" class="form-select" required>
@@ -153,6 +162,9 @@
         <!-- ko if: $parent.Operator()=='in' || $parent.Operator()=='not in'-->
         <select required multiple class="form-control" data-bind="select2: { dropdownParent: $parent.inModal ? '#filter-'+uiId : '', placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ValueIn"></select>
         <!-- /ko -->
+        <!-- /ko -->
+        <!-- ko if: fieldFormat=='Time'-->
+        <input class="form-control" id="timePicker" type="time">
         <!-- /ko -->
     </div>
 </script>
