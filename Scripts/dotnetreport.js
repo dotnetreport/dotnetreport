@@ -2497,7 +2497,6 @@ var reportViewModel = function (options) {
 			_.forEach(g.Filters(), function (e, i) {
 				var fieldData = _.find(self.SelectedFields(), function (x) { return x.fieldId == e.Field().fieldId });
 				var hasTimeInDate = fieldData && (fieldData.fieldFormat() == 'Time' || fieldData.fieldFormat() == 'Date and Time');
-				console.log(hasTimeInDate)
 				var f = (e.Apply() && e.IsFilterOnFly) || !e.IsFilterOnFly ? {
 					SavedReportId: self.ReportID(),
 					FieldId: e.Field().fieldId,
