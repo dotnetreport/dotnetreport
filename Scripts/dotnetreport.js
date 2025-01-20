@@ -333,24 +333,29 @@ function filterGroupViewModel(args) {
 		}
 
 		if (e.Value1) {
-			[datePart1, timePart1] = e.Value1.split(" ");
-			lookupList.push({ id: datePart1, text: datePart1 });
+			if (e.Operator !== 'range') {
+				[datePart1, timePart1] = e.Value1.split(" ");
+				e.Value1 = datePart1;
+			}
+			lookupList.push({ id: e.Value1, text: e.Value1 });
 		}
-
 		if (e.Value2) {
-			[datePart2, timePart2] = e.Value2.split(" ");
-			lookupList.push({ id: datePart2, text: datePart2 });
+			if (e.Operator !== 'range') {
+				[datePart2, timePart2] = e.Value2.split(" ");
+				e.Value2 = datePart2;
+			}
+			lookupList.push({ id: e.Value2, text: e.Value2 });
 		}
 
 		var field = ko.observable();
-		var valueIn = e.Operator == 'in' || e.Operator == 'not in' ? (datePart1 || '').split(',') : [];
+		var valueIn = e.Operator == 'in' || e.Operator == 'not in' ? (e.Value1 || '').split(',') : [];
 		var parentIn = e.ParentIn ? e.ParentIn.split(',') : [];
 		var filter = {
 			AndOr: ko.observable(isFilterOnFly ? ' AND ' : e.AndOr),
 			Field: field,
 			Operator: ko.observable(e.Operator),
-			Value: ko.observable(datePart1),
-			Value2: ko.observable(datePart2),
+			Value: ko.observable(e.Value1),
+			Value2: ko.observable(e.Value2),
 			ValueIn: ko.observableArray(valueIn),
 			LookupList: lookupList,
 			ParentList: parentList,
@@ -358,8 +363,8 @@ function filterGroupViewModel(args) {
 			Apply: ko.observable(e.Apply != null ? e.Apply : true),
 			IsFilterOnFly: isFilterOnFly === true ? true : false,
 			showParentFilter: ko.observable(true),
-			fmtValue: ko.observable(datePart1),
-			fmtValue2: ko.observable(datePart2),
+			fmtValue: ko.observable(e.Value1),
+			fmtValue2: ko.observable(e.Value2),
 			Valuetime: ko.observable(timePart1),
 			Valuetime2: ko.observable(timePart2),
 		};
