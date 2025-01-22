@@ -419,6 +419,15 @@ namespace ReportBuilder.Web.Models
         public bool isNumeric { get; set; }
         public bool isCurrency { get; set; }
         public bool isJsonColumn { get; set; }
+        public LinkFieldItem LinkFieldItem { get; set; }
+    }
+    public class LinkFieldItem
+    {
+        public bool LinksToReport { get; set; }
+        public bool SendAsFilterParameter { get; set; }
+        public string LinkToUrl { get; set; }
+        public bool SendAsQueryParameter { get; set; }
+        public string QueryParameterName { get; set; }
     }
     public class ExportReportModel
     {
@@ -849,6 +858,22 @@ namespace ReportBuilder.Web.Models
                     }
                 }
 
+                if (!isexpanded && formatColumn != null && formatColumn?.LinkFieldItem != null && formatColumn?.LinkFieldItem.LinkToUrl != null)
+                {
+                    for (int rowIndex = 0; rowIndex < dt.Rows.Count; rowIndex++)
+                    {
+                        var cellValue = dt.Rows[rowIndex][dc.ColumnName]?.ToString();
+                        if (!string.IsNullOrEmpty(cellValue))
+                        {
+
+                            var hyperlinkAddress = formatColumn.LinkFieldItem.SendAsQueryParameter ? $"{formatColumn.LinkFieldItem.LinkToUrl}?{formatColumn.LinkFieldItem.QueryParameterName}={cellValue}" : formatColumn.LinkFieldItem.LinkToUrl;
+                            ws.Cells[rowIndex + rowstart + 1, i].Hyperlink = new Uri(hyperlinkAddress);
+                            ws.Cells[rowIndex + rowstart + 1, i].Value = cellValue;
+                            ws.Cells[rowIndex + rowstart + 1, i].Style.Font.UnderLine = true;
+                            ws.Cells[rowIndex + rowstart + 1, i].Style.Font.Color.SetColor(System.Drawing.Color.Blue);
+                        }
+                    }
+                }
                 i++;
                 counter++;
             }
