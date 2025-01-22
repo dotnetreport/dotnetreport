@@ -2970,7 +2970,7 @@ var reportViewModel = function (options) {
 				}
 				else {
 					col = _.find(self.SelectedFields(), function (x) { return x.dbField == e.SqlField; });
-					if (!col) col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.fieldName, e.ColumnName, x.dbField, e.SqlField, x.aggregateFunction); });
+					if (!col) col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.fieldName, e.ColumnName, x.dbField, e.SqlField, x.selectedAggregate()); });
 				}
 				if (col && col.fieldLabel && col.fieldLabel() && (e.ColumnName.indexOf('(Last ') > -1 || e.ColumnName.indexOf('Months ago)') > -1 || e.ColumnName.indexOf('Years ago)') > -1)) {
 					const match = e.ColumnName.match(/\((Last Year|Last Month|\d+ Years? ago|\d+ Months? ago)\)$/);

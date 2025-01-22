@@ -1832,9 +1832,10 @@ namespace ReportBuilder.Web.Models
                     {
                         dt.Columns.Remove(col.fieldName);
                     }
-                    else if (!String.IsNullOrWhiteSpace(col.fieldLabel))
-                    {
-                        dt.Columns[col.fieldName].ColumnName = col.fieldLabel;
+                    //else if (!String.IsNullOrWhiteSpace(col.fieldLabel))
+                    //{
+                    //    dt.Columns[col.fieldName].ColumnName = col.fieldLabel;
+                    //}
                     }
                 }
             }
