@@ -423,6 +423,8 @@ namespace ReportBuilder.Web.Models
     }
     public class LinkFieldItem
     {
+        public int LinkedToReportId { get; set; }
+        public int SelectedFilterId { get; set; }
         public bool LinksToReport { get; set; }
         public bool SendAsFilterParameter { get; set; }
         public string LinkToUrl { get; set; }
@@ -867,6 +869,26 @@ namespace ReportBuilder.Web.Models
                         {
                             var increment = rowstart==3 ? 1 : 0;
                             var hyperlinkAddress = formatColumn.LinkFieldItem.SendAsQueryParameter ? $"{formatColumn.LinkFieldItem.LinkToUrl}?{formatColumn.LinkFieldItem.QueryParameterName}={cellValue}" : formatColumn.LinkFieldItem.LinkToUrl;
+                            ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = new Uri(hyperlinkAddress);
+                            ws.Cells[rowIndex + rowstart + increment, i].Style.Font.UnderLine = true;
+                            ws.Cells[rowIndex + rowstart + increment, i].Style.Font.Color.SetColor(System.Drawing.Color.Blue);
+                        }
+                    }
+                }
+                if (formatColumn != null && formatColumn?.LinkFieldItem != null && formatColumn?.LinkFieldItem.LinksToReport != null &&  formatColumn?.LinkFieldItem.LinksToReport==true)
+                {
+                    for (int rowIndex = 0; rowIndex < dt.Rows.Count; rowIndex++)
+                    {
+                        var cellValue = dt.Rows[rowIndex][dc.ColumnName]?.ToString();
+                        if (!string.IsNullOrEmpty(cellValue))
+                        {
+                            var increment = rowstart == 3 ? 1 : 0;
+                            string Url = HttpContext.Current?.Request.Url.GetLeftPart(UriPartial.Authority);
+                            var hyperlinkAddress = Url + "/DotNetReport/Report?linkedreport=true&reportId=" + formatColumn.LinkFieldItem.LinkedToReportId;
+                            if (formatColumn.LinkFieldItem.SendAsFilterParameter && !string.IsNullOrEmpty(cellValue))
+                            {
+                                hyperlinkAddress += $"&filterId={formatColumn.LinkFieldItem.SelectedFilterId}&filterValue={cellValue.Replace("'", "").Replace("\"", "")}";
+                            }
                             ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = new Uri(hyperlinkAddress);
                             ws.Cells[rowIndex + rowstart + increment, i].Style.Font.UnderLine = true;
                             ws.Cells[rowIndex + rowstart + increment, i].Style.Font.Color.SetColor(System.Drawing.Color.Blue);
