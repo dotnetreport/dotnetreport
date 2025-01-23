@@ -418,8 +418,8 @@ namespace ReportBuilder.Web.Models
     }
     public class LinkFieldItem
     {
-        public int LinkedToReportId { get; set; }
-        public int SelectedFilterId { get; set; }
+        public int? LinkedToReportId { get; set; }
+        public int? SelectedFilterId { get; set; }
         public bool LinksToReport { get; set; }
         public bool SendAsFilterParameter { get; set; }
         public string LinkToUrl { get; set; }
