@@ -858,19 +858,18 @@ namespace ReportBuilder.Web.Models
                     }
                 }
 
-                if (!isexpanded && formatColumn != null && formatColumn?.LinkFieldItem != null && formatColumn?.LinkFieldItem.LinkToUrl != null)
+                if (formatColumn != null && formatColumn?.LinkFieldItem != null && formatColumn?.LinkFieldItem.LinkToUrl != null)
                 {
                     for (int rowIndex = 0; rowIndex < dt.Rows.Count; rowIndex++)
                     {
                         var cellValue = dt.Rows[rowIndex][dc.ColumnName]?.ToString();
                         if (!string.IsNullOrEmpty(cellValue))
                         {
-
+                            var increment = rowstart==3 ? 1 : 0;
                             var hyperlinkAddress = formatColumn.LinkFieldItem.SendAsQueryParameter ? $"{formatColumn.LinkFieldItem.LinkToUrl}?{formatColumn.LinkFieldItem.QueryParameterName}={cellValue}" : formatColumn.LinkFieldItem.LinkToUrl;
-                            ws.Cells[rowIndex + rowstart + 1, i].Hyperlink = new Uri(hyperlinkAddress);
-                            ws.Cells[rowIndex + rowstart + 1, i].Value = cellValue;
-                            ws.Cells[rowIndex + rowstart + 1, i].Style.Font.UnderLine = true;
-                            ws.Cells[rowIndex + rowstart + 1, i].Style.Font.Color.SetColor(System.Drawing.Color.Blue);
+                            ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = new Uri(hyperlinkAddress);
+                            ws.Cells[rowIndex + rowstart + increment, i].Style.Font.UnderLine = true;
+                            ws.Cells[rowIndex + rowstart + increment, i].Style.Font.Color.SetColor(System.Drawing.Color.Blue);
                         }
                     }
                 }
