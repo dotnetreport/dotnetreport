@@ -770,7 +770,7 @@ namespace ReportBuilder.Web.Models
                 }
             }
         }
-        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool loadHeader = true, string chartData = null,bool isexpanded=false)
+        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool loadHeader = true, string chartData = null, bool isexpanded = false)
         {
             RemoveColumnsBySubstring(dt, "__prm__");
             ws.Cells[rowstart, colstart].LoadFromDataTable(dt, loadHeader);
@@ -787,7 +787,7 @@ namespace ReportBuilder.Web.Models
                     picture.SetSize(400, 300); // Set the size of the image in pixels (width, height)
                 }
             }
-            int i = colstart; var isNumeric = false;int counter = 1;
+            int i = colstart; var isNumeric = false; int counter = 1;
             foreach (DataColumn dc in dt.Columns)
             {
                 var formatColumn = columns?[counter - 1];
@@ -867,7 +867,7 @@ namespace ReportBuilder.Web.Models
                         var cellValue = dt.Rows[rowIndex][dc.ColumnName]?.ToString();
                         if (!string.IsNullOrEmpty(cellValue))
                         {
-                            var increment = rowstart==3 ? 1 : 0;
+                            var increment = rowstart == 3 ? 1 : 0;
                             var hyperlinkAddress = formatColumn.LinkFieldItem.SendAsQueryParameter ? $"{formatColumn.LinkFieldItem.LinkToUrl}?{formatColumn.LinkFieldItem.QueryParameterName}={cellValue}" : formatColumn.LinkFieldItem.LinkToUrl;
                             ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = new Uri(hyperlinkAddress);
                             ws.Cells[rowIndex + rowstart + increment, i].Style.Font.UnderLine = true;
@@ -875,7 +875,7 @@ namespace ReportBuilder.Web.Models
                         }
                     }
                 }
-                if (formatColumn != null && formatColumn?.LinkFieldItem != null && formatColumn?.LinkFieldItem.LinksToReport != null &&  formatColumn?.LinkFieldItem.LinksToReport==true)
+                if (formatColumn != null && formatColumn?.LinkFieldItem != null && formatColumn?.LinkFieldItem.LinksToReport != null && formatColumn?.LinkFieldItem.LinksToReport == true)
                 {
                     for (int rowIndex = 0; rowIndex < dt.Rows.Count; rowIndex++)
                     {
@@ -1013,7 +1013,7 @@ namespace ReportBuilder.Web.Models
                         TableName = item.tableDbName,
                         DisplayName = item.tableName,
                         AllowedRoles = item.tableRoles.ToObject<List<string>>(),
-                        Categories= item.tableCategories != null ? ((JArray)item.tableCategories).ToObject<List<dynamic>>().Select(c => new CategoryViewModel { Id = c.CategoryId, Name = c.Name, Description = c.Description }).ToList() : new List<CategoryViewModel>(),
+                        Categories = item.tableCategories != null ? ((JArray)item.tableCategories).ToObject<List<dynamic>>().Select(c => new CategoryViewModel { Id = c.CategoryId, Name = c.Name, Description = c.Description }).ToList() : new List<CategoryViewModel>(),
                         DoNotDisplay = item.doNotDisplay,
                         CustomTable = item.customTable,
                         CustomTableSql = Convert.ToBoolean(item.customTable) == true ? DotNetReportHelper.Decrypt(Convert.ToString(item.customTableSql)) : "",
@@ -1842,9 +1842,9 @@ namespace ReportBuilder.Web.Models
                     //{
                     //    dt.Columns[col.fieldName].ColumnName = col.fieldLabel;
                     //}
-                    }
                 }
             }
+
             if (!string.IsNullOrEmpty(pivotColumn))
             {
                 var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
