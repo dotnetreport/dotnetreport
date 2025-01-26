@@ -369,10 +369,10 @@ function filterGroupViewModel(args) {
 			Valuetime2: ko.observable(timePart2),
 		};
 
-		filter.Operator.subscribe(function () {
-			filter.Value(null);
-			filter.Value2(null);
-		});
+		//filter.Operator.subscribe(function () {
+		//	filter.Value(null);
+		//	filter.Value2(null);
+		//});
 
 		function loadLookupList(fieldId, dataFilters) {
 			if (printMode === true) return;
