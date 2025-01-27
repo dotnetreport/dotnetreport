@@ -61,7 +61,7 @@
     <div class="body-content">
         <asp:ContentPlaceHolder ID="body" runat="server">
         </asp:ContentPlaceHolder>
-
+        <div style="height: 50px;"></div>
         <div class="report-layout-footer">
         <!-- ########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
         <p>Ad Hoc Reporting and Dashboard powered by <a href="http://www.dotNetReport.com" target="_blank">dotnetreport</a>. Copyright © www.dotnetreport.com.</p>

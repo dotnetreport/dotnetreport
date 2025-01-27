@@ -26,7 +26,6 @@ using A = DocumentFormat.OpenXml.Drawing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
 using System.Data.SqlClient;
-using ReportBuilder.Web.Models;
 using PdfSharp.Pdf.IO;
 using System.Web;
 using PuppeteerSharp;
