@@ -30,6 +30,7 @@ using System.Collections.Concurrent;
 using A = DocumentFormat.OpenXml.Drawing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
+using System.Data.SqlClient;
 using static ReportBuilder.Web.Controllers.DotNetReportApiController;
 using PdfSharp.Pdf.IO;
 
@@ -147,6 +148,7 @@ namespace ReportBuilder.Web.Models
         public List<CategoryViewModel> Categories { get; set; } = new List<CategoryViewModel>();
         public bool DynamicColumns { get; set; }
         public string DynamicColumnTranslation { get; set; }
+        public int? DynamicValuesTableId { get; set; }
     }
     public class CategoryViewModel
     {
@@ -1070,6 +1072,7 @@ namespace ReportBuilder.Web.Models
                         CustomTableSql = Convert.ToBoolean(item.customTable) == true ? DotNetReportHelper.Decrypt(Convert.ToString(item.customTableSql)) : "",
                         DynamicColumns = item.dynamicColumns != null ? Convert.ToBoolean(item.dynamicColumns) : false,
                         DynamicColumnTranslation = item.dynamicColumns != null && Convert.ToBoolean(item.dynamicColumns) == true ? DotNetReportHelper.Decrypt(Convert.ToString(item.dynamicColumnTranslation)) : "",
+                        DynamicValuesTableId = item.dynamicValuesTableId != null ? Convert.ToInt32(item.dynamicValuesTableId) : null,
                         Columns = new List<ColumnViewModel>(),
                         Selected = true
                     };
