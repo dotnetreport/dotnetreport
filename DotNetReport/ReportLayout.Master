@@ -61,7 +61,7 @@
     <div class="body-content">
         <asp:ContentPlaceHolder ID="body" runat="server">
         </asp:ContentPlaceHolder>
-
+        <div style="height: 50px;"></div>
         <div class="report-layout-footer">
         <!-- ########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
         <p>Ad Hoc Reporting and Dashboard powered by <a href="http://www.dotNetReport.com" target="_blank">dotnetreport</a>. Copyright © www.dotnetreport.com.</p>
@@ -1252,7 +1252,7 @@
                         <div data-bind="with: SelectedTable">
                             <b><span data-bind="text: tableName"></span></b>
                         </div>
-                        <div class="row container-fluid" data-bind="foreach: ChooseFields">
+                        <div class="row container-fluid" data-bind="foreach: ChooseFields" style="max-height: 200px; overflow: auto;">
                             <div class="col-md-12 col-sm-12 col-xs-12 list-group">
                                 <div class="list-group-item">
                                     <div class="checkbox">

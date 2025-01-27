@@ -22,8 +22,10 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 var svc = "/DotNetReport/ReportService.asmx/";
                 var vm = new reportViewModel({
                     runReportUrl: "/DotNetReport/Report.aspx",
-                    execReportUrl: svc + "RunReport",
                     reportWizard: $("#modal-reportbuilder"),
+                    execReportUrl: svc + "RunReport",
+                    runLinkReportUrl: svc + "RunReportLink",
+                    getSchemaFromSql: svc + "GetSchemaFromSql",
                     linkModal: $("#linkModal"),
                     reportHeader: "report-header",
                     fieldOptionsModal: $("#fieldOptionsModal"),
@@ -34,11 +36,10 @@ Its Recommended you use it as is, and only change styling as needed to match you
                     reportId: queryParams.reportId || 0,
                     userSettings: data,
                     dataFilters: data.dataFilters,
-                    runLinkReportUrl: svc + "RunReportLink",
-                    runExportUrl: svc,
-                    samePageOnRun: true,
+                    printReportUrl: window.location.protocol + "//" + window.location.host + "/DotnetReport/ReportPrint.aspx",
                     getTimeZonesUrl: svc + "GetAllTimezones",
-                    printReportUrl: window.location.protocol + "//" + window.location.host + "/DotnetReport/ReportPrint.aspx"
+                    samePageOnRun: true,
+                    runExportUrl: svc
                 });
 
                 vm.init(queryParams.folderid || 0, data.noAccount);
