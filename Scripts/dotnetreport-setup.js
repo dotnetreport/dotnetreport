@@ -1127,7 +1127,6 @@ var manageViewModel = function (options) {
 
 		var getReports = function () {
 			return ajaxcall({
-				type: 'POST',
 				url: options.reportsApiUrl,
 				data: {
 					method: "/ReportApi/GetSavedReports",
@@ -1142,7 +1141,6 @@ var manageViewModel = function (options) {
 
 		var getFolders = function () {
 			return ajaxcall({
-				type: 'POST',
 				url: options.reportsApiUrl,
 				data: {
 					method: "/ReportApi/GetFolders",
