@@ -1127,6 +1127,7 @@ var manageViewModel = function (options) {
 
 		var getReports = function () {
 			return ajaxcall({
+				type: 'POST',
 				url: options.reportsApiUrl,
 				data: {
 					method: "/ReportApi/GetSavedReports",
@@ -1141,6 +1142,7 @@ var manageViewModel = function (options) {
 
 		var getFolders = function () {
 			return ajaxcall({
+				type: 'POST',
 				url: options.reportsApiUrl,
 				data: {
 					method: "/ReportApi/GetFolders",
@@ -1597,6 +1599,7 @@ var customSqlModel = function (options, keys, tables) {
 	self.useAi = ko.observable(false);
 	self.dynamicColumns = ko.observable(false);
 	self.columnTranslation = ko.observable('{column}');
+	self.dynamicValuesTableId = ko.observable();
 	self.textQuery = new textQuery(options);
 	self.selectedTable = null;
 	var validator = new validation();
@@ -1617,6 +1620,8 @@ var customSqlModel = function (options, keys, tables) {
 		self.customSql(e.CustomTableSql());
 		self.dynamicColumns(e.DynamicColumns());
 		self.columnTranslation(e.DynamicColumnTranslation());
+		self.dynamicValuesTableId(e.DynamicValuesTableId());
+
 		$('#custom-sql-modal').modal('show');
 	}
 	
@@ -1683,6 +1688,11 @@ var customSqlModel = function (options, keys, tables) {
 			toastr.error("You must use {column} in the code to use the dynamic column");
 			valid = false;
 		}
+
+		if (self.dynamicColumns() && !self.dynamicValuesTableId()) {
+			toastr.error("Please pick a table that contains dynamic column values");
+			valid = false;
+		}
 		var matchTable = _.find(tables.model(), function (x) {
 			return x.TableName() == self.customTableName() && (!self.selectedTable || self.selectedTable.Id != x.Id());
 		});
@@ -1718,6 +1728,7 @@ var customSqlModel = function (options, keys, tables) {
 				result.DisplayName = self.customTableName();
 				result.DynamicColumns = self.dynamicColumns();
 				result.DynamicColumnTranslation = self.columnTranslation() ? self.columnTranslation() : "{column}";
+				result.DynamicValuesTableId = self.dynamicValuesTableId();
 				var t = ko.mapping.fromJS(result);
 
 				tables.model.push(tables.processTable(t));
@@ -1728,6 +1739,7 @@ var customSqlModel = function (options, keys, tables) {
 				table.CustomTableSql(self.customSql());
 				table.DynamicColumns(self.dynamicColumns());
 				table.DynamicColumnTranslation(self.columnTranslation() ? self.columnTranslation() : "{column}");
+				table.DynamicValuesTableId(self.dynamicValuesTableId());
 
 				_.forEach(result.Columns, function (c) {
 					// if column id matches, update display name and data type, otherwise add it
