@@ -593,13 +593,6 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         <h2 data-bind="text: $root.ReportName"></h2>
                         <p data-bind="text: $root.ReportDescription"></p>
 
-                        <button data-bind="click: function() {$root.ReportMode('start');}" class="btn btn-primary">
-                            Back to Reports
-                        </button>
-
-                        <a href="#" class="btn btn-primary" data-bind="visible: $root.CanEdit()">
-                            Edit Report
-                        </a>
                         <h3>An unexpected error occured while running the Report</h3>
                         <hr />
                         <b>Error Details</b>
