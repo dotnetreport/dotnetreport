@@ -1536,6 +1536,8 @@
                     <div data-bind="if: dynamicColumns">
                         <label>Add SQL code to use the dynamic column</label>
                         <textarea class="form-control" style="height: 240px;" name="columnTranslation" data-bind="textInput: columnTranslation" required></textarea>
+                        <label>Pick Values Table</label>
+                        <select class="form-control input-medium" data-bind="options: $root.Tables.availableTables, optionsText: 'DisplayName', optionsValue: 'Id', optionsCaption: 'Choose Values Table...', value: dynamicValuesTableId"></select>
                     </div>
                 </div>
             </div>
