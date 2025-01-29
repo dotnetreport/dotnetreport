@@ -3551,6 +3551,7 @@ var reportViewModel = function (options) {
 	self.ExecuteReportQuery = function (reportSql, connectKey, reportSeries,isPageSizeClick=false) {
 		if (!reportSql || !connectKey) return;
 		self.ChartData('');
+		self.OuterGroupColumns([]);
 		self.ReportResult().ReportData(null);
 		self.ReportResult().SubTotals([]);
 		if (self.DontExecuteOnRun() && !self.executingReport) return;
