@@ -1274,10 +1274,12 @@ var reportViewModel = function (options) {
 	self.manageAccess = manageAccess(options);
 
 	self.pager.currentPage.subscribe(function () {
+		self.OuterGroupColumns([]);
 		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey(), self.ReportSeries);
 	});
 
 	self.pager.pageSize.subscribe(function () {
+		self.OuterGroupColumns([]);
 		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey(), self.ReportSeries, true);
 	});
 
