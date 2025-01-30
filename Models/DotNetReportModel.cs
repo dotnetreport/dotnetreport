@@ -1834,6 +1834,7 @@ namespace ReportBuilder.Web.Models
             return dt;
         }
 
+
         private static (DataTable dt, SqlQuery qry, List<string> sqlFields) GetDataTable(string reportSql, string connectKey)
         {
             var qry = new SqlQuery();
@@ -1877,12 +1878,7 @@ namespace ReportBuilder.Web.Models
                     if (dt.Columns.Contains(col.fieldName) && col.hideStoredProcColumn)
                     {
                         dt.Columns.Remove(col.fieldName);
-                    }
-                    //else if (!String.IsNullOrWhiteSpace(col.fieldLabel))
-                    //{
-                    //    dt.Columns[col.fieldName].ColumnName = col.fieldLabel;
-                    //}
-                    }
+                    }                    
                 }
             }
             if (!string.IsNullOrEmpty(pivotColumn))
