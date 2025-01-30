@@ -2551,9 +2551,9 @@ namespace ReportBuilder.Web.Models
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
             await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
             var executablePath = "";
-            foreach (var d in Directory.GetDirectories(installPath))
+            foreach (var d in Directory.GetDirectories($"{installPath}\\Chrome"))
             {
-                executablePath = $"{d}\\chrome-win\\chrome.exe";
+                executablePath = $"{d}\\chrome-win64\\chrome.exe";
                 if (File.Exists(executablePath)) break;
             }
 
