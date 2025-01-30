@@ -406,6 +406,7 @@ namespace ReportBuilder.Web.Models
     {
         public string fieldName { get; set; }
         public string fieldLabel { get; set; }
+        public string fieldLabel2 { get; set; }
         public bool hideStoredProcColumn { get; set; }
         public int? decimalPlacesDigit { get; set; }
         public string fieldAlign { get; set; }
@@ -754,7 +755,7 @@ namespace ReportBuilder.Web.Models
                 }
             }
         }
-        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool loadHeader = true, string chartData = null)
+        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool loadHeader = true, string chartData = null,bool isexpanded=false)
         {
             RemoveColumnsBySubstring(dt, "__prm__");
             ws.Cells[rowstart, colstart].LoadFromDataTable(dt, loadHeader);
@@ -771,15 +772,19 @@ namespace ReportBuilder.Web.Models
                     picture.SetSize(400, 300); // Set the size of the image in pixels (width, height)
                 }
             }
-            int i = colstart; var isNumeric = false;
+            int i = colstart; var isNumeric = false;int counter = 1;
             foreach (DataColumn dc in dt.Columns)
             {
-                var formatColumn = columns?[i - 1];
+                var formatColumn = columns?[counter - 1];
                 string decimalFormat = new string('0', formatColumn.decimalPlacesDigit.GetValueOrDefault());
                 isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
-                if (!string.IsNullOrEmpty(formatColumn.fieldLabel))
+                if (rowstart == 3 & !string.IsNullOrEmpty(formatColumn.fieldLabel))
                 {
                     ws.Cells[rowstart, i].Value = formatColumn.fieldLabel;
+                }
+                if (rowstart == 3 & isexpanded && !string.IsNullOrEmpty(formatColumn.fieldLabel2))
+                {
+                    ws.Cells[rowstart, i].Value = formatColumn.fieldLabel2;
                 }
                 if (dc.DataType == typeof(decimal) || (formatColumn != null && formatColumn.fieldFormating == "Decimal"))
                 {
@@ -841,6 +846,7 @@ namespace ReportBuilder.Web.Models
                 }
 
                 i++;
+                counter++;
             }
 
             ws.Cells[ws.Dimension.Address].AutoFitColumns();
@@ -982,12 +988,12 @@ namespace ReportBuilder.Web.Models
                         TableName = item.tableDbName,
                         DisplayName = item.tableName,
                         AllowedRoles = item.tableRoles.ToObject<List<string>>(),
-                        Categories = ((JArray)item.tableCategories).ToObject<List<dynamic>>().Select(c => new CategoryViewModel { Id = c.CategoryId, Name = c.Name, Description = c.Description }).ToList(),
+                        Categories= item.tableCategories != null ? ((JArray)item.tableCategories).ToObject<List<dynamic>>().Select(c => new CategoryViewModel { Id = c.CategoryId, Name = c.Name, Description = c.Description }).ToList() : new List<CategoryViewModel>(),
                         DoNotDisplay = item.doNotDisplay,
                         CustomTable = item.customTable,
                         CustomTableSql = Convert.ToBoolean(item.customTable) == true ? DotNetReportHelper.Decrypt(Convert.ToString(item.customTableSql)) : "",
-                        DynamicColumns = item.dynamicColumns,
-                        DynamicColumnTranslation = Convert.ToBoolean(item.dynamicColumns) == true ? DotNetReportHelper.Decrypt(Convert.ToString(item.dynamicColumnTranslation)) : "",
+                        DynamicColumns = item.dynamicColumns != null ? Convert.ToBoolean(item.dynamicColumns) : false,
+                        DynamicColumnTranslation = item.dynamicColumns != null && Convert.ToBoolean(item.dynamicColumns) == true ? DotNetReportHelper.Decrypt(Convert.ToString(item.dynamicColumnTranslation)) : "",
                         Columns = new List<ColumnViewModel>(),
                         Selected = true
                     };
@@ -1908,7 +1914,7 @@ namespace ReportBuilder.Web.Models
                             {
                                 ws.InsertRow(insertRowIndex + 2, ddt.Rows.Count);
 
-                                FormatExcelSheet(ddt, ws, insertRowIndex == 3 ? 3 : (insertRowIndex + 1), ddt.Columns.Count + 1, columns, false, insertRowIndex == 3);
+                                FormatExcelSheet(ddt, ws, insertRowIndex == 3 ? 3 : (insertRowIndex + 1), ddt.Columns.Count + 1, columns, false, insertRowIndex == 3,isexpanded:true);
 
                                 insertRowIndex += ddt.Rows.Count + 1;
                             }
@@ -2545,9 +2551,9 @@ namespace ReportBuilder.Web.Models
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
             await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
             var executablePath = "";
-            foreach (var d in Directory.GetDirectories(installPath))
+            foreach (var d in Directory.GetDirectories($"{installPath}\\Chrome"))
             {
-                executablePath = $"{d}\\chrome-win\\chrome.exe";
+                executablePath = $"{d}\\chrome-win64\\chrome.exe";
                 if (File.Exists(executablePath)) break;
             }
 
@@ -3571,11 +3577,7 @@ namespace ReportBuilder.Web.Models
 
                     // see if this table is already in database
                     var matchTable = currentTables.FirstOrDefault(x => x.TableName.ToLower() == tableName.ToLower());
-                    if (matchTable != null)
-                    {
-                        matchTable.Columns = await DotNetReportHelper.GetApiFields(accountKey, dataConnectKey, matchTable.Id);
-                    }
-
+                    
                     var table = new TableViewModel
                     {
                         Id = matchTable != null ? matchTable.Id : 0,
@@ -3626,16 +3628,36 @@ namespace ReportBuilder.Web.Models
                             column.ForeignParentKeyField = matchColumn.ForeignParentKeyField;
                             column.ForeignParentValueField = matchColumn.ForeignParentValueField;
                             column.ForeignParentRequired = matchColumn.ForeignParentRequired;
+                            column.JsonStructure = matchColumn.JsonStructure;
+                            column.ForeignFilterOnly = matchColumn.ForeignFilterOnly;
 
                             column.Selected = true;
                         }
 
                         table.Columns.Add(column);
                     }
+                    // add columns not in db, but in dotnet report
+                    if (matchTable != null)
+                    {
+                        table.Columns.AddRange(matchTable.Columns.Where(x => !table.Columns.Select(c => c.Id).Contains(x.Id)).ToList());
+                    }
+
                     table.Columns = table.Columns.OrderBy(x => x.DisplayOrder).ToList();
                     tables.Add(table);
                 }
 
+                // add tables not in db, but in dotnet report
+                var notMatchedTables = currentTables.Where(x => !tables.Select(c => c.Id).Contains(x.Id) && ((type == "TABLE") ? !x.IsView : x.IsView)).ToList();
+                if (notMatchedTables.Any())
+                {
+                    foreach (var notMatchedTable in notMatchedTables)
+                    {
+                        notMatchedTable.Selected = true;
+                        notMatchedTable.Columns = await DotNetReportHelper.GetApiFields(accountKey, dataConnectKey, notMatchedTable.Id);
+                        notMatchedTable.Columns.ForEach(x => x.Selected = true);
+                    }
+                    tables.AddRange(notMatchedTables);
+                }
                 conn.Close();
                 conn.Dispose();
             }

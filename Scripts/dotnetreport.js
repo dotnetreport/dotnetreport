@@ -855,6 +855,8 @@ var reportViewModel = function (options) {
 	self.HideReportHeader = ko.observable(false);
 	self.maxRecords = ko.observable(false);
 	self.changePageSize = ko.observable(false);
+	self.noHeaderRow = ko.observable(false);
+	self.noDashboardBorders = ko.observable(false);
 	self.OnlyTop = ko.observable();
 	self.barChartHorizontal = ko.observable();
 	self.barChartStacked = ko.observable();
@@ -1634,6 +1636,8 @@ var reportViewModel = function (options) {
 		self.selectedFunction(null);
 		self.maxRecords(false);
 		self.changePageSize(false);
+		self.noHeaderRow(false);
+		self.noDashboardBorders(false);
 		self.OnlyTop(null);
 		self.lastPickedField(null);
 		self.OuterGroupColumns([]);
@@ -2353,10 +2357,12 @@ var reportViewModel = function (options) {
 
 			if (newValue === 'This Year') {
 				range(['Last Year', '2 Years ago', '3 Years ago', '4 Years ago', '5 Years ago']);
+			} else if (newValue === 'This Year To Date') {
+				range(['Last Year To Date', '2 Years ago To Date', '3 Years ago To Date']);
 			} else if (newValue === 'This Month') {
-				range(['Last Month', '2 Months ago', '3 Months ago', '4 Months ago', '5 Months ago', '6 Months ago', '12 Months ago']);
+				range(['Last Month', 'This Month Last Year', '2 Months ago', '3 Months ago', '4 Months ago', '5 Months ago', '6 Months ago', '12 Months ago']);
 			} else if (newValue === 'This Week') {
-				range(['Last Week', '2 Weeks ago', '3 Weeks ago', '4 Weeks ago', '5 Weeks ago']);
+				range(['Last Week', 'This Week Last Year', '2 Weeks ago', '3 Weeks ago', '4 Weeks ago', '5 Weeks ago']);
 			} else {
 				range([]);
 			}
@@ -2602,6 +2608,8 @@ var reportViewModel = function (options) {
 				barChartStacked: self.barChartStacked(),
 				barChartHorizontal: self.barChartHorizontal(),
 				DefaultPageSize: self.DefaultPageSize() || 30,
+				noHeaderRow: self.noHeaderRow(),
+				noDashboardBorders: self.noDashboardBorders(),
 				PivotColumns: self.PivotColumns(),
 				PivotColumnsWidth: _.map(self.ReportColumns(), function (column) {
 					return {
@@ -3284,6 +3292,13 @@ var reportViewModel = function (options) {
 		var validFieldNames = _.map(result.ReportData.Columns, 'SqlField');
 		result.ReportData.IsDrillDown = ko.observable(false);
 		result.ReportData.CanExpandOption = ko.computed(function () { return self.ShowExpandOption(); });
+		result.ReportData.calculateRate = function () {
+			if (result.ReportData.Rows.length <= 1) return null;
+			var currentValue = parseFloat(result.ReportData.Rows[0].Items[0].Value) || 0;
+			var nextValue = parseFloat(result.ReportData.Rows[1].Items[0].Value) || 0;
+			if (nextValue === 0) return null; // Avoid division by zero
+			return (((currentValue - nextValue) / nextValue) * 100).toFixed(1);
+		};
 		_.forEach(result.ReportData.Rows, function (e) {
 			e.DrillDownData = ko.observable(null);
 			e.pager = new pagerViewModel({ pageSize: self.DefaultPageSize() });
@@ -4048,7 +4063,7 @@ var reportViewModel = function (options) {
 		}
 		e.selectedFieldName = e.tableName + " > " + e.fieldName + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
 		e.selectedFilterName = e.tableName + " > " + (e.fieldLabel || e.fieldName) + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
-		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail').concat('Group in Detail').concat('Pivot').concat('Csv');
+		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail').concat('Group in Detail').concat('Pivot').concat('Max').concat('Csv');
 		e.selectedAggregate = ko.observable(e.aggregateFunction);
 		e.filterOnFly = ko.observable(e.filterOnFly);
 		e.disabled = ko.observable(e.disabled);
@@ -4313,6 +4328,8 @@ var reportViewModel = function (options) {
 		self.barChartHorizontal(reportSettings.barChartHorizontal === true ? true : false);
 		self.barChartStacked(reportSettings.barChartStacked === true ? true : false);
 		self.DefaultPageSize(reportSettings.DefaultPageSize || 30);
+		self.noHeaderRow(reportSettings.noHeaderRow);
+		self.noDashboardBorders(reportSettings.noDashboardBorders);
 		self.PivotColumns(reportSettings.PivotColumns || null)
 		self.PivotColumnsWidth(reportSettings.PivotColumnsWidth || null)
 		if (self.ReportMode() == "execute") {
@@ -5138,36 +5155,23 @@ var sqlFieldModel = function (options) {
 				{ id: 'MONTH', text: 'MONTH (Extract Month)', description: 'Extract the month from a date.' },
 				{ id: 'DAY', text: 'DAY (Extract Day)', description: 'Extract the day from a date.' }
 			]
+		},
+		{
+			text: 'Other',
+			children: [
+				{ id: 'Other', text: 'Other (Custom SQL)', description: 'Manually enter a custom SQL expression.' }
+			]
 		}		
 	]
 	
 	self.availableFunctionsGrouped = ko.observableArray(availableFunctions);
 
-	if (options.adminMode) {
-		options.adminMode.subscribe(function (x) {
-			if (x) {
-				self.availableFunctionsGrouped.push({
-					text: 'Other',
-					children: [
-						{ id: 'Other', text: 'Other (Custom SQL)', description: 'Manually enter a custom SQL expression.' }
-					]
-				});
-			} else {
-				self.availableFunctionsGrouped(availableFunctions);
-			}
-		});
-	}
-
-	self.select2Options = {
-		placeholder: 'Select Function...',
-		data: self.availableFunctionsGrouped(),
-		templateResult: function (option) {
-			if (!option.id) {
-				return option.text; 
-			}
-			return $('<div>' + option.text + '<br><span style="font-size: 0.9em;">  ' + option.description + '</span></div>');
+	self.templateResult = function (option) {
+		if (!option.id) {
+			return option.text;
 		}
-	};
+		return $('<div>' + option.text + '<br><span style="font-size: 0.9em;">  ' + option.description + '</span></div>');
+	}
 
 	self.formatFieldSelection = function (option) {		
 		if (option && option.text) {
@@ -5781,7 +5785,7 @@ var dashboardViewModel = function (options) {
 						_.forEach(fg.Filters(), function (f) {
 							if (f.IsFilterOnFly
 								//&& f.Field().fieldType == 'DateTime'
-								&& _.filter(self.FlyFilters(), function (x) { return f.Field().fieldId == x.Field().fieldId; }).length == 0
+								&& _.filter(self.FlyFilters(), function (x) { return (f.Field().fieldId == x.Field().fieldId) || (f.Field().hasForeignKey && x.Field().hasForeignKey && f.Field().foreignTable == x.Field().foreignTable && f.Field().foreignKey == x.Field().foreignKey); }).length == 0
 							) {
 								var filter = {
 									AndOr: ko.observable(' AND '),
@@ -5963,7 +5967,9 @@ var dashboardViewModel = function (options) {
 			_.forEach(self.FlyFilters(), function (combinedFilter) {
 				_.forEach(report.FilterGroups(), function (fg) {
 					_.forEach(fg.Filters(), function (f) {
-						if (f.IsFilterOnFly && combinedFilter.Field().fieldId == f.Field().fieldId) {
+						if (f.IsFilterOnFly && combinedFilter.Field().fieldId == f.Field().fieldId
+							|| (f.Field().hasForeignKey && combinedFilter.Field().hasForeignKey && f.Field().foreignTable == combinedFilter.Field().foreignTable && f.Field().foreignKey == combinedFilter.Field().foreignKey)
+						) {
 							f.Operator(combinedFilter.Operator());
 							f.Value(combinedFilter.Value());
 							f.Value2(combinedFilter.Value2());
@@ -5978,7 +5984,7 @@ var dashboardViewModel = function (options) {
 			});
 
 			if (filterApplied) {
-				report.RunReport();
+				report.RunReport(false, false, true);
 			}
 		});
 	}
