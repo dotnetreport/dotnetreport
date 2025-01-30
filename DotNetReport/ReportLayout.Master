@@ -1237,7 +1237,7 @@
                         <div data-bind="with: SelectedTable">
                             <b><span data-bind="text: tableName"></span></b>
                         </div>
-                        <div class="row container-fluid" data-bind="foreach: ChooseFields">
+                        <div class="row container-fluid" data-bind="foreach: ChooseFields" style="max-height: 200px; overflow: auto;">
                             <div class="col-md-12 col-sm-12 col-xs-12 list-group">
                                 <div class="list-group-item">
                                     <div class="checkbox">
