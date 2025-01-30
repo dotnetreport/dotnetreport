@@ -2357,10 +2357,12 @@ var reportViewModel = function (options) {
 
 			if (newValue === 'This Year') {
 				range(['Last Year', '2 Years ago', '3 Years ago', '4 Years ago', '5 Years ago']);
+			} else if (newValue === 'This Year To Date') {
+				range(['Last Year To Date', '2 Years ago To Date', '3 Years ago To Date']);
 			} else if (newValue === 'This Month') {
-				range(['Last Month', '2 Months ago', '3 Months ago', '4 Months ago', '5 Months ago', '6 Months ago', '12 Months ago']);
+				range(['Last Month', 'This Month Last Year', '2 Months ago', '3 Months ago', '4 Months ago', '5 Months ago', '6 Months ago', '12 Months ago']);
 			} else if (newValue === 'This Week') {
-				range(['Last Week', '2 Weeks ago', '3 Weeks ago', '4 Weeks ago', '5 Weeks ago']);
+				range(['Last Week', 'This Week Last Year', '2 Weeks ago', '3 Weeks ago', '4 Weeks ago', '5 Weeks ago']);
 			} else {
 				range([]);
 			}
@@ -3296,6 +3298,13 @@ var reportViewModel = function (options) {
 		var validFieldNames = _.map(result.ReportData.Columns, 'SqlField');
 		result.ReportData.IsDrillDown = ko.observable(false);
 		result.ReportData.CanExpandOption = ko.computed(function () { return self.ShowExpandOption(); });
+		result.ReportData.calculateRate = function () {
+			if (result.ReportData.Rows.length <= 1) return null;
+			var currentValue = parseFloat(result.ReportData.Rows[0].Items[0].Value) || 0;
+			var nextValue = parseFloat(result.ReportData.Rows[1].Items[0].Value) || 0;
+			if (nextValue === 0) return null; // Avoid division by zero
+			return (((currentValue - nextValue) / nextValue) * 100).toFixed(1);
+		};
 		_.forEach(result.ReportData.Rows, function (e) {
 			e.DrillDownData = ko.observable(null);
 			e.pager = new pagerViewModel({ pageSize: self.DefaultPageSize() });
@@ -3949,7 +3958,7 @@ var reportViewModel = function (options) {
 		}
 		e.selectedFieldName = e.tableName + " > " + e.fieldName + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
 		e.selectedFilterName = e.tableName + " > " + (e.fieldLabel || e.fieldName) + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
-		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail').concat('Group in Detail').concat('Pivot').concat('Csv');
+		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail').concat('Group in Detail').concat('Pivot').concat('Max').concat('Csv');
 		e.selectedAggregate = ko.observable(e.aggregateFunction);
 		e.filterOnFly = ko.observable(e.filterOnFly);
 		e.disabled = ko.observable(e.disabled);
@@ -5873,7 +5882,7 @@ var dashboardViewModel = function (options) {
 			});
 
 			if (filterApplied) {
-				report.RunReport();
+				report.RunReport(false, false, true);
 			}
 		});
 	}
