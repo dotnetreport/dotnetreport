@@ -416,7 +416,7 @@
                             <th></th>
                         </tr>
                     </thead>
-                    <tbody data-bind="foreach: filteredJoins">
+                    <tbody data-bind="foreach: pagedJoins">
                         @* <tbody data-bind="sortable: { data: $root.Joins, options: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight' }, afterMove: $root.filterJoinsSorted }"> *@
                         <tr>
                             @* <td class="btn btn-sm pull-right sortable">
@@ -443,6 +443,11 @@
                         </tr>
                     </tbody>
                 </table>
+                <div class="row mt-3">
+                    <div class="d-flex flex-row align-items-center col-md-12" data-bind="with: joinsPager">
+                        <div data-bind="template: 'pager-template', data: $data"></div>
+                    </div>
+                </div>
             </form>
             <br />
             <br />

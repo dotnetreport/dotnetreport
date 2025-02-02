@@ -64,6 +64,7 @@ var manageViewModel = function (options) {
 	self.foundProcedures = ko.observableArray([]);
 	self.searchProcedureTerm = ko.observable("");
 	self.Joins = ko.observableArray([]);
+
 	self.currentConnectionKey = ko.observable(self.keys.DatabaseApiKey);
 	self.canSwitchConnection = ko.computed(function () {
 		return self.currentConnectionKey() != self.keys.DatabaseApiKey;
@@ -101,6 +102,25 @@ var manageViewModel = function (options) {
 				&& (!joinTableFilter || !x.OtherTable() || x.OtherTable().DisplayName().toLowerCase().indexOf(joinTableFilter.toLowerCase()) >= 0)
 				&& (!joinFieldFilter || !x.JoinFieldName() || x.JoinFieldName().toLowerCase().indexOf(joinFieldFilter.toLowerCase()) >= 0);
 		});
+	});
+
+
+	self.joinsPager = new pagerViewModel({ autoPage: true });
+
+	self.pagedJoins = ko.computed(function () {
+		var joins = self.filteredJoins();
+
+		var pageNumber = self.joinsPager.currentPage();
+		var pageSize = self.joinsPager.pageSize();
+
+		var startIndex = (pageNumber - 1) * pageSize;
+		var endIndex = startIndex + pageSize;
+		return joins.slice(startIndex, endIndex < joins.length ? endIndex : joins.length);
+	});
+
+	self.filteredJoins.subscribe(function (x) {
+		self.joinsPager.totalRecords(x.length);
+		self.joinsPager.currentPage(1);
 	});
 
 	self.JoinTypes = ["INNER", "LEFT", "LEFT OUTER", "RIGHT", "RIGHT OUTER"];
@@ -164,10 +184,11 @@ var manageViewModel = function (options) {
 	};
 	self.AddAllRelations = function () {
 		var tables = self.Tables.availableTables();
-		if (tables.length == 0) {
+		if (tables.length === 0) {
 			toastr.error("Please select some tables first");
 			return;
 		}
+
 		function isIdField(fieldName) {
 			return fieldName.endsWith("Id") || fieldName.endsWith("ID");
 		}
@@ -178,61 +199,52 @@ var manageViewModel = function (options) {
 			}
 
 			const newJoins = [];
-			const existingJoins = new Set(self.Joins().map((join) =>
-				`${join.TableId()}-${join.JoinedTableId()}-${join.JoinFieldName()}`
-			));
-			const processedTables = new Set([tables[0]?.Id()]); // Initialize with the first table ID
+			const existingJoins = new Set(
+				self.Joins().map((join) =>
+					`${join.TableId()}-${join.JoinedTableId()}-${join.JoinFieldName()}`
+				)
+			);
 
 			tables.forEach((table1) => {
-				if (processedTables.has(table1.Id())) {
-					return;
-				}
-
-				const table1Name = table1.TableName();
 				const table1PrimaryKey = table1.Columns()[0].ColumnName();
-				const table1Columns = table1.Columns().filter((col) => isIdField(col.ColumnName()));
+				const table1IdCols = table1.Columns().filter((col) => isIdField(col.ColumnName()));
 
-				tables.forEach((table2) => {
-					if (table1.Id() === table2.Id() || processedTables.has(table2.Id())) {
-						return;
-					}
+				table1IdCols.forEach((idCol) => {
+					tables.forEach((table2) => {
+						if (table1.Id() === table2.Id()) return; 
+						const table2PrimaryKey = table2.Columns()[0].ColumnName();
 
-					const table2PrimaryKey = table2.Columns()[0].ColumnName();
-					const table2Columns = table2.Columns().filter((col) => isIdField(col.ColumnName()));
-
-					table2Columns.forEach((c) => {
-						if (c.ColumnName() === `${table1Name}Id` || c.ColumnName() === `${table1Name}ID`) {
-							const joinKey1 = `${table1.Id()}-${table2.Id()}-${c.ColumnName()}`;
-
+						if (idCol.ColumnName() === table2PrimaryKey) {
+							const joinKey1 = `${table1.Id()}-${table2.Id()}-${idCol.ColumnName()}`;
 							if (!existingJoins.has(joinKey1)) {
-								newJoins.push(self.setupJoin({
-									TableId: table1.Id(),
-									JoinedTableId: table2.Id(),
-									JoinType: self.JoinTypes[0],
-									FieldName: table1PrimaryKey,
-									JoinFieldName: c.ColumnName(),
-								}));
+								newJoins.push(
+									self.setupJoin({
+										TableId: table1.Id(),
+										JoinedTableId: table2.Id(),
+										JoinType: self.JoinTypes[0],
+										FieldName: idCol.ColumnName(),
+										JoinFieldName: table2PrimaryKey,
+									})
+								);
 								existingJoins.add(joinKey1);
 							}
 
 							const joinKey2 = `${table2.Id()}-${table1.Id()}-${table1PrimaryKey}`;
-
 							if (!existingJoins.has(joinKey2)) {
-								newJoins.push(self.setupJoin({
-									TableId: table2.Id(),
-									JoinedTableId: table1.Id(),
-									JoinType: self.JoinTypes[0],
-									FieldName: c.ColumnName(),
-									JoinFieldName: table1PrimaryKey,
-								}));
+								newJoins.push(
+									self.setupJoin({
+										TableId: table2.Id(),
+										JoinedTableId: table1.Id(),
+										JoinType: self.JoinTypes[0],
+										FieldName: table2PrimaryKey,
+										JoinFieldName: table1PrimaryKey,
+									})
+								);
 								existingJoins.add(joinKey2);
 							}
 						}
 					});
-
 				});
-
-				processedTables.add(table1.Id());
 			});
 
 			self.Joins.push.apply(self.Joins, newJoins);
