@@ -424,7 +424,7 @@
                             <th></th>
                         </tr>
                     </thead>
-                    <tbody data-bind="foreach: filteredJoins">
+                    <tbody data-bind="foreach: pagedJoins">
                         <tr>
                             <td>
                                 <select class="form-control input-medium" data-bind="options: $root.Tables.availableTables, optionsText: 'DisplayName', value: JoinTable"></select>
@@ -447,6 +447,11 @@
                         </tr>
                     </tbody>
                 </table>
+                 <div class="row mt-3">
+                     <div class="d-flex flex-row align-items-center col-md-12" data-bind="with: joinsPager">
+                         <div data-bind="template: 'pager-template', data: $data"></div>
+                     </div>
+                 </div>
             </form>
             <br />
             <br />
