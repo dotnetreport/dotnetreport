@@ -20,6 +20,16 @@
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
+        .table-selected rect.main-rect {
+        filter: drop-shadow(3px 3px 5px #999);
+        }
+        .column-selected {
+        font-weight: bold;
+        }
+        .line-highlight {
+        stroke: #33f !important;
+        stroke-width: 2 !important;
+        }
     </style>
 </asp:Content>
 <asp:Content ID="Content1" ContentPlaceHolderID="scripts" runat="server">    
@@ -215,6 +225,7 @@
                 <button class="btn btn-sm btn-primary" data-bind="click: $root.loadFromDatabase, hidden: $root.customTableMode() || !$root.onlyApi()">
                     <span class="fa fa-database"></span> Load all Database Tables
                 </button>
+                <button class="btn btn-sm btn-primary" data-bind="click: $root.visualizeJoins">Visualize Joins</button>&nbsp;
                 <button class="btn btn-sm btn-primary" data-bind="hidden: $root.customTableMode()" data-bs-toggle="modal" data-bs-target="#uploadTablesFileModal" aria-haspopup="true" aria-expanded="false">
                     <span class="fa fa-file"></span> Import Tables/Views
                 </button>
@@ -267,11 +278,18 @@
 
                 <div class="col-9">
                     <div data-bind="visible: pagedTables().length === 0">
-                        <div data-bind="visible: pagedTables().length === 0">
-                            <svg style="width: 40px; float: left;" fill="#000000" viewBox="0 0 24 24" id="curve-arrow-up-7" data-name="Flat Line" xmlns="http://www.w3.org/2000/svg" class="icon flat-line" transform="rotate(-45)"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round" stroke="#CCCCCC" stroke-width="0.048"></g><g id="SVGRepo_iconCarrier"><path id="primary" d="M18,21A13.17,13.17,0,0,1,9,8.51V3" style="fill: none; stroke: #000000; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2;"></path><polyline id="primary-2" data-name="primary" points="12 6 9 3 6 6" style="fill: none; stroke: #000000; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2;"></polyline></g></svg>
-                            <div class="mt-3 fw-bold" style="float: left;"> No <span data-bind="visible: $root.customTableMode">Custom </span> Tables added yet, click "<span data-bind="text: customTableMode() ? 'Add New Custom Table' : 'Load All Tables'"></span>" to get started!</div>
-                        </div>
+                        <br />
+                        <svg style="width:40px;float:left;transform:rotate(-45deg) translateY(6px);transform-origin:center center;" fill="#000000" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="icon flat-line"><g stroke-width="0"></g><g stroke-linecap="round" stroke-linejoin="round" stroke="#CCCCCC" stroke-width="0.048"></g><g><path d="M18,21A13.17,13.17,0,0,1,9,8.51V3" style="fill:none;stroke:#000000;stroke-linecap:round;stroke-linejoin:round;stroke-width:2;"></path><polyline points="12 6 9 3 6 6" style="fill:none;stroke:#000000;stroke-linecap:round;stroke-linejoin:round;stroke-width:2;"></polyline></g></svg>
+                        <div class="mt-3 fw-bold" style="float:left; padding-left: 5px;">No <span data-bind="visible: $root.customTableMode">Custom </span> Tables added yet, click "<span data-bind="text: customTableMode() ? 'Add New Custom Table' : 'Load All Tables'"></span>" to get started!</div>
                     </div>
+
+                    <div data-bind="visible: !activeTable()">
+                        <br />
+                        <br />
+                        <svg style="width:40px;float:left;transform:rotate(-45deg) translateY(6px);transform-origin:center center;" fill="#000000" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="icon flat-line"><g stroke-width="0"></g><g stroke-linecap="round" stroke-linejoin="round" stroke="#CCCCCC" stroke-width="0.048"></g><g><path d="M18,21A13.17,13.17,0,0,1,9,8.51V3" style="fill:none;stroke:#000000;stroke-linecap:round;stroke-linejoin:round;stroke-width:2;"></path><polyline points="12 6 9 3 6 6" style="fill:none;stroke:#000000;stroke-linecap:round;stroke-linejoin:round;stroke-width:2;"></polyline></g></svg>
+                        <div class="mt-3 fw-bold" style="float:left; padding-left: 5px;">Select a <span data-bind="visible: $root.customTableMode">Custom </span> Table, or "<span data-bind="text: customTableMode() ? 'Add New Custom Table' : 'Load All Tables'"></span>"</div>
+                    </div>
+
                     <div data-bind="with: activeTable">
                         <div class="card my-3">
                             <div class="card-header">
@@ -362,6 +380,7 @@
             <button class="btn btn-sm btn-primary" data-bind="click: AddAllRelations">Auto Add Joins</button>
             <button class="btn btn-sm btn-primary" data-bind="click: AddJoin">Add new Join</button>&nbsp;
             <button class="btn btn-sm btn-primary" data-bind="click: SaveJoins">Save Joins</button>&nbsp;
+            <button class="btn btn-sm btn-primary" data-bind="click: visualizeJoins">Visualize Joins</button>&nbsp;
             <button class="btn btn-sm btn-primary" data-bind="click: ExportJoins">Export Joins</button>&nbsp;
             <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadJoinsFileModal" aria-haspopup="true" aria-expanded="false">
                 <span class="fa fa-file"></span> Import Joins
@@ -1095,6 +1114,22 @@
     </div>
 </div>
 
+    
+<div class="modal" id="joinModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Joins Diagram</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" style="max-height:800px;overflow:auto;">
+        <div id="joinDiagram" style="width:2000px;height:1200px;position:relative;border:1px solid #ccc;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
 <div class="modal" id="procedure-modal" role="dialog" tabindex="-2">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content ">
@@ -1631,4 +1666,5 @@
         </div>
     </div>
 </div>
+
 </asp:Content>
