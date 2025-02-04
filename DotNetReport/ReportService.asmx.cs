@@ -129,14 +129,14 @@ namespace ReportBuilder.WebForms.DotNetReport
             using (var client = new HttpClient())
             {
                 var settings = GetSettings();
-                var keyvalues = new List<KeyValuePair<string, string>>
+                var requestData = new Dictionary<string, object>
                 {
-                    new KeyValuePair<string, string>("account", settings.AccountApiToken),
-                    new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
-                    new KeyValuePair<string, string>("clientId", settings.ClientId),
-                    new KeyValuePair<string, string>("userId", settings.UserId),
-                    new KeyValuePair<string, string>("userIdForSchedule", settings.UserIdForSchedule),
-                    new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole))
+                    { "account", settings.AccountApiToken },
+                    { "dataConnect", settings.DataConnectApiToken },
+                    { "clientId", settings.ClientId },
+                    { "userId", settings.UserId },
+                    { "userIdForSchedule", settings.UserIdForSchedule },
+                    { "userRole", string.Join(",", settings.CurrentUserRole) }
                 };
 
                 var data = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(model);
@@ -144,25 +144,29 @@ namespace ReportBuilder.WebForms.DotNetReport
                 {
                     if ((key != "adminMode" || (key == "adminMode" && settings.CanUseAdminMode)) && data[key] != null)
                     {
-                        keyvalues.Add(new KeyValuePair<string, string>(key, data[key].ToString()));
+                        requestData[key] = data[key];
                     }
                 }
 
-                var content = new FormUrlEncodedContent(keyvalues);
+                var jsonContent = JsonConvert.SerializeObject(requestData);
+                var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
                 var response = client.PostAsync(new Uri(settings.ApiUrl + method), content).Result;
                 var stringContent = response.Content.ReadAsStringAsync().Result;
 
                 if (stringContent.Contains("\"sql\":"))
                 {
-                    var sqlqeuery = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(stringContent);
+                    var sqlQuery = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(stringContent);
                     object value;
-                    var keyValuePair = sqlqeuery.TryGetValue("sql", out value);
-                    var sql = DotNetReportHelper.Decrypt(value.ToString());
+                    if (sqlQuery.TryGetValue("sql", out value))
+                    {
+                        var sql = DotNetReportHelper.Decrypt(value.ToString());
+                    }
                 }
-                Context.Response.StatusCode = (int)response.StatusCode;
-                return (new JavaScriptSerializer()).Deserialize<dynamic>(stringContent);
-            }
 
+                Context.Response.StatusCode = (int)response.StatusCode;
+                return new JavaScriptSerializer().Deserialize<dynamic>(stringContent);
+            }
         }
 
         [WebMethod(EnableSession = true)]
