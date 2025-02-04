@@ -898,8 +898,8 @@ namespace ReportBuilder.Web.Models
                         if (!string.IsNullOrEmpty(cellValue))
                         {
                             var increment = rowstart == 3 ? 1 : 0;
-                            string Url = HttpContext.Current?.Request.Url.GetLeftPart(UriPartial.Authority);
-                            var hyperlinkAddress = Url + "/DotNetReport/Report?linkedreport=true&reportId=" + formatColumn.LinkFieldItem.LinkedToReportId;
+                            //var url = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}";
+                            var hyperlinkAddress = "/DotNetReport/Report?linkedreport=true&reportId=" + formatColumn.LinkFieldItem.LinkedToReportId;
                             if (formatColumn.LinkFieldItem.SendAsFilterParameter && !string.IsNullOrEmpty(cellValue))
                             {
                                 hyperlinkAddress += $"&filterId={formatColumn.LinkFieldItem.SelectedFilterId}&filterValue={cellValue.Replace("'", "").Replace("\"", "")}";
