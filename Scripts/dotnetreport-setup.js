@@ -480,61 +480,73 @@ var manageViewModel = function (options) {
 	};
 
 	self.AddAllRelations = function () {
-		var tables = self.Tables.availableTables();
-		if (tables.length === 0) {
+		var rawTables = ko.toJS(self.Tables.availableTables) || [];
+		if (rawTables.length === 0) {
 			toastr.error("Please select some tables first");
 			return;
 		}
 
-		function isIdField(fieldName) {
-			return fieldName.endsWith("Id") || fieldName.endsWith("ID");
+		function isIdField(name) {
+			return name && (name.toLowerCase().endsWith("id")) && name.toLowerCase() != "id";
 		}
 
 		bootbox.confirm("Do you want to add suggested joins for fields ending in 'Id'?", function (confirmed) {
-			if (!confirmed) {
-				return;
-			}
+			if (!confirmed) return;
 
-			const newJoins = [];
-			const existingJoins = new Set(
-				self.Joins().map((join) =>
-					`${join.TableId()}-${join.JoinedTableId()}-${join.JoinFieldName()}`
-				)
+			var newJoins = [];
+			var existingJoins = new Set(
+				(self.Joins() || []).map(function (join) {
+					return join.TableId() + "-" + join.JoinedTableId() + "-" + join.JoinFieldName();
+				})
 			);
 
-			tables.forEach((table1) => {
-				const table1PrimaryKey = table1.Columns()[0].ColumnName();
-				const table1IdCols = table1.Columns().filter((col) => isIdField(col.ColumnName()));
+			rawTables.forEach(function (t1) {
+				if (!t1.Columns || t1.Columns.length === 0) return;
+				var t1PrimaryKey = t1.Columns[0].ColumnName;
+		
+				t1.Columns.forEach(function (col1) {
+					rawTables.forEach(function (t2) {
+						if (t1.Id === t2.Id) return;
+						if (!t2.Columns || t2.Columns.length === 0) return;
+						var t2PrimaryKey = t2.Columns[0].ColumnName;
+						if (!isIdField(t2PrimaryKey)) return;
+						var matchByIdLogic = (isIdField(col1.ColumnName) && (col1.ColumnName.toLowerCase() === t2.TableName.toLowerCase() + "id" || col1.ColumnName.toLowerCase() == t2PrimaryKey.toLowerCase()));
 
-				table1IdCols.forEach((idCol) => {
-					tables.forEach((table2) => {
-						if (table1.Id() === table2.Id()) return; 
-						const table2PrimaryKey = table2.Columns()[0].ColumnName();
+						var matchBySameName = false;
+						if (!matchByIdLogic) {
+							var exactMatch = t2.Columns.find(function (col2) {
+								return col2.ColumnName === col1.ColumnName && isIdField(col1.ColumnName) && isIdField(col2.ColumnName)
+							});
 
-						if (idCol.ColumnName() === table2PrimaryKey) {
-							const joinKey1 = `${table1.Id()}-${table2.Id()}-${idCol.ColumnName()}`;
+							if (exactMatch) {
+								matchBySameName = true;
+							}
+						}
+
+						if (matchByIdLogic || matchBySameName) {
+							var joinKey1 = t1.Id + "-" + t2.Id + "-" + col1.ColumnName;
 							if (!existingJoins.has(joinKey1)) {
 								newJoins.push(
 									self.setupJoin({
-										TableId: table1.Id(),
-										JoinedTableId: table2.Id(),
+										TableId: t1.Id,
+										JoinedTableId: t2.Id,
 										JoinType: self.JoinTypes[0],
-										FieldName: idCol.ColumnName(),
-										JoinFieldName: table2PrimaryKey,
+										FieldName: col1.ColumnName,
+										JoinFieldName: matchByIdLogic ? t2PrimaryKey : col1.ColumnName
 									})
 								);
 								existingJoins.add(joinKey1);
 							}
 
-							const joinKey2 = `${table2.Id()}-${table1.Id()}-${table1PrimaryKey}`;
+							var joinKey2 = t2.Id + "-" + t1.Id + "-" + (matchByIdLogic ? t1PrimaryKey : col1.ColumnName);
 							if (!existingJoins.has(joinKey2)) {
 								newJoins.push(
 									self.setupJoin({
-										TableId: table2.Id(),
-										JoinedTableId: table1.Id(),
+										TableId: t2.Id,
+										JoinedTableId: t1.Id,
 										JoinType: self.JoinTypes[0],
-										FieldName: table2PrimaryKey,
-										JoinFieldName: table1PrimaryKey,
+										FieldName: matchByIdLogic ? t2PrimaryKey : col1.ColumnName,
+										JoinFieldName: col1.ColumnName
 									})
 								);
 								existingJoins.add(joinKey2);
@@ -544,7 +556,12 @@ var manageViewModel = function (options) {
 				});
 			});
 
-			self.Joins.push.apply(self.Joins, newJoins);
+			if (newJoins.length > 0) {
+				self.Joins.push.apply(self.Joins, newJoins);
+				toastr.success("Added " + newJoins.length + " new joins.");
+			} else {
+				toastr.info("No matching columns found for automatic joins.");
+			}
 		});
 	};
 
