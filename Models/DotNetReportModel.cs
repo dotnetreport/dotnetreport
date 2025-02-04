@@ -3013,7 +3013,7 @@ namespace ReportBuilder.Web.Models
                             subTotals[i] += Convert.ToDecimal(row[column.ColumnName]);
                         }
                     }
-
+                    value = value.Replace("\r", " ").Replace("\n", " ").Replace("\"", "\"\"");
                     //Add the Data rows.
                     csv += $"{(i == 0 ? "" : ",")}\"{value}\"";
                     i++;
