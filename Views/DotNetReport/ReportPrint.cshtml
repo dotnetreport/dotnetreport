@@ -129,7 +129,12 @@
                     <tr>
                         <!-- ko foreach: Items -->
                         <td data-bind="hidden: outerGroup, style: {'background-color': _backColor != 'none' ? backColor() : '', 'color': _fontColor != 'none' ? fontColor() : '', 'font-weight': fontBold() && _fontBold != 'none' ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '48px' : ''}">
+                            <!-- ko if: LinkTo-->
+                                <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: FormattedValue"></span></a>
+                            <!-- /ko-->
+                            <!-- ko ifnot: LinkTo-->
                             <span data-bind="html: FormattedValue"></span>
+                            <!-- /ko-->
                         </td>
                         <!-- /ko -->
                     </tr>
