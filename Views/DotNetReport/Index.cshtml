@@ -748,7 +748,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             </div>
                         </div>
                         <br />
-                        <span>Report ran on: @DateTime.Now.ToShortDateString() @DateTime.Now.ToShortTimeString()</span>
+                        <span>Report ran on: <span data-bind="text: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString()"></span></span>
                     </div>
                 </div>
                 <div data-bind="if: HasError">

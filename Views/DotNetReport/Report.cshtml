@@ -235,7 +235,7 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
                 </div>
                 </div>
                 <br />
-                <span>Report ran on: @DateTime.Now.ToShortDateString() @DateTime.Now.ToShortTimeString()</span>
+                <span>Report ran on: <span data-bind="text: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString()"></span></span>
             </div>
         </div>
         <div data-bind="if: HasError">

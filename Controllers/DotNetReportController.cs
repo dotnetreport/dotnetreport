@@ -61,8 +61,8 @@ namespace ReportBuilder.Web.Controllers
                 ClientId = clientId,    
                 UserId = userId,
                 CurrentUserRoles = currentUserRole,
-                DataFilters = HttpUtility.HtmlDecode(dataFilters),
-                ReportData = HttpUtility.HtmlDecode(reportData)
+                DataFilters = HttpUtility.UrlDecode(dataFilters),
+                ReportData = HttpUtility.UrlDecode(reportData)
             };
 
             return View(model);
