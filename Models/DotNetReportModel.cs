@@ -1859,7 +1859,7 @@ namespace ReportBuilder.Web.Models
         }
 
         public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
+                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, List<ReportHeaderColumn> onlyInColumnDetail = null)
         {
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
@@ -1914,6 +1914,10 @@ namespace ReportBuilder.Web.Models
 
                     if (allExpanded)
                     {
+                        if (onlyInColumnDetail.Any())
+                        {
+                             columns.AddRange(onlyInColumnDetail);
+                        }
                         var insertRowIndex = 3;
 
                         var drilldownRow = new List<string>();
