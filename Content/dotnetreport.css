@@ -1367,3 +1367,39 @@ tfoot tr.sub-total {
     .dropdown-submenu:hover .dropdown-menu {
         display: block;
     }
+.pager-container {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 3px;
+}
+
+.pager-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px; 
+    height: 28px; 
+    font-size: 14px;
+    text-decoration: none;
+    border-radius: 5px;
+    text-align: center;
+    font-weight: bold;
+    padding: 2px 4px;
+}
+
+    .pager-btn:disabled,
+    .pager-btn[disabled] {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+
+.pager-control {
+    width: 55px;
+    height: 28px; 
+    font-size: 14px;
+    padding: 3px 5px;
+    border-radius: 5px;
+    appearance: none;
+    text-align: center;
+}

@@ -100,24 +100,29 @@
         <!-- /ko -->
     </div>
 </script>
-<script type="text/html" id="pager-template">
-    <div class="pager-container d-flex flex-row align-items-center flex-wrap">
-        <a href="" title="first" data-bind="click: first, enable: !isFirstPage()"><i class="fa fa-backward report-pager-btn" style="font-size: 18px;"></i></a>&nbsp;
-        <a href="" title="previous" data-bind="click: previous, enable: !isFirstPage()"><i class="fa fa-caret-left fa-2x report-pager-btn"></i></a>
-        <select class="form-select form-control-sm" data-bind="options: [10,30,50,100,150,200,500], value: pageSize" style="width:auto"></select>
-        <span class="pager-pageinfo d-flex flex-row align-items-center flex-wrap">
-            <span>&nbsp;Page</span>&nbsp;
-            <input type="number" min="1" pattern="[0-9]*" class="form-control form-control-sm text-center" style="width:auto" data-bind="
-                                value: currentPage,
-                                attr: { max: pages() }" />&nbsp;
-            <span>of</span>&nbsp;
-            <span data-bind="text: pages"></span>
-        </span>&nbsp;
 
-        <a href="" title="next" data-bind="click: next, enable: !isLastPage()"><i class="fa fa-caret-right fa-2x report-pager-btn"></i></a>&nbsp;
-        <a href="" title="last" data-bind="click: last, enable: !isLastPage()"><i class="fa fa-forward report-pager-btn" style="font-size: 18px;"></i></a>
+<script type="text/html" id="pager-template">
+    <div class="pager-container d-flex align-items-center gap-2">
+        <a href="" title="First" data-bind="click: first, enable: !isFirstPage()" class="pager-btn btn btn-light"><i class="fa fa-backward"></i></a>
+        <a href="" title="Previous" data-bind="click: previous, enable: !isFirstPage()" class="pager-btn btn btn-light"><i class="fa fa-caret-left"></i></a>
+
+        <select class="form-control form-control-sm pager-control"
+            data-bind="options: [10,30,50,100,150,200,500], value: pageSize">
+        </select>
+
+        <div class="d-flex align-items-center gap-1">
+            <span>Page</span>
+            <input type="number" min="1" pattern="[0-9]*" class="form-control form-control-sm pager-control text-center"
+                data-bind="value: currentPage, attr: { max: pages() }">
+            <span>of</span>
+            <span data-bind="text: pages"></span>
+        </div>
+
+        <a href="" title="Next" data-bind="click: next, enable: !isLastPage()" class="pager-btn btn btn-light"><i class="fa fa-caret-right"></i></a>
+        <a href="" title="Last" data-bind="click: last, enable: !isLastPage()" class="pager-btn btn btn-light"><i class="fa fa-forward"></i></a>
     </div>
 </script>
+
 
 <script type="text/html" id="report-column-header">
     <!-- ko foreach: Columns -->
@@ -1300,7 +1305,7 @@
                         </button>
                         <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Single'); }, css: { active: ReportType()=='Single' }">
                             <span class="fa fa-2x fa-window-maximize"></span>
-                            <p>Widget</p>
+                            <p>KPI</p>
                         </button>
                         <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Treemap'); }, css: { active: ReportType()=='Treemap' }">
                             <span class="fa fa-2x fa-window-restore"></span>

@@ -1305,6 +1305,9 @@ var reportViewModel = function (options) {
 		else {
 			self.AggregateReport(true);
 		}
+		if (self.isChart()) {
+			self.DrawChart();
+		}
 	});
 
 	self.setReportType = function (reportType) {
