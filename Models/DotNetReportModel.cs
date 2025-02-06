@@ -1680,6 +1680,31 @@ namespace ReportBuilder.Web.Models
 
             return desiredOrder;
         }
+        static List<dynamic> GetGroupFunctionList(string jsonString)
+        {
+            if (string.IsNullOrEmpty(jsonString))
+                return null;
+            JObject jsonObject;
+            try
+            {
+                jsonObject = JObject.Parse(jsonString);
+                var filteredList = new List<object>();
+
+                foreach (var item in jsonObject["GroupFunctionList"])
+                {
+                    filteredList.Add(new
+                    {
+                        FieldID = (int)item["FieldID"],
+                        CustomLabel = (string)item["CustomLabel"]
+                    });
+                }
+                return filteredList;
+            }
+            catch
+            {
+                return null;
+            }
+        }
         static bool ContainsGroupInDetail(string jsonString)
         {
             if (string.IsNullOrEmpty(jsonString))
@@ -1917,6 +1942,8 @@ namespace ReportBuilder.Web.Models
                         if (onlyInColumnDetail.Any())
                         {
                              columns.AddRange(onlyInColumnDetail);
+                            var columnOrderList = GetGroupFunctionList(expandSqls);
+                            columns = columns.OrderBy(c => columnOrderList.FindIndex(g => g.CustomLabel == c.fieldName)).ToList();
                         }
                         var insertRowIndex = 3;
 
