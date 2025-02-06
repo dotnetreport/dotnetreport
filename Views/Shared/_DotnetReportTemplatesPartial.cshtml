@@ -164,7 +164,7 @@
         <div data-bind="if: Rows.length > 0">
             <div data-bind="with: $parent.rows[0].Items[0]">
                 <span data-bind="html: formattedVal"></span>
-            
+
                 <!-- ko if: $parent.Rows.length > 1 -->
                 <span data-bind="style: {'color': $parent.calculateRate() > 0 ? 'green' : 'red', 'font-size': '24px'}" >
                     <span data-bind="html: $parent.calculateRate() + '%'"></span>
@@ -364,18 +364,22 @@
     <!-- /ko -->
 </script>
 <script type="text/html" id="admin-mode-template">
-    <div class="row" style="margin-bottom: 10px;">
-        <div class="d-flex justify-content-end align-items-center">
-            <div class="bubble-badge">
-                Admin Mode
-                <div class="form-check form-switch ms-2">
-                    <input class="form-check-input" id="admin-mode" type="checkbox" data-bind="checked: adminMode">
+    <div class="row">
+        <div class="d-flex justify-content-end align-items-center" style="gap: 10px;">
+            <div data-bind="visible: adminMode" >
+                <div class="alert alert-info d-inline-block" style="font-size: 10pt; padding: 5px; max-width: 350px; white-space: normal; margin-bottom: 0;">
+                    <i class="fa fa-user-circle"></i> You can manage Reports/Dashboards for all users
+                </div>
+            </div>
+            <div class="d-flex align-items-center">
+                 <div class="bubble-badge">
+                    Admin Mode
+                    <div class="form-check form-switch ms-2">
+                        <input class="form-check-input" type="checkbox" data-bind="checked: adminMode">
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-    <div class="alert alert-info" data-bind="visible: adminMode">
-        <i class="fa fa-user-circle"></i> Admin Mode is turned on now, it allows you to setup and view Reports or Dashboards for all roles and users. You should remove the Admin mode toggle for non-admin users.<br />
     </div>
 </script>
 <script type="text/html" id="manage-access-template">
@@ -1421,7 +1425,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div data-bind="if: isFormulaField" class="custom-field-design">
                         <br />
                         <br />
@@ -1528,7 +1532,7 @@
                                                 </select>
                                             </div>
                                         </div>
-                                        
+
                                     </div>
                                 </div>
 
@@ -1540,15 +1544,15 @@
                                         <label class="form-label">Select Data Operation:</label>
                                         <select class="form-select" data-bind="select2: {
                                                 dropdownParent: $('#choose-data-card'),
-		                                        placeholder: 'Select Function...',
-		                                        data: availableFunctionsGrouped(),
-		                                        templateResult: templateResult
-	                                        }, value: selectedSqlFunction"></select>
+                                                placeholder: 'Select Function...',
+                                                data: availableFunctionsGrouped(),
+                                                templateResult: templateResult
+                                            }, value: selectedSqlFunction"></select>
                                       </div>
 
                                        <div class="mb-3" data-bind="hidden: isConditionalFunction() || selectedSqlFunction() == 'Other'">
                                         <label class="form-label">Select the Data Field to use:</label>
-                                        <select class="form-select" 
+                                        <select class="form-select"
                                              data-bind="select2: {
                                                 dropdownParent: $('#choose-data-card'),
                                                 placeholder: 'Select Field...',
@@ -1615,7 +1619,7 @@
                                             </div>
                                         </div>
                                       </div>
-                                      
+
                                     </div>
                                   </div>
                                 </div>
@@ -1921,40 +1925,40 @@
             <!-- ko if: DrillDownData -->
             <div class="modal-body">
                 <div style="overflow-x: auto; max-height: 500px; overflow-y: auto;">
-                <table class="table table-striped table-hover table-condensed" data-bind="with: DrillDownData, attr: {class: 'table table-striped table-hover table-condensed ' + $parent.selectedStyle()}">
-                    <thead style="position: sticky; top: -1px; z-index: 2;">
-                        <tr class="no-highlight">
-                            <!-- ko foreach: Columns -->
-                            <th data-bind="attr: { id: fieldId }, css: {'right-align': IsNumeric}, style: {'width': fieldWidth, 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
-                                <span data-bind="text: fieldLabel2() ? fieldLabel2() : (fieldLabel() ? fieldLabel() : fieldName), style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
-                            </th>
+                    <table class="table table-striped table-hover table-condensed" data-bind="with: DrillDownData, attr: {class: 'table table-striped table-hover table-condensed ' + $parent.selectedStyle()}">
+                        <thead style="position: sticky; top: -1px; z-index: 2;">
+                            <tr class="no-highlight">
+                                <!-- ko foreach: Columns -->
+                                <th data-bind="attr: { id: fieldId }, css: {'right-align': IsNumeric}, style: {'width': fieldWidth, 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
+                                    <span data-bind="text: fieldLabel2() ? fieldLabel2() : (fieldLabel() ? fieldLabel() : fieldName), style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
+                                </th>
+                                <!-- /ko -->
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="display: none;" data-bind="visible: Rows && Rows.length < 1">
+                                <td class="text-info" data-bind="attr:{colspan: Columns.length}">
+                                    No records found
+                                </td>
+                            </tr>
+                            <!-- ko foreach: Rows  -->
+                            <tr>
+                                <!-- ko foreach: Items -->
+                                <td data-bind="hidden: outerGroup, style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal' }">
+                                    <div data-bind="style: {'width': fieldWidth }">
+                                        <!-- ko if: LinkTo-->
+                                        <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: formattedVal"></span></a>
+                                        <!-- /ko-->
+                                        <!-- ko ifnot: LinkTo-->
+                                        <span data-bind="html: formattedVal"></span>
+                                        <!-- /ko-->
+                                    </div>
+                                </td>
+                                <!-- /ko-->
+                            </tr>
                             <!-- /ko -->
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr style="display: none;" data-bind="visible: Rows && Rows.length < 1">
-                            <td class="text-info" data-bind="attr:{colspan: Columns.length}">
-                                No records found
-                            </td>
-                        </tr>
-                        <!-- ko foreach: Rows  -->
-                        <tr>
-                            <!-- ko foreach: Items -->
-                            <td data-bind="hidden: outerGroup, style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal' }">
-                                <div data-bind="style: {'width': fieldWidth }">
-                                    <!-- ko if: LinkTo-->
-                                    <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: formattedVal"></span></a>
-                                    <!-- /ko-->
-                                    <!-- ko ifnot: LinkTo-->
-                                    <span data-bind="html: formattedVal"></span>
-                                    <!-- /ko-->
-                                </div>
-                            </td>
-                            <!-- /ko-->
-                        </tr>
-                        <!-- /ko -->
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
                 </div>
             </div>
             <div class="modal-footer">
