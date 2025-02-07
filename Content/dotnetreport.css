@@ -1416,3 +1416,26 @@ tfoot tr.sub-total {
 .report-inner {
     transition: transform 0.2s ease-in-out;
 }
+
+/* Sidebar: Adjust width and visibility */
+#sidebarMenu {
+    height: 100vh;
+    position: fixed;
+    top: 55px;
+    padding-top: 5px;
+    left: 0;
+    transition: width 0.3s ease-in-out;
+    overflow-x: hidden;
+    border-right: 1px solid #dee2e6;
+    width: 60px;
+    padding-left: 4px;
+}
+main {
+    padding-left: 65px !important;
+}
+
+.menu-text {
+    display: none;
+}
+  
+

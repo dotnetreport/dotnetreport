@@ -30,90 +30,84 @@
 
 <body>
     <link type="text/css" rel="stylesheet" media="all" href="~/Content/themes/default.min.css" id="theme-css" />
-    <nav class="navbar navbar-expand-lg navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow">
-        <a class="navbar-brand col-md-3 col-lg-2 mr-0 px-3" href="#" id="mainNavImage">
-            <img src="~/Content/img/report-logo.png" width="120" alt="Report Logo" />
-        </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNavDropdown">
-            <ul class="navbar-nav me-auto">
-            </ul>
-            <ul class="navbar-nav">
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        Resources
-                    </a>
-                    <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-                        <li><a class="dropdown-item" href="https://dotnetreport.com/schedule-demo">Schedule Demo</a></li>
-                        <li><a class="dropdown-item" href="https://dotnetreport.com/app">Free Trial</a></li>
-                        <li><a class="dropdown-item" href="https://dotnetreport.com/features">Features</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="https://www.nuget.org/packages/dotNetReport/" target="_blank"><i class="fa fa-gift"></i> Nuget</a></li>
-                        <li><a class="dropdown-item" href="https://github.com/dotnetreport" target="_blank"><i class="fa fa-github"></i> Github</a></li>
-                        <li><a class="dropdown-item" href="https://dotnetreport.com/docs" target="_blank"><i class="fa fa-book"></i> Knowledgebase</a></li>
-                    </ul>
-                </li>
-            </ul>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow p-2">
+        <div class="container-fluid">
+            <a class="navbar-brand d-flex align-items-center" href="#" id="mainNavImage">
+                <img src="~/Content/img/report-logo.png" width="120" alt="Report Logo" class="me-2" />
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <i class="fa fa-bars"></i>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="resourcesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fa fa-book"></i> Resources
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="resourcesDropdown">
+                            <li><a class="dropdown-item" href="https://dotnetreport.com/schedule-demo"><i class="fa fa-calendar"></i> Schedule Demo</a></li>
+                            <li><a class="dropdown-item" href="https://dotnetreport.com/app"><i class="fa fa-play"></i> Free Trial</a></li>
+                            <li><a class="dropdown-item" href="https://dotnetreport.com/features"><i class="fa fa-list"></i> Features</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="https://www.nuget.org/packages/dotNetReport/" target="_blank"><i class="fa fa-box"></i> NuGet</a></li>
+                            <li><a class="dropdown-item" href="https://github.com/dotnetreport" target="_blank"><i class="fa fa-github"></i> GitHub</a></li>
+                            <li><a class="dropdown-item" href="https://dotnetreport.com/docs" target="_blank"><i class="fa fa-book-open"></i> Knowledgebase</a></li>
+                        </ul>
+                    </li>
+                </ul>
+                <div class="d-flex">
+                    <button class="btn btn-outline-light me-2" onclick="return showDemoHelp();"><i class="fa fa-question-circle"></i> Help with Demo</button>
+                    <a class="btn btn-primary" href="https://dotnetreport.com/app"><i class="fa fa-rocket"></i> Start Free Trial</a>
+                </div>
+            </div>
         </div>
-        <form class="d-flex">
-            <button class="btn btn-primary me-2" onclick="return showDemoHelp();">Help with Demo</button>
-            <a class="btn btn-primary" href="https://dotnetreport.com/app">Start my Free Trial!</a>
-        </form>
     </nav>
-
 
     @Html.AntiForgeryToken()
     <div class="container-fluid">
         <div class="row">
             <!-- Sidebar -->
-            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse" id="sidebarMenu">
-                <div class="position-sticky pt-3">
+            <nav id="sidebarMenu" class="sidebar bg-dark-subtle">
+                <div class="position-sticky d-flex flex-column h-100">
                     <ul class="nav flex-column">
                         <li class="nav-item">
-                            <a class="nav-link" href="@Url.Action("Dashboard", "DotNetReport")">
-                                <i class="fa fa-fw fa-dashboard"></i> Dashboard
+                            <a class="nav-link text-secondary" href="@Url.Action("Dashboard", "DotNetReport")" title="Dashboard">
+                                <i class="fa fa-fw fa-dashboard"></i> <span class="menu-text">Dashboard</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="@Url.Action("Index", "DotNetReport")">
-                                <i class="fa fa-fw fa-file"></i> Reports
+                            <a class="nav-link text-secondary" href="@Url.Action("Index", "DotNetReport")" title="Reports">
+                                <i class="fa fa-fw fa-bar-chart"></i> <span class="menu-text">Reports</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="@Url.Action("Query", "DotNetReport")">
-                                <i class="fa fa-fw fa-lightbulb-o"></i> Smart Query <span class="text-muted fa fa-info-circle" title="Beta"></span>
+                            <a class="nav-link text-secondary" href="@Url.Action("Query", "DotNetReport")" title="Smart Query (Beta)">
+                                <i class="fa fa-fw fa-lightbulb-o"></i> <span class="menu-text">Smart Query <span class="text-muted fa fa-info-circle" title="Beta"></span></span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-muted">
-                                <i class="fa fa-fw fa-user-circle"></i> Customers
+                            <a class="nav-link text-muted" title="Customer (Example App Menu)">
+                                <i class="fa fa-fw fa-user-circle"></i> <span class="menu-text">Customers</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-muted">
-                                <i class="fa fa-fw fa-money"></i> Orders
+                            <a class="nav-link text-muted" title="Orders (Example App Menu)">
+                                <i class="fa fa-fw fa-dollar"></i> <span class="menu-text">Orders</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-muted">
-                                <i class="fa fa-fw fa-product-hunt"></i> Products
+                            <a class="nav-link text-muted" title="Products (Example App Menu)">
+                                <i class="fa fa-fw fa-address-book"></i> <span class="menu-text">Products</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-muted">
-                                <i class="fa fa-fw fa-user"></i> Profile
+                            <a class="nav-link text-muted" title="Profile (Example App Menu)">
+                                <i class="fa fa-fw fa-user"></i> <span class="menu-text">Profile</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="@Url.Action("Index", "DotnetSetup")">
-                                <i class="fa fa-fw fa-gears"></i> Configure Data <span class="text-muted fa fa-info-circle" title="Admin Only"></span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-muted">
-                                <i class="fa fa-fw fa-power-off"></i> Log Out
+                            <a class="nav-link text-secondary" href="@Url.Action("Index", "DotnetSetup")" title="Configure Data (Admin Only)">
+                                <i class="fa fa-fw fa-gears"></i> <span class="menu-text">Configure Data <span class="text-muted fa fa-info-circle" title="Admin Only"></span></span>
                             </a>
                         </li>
                     </ul>
@@ -121,17 +115,15 @@
             </nav>
 
             <!-- Main Content -->
-            <main role="main" class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+            <main role="main" class="col-12 ms-sm-auto">
                 <div class="pt-3 pb-2 mb-3">
                     <div id="alertplaceholder"></div>
                     @RenderBody()
-                    <br />
-                    <br />
-                    <br />
                 </div>
             </main>
         </div>
     </div>
+
 
     <div class="report-layout-footer">
         <!-- ########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
@@ -139,27 +131,41 @@
         <!--########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
     </div>
 
-    <div class="modal" id="demoinfoModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal fade" id="demoinfoModal" tabindex="-1" aria-labelledby="demoModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header" style="display: block; text-align: left;">
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                    <h4 class="modal-title">Welcome to the Demo Site!</h4>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="demoModalLabel">Welcome to the Demo Site!</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <p>The purpose of this Demo Site is to demonstrate how <a href="https://dotnetreport.com">dotnet Report</a> runs embedded inside a Web Application and how end users can run and create useful Reports and Dashboards.</p>
-                    <p>The Database this demo site uses has Sales and Products data for a fictional company, with some test Employees, Customers and daily Orders as well. This way, you can run or create test Reports mimicking real world use cases.</p>
-                    <p>Feel free to test the <b>Dashboard</b>, run <b>Reports</b> or create new ones using our friendly and intuitive Report Designer. </p>
+                    <p>
+                        The purpose of this Demo Site is to demonstrate how
+                        <a href="https://dotnetreport.com">dotnet Report</a> runs embedded inside a Web Application
+                        and how end users can run and create useful Reports and Dashboards.
+                    </p>
+                    <p>
+                        The Database this demo site uses has Sales and Products data for a fictional company,
+                        with some test Employees, Customers and daily Orders as well. This way, you can run or
+                        create test Reports mimicking real world use cases.
+                    </p>
+                    <p>
+                        Feel free to test the <b>Dashboard</b>, run <b>Reports</b> or create new ones using our friendly
+                        and intuitive Report Designer.
+                    </p>
 
-                    <p class="alert alert-info">Just a warning that any reports or dashboards you create or modify are for testing only and can be reset at any time.</p>
-
+                    <p class="alert alert-info">
+                        Just a warning that any reports or dashboards you create or modify
+                        are for testing only and can be reset at any time.
+                    </p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
     </div>
+
 
     @Html.Partial("_DotnetReportTemplatesPartial")
     @Html.Partial("_DotnetReportJsLibrariesPartial")
