@@ -2785,6 +2785,7 @@ var reportViewModel = function (options) {
 
 	self.RunReport = function (saveOnly, skipValidation, dashboardRun,importJson) {
 		self.ReportResult().HasError(false);
+		self.OuterGroupColumns([]);
 		saveOnly = saveOnly === true ? true : false;
 		skipValidation = skipValidation === true ? true : false;
 		self.setFlyFilters();
@@ -2946,6 +2947,7 @@ var reportViewModel = function (options) {
 		reportResult.ReportDebug(result.ReportDebug);
 		reportResult.ReportSql(beautifySql(result.ReportSql));
 		self.ReportSeries = reportSeries;
+		self.OuterGroupColumns([]);
 		if (result.HasError) return;
 
 		function matchColumnName(src, dst, dbSrc, dbDst, agg) {
