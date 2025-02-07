@@ -4888,8 +4888,8 @@ var reportViewModel = function (options) {
 	}
 
 	self.runExcelDownload = function (expand) {
-		var hasOnlyInDetail = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Only in Detail' }) != null;
-		var onlyInDetailColumnDetails = _.filter(self.SelectedFields(), function (x) { return x.selectedAggregate() === 'Only in Detail'; });
+		var hasOnlyAndGroupInDetail = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Only in Detail' || x.selectedAggregate() == 'Group in Detail'}) != null;
+		var onlyAndGroupInDetailColumnDetails = _.filter(self.SelectedFields(), function (x) { return x.selectedAggregate() === 'Only in Detail' || x.selectedAggregate() == 'Group in Detail'; });
 		var reportData = self.BuildReportData();
 		reportData.DrillDownRowUsePlaceholders = true;
 		var pivotData = self.preparePivotData();
@@ -4905,7 +4905,7 @@ var reportViewModel = function (options) {
 			pivot: self.ReportType() == 'Pivot',
 			pivotColumn: pivotData.pivotColumn,
 			pivotFunction: pivotData.pivotFunction,
-			onlyInColumnDetail: hasOnlyInDetail ? JSON.stringify(onlyInDetailColumnDetails) : null,
+			onlyAndGroupInColumnDetail: hasOnlyAndGroupInDetail ? JSON.stringify(onlyAndGroupInDetailColumnDetails) : null,
 		}, 'xlsx');
 	}
 
