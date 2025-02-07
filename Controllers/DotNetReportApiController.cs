@@ -121,7 +121,6 @@ namespace ReportBuilder.Web.Controllers
             return await CallReportApi(data.method, data.model);
         }
 
-        [ValidateAntiForgeryToken]
         [HttpPost]
         public async Task<JsonResult> CallReportApi(ReportApiCallModel data)
         {
@@ -165,32 +164,32 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("useParameters", "false")
             };
 
-                var data = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(model);
-                foreach (var key in data.Keys)
-                {
-                    if (key == "dataConnect" && data[key] != null)
+                    var data = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(model);
+                    foreach (var key in data.Keys)
                     {
-                        keyvalues.RemoveAt(keyvalues.FindIndex(kv => kv.Key == "dataConnect"));
+                        if (key == "dataConnect" && data[key] != null)
+                        {
+                            keyvalues.RemoveAt(keyvalues.FindIndex(kv => kv.Key == "dataConnect"));
+                        }
+                        if (key == "account" && data[key] != null)
+                        {
+                            keyvalues.RemoveAt(keyvalues.FindIndex(kv => kv.Key == "account"));
+                        }
+                        if ((key != "adminMode" || (key == "adminMode" && settings.CanUseAdminMode)) && data[key] != null)
+                        {
+                            keyvalues.Add(new KeyValuePair<string, string>(key, data[key].ToString()));
+                        }
                     }
-                    if (key == "account" && data[key] != null)
-                    {
-                        keyvalues.RemoveAt(keyvalues.FindIndex(kv => kv.Key == "account"));
-                    }
-                    if ((key != "adminMode" || (key == "adminMode" && settings.CanUseAdminMode)) && data[key] != null)
-                    {
-                        keyvalues.Add(new KeyValuePair<string, string>(key, data[key].ToString()));
-                    }
+
+                    var content = new FormUrlEncodedContent(keyvalues);
+                    var response = await client.PostAsync(new Uri(settings.ApiUrl + method), content);
+                    var stringContent = await response.Content.ReadAsStringAsync();
+
+                    Response.StatusCode = (int)response.StatusCode;
+                    return Json((new JavaScriptSerializer()).Deserialize<dynamic>(stringContent), JsonRequestBehavior.AllowGet);
                 }
 
-                var content = new FormUrlEncodedContent(keyvalues);
-                var response = await client.PostAsync(new Uri(settings.ApiUrl + method), content);
-                var stringContent = await response.Content.ReadAsStringAsync();
-
-                Response.StatusCode = (int)response.StatusCode;
-                return Json((new JavaScriptSerializer()).Deserialize<dynamic>(stringContent), JsonRequestBehavior.AllowGet);
             }
-
-        }
 
         [AllowAnonymous]
         [HttpPost]
