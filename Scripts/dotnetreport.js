@@ -1,4 +1,4 @@
-﻿/// dotnet Report Builder view model v5.5.6
+﻿/// dotnet Report Builder view model v6.0.1
 /// License must be purchased for commercial use
 /// 2024 (c) www.dotnetreport.com
 
@@ -3639,6 +3639,40 @@ var reportViewModel = function (options) {
 		return formatData;
 	});
 
+	self.zoomLevel = ko.observable(.9); 
+	self.adjustedZoom = ko.computed(function () {
+		return Math.round((self.zoomLevel() / 0.9) * 100);
+	});
+
+	self.zoomIn = function () {
+		if (self.zoomLevel() < 2) { 
+			self.zoomLevel(self.zoomLevel() + 0.1);
+			updateZoom();
+		}
+	};
+
+	self.zoomOut = function () {
+		if (self.zoomLevel() > 0.5) { 
+			self.zoomLevel(self.zoomLevel() - 0.1);
+			updateZoom();
+		}
+	};
+
+	self.resetZoom = function () {
+		self.zoomLevel(1);
+		updateZoom();
+	};
+
+	function updateZoom() {
+		if (document.querySelector('.report-inner')) { 
+			document.querySelector('.report-inner').style.transform = `scale(${self.zoomLevel()})`;
+			document.querySelector('.report-inner').style.transformOrigin = "top center";
+		}
+	}
+
+	updateZoom();
+
+
 	self.skipDraw = options.skipDraw === true ? true : false;
 	self.DrawChart = function () {
 		if (!self.isChart() || self.skipDraw === true) return;
@@ -5980,6 +6014,40 @@ var dashboardViewModel = function (options) {
 		if (localStorage) localStorage.setItem('reportAdminMode', newValue);
 
 	});
+
+	self.zoomLevelDashboard = ko.observable(0.9); // Start at 90% actual scale
+
+	self.adjustedZoomDashboard = ko.computed(function () {
+		return Math.round((self.zoomLevelDashboard() / 0.9) * 100);
+	});
+
+	self.zoomInDashboard = function () {
+		if (self.zoomLevelDashboard() < 2) {
+			self.zoomLevelDashboard(self.zoomLevelDashboard() + 0.1);
+			updateZoomDashboard();
+		}
+	};
+
+	self.zoomOutDashboard = function () {
+		if (self.zoomLevelDashboard() > 0.5) {
+			self.zoomLevelDashboard(self.zoomLevelDashboard() - 0.1);
+			updateZoomDashboard();
+		}
+	};
+
+	self.resetZoomDashboard = function () {
+		self.zoomLevelDashboard(1); 
+		updateZoomDashboard();
+	};
+
+	function updateZoomDashboard() {
+		document.querySelector('.grid-stack').style.transform = `scale(${self.zoomLevelDashboard()})`;
+		document.querySelector('.grid-stack').style.transformOrigin = "top center";
+	}
+
+	// Apply initial zoom on page load
+	updateZoomDashboard();
+
 
 	var eventHandlers = {};
 	self.arrangeDashboard.subscribe(function (newValue) {		

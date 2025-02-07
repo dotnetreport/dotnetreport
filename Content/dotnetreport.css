@@ -1403,3 +1403,16 @@ tfoot tr.sub-total {
     appearance: none;
     text-align: center;
 }
+
+.zoom-level {
+    font-size: 14px;
+    font-weight: bold;
+    padding: 0 8px;
+    display: inline-block;
+    min-width: 40px;
+    text-align: center;
+}
+
+.report-inner {
+    transition: transform 0.2s ease-in-out;
+}
