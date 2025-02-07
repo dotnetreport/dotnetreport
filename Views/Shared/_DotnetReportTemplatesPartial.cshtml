@@ -100,24 +100,29 @@
         <!-- /ko -->
     </div>
 </script>
-<script type="text/html" id="pager-template">
-    <div class="pager-container d-flex flex-row align-items-center flex-wrap">
-        <a href="" title="first" data-bind="click: first, enable: !isFirstPage()"><i class="fa fa-backward report-pager-btn" style="font-size: 18px;"></i></a>&nbsp;
-        <a href="" title="previous" data-bind="click: previous, enable: !isFirstPage()"><i class="fa fa-caret-left fa-2x report-pager-btn"></i></a>
-        <select class="form-select form-control-sm" data-bind="options: [10,30,50,100,150,200,500], value: pageSize" style="width:auto"></select>
-        <span class="pager-pageinfo d-flex flex-row align-items-center flex-wrap">
-            <span>&nbsp;Page</span>&nbsp;
-            <input type="number" min="1" pattern="[0-9]*" class="form-control form-control-sm text-center" style="width:auto" data-bind="
-                                value: currentPage,
-                                attr: { max: pages() }" />&nbsp;
-            <span>of</span>&nbsp;
-            <span data-bind="text: pages"></span>
-        </span>&nbsp;
 
-        <a href="" title="next" data-bind="click: next, enable: !isLastPage()"><i class="fa fa-caret-right fa-2x report-pager-btn"></i></a>&nbsp;
-        <a href="" title="last" data-bind="click: last, enable: !isLastPage()"><i class="fa fa-forward report-pager-btn" style="font-size: 18px;"></i></a>
+<script type="text/html" id="pager-template">
+    <div class="pager-container d-flex align-items-center gap-2">
+        <a href="" title="First" data-bind="click: first, enable: !isFirstPage()" class="pager-btn btn btn-light"><i class="fa fa-backward"></i></a>
+        <a href="" title="Previous" data-bind="click: previous, enable: !isFirstPage()" class="pager-btn btn btn-light"><i class="fa fa-caret-left"></i></a>
+
+        <select class="form-control form-control-sm pager-control"
+            data-bind="options: [10,30,50,100,150,200,500], value: pageSize">
+        </select>
+
+        <div class="d-flex align-items-center gap-1">
+            <span>Page</span>
+            <input type="number" min="1" pattern="[0-9]*" class="form-control form-control-sm pager-control text-center"
+                data-bind="value: currentPage, attr: { max: pages() }">
+            <span>of</span>
+            <span data-bind="text: pages"></span>
+        </div>
+
+        <a href="" title="Next" data-bind="click: next, enable: !isLastPage()" class="pager-btn btn btn-light"><i class="fa fa-caret-right"></i></a>
+        <a href="" title="Last" data-bind="click: last, enable: !isLastPage()" class="pager-btn btn btn-light"><i class="fa fa-forward"></i></a>
     </div>
 </script>
+
 
 <script type="text/html" id="report-column-header">
     <!-- ko foreach: Columns -->
@@ -164,7 +169,7 @@
         <div data-bind="if: Rows.length > 0">
             <div data-bind="with: $parent.rows[0].Items[0]">
                 <span data-bind="html: formattedVal"></span>
-            
+
                 <!-- ko if: $parent.Rows.length > 1 -->
                 <span data-bind="style: {'color': $parent.calculateRate() > 0 ? 'green' : 'red', 'font-size': '24px'}" >
                     <span data-bind="html: $parent.calculateRate() + '%'"></span>
@@ -364,18 +369,22 @@
     <!-- /ko -->
 </script>
 <script type="text/html" id="admin-mode-template">
-    <div class="row" style="margin-bottom: 10px;">
-        <div class="d-flex justify-content-end align-items-center">
-            <div class="bubble-badge">
-                Admin Mode
-                <div class="form-check form-switch ms-2">
-                    <input class="form-check-input" id="admin-mode" type="checkbox" data-bind="checked: adminMode">
+    <div class="row">
+        <div class="d-flex justify-content-end align-items-center" style="gap: 10px;">
+            <div data-bind="visible: adminMode" >
+                <div class="alert alert-info d-inline-block" style="font-size: 10pt; padding: 5px; max-width: 350px; white-space: normal; margin-bottom: 0;">
+                    <i class="fa fa-user-circle"></i> You can manage Reports/Dashboards for all users
+                </div>
+            </div>
+            <div class="d-flex align-items-center">
+                 <div class="bubble-badge">
+                    Admin Mode
+                    <div class="form-check form-switch ms-2">
+                        <input class="form-check-input" type="checkbox" data-bind="checked: adminMode">
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-    <div class="alert alert-info" data-bind="visible: adminMode">
-        <i class="fa fa-user-circle"></i> Admin Mode is turned on now, it allows you to setup and view Reports or Dashboards for all roles and users. You should remove the Admin mode toggle for non-admin users.<br />
     </div>
 </script>
 <script type="text/html" id="manage-access-template">
@@ -1296,7 +1305,7 @@
                         </button>
                         <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Single'); }, css: { active: ReportType()=='Single' }">
                             <span class="fa fa-2x fa-window-maximize"></span>
-                            <p>Widget</p>
+                            <p>KPI</p>
                         </button>
                         <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Treemap'); }, css: { active: ReportType()=='Treemap' }">
                             <span class="fa fa-2x fa-window-restore"></span>
@@ -1421,7 +1430,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div data-bind="if: isFormulaField" class="custom-field-design">
                         <br />
                         <br />
@@ -1528,7 +1537,7 @@
                                                 </select>
                                             </div>
                                         </div>
-                                        
+
                                     </div>
                                 </div>
 
@@ -1540,16 +1549,16 @@
                                         <label class="form-label">Select Data Operation:</label>
                                         <select class="form-select" data-bind="select2: {
                                                 dropdownParent: $('#choose-data-card'),
-		                                        placeholder: 'Select Function...',
-		                                        data: availableFunctionsGrouped(),
-		                                        templateResult: templateResult
-	                                        }, value: selectedSqlFunction"></select>
+                                                placeholder: 'Select Function...',
+                                                data: availableFunctionsGrouped(),
+                                                templateResult: templateResult
+                                            }, value: selectedSqlFunction"></select>
                                       </div>
 
-                                            <div class="mb-3" data-bind="hidden: isConditionalFunction() || selectedSqlFunction() == 'Other'">
-                                                <label class="form-label">Select the Data Field to use:</label>
-                                                <select class="form-select"
-                                                        data-bind="select2: {
+                                       <div class="mb-3" data-bind="hidden: isConditionalFunction() || selectedSqlFunction() == 'Other'">
+                                        <label class="form-label">Select the Data Field to use:</label>
+                                        <select class="form-select"
+                                             data-bind="select2: {
                                                 dropdownParent: $('#choose-data-card'),
                                                 placeholder: 'Select Field...',
                                                 ajax: {
@@ -1608,15 +1617,16 @@
                                                     </li>
                                                 </ul>
 
-                                                <div class="input-group mb-3" style="padding-top: 5px;">
-                                                    <span class="input-group-text" style="max-height: 32px;">ELSE</span>
-                                                    <div class="flex-grow-1">
-                                                        <p class="hint-input" id="condition-else" contenteditable="true" placeholder="Default Result" title="Default Result"></p>
-                                                    </div>
-                                                </div>
+                                        <div class="input-group mb-3" style="padding-top: 5px;">
+                                            <span class="input-group-text" style="max-height: 32px;">ELSE</span>
+                                            <div class="flex-grow-1">
+                                                <p class="hint-input" id="condition-else" contenteditable="true" placeholder="Default Result" title="Default Result"></p>
                                             </div>
                                         </div>
+                                      </div>
+
                                     </div>
+                                  </div>
                                 </div>
 
                                 <div class="col-md-12">
@@ -1920,40 +1930,40 @@
             <!-- ko if: DrillDownData -->
             <div class="modal-body">
                 <div style="overflow-x: auto; max-height: 500px; overflow-y: auto;">
-                <table class="table table-striped table-hover table-condensed" data-bind="with: DrillDownData, attr: {class: 'table table-striped table-hover table-condensed ' + $parent.selectedStyle()}">
-                    <thead style="position: sticky; top: -1px; z-index: 2;">
-                        <tr class="no-highlight">
-                            <!-- ko foreach: Columns -->
-                            <th data-bind="attr: { id: fieldId }, css: {'right-align': IsNumeric}, style: {'width': fieldWidth, 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
-                                <span data-bind="text: fieldLabel2() ? fieldLabel2() : (fieldLabel() ? fieldLabel() : fieldName), style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
-                            </th>
+                    <table class="table table-striped table-hover table-condensed" data-bind="with: DrillDownData, attr: {class: 'table table-striped table-hover table-condensed ' + $parent.selectedStyle()}">
+                        <thead style="position: sticky; top: -1px; z-index: 2;">
+                            <tr class="no-highlight">
+                                <!-- ko foreach: Columns -->
+                                <th data-bind="attr: { id: fieldId }, css: {'right-align': IsNumeric}, style: {'width': fieldWidth, 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
+                                    <span data-bind="text: fieldLabel2() ? fieldLabel2() : (fieldLabel() ? fieldLabel() : fieldName), style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
+                                </th>
+                                <!-- /ko -->
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="display: none;" data-bind="visible: Rows && Rows.length < 1">
+                                <td class="text-info" data-bind="attr:{colspan: Columns.length}">
+                                    No records found
+                                </td>
+                            </tr>
+                            <!-- ko foreach: Rows  -->
+                            <tr>
+                                <!-- ko foreach: Items -->
+                                <td data-bind="hidden: outerGroup, style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal' }">
+                                    <div data-bind="style: {'width': fieldWidth }">
+                                        <!-- ko if: LinkTo-->
+                                        <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: formattedVal"></span></a>
+                                        <!-- /ko-->
+                                        <!-- ko ifnot: LinkTo-->
+                                        <span data-bind="html: formattedVal"></span>
+                                        <!-- /ko-->
+                                    </div>
+                                </td>
+                                <!-- /ko-->
+                            </tr>
                             <!-- /ko -->
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr style="display: none;" data-bind="visible: Rows && Rows.length < 1">
-                            <td class="text-info" data-bind="attr:{colspan: Columns.length}">
-                                No records found
-                            </td>
-                        </tr>
-                        <!-- ko foreach: Rows  -->
-                        <tr>
-                            <!-- ko foreach: Items -->
-                            <td data-bind="hidden: outerGroup, style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal' }">
-                                <div data-bind="style: {'width': fieldWidth }">
-                                    <!-- ko if: LinkTo-->
-                                    <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: formattedVal"></span></a>
-                                    <!-- /ko-->
-                                    <!-- ko ifnot: LinkTo-->
-                                    <span data-bind="html: formattedVal"></span>
-                                    <!-- /ko-->
-                                </div>
-                            </td>
-                            <!-- /ko-->
-                        </tr>
-                        <!-- /ko -->
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
                 </div>
             </div>
             <div class="modal-footer">

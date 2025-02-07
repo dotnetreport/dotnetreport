@@ -1309,3 +1309,97 @@ tfoot tr.sub-total {
     .dropdown-menu.small a {
        
     }
+
+.file-explorer-container {
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 10px;
+}
+
+.breadcrumb {
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.file-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+    .file-table th, .file-table td {
+        vertical-align: middle;
+        padding: 8px;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .file-table th {
+        background-color: #f8f9fa;
+    }
+
+    .file-table .fa {
+        font-size: 18px;
+    }
+
+.clickable {
+    cursor: pointer;
+}
+
+.empty-message {
+    text-align: center;
+    padding: 15px;
+    font-weight: bold;
+    color: #777;
+}
+
+.dropdown-submenu {
+    position: relative;
+}
+
+    .dropdown-submenu .dropdown-menu {
+        display: none;
+        position: absolute;
+        left: 100%;
+        top: 0;
+        margin-top: -5px;
+        min-width: 180px;
+    }
+
+    .dropdown-submenu:hover .dropdown-menu {
+        display: block;
+    }
+.pager-container {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 3px;
+}
+
+.pager-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px; 
+    height: 28px; 
+    font-size: 14px;
+    text-decoration: none;
+    border-radius: 5px;
+    text-align: center;
+    font-weight: bold;
+    padding: 2px 4px;
+}
+
+    .pager-btn:disabled,
+    .pager-btn[disabled] {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+
+.pager-control {
+    width: 55px;
+    height: 28px; 
+    font-size: 14px;
+    padding: 3px 5px;
+    border-radius: 5px;
+    appearance: none;
+    text-align: center;
+}

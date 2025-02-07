@@ -2712,7 +2712,8 @@ namespace ReportBuilder.Web.Models
             await page.WaitForSelectorAsync(".report-inner", new WaitForSelectorOptions { Visible = true });
 
             int height = await page.EvaluateExpressionAsync<int>("document.body.offsetHeight");
-            int width = await page.EvaluateExpressionAsync<int>("$('table').width()");
+            int width = 700;
+            try { width = await page.EvaluateExpressionAsync<int>("$('table').width()"); } catch { }
             var pdfFile = Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
 
             var pdfOptions = new PdfOptions

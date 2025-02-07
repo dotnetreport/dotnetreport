@@ -1058,6 +1058,18 @@ var reportViewModel = function (options) {
 		self.designingHeader(true);
 	}
 
+	self.layout = ko.observable('list');
+	self.toggleLayout = function (data, event) {
+		var selectedLayout = event.currentTarget.title.includes("List") ? "list" : "icons";
+		self.layout(selectedLayout);
+		localStorage.setItem("layoutPreference", selectedLayout);
+	};
+
+	var savedLayout = localStorage.getItem("layoutPreference");
+	if (savedLayout) {
+		self.layout(savedLayout);
+	}
+
 	self.buildCombinations = function (arrays, combine, finalList) {
 		var _this = this;
 		combine = combine || [];
@@ -1292,6 +1304,9 @@ var reportViewModel = function (options) {
 		}
 		else {
 			self.AggregateReport(true);
+		}
+		if (self.isChart()) {
+			self.DrawChart();
 		}
 	});
 
@@ -1609,6 +1624,9 @@ var reportViewModel = function (options) {
 					}));
 				}
 			});
+		}
+		else {
+			self.reportsInSearch().forEach(x => x.message = '');
 		}
 	});
 
