@@ -1680,6 +1680,31 @@ namespace ReportBuilder.Web.Models
 
             return desiredOrder;
         }
+        static List<dynamic> GetGroupFunctionList(string jsonString)
+        {
+            if (string.IsNullOrEmpty(jsonString))
+                return null;
+            JObject jsonObject;
+            try
+            {
+                jsonObject = JObject.Parse(jsonString);
+                var filteredList = new List<object>();
+
+                foreach (var item in jsonObject["GroupFunctionList"])
+                {
+                    filteredList.Add(new
+                    {
+                        FieldID = (int)item["FieldID"],
+                        CustomLabel = (string)item["CustomLabel"]
+                    });
+                }
+                return filteredList;
+            }
+            catch
+            {
+                return null;
+            }
+        }
         static bool ContainsGroupInDetail(string jsonString)
         {
             if (string.IsNullOrEmpty(jsonString))
@@ -1859,7 +1884,7 @@ namespace ReportBuilder.Web.Models
         }
 
         public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
+                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, List<ReportHeaderColumn> onlyAndGroupInDetailColumns = null)
         {
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
@@ -1914,6 +1939,12 @@ namespace ReportBuilder.Web.Models
 
                     if (allExpanded)
                     {
+                        if (onlyAndGroupInDetailColumns.Any())
+                        {
+                            columns.AddRange(onlyAndGroupInDetailColumns);
+                            var columnOrderList = GetGroupFunctionList(expandSqls);
+                            columns = columns.OrderBy(c => columnOrderList.FindIndex(g => g.CustomLabel == c.fieldName)).ToList();
+                        }
                         var insertRowIndex = 3;
 
                         var drilldownRow = new List<string>();
@@ -3014,7 +3045,7 @@ namespace ReportBuilder.Web.Models
                             subTotals[i] += Convert.ToDecimal(row[column.ColumnName]);
                         }
                     }
-
+                    value = value.Replace("\r", " ").Replace("\n", " ").Replace("\"", "\"\"");
                     //Add the Data rows.
                     csv += $"{(i == 0 ? "" : ",")}\"{value}\"";
                     i++;
