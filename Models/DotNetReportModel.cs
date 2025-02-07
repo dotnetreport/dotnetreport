@@ -1865,7 +1865,7 @@ namespace ReportBuilder.Web.Models
         }
 
         public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, List<ReportHeaderColumn> onlyInColumnDetail = null)
+                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, List<ReportHeaderColumn> onlyAndGroupInDetailColumns = null)
         {
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
@@ -1920,9 +1920,9 @@ namespace ReportBuilder.Web.Models
 
                     if (allExpanded)
                     {
-                        if (onlyInColumnDetail.Any())
+                        if (onlyAndGroupInDetailColumns.Any())
                         {
-                             columns.AddRange(onlyInColumnDetail);
+                            columns.AddRange(onlyAndGroupInDetailColumns);
                             var columnOrderList = GetGroupFunctionList(expandSqls);
                             columns = columns.OrderBy(c => columnOrderList.FindIndex(g => g.CustomLabel == c.fieldName)).ToList();
                         }
