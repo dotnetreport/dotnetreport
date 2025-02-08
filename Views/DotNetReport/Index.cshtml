@@ -528,35 +528,35 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <i class="fa fa-download"></i>
                                     <span>Export</span>
                                 </button>
-                                <ul class="dropdown-menu">
-                                    <li class="dropdown-item">
-                                        <a href="#" data-bind="click: downloadPdf">
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li>
+                                        <a href="#" class="dropdown-item" data-bind="click: downloadPdf">
                                             <i class="fa fa-file-pdf-o"></i> Pdf
                                         </a>
                                     </li>
-                                    <li class="dropdown-item">
-                                        <a href="#" data-bind="click: downloadExcel">
+                                    <li>
+                                        <a href="#" class="dropdown-item" data-bind="click: downloadExcel">
                                             <i class="fa fa-file-excel-o"></i> Excel
                                         </a>
                                     </li>
-                                    <li class="dropdown-item" data-bind="visible: canDrilldown">
-                                        <a href="#" data-bind="click: downloadExcelWithDrilldown">
+                                    <li data-bind="visible: canDrilldown">
+                                        <a class="dropdown-item" href="#" data-bind="click: downloadExcelWithDrilldown">
                                             <i class="fa fa-file-excel-o"></i> Excel (Expanded)
                                         </a>
                                     </li>
-                                    <li class="dropdown-item">
-                                        <a href="#" data-bind="click: downloadCsv">
+                                    <li>
+                                        <a class="dropdown-item" href="#" data-bind="click: downloadWord">
+                                            <span class="fa fa-file-word-o"></span> Word
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="#" class="dropdown-item" data-bind="click: downloadCsv">
                                             <i class="fa fa-file-excel-o"></i> Csv
                                         </a>
                                     </li>
-                                    <li class="dropdown-item">
-                                        <a href="#" data-bind="click: downloadXml">
+                                    <li>
+                                        <a href="#" class="dropdown-item" data-bind="click: downloadXml">
                                             <i class="fa fa-file-code-o"></i> Xml
-                                        </a>
-                                    </li>
-                                    <li class="dropdown-item">
-                                        <a href="#" data-bind="click: downloadWord">
-                                            <i class="fa fa-file-word-o"></i> Word
                                         </a>
                                     </li>
                                 </ul>

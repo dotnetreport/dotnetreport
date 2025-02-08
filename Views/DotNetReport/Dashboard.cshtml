@@ -317,55 +317,55 @@
                         <span class="fa fa-ellipsis-v"></span>
                     </button>
                     <ul class="dropdown-menu small" style="z-index: 1001;">
-                        <li class="dropdown-item" data-bind="visible: FlyFilters().length > 0">
-                            <a href="#" data-bind="click: toggleFlyFilters">
+                        <li data-bind="visible: FlyFilters().length > 0">
+                            <a href="#" class="dropdown-item" data-bind="click: toggleFlyFilters">
                                 <span class="fa fa-filter"></span> Filter
                             </a>
                         </li>
-                        <li class="dropdown-item" data-bind="visible: CanEdit">
-                            <a href="#" data-bind="click: openReport">
+                        <li data-bind="visible: CanEdit">
+                            <a href="#" class="dropdown-item" data-bind="click: openReport">
                                 <span class="fa fa-pencil"></span> Edit
                             </a>
                         </li>
-                        <li class="dropdown-item dropdown dropdown-hover">
-                            <a href="#" class="dropdown-toggle">
+                        <li class="dropdown dropdown-hover">
+                            <a href="#" class="dropdown-toggle dropdown-item">
                                 <span class="fa fa-download"></span> Export
                             </a>
                             <ul class="dropdown-menu small">
-                                <li class="dropdown-item">
-                                    <a href="#" data-bind="click: downloadExcel">
+                                <li>
+                                    <a href="#" class="dropdown-item" data-bind="click: downloadExcel">
                                         <span class="fa fa-file-excel-o"></span> Excel
                                     </a>
                                 </li>
-                                <li class="dropdown-item" data-bind="visible: canDrilldown">
-                                    <a href="#" data-bind="click: downloadExcelWithDrilldown">
+                                <li data-bind="visible: canDrilldown">
+                                    <a href="#" class="dropdown-item" data-bind="click: downloadExcelWithDrilldown">
                                         <span class="fa fa-file-excel-o"></span> Excel (Expanded)
                                     </a>
                                 </li>
-                                <li class="dropdown-item">
-                                    <a href="#" data-bind="click: downloadPdf">
+                                <li>
+                                    <a href="#" class="dropdown-item" data-bind="click: downloadPdf">
                                         <span class="fa fa-file-pdf-o"></span> PDF
                                     </a>
                                 </li>
-                                <li class="dropdown-item">
-                                    <a href="#" data-bind="click: downloadWord">
+                                <li>
+                                    <a href="#" class="dropdown-item" data-bind="click: downloadWord">
                                         <span class="fa fa-file-word-o"></span> Word
                                     </a>
                                 </li>
                             </ul>
                         </li>
-                        <li class="dropdown-item">
-                            <a data-bind="attr: {href: '/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + ReportID() }" target="_blank">
+                        <li>
+                            <a class="dropdown-item" data-bind="attr: {href: '/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + ReportID() }" target="_blank">
                                 <span class="fa fa-file"></span> Report
                             </a>
                         </li>
-                        <li class="dropdown-item">
-                            <a href="#" data-bind="click: function() { $parent.removeReportFromDashboard(ReportID()); }">
+                        <li>
+                            <a href="#" class="dropdown-item" data-bind="click: function() { $parent.removeReportFromDashboard(ReportID()); }">
                                 <span class="fa fa-close"></span> Remove
                             </a>
                         </li>
-                        <li class="dropdown-item">
-                            <a href="#" data-bind="click: function() { RefreshReport(ReportID()); }">
+                        <li>
+                            <a href="#" class="dropdown-item" data-bind="click: function() { RefreshReport(ReportID()); }">
                                 <span class="fa fa-refresh"></span> Refresh
                             </a>
                         </li>
