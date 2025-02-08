@@ -644,6 +644,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             <div data-bind="template: 'pager-template', data: $data"></div>
                                         </div>
                                         <div class="btn-group btn-group-sm pull-right" role="group">
+                                            <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: $parent.adminMode">
+                                                <i class="fa fa-code"></i> View Report Code
+                                            </button>
                                             <button class="btn btn-light" data-bind="click: $parent.zoomOut" data-bs-toggle="tooltip" title="Zoom Out">
                                                 <i class="fa fa-search-minus"></i>
                                             </button>
@@ -698,25 +701,41 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         <h2 data-bind="text: $root.ReportName"></h2>
                         <p data-bind="text: $root.ReportDescription"></p>
 
-                        <button data-bind="click: function() {$root.ReportMode('start');}" class="btn btn-primary">
-                            Back to Reports
-                        </button>
-
-                        <a href="#" class="btn btn-primary" data-bind="visible: $root.CanEdit()">
-                            Edit Report
-                        </a>
                         <h3>An unexpected error occured while running the Report</h3>
                         <hr />
                         <b>Error Details</b>
                         <div data-bind="text: Exception"></div>
                     </div>
-                    <div data-bind="if: $root.adminMode()">
+                    <div>
                         <br />
-                        <br />
+                        <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: $parent.adminMode">
+                            <i class="fa fa-code"></i> View Report Code
+                        </button>
+                        <button class="btn btn-light" data-bind="click: $root.RunReport">
+                            <i class="fa fa-play"></i> Re-run Report
+                        </button>
                         <hr />
-                        <code data-bind="html: ReportSql">
-                        </code>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="sqlModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header d-flex justify-content-between align-items-center">
+                <h4 class="modal-title">Report Code</h4>
+                <button class="btn btn-outline-secondary btn-sm d-flex align-items-center"
+                        data-bind="click: function(data, event) { copySqlToClipboard(event.target); }">
+                    <i class="fa fa-clipboard"></i> Copy
+                </button>
+                <button type="button" class="btn-close pull-right" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" data-bind="with: ReportResult">
+                <div style="overflow-x: auto; max-height: 500px; overflow-y: scroll; border: 1px solid; padding: 10px;" class="bg-dark text-light">
+                    <pre><code id="reportSqlCode" data-bind="html: ReportSql" style="white-space: pre-wrap;"></code></pre>
                 </div>
             </div>
         </div>
@@ -775,9 +794,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 <div id="dropzone" class="dropzone"
                      data-bind="event: {click: triggerFileInput }"
                      style="border: 2px dashed #007bff; border-radius: 5px; padding: 30px; text-align: center; color: #007bff; cursor: pointer;">
-                     click to select files
+                    click to select files
                 </div>
-                <input type="file" id="fileInputJson"  accept=".json" style="display: none;" data-bind="event: { change: handleFileSelect }">
+                <input type="file" id="fileInputJson" accept=".json" style="display: none;" data-bind="event: { change: handleFileSelect }">
                 <div data-bind="visible: fileName">
                     <p>Selected File: <span data-bind="text: fileName"></span></p>
                 </div>
