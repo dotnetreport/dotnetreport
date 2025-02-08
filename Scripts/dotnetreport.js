@@ -3972,7 +3972,7 @@ var reportViewModel = function (options) {
 		}
 		}
 		// Call retrieveDimensions to load saved dimensions when the chart is initialized
-		retrieveDimensions();
+		if (self.ReportMode() != 'print') retrieveDimensions();
 		chart.draw(data, chartOptions);
 
 		// Add event listener for pointer down on the chart container
