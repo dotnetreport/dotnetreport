@@ -99,7 +99,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
     <div id="report-start" data-bind="if: ReportMode() == 'start' || ReportMode() == 'generate'">
         <div class="card folder-panel">
             <div class="card-header">
-                <nav class="navbar navbar-expand-lg navbar-light bg-light">
+                <nav class="navbar navbar-expand-lg navbar-light">
                     <a class="navbar-brand" href="#" data-bind="click: function() {SelectedFolder(null); designingHeader(false); searchReports(''); $('#search-report').val([]).trigger('change'); }">Manage Reports</a>
                     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                         <span class="navbar-toggler-icon"></span>
@@ -527,7 +527,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
     <div data-bind="if: ReportMode() == 'execute' || ReportMode() == 'Linked'">
         <div class="card">
             <div class="card-header">
-                <nav class="navbar navbar-expand-lg navbar-light bg-light">
+                <nav class="navbar navbar-expand-lg navbar-light">
                     <a class="navbar-brand" href="#">Viewing Report</a>
                     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                         <span class="navbar-toggler-icon"></span>

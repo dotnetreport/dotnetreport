@@ -82,11 +82,10 @@
     }
 
 .modal-backdrop.modal-backdrop-fullscreen {
-    background: #ffffff;
+   
 }
 
     .modal-backdrop.modal-backdrop-fullscreen.in {
-        opacity: .8;
         filter: alpha(opacity=97);
     }
 
@@ -98,7 +97,6 @@
 }
 
     .modal-fullscreen .modal-dialog {
-        background: #ffffff;
         margin: 0;
         margin-left: auto;
         width: 100%;
@@ -111,7 +109,6 @@
 
 .modal-content {
     position: relative;
-    background-color: #fff;
     -webkit-background-clip: padding-box;
     background-clip: padding-box;
     border: 0;
@@ -131,8 +128,6 @@
 .modal-fullscreen .modal-dialog {
     border: none;
     border-radius: 0;
-    background: #f9f9f9;
-    border-left: 1px solid #f5f5f5;
     -webkit-box-shadow: 10px 0 5px -2px #888;
     box-shadow: 10px 0 5px -2px #888;
     box-shadow: 1000px 0 0 #f9f9f9,0 2px 80px rgba(0,0,0,.5);
@@ -1395,7 +1390,7 @@ tfoot tr.sub-total {
     }
 
 .pager-control {
-    width: 55px;
+    width: 55px !important;
     height: 28px; 
     font-size: 14px;
     padding: 3px 5px;
