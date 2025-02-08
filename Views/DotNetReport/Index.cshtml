@@ -473,9 +473,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                     <div class="badge bg-info text-white" data-bind="text: userRole ? userRole : 'No Role'"></div>
                                                 </div>
                                                 <div class="col-md-1" data-bind="visible: $parent.adminMode">
-                                                    <a data-bind="attr: {href: '/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + reportId }" target="_blank">
-                                                        <span class="fa fa-link"></span>
-                                                    </a>
+                                                    <a data-bind="attr: {href: '/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + reportId }" target="_blank"><span class="fa fa-link"></span></a>
                                                     &nbsp;
                                                     <a href="#" data-bind="click: function() { navigator.clipboard.writeText('/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + reportId) }">
                                                         <span class="fa fa-copy" title="Copy Link"></span>
@@ -705,8 +703,6 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         <hr />
                         <b>Error Details</b>
                         <div data-bind="text: Exception"></div>
-                    </div>
-                    <div>
                         <br />
                         <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: $parent.adminMode">
                             <i class="fa fa-code"></i> View Report Code
