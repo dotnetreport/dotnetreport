@@ -2801,6 +2801,17 @@ var reportViewModel = function (options) {
 		self.RunReport(false);
 	}
 
+	self.copySqlToClipboard = function (button) {
+		var sqlText = document.getElementById('reportSqlCode').innerText;
+		navigator.clipboard.writeText(sqlText).then(function () {
+			var originalText = button.innerHTML;
+			button.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+			setTimeout(function () {
+				button.innerHTML = originalText;
+			}, 2000);
+		});
+	};
+
 	self.RunReport = function (saveOnly, skipValidation, dashboardRun,importJson) {
 		self.ReportResult().HasError(false);
 		self.OuterGroupColumns([]);
