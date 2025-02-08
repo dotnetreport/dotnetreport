@@ -351,7 +351,7 @@ function filterGroupViewModel(args) {
 		var valueIn = e.Operator == 'in' || e.Operator == 'not in' ? (e.Value1 || '').split(',') : [];
 		var parentIn = e.ParentIn ? e.ParentIn.split(',') : [];
 		var filter = {
-			AndOr: ko.observable(isFilterOnFly ? ' AND ' : e.AndOr),
+			AndOr: ko.observable(e.AndOr),
 			Field: field,
 			Operator: ko.observable(e.Operator),
 			Value: ko.observable(e.Value1),
