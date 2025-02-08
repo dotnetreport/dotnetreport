@@ -29,8 +29,7 @@
 @section scripts{
     <script>$.fn.popover = { Constructor: {} };</script>
     <script src="~/Scripts/tribute.min.js"></script>
-    <script src="~/Scripts/dotnetreport-setup.js"></script>
-    <script src="~/Scripts/knockout.mapping-latest.js"></script>
+    <script src="~/Scripts/dotnetreport-setup.js?v=@(System.IO.File.GetLastWriteTime(Server.MapPath("~/Scripts/dotnetreport-setup.js")).Ticks)"></script>
     <script src="~/Scripts/bootstrap-editable.min.js"></script>
     <script src="~/Scripts/knockout.x-editable.min.js"></script>
     <script type="text/javascript">
