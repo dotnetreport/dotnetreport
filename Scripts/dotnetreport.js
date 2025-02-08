@@ -351,7 +351,7 @@ function filterGroupViewModel(args) {
 		var valueIn = e.Operator == 'in' || e.Operator == 'not in' ? (e.Value1 || '').split(',') : [];
 		var parentIn = e.ParentIn ? e.ParentIn.split(',') : [];
 		var filter = {
-			AndOr: ko.observable(isFilterOnFly ? ' AND ' : e.AndOr),
+			AndOr: ko.observable(e.AndOr),
 			Field: field,
 			Operator: ko.observable(e.Operator),
 			Value: ko.observable(e.Value1),
@@ -2801,8 +2801,20 @@ var reportViewModel = function (options) {
 		self.RunReport(false);
 	}
 
+	self.copySqlToClipboard = function (button) {
+		var sqlText = document.getElementById('reportSqlCode').innerText;
+		navigator.clipboard.writeText(sqlText).then(function () {
+			var originalText = button.innerHTML;
+			button.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+			setTimeout(function () {
+				button.innerHTML = originalText;
+			}, 2000);
+		});
+	};
+
 	self.RunReport = function (saveOnly, skipValidation, dashboardRun,importJson) {
 		self.ReportResult().HasError(false);
+		self.OuterGroupColumns([]);
 		saveOnly = saveOnly === true ? true : false;
 		skipValidation = skipValidation === true ? true : false;
 		self.setFlyFilters();
@@ -2964,6 +2976,7 @@ var reportViewModel = function (options) {
 		reportResult.ReportDebug(result.ReportDebug);
 		reportResult.ReportSql(beautifySql(result.ReportSql));
 		self.ReportSeries = reportSeries;
+		self.OuterGroupColumns([]);
 		if (result.HasError) return;
 
 		function matchColumnName(src, dst, dbSrc, dbDst, agg) {
@@ -4938,8 +4951,8 @@ var reportViewModel = function (options) {
 	}
 
 	self.runExcelDownload = function (expand) {
-		var hasOnlyInDetail = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Only in Detail' }) != null;
-		var onlyInDetailColumnDetails = _.filter(self.SelectedFields(), function (x) { return x.selectedAggregate() === 'Only in Detail'; });
+		var hasOnlyAndGroupInDetail = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Only in Detail' || x.selectedAggregate() == 'Group in Detail'}) != null;
+		var onlyAndGroupInDetailColumnDetails = _.filter(self.SelectedFields(), function (x) { return x.selectedAggregate() === 'Only in Detail' || x.selectedAggregate() == 'Group in Detail'; });
 		var reportData = self.BuildReportData();
 		reportData.DrillDownRowUsePlaceholders = true;
 		var pivotData = self.preparePivotData();
@@ -4955,7 +4968,7 @@ var reportViewModel = function (options) {
 			pivot: self.ReportType() == 'Pivot',
 			pivotColumn: pivotData.pivotColumn,
 			pivotFunction: pivotData.pivotFunction,
-			onlyInColumnDetail: hasOnlyInDetail ? JSON.stringify(onlyInDetailColumnDetails) : null,
+			onlyAndGroupInColumnDetail: hasOnlyAndGroupInDetail ? JSON.stringify(onlyAndGroupInDetailColumnDetails) : null,
 		}, 'xlsx');
 	}
 
