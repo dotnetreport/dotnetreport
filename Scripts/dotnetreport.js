@@ -3769,6 +3769,53 @@ var reportViewModel = function (options) {
 
 	updateZoom();
 
+	self.chartOptions = ko.observable({
+		title: self.ReportName(),
+		animation: {
+			startup: false,
+			duration: 0,
+			easing: 'out'
+		},
+		seriesColors: [],
+		backgroundColor: '#fff',
+		fontSize: 12,
+		fontFamily: "",
+		showXAxisLabel: true,
+		showYAxisLabel: true,
+		showLegend: true,
+		legendPosition: "right",
+		showGridlines: true
+	});
+
+	self.showSettings = ko.observable(false);
+
+
+	self.toggleChartSettings = function () {
+		self.showSettings(!self.showSettings());
+	};
+	self.addSeriesColor = function () {
+		var colors = self.chartOptions().seriesColors;
+		var randomColor = "#" + Math.floor(Math.random() * 16777215).toString(16); // Generate random color
+		colors.push(randomColor);
+		self.chartOptions(Object.assign({}, self.chartOptions(), { seriesColors: colors }));
+		self.updateChart();
+	};
+	self.updateSeriesColor = function (index, newColor) {
+		var newColors = [...self.chartOptions().seriesColors]; // Clone array
+		newColors[index] = newColor; // Update specific index
+		self.chartOptions(Object.assign({}, self.chartOptions(), { seriesColors: newColors }));
+		self.updateChart();
+	};
+
+	self.removeSeriesColor = function (color) {
+		var colors = self.chartOptions().seriesColors.filter(c => c !== color);
+		self.chartOptions(Object.assign({}, self.chartOptions(), { seriesColors: colors }));
+		self.updateChart();
+	};
+
+	self.updateChart = function () {
+		self.DrawChart(); 
+	};
 
 	self.skipDraw = options.skipDraw === true ? true : false;
 	self.DrawChart = function () {
@@ -3856,14 +3903,7 @@ var reportViewModel = function (options) {
 		data.addRows(rowArray);
 
 		// Set chart options
-		var chartOptions = {
-			'title': self.ReportName(),
-			animation: {
-				startup: false,
-				duration: 0,
-				easing: 'out'
-			},
-		};
+		var chartOptions = self.chartOptions();
 		if (reportData?.Columns[1]?.fieldFormat() === 'Currency') {
 			var prefixFormat = reportData?.Columns[1]?.currencyFormat ? reportData?.Columns[1]?.currencyFormat() : null;
 			if (prefixFormat != null && prefixFormat != "") {
@@ -3882,7 +3922,7 @@ var reportViewModel = function (options) {
 		if (self.colorScheme() != null && self.colorScheme().length > 0) {
 			chartOptions.colors = self.colorScheme().slice(1);
 			chartOptions.backgroundColor = self.colorScheme()[0], // Set the background color here
-				chartOptions.chartArea = { backgroundColor: self.colorScheme()[0] }
+			chartOptions.chartArea = { backgroundColor: self.colorScheme()[0] }
 		}
 		var chartDiv = document.getElementById('chart_div_' + self.ReportID());
 		var chart = null;
@@ -4059,6 +4099,10 @@ var reportViewModel = function (options) {
 		}
 		// Call retrieveDimensions to load saved dimensions when the chart is initialized
 		if (self.ReportMode() != 'print') retrieveDimensions();
+		
+		chartOptions.gridlines = chartOptions.showGridlines ? { count: -1 } : { count: 0 };
+		if (chartOptions.seriesColors.length > 0) chartOptions.colors = chartOptions.seriesColors;
+		chartOptions.legend = { position: self.chartOptions().legendPosition }
 		chart.draw(data, chartOptions);
 
 		// Add event listener for pointer down on the chart container
