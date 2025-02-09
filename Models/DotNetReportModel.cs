@@ -443,6 +443,7 @@ namespace ReportBuilder.Web.Models
         public string pivotFunction { get; set; }
         public string chartData { get; set; }
         public string columnDetails { get; set; }
+        public string onlyAndGroupInColumnDetail { get; set; }
         public bool includeSubTotal { get; set; }
         public bool pivot { get; set; }
     }

@@ -5898,6 +5898,38 @@ var dashboardViewModel = function (options) {
 			reportdata: JSON.stringify(allreports)
 		}, 'xlsx', 'CombinedReport');
 	}
+	self.ExportAllExcelExpandedReports = function () {
+		const reports = self.reports();
+		var expandedReport = _.filter(self.reports(), function (x) { return x.canDrilldown() == true});
+		const allreports = [];
+		_.forEach(expandedReport, function (report) {
+			const reportData = report.BuildReportData();
+			reportData.DrillDownRowUsePlaceholders = true;
+			const pivotData = report.preparePivotData();
+			var hasOnlyAndGroupInDetail = _.find(report.SelectedFields(), function (x) { return x.selectedAggregate() == 'Only in Detail' || x.selectedAggregate() == 'Group in Detail' }) != null;
+			var onlyAndGroupInDetailColumnDetails = _.filter(report.SelectedFields(), function (x) { return x.selectedAggregate() === 'Only in Detail' || x.selectedAggregate() == 'Group in Detail'; });
+			allreports.push({
+				reportSql: report.currentSql(),
+				connectKey: report.currentConnectKey(),
+				reportName: report.ReportName(),
+				expandAll:true,
+				expandSqls: JSON.stringify(reportData),
+				chartData: report.ChartData() || '',
+				columnDetails: report.getColumnDetails(),
+				includeSubTotal: report.IncludeSubTotal(),
+				pivot: report.ReportType() == 'Pivot',
+				pivotColumn: pivotData.pivotColumn,
+				pivotFunction: pivotData.pivotFunction,
+				onlyAndGroupInColumnDetail: hasOnlyAndGroupInDetail ? JSON.stringify(onlyAndGroupInDetailColumnDetails) : null,
+			});
+		});
+		reports[0]?.downloadExport("DownloadAllExcel", {
+			reportdata: JSON.stringify(allreports)
+		}, 'xlsx', 'CombinedReport');
+	}
+	self.canDrilldown = ko.computed(function () {
+		return _.find(self.reports(), function (x) { return x.canDrilldown() == true }) != null;
+	});
 	self.ExportAllWordReports = function () {
 		const reports = self.reports();
 		const allreports = [];
