@@ -414,6 +414,17 @@ namespace ReportBuilder.Web.Models
         public bool isNumeric { get; set; }
         public bool isCurrency { get; set; }
         public bool isJsonColumn { get; set; }
+        public LinkFieldItem LinkFieldItem { get; set; }
+    }
+    public class LinkFieldItem
+    {
+        public int? LinkedToReportId { get; set; }
+        public int? SelectedFilterId { get; set; }
+        public bool LinksToReport { get; set; }
+        public bool SendAsFilterParameter { get; set; }
+        public string LinkToUrl { get; set; }
+        public bool SendAsQueryParameter { get; set; }
+        public string QueryParameterName { get; set; }
     }
     public class ExportReportModel
     {
@@ -871,6 +882,41 @@ namespace ReportBuilder.Web.Models
                     }
                 }
 
+                if (formatColumn != null && formatColumn?.LinkFieldItem != null && formatColumn?.LinkFieldItem.LinkToUrl != null)
+                {
+                    for (int rowIndex = 0; rowIndex < dt.Rows.Count; rowIndex++)
+                    {
+                        var cellValue = dt.Rows[rowIndex][dc.ColumnName]?.ToString();
+                        if (!string.IsNullOrEmpty(cellValue))
+                        {
+                            var increment = rowstart==3 ? 1 : 0;
+                            var hyperlinkAddress = formatColumn.LinkFieldItem.SendAsQueryParameter ? $"{formatColumn.LinkFieldItem.LinkToUrl}?{formatColumn.LinkFieldItem.QueryParameterName}={cellValue}" : formatColumn.LinkFieldItem.LinkToUrl;
+                            ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = new Uri(hyperlinkAddress);
+                            ws.Cells[rowIndex + rowstart + increment, i].Style.Font.UnderLine = true;
+                            ws.Cells[rowIndex + rowstart + increment, i].Style.Font.Color.SetColor(System.Drawing.Color.Blue);
+                        }
+                    }
+                }
+                if (formatColumn != null && formatColumn?.LinkFieldItem != null && formatColumn?.LinkFieldItem.LinksToReport != null &&  formatColumn?.LinkFieldItem.LinksToReport==true)
+                {
+                    for (int rowIndex = 0; rowIndex < dt.Rows.Count; rowIndex++)
+                    {
+                        var cellValue = dt.Rows[rowIndex][dc.ColumnName]?.ToString();
+                        if (!string.IsNullOrEmpty(cellValue))
+                        {
+                            var increment = rowstart == 3 ? 1 : 0;
+                            //var url = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}";
+                            var hyperlinkAddress = "/DotNetReport/Report?linkedreport=true&reportId=" + formatColumn.LinkFieldItem.LinkedToReportId;
+                            if (formatColumn.LinkFieldItem.SendAsFilterParameter && !string.IsNullOrEmpty(cellValue))
+                            {
+                                hyperlinkAddress += $"&filterId={formatColumn.LinkFieldItem.SelectedFilterId}&filterValue={cellValue.Replace("'", "").Replace("\"", "")}";
+                            }
+                            ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = new Uri(hyperlinkAddress);
+                            ws.Cells[rowIndex + rowstart + increment, i].Style.Font.UnderLine = true;
+                            ws.Cells[rowIndex + rowstart + increment, i].Style.Font.Color.SetColor(System.Drawing.Color.Blue);
+                        }
+                    }
+                }
                 i++;
                 counter++;
             }
@@ -1641,6 +1687,31 @@ namespace ReportBuilder.Web.Models
 
             return desiredOrder;
         }
+        static List<dynamic> GetGroupFunctionList(string jsonString)
+        {
+            if (string.IsNullOrEmpty(jsonString))
+                return null;
+            JObject jsonObject;
+            try
+            {
+                jsonObject = JObject.Parse(jsonString);
+                var filteredList = new List<object>();
+
+                foreach (var item in jsonObject["GroupFunctionList"])
+                {
+                    filteredList.Add(new
+                    {
+                        FieldID = (int)item["FieldID"],
+                        CustomLabel = (string)item["CustomLabel"]
+                    });
+                }
+                return filteredList;
+            }
+            catch
+            {
+                return null;
+            }
+        }
         static bool ContainsGroupInDetail(string jsonString)
         {
             if (string.IsNullOrEmpty(jsonString))
@@ -1795,6 +1866,7 @@ namespace ReportBuilder.Web.Models
             return dt;
         }
 
+
         private static (DataTable dt, SqlQuery qry, List<string> sqlFields) GetDataTable(string reportSql, string connectKey)
         {
             var qry = new SqlQuery();
@@ -1819,7 +1891,7 @@ namespace ReportBuilder.Web.Models
         }
 
         public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
+                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, List<ReportHeaderColumn> onlyAndGroupInDetailColumns = null)
         {
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
@@ -1838,11 +1910,7 @@ namespace ReportBuilder.Web.Models
                     if (dt.Columns.Contains(col.fieldName) && col.hideStoredProcColumn)
                     {
                         dt.Columns.Remove(col.fieldName);
-                    }
-                    else if (!String.IsNullOrWhiteSpace(col.fieldLabel))
-                    {
-                        dt.Columns[col.fieldName].ColumnName = col.fieldLabel;
-                    }
+                    }                    
                 }
             }
             if (!string.IsNullOrEmpty(pivotColumn))
@@ -1878,6 +1946,12 @@ namespace ReportBuilder.Web.Models
 
                     if (allExpanded)
                     {
+                        if (onlyAndGroupInDetailColumns.Any())
+                        {
+                            columns.AddRange(onlyAndGroupInDetailColumns);
+                            var columnOrderList = GetGroupFunctionList(expandSqls);
+                            columns = columns.OrderBy(c => columnOrderList.FindIndex(g => g.CustomLabel == c.fieldName)).ToList();
+                        }
                         var insertRowIndex = 3;
 
                         var drilldownRow = new List<string>();
@@ -2624,8 +2698,8 @@ namespace ReportBuilder.Web.Models
             var formData = new StringBuilder();
             formData.AppendLine("<html><body>");
             formData.AppendLine($"<form action=\"{printUrl}\" method=\"post\">");
-            formData.AppendLine($"<input name=\"reportSql\" value=\"{HttpUtility.HtmlEncode(reportSql)}\" />");
-            formData.AppendLine($"<input name=\"connectKey\" value=\"{HttpUtility.HtmlEncode(connectKey)}\" />");
+            formData.AppendLine($"<input name=\"reportSql\" value=\"{HttpUtility.UrlEncode(reportSql)}\" />");
+            formData.AppendLine($"<input name=\"connectKey\" value=\"{HttpUtility.UrlEncode(connectKey)}\" />");
             formData.AppendLine($"<input name=\"reportId\" value=\"{reportId}\" />");
             formData.AppendLine($"<input name=\"pageNumber\" value=\"{1}\" />");
             formData.AppendLine($"<input name=\"pageSize\" value=\"{99999}\" />");
@@ -2633,8 +2707,8 @@ namespace ReportBuilder.Web.Models
             formData.AppendLine($"<input name=\"clientId\" value=\"{clientId}\" />");
             formData.AppendLine($"<input name=\"currentUserRole\" value=\"{currentUserRole}\" />");
             formData.AppendLine($"<input name=\"expandAll\" value=\"{expandAll}\" />");
-            formData.AppendLine($"<input name=\"dataFilters\" value=\"{HttpUtility.HtmlEncode(dataFilters)}\" />");
-            formData.AppendLine($"<input name=\"reportData\" value=\"{HttpUtility.HtmlEncode(JsonConvert.SerializeObject(model))}\" />");
+            formData.AppendLine($"<input name=\"dataFilters\" value=\"{HttpUtility.UrlEncode(dataFilters)}\" />");
+            formData.AppendLine($"<input name=\"reportData\" value=\"{HttpUtility.UrlEncode(JsonConvert.SerializeObject(model))}\" />");
             formData.AppendLine($"</form>");
             formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");
             formData.AppendLine("</body></html>");
@@ -2664,7 +2738,8 @@ namespace ReportBuilder.Web.Models
             await page.WaitForSelectorAsync(".report-inner", new WaitForSelectorOptions { Visible = true });
 
             int height = await page.EvaluateExpressionAsync<int>("document.body.offsetHeight");
-            int width = await page.EvaluateExpressionAsync<int>("$('table').width()");
+            int width = 700;
+            try { width = await page.EvaluateExpressionAsync<int>("$('table').width()"); } catch { }
             var pdfFile = Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
 
             var pdfOptions = new PdfOptions
@@ -2977,7 +3052,7 @@ namespace ReportBuilder.Web.Models
                             subTotals[i] += Convert.ToDecimal(row[column.ColumnName]);
                         }
                     }
-
+                    value = value.Replace("\r", " ").Replace("\n", " ").Replace("\"", "\"\"");
                     //Add the Data rows.
                     csv += $"{(i == 0 ? "" : ",")}\"{value}\"";
                     i++;
