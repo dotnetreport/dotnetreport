@@ -17,6 +17,8 @@ namespace ReportBuilder.Web.Jobs
         public string Format { get; set; }
         public string DataFilters { get; set; }
         public string TimeZone { get; set; }
+        public DateTime? ScheduleStart { get; set; }
+        public DateTime? ScheduleEnd { get; set; }
     }
     public class ReportWithSchedule
     {
@@ -113,6 +115,10 @@ namespace ReportBuilder.Web.Jobs
                                 DateTime currentTime = TimeZoneInfo.ConvertTime(DateTime.UtcNow, timeZoneInfo);
                             }
                             schedule.NextRun = (nextRun.HasValue ? nextRun.Value.ToLocalTime().DateTime : (DateTime?)null);
+
+                            if ((schedule.ScheduleStart.HasValue && schedule.NextRun.HasValue && schedule.NextRun.Value < schedule.ScheduleStart.Value) ||
+                                    (schedule.ScheduleEnd.HasValue && schedule.NextRun.HasValue && schedule.NextRun.Value > schedule.ScheduleEnd.Value))
+                                continue;
 
                             if (schedule.NextRun.HasValue && DateTime.Now >= schedule.NextRun && (!String.IsNullOrEmpty(schedule.LastRun) || lastRun <= schedule.NextRun))
                             {
