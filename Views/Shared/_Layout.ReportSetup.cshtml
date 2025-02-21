@@ -138,9 +138,23 @@
         </div>
     </nav><!-- NavBar END -->
     <!-- Bootstrap row -->
-    <div class="row" id="body-row">
+    <div class="row pt-0" id="body-row">
         <!-- Sidebar -->
-        <div id="sidebar-container" class="sidebar-expanded d-none d-md-block" style="margin-top: -5px;">
+        <div class="d-flex flex-column flex-shrink-0 bg-dark-subtle" style="width: 4.5rem;height:100vh">
+            <ul class="nav nav-pills nav-flush flex-column mb-auto text-center">
+                <li>
+                    <a href="/DotnetSetup" class="nav-link text-secondary py-3 border-bottom" title="Configure DataBase">
+                        <span class="fa fa-database fa-fw me-3"></span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/DotnetSetup/UsersAndRoles" class="nav-link text-secondary py-3 border-bottom" title="User And Roles">
+                        <span class="fa fa-users fa-fw me-3"></span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+        <div id="sidebar-container" class="sidebar-expanded d-none" style="margin-top: -5px;">
             <div class="list-group">
                 <div class="list-group-item sidebar-separator-title d-flex align-items-center menu-collapsed">
                     <small>DATABASE</small>
