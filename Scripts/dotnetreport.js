@@ -3477,10 +3477,23 @@ var reportViewModel = function (options) {
 				data.forEach(row => {
 					rowsHTML += '<tr>';
 					row.Items.forEach(item => {
-						rowsHTML +=
-							`<td>
-							${item.FormattedValue}
-						</td>`;
+						let tdStyle = `style="background-color: ${item._backColor ?? item.backColor()};
+                            color: ${item._fontColor ?? item.fontColor()}; 
+                            font-weight: ${(item.fontBold() || item._fontBold) ? 'bold' : 'normal'}; 
+                            text-align: ${item.fieldAlign() ? item.fieldAlign() : (item.Column.IsNumeric ? 'right' : 'left')}"`;
+
+						if (item.LinkTo) {
+							rowsHTML +=
+								`<td ${tdStyle}>
+									<a href="${item.LinkTo}" target="_blank"><span>${item.FormattedValue}</span></a>  
+								</td>`;
+						}
+						else {
+							rowsHTML +=
+								`<td ${tdStyle}>
+								${item.FormattedValue}
+							</td>`;
+						}
 					});
 					rowsHTML += '</tr>';
 				});
