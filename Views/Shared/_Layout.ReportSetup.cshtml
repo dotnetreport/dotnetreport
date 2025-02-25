@@ -16,88 +16,11 @@
     @await Html.PartialAsync("_DotnetReportHeaderPartial")
     @RenderSection("head", required: false)
 
-    <style>
-        #body-row {
-            margin-left: 0;
-            margin-right: 0;
-        }
-
-        #sidebar-container {
-            min-height: 100vh;
-            background-color: #333;
-            padding: 0;
-        }
-
-        /* Sidebar sizes when expanded and expanded */
-        .sidebar-expanded {
-            width: 230px;
-        }
-
-        .sidebar-collapsed {
-            width: 60px;
-        }
-
-        /* Menu item*/
-        #sidebar-container .list-group a {
-            height: 50px;
-            color: white;
-        }
-
-        /* Submenu item*/
-        #sidebar-container .list-group .sidebar-submenu a {
-            height: 45px;
-            padding-left: 30px;
-        }
-
-        .sidebar-submenu {
-            font-size: 0.9rem;
-        }
-
-        /* Separators */
-        .sidebar-separator-title {
-            background-color: #333;
-            color: #fff;
-            height: 35px;
-        }
-
-        .sidebar-separator {
-            background-color: #333;
-            color: #fff;
-            height: 25px;
-        }
-
-        .logo-separator {
-            background-color: #333;
-            color: #fff;
-            height: 60px;
-        }
-
-        /* Closed submenu icon */
-        #sidebar-container .list-group .list-group-item[aria-expanded="false"] .submenu-icon::after {
-            content: " \f0d7";
-            font-family: FontAwesome;
-            display: inline;
-            text-align: right;
-            padding-left: 10px;
-        }
-        /* Opened submenu icon */
-        #sidebar-container .list-group .list-group-item[aria-expanded="true"] .submenu-icon::after {
-            content: " \f0da";
-            font-family: FontAwesome;
-            display: inline;
-            text-align: right;
-            padding-left: 10px;
-        }
-
-        #sidebar-container {
-            transition: all 0.3s ease-out;
-        }
-    </style>
 </head>
 
 <body>
     <!-- Bootstrap NavBar -->
-    <nav class="navbar navbar-expand-md navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow p-2">
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -126,33 +49,59 @@
                     </li>
                 }
 
-                <!-- This menu is hidden in bigger devices with d-sm-none -->
                 <li class="nav-item dropdown d-md-none">
                     <a class="nav-link dropdown-toggle" href="#" id="smallerscreenmenu" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> Menu </a>
                     <ul class="dropdown-menu" aria-labelledby="smallerscreenmenu">
                         <li><a class="dropdown-item" href="/dotnetsetup">Database Setup</a></li>
                         <li><a class="dropdown-item" href="/dotnetsetup/usersandroles">Users Setup</a></li>
                     </ul>
-                </li><!-- Smaller devices menu END -->
+                </li><
             </ul>
         </div>
-    </nav><!-- NavBar END -->
-    <!-- Bootstrap row -->
-    <div class="row pt-0" id="body-row">
-        <!-- Sidebar -->
-        <div class="d-flex flex-column flex-shrink-0 bg-dark-subtle" style="width: 4.5rem;height:100vh">
-            <ul class="nav nav-pills nav-flush flex-column mb-auto text-center">
-                <li>
-                    <a href="/DotnetSetup" class="nav-link text-secondary py-3 border-bottom" title="Configure DataBase">
-                        <span class="fa fa-database fa-fw me-3"></span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/DotnetSetup/UsersAndRoles" class="nav-link text-secondary py-3 border-bottom" title="User And Roles">
-                        <span class="fa fa-users fa-fw me-3"></span>
-                    </a>
-                </li>
-            </ul>
+    </nav>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav id="sidebarMenu" class="sidebar bg-dark-subtle">
+                <div class="position-sticky d-flex flex-column h-100">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link text-secondary" href="@Url.Action("Dashboard", "DotNetReport")" title="Dashboard">
+                                <i class="fa fa-fw fa-dashboard"></i> <span class="menu-text">Dashboard</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-secondary" href="@Url.Action("Index", "DotNetReport")" title="Reports">
+                                <i class="fa fa-fw fa-bar-chart"></i> <span class="menu-text">Reports</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-secondary" href="@Url.Action("Query", "DotNetReport")" title="Smart Query (Beta)">
+                                <i class="fa fa-fw fa-lightbulb-o"></i> <span class="menu-text">Smart Query <span class="text-muted fa fa-info-circle" title="Beta"></span></span>
+                            </a>
+                        </li>
+                       
+                        <li class="nav-item">
+                            <a class="nav-link text-secondary" href="@Url.Action("Index", "DotnetSetup")" title="Configure Data (Admin Only)">
+                                <i class="fa fa-fw fa-gears"></i> <span class="menu-text">Configure Data <span class="text-muted fa fa-info-circle" title="Admin Only"></span></span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="/DotnetSetup/UsersAndRoles" class="nav-link text-secondary" title="User And Roles">
+                                <span class="fa fa-users fa-fw me-3"></span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main role="main" class="col-12 ms-sm-auto">
+                <div class="pt-3 pb-2 mb-3">
+                    <div id="alertplaceholder"></div>
+                    @RenderBody()
+                </div>
+            </main>
         </div>
         <div id="sidebar-container" class="sidebar-expanded d-none" style="margin-top: -5px;">
             <div class="list-group">
@@ -169,19 +118,14 @@
                 @RenderSection("useroptions")
 
             </div>
-        </div><!-- sidebar-container END -->
-        <!-- MAIN -->
-        <div class="col p-4">
-            <div class="container-fluid">
-                @RenderBody()
-                <div class="report-layout-footer">
-                    <!-- ########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
-                    <p>Ad Hoc Reporting and Dashboard powered by <a href="http://www.dotNetReport.com" target="_blank">dotnetreport</a>.</p>
-                    <!--########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
-                </div>
-            </div>
-        </div><!-- Main Col END -->
-    </div><!-- body-row END -->
+        </div>
+    </div>
+
+    <div class="report-layout-footer">
+        <!-- ########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
+        <p>Ad Hoc Reporting and Dashboard powered by <a href="http://www.dotNetReport.com" target="_blank">dotnetreport</a>. Copyright © www.dotnetreport.com.</p>
+        <!--########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
+    </div>
     @await Html.PartialAsync("_DotnetReportTemplatesPartial")
     @await Html.PartialAsync("_DotnetReportJsLibrariesPartial")
 
