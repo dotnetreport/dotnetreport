@@ -232,9 +232,12 @@ ko.bindingHandlers.checkedInArray = {
                 array = options.array, // don't unwrap array because we want to update the observable array itself
                 value = ko.utils.unwrapObservable(options.value),
                 checked = element.checked;
-
+            if (value && value.dynamicTableId !== null && value.fieldId === 0) {
+                var arraylist = ko.utils.unwrapObservable(array);
+                var matchingItem = arraylist.find(item => item.fieldName === value.fieldName);
+                value = matchingItem || value;
+            }
             ko.utils.addOrRemoveItem(array, value, checked);
-
         });
     },
     update: function (element, valueAccessor) {
