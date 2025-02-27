@@ -1730,6 +1730,7 @@ var reportViewModel = function (options) {
 				fieldType: e.ParameterDataTypeString,
 				hasForeignParentKey: false,
 				dateFormat: ko.observable(),
+				fieldFormat: ko.observable(),
 				uiId: generateUniqueId(),
 			}
 			e.LookupList = ko.observableArray([]);
