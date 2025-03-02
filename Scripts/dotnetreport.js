@@ -3902,7 +3902,6 @@ var reportViewModel = function (options) {
 
 			// Add click event listener
 			google.visualization.events.addListener(chart, 'select', function () {
-				debugger
 				var selectedItem = chart.getSelection()[0];
 				if (selectedItem && selectedItem.row !=null) {
 					self.ChartDrillDownData(null);
