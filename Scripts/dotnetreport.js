@@ -4600,9 +4600,18 @@ var reportViewModel = function (options) {
 				}
 			});
 
-			if (!self.adminMode() && !self.appSettings.showEmptyFolders) {
-				var foldersInUse = _.uniqBy(reports, 'folderId').map(function (r) { return r.folderId });
-				self.Folders(_.filter(self.allFolders, function (folder) { return foldersInUse.includes(folder.Id) || folder.Id == 0 }));
+			if (!self.adminMode()) {
+				var foldersToDisplay = self.allFolders;
+
+				if (!self.appSettings.showEmptyFolders) { 
+					var foldersInUse = _.uniqBy(reports, 'folderId').map(function (r) { return r.folderId });
+					foldersToDisplay = _.filter(foldersToDisplay, function (folder) { return foldersInUse.includes(folder.Id) || folder.Id == 0 });
+				}
+
+				if (self.appSettings.noDefaultFolder) { 
+					foldersToDisplay = _.filter(foldersToDisplay, function (folder) { return folder.Id != 0 });
+				}
+				self.Folders(foldersToDisplay);
 			} else {
 				self.Folders(self.allFolders);
 			}
