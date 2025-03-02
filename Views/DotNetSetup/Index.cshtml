@@ -158,6 +158,7 @@
             <p>
                 Data Connection groups data schemas (including tables and stored procedures and other configuration), Reports, and Dashboards into a single environment. You can create multiple Data Connections and easily switch between them for separate environment management.
             </p>
+            <hr />
             <div class="form-row" data-bind="visible: true">
                 <div class="form-group">
                     <div class="control-group">
@@ -272,10 +273,10 @@
             </div>
             <div class="clearfix"></div>
             <hr />
-           
+
             <div class="row">
                 <div class="col-3 border-end" style="height: 100vh; overflow-y: auto;">
-                    <div class="row">                        
+                    <div class="row">
                         <div data-bind="ifnot: $root.customTableMode">
                             <div class="alert alert-info">
                                 <span data-bind="text: Tables.model().length"></span> Tables/Views
@@ -362,7 +363,8 @@
                                     <label class="label-sm">Schema Name</label><br />
                                     <span data-bind="editable: SchemaName"></span>
                                 </p>
-                                <p style="display: none;"><!-- deprecated -->
+                                <p style="display: none;">
+                                    <!-- deprecated -->
                                     <label class="label-sm">Account Id Field</label><br />
                                     <span data-bind="editable: AccountIdField"></span>
                                 </p>
@@ -503,11 +505,11 @@
                         </tr>
                     </tbody>
                 </table>
-                 <div class="row mt-3">
-                     <div class="d-flex flex-row align-items-center col-md-12" data-bind="with: joinsPager">
-                         <div data-bind="template: 'pager-template', data: $data"></div>
-                     </div>
-                 </div>
+                <div class="row mt-3">
+                    <div class="d-flex flex-row align-items-center col-md-12" data-bind="with: joinsPager">
+                        <div data-bind="template: 'pager-template', data: $data"></div>
+                    </div>
+                </div>
             </form>
             <br />
             <br />
@@ -612,9 +614,14 @@
 
         </div>
         <div id="manageaccess" class="tab-pane">
-            <div data-bind="foreach: reportsAndFolders" class="card">
-                <div class="card-body">
-                    <a class="btn btn-link" role="button" data-bs-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }">
+            <b>Reports Access</b>
+            <p>
+                You can setup access to invidiual Reports here
+            </p>
+            <hr />
+            <div data-bind="foreach: reportsAndFolders" class="list-group">
+                <div class="list-group-item">
+                    <a data-bs-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }">
                         <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: folder"></span>
                     </a>
                     <div class="collapse" data-bind="attr: {id: 'folder-' + folderId }">
@@ -624,7 +631,7 @@
                         <ul class="list-group" data-bind="foreach: reports">
                             <li class="list-group-item">
                                 <div class="row">
-                                    <div class="col-md-3">
+                                    <div class="col-md-3 border-end">
                                         <div>
                                             <label class="list-group-item-heading">
                                                 <span class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map'}" style="font-size: 14pt; color: #808080"></span>
@@ -666,7 +673,7 @@
                                     </div>
 
                                     <div data-bind="if: changeAccess" class="col-md-9">
-                                        <div style="border-left: 1px solid; padding-left: 10px;">
+                                        <div style="padding-left: 10px;">
                                             <div data-bind="template: {name: 'manage-access-template', data: $root }"></div>
                                             <br />
                                             <br />
@@ -691,9 +698,9 @@
             <br />
             <hr />
 
-            <div class="container-fluid card card-body">
+            <div class="container-fluid">
                 <div class="row">
-                    <div class="col-md-3">
+                    <div class="col-md-3 border-end" style="height: 100vh; overflow-y: auto;">
                         <input id="searchInput" class="form-control mb-2" type="text" placeholder="Search..." data-bind="value: search, valueUpdate: 'input', visible: functions().length > 0">
                         <ul class="list-group" data-bind="foreach: filteredFunctions">
                             <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -709,61 +716,68 @@
                         </div>
                     </div>
                     <div class="col-md-9" data-bind="with: selectedFunction">
-                        <div style="border-left: 1px solid; padding-left: 10px;">
-                            <div class="mb-3" data-bind="validationElement: functionName">
-                                <label for="functionName" class="form-label">Function Name</label>
-                                <input id="functionName" class="form-control" required data-bind="value: name, valueUpdate: 'input'" />
-                                <div class="invalid-feedback">Function Name is required.</div>
-                            </div>
-                            <div class="mb-3">
-                                <label for="functionType" class="form-label">Function Type</label>
-                                <select id="functionType" class="form-control" data-bind="value: functionType, event: { change: $parent.updateCodeEditorMode }">
-                                    <option value="javascript">JavaScript</option>
-                                    <option value="csharp">C#</option>
-                                    <option value="sql">SQL</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="functionDescription" class="form-label">Description</label>
-                                <textarea id="functionDescription" class="form-control" data-bind="value: description, valueUpdate: 'input'" placeholder="Add any helpful description here for the user..."></textarea>
-                            </div>
+                        <div style="padding-left: 10px;">
+                            <div class="card">
+                                <div class="card-header">
+                                    <b>Setup Function</b>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3" data-bind="validationElement: functionName">
+                                        <label for="functionName" class="form-label">Function Name</label>
+                                        <input id="functionName" class="form-control" required data-bind="value: name, valueUpdate: 'input'" />
+                                        <div class="invalid-feedback">Function Name is required.</div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="functionType" class="form-label">Function Type</label>
+                                        <select id="functionType" class="form-control" data-bind="value: functionType, event: { change: $parent.updateCodeEditorMode }">
+                                            <option value="javascript">JavaScript</option>
+                                            <option value="csharp">C#</option>
+                                            <option value="sql">SQL</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="functionDescription" class="form-label">Description</label>
+                                        <textarea id="functionDescription" class="form-control" data-bind="value: description, valueUpdate: 'input'" placeholder="Add any helpful description here for the user..."></textarea>
+                                    </div>
 
-                            <div>
-                                <h4>Parameters</h4>
-                                <table class="table table-bordered">
-                                    <thead>
-                                        <tr>
-                                            <th>Name</th>
-                                            <th>Display Name</th>
-                                            <th>Description</th>
-                                            <th>Required</th>
-                                            <th></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody data-bind="foreach: parameters">
-                                        <tr>
-                                            <td>
-                                                <input class="form-control" data-bind="value: parameterName, valueUpdate: 'input'" />
-                                                <span class="text-danger" data-bind="visible: name.hasError, text: name.validationMessage"></span>
-                                            </td>
-                                            <td><input class="form-control" data-bind="value: displayName, valueUpdate: 'input'" /></td>
-                                            <td><input class="form-control" data-bind="value: description, valueUpdate: 'input'" placeholder="Friendly description for user..." /></td>
-                                            <td><input type="checkbox" data-bind="checked: required" /></td>
-                                            <td><button class="btn btn-sm btn-danger" data-bind="click: $parent.removeParameter">Remove</button></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                                <button class="btn btn-sm btn-primary" data-bind="click: addParameter">Add Parameter</button>
-                            </div>
-                            <br />
-                            <div class="mb-3">
-                                <label for="codeEditor" class="form-label">Write the <b>Code</b> for the function below:</label>
-                                <div style="border: 1px solid">
-                                    <textarea id="codeEditor" class="code-editor form-control" data-bind="value: code"></textarea>
+                                    <div>
+                                        <b>Parameters</b>
+                                        <table class="table table-bordered">
+                                            <thead>
+                                                <tr>
+                                                    <th>Name</th>
+                                                    <th>Display Name</th>
+                                                    <th>Description</th>
+                                                    <th>Required</th>
+                                                    <th></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody data-bind="foreach: parameters">
+                                                <tr>
+                                                    <td>
+                                                        <input class="form-control" data-bind="value: parameterName, valueUpdate: 'input'" />
+                                                        <span class="text-danger" data-bind="visible: name.hasError, text: name.validationMessage"></span>
+                                                    </td>
+                                                    <td><input class="form-control" data-bind="value: displayName, valueUpdate: 'input'" /></td>
+                                                    <td><input class="form-control" data-bind="value: description, valueUpdate: 'input'" placeholder="Friendly description for user..." /></td>
+                                                    <td><input type="checkbox" data-bind="checked: required" /></td>
+                                                    <td><button class="btn btn-sm btn-danger" data-bind="click: $parent.removeParameter">Remove</button></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                        <button class="btn btn-sm btn-primary" data-bind="click: addParameter">Add Parameter</button>
+                                    </div>
+                                    <br />
+                                    <div class="mb-3">
+                                        <label for="codeEditor" class="form-label">Write the <b>Code</b> for the function below:</label>
+                                        <div style="border: 1px solid">
+                                            <textarea id="codeEditor" class="code-editor form-control" data-bind="value: code"></textarea>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-primary" data-bind="click: $parent.saveFunction">Save</button>
+                                    <button class="btn btn-secondary" data-bind="click: $parent.cancelEdit">Cancel</button>
                                 </div>
                             </div>
-                            <button class="btn btn-primary" data-bind="click: $parent.saveFunction">Save</button>
-                            <button class="btn btn-secondary" data-bind="click: $parent.cancelEdit">Cancel</button>
                         </div>
                     </div>
                 </div>
@@ -779,7 +793,7 @@
 
             <div class="row">
                 <div class="col-md-12">
-                    <div data-bind="visible: schedules().length === 0">                            
+                    <div data-bind="visible: schedules().length === 0">
                         <i class="fa fa-exclamation-circle"></i> No scheduled Reports or Dashboards available.
                     </div>
                     <div class="table-responsive" data-bind="if: schedules().length > 0">
@@ -795,9 +809,9 @@
                                     <th style="border-top: none;"><i class="fa fa-cogs"></i> Actions</th>
                                 </tr>
                             </thead>
-                            <tbody data-bind="foreach: schedules">                                    
-                                <tr >
-                                    <td colspan="7">                                        
+                            <tbody data-bind="foreach: schedules">
+                                <tr>
+                                    <td colspan="7">
                                         For <span class="text-muted" data-bind="text: DashboardId === 0 ? 'Report' : 'Dashboard'"></span> <b><span data-bind="text: Name"></span></b>
                                     </td>
                                 </tr>
@@ -1151,19 +1165,19 @@
     </div>
 </div>
 
-    
+
 <div class="modal" id="joinModal" tabindex="-1" role="dialog">
-  <div class="modal-dialog modal-lg" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Joins Diagram</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body" style="max-height:800px;overflow:auto;">
-        <div id="joinDiagram" style="width:2000px;height:1200px;position:relative;border:1px solid #ccc;"></div>
-      </div>
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Joins Diagram</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="max-height:800px;overflow:auto;">
+                <div id="joinDiagram" style="width:2000px;height:1200px;position:relative;border:1px solid #ccc;"></div>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 
 
