@@ -1159,6 +1159,13 @@ var reportViewModel = function (options) {
 	self.usingAi = ko.observable(true);
 	self.textQuery = new textQuery(options);
 
+	self.appSettings = {
+		useClientIdInAdmin: false,
+		useSqlBuilderInAdminMode: false,
+		useSqlCustomField: false,
+		noFolders: false,
+		noDefaultFolder: false
+	};
 	self.runQuery = function (useAi) {
 		self.SelectedFields([]);
 		self.resetQuery(false);
@@ -1285,6 +1292,7 @@ var reportViewModel = function (options) {
 	});
 
 	self.manageAccess = manageAccess(options);
+	self.manageFolderAccess = manageAccess(options);
 
 	self.pager.currentPage.subscribe(function () {
 		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey(), self.ReportSeries);
@@ -1385,13 +1393,24 @@ var reportViewModel = function (options) {
 				return false;
 			}
 
+			var folderToSave = {
+				Id: id,
+				Foldername: self.ManageFolder.FolderName(),
+				UserId: self.manageFolderAccess.getAsList(self.manageFolderAccess.users),
+				ViewOnlyUserId: self.manageFolderAccess.getAsList(self.manageFolderAccess.viewOnlyUsers),
+				DeleteOnlyUserId: self.manageFolderAccess.getAsList(self.manageFolderAccess.deleteOnlyUsers),
+				UserRoles: self.manageFolderAccess.getAsList(self.manageFolderAccess.userRoles),
+				ViewOnlyUserRoles: self.manageFolderAccess.getAsList(self.manageFolderAccess.viewOnlyUserRoles),
+				DeleteOnlyUserRoles: self.manageFolderAccess.getAsList(self.manageFolderAccess.deleteOnlyUserRoles),
+				ClientId: self.manageFolderAccess.clientId(),
+			}
+
 			ajaxcall({
 				url: options.apiUrl,
 				data: {
-					method: "/ReportApi/SaveFolder",
+					method: "/ReportApi/SaveFolderData",
 					model: JSON.stringify({
-						folderId: id,
-						folderName: self.ManageFolder.FolderName()
+						folderData: JSON.stringify(folderToSave)
 					})
 				}
 			}).done(function (result) {
@@ -4039,7 +4058,8 @@ var reportViewModel = function (options) {
 			data: {
 				method: "/ReportApi/GetFolders",
 				model: JSON.stringify({
-					adminMode: self.adminMode()
+					adminMode: self.adminMode(),
+					applyClientInAdmin: self.appSettings.useClientIdInAdmin
 				})
 			}
 		}).done(function (folders) {
@@ -4501,7 +4521,7 @@ var reportViewModel = function (options) {
 			url: options.apiUrl,
 			data: {
 				method: "/ReportApi/GetSavedReports",
-				model: JSON.stringify({ adminMode: self.adminMode() })
+				model: JSON.stringify({ adminMode: self.adminMode(), applyClientInAdmin: self.appSettings.useClientIdInAdmin })
 			}
 		}).done(function (reports) {
 			if (reports.d) { reports = reports.d; }
@@ -4834,29 +4854,36 @@ var reportViewModel = function (options) {
 
 		self.loadTables();
 		self.loadProcs();
-
-		if (self.ReportMode() != "dashboard") {
-			self.loadFolders().done(function () {
-				self.LoadAllSavedReports();
-				ajaxcall({
-					url: options.apiUrl,
-					data: {
-						method: "/ReportApi/CanSaveReports",
-						model: "{}"
-					}
-				}).done(function (x) {
-					if (x.d) { x = x.d; }
-					if (x.result) { x = x.result; }
-					x = x || {
-						allowUsersToCreateReports: true,
-						allowUsersToManageFolders: true
-					};
-					self.CanSaveReports(x.allowUsersToCreateReports);
-					self.CanManageFolders(x.allowUsersToManageFolders);
+		self.loadAppSettings().done(function () {
+			if (self.ReportMode() != "dashboard") {
+				self.loadFolders().done(function () {
+					self.LoadAllSavedReports();
 				});
-			});
-		}
+			}
+		});
 	};
+
+	self.loadAppSettings = function () {
+		return ajaxcall({
+			url: options.apiUrl,
+			data: {
+				method: "/ReportApi/GetAccountSettings",
+				model: "{}"
+			}
+		}).done(function (x) {
+			if (x.d) { x = x.d; }
+			if (x.result) { x = x.result; }
+			x = x || {
+				allowUsersToCreateReports: true,
+				allowUsersToManageFolders: true
+			};
+			self.appSettings.useClientIdInAdmin = x.useClientIdInAdmin;
+			self.appSettings.useSqlBuilderInAdminMode = x.useSqlBuilderInAdminMode;
+			self.appSettings.useSqlCustomField = x.useSqlCustomField;
+			self.appSettings.noFolders = x.noFolders;
+			self.appSettings.noDefaultFolder = x.noDefaultFolder;
+		});
+	}
 
 	self.allowTableResize = function () {
 		var thItem;
@@ -5477,6 +5504,38 @@ var dashboardViewModel = function (options) {
 		? (_.find(self.dashboards(), { id: options.dashboardId }) || { name: '', description: '' })
 		: (self.dashboards().length > 0 ? self.dashboards()[0] : { name: '', description: '' });
 
+	self.appSettings = {
+		useClientIdInAdmin: false,
+		useSqlBuilderInAdminMode: false,
+		useSqlCustomField: false,
+		noFolders: false,
+		noDefaultFolder: false
+	};
+	self.loadAppSettings = function () {
+		return ajaxcall({
+			url: options.apiUrl,
+			data: {
+				method: "/ReportApi/GetAccountSettings",
+				model: "{}"
+			}
+		}).done(function (x) {
+			if (x.d) { x = x.d; }
+			if (x.result) { x = x.result; }
+			x = x || {
+				allowUsersToCreateReports: true,
+				allowUsersToManageFolders: true
+			};
+			self.CanSaveReports(x.allowUsersToCreateReports);
+			self.CanManageFolders(x.allowUsersToManageFolders);
+
+			self.appSettings.useClientIdInAdmin = x.useClientIdInAdmin;
+			self.appSettings.useSqlBuilderInAdminMode = x.useSqlBuilderInAdminMode;
+			self.appSettings.useSqlCustomField = x.useSqlCustomField;
+			self.appSettings.noFolders = x.noFolders;
+			self.appSettings.noDefaultFolder = x.noDefaultFolder;
+		});
+	}
+
 	self.dashboard = {
 		Id: ko.observable(currentDash.id),
 		Name: ko.observable(currentDash.name),
@@ -5497,7 +5556,7 @@ var dashboardViewModel = function (options) {
 	self.loadDashboard = function (dashboardId) {
 		ajaxcall({
 			url: options.loadSavedDashbordUrl,
-			data: { id: dashboardId, adminMode: self.adminMode() },
+			data: { id: dashboardId, adminMode: self.adminMode, applyClientInAdmin: self.appSettings.useClientIdInAdmin },
 			noBlocking: true
 		}).done(function (reportsData) {
 			if (reportsData.d) reportsData = reportsData.d;
@@ -6036,61 +6095,64 @@ var dashboardViewModel = function (options) {
 	}
 
 	self.init = function () {
-		var adminMode = false;
-		if (localStorage) adminMode = localStorage.getItem('reportAdminMode');
+		self.loadAppSettings().done(function () {
+			var adminMode = false;
+			if (localStorage) adminMode = localStorage.getItem('reportAdminMode');
 
-		if (adminMode === 'true') {
-			self.adminMode(true);
-		}
+			if (adminMode === 'true') {
+				self.adminMode(true);
+			}
 
-		var getReports = function () {
-			return ajaxcall({
-				url: options.apiUrl,
-				data: {
-					method: "/ReportApi/GetSavedReports",
-					model: JSON.stringify({ adminMode: self.adminMode() })
-				},
-				noBlocking: true
-			});
-		};
-
-		var getFolders = function () {
-			return ajaxcall({
-				url: options.apiUrl,
-				data: {
-					method: "/ReportApi/GetFolders",
-					model: JSON.stringify({
-						adminMode: self.adminMode()
-					})
-				},
-				noBlocking: true
-			});
-		};
-
-		return $.when(getReports(), getFolders()).done(function (allReports, allFolders) {
-			var setup = [];
-			if (allFolders[0].d) { allFolders[0] = allFolders[0].d; }
-			if (allReports[0].d) { allReports[0] = allReports[0].d; }
-			if (allFolders[0].result) { allFolders[0] = allFolders[0].result; }
-			if (allReports[0].result) { allReports[0] = allReports[0].result; }
-
-			_.forEach(allFolders[0], function (x) {
-				var folderReports = _.filter(allReports[0], { folderId: x.Id });
-				setup.push({
-					folderId: x.Id,
-					folder: x.FolderName,
-					reports: _.map(folderReports, function (r) {
-						return {
-							reportId: r.reportId,
-							reportName: r.reportName,
-							reportDescription: r.reportDescription,
-							reportType: r.reportType,
-							selected: ko.observable(false)
-						};
-					})
+			var getReports = function () {
+				return ajaxcall({
+					url: options.apiUrl,
+					data: {
+						method: "/ReportApi/GetSavedReports",
+						model: JSON.stringify({ adminMode: self.adminMode(), applyClientInAdmin: self.appSettings.useClientIdInAdmin })
+					},
+					noBlocking: true
 				});
+			};
+
+			var getFolders = function () {
+				return ajaxcall({
+					url: options.apiUrl,
+					data: {
+						method: "/ReportApi/GetFolders",
+						model: JSON.stringify({
+							adminMode: self.adminMode(),
+							applyClientInAdmin: self.appSettings.useClientIdInAdmin
+						})
+					},
+					noBlocking: true
+				});
+			};
+
+			return $.when(getReports(), getFolders()).done(function (allReports, allFolders) {
+				var setup = [];
+				if (allFolders[0].d) { allFolders[0] = allFolders[0].d; }
+				if (allReports[0].d) { allReports[0] = allReports[0].d; }
+				if (allFolders[0].result) { allFolders[0] = allFolders[0].result; }
+				if (allReports[0].result) { allReports[0] = allReports[0].result; }
+
+				_.forEach(allFolders[0], function (x) {
+					var folderReports = _.filter(allReports[0], { folderId: x.Id });
+					setup.push({
+						folderId: x.Id,
+						folder: x.FolderName,
+						reports: _.map(folderReports, function (r) {
+							return {
+								reportId: r.reportId,
+								reportName: r.reportName,
+								reportDescription: r.reportDescription,
+								reportType: r.reportType,
+								selected: ko.observable(false)
+							};
+						})
+					});
+				});
+				self.reportsAndFolders(setup);
 			});
-			self.reportsAndFolders(setup);
 		});
 	};
 

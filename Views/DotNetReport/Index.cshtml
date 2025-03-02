@@ -191,7 +191,6 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         </button>
                     </div>
 
-
                     <div data-bind="if: layout()=='icons'">
                         <div data-bind="visible: !SelectedFolder() && !searchReports()">
                             <p>Please choose Folders below to view Reports</p>
@@ -758,7 +757,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
 
 <!-- Folder Edit Modal -->
 <div class="modal" id="folderModal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog" data-bind="css: {'modal-lg': adminMode}">
         <div class="modal-content" data-bind="with: ManageFolder">
             <div class="modal-header">
                 <h5 class="modal-title  fs-5">Manage Folder</h5>
@@ -772,6 +771,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
                     </div>
                 </div>
                 <br />
+                <div data-bind="visible: $root.adminMode" class="card card-body">
+                    <div data-bind="template: {name: 'manage-access-template', data: $root.manageFolderAccess}"></div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
