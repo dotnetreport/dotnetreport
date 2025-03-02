@@ -237,7 +237,7 @@ namespace ReportBuilder.Web.Controllers
                         sqlFields = DotNetReportHelper.SplitSqlColumns(sql);
 
                         var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(fromIndex)}";
-                        bool hasDistinct = sql.Contains("DISTINCT", StringComparison.OrdinalIgnoreCase);
+                        bool hasDistinct = sql.Contains("DISTINCT");
                         if (hasDistinct)
                         {
                             int distinctIndex = sqlFrom.IndexOf("DISTINCT", StringComparison.OrdinalIgnoreCase) + 8;
@@ -248,7 +248,7 @@ namespace ReportBuilder.Web.Controllers
                         }
                         else
                         {
-                            sqlCount = $"SELECT COUNT(*) FROM ({(sqlFrom.Contains("ORDER BY", StringComparison.OrdinalIgnoreCase) ? sqlFrom.Substring(0, sqlFrom.IndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase)) : sqlFrom)}) AS countQry";
+                            sqlCount = $"SELECT COUNT(*) FROM ({(sqlFrom.Contains("ORDER BY") ? sqlFrom.Substring(0, sqlFrom.IndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase)) : sqlFrom)}) AS countQry";
                         }
                         if (!String.IsNullOrEmpty(sortBy))
                         {
