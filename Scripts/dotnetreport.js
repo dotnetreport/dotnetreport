@@ -333,14 +333,14 @@ function filterGroupViewModel(args) {
 		}
 
 		if (e.Value1) {
-			if (e.Operator !== 'range') {
+			if (typeof e.Value1 === 'string' && e.Operator !== 'range') {
 				[datePart1, timePart1] = e.Value1.split(" ");
 				e.Value1 = datePart1;
 			}
 			lookupList.push({ id: e.Value1, text: e.Value1 });
 		}
 		if (e.Value2) {
-			if (e.Operator !== 'range') {
+			if (typeof e.Value2 === 'string' && e.Operator !== 'range') {
 				[datePart2, timePart2] = e.Value2.split(" ");
 				e.Value2 = datePart2;
 			}
@@ -362,6 +362,7 @@ function filterGroupViewModel(args) {
 			ParentIn: ko.observableArray(parentIn),
 			Apply: ko.observable(e.Apply != null ? e.Apply : true),
 			IsFilterOnFly: isFilterOnFly === true ? true : false,
+			IsConditionalFilter: e.IsConditionalFilter===true?true:false,
 			showParentFilter: ko.observable(true),
 			fmtValue: ko.observable(e.Value1),
 			fmtValue2: ko.observable(e.Value2),
@@ -3260,6 +3261,19 @@ var reportViewModel = function (options) {
 							case '=':
 								conditionTrue = value == compareTo;
 								break;
+							case 'in':
+								var compareArray = typeof compareTo === "string" ? compareTo.split(",") : [compareTo];
+								compareArray = compareArray.map(item => item.trim());
+								conditionTrue = compareArray.includes(value);
+								break;
+							case 'not in':
+								var compareArray = typeof compareTo === "string" ? compareTo.split(",") : [compareTo];
+								compareArray = compareArray.map(item => item.trim());
+								conditionTrue = !compareArray.includes(value);
+								break;
+							case 'all':
+								conditionTrue = true;
+								break;
 							case 'like':
 								conditionTrue = dataIsNumeric ? false : value.includes(compareTo);
 								break;
@@ -4070,7 +4084,8 @@ var reportViewModel = function (options) {
 				Value1: f.value || '',
 				Value2: f.value2 || '',
 				Valuetime: f.valuetime || '',
-				Valuetime2: f.valuetime2 || ''
+				Valuetime2: f.valuetime2 || '',
+				IsConditionalFilter:true
 			});
 			e.fieldCondtionalFormats.push({
 				fontColor: ko.observable(f.fontColor || ''),
