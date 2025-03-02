@@ -126,55 +126,59 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         <p class="alert alert-info">
                             You can design the common report header below that will be applied to all reports where report headers are turned on.
                         </p>
-                        <canvas id="report-header" width="900" height="120" style="border: solid 1px #ccc"></canvas>
-                        <div class="form-inline">
-                            <div class="form-group">
-                                <button class="btn btn-sm" title="Add Text" data-bind="click: addText"><span class="fa fa-font"></span></button>
-                                <label class="btn btn-sm" title="Add Image">
+                        <div class="d-flex align-items-center report-menubar">
+                            <div class="btn-group me-2">
+                                <button class="btn btn-sm btn-outline-secondary" title="Add Text" data-bind="click: addText">
+                                    <span class="fa fa-font"></span>
+                                </button>
+                                <label class="btn btn-sm btn-outline-secondary" title="Add Image">
                                     <span class="fa fa-image"></span>
                                     <input type="file" accept="image/*" hidden data-bind="event: { change: function() { uploadImage($element.files[0]) } }" />
                                 </label>
-                                <button class="btn btn-sm" title="Add Line" data-bind="click: addLine"><span class="fa fa-arrows-h"></span></button>
+                                <button class="btn btn-sm btn-outline-secondary" title="Add Line" data-bind="click: addLine">
+                                    <span class="fa fa-arrows-h"></span>
+                                </button>
                             </div>
-                            <div data-bind="if: selectedObject()">
-                                <div class="form-group">
-                                    &nbsp;|&nbsp;
-                                    <button class="btn btn-sm" data-bind="click: remove" title="Delete"><span class="fa fa-trash"></span></button>
-                                    <div data-bind="if: getText()">
-                                        <select class="form-control form-control-sm" title="Font Family" data-bind="event: {change: setFontFamily }, value: objectProperties.fontFamily">
-                                            <option value="arial" selected>Arial</option>
-                                            <option value="helvetica">Helvetica</option>
-                                            <option value="myriad pro">Myriad Pro</option>
-                                            <option value="delicious">Delicious</option>
-                                            <option value="verdana">Verdana</option>
-                                            <option value="georgia">Georgia</option>
-                                            <option value="courier">Courier</option>
-                                            <option value="comic sans ms">Comic Sans MS</option>
-                                            <option value="impact">Impact</option>
-                                            <option value="monaco">Monaco</option>
-                                            <option value="optima">Optima</option>
-                                            <option value="hoefler text">Hoefler Text</option>
-                                            <option value="plaster">Plaster</option>
-                                            <option value="engagement">Engagement</option>
-                                        </select>
-                                        &nbsp;
-                                        <select class="form-control form-control-sm" title="Text Align" data-bind="event: {change: setTextAlign }, value: objectProperties.textAlign">
-                                            <option>Left</option>
-                                            <option>Center</option>
-                                            <option>Right</option>
-                                            <option>Justify</option>
-                                        </select>
-                                        &nbsp;
-                                        <input type="color" size="5" class="btn-object-action" title="Font Color" data-bind="event: {change: setFontColor }, value: objectProperties.fontColor">
-                                        <button class="btn btn-sm" title="Bold" data-bind="event: {click: setFontBold }, value: objectProperties.fontBold"><span class="fa fa-bold"></span></button>
-                                        <button class="btn btn-sm" title="Italic" data-bind="event: {click: setFontItalic }, value: objectProperties.fontItalic"><span class="fa fa-italic"></span></button>
-                                        <button class="btn btn-sm" title="Underline" data-bind="event: {click: setFontUnderline }, value: objectProperties.fontUnderline"><span class="fa fa-underline"></span></button>
-                                    </div>
+                            <div data-bind="if: selectedObject()" class="d-flex align-items-center me-2">
+                                <span class="mx-2">|</span>
+                                <button class="btn btn-sm btn-outline-danger me-2" data-bind="click: remove" title="Delete">
+                                    <span class="fa fa-trash"></span>
+                                </button>
+                                <div data-bind="if: getText()" class="d-flex align-items-center">
+                                    <select class="form-select form-select-sm me-2" title="Font Family" data-bind="event: {change: setFontFamily }, value: objectProperties.fontFamily">
+                                        <option value="arial" selected>Arial</option>
+                                        <option value="helvetica">Helvetica</option>
+                                        <option value="myriad pro">Myriad Pro</option>
+                                        <option value="delicious">Delicious</option>
+                                        <option value="verdana">Verdana</option>
+                                        <option value="georgia">Georgia</option>
+                                        <option value="courier">Courier</option>
+                                        <option value="comic sans ms">Comic Sans MS</option>
+                                    </select>
+                                    <select class="form-select form-select-sm me-2" title="Text Align" data-bind="event: {change: setTextAlign }, value: objectProperties.textAlign">
+                                        <option>Left</option>
+                                        <option>Center</option>
+                                        <option>Right</option>
+                                        <option>Justify</option>
+                                    </select>
+                                    <input type="color" class="form-control form-control-color me-2" style="width: 100px; height: 30px;" title="Font Color" data-bind="event: {change: setFontColor }, value: objectProperties.fontColor" style="min-width: 20px;">
+                                    <button class="btn btn-sm btn-outline-secondary me-2" title="Bold" data-bind="event: {click: setFontBold }, value: objectProperties.fontBold">
+                                        <span class="fa fa-bold"></span>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary me-2" title="Italic" data-bind="event: {click: setFontItalic }, value: objectProperties.fontItalic">
+                                        <span class="fa fa-italic"></span>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary me-2" title="Underline" data-bind="event: {click: setFontUnderline }, value: objectProperties.fontUnderline">
+                                        <span class="fa fa-underline"></span>
+                                    </button>
                                 </div>
                             </div>
+                            <button class="btn btn-primary btn-sm ms-auto" data-bind="click: saveCanvas">Save Changes</button>
                         </div>
+
+                        <canvas id="report-header" width="900" height="120" style="border: solid 1px #ccc"></canvas>
+
                     </div>
-                    <button class="btn btn-primary" data-bind="click: saveCanvas">Save Changes</button>
                 </div>
                 <div data-bind="ifnot: designingHeader">
                     <div class="btn-group pull-right" role="group">

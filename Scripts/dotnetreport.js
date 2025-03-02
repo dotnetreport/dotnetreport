@@ -1730,6 +1730,7 @@ var reportViewModel = function (options) {
 				fieldType: e.ParameterDataTypeString,
 				hasForeignParentKey: false,
 				dateFormat: ko.observable(),
+				fieldFormat: ko.observable(),
 				uiId: generateUniqueId(),
 			}
 			e.LookupList = ko.observableArray([]);
@@ -3034,7 +3035,7 @@ var reportViewModel = function (options) {
 				col.decimalPlacesDigit = col.decimalPlaces ? col.decimalPlaces() : null;
 				col.fieldFormating = col.fieldFormat ? col.fieldFormat() : null;
 				col.IsPivotField = e.IsPivotField ;
-				if (skipColDetails !== true) self.columnDetails.push(ko.toJS(col));
+				if (skipColDetails !== true) self.columnDetails.push(col);
 
 				e.decimalPlaces = col.decimalPlaces || ko.observable();
 				e.currencyFormat = col.currencyFormat || ko.observable();
@@ -3477,10 +3478,23 @@ var reportViewModel = function (options) {
 				data.forEach(row => {
 					rowsHTML += '<tr>';
 					row.Items.forEach(item => {
-						rowsHTML +=
-							`<td>
-							${item.FormattedValue}
-						</td>`;
+						let tdStyle = `style="background-color: ${item._backColor ?? item.backColor()};
+                            color: ${item._fontColor ?? item.fontColor()}; 
+                            font-weight: ${(item.fontBold() || item._fontBold) ? 'bold' : 'normal'}; 
+                            text-align: ${item.fieldAlign() ? item.fieldAlign() : (item.Column.IsNumeric ? 'right' : 'left')}"`;
+
+						if (item.LinkTo) {
+							rowsHTML +=
+								`<td ${tdStyle}>
+									<a href="${item.LinkTo}" target="_blank"><span>${item.FormattedValue}</span></a>  
+								</td>`;
+						}
+						else {
+							rowsHTML +=
+								`<td ${tdStyle}>
+								${item.FormattedValue}
+							</td>`;
+						}
 					});
 					rowsHTML += '</tr>';
 				});
