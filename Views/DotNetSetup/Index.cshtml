@@ -226,6 +226,11 @@
                                     <small class="text-muted d-block">Removes the Default folder.</small>
                                 </div>
                                 <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: showEmptyFolders">
+                                    <label class="form-check-label">Show Empty Folders</label>
+                                    <small class="text-muted d-block">Will show empty folders for non admin users.</small>
+                                </div>
+                                <div class="form-check">
                                     <input type="checkbox" class="form-check-input" id="allowUsersToManageFolders" data-bind="checked: allowUsersToManageFolders">
                                     <label class="form-check-label" for="allowUsersToManageFolders">Allow All Users to Manage Folders</label>
                                     <small class="text-muted d-block">Grants users permission to organize and manage folders even when not in Admin Mode.</small>

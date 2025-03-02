@@ -1164,7 +1164,8 @@ var reportViewModel = function (options) {
 		useSqlBuilderInAdminMode: false,
 		useSqlCustomField: false,
 		noFolders: false,
-		noDefaultFolder: false
+		noDefaultFolder: false,
+		showEmptyFolders: false
 	};
 	self.runQuery = function (useAi) {
 		self.SelectedFields([]);
@@ -4599,7 +4600,7 @@ var reportViewModel = function (options) {
 				}
 			});
 
-			if (!self.adminMode()) {
+			if (!self.adminMode() && !self.appSettings.showEmptyFolders) {
 				var foldersInUse = _.uniqBy(reports, 'folderId').map(function (r) { return r.folderId });
 				self.Folders(_.filter(self.allFolders, function (folder) { return foldersInUse.includes(folder.Id) || folder.Id == 0 }));
 			} else {
@@ -4882,6 +4883,7 @@ var reportViewModel = function (options) {
 			self.appSettings.useSqlCustomField = x.useSqlCustomField;
 			self.appSettings.noFolders = x.noFolders;
 			self.appSettings.noDefaultFolder = x.noDefaultFolder;
+			self.appSettings.showEmptyFolders = x.showEmptyFolders;
 		});
 	}
 

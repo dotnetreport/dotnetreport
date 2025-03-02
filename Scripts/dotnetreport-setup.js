@@ -2095,6 +2095,7 @@ var settingPageViewModel = function (options) {
 	self.useSqlCustomField = ko.observable(true);
 	self.noFolders = ko.observable(false);
 	self.noDefaultFolder = ko.observable(false);
+	self.showEmptyFolders = ko.observable(false);
 	self.allowUsersToManageFolders = ko.observable(true);
 	self.allowUsersToCreateReports = ko.observable(true);
 
@@ -2166,6 +2167,7 @@ var settingPageViewModel = function (options) {
 							useSqlCustomField: self.useSqlCustomField(),
 							noFolders: self.noFolders(),
 							noDefaultFolder: self.noDefaultFolder(),
+							showEmptyFolders: self.showEmptyFolders(),
 							allowUsersToManageFolders: self.allowUsersToManageFolders(),
 							allowUsersToCreateReports: self.allowUsersToCreateReports()
 						})
@@ -2213,6 +2215,7 @@ var settingPageViewModel = function (options) {
 				self.useSqlCustomField(settings.useSqlCustomField);
 				self.noFolders(settings.noFolders);
 				self.noDefaultFolder(settings.noDefaultFolder);
+				self.showEmptyFolders(settings.showEmptyFolders);
 				self.allowUsersToManageFolders(settings.allowUsersToManageFolders);
 				self.allowUsersToCreateReports(settings.allowUsersToCreateReports);
 

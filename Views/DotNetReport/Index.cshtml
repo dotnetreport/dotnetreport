@@ -212,7 +212,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             </div>
                             <div class="list-group list-overflow">
                                 <div data-bind="if: SelectedFolder()!=null && reportsInFolder().length==0">
-                                    No Reports Saved in this Folder
+                                    This folder is empty.
                                 </div>
                                 <div data-bind="if: searchReports() && reportsInSearch().length==0">
                                     No Reports found matching your Search
@@ -383,7 +383,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             <div data-bind="visible: SelectedFolder() || searchReports()">
                                 <div class="container-fluid">
                                     <div data-bind="if: SelectedFolder()!=null && reportsInFolder().length==0">
-                                        <p class="text-center text-muted">This folder is empty.</p>
+                                        <p class="text-muted">This folder is empty.</p>
                                     </div>
 
                                     <div data-bind="if: searchReports() && reportsInSearch().length==0">
