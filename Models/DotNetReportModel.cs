@@ -3015,7 +3015,7 @@ namespace ReportBuilder.Web.Models
                 if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
                 var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
                 sqlFields = sqlFields
-                    .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
+                    .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))
                     .ToList();
                 sqlFields.AddRange(dt.Columns.Cast<DataColumn>().Skip(sqlFields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
             }
@@ -3036,7 +3036,7 @@ namespace ReportBuilder.Web.Models
                 var i = 0;
                 foreach (DataColumn column in dt.Columns)
                 {
-                    var value = row[column.ColumnName].ToString();
+                    var value = row[column.ColumnName]?.ToString() ?? string.Empty;
                     var formatColumn = GetColumnFormatting(column, columns, ref value);
 
                     if (includeSubtotal)
@@ -3046,8 +3046,14 @@ namespace ReportBuilder.Web.Models
                             subTotals[i] += Convert.ToDecimal(row[column.ColumnName]);
                         }
                     }
-                    value = value.Replace("\r", " ").Replace("\n", " ").Replace("\"", "\"\"");
-                    //Add the Data rows.
+
+                    // Prevent formula injection by prefixing values starting with '=', '@', '+', or '-'
+                    if (!string.IsNullOrEmpty(value) && (value.StartsWith("=") || value.StartsWith("@") || value.StartsWith("+") || value.StartsWith("-")))
+                    {
+                        value = "'" + value;  // Prefix with an apostrophe
+                    }
+
+                    value = value.Replace("\r", " ").Replace("\n", " ").Replace("\"", "\"\"");  // Escape double quotes
                     csv += $"{(i == 0 ? "" : ",")}\"{value}\"";
                     i++;
                 }
