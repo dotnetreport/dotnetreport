@@ -3550,9 +3550,38 @@ namespace ReportBuilder.Web.Models
             }
             return table;
         }
+        private bool IsAllowedSql(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return false;
+
+            // Convert to lowercase for case-insensitive checks
+            string lowerInput = input.ToLowerInvariant();
+
+            // Disallow dangerous SQL keywords
+            string[] blockedKeywords = { "drop ", "delete ", "insert ", "update ", "truncate ", "alter ", "exec ", "execute ", "create ", "--", ";", "/*", "*/" };
+
+            foreach (var keyword in blockedKeywords)
+            {
+                if (lowerInput.Contains(keyword))
+                {
+                    return false; // Invalid SQL detected
+                }
+            }
+
+            // Only allow SELECT statements 
+            if (!lowerInput.TrimStart().StartsWith("select "))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
 
         public DataTable ExecuteQuery(string connectionString, string sql, List<KeyValuePair<string, string>> parameters = null)
         {
+            if (!IsAllowedSql(sql)) throw new Exception("Invalid Query found");
+
             DataTable dataTable = new DataTable();
 
             try
