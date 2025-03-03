@@ -918,7 +918,7 @@ var manageViewModel = function (options) {
 			toastr.error('Please enter a term to search stored procs');
 			return false;
 		}
-
+		self.foundProcedures([]);
 		ajaxcall({
 			url: options.searchProcUrl,
 			type: 'POST',
@@ -929,6 +929,10 @@ var manageViewModel = function (options) {
 			})
 		}).done(function (result) {
 			if (result.d) result = result.d;
+
+			if (result.length == 0) {
+				toastr.error('No matching stored proc found, please try again.');
+			}
 			_.forEach(result, function (s) {
 				_.forEach(s.Columns, function (c) {
 					c.DisplayName = ko.observable(c.DisplayName);

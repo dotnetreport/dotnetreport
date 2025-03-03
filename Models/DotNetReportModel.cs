@@ -3773,9 +3773,15 @@ namespace ReportBuilder.Web.Models
             {
                 // open the connection to the database 
                 conn.Open();
-                string spQuery = "SELECT ROUTINE_NAME, ROUTINE_DEFINITION, ROUTINE_SCHEMA FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_DEFINITION LIKE '%" + value + "%' AND ROUTINE_TYPE = 'PROCEDURE'";
+                string spQuery = @"
+                        SELECT ROUTINE_NAME, ROUTINE_DEFINITION, ROUTINE_SCHEMA 
+                        FROM INFORMATION_SCHEMA.ROUTINES 
+                        WHERE ROUTINE_DEFINITION LIKE @SearchValue 
+                        AND ROUTINE_TYPE = 'PROCEDURE'";
                 SqlCommand cmd = new SqlCommand(spQuery, conn);
                 cmd.CommandType = CommandType.Text;
+                cmd.Parameters.Add(new SqlParameter("@SearchValue", SqlDbType.NVarChar)).Value = $"%{value}%";
+
                 DataTable dtProcedures = new DataTable();
                 dtProcedures.Load(cmd.ExecuteReader());
                 int count = 1;
