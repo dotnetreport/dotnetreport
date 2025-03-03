@@ -167,9 +167,16 @@ namespace ReportBuilder.Web.Jobs
                                         fileExt = ".pdf"; 
                                         break;
 
-                                    case "CSV": 
+                                    case "CSV":
+                                        if (report.DashboardId > 0)
+                                        {
+                                            fileData = null; // not supported for dashboard
+                                        }
+                                        else
+                                        {
+                                            fileData = await DotNetReportHelper.GetCSVFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.Columns, reportToRun.IncludeSubTotals);
+                                        }
                                         fileExt = ".csv";
-                                        fileData = await DotNetReportHelper.GetCSVFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.Columns, reportToRun.IncludeSubTotals);
                                         break;
 
                                     case "WORD":
@@ -193,7 +200,14 @@ namespace ReportBuilder.Web.Jobs
                                         break;
 
                                     case "EXCEL-SUB":
-                                        fileData = await DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: reportToRun.Columns, allExpanded: true, expandSqls: reportToRun.ReportData, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot");
+                                        if (report.DashboardId > 0)
+                                        {
+                                            fileData = null; // not supported for dashboard
+                                        }
+                                        else
+                                        {
+                                            fileData = await DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: reportToRun.Columns, allExpanded: true, expandSqls: reportToRun.ReportData, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot");
+                                        }
                                         fileExt = ".xlsx";
                                         break;
                                     
@@ -234,7 +248,7 @@ namespace ReportBuilder.Web.Jobs
                                 {
                                     mail.Body = $"Please click on the link below to Run your Report:<br><br><a href=\"{JobScheduler.WebAppRootUrl}/DotnetReport/Report?linkedreport=true&noparent=true&reportId={reportToRun.ReportId}\">{report.Description}</a>";
                                 }
-                                else
+                                else if (fileData != null)
                                 {
                                     var attachment = new Attachment(new MemoryStream(fileData), report.Name + fileExt);
                                     mail.Attachments.Add(attachment);
