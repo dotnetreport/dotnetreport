@@ -1404,7 +1404,7 @@ var reportViewModel = function (options) {
 
 			var folderToSave = {
 				Id: id,
-				Foldername: self.ManageFolder.FolderName(),
+				FolderName: self.ManageFolder.FolderName(),
 				UserId: self.manageFolderAccess.getAsList(self.manageFolderAccess.users),
 				ViewOnlyUserId: self.manageFolderAccess.getAsList(self.manageFolderAccess.viewOnlyUsers),
 				DeleteOnlyUserId: self.manageFolderAccess.getAsList(self.manageFolderAccess.deleteOnlyUsers),
@@ -1419,25 +1419,25 @@ var reportViewModel = function (options) {
 				data: {
 					method: "/ReportApi/SaveFolderData",
 					model: JSON.stringify({
-						folderData: JSON.stringify(folderToSave)
+						folderData: JSON.stringify(folderToSave),
+						adminMode: self.adminMode()
 					})
 				}
 			}).done(function (result) {
 				if (result.d) { result = result.d; }
 				if (result.result) { result = result.result; }
 				if (self.ManageFolder.IsNew()) {
-					self.Folders.push({
-						Id: result,
-						FolderName: self.ManageFolder.FolderName()
-					});
+					folderToSave.Id = result;
+					self.Folders.push(folderToSave);
+					toastr.success(folderToSave.FolderName + " added");
 				}
 				else {
 					var folderToUpdate = self.SelectedFolder();
 					self.Folders.remove(self.SelectedFolder());
-					folderToUpdate.FolderName = self.ManageFolder.FolderName();
-					self.Folders.push(folderToUpdate);
+					self.Folders.push(folderToSave);
 					self.allFolders = self.Folders();
 					self.SelectedFolder(null);
+					toastr.success(folderToSave.FolderName + " updated");
 				}
 				$("#folderModal").modal("hide");
 			});
@@ -2021,7 +2021,7 @@ var reportViewModel = function (options) {
 		}
 	}
 
-	self.customSqlField = new sqlFieldModel({adminMode: self.adminMode});
+	self.customSqlField = new sqlFieldModel({adminMode: self.adminMode()});
 
 	self.customSqlField.isConditionalFunction.subscribe(function (value) {
 		if (value) {
@@ -5575,7 +5575,7 @@ var dashboardViewModel = function (options) {
 	self.loadDashboard = function (dashboardId) {
 		ajaxcall({
 			url: options.loadSavedDashbordUrl,
-			data: { id: dashboardId, adminMode: self.adminMode, applyClientInAdmin: self.appSettings.useClientIdInAdmin },
+			data: { id: dashboardId, adminMode: self.adminMode(), applyClientInAdmin: self.appSettings.useClientIdInAdmin },
 			noBlocking: true
 		}).done(function (reportsData) {
 			if (reportsData.d) reportsData = reportsData.d;
