@@ -4895,6 +4895,8 @@ var reportViewModel = function (options) {
 				allowUsersToCreateReports: true,
 				allowUsersToManageFolders: true
 			};
+			self.CanSaveReports(x.allowUsersToCreateReports);
+			self.CanManageFolders(x.allowUsersToManageFolders);
 			self.appSettings.useClientIdInAdmin = x.useClientIdInAdmin;
 			self.appSettings.useSqlBuilderInAdminMode = x.useSqlBuilderInAdminMode;
 			self.appSettings.useSqlCustomField = x.useSqlCustomField;
@@ -5528,7 +5530,8 @@ var dashboardViewModel = function (options) {
 		useSqlBuilderInAdminMode: false,
 		useSqlCustomField: false,
 		noFolders: false,
-		noDefaultFolder: false
+		noDefaultFolder: false,
+		showEmptyFolders: false
 	};
 	self.loadAppSettings = function () {
 		return ajaxcall({
@@ -5544,14 +5547,13 @@ var dashboardViewModel = function (options) {
 				allowUsersToCreateReports: true,
 				allowUsersToManageFolders: true
 			};
-			self.CanSaveReports(x.allowUsersToCreateReports);
-			self.CanManageFolders(x.allowUsersToManageFolders);
-
 			self.appSettings.useClientIdInAdmin = x.useClientIdInAdmin;
 			self.appSettings.useSqlBuilderInAdminMode = x.useSqlBuilderInAdminMode;
 			self.appSettings.useSqlCustomField = x.useSqlCustomField;
 			self.appSettings.noFolders = x.noFolders;
 			self.appSettings.noDefaultFolder = x.noDefaultFolder;
+			self.appSettings.showEmptyFolders = x.showEmptyFolders;
+
 		});
 	}
 
@@ -6114,7 +6116,7 @@ var dashboardViewModel = function (options) {
 	}
 
 	self.init = function () {
-		self.loadAppSettings().done(function () {
+		return self.loadAppSettings().done(function () {
 			var adminMode = false;
 			if (localStorage) adminMode = localStorage.getItem('reportAdminMode');
 
