@@ -1380,6 +1380,14 @@ var reportViewModel = function (options) {
 			}
 			self.ManageFolder.IsNew(false);
 			self.ManageFolder.FolderName(self.SelectedFolder().FolderName);
+			var fldr = self.SelectedFolder();
+			self.manageFolderAccess.clientId(fldr.ClientId);
+			self.manageFolderAccess.setupList(self.manageFolderAccess.users, fldr.UserId || '');
+			self.manageFolderAccess.setupList(self.manageFolderAccess.userRoles, fldr.UserRoles || '');
+			self.manageFolderAccess.setupList(self.manageFolderAccess.viewOnlyUserRoles, fldr.ViewOnlyUserRoles || '');
+			self.manageFolderAccess.setupList(self.manageFolderAccess.viewOnlyUsers, fldr.ViewOnlyUserId || '');
+			self.manageFolderAccess.setupList(self.manageFolderAccess.deleteOnlyUserRoles, fldr.DeleteOnlyUserRoles || '');
+			self.manageFolderAccess.setupList(self.manageFolderAccess.deleteOnlyUsers, fldr.DeleteOnlyUserId || '');
 			$("#folderModal").modal("show");
 		},
 		saveFolder: function () {
