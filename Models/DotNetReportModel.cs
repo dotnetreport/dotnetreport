@@ -2754,7 +2754,7 @@ namespace ReportBuilder.Web.Models
                 await page.AddStyleTagAsync(new AddTagOptions { Content = "@page {size: landscape }" });
                 pdfOptions.Width = $"{width}px";
             }
-
+            await page.EvaluateExpressionAsync("$('.report-inner').css('transform','none')");
             await page.PdfAsync(pdfFile, pdfOptions);
             return File.ReadAllBytes(pdfFile);
         }
