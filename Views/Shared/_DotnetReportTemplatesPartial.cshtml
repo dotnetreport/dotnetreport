@@ -1185,45 +1185,54 @@
                                     </div>
                                 </div>
 
-                                <div class="col-md-12">
-                                    <div data-bind="visible: useStoredProc">
+                                <div class="col-md-12" data-bind="visible: useStoredProc">
+                                    <div>
                                         <select class="form-control" data-bind="select2Value: {dropdownParent: $('#choose-data-card')}, options: Procs, optionsCaption: 'Choose Section...', optionsText: 'DisplayName', value: SelectedProc, visible: useStoredProc"></select>
                                     </div>
-                                    <div data-bind="hidden: useStoredProc">
-                                        <select id="category-tables" class="form-control" data-bind="foreach: CategorizedTables, select2Value: {dropdownParent: $('#choose-data-card'), allowClear: true, placeholder: 'Choose Data Section...', optionsText: 'tableName'}, value: SelectedTable">
-                                            <option value="" data-bind="visible: $index()==0"></option>
-                                            <optgroup data-bind="attr: {label: categoryName}, foreach: tables">
-                                                <option data-bind="text: tableName, value: $data"></option>
-                                            </optgroup>
-                                        </select>
-                                    </div>
                                 </div>
+                                <div class="col-md-12" data-bind="hidden: useStoredProc">
+                                    <!-- Heading with Tooltip -->
+                                    <div class="d-flex justify-content-between align-items-center mb-2" style="padding-top: 15px;">
+                                        <b>
+                                            Choose Data Section
+                                            <i class="fa fa-info-circle text-muted" data-toggle="tooltip" title="Choose a table to show fields to select."></i>
+                                        </b>
+                                    </div>
 
-                                <div class="col-md-12 padded-div" data-bind="visible: ChooseFields().length>0">
-                                    <div class="small pull-left">
-                                        Select data to use in the Report
-                                    </div>
-                                    <div class="pull-right btn-toolbar">
-                                        <a href="#" class="btn btn-secondary btn-sm" data-bind="click: function(){SelectedTable('')}, visible: !isFormulaField()">Clear</a>
-                                        <a href="#" class="btn btn-secondary btn-sm" data-bind="click: MoveAllFields, visible: !isFormulaField()">Select all</a>
-                                        <a href="#" class="btn btn-secondary btn-sm" data-bind="click: RemoveSelectedFields, visible: !isFormulaField()">Remove all</a>
-                                    </div>
-                                </div>
-                                <div data-bind="with: SelectedTable">
-                                    <b><span data-bind="text: tableName"></span></b>
-                                </div>
-                                <div class="row container-fluid" data-bind="foreach: ChooseFields" style="max-height: 200px; overflow: auto;">
-                                    <div class="col-md-12 col-sm-12 col-xs-12 list-group">
-                                        <div class="list-group-item">
-                                            <div class="checkbox">
-                                                <label>
-                                                    <input type="checkbox" data-bind="checkedInArray: {array: $parent.isFormulaField() ? $parent.formulaFields : $parent.SelectedFields, value: $data}">
-                                                    <span data-bind="html: fieldName"></span>
-                                                </label>
+                                    <div id="table-tree-view" style="max-height: 400px; overflow-y: auto;">
+                                        <div class="">
+                                            <!-- ko foreach: CategorizedTables -->
+                                            <div class="mb-3">
+                                                <div data-bind="click: function() { isExpanded(!isExpanded()); }, visible: categoryName" style="cursor: pointer;">
+                                                    <i class="fa" data-bind="css: isExpanded() ? 'fa-chevron-down text-secondary' : 'fa-chevron-right text-secondary'"></i>
+                                                    <i class="fa" data-bind="css: isExpanded() ? 'fa-folder-open' : 'fa-folder'"></i>
+                                                    <span data-bind="text: categoryName" class="ml-2"></span>
+                                                </div>
+                                                <div class="report-list" data-bind="visible: isExpanded(), foreach: tables" style="padding-left: 15px;">
+                                                    <div class="row border-bottom py-2 align-items-center w-100">
+                                                        <div class="col-md-12 d-flex align-items-center" data-bind="click: function() { $parents[2].SelectedTable($parents[2].SelectedTable() == $data ? null : $data); }" style="cursor: pointer;">
+                                                            <span class="text-secondary fa" data-bind="css: $data === $parents[2].SelectedTable() ? 'fa-chevron-down' : 'fa-chevron-right'"></span>&nbsp; 
+                                                            <span class="fa fa-table"></span>&nbsp;<span data-bind="text: tableName" class=" small" ></span>
+                                                        </div>
+                                                        <!-- Fields Expand Here -->
+                                                        <div data-bind="visible: $data === $parents[2].SelectedTable(), foreach: $parents[2].ChooseFields" style="padding-left: 30px;">
+                                                            <div class="row border-bottom py-2 align-items-center w-100">
+                                                                <div class="checkbox">
+                                                                    <label>
+                                                                        <input type="checkbox" data-bind="checkedInArray: { array: $parents[2].SelectedFields, value: $data }">
+                                                                        <span data-bind="text: fieldName"></span>
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
+                                            <!-- /ko -->
                                         </div>
                                     </div>
                                 </div>
+
                             </div>
 
                         </div>

@@ -4807,7 +4807,8 @@ var reportViewModel = function (options) {
 			data: {
 				method: "/ReportApi/GetTables",
 				model: JSON.stringify({
-					adminMode: self.adminMode()
+					adminMode: self.adminMode(),
+					includeColumns: true
 				})
 			}
 		}).done(function (tables) {
@@ -4825,11 +4826,14 @@ var reportViewModel = function (options) {
 						});
 						if (!categoryGroup) {
 							categoryGroup = {
+								isExpanded: ko.observable(true),
 								categoryId: category.CategoryId,
 								categoryName: category.Name,
 								tables: []
 							};
 							categorizedTables.push(categoryGroup);
+						} else {
+							categoryGroup.isExpanded = ko.observable(false);
 						}
 						categoryGroup.tables.push(table);
 					});
@@ -4839,6 +4843,7 @@ var reportViewModel = function (options) {
 					});
 					if (!withoutCategoryGroup) {
 						withoutCategoryGroup = {
+							isExpanded: ko.observable(true),
 							categoryId: 'without_category',
 							categoryName: '   ',
 							tables: []
