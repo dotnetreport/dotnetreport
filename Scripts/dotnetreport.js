@@ -4826,7 +4826,7 @@ var reportViewModel = function (options) {
 						});
 						if (!categoryGroup) {
 							categoryGroup = {
-								isExpanded: ko.observable(true),
+								isExpanded: ko.observable(false),
 								categoryId: category.CategoryId,
 								categoryName: category.Name,
 								tables: []
@@ -4854,8 +4854,8 @@ var reportViewModel = function (options) {
 				}
 			});
 			categorizedTables.sort((a, b) => {
-				if (a.categoryName === '   ') return 1; 
-				if (b.categoryName === '   ') return -1; 
+				if (a.categoryName === '   ') return -1; 
+				if (b.categoryName === '   ') return 1; 
 				return a.categoryName.localeCompare(b.categoryName); 
 			});
 			self.CategorizedTables(categorizedTables);

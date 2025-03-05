@@ -1193,10 +1193,10 @@
                                 <div class="col-md-12" data-bind="hidden: useStoredProc">
                                     <!-- Heading with Tooltip -->
                                     <div class="d-flex justify-content-between align-items-center mb-2" style="padding-top: 15px;">
-                                        <b>
-                                            Choose Data Section
+                                        <span>
+                                            Select Data to use in Report
                                             <i class="fa fa-info-circle text-muted" data-toggle="tooltip" title="Choose a table to show fields to select."></i>
-                                        </b>
+                                        </span>
                                     </div>
 
                                     <div id="table-tree-view" style="max-height: 400px; overflow-y: auto;">
@@ -1209,13 +1209,21 @@
                                                     <span data-bind="text: categoryName" class="ml-2"></span>
                                                 </div>
                                                 <div class="report-list" data-bind="visible: isExpanded(), foreach: tables" style="padding-left: 15px;">
-                                                    <div class="row border-bottom py-2 align-items-center w-100">
-                                                        <div class="col-md-12 d-flex align-items-center" data-bind="click: function() { $parents[2].SelectedTable($parents[2].SelectedTable() == $data ? null : $data); }" style="cursor: pointer;">
-                                                            <span class="text-secondary fa" data-bind="css: $data === $parents[2].SelectedTable() ? 'fa-chevron-down' : 'fa-chevron-right'"></span>&nbsp; 
-                                                            <span class="fa fa-table"></span>&nbsp;<span data-bind="text: tableName" class=" small" ></span>
+                                                    <div class="row border-bottom py-2 w-100">
+                                                        <div class="col-md-12">
+                                                            <div class="pull-left" data-bind="click: function() { $parents[2].SelectedTable($parents[2].SelectedTable() == $data ? null : $data); }" style="cursor: pointer;">
+                                                                <span class="text-secondary fa" data-bind="css: $data === $parents[2].SelectedTable() ? 'fa-chevron-down' : 'fa-chevron-right'"></span>&nbsp;
+                                                                <span class="fa fa-table"></span>&nbsp;<span data-bind="text: tableName" class=""></span>
+                                                            </div>
+                                                            <div class="pull-right" data-bind="visible: $data === $parents[2].SelectedTable()">
+                                                                <a href="#" class="small text-muted" data-bind="click: $parents[2].MoveAllFields, visible: !$parents[2].isFormulaField()">Select all</a> |
+                                                                <a href="#" class="small text-muted" data-bind="click: $parents[2].RemoveSelectedFields, visible: !$parents[2].isFormulaField()">Remove all</a>
+                                                            </div>
                                                         </div>
+                                                        
                                                         <!-- Fields Expand Here -->
-                                                        <div data-bind="visible: $data === $parents[2].SelectedTable(), foreach: $parents[2].ChooseFields" style="padding-left: 30px;">
+                                                        <div data-bind="visible: $data === $parents[2].SelectedTable()" style="padding-left: 30px;">
+                                                            <!-- ko foreach: $parents[2].ChooseFields -->
                                                             <div class="row border-bottom py-2 align-items-center w-100">
                                                                 <div class="checkbox">
                                                                     <label>
@@ -1224,6 +1232,7 @@
                                                                     </label>
                                                                 </div>
                                                             </div>
+                                                            <!--/ko-->
                                                         </div>
                                                     </div>
                                                 </div>
