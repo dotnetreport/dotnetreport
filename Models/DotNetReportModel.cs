@@ -2647,7 +2647,7 @@ namespace ReportBuilder.Web.Models
             return text.Length * averageCharWidthInTwips;
         }
         public static async Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
-                    string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false,string expandSqls=null, string pivotColumn = null, string pivotFunction = null)
+                    string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false, string expandSqls = null, string pivotColumn = null, string pivotFunction = null, bool debug = false)
         {
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
             await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
@@ -2658,7 +2658,7 @@ namespace ReportBuilder.Web.Models
                 if (File.Exists(executablePath)) break;
             }
 
-            var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = true, ExecutablePath = executablePath });
+            var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = !debug, ExecutablePath = executablePath });
             var page = await browser.NewPageAsync();
             await page.SetRequestInterceptionAsync(true);
 
@@ -3597,7 +3597,7 @@ namespace ReportBuilder.Web.Models
                 {
                     conn.Open();
 
-                    using (SqlCommand command = new SqlCommand(sql, conn))
+                    using (SqlCommand command = new SqlCommand(sql.Replace("{FROM}", "FROM"), conn))
                     {
                         command.CommandTimeout = 60 * 5;
                         if (parameters != null)

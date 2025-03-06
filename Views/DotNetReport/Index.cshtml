@@ -531,8 +531,13 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end">
                                     <li>
-                                        <a href="#" class="dropdown-item" data-bind="click: downloadPdf">
+                                        <a href="#" class="dropdown-item" data-bind="click: function() {downloadPdf(false);}">
                                             <i class="fa fa-file-pdf-o"></i> Pdf
+                                        </a>
+                                    </li>
+                                    <li data-bind="visible: adminMode">
+                                        <a href="#" class="dropdown-item" data-bind="click: function() {downloadPdf(true);}">
+                                            <i class="fa fa-file-pdf-o"></i> Pdf (Debug)
                                         </a>
                                     </li>
                                     <li>

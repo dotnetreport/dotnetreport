@@ -2926,6 +2926,8 @@ var reportViewModel = function (options) {
 							switch (self.ReportMode()) {
 								case 'export-pdf':
 									self.downloadPdf(); break;
+								case 'export-pdf-debug':
+									self.downloadPdf(true); break;
 								case 'export-pdfalt':
 									self.downloadPdfAlt(); break;
 								case 'export-excel':
@@ -5008,7 +5010,7 @@ var reportViewModel = function (options) {
 		}, 'pdf');
 	}
 
-	self.downloadPdf = function () {
+	self.downloadPdf = function (debug) {
 		var reportData = self.BuildReportData();
 		reportData.DrillDownRowUsePlaceholders = true;
 		var pivotData = self.preparePivotData();
@@ -5026,6 +5028,7 @@ var reportViewModel = function (options) {
 			expandSqls: JSON.stringify(reportData),
 			pivotColumn: pivotData.pivotColumn,
 			pivotFunction: pivotData.pivotFunction,
+			debug: debug === true ? true : false
 		}, 'pdf');
 	}
 
