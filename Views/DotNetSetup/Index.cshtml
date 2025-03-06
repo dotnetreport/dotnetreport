@@ -746,13 +746,14 @@
                                     </div>
 
                                     <div>
-                                        <b>Parameters</b>
+                                        <b>Arguments</b>
                                         <table class="table table-bordered">
                                             <thead>
                                                 <tr>
                                                     <th>Name</th>
                                                     <th>Display Name</th>
                                                     <th>Description</th>
+                                                    <th>Data Type</th>
                                                     <th>Required</th>
                                                     <th></th>
                                                 </tr>
@@ -765,12 +766,21 @@
                                                     </td>
                                                     <td><input class="form-control" data-bind="value: displayName, valueUpdate: 'input'" /></td>
                                                     <td><input class="form-control" data-bind="value: description, valueUpdate: 'input'" placeholder="Friendly description for user..." /></td>
+                                                    <td>
+                                                        <select class="form-select" data-bind="value: datatype">
+                                                            <option>object</option>
+                                                            <option>string</option>
+                                                            <option>int</option>
+                                                            <option>float</option>
+                                                            <option>bool</option>
+                                                        </select>
+                                                    </td>
                                                     <td><input type="checkbox" data-bind="checked: required" /></td>
                                                     <td><button class="btn btn-sm btn-danger" data-bind="click: $parent.removeParameter">Remove</button></td>
                                                 </tr>
                                             </tbody>
                                         </table>
-                                        <button class="btn btn-sm btn-primary" data-bind="click: addParameter">Add Parameter</button>
+                                        <button class="btn btn-sm btn-primary" data-bind="click: addParameter">Add Argument</button>
                                     </div>
                                     <br />
                                     <div class="mb-3">

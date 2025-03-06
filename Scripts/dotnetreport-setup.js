@@ -2392,10 +2392,24 @@ var customFunctionManageModel = function (options, keys) {
 	self.deleteFunction = function (functionModel) {
 		bootbox.confirm("Are you sure you want to delete this function?", function (result) {
 			if (result) {
-				self.functions.remove(functionModel);
-				if (self.selectedFunction() === functionModel) {
-					self.selectedFunction(null);
-				}
+				ajaxcall({
+					url: options.apiUrl,
+					type: 'POST',
+					data: JSON.stringify({
+						method: options.deleteCustomFuncUrl,
+						model: JSON.stringify({
+							account: self.keys.AccountApiKey,
+							dataConnect: self.keys.DatabaseApiKey,
+							funcId: functionModel.id()
+						})
+					})
+				}).done(function () {
+					toastr.success("Deleted Function " + functionModel.name());		
+					self.functions.remove(functionModel);
+					if (self.selectedFunction() === functionModel) {
+						self.selectedFunction(null);
+					}								
+				});
 			}
 		});
 	}
@@ -2424,6 +2438,7 @@ var customFunctionParameterModel = function (options, parentParameters) {
 	self.parameterName = ko.observable(options.ParameterName || '');
 	self.displayName = ko.observable(options.DisplayName || '').extend({ required: true });
 	self.description = ko.observable(options.Description || '');
+	self.datatype = ko.observable(options.DataType || 'object');
 	self.required = ko.observable(options.Required || true);
 	self.isValid = ko.observable(true);
 	self.errorMessage = ko.observable();
@@ -2433,12 +2448,12 @@ var customFunctionParameterModel = function (options, parentParameters) {
 
 		// Required
 		if (!self.parameterName().trim()) {
-			errors.push("Parameter name is required.");
+			errors.push("Argument name is required.");
 		}
 
 		// Format
 		if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(self.parameterName())) {
-			errors.push("Parameter name must start with a letter and can only contain alphanumeric characters and underscores.");
+			errors.push("Argument name must start with a letter and can only contain alphanumeric characters and underscores.");
 		}
 
 		// Unique
@@ -2446,7 +2461,7 @@ var customFunctionParameterModel = function (options, parentParameters) {
 			return param === self || param.parameterName() !== self.parameterName();
 		});
 		if (!isUnique) {
-			errors.push("Parameter name must be unique.");
+			errors.push("Argument name must be unique.");
 		}
 
 		self.isValid(errors.length === 0);

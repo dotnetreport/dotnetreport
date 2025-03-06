@@ -1379,44 +1379,9 @@
                                             </div>
                                         </div>
 
-                                        <div data-bind="visible: !simpleFunction()">
+                                        <div>
                                             Define your Function:
                                             <textarea id="function-code"></textarea>
-                                        </div>
-
-                                        <div data-bind="visible: simpleFunction()">
-                                            <div class="form-group row">
-                                                <label class="col-sm-2 control-label">Select Function</label>
-                                                <div class="col-sm-10">
-                                                    <div data-bind="with: textQuery.searchFunctions">
-                                                        <select id="search-function" class="form-control" data-bind="select2: {placeholder: 'Search for a Function...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults, headers: headers}, templateResult: templateResult, minimumInputLength: 2, allowClear: true }, select2Value: {value: selectedOption}"></select>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div data-bind="with: selectedFunction">
-                                                <div class="form-group row">
-                                                    <label class="col-sm-2 control-label"></label>
-                                                    <div class="col-sm-10">
-                                                        <p data-bind="text: description"></p>
-                                                        <p>
-                                                            <b>Pick values to pass for Parameters below</b>
-                                                        </p>
-                                                        <!-- ko foreach: parameters -->
-                                                        <div class="form-group row">
-                                                            <label class="col-sm-6 control-label">
-                                                                <span data-bind="text: DisplayName"></span><span data-bind="visble: Required"> (Required)</span><br />
-                                                                <span data-bind="text: Description"></span>
-
-                                                            </label>
-                                                            <div class="col-sm-6">
-                                                                <select class="form-select" data-bind="required: Required, options: $parentContext.$parent.ChooseFields, optionsText: 'fieldName', value: selectedField, optionsCaption: 'Pick a field...'"></select>
-                                                            </div>
-                                                        </div>
-                                                        <!-- /ko -->
-                                                    </div>
-                                                </div>
-
-                                            </div>
                                         </div>
                                     </div>
                                 </div>

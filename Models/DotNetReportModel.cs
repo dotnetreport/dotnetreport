@@ -213,6 +213,7 @@ namespace ReportBuilder.Web.Models
 
         public bool Required { get; set; }
         public string DefaultValue { get; set; } = "";
+        public string DataType { get; set; } = "object";
     }
 
 
@@ -1608,18 +1609,19 @@ namespace ReportBuilder.Web.Models
         {
             if (!sql.Contains("/*|")) return dataTable;
 
-            Regex regex = new Regex(@"/\*\|(.*?)\|\*/");
+            Regex regex = new Regex(@"/\*\|(.*?)\|\*/[^,]+AS\s+\[([^\]]+)\]");
             var matches = regex.Matches(sql);
 
             foreach (Match match in matches)
             {
                 string functionCall = match.Groups[1].Value;
+                string columnName = match.Groups[2].Value;
                 int columnIndex = -1;
 
                 // Find the column that contains the function call to replace it later
                 foreach (DataColumn column in dataTable.Columns)
                 {
-                    if (column.Expression.Contains(match.Value))
+                    if (column.ColumnName.Equals(columnName))
                     {
                         columnIndex = column.Ordinal;
                         break;
@@ -4659,7 +4661,7 @@ namespace ReportBuilder.Web.Models
 
         public static string GenerateFunctionCode(CustomFunctionModel model)
         {
-            string parameterList = string.Join(", ", model.Parameters.Select(p => $"string {p.ParameterName} = \"\""));
+            string parameterList = string.Join(", ", model.Parameters.Select(p => $"{(string.IsNullOrEmpty(p.DataType) ? "object" : p.DataType)} {p.ParameterName}"));
 
             return "        public static " + (string.IsNullOrEmpty(model.ResultDataType) ? "object" : model.ResultDataType)  + " " + model.Name + "(" + parameterList + ")\n" +
                    "        {\n" +

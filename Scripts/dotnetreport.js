@@ -2014,7 +2014,6 @@ var reportViewModel = function (options) {
 
 	self.isFormulaField = ko.observable(false);
 	self.isFunctionField = ko.observable(false);
-	self.simpleFunction = ko.observable(false);
 	self.formulaFields = ko.observableArray([]);
 	self.formulaFieldLabel = ko.observable('');
 	self.formulaDataFormat = ko.observable('')
@@ -2176,73 +2175,40 @@ var reportViewModel = function (options) {
 			return;
 		}
 
-		if (self.simpleFunction()) {
-			if (!self.selectedFunction()) {
-				toastr.error("Please select a function to use");
-				return;
-			}
-
-			self.formulaFields([]);
-			var func = self.selectedFunction();
-			func.parameters.forEach(function (x) {
-				var f = x.selectedField();
-				f.setupFormula.parameterId(x.Id);
-				self.formulaFields.push(f);
-			});
-
+		var input = codeEditor.getValue();
+		if (!input) {
+			toastr.error("Please define your function");
+			return;
+		}
+		ajaxcall({
+			url: options.apiUrl,
+			data: {
+				method: "/ReportApi/ValidateFunction",
+				model: JSON.stringify({
+					input: input
+				})
+			},
+			noBlocking: true
+		}).done(function (result) {
+			if (result.d) result = result.d;
+			result = result.processed;
 			var field = self.getEmptyFormulaField();
-			field.functionId = func.id;
-			field.functionName = func.text;
-
+			field.functionId = result.FunctionId;
+			field.functionName = result.FunctionName;
+			result.input = input;
+			field.fieldSettings = { functionConfig: result };
 			self.SelectedFields.push(self.setupField(field));
 			self.selectedFunction(null);
 
 			self.isFunctionField(false);
-		} else {
-			var input = codeEditor.getValue();
-			if (!input) {
-				toastr.error("Please define your function");
-				return;
-			}
-			ajaxcall({
-				url: options.apiUrl,
-				data: {
-					method: "/ReportApi/ValidateFunction",
-					model: JSON.stringify({
-						input: input
-					})
-				},
-				noBlocking: true
-			}).done(function (result) {
-				if (result.d) result = result.d;
-				result = result.processed;
-				var field = self.getEmptyFormulaField();
-				field.functionId = result.FunctionId;
-				field.functionName = result.FunctionName;
-				result.input = input;
-				field.fieldSettings = { functionConfig: result };
-				self.SelectedFields.push(self.setupField(field));
-				self.selectedFunction(null);
-
-				self.isFunctionField(false);
-			});
-		}
+		});		
 	}
 
 	self.editFormulaField = function (field) {
-		if (field.functionId()) {
-			self.simpleFunction(
-				!field.fieldSettings ||
-				!field.fieldSettings.functionConfig ||
-				Object.keys(field.fieldSettings.functionConfig).length === 0
-			);
-
-			if (!self.simpleFunction()) {
-				self.designFunctionField();
-				codeEditor.setValue(field.fieldSettings.functionConfig.input);
-			} else {
-				self.isFunctionField(true);
-			}
+		if (field.fieldSettings && field.fieldSettings.functionConfig) {
+			self.designFunctionField();
+			codeEditor.setValue(field.fieldSettings.functionConfig.input);
+			self.isFunctionField(true);	
 		}
 		else {
 			self.isFormulaField(true);
