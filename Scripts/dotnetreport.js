@@ -1818,6 +1818,16 @@ var reportViewModel = function (options) {
 	self.SelectedFields.subscribe(function (fields) {
 		setTimeout(function () {
 			self.RemoveInvalidFilters(self.FilterGroups());
+
+			const joinTableIds = fields.length > 0
+				? new Set(fields.map(field => field.joinTableIds).flat().filter(id => id))
+				: null;
+
+			self.CategorizedTables().forEach(category => {
+				category.tables.forEach(table => {
+					table.isEnabled(joinTableIds ? joinTableIds.has(table.tableId) || table.dynamicColumns : true);
+				});
+			});
 		}, 500);
 
 		var newField = fields.length > 0 ? fields[fields.length - 1] : null;
@@ -1931,6 +1941,8 @@ var reportViewModel = function (options) {
 			});
 		}
 		else { 
+			const tableIds = self.SelectedFields().map(field => field.tableId).join(',');
+
 			return ajaxcall({
 				url: options.apiUrl,
 				data: {
@@ -1938,6 +1950,7 @@ var reportViewModel = function (options) {
 					model: JSON.stringify({
 						tableId: table.tableId,
 						includeDoNotDisplay: false,
+						otherTableIds: tableIds
 					})
 				}
 			}).done(function (fields) {
@@ -2396,7 +2409,7 @@ var reportViewModel = function (options) {
 	self.allSqlQueries = ko.observable("");
 
 	self.canAddSeries = ko.computed(function () {
-		var c1 = self.dateFields().length > 0 && ['Summary', 'Bar', 'Line', 'Single'].indexOf(self.ReportType()) >= 0 && self.SelectedFields()[0].fieldType == 'DateTime';
+		var c1 = self.dateFields().length > 0 && ['Summary', 'Bar', 'Line', 'Single'].indexOf(self.ReportType()) >= 0 && self.SelectedFields().length > 0 && self.SelectedFields()[0].fieldType == 'DateTime';
 		var c2 = _.filter(self.FilterGroups(), function (g) { return _.filter(g.Filters(), function (x) { return x.Operator() == 'range' && x.Value() && x.Value().indexOf('This') == 0; }).length > 0; }).length > 0;
 		return c1 && c2;
 	});
@@ -4819,6 +4832,12 @@ var reportViewModel = function (options) {
 			self.Tables(tables);
 			const categorizedTables = [];
 			tables.forEach(function (table) {
+				table.isEnabled = ko.observable(true);
+				table.selectTable = function (data) {
+					if (table.isEnabled()) {
+						self.SelectedTable(self.SelectedTable() == data ? null : data)
+					}
+				}
 				if (table.tableCategories && table.tableCategories.length > 0) {
 					table.tableCategories.forEach(function (category) {
 						let categoryGroup = categorizedTables.find(function (cat) {
