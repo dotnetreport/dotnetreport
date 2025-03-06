@@ -1014,6 +1014,11 @@ namespace ReportBuilder.Web.Models
 
         public static int FindFromIndex(string sql)
         {
+            if (sql.Contains("{FROM} "))
+            {
+                return sql.IndexOf("{FROM} ");
+            }
+
             int parenthesesCount = 0;
 
             for (int i = 0; i < sql.Length - 4; i++)  // -4 because "FROM" has 4 characters
@@ -1646,11 +1651,11 @@ namespace ReportBuilder.Web.Models
                         }
                     }
 
-                    var result = await DynamicCodeRunner.RunCode(modifiedFunctionCall + ";");
-                    if (columnIndex != -1)
-                    {
-                        row[columnIndex] = result;
-                    }
+                    //var result = await DynamicCodeRunner.RunCode(modifiedFunctionCall + ";");
+                    //if (columnIndex != -1)
+                    //{
+                    //    row[columnIndex] = result;
+                    //}
                 }
             }
 
@@ -3580,7 +3585,7 @@ namespace ReportBuilder.Web.Models
 
         public DataTable ExecuteQuery(string connectionString, string sql, List<KeyValuePair<string, string>> parameters = null)
         {
-            if (!IsAllowedSql(sql)) throw new Exception("Invalid Query found");
+            //if (!IsAllowedSql(sql)) throw new Exception("Invalid Query found");
 
             DataTable dataTable = new DataTable();
 

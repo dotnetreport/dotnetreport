@@ -1825,7 +1825,7 @@ var reportViewModel = function (options) {
 
 			self.CategorizedTables().forEach(category => {
 				category.tables.forEach(table => {
-					table.isEnabled(joinTableIds ? joinTableIds.has(table.tableId) || table.dynamicColumns : true);
+					table.isEnabled(joinTableIds && joinTableIds.length > 0 ? joinTableIds.has(table.tableId) || !table.tableId || table.dynamicColumns : true);
 				});
 			});
 		}, 500);
