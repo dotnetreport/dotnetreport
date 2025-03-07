@@ -416,7 +416,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                     'fa-random': reportType=='Pivot',
                                                     'fa-window-restore': reportType=='Treemap'
                                                 }"></span>
-                                                    <a class="ms-2" data-bind="click: runReport, text: reportName" style="cursor: pointer"></a>&nbsp;
+                                                    <a class="ms-2" data-bind="click: runReport, highlightedText: { text: reportName, highlight: $parent.searchReports, css: 'highlight' }" style="cursor: pointer"></a>&nbsp;
                                                     <span data-bind="text: message" class="highlight small"></span>
                                                 </div>
 
