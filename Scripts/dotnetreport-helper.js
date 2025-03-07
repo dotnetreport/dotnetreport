@@ -234,7 +234,7 @@ ko.bindingHandlers.checkedInArray = {
                 checked = element.checked;
             if (value && value.dynamicTableId !== null && value.fieldId === 0) {
                 var arraylist = ko.utils.unwrapObservable(array);
-                var matchingItem = arraylist.find(item => item.fieldName === value.fieldName && item.dynamicTableId === dynamicTableId);
+                var matchingItem = arraylist.find(item => item.fieldName === value.fieldName && item.dynamicTableId === value.dynamicTableId);
                 value = matchingItem || value;
             }
             ko.utils.addOrRemoveItem(array, value, checked);
@@ -246,7 +246,7 @@ ko.bindingHandlers.checkedInArray = {
             value = ko.utils.unwrapObservable(options.value);
             isChecked = ko.utils.arrayIndexOf(array, value) >= 0;
         if (value && value.dynamicTableId !== null && value.fieldId === 0) {
-            var matchingItem = array.find(item => item.fieldName === value.fieldName && item.dynamicTableId === dynamicTableId);
+            var matchingItem = array.find(item => item.fieldName === value.fieldName && item.dynamicTableId === value.dynamicTableId);
             if (matchingItem) {
                 isChecked = true;
             }
