@@ -2263,6 +2263,14 @@ var reportViewModel = function (options) {
 			}
 		}
 
+		var invalidFields = _.filter(self.formulaFields(), function (e) {
+			return e.fieldId === 0 && e.dynamicTableId != null && e.dynamicTableId !== 0;
+		});
+		if (invalidFields.length > 0) {
+			var fieldNames = invalidFields.map(f => f.fieldName).join(', ');
+			toastr.error(`Fields with dynamicField cannot be added: ${fieldNames}. Please remove them.`);
+			return;
+		}
 		if (!self.validateReport(true)) {
 			toastr.error("Please correct validation issues");
 			return;
