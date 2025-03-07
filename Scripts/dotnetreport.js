@@ -2829,7 +2829,11 @@ var reportViewModel = function (options) {
 		});
 	};
 
-	self.RunReport = function (saveOnly, skipValidation, dashboardRun,importJson) {
+	self.RunReportSqlPreview = function () {
+		self.RunReport(false, false, null, null, true);
+	}
+
+	self.RunReport = function (saveOnly, skipValidation, dashboardRun, importJson, previewOnly) {
 		self.ReportResult().HasError(false);
 		self.OuterGroupColumns([]);
 		saveOnly = saveOnly === true ? true : false;
@@ -2876,7 +2880,7 @@ var reportViewModel = function (options) {
 						type: "POST",
 						data: JSON.stringify({
 							method: "/ReportApi/RunReport",
-							SaveReport: self.CanSaveReports() && !isComparison ? (saveOnly || self.SaveReport()) : false,
+							SaveReport: self.CanSaveReports() && !isComparison && previewOnly !== true ? (saveOnly || self.SaveReport()) : false,
 							ReportJson: importJson ? JSON.stringify(importJson) : JSON.stringify(self.BuildReportData([], isComparison, i - 1)),
 							adminMode: self.adminMode(),
 							userIdForFilter: self.userIdForFilter,
@@ -2886,12 +2890,11 @@ var reportViewModel = function (options) {
 					}).done(function (result) {
 						if (result.d) { result = result.d; }
 						if (result.result) { result = result.result; }
-						_result = result;
+						_result = result;						
 						self.allSqlQueries(self.allSqlQueries() + (self.allSqlQueries() ? ',' : '') + result.sql);
 
 						self.ReportID(result.reportId);
-						if (self.SaveReport() || saveOnly) {
-
+						if (previewOnly !== true && (self.SaveReport() || saveOnly)) {
 							if (saveOnly && seriesCount === 0) {
 								//SeriesCount = 0;
 								toastr.success("Report Saved");
@@ -2901,10 +2904,10 @@ var reportViewModel = function (options) {
 						}
 
 						if (!saveOnly) {
-							if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard") {
+							if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard" || previewOnly === true) {
 
 								isExecuteReportQuery = true;
-								self.ExecuteReportQuery(result.sql, result.connectKey, self.ReportSeries);
+								self.ExecuteReportQuery(result.sql, result.connectKey, self.ReportSeries, previewOnly);
 							}
 						}
 					}));
@@ -2912,6 +2915,10 @@ var reportViewModel = function (options) {
 				}
 				while (i < seriesCount + 1);
 				$.when.apply($, promises).done(function () {
+					if (previewOnly === true) {
+						$("#sqlModal").modal('show');
+						return;
+					}
 					options.reportWizard.modal('hide');
 
 					if (isExecuteReportQuery === false) {
@@ -2944,12 +2951,12 @@ var reportViewModel = function (options) {
 							return;
 						}
 						self.LoadAllSavedReports(true);
-				if (options.samePageOnRun || dashboardRun) {
-					self.ReportID(_result.reportId);
-					self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, _.map(self.AdditionalSeries(), function (e, i) {
-						return e.Value();
-					}).join(','));
-					self.ReportMode("execute");
+						if (options.samePageOnRun || dashboardRun) {
+							self.ReportID(_result.reportId);
+							self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, _.map(self.AdditionalSeries(), function (e, i) {
+								return e.Value();
+							}).join(','));
+							self.ReportMode("execute");
 
 							if (self.useReportHeader()) {
 								self.headerDesigner.init(true);
@@ -2986,17 +2993,17 @@ var reportViewModel = function (options) {
 		self.processReportResult(options.reportData, options.reportSql, options.reportConnect, options.ReportSeries);
 	}
 
-	self.processReportResult = function (result, reportSql, connectKey, reportSeries) {
+	self.processReportResult = function (result, reportSql, connectKey, reportSeries, previewOnly) {
 
 		var reportResult = self.ReportResult();
 		reportResult.HasError(result.HasError);
 		reportResult.Exception(result.Exception);
 		reportResult.Warnings(result.Warnings);
 		reportResult.ReportDebug(result.ReportDebug);
-		reportResult.ReportSql(beautifySql(result.ReportSql));
+		reportResult.ReportSql(beautifySql(result.ReportSql, true));
 		self.ReportSeries = reportSeries;
 		self.OuterGroupColumns([]);
-		if (result.HasError) return;
+		if (result.HasError || previewOnly === true) return;
 
 		function matchColumnName(src, dst, dbSrc, dbDst, agg) {
 			if (src == dst) return true;
@@ -3624,7 +3631,7 @@ var reportViewModel = function (options) {
 	}
 	self.ChartDrillDownData = ko.observable();
 
-	self.ExecuteReportQuery = function (reportSql, connectKey, reportSeries,isPageSizeClick=false) {
+	self.ExecuteReportQuery = function (reportSql, connectKey, reportSeries,isPageSizeClick=false, previewOnly=false) {
 		if (!reportSql || !connectKey) return;
 		self.ChartData('');
 		self.ReportResult().ReportData(null);
@@ -3660,7 +3667,7 @@ var reportViewModel = function (options) {
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
 			if (result.result) { result = result.result; }
-			self.processReportResult(result, reportSql, connectKey, reportSeries);
+			self.processReportResult(result, reportSql, connectKey, reportSeries, previewOnly);
 		});
 	};
 
@@ -4841,8 +4848,8 @@ var reportViewModel = function (options) {
 				}
 			});
 			categorizedTables.sort((a, b) => {
-				if (a.categoryName === '   ') return -1; 
-				if (b.categoryName === '   ') return 1; 
+				if (a.categoryName === '   ') return 1; 
+				if (b.categoryName === '   ') return -1; 
 				return a.categoryName.localeCompare(b.categoryName); 
 			});
 			self.CategorizedTables(categorizedTables);

@@ -725,26 +725,6 @@ Its Recommended you use it as is, and only change styling as needed to match you
     </div>
 </div>
 
-<div class="modal" id="sqlModal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header d-flex justify-content-between align-items-center">
-                <h4 class="modal-title">Report Code</h4>
-                <button class="btn btn-outline-secondary btn-sm d-flex align-items-center"
-                        data-bind="click: function(data, event) { copySqlToClipboard(event.target); }">
-                    <i class="fa fa-clipboard"></i> Copy
-                </button>
-                <button type="button" class="btn-close pull-right" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body" data-bind="with: ReportResult">
-                <div style="overflow-x: auto; max-height: 500px; overflow-y: scroll; border: 1px solid; padding: 10px;" class="bg-dark text-light">
-                    <pre><code id="reportSqlCode" data-bind="html: ReportSql" style="white-space: pre-wrap;"></code></pre>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Report Builder -->
 <div class="modal modal-fullscreen" id="modal-reportbuilder" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="padding-right: 0px !important;">
     <div data-bind="template: {name: 'report-designer', data: $data}"></div>
