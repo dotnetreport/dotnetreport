@@ -333,14 +333,14 @@ function filterGroupViewModel(args) {
 		}
 
 		if (e.Value1) {
-			if (e.Operator !== 'range') {
+			if (typeof e.Value1 === 'string' && e.Operator !== 'range') {
 				[datePart1, timePart1] = e.Value1.split(" ");
 				e.Value1 = datePart1;
 			}
 			lookupList.push({ id: e.Value1, text: e.Value1 });
 		}
 		if (e.Value2) {
-			if (e.Operator !== 'range') {
+			if (typeof e.Value2 === 'string' && e.Operator !== 'range') {
 				[datePart2, timePart2] = e.Value2.split(" ");
 				e.Value2 = datePart2;
 			}
@@ -362,6 +362,7 @@ function filterGroupViewModel(args) {
 			ParentIn: ko.observableArray(parentIn),
 			Apply: ko.observable(e.Apply != null ? e.Apply : true),
 			IsFilterOnFly: isFilterOnFly === true ? true : false,
+			IsConditionalFilter: e.IsConditionalFilter===true?true:false,
 			showParentFilter: ko.observable(true),
 			fmtValue: ko.observable(e.Value1),
 			fmtValue2: ko.observable(e.Value2),
@@ -2097,7 +2098,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.selectedFieldsCanFilter = ko.computed(function () {
-		return _.filter(self.SelectedFields(), function (x) { return !x.isFormulaField(); });
+		return _.filter(self.SelectedFields(), function (x) { return x.tableId !== 0 && !x.isFormulaField() });
 	});
 
 	self.clearFormulaField = function () {
@@ -2263,6 +2264,14 @@ var reportViewModel = function (options) {
 			}
 		}
 
+		var invalidFields = _.filter(self.formulaFields(), function (e) {
+			return e.fieldId === 0 && e.dynamicTableId != null && e.dynamicTableId !== 0;
+		});
+		if (invalidFields.length > 0) {
+			var fieldNames = invalidFields.map(f => f.fieldName).join(', ');
+			toastr.error(`Fields with dynamicField cannot be added: ${fieldNames}. Please remove them.`);
+			return;
+		}
 		if (!self.validateReport(true)) {
 			toastr.error("Please correct validation issues");
 			return;
@@ -3272,6 +3281,19 @@ var reportViewModel = function (options) {
 							case '=':
 								conditionTrue = value == compareTo;
 								break;
+							case 'in':
+								var compareArray = typeof compareTo === "string" ? compareTo.split(",") : [compareTo];
+								compareArray = compareArray.map(item => item.trim());
+								conditionTrue = compareArray.includes(value);
+								break;
+							case 'not in':
+								var compareArray = typeof compareTo === "string" ? compareTo.split(",") : [compareTo];
+								compareArray = compareArray.map(item => item.trim());
+								conditionTrue = !compareArray.includes(value);
+								break;
+							case 'all':
+								conditionTrue = true;
+								break;
 							case 'like':
 								conditionTrue = dataIsNumeric ? false : value.includes(compareTo);
 								break;
@@ -3914,7 +3936,7 @@ var reportViewModel = function (options) {
 			// Add click event listener
 			google.visualization.events.addListener(chart, 'select', function () {
 				var selectedItem = chart.getSelection()[0];
-				if (selectedItem && selectedItem.row) {
+				if (selectedItem && selectedItem.row !=null) {
 					self.ChartDrillDownData(null);
 					self.ReportResult().ReportData().Rows[selectedItem.row].expand();
 					$("#drilldownModal").modal('show');
@@ -4043,7 +4065,11 @@ var reportViewModel = function (options) {
 		}
 		e.selectedFieldName = e.tableName + " > " + e.fieldName + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
 		e.selectedFilterName = e.tableName + " > " + (e.fieldLabel || e.fieldName) + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
-		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail').concat('Group in Detail').concat('Pivot').concat('Max').concat('Csv');
+		if (e.fieldId === 0 && e.dynamicTableId != null) {
+			e.fieldAggregateWithDrilldown = ['Only in Detail','Max', 'Count'];
+		} else {
+			e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail').concat('Group in Detail').concat('Pivot').concat('Max').concat('Csv');
+		}
 		e.selectedAggregate = ko.observable(e.aggregateFunction);
 		e.filterOnFly = ko.observable(e.filterOnFly);
 		e.disabled = ko.observable(e.disabled);
@@ -4095,7 +4121,8 @@ var reportViewModel = function (options) {
 				Value1: f.value || '',
 				Value2: f.value2 || '',
 				Valuetime: f.valuetime || '',
-				Valuetime2: f.valuetime2 || ''
+				Valuetime2: f.valuetime2 || '',
+				IsConditionalFilter:true
 			});
 			e.fieldCondtionalFormats.push({
 				fontColor: ko.observable(f.fontColor || ''),
@@ -5923,6 +5950,38 @@ var dashboardViewModel = function (options) {
 			reportdata: JSON.stringify(allreports)
 		}, 'xlsx', 'CombinedReport');
 	}
+	self.ExportAllExcelExpandedReports = function () {
+		const reports = self.reports();
+		var expandedReport = _.filter(self.reports(), function (x) { return x.canDrilldown() == true});
+		const allreports = [];
+		_.forEach(expandedReport, function (report) {
+			const reportData = report.BuildReportData();
+			reportData.DrillDownRowUsePlaceholders = true;
+			const pivotData = report.preparePivotData();
+			var hasOnlyAndGroupInDetail = _.find(report.SelectedFields(), function (x) { return x.selectedAggregate() == 'Only in Detail' || x.selectedAggregate() == 'Group in Detail' }) != null;
+			var onlyAndGroupInDetailColumnDetails = _.filter(report.SelectedFields(), function (x) { return x.selectedAggregate() === 'Only in Detail' || x.selectedAggregate() == 'Group in Detail'; });
+			allreports.push({
+				reportSql: report.currentSql(),
+				connectKey: report.currentConnectKey(),
+				reportName: report.ReportName(),
+				expandAll:true,
+				expandSqls: JSON.stringify(reportData),
+				chartData: report.ChartData() || '',
+				columnDetails: report.getColumnDetails(),
+				includeSubTotal: report.IncludeSubTotal(),
+				pivot: report.ReportType() == 'Pivot',
+				pivotColumn: pivotData.pivotColumn,
+				pivotFunction: pivotData.pivotFunction,
+				onlyAndGroupInColumnDetail: hasOnlyAndGroupInDetail ? JSON.stringify(onlyAndGroupInDetailColumnDetails) : null,
+			});
+		});
+		reports[0]?.downloadExport("DownloadAllExcel", {
+			reportdata: JSON.stringify(allreports)
+		}, 'xlsx', 'CombinedReport');
+	}
+	self.canDrilldown = ko.computed(function () {
+		return _.find(self.reports(), function (x) { return x.canDrilldown() == true }) != null;
+	});
 	self.ExportAllWordReports = function () {
 		const reports = self.reports();
 		const allreports = [];

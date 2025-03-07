@@ -109,7 +109,7 @@
                 <thead>
                     <tr class="no-highlight">
                         <!-- ko foreach: Columns -->
-                        <th data-bind="attr: { id: fieldId }, css: {'right-align': IsNumeric}, style: {'width': fieldWidth, 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
+                        <th data-bind="attr: { id: fieldId }, css: {'right-align': IsNumeric}, style: {'width': fieldWidth, 'background-color': headerBackColor }" style="border-right: 1px solid;">
                             <!-- ko if: $root.useStoredProc() -->
                             <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
                             <!-- /ko -->
@@ -131,7 +131,7 @@
                     <!-- ko foreach: Rows  -->
                     <tr>
                         <!-- ko foreach: Items -->
-                        <td data-bind="hidden: outerGroup, style: {'background-color': _backColor != 'none' ? backColor() : '', 'color': _fontColor != 'none' ? fontColor() : '', 'font-weight': fontBold() && _fontBold != 'none' ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '48px' : ''}">
+                        <td data-bind="style: {'background-color': _backColor != 'none' ? backColor() : '', 'color': _fontColor != 'none' ? fontColor() : '', 'font-weight': fontBold() && _fontBold != 'none' ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '48px' : ''}">
                             <!-- ko if: LinkTo-->
                                 <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: FormattedValue"></span></a>
                             <!-- /ko-->
