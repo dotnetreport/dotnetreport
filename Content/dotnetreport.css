@@ -1309,3 +1309,184 @@ tfoot tr.sub-total {
     .dropdown-menu.small a {
        
     }
+
+.file-explorer-container {
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 10px;
+}
+
+.breadcrumb {
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.file-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+    .file-table th, .file-table td {
+        vertical-align: middle;
+        padding: 8px;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .file-table th {
+        background-color: #f8f9fa;
+    }
+
+    .file-table .fa {
+        font-size: 18px;
+    }
+
+.clickable {
+    cursor: pointer;
+}
+
+.empty-message {
+    text-align: center;
+    padding: 15px;
+    font-weight: bold;
+    color: #777;
+}
+
+.dropdown-submenu {
+    position: relative;
+}
+
+    .dropdown-submenu .dropdown-menu {
+        display: none;
+        position: absolute;
+        left: 100%;
+        top: 0;
+        margin-top: -5px;
+        min-width: 180px;
+    }
+
+    .dropdown-submenu:hover .dropdown-menu {
+        display: block;
+    }
+.pager-container {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 3px;
+}
+
+.pager-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px; 
+    height: 28px; 
+    font-size: 14px;
+    text-decoration: none;
+    border-radius: 5px;
+    text-align: center;
+    font-weight: bold;
+    padding: 2px 4px;
+}
+
+    .pager-btn:disabled,
+    .pager-btn[disabled] {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+
+.pager-control {
+    width: 55px;
+    height: 28px; 
+    font-size: 14px;
+    padding: 3px 5px;
+    border-radius: 5px;
+    appearance: none;
+    text-align: center;
+}
+
+.zoom-level {
+    font-size: 14px;
+    font-weight: bold;
+    padding: 0 8px;
+    display: inline-block;
+    min-width: 40px;
+    text-align: center;
+}
+
+.report-inner {
+    transition: transform 0.2s ease-in-out;
+}
+
+
+.rule-container .form-control {
+    min-width: 100%;
+}
+
+.rule-container select {
+    min-width: 100%;
+}
+
+.rule-container .col-md-1 {
+    min-width: 60px; /* Ensures space for And/Or dropdown */
+}
+
+    .rule-container .col-md-1 .form-select {
+        padding: 5px 3px;
+    }
+
+    .rule-container .col-md-1 .form-control {
+        padding: 5px 3px;
+    }
+
+.rule-container .btn {
+    white-space: nowrap;
+}
+
+.rule-container .d-flex {
+    gap: 5px;
+}
+
+.btn-sm i {
+    vertical-align: middle;
+}
+
+@media (max-width: 768px) {
+    .rule-container .row {
+        flex-wrap: wrap;
+    }
+
+    .rule-container .col-md-1 {
+        width: 100%;
+        text-align: center;
+        margin-bottom: 5px;
+    }
+
+        .rule-container .col-md-1 select {
+            width: auto;
+            display: inline-block;
+        }
+
+        .rule-container .col-md-1 .form-control {
+            width: auto;
+        }
+
+        .rule-container .col-md-1 .btn {
+            display: block;
+            width: auto;
+            margin: auto;
+        }
+
+            .rule-container .col-md-1 .btn i {
+                display: inline-block;
+            }
+}
+
+.rule-container .row {
+    margin-left: -3px;
+    margin-right: -3px;
+}
+
+.rule-container [class^="col-"] {
+    padding-left: 3px;
+    padding-right: 3px;
+}

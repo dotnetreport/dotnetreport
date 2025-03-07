@@ -64,6 +64,7 @@ var manageViewModel = function (options) {
 	self.foundProcedures = ko.observableArray([]);
 	self.searchProcedureTerm = ko.observable("");
 	self.Joins = ko.observableArray([]);
+
 	self.currentConnectionKey = ko.observable(self.keys.DatabaseApiKey);
 	self.canSwitchConnection = ko.computed(function () {
 		return self.currentConnectionKey() != self.keys.DatabaseApiKey;
@@ -101,6 +102,25 @@ var manageViewModel = function (options) {
 				&& (!joinTableFilter || !x.OtherTable() || x.OtherTable().DisplayName().toLowerCase().indexOf(joinTableFilter.toLowerCase()) >= 0)
 				&& (!joinFieldFilter || !x.JoinFieldName() || x.JoinFieldName().toLowerCase().indexOf(joinFieldFilter.toLowerCase()) >= 0);
 		});
+	});
+
+
+	self.joinsPager = new pagerViewModel({ autoPage: true });
+
+	self.pagedJoins = ko.computed(function () {
+		var joins = self.filteredJoins();
+
+		var pageNumber = self.joinsPager.currentPage();
+		var pageSize = self.joinsPager.pageSize();
+
+		var startIndex = (pageNumber - 1) * pageSize;
+		var endIndex = startIndex + pageSize;
+		return joins.slice(startIndex, endIndex < joins.length ? endIndex : joins.length);
+	});
+
+	self.filteredJoins.subscribe(function (x) {
+		self.joinsPager.totalRecords(x.length);
+		self.joinsPager.currentPage(1);
 	});
 
 	self.JoinTypes = ["INNER", "LEFT", "LEFT OUTER", "RIGHT", "RIGHT OUTER"];
@@ -162,80 +182,386 @@ var manageViewModel = function (options) {
 		});
 		self.sortDirection.joinField(!direction);
 	};
+
+	self.visualizeJoins = function () {
+		$("#joinModal").modal("show");
+
+		setTimeout(function () {
+			var tables = self.Tables.availableTables() || [];
+			var joins = self.Joins() || [];
+
+			tables.sort(function (a, b) {
+				return a.TableName().localeCompare(b.TableName());
+			});
+
+			var joinedColsMap = {};
+			joins.forEach(function (j) {
+				if (!joinedColsMap[j.TableId()]) joinedColsMap[j.TableId()] = new Set();
+				joinedColsMap[j.TableId()].add(j.FieldName());
+				if (!joinedColsMap[j.JoinedTableId()]) joinedColsMap[j.JoinedTableId()] = new Set();
+				joinedColsMap[j.JoinedTableId()].add(j.JoinFieldName());
+			});
+
+			var container = document.getElementById("joinDiagram");
+			container.innerHTML = "";
+
+			var svgNS = "http://www.w3.org/2000/svg";
+			var svg = document.createElementNS(svgNS, "svg");
+			svg.style.position = "absolute";
+
+			var defs = document.createElementNS(svgNS, "defs");
+			var marker = document.createElementNS(svgNS, "marker");
+			marker.setAttribute("id", "arrow");
+			marker.setAttribute("viewBox", "0 0 10 10");
+			marker.setAttribute("refX", "10");
+			marker.setAttribute("refY", "5");
+			marker.setAttribute("markerWidth", "5");
+			marker.setAttribute("markerHeight", "5");
+			marker.setAttribute("orient", "auto");
+			var arrowPath = document.createElementNS(svgNS, "path");
+			arrowPath.setAttribute("d", "M0,0 L10,5 L0,10 Z");
+			arrowPath.setAttribute("fill", "#999");
+			marker.appendChild(arrowPath);
+			defs.appendChild(marker);
+			svg.appendChild(defs);
+			container.appendChild(svg);
+
+			var tableWidth = 220;
+			var rowHeight = 18;
+			var titleHeight = 20;
+			var sideMargin = 20;
+			var spacingX = 30;
+			var spacingY = 30;
+
+			// We'll place N tables per row
+			var containerWidth = container.clientWidth;
+			// If the container is 0 at the start, you might need a fallback, e.g. 800
+			if (containerWidth === 0) containerWidth = 800;
+
+			var columnsPerRow = Math.max(1, Math.floor((containerWidth - sideMargin * 2) / (tableWidth + spacingX)));
+
+			var offsetX = sideMargin;
+			var offsetY = sideMargin;
+			var currentColCount = 0;
+			var rowMaxHeight = 0;
+
+			var tableData = [];
+
+			tables.forEach(function (t, index) {
+				var name = t.TableName();
+				var cols = t.Columns() || [];
+				var boxHeight = 30 + (cols.length * rowHeight);
+
+				var g = document.createElementNS(svgNS, "g");
+				g.style.cursor = "move";
+
+				var rect = document.createElementNS(svgNS, "rect");
+				rect.classList.add("main-rect");
+				rect.setAttribute("x", offsetX);
+				rect.setAttribute("y", offsetY);
+				rect.setAttribute("width", tableWidth);
+				rect.setAttribute("height", boxHeight);
+				rect.setAttribute("fill", "#fff");
+				rect.setAttribute("stroke", "#333");
+				rect.setAttribute("stroke-width", "1");
+				g.appendChild(rect);
+
+				var title = document.createElementNS(svgNS, "text");
+				title.setAttribute("x", offsetX + 5);
+				title.setAttribute("y", offsetY + 15);
+				title.style.fontSize = "14px";
+				title.style.fontWeight = "bold";
+				title.setAttribute("fill", "#000");
+				title.textContent = name;
+				g.appendChild(title);
+
+				var sep = document.createElementNS(svgNS, "line");
+				sep.setAttribute("x1", offsetX);
+				sep.setAttribute("x2", offsetX + tableWidth);
+				sep.setAttribute("y1", offsetY + 25);
+				sep.setAttribute("y2", offsetY + 25);
+				sep.setAttribute("stroke", "#333");
+				g.appendChild(sep);
+
+				var colPositions = [];
+
+				cols.forEach(function (c, idx2) {
+					var colY = offsetY + 25 + titleHeight + (idx2 * rowHeight);
+					var colX = offsetX + 5;
+					var highlight = joinedColsMap[t.Id()] && joinedColsMap[t.Id()].has(c.ColumnName());
+
+					if (highlight) {
+						var bgRect = document.createElementNS(svgNS, "rect");
+						bgRect.setAttribute("x", offsetX);
+						bgRect.setAttribute("y", colY - rowHeight + 8);
+						bgRect.setAttribute("width", tableWidth);
+						bgRect.setAttribute("height", rowHeight);
+						bgRect.setAttribute("fill", "#ffffcc");
+						g.appendChild(bgRect);
+					}
+
+					var colText = document.createElementNS(svgNS, "text");
+					colText.setAttribute("x", colX);
+					colText.setAttribute("y", colY);
+					colText.setAttribute("font-size", "12");
+					colText.setAttribute("fill", "#000");
+					colText.textContent = c.ColumnName();
+					if (highlight) colText.classList.add("column-selected");
+					g.appendChild(colText);
+
+					colPositions.push({
+						name: c.ColumnName(),
+						x: colX,
+						y: colY
+					});
+				});
+
+				svg.appendChild(g);
+
+				tableData.push({
+					table: t,
+					g: g,
+					x: offsetX,
+					y: offsetY,
+					width: tableWidth,
+					height: boxHeight,
+					columns: colPositions
+				});
+
+				rowMaxHeight = Math.max(rowMaxHeight, boxHeight);
+				currentColCount++;
+
+				if (currentColCount === columnsPerRow || index === tables.length - 1) {
+					offsetY += rowMaxHeight + spacingY;
+					offsetX = sideMargin;
+					rowMaxHeight = 0;
+					currentColCount = 0;
+				} else {
+					offsetX += (tableWidth + spacingX);
+				}
+			});
+
+			// Now we know how far we extended offsetY
+			// If there's a partial row, rowMaxHeight might be 0, so let's just ensure we add sideMargin
+			var totalDiagramHeight = offsetY + rowMaxHeight + sideMargin;
+			if (totalDiagramHeight < 800) totalDiagramHeight = 800; // minimum or use the largest offset
+			svg.setAttribute("width", containerWidth);
+			svg.setAttribute("height", totalDiagramHeight);
+
+			var lines = [];
+			joins.forEach(function (j) {
+				var t1 = tableData.find(function (td) { return td.table.Id() === j.TableId(); });
+				var t2 = tableData.find(function (td) { return td.table.Id() === j.JoinedTableId(); });
+				if (!t1 || !t2) return;
+
+				var col1 = t1.columns.find(function (c) { return c.name === j.FieldName(); });
+				var col2 = t2.columns.find(function (c) { return c.name === j.JoinFieldName(); });
+				if (!col1 || !col2) return;
+
+				var line = document.createElementNS(svgNS, "line");
+				line.setAttribute("x1", col1.x - 10);
+				line.setAttribute("y1", col1.y - 4);
+				line.setAttribute("x2", col2.x - 10);
+				line.setAttribute("y2", col2.y - 4);
+				line.setAttribute("stroke", "#999");
+				line.setAttribute("stroke-width", "1.5");
+				line.setAttribute("marker-end", "url(#arrow)");
+				svg.appendChild(line);
+
+				lines.push({
+					element: line,
+					t1: t1,
+					t2: t2,
+					col1: col1,
+					col2: col2
+				});
+			});
+
+			function clearSelection() {
+				tableData.forEach(function (td) {
+					td.g.classList.remove("table-selected");
+				});
+				lines.forEach(function (l) {
+					l.element.classList.remove("line-highlight");
+				});
+			}
+
+			function highlightTable(data) {
+				data.g.classList.add("table-selected");
+				lines.forEach(function (l) {
+					if (l.t1 === data || l.t2 === data) {
+						l.element.classList.add("line-highlight");
+					}
+				});
+			}
+
+			function onMouseDown(e) {
+				clearSelection();
+				var g = e.currentTarget;
+				g._dragging = true;
+				g._startX = e.offsetX;
+				g._startY = e.offsetY;
+				var data = tableData.find(function (td) { return td.g === g; });
+				highlightTable(data);
+			}
+
+			function onMouseUp(e) {
+				e.currentTarget._dragging = false;
+			}
+
+			function onMouseMove(e) {
+				var g = e.currentTarget;
+				if (!g._dragging) return;
+				var dx = e.offsetX - g._startX;
+				var dy = e.offsetY - g._startY;
+				g._startX = e.offsetX;
+				g._startY = e.offsetY;
+				var data = tableData.find(function (td) { return td.g === g; });
+				data.x += dx;
+				data.y += dy;
+
+				var rect = g.querySelector("rect.main-rect");
+				rect.setAttribute("x", data.x);
+				rect.setAttribute("y", data.y);
+
+				var allText = g.querySelectorAll("text");
+				if (allText.length) {
+					var titleText = allText[0];
+					titleText.setAttribute("x", data.x + 5);
+					titleText.setAttribute("y", data.y + 15);
+
+					var sepLine = g.querySelector("line");
+					if (sepLine) {
+						sepLine.setAttribute("x1", data.x);
+						sepLine.setAttribute("x2", data.x + data.width);
+						sepLine.setAttribute("y1", data.y + 25);
+						sepLine.setAttribute("y2", data.y + 25);
+					}
+				}
+
+				data.columns.forEach(function (c, i) {
+					c.x = data.x + 5;
+					c.y = data.y + 25 + titleHeight + i * rowHeight;
+					allText[i + 1].setAttribute("x", c.x);
+					allText[i + 1].setAttribute("y", c.y);
+				});
+
+				var highlightRects = Array.prototype.filter.call(
+					g.querySelectorAll("rect"),
+					function (r) { return !r.classList.contains("main-rect"); }
+				);
+				highlightRects.forEach(function (r, i) {
+					var newY = data.y + 25 + titleHeight + i * rowHeight - rowHeight + 8;
+					r.setAttribute("x", data.x);
+					r.setAttribute("y", newY);
+				});
+
+				// Update lines
+				lines.forEach(function (l) {
+					if (l.t1 === data || l.t2 === data) {
+						var cx1 = l.col1.x - 10;
+						var cy1 = l.col1.y - 4;
+						var cx2 = l.col2.x - 10;
+						var cy2 = l.col2.y - 4;
+						l.element.setAttribute("x1", cx1);
+						l.element.setAttribute("y1", cy1);
+						l.element.setAttribute("x2", cx2);
+						l.element.setAttribute("y2", cy2);
+					}
+				});
+			}
+
+			tableData.forEach(function (td) {
+				td.g.addEventListener("mousedown", onMouseDown);
+				td.g.addEventListener("mouseup", onMouseUp);
+				td.g.addEventListener("mousemove", onMouseMove);
+			});
+		}, 200);
+	};
+
 	self.AddAllRelations = function () {
-		var tables = self.Tables.availableTables();
-		if (tables.length == 0) {
+		var rawTables = ko.toJS(self.Tables.availableTables) || [];
+		if (rawTables.length === 0) {
 			toastr.error("Please select some tables first");
 			return;
 		}
-		function isIdField(fieldName) {
-			return fieldName.endsWith("Id") || fieldName.endsWith("ID");
+
+		function isIdField(name) {
+			return name && (name.toLowerCase().endsWith("id")) && name.toLowerCase() != "id";
 		}
 
 		bootbox.confirm("Do you want to add suggested joins for fields ending in 'Id'?", function (confirmed) {
-			if (!confirmed) {
-				return;
-			}
+			if (!confirmed) return;
 
-			const newJoins = [];
-			const existingJoins = new Set(self.Joins().map((join) =>
-				`${join.TableId()}-${join.JoinedTableId()}-${join.JoinFieldName()}`
-			));
-			const processedTables = new Set([tables[0]?.Id()]); // Initialize with the first table ID
+			var newJoins = [];
+			var existingJoins = new Set(
+				(self.Joins() || []).map(function (join) {
+					return join.TableId() + "-" + join.JoinedTableId() + "-" + join.JoinFieldName();
+				})
+			);
 
-			tables.forEach((table1) => {
-				if (processedTables.has(table1.Id())) {
-					return;
-				}
+			rawTables.forEach(function (t1) {
+				if (!t1.Columns || t1.Columns.length === 0) return;
+				var t1PrimaryKey = t1.Columns[0].ColumnName;
+		
+				t1.Columns.forEach(function (col1) {
+					rawTables.forEach(function (t2) {
+						if (t1.Id === t2.Id) return;
+						if (!t2.Columns || t2.Columns.length === 0) return;
+						var t2PrimaryKey = t2.Columns[0].ColumnName;
+						if (!isIdField(t2PrimaryKey)) return;
+						var matchByIdLogic = (isIdField(col1.ColumnName) && (col1.ColumnName.toLowerCase() === t2.TableName.toLowerCase() + "id" || col1.ColumnName.toLowerCase() == t2PrimaryKey.toLowerCase()));
 
-				const table1Name = table1.TableName();
-				const table1PrimaryKey = table1.Columns()[0].ColumnName();
-				const table1Columns = table1.Columns().filter((col) => isIdField(col.ColumnName()));
+						var matchBySameName = false;
+						if (!matchByIdLogic) {
+							var exactMatch = t2.Columns.find(function (col2) {
+								return col2.ColumnName === col1.ColumnName && isIdField(col1.ColumnName) && isIdField(col2.ColumnName)
+							});
 
-				tables.forEach((table2) => {
-					if (table1.Id() === table2.Id() || processedTables.has(table2.Id())) {
-						return;
-					}
+							if (exactMatch) {
+								matchBySameName = true;
+							}
+						}
 
-					const table2PrimaryKey = table2.Columns()[0].ColumnName();
-					const table2Columns = table2.Columns().filter((col) => isIdField(col.ColumnName()));
-
-					table2Columns.forEach((c) => {
-						if (c.ColumnName() === `${table1Name}Id` || c.ColumnName() === `${table1Name}ID`) {
-							const joinKey1 = `${table1.Id()}-${table2.Id()}-${c.ColumnName()}`;
-
+						if (matchByIdLogic || matchBySameName) {
+							var joinKey1 = t1.Id + "-" + t2.Id + "-" + col1.ColumnName;
 							if (!existingJoins.has(joinKey1)) {
-								newJoins.push(self.setupJoin({
-									TableId: table1.Id(),
-									JoinedTableId: table2.Id(),
-									JoinType: self.JoinTypes[0],
-									FieldName: table1PrimaryKey,
-									JoinFieldName: c.ColumnName(),
-								}));
+								newJoins.push(
+									self.setupJoin({
+										TableId: t1.Id,
+										JoinedTableId: t2.Id,
+										JoinType: self.JoinTypes[0],
+										FieldName: col1.ColumnName,
+										JoinFieldName: matchByIdLogic ? t2PrimaryKey : col1.ColumnName
+									})
+								);
 								existingJoins.add(joinKey1);
 							}
 
-							const joinKey2 = `${table2.Id()}-${table1.Id()}-${table1PrimaryKey}`;
-
+							var joinKey2 = t2.Id + "-" + t1.Id + "-" + (matchByIdLogic ? t1PrimaryKey : col1.ColumnName);
 							if (!existingJoins.has(joinKey2)) {
-								newJoins.push(self.setupJoin({
-									TableId: table2.Id(),
-									JoinedTableId: table1.Id(),
-									JoinType: self.JoinTypes[0],
-									FieldName: c.ColumnName(),
-									JoinFieldName: table1PrimaryKey,
-								}));
+								newJoins.push(
+									self.setupJoin({
+										TableId: t2.Id,
+										JoinedTableId: t1.Id,
+										JoinType: self.JoinTypes[0],
+										FieldName: matchByIdLogic ? t2PrimaryKey : col1.ColumnName,
+										JoinFieldName: col1.ColumnName
+									})
+								);
 								existingJoins.add(joinKey2);
 							}
 						}
 					});
-
 				});
-
-				processedTables.add(table1.Id());
 			});
 
-			self.Joins.push.apply(self.Joins, newJoins);
+			if (newJoins.length > 0) {
+				self.Joins.push.apply(self.Joins, newJoins);
+				toastr.success("Added " + newJoins.length + " new joins.");
+			} else {
+				toastr.info("No matching columns found for automatic joins.");
+			}
 		});
 	};
 

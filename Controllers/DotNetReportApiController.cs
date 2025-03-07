@@ -120,7 +120,6 @@ namespace ReportBuilder.Web.Controllers
             return await CallReportApi(data.method, data.model);
         }
 
-        [ValidateAntiForgeryToken]
         [HttpPost]
         public async Task<JsonResult> CallReportApi(ReportApiCallModel data)
         {
@@ -134,44 +133,56 @@ namespace ReportBuilder.Web.Controllers
         }
 
         private async Task<JsonResult> ExecuteCallReportApi(string method, string model, DotNetReportSettings settings = null)
-        { 
-            using (var client = new HttpClient())
+        {
+            try
             {
-                settings = settings ?? GetSettings();
-                var keyvalues = new List<KeyValuePair<string, string>>
+                using (var client = new HttpClient())
                 {
-                    new KeyValuePair<string, string>("account", settings.AccountApiToken),
-                    new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
-                    new KeyValuePair<string, string>("clientId", settings.ClientId),
-                    new KeyValuePair<string, string>("userId", settings.UserId),
-                    new KeyValuePair<string, string>("userIdForSchedule", settings.UserIdForSchedule),
-                    new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
-                    new KeyValuePair<string, string>("useParameters", "false")
-            };
+                    settings = settings ?? GetSettings();
 
-                var data = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(model);
-                foreach (var key in data.Keys)
-                {
-                    if (key == "dataConnect" && data[key] != null)
+                    var requestData = new Dictionary<string, object>
                     {
-                        keyvalues.RemoveAt(keyvalues.FindIndex(kv => kv.Key == "dataConnect"));
-                    }
-                    if (key == "account" && data[key] != null)
+                        { "account", settings.AccountApiToken },
+                        { "dataConnect", settings.DataConnectApiToken },
+                        { "clientId", settings.ClientId },
+                        { "userId", settings.UserId },
+                        { "userIdForSchedule", settings.UserIdForSchedule },
+                        { "userRole", string.Join(",", settings.CurrentUserRole) },
+                        { "useParameters", false }
+                    };
+
+                    var data = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(model);
+                    foreach (var key in data.Keys)
                     {
-                        keyvalues.RemoveAt(keyvalues.FindIndex(kv => kv.Key == "account"));
+                        if (key == "dataConnect" && data[key] != null)
+                        {
+                            requestData["dataConnect"] = data[key];
+                        }
+                        else if (key == "account" && data[key] != null)
+                        {
+                            requestData["account"] = data[key]; 
+                        }
+                        else if (key != "adminMode" || (key == "adminMode" && settings.CanUseAdminMode))
+                        {
+                            requestData[key] = data[key]; 
+                        }
                     }
-                    if ((key != "adminMode" || (key == "adminMode" && settings.CanUseAdminMode)) && data[key] != null)
-                    {
-                        keyvalues.Add(new KeyValuePair<string, string>(key, data[key].ToString()));
-                    }
+
+                    var jsonContent = JsonConvert.SerializeObject(requestData);
+                    var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+                    var response = await client.PostAsync(new Uri(settings.ApiUrl + method), content);
+                    var stringContent = await response.Content.ReadAsStringAsync();
+
+                    // Set response status code
+                    Response.StatusCode = (int)response.StatusCode;
+
+                    return Json(new JavaScriptSerializer().Deserialize<dynamic>(stringContent), JsonRequestBehavior.AllowGet);
                 }
-
-                var content = new FormUrlEncodedContent(keyvalues);
-                var response = await client.PostAsync(new Uri(settings.ApiUrl + method), content);
-                var stringContent = await response.Content.ReadAsStringAsync();
-
-                Response.StatusCode = (int)response.StatusCode;
-                return Json((new JavaScriptSerializer()).Deserialize<dynamic>(stringContent), JsonRequestBehavior.AllowGet);
+            }
+            catch(Exception ex)
+            {
+                throw ex;
             }
 
         }
@@ -226,8 +237,19 @@ namespace ReportBuilder.Web.Controllers
                         sqlFields = DotNetReportHelper.SplitSqlColumns(sql);
 
                         var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(fromIndex)}";
-                        sqlCount = $"SELECT COUNT(*) FROM ({(sqlFrom.Contains("ORDER BY") ? sqlFrom.Substring(0, sqlFrom.IndexOf("ORDER BY")) : sqlFrom)}) as countQry";
+                        bool hasDistinct = sql.Contains("DISTINCT");
+                        if (hasDistinct)
+                        {
+                            int distinctIndex = sqlFrom.IndexOf("DISTINCT", StringComparison.OrdinalIgnoreCase) + 8;
+                            int fromClauseIndex = sqlFrom.IndexOf("FROM", StringComparison.OrdinalIgnoreCase);
+                            string distinctColumns = sqlFrom.Substring(distinctIndex, fromClauseIndex - distinctIndex).Trim();
 
+                            sqlCount = $"SELECT COUNT(*) FROM (SELECT DISTINCT {distinctColumns} {sql.Substring(fromIndex)}) AS countQry";
+                        }
+                        else
+                        {
+                            sqlCount = $"SELECT COUNT(*) FROM ({(sqlFrom.Contains("ORDER BY") ? sqlFrom.Substring(0, sqlFrom.IndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase)) : sqlFrom)}) AS countQry";
+                        }
                         if (!String.IsNullOrEmpty(sortBy))
                         {
                             if (sortBy.StartsWith("DATENAME(MONTH, "))
@@ -248,7 +270,9 @@ namespace ReportBuilder.Web.Controllers
                             }
                         }
 
-                        if (sql.Contains("ORDER BY") && !sql.Contains(" TOP ") && string.IsNullOrEmpty(pivotColumn))
+                        if (!sql.Contains("ORDER BY"))
+                            sql = sql + $" ORDER BY {(hasDistinct ? "1" : "NEWID()")} ";
+                        if (!sql.Contains(" TOP ") && string.IsNullOrEmpty(pivotColumn))
                             sql = sql + $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
 
                         if (sql.Contains("__jsonc__"))

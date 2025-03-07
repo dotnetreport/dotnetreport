@@ -1,4 +1,4 @@
-﻿/// dotnet Report Builder view model v5.5.6
+﻿/// dotnet Report Builder view model v6.0.1
 /// License must be purchased for commercial use
 /// 2024 (c) www.dotnetreport.com
 
@@ -319,6 +319,7 @@ function filterGroupViewModel(args) {
 
 	self.AddFilter = function (e, isFilterOnFly, printMode) {
 		e = e || {};
+		var datePart1, timePart1, datePart2, timePart2;
 		var lookupList = ko.observableArray([]);
 		var parentList = ko.observableArray([]);
 
@@ -332,10 +333,17 @@ function filterGroupViewModel(args) {
 		}
 
 		if (e.Value1) {
+			if (typeof e.Value1 === 'string' && e.Operator !== 'range') {
+				[datePart1, timePart1] = e.Value1.split(" ");
+				e.Value1 = datePart1;
+			}
 			lookupList.push({ id: e.Value1, text: e.Value1 });
 		}
-
 		if (e.Value2) {
+			if (typeof e.Value2 === 'string' && e.Operator !== 'range') {
+				[datePart2, timePart2] = e.Value2.split(" ");
+				e.Value2 = datePart2;
+			}
 			lookupList.push({ id: e.Value2, text: e.Value2 });
 		}
 
@@ -343,7 +351,7 @@ function filterGroupViewModel(args) {
 		var valueIn = e.Operator == 'in' || e.Operator == 'not in' ? (e.Value1 || '').split(',') : [];
 		var parentIn = e.ParentIn ? e.ParentIn.split(',') : [];
 		var filter = {
-			AndOr: ko.observable(isFilterOnFly ? ' AND ' : e.AndOr),
+			AndOr: ko.observable(e.AndOr),
 			Field: field,
 			Operator: ko.observable(e.Operator),
 			Value: ko.observable(e.Value1),
@@ -354,15 +362,18 @@ function filterGroupViewModel(args) {
 			ParentIn: ko.observableArray(parentIn),
 			Apply: ko.observable(e.Apply != null ? e.Apply : true),
 			IsFilterOnFly: isFilterOnFly === true ? true : false,
+			IsConditionalFilter: e.IsConditionalFilter===true?true:false,
 			showParentFilter: ko.observable(true),
 			fmtValue: ko.observable(e.Value1),
-			fmtValue2: ko.observable(e.Value2)
+			fmtValue2: ko.observable(e.Value2),
+			Valuetime: ko.observable(timePart1),
+			Valuetime2: ko.observable(timePart2),
 		};
 
-		filter.Operator.subscribe(function () {
-			filter.Value(null);
-			filter.Value2(null);
-		});
+		//filter.Operator.subscribe(function () {
+		//	filter.Value(null);
+		//	filter.Value2(null);
+		//});
 
 		function loadLookupList(fieldId, dataFilters) {
 			if (printMode === true) return;
@@ -1048,6 +1059,18 @@ var reportViewModel = function (options) {
 		self.designingHeader(true);
 	}
 
+	self.layout = ko.observable('list');
+	self.toggleLayout = function (data, event) {
+		var selectedLayout = event.currentTarget.title.includes("List") ? "list" : "icons";
+		self.layout(selectedLayout);
+		localStorage.setItem("layoutPreference", selectedLayout);
+	};
+
+	var savedLayout = localStorage.getItem("layoutPreference");
+	if (savedLayout) {
+		self.layout(savedLayout);
+	}
+
 	self.buildCombinations = function (arrays, combine, finalList) {
 		var _this = this;
 		combine = combine || [];
@@ -1282,6 +1305,9 @@ var reportViewModel = function (options) {
 		}
 		else {
 			self.AggregateReport(true);
+		}
+		if (self.isChart()) {
+			self.DrawChart();
 		}
 	});
 
@@ -1600,6 +1626,9 @@ var reportViewModel = function (options) {
 				}
 			});
 		}
+		else {
+			self.reportsInSearch().forEach(x => x.message = '');
+		}
 	});
 
 	self.clearReport = function () {
@@ -1702,6 +1731,7 @@ var reportViewModel = function (options) {
 				fieldType: e.ParameterDataTypeString,
 				hasForeignParentKey: false,
 				dateFormat: ko.observable(),
+				fieldFormat: ko.observable(),
 				uiId: generateUniqueId(),
 			}
 			e.LookupList = ko.observableArray([]);
@@ -2068,7 +2098,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.selectedFieldsCanFilter = ko.computed(function () {
-		return _.filter(self.SelectedFields(), function (x) { return !x.isFormulaField(); });
+		return _.filter(self.SelectedFields(), function (x) { return x.tableId !== 0 && !x.isFormulaField() });
 	});
 
 	self.clearFormulaField = function () {
@@ -2234,6 +2264,14 @@ var reportViewModel = function (options) {
 			}
 		}
 
+		var invalidFields = _.filter(self.formulaFields(), function (e) {
+			return e.fieldId === 0 && e.dynamicTableId != null && e.dynamicTableId !== 0;
+		});
+		if (invalidFields.length > 0) {
+			var fieldNames = invalidFields.map(f => f.fieldName).join(', ');
+			toastr.error(`Fields with dynamicField cannot be added: ${fieldNames}. Please remove them.`);
+			return;
+		}
 		if (!self.validateReport(true)) {
 			toastr.error("Please correct validation issues");
 			return;
@@ -2490,14 +2528,16 @@ var reportViewModel = function (options) {
 
 			var filters = [];
 			_.forEach(g.Filters(), function (e, i) {
-
+				var fieldData = _.find(self.SelectedFields(), function (x) { return x.fieldId == e.Field().fieldId });
+				var hasTimeInDate = fieldData && (fieldData.fieldFormat() == 'Time' || fieldData.fieldFormat() == 'Date and Time');
 				var f = (e.Apply() && e.IsFilterOnFly) || !e.IsFilterOnFly ? {
 					SavedReportId: self.ReportID(),
 					FieldId: e.Field().fieldId,
 					AndOr: i == 0 ? g.AndOr() : e.AndOr(),
 					Operator: e.Operator(),
-					Value1: e.Operator() == "in" || e.Operator() == "not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' ? "blank" : e.Value()),
-					Value2: e.Value2(),
+					Value1: hasTimeInDate ? (e.Operator() == "in" || e.Operator() == "not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' ? "blank" : e.Value() + " " + e.Valuetime()))
+										  : (e.Operator() == "in" || e.Operator() == "not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' ? "blank" : e.Value())), 
+					Value2: hasTimeInDate ? (e.Value2() ? e.Value2() + " " + e.Valuetime2() : e.Value2()) : e.Value2(), 
 					ParentIn: e.ParentIn().join(","),
 					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
 				} : null;
@@ -2553,6 +2593,8 @@ var reportViewModel = function (options) {
 					Operator: e.Operator(),
 					Value1: e.Operator() == "in" || e.Operator() == "not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' ? "blank" : e.Value()),
 					Value2: e.Value2(),
+					Valuetime: e.Valuetime(),
+					Valuetime2: e.Valuetime2(),
 					ParentIn: e.ParentIn().join(","),
 					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
 				} : null;
@@ -2769,8 +2811,20 @@ var reportViewModel = function (options) {
 		self.RunReport(false);
 	}
 
+	self.copySqlToClipboard = function (button) {
+		var sqlText = document.getElementById('reportSqlCode').innerText;
+		navigator.clipboard.writeText(sqlText).then(function () {
+			var originalText = button.innerHTML;
+			button.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+			setTimeout(function () {
+				button.innerHTML = originalText;
+			}, 2000);
+		});
+	};
+
 	self.RunReport = function (saveOnly, skipValidation, dashboardRun,importJson) {
 		self.ReportResult().HasError(false);
+		self.OuterGroupColumns([]);
 		saveOnly = saveOnly === true ? true : false;
 		skipValidation = skipValidation === true ? true : false;
 		self.setFlyFilters();
@@ -2932,6 +2986,7 @@ var reportViewModel = function (options) {
 		reportResult.ReportDebug(result.ReportDebug);
 		reportResult.ReportSql(beautifySql(result.ReportSql));
 		self.ReportSeries = reportSeries;
+		self.OuterGroupColumns([]);
 		if (result.HasError) return;
 
 		function matchColumnName(src, dst, dbSrc, dbDst, agg) {
@@ -2970,7 +3025,7 @@ var reportViewModel = function (options) {
 				}
 				else {
 					col = _.find(self.SelectedFields(), function (x) { return x.dbField == e.SqlField; });
-					if (!col) col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.fieldName, e.ColumnName, x.dbField, e.SqlField, x.aggregateFunction); });
+					if (!col) col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.fieldName, e.ColumnName, x.dbField, e.SqlField, x.selectedAggregate()); });
 				}
 				if (col && col.fieldLabel && col.fieldLabel() && (e.ColumnName.indexOf('(Last ') > -1 || e.ColumnName.indexOf('Months ago)') > -1 || e.ColumnName.indexOf('Years ago)') > -1)) {
 					const match = e.ColumnName.match(/\((Last Year|Last Month|\d+ Years? ago|\d+ Months? ago)\)$/);
@@ -2989,7 +3044,7 @@ var reportViewModel = function (options) {
 				col.decimalPlacesDigit = col.decimalPlaces ? col.decimalPlaces() : null;
 				col.fieldFormating = col.fieldFormat ? col.fieldFormat() : null;
 				col.IsPivotField = e.IsPivotField ;
-				if (skipColDetails !== true) self.columnDetails.push(ko.toJS(col));
+				if (skipColDetails !== true) self.columnDetails.push(col);
 
 				e.decimalPlaces = col.decimalPlaces || ko.observable();
 				e.currencyFormat = col.currencyFormat || ko.observable();
@@ -3226,6 +3281,19 @@ var reportViewModel = function (options) {
 							case '=':
 								conditionTrue = value == compareTo;
 								break;
+							case 'in':
+								var compareArray = typeof compareTo === "string" ? compareTo.split(",") : [compareTo];
+								compareArray = compareArray.map(item => item.trim());
+								conditionTrue = compareArray.includes(value);
+								break;
+							case 'not in':
+								var compareArray = typeof compareTo === "string" ? compareTo.split(",") : [compareTo];
+								compareArray = compareArray.map(item => item.trim());
+								conditionTrue = !compareArray.includes(value);
+								break;
+							case 'all':
+								conditionTrue = true;
+								break;
 							case 'like':
 								conditionTrue = dataIsNumeric ? false : value.includes(compareTo);
 								break;
@@ -3432,10 +3500,23 @@ var reportViewModel = function (options) {
 				data.forEach(row => {
 					rowsHTML += '<tr>';
 					row.Items.forEach(item => {
-						rowsHTML +=
-							`<td>
-							${item.FormattedValue}
-						</td>`;
+						let tdStyle = `style="background-color: ${item._backColor ?? item.backColor()};
+                            color: ${item._fontColor ?? item.fontColor()}; 
+                            font-weight: ${(item.fontBold() || item._fontBold) ? 'bold' : 'normal'}; 
+                            text-align: ${item.fieldAlign() ? item.fieldAlign() : (item.Column.IsNumeric ? 'right' : 'left')}"`;
+
+						if (item.LinkTo) {
+							rowsHTML +=
+								`<td ${tdStyle}>
+									<a href="${item.LinkTo}" target="_blank"><span>${item.FormattedValue}</span></a>  
+								</td>`;
+						}
+						else {
+							rowsHTML +=
+								`<td ${tdStyle}>
+								${item.FormattedValue}
+							</td>`;
+						}
 					});
 					rowsHTML += '</tr>';
 				});
@@ -3604,6 +3685,40 @@ var reportViewModel = function (options) {
 		var formatData = JSON.stringify(self.columnDetails());
 		return formatData;
 	});
+
+	self.zoomLevel = ko.observable(.9); 
+	self.adjustedZoom = ko.computed(function () {
+		return Math.round((self.zoomLevel() / 0.9) * 100);
+	});
+
+	self.zoomIn = function () {
+		if (self.zoomLevel() < 2) { 
+			self.zoomLevel(self.zoomLevel() + 0.1);
+			updateZoom();
+		}
+	};
+
+	self.zoomOut = function () {
+		if (self.zoomLevel() > 0.5) { 
+			self.zoomLevel(self.zoomLevel() - 0.1);
+			updateZoom();
+		}
+	};
+
+	self.resetZoom = function () {
+		self.zoomLevel(1);
+		updateZoom();
+	};
+
+	function updateZoom() {
+		if (document.querySelector('.report-inner')) { 
+			document.querySelector('.report-inner').style.transform = `scale(${self.zoomLevel()})`;
+			document.querySelector('.report-inner').style.transformOrigin = "top center";
+		}
+	}
+
+	updateZoom();
+
 
 	self.skipDraw = options.skipDraw === true ? true : false;
 	self.DrawChart = function () {
@@ -3821,7 +3936,7 @@ var reportViewModel = function (options) {
 			// Add click event listener
 			google.visualization.events.addListener(chart, 'select', function () {
 				var selectedItem = chart.getSelection()[0];
-				if (selectedItem && selectedItem.row) {
+				if (selectedItem && selectedItem.row !=null) {
 					self.ChartDrillDownData(null);
 					self.ReportResult().ReportData().Rows[selectedItem.row].expand();
 					$("#drilldownModal").modal('show');
@@ -3893,7 +4008,7 @@ var reportViewModel = function (options) {
 		}
 		}
 		// Call retrieveDimensions to load saved dimensions when the chart is initialized
-		retrieveDimensions();
+		if (self.ReportMode() != 'print') retrieveDimensions();
 		chart.draw(data, chartOptions);
 
 		// Add event listener for pointer down on the chart container
@@ -3950,7 +4065,11 @@ var reportViewModel = function (options) {
 		}
 		e.selectedFieldName = e.tableName + " > " + e.fieldName + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
 		e.selectedFilterName = e.tableName + " > " + (e.fieldLabel || e.fieldName) + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
-		e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail').concat('Group in Detail').concat('Pivot').concat('Max').concat('Csv');
+		if (e.fieldId === 0 && e.dynamicTableId != null) {
+			e.fieldAggregateWithDrilldown = ['Only in Detail','Max', 'Count'];
+		} else {
+			e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail').concat('Group in Detail').concat('Pivot').concat('Max').concat('Csv');
+		}
 		e.selectedAggregate = ko.observable(e.aggregateFunction);
 		e.filterOnFly = ko.observable(e.filterOnFly);
 		e.disabled = ko.observable(e.disabled);
@@ -4000,7 +4119,10 @@ var reportViewModel = function (options) {
 				FieldId: e.fieldId,
 				Operator: f.operator || '',
 				Value1: f.value || '',
-				Value2: f.value2 || ''
+				Value2: f.value2 || '',
+				Valuetime: f.valuetime || '',
+				Valuetime2: f.valuetime2 || '',
+				IsConditionalFilter:true
 			});
 			e.fieldCondtionalFormats.push({
 				fontColor: ko.observable(f.fontColor || ''),
@@ -4870,6 +4992,8 @@ var reportViewModel = function (options) {
 	}
 
 	self.runExcelDownload = function (expand) {
+		var hasOnlyAndGroupInDetail = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Only in Detail' || x.selectedAggregate() == 'Group in Detail'}) != null;
+		var onlyAndGroupInDetailColumnDetails = _.filter(self.SelectedFields(), function (x) { return x.selectedAggregate() === 'Only in Detail' || x.selectedAggregate() == 'Group in Detail'; });
 		var reportData = self.BuildReportData();
 		reportData.DrillDownRowUsePlaceholders = true;
 		var pivotData = self.preparePivotData();
@@ -4885,6 +5009,7 @@ var reportViewModel = function (options) {
 			pivot: self.ReportType() == 'Pivot',
 			pivotColumn: pivotData.pivotColumn,
 			pivotFunction: pivotData.pivotFunction,
+			onlyAndGroupInColumnDetail: hasOnlyAndGroupInDetail ? JSON.stringify(onlyAndGroupInDetailColumnDetails) : null,
 		}, 'xlsx');
 	}
 
@@ -5687,7 +5812,9 @@ var dashboardViewModel = function (options) {
 									IsFilterOnFly: true,
 									showParentFilter: ko.observable(f.showParentFilter()),
 									fmtValue: ko.observable(f.Value()),
-									fmtValue2: ko.observable(f.Value2())
+									fmtValue2: ko.observable(f.Value2()),
+									Valuetime: ko.observable(f.Valuetime()),
+									Valuetime2: ko.observable(f.Valuetime2()),
 								};
 								self.FlyFilters.push(filter);
 
@@ -5823,6 +5950,38 @@ var dashboardViewModel = function (options) {
 			reportdata: JSON.stringify(allreports)
 		}, 'xlsx', 'CombinedReport');
 	}
+	self.ExportAllExcelExpandedReports = function () {
+		const reports = self.reports();
+		var expandedReport = _.filter(self.reports(), function (x) { return x.canDrilldown() == true});
+		const allreports = [];
+		_.forEach(expandedReport, function (report) {
+			const reportData = report.BuildReportData();
+			reportData.DrillDownRowUsePlaceholders = true;
+			const pivotData = report.preparePivotData();
+			var hasOnlyAndGroupInDetail = _.find(report.SelectedFields(), function (x) { return x.selectedAggregate() == 'Only in Detail' || x.selectedAggregate() == 'Group in Detail' }) != null;
+			var onlyAndGroupInDetailColumnDetails = _.filter(report.SelectedFields(), function (x) { return x.selectedAggregate() === 'Only in Detail' || x.selectedAggregate() == 'Group in Detail'; });
+			allreports.push({
+				reportSql: report.currentSql(),
+				connectKey: report.currentConnectKey(),
+				reportName: report.ReportName(),
+				expandAll:true,
+				expandSqls: JSON.stringify(reportData),
+				chartData: report.ChartData() || '',
+				columnDetails: report.getColumnDetails(),
+				includeSubTotal: report.IncludeSubTotal(),
+				pivot: report.ReportType() == 'Pivot',
+				pivotColumn: pivotData.pivotColumn,
+				pivotFunction: pivotData.pivotFunction,
+				onlyAndGroupInColumnDetail: hasOnlyAndGroupInDetail ? JSON.stringify(onlyAndGroupInDetailColumnDetails) : null,
+			});
+		});
+		reports[0]?.downloadExport("DownloadAllExcel", {
+			reportdata: JSON.stringify(allreports)
+		}, 'xlsx', 'CombinedReport');
+	}
+	self.canDrilldown = ko.computed(function () {
+		return _.find(self.reports(), function (x) { return x.canDrilldown() == true }) != null;
+	});
 	self.ExportAllWordReports = function () {
 		const reports = self.reports();
 		const allreports = [];
@@ -5939,6 +6098,40 @@ var dashboardViewModel = function (options) {
 		if (localStorage) localStorage.setItem('reportAdminMode', newValue);
 
 	});
+
+	self.zoomLevelDashboard = ko.observable(0.9); // Start at 90% actual scale
+
+	self.adjustedZoomDashboard = ko.computed(function () {
+		return Math.round((self.zoomLevelDashboard() / 0.9) * 100);
+	});
+
+	self.zoomInDashboard = function () {
+		if (self.zoomLevelDashboard() < 2) {
+			self.zoomLevelDashboard(self.zoomLevelDashboard() + 0.1);
+			updateZoomDashboard();
+		}
+	};
+
+	self.zoomOutDashboard = function () {
+		if (self.zoomLevelDashboard() > 0.5) {
+			self.zoomLevelDashboard(self.zoomLevelDashboard() - 0.1);
+			updateZoomDashboard();
+		}
+	};
+
+	self.resetZoomDashboard = function () {
+		self.zoomLevelDashboard(1); 
+		updateZoomDashboard();
+	};
+
+	function updateZoomDashboard() {
+		document.querySelector('.grid-stack').style.transform = `scale(${self.zoomLevelDashboard()})`;
+		document.querySelector('.grid-stack').style.transformOrigin = "top center";
+	}
+
+	// Apply initial zoom on page load
+	updateZoomDashboard();
+
 
 	var eventHandlers = {};
 	self.arrangeDashboard.subscribe(function (newValue) {		
