@@ -2097,7 +2097,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.selectedFieldsCanFilter = ko.computed(function () {
-		return _.filter(self.SelectedFields(), function (x) { return !x.isFormulaField(); });
+		return _.filter(self.SelectedFields(), function (x) { return x.tableId !== 0 && !x.isFormulaField() });
 	});
 
 	self.clearFormulaField = function () {
