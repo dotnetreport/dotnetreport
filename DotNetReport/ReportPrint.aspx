@@ -51,9 +51,12 @@
     </style>
 </head>
 
-<body>    
+<body>
     <form id="form1" runat="server">
     <div data-bind="with: ReportResult">
+
+        <!-- ko ifnot: HasError -->
+
         <div class="report-view" data-bind="with: $root">
             <div class="report-inner" style="display: none;">
                 <canvas id="report-header" width="1100" height="120" data-bind="visible: useReportHeader"></canvas>
@@ -62,19 +65,32 @@
                 </p>
 
                 <!--<div data-bind="with: $root">
-                        <div class="" data-bind="ifnot: EditFiltersOnReport">
-                            <div data-bind="template: {name: 'fly-filter-template'}"></div>
-                            <div style="padding-bottom: 20px;"></div>
-                        </div>
-                    </div>-->
+                    <div class="" data-bind="ifnot: EditFiltersOnReport">
+                        <div data-bind="template: {name: 'fly-filter-template'}"></div>
+                        <div style="padding-bottom: 20px;"></div>
+                    </div>
+                </div>-->
 
                 <div data-bind="with: ReportResult">
                     <div data-bind="template: 'report-template', data: $data"></div>
                 </div>
             </div>
             <br />
-            <span>Report ran on: <%=DateTime.Now.ToShortDateString() %> <%=DateTime.Now.ToShortTimeString() %></span>        
+            <span>Report ran on: <span data-bind="text: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString()"></span></span>
+
         </div>
+        <!-- /ko -->
+        <!-- ko if: HasError -->
+        
+        <h3>An unexpected error occured while running the Report</h3>
+        <hr />
+        <b>Error Details</b>
+        <p class="report-inner" style="display: none;">
+            <div data-bind="text: Exception"></div>
+        </p>
+
+        <!-- /ko -->
+
     </div>
     </form>
     <script type="text/html" id="report-template">
@@ -86,7 +102,7 @@
                 <thead>
                     <tr class="no-highlight">
                         <!-- ko foreach: Columns -->
-                        <th data-bind="attr: { id: fieldId }, css: {'right-align': IsNumeric}, style: {'width': fieldWidth, 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
+                        <th data-bind="attr: { id: fieldId }, css: {'right-align': IsNumeric}, style: {'width': fieldWidth, 'background-color': headerBackColor }" style="border-right: 1px solid;">
                             <!-- ko if: $root.useStoredProc() -->
                             <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
                             <!-- /ko -->
@@ -108,8 +124,13 @@
                     <!-- ko foreach: Rows  -->
                     <tr>
                         <!-- ko foreach: Items -->
-                        <td data-bind="hidden: outerGroup, style: {'background-color': _backColor != 'none' ? backColor() : '', 'color': _fontColor != 'none' ? fontColor() : '', 'font-weight': fontBold() && _fontBold != 'none' ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '48px' : ''}">
+                        <td data-bind="style: {'background-color': _backColor != 'none' ? backColor() : '', 'color': _fontColor != 'none' ? fontColor() : '', 'font-weight': fontBold() && _fontBold != 'none' ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '48px' : ''}">
+                            <!-- ko if: LinkTo-->
+                                <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: FormattedValue"></span></a>
+                            <!-- /ko-->
+                            <!-- ko ifnot: LinkTo-->
                             <span data-bind="html: FormattedValue"></span>
+                            <!-- /ko-->
                         </td>
                         <!-- /ko -->
                     </tr>
@@ -219,16 +240,16 @@
                 apiUrl: svc + "CallReportApi",
                 runReportApiUrl: svc + "RunReportApi",
                 reportFilter: htmlDecode('<%= Model.ReportFilter %>'),
-                reportMode: "execute",
+                reportMode: "print",
                 reportSql: '<%= Model.ReportSql %>',
                 reportConnect: "<%= Model.ConnectKey %>",
                 reportSeries: '<%= Model.ReportSeries %>',
                 AllSqlQuries: '<%= Model.ReportSql %>',
                 reportHeader: 'report-header',
-                getTimeZonesUrl: svc + "GetAllTimezones",
                 userSettings: data,
                 dataFilters: data.dataFilters,
                 reportData: JSON.parse(decodeHTMLEntities('<%= Model.ReportData.Replace("'", "\\'") %>')),
+                getTimeZonesUrl: svc + "GetAllTimezones",
                 chartSize: { width: 1000, height: 450 }
             });
             vm.pager.pageSize(10000);

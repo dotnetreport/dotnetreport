@@ -118,10 +118,9 @@
 </asp:Content>
 <asp:Content ID="Content2" ContentPlaceHolderID="body" runat="server">
 
-    
 <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
 
-    <div class="row" style="display: none" data-bind="visible: currentDashboard">
+<div class="row" style="display: none" data-bind="visible: currentDashboard">
     <div class="col-12">
         <ul class="nav nav-tabs" data-bind="foreach: dashboards">
             <li class="nav-item">
@@ -161,6 +160,7 @@
             <ul class="dropdown-menu">
                 <li><a class="dropdown-item" href="#" data-bind="click: ExportAllPdfReports"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
                 <li><a class="dropdown-item" href="#" data-bind="click: ExportAllExcelReports"><i class="fa fa-file-excel-o"></i> Excel</a></li>
+                <li data-bind="visible: canDrilldown"><a class="dropdown-item" href="#" data-bind="click: ExportAllExcelExpandedReports"><i class="fa fa-file-excel-o"></i> Excel (Expanded)</a></li>
                 <li><a class="dropdown-item" href="#" data-bind="click: ExportAllWordReports"><i class="fa fa-file-word-o"></i> Word</a></li>
             </ul>
         </div>
@@ -372,6 +372,20 @@
                 </div>
             </div>
             <div class="card-body list-overflow-auto" style="padding-top: 0; margin-top: 0;">
+                <div class="btn-group pull-right" role="group" data-bind="visible: ReportType() === 'Bar' || ReportType() === 'Pie' || ReportType() === 'Line'">
+                    <button type="button" class="btn btn-light btn-sm" data-bs-toggle="tooltip" title="Bar Chart"
+                            data-bind="css: { 'active': ReportType() === 'Bar' }, click: function() { ReportType('Bar'); }">
+                        <span class="fa fa-bar-chart"></span>
+                    </button>
+                    <button type="button" class="btn btn-light btn-sm" data-bs-toggle="tooltip" title="Pie Chart"
+                            data-bind="css: { 'active': ReportType() === 'Pie' }, click: function() { ReportType('Pie'); }">
+                        <span class="fa fa-pie-chart"></span>
+                    </button>
+                    <button type="button" class="btn btn-light btn-sm" data-bs-toggle="tooltip" title="Line Chart"
+                            data-bind="css: { 'active': ReportType() === 'Line' }, click: function() { ReportType('Line'); }">
+                        <span class="fa fa-line-chart"></span>
+                    </button>
+                </div>
                 <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
                 <div data-bind="template: {name: 'fly-filter-template'}, visible: showFlyFilters"></div>
                 <div data-bind="with: ReportResult" class="small">

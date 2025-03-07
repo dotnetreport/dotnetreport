@@ -160,13 +160,13 @@
         <!-- /ko -->
         <!-- ko if: hasForeignKey && $parent.Operator() != 'all' -->
         <!-- ko if: hasForeignParentKey && $parent.showParentFilter() -->
-        <select multiple class="form-control" data-bind="select2: { dropdownParent: $parent.inModal ? '#filter-'+uiId : '', placeholder: 'Please Choose', allowClear: true }, options: $parent.ParentList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ParentIn"></select>
+        <select multiple class="form-control" data-bind="select2: { dropdownParent: $parent.inModal ? '#filter-'+uiId : '', placeholder: 'Please Choose', allowClear: true }, options: $parent.ParentList, optionsText: 'text', optionsValue: $parent.IsConditionalFilter ? 'text': 'id', selectedOptions: $parent.ParentIn"></select>
         <!-- /ko -->
         <!-- ko if: $parent.Operator()=='='-->
-        <select required class="form-control" data-bind="select2: { dropdownParent: $parent.inModal ? '#filter-'+uiId : '', placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', value: $parent.Value, optionsCaption: 'Please Choose'"></select>
+        <select required class="form-control" data-bind="select2: { dropdownParent: $parent.inModal ? '#filter-'+uiId : '', placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue:   $parent.IsConditionalFilter ? 'text': 'id', value: $parent.Value, optionsCaption: 'Please Choose'"></select>
         <!-- /ko -->
         <!-- ko if: $parent.Operator()=='in' || $parent.Operator()=='not in'-->
-        <select required multiple class="form-control" data-bind="select2: { dropdownParent: $parent.inModal ? '#filter-'+uiId : '', placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ValueIn"></select>
+        <select required multiple class="form-control" data-bind="select2: { dropdownParent: $parent.inModal ? '#filter-'+uiId : '', placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: $parent.IsConditionalFilter ? 'text': 'id', selectedOptions: $parent.ValueIn"></select>
         <!-- /ko -->
         <!-- /ko -->
     </div>
