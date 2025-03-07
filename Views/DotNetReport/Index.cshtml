@@ -290,6 +290,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                             <span class="sr-only"></span>
                                                         </button>
                                                         <div class="dropdown-menu dropdown-menu-right">
+                                                            <a class="dropdown-item" href="#" data-bind="click: function() {exportReport('pdf');}">
+                                                                <span class="fa fa-file-excel-o"></span> Download PDF
+                                                            </a>
                                                             <a class="dropdown-item" href="#" data-bind="click: function() {exportReport('excel');}">
                                                                 <span class="fa fa-file-excel-o"></span> Download Excel
                                                             </a>
@@ -448,6 +451,11 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                                 <a class="dropdown-item dropdown-toggle" href="#">Export</a>
                                                                 <ul class="dropdown-menu">
                                                                     <li>
+                                                                        <a class="dropdown-item" href="#" data-bind="click: function() {exportReport('pdf');}">
+                                                                            <span class="fa fa-file-excel-o"></span> Download PDF
+                                                                        </a>
+                                                                    </li>
+                                                                    <li>
                                                                         <a class="dropdown-item" href="#" data-bind="click: function() {exportReport('excel');}">
                                                                             <span class="fa fa-file-excel-o"></span> Download Excel
                                                                         </a>
@@ -477,7 +485,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 <div class="col-md-1" data-bind="visible: $parent.adminMode">
                                                     <a data-bind="attr: {href: '/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + reportId }" target="_blank"><span class="fa fa-link"></span></a>
                                                     &nbsp;
-                                                    <a href="#" data-bind="click: function() { navigator.clipboard.writeText('/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + reportId) }">
+                                                    <a href="#" data-bind="click: function() { navigator && navigator.clipboard && navigator.clipboard.writeText('/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + reportId) }">
                                                         <span class="fa fa-copy" title="Copy Link"></span>
                                                     </a>
                                                 </div>

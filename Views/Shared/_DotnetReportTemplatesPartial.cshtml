@@ -1227,7 +1227,7 @@
                                                             <div class="row border-bottom py-2 align-items-center w-100">
                                                                 <div class="checkbox">
                                                                     <label>
-                                                                        <input type="checkbox" data-bind="checkedInArray: { array: $parents[2].SelectedFields, value: $data }">
+                                                                        <input type="checkbox" data-bind="checkedInArray: {array: $parents[2].isFormulaField() ? $parents[2].formulaFields : $parents[2].SelectedFields, value: $data}">
                                                                         <span data-bind="text: fieldName"></span>
                                                                     </label>
                                                                 </div>
@@ -1982,7 +1982,7 @@
                 <h4 class="modal-title">Report Code</h4>
                 <button class="btn btn-outline-secondary btn-sm d-flex align-items-center"
                         data-bind="click: function(data, event) { copySqlToClipboard(event.target); }">
-                    <i class="fa fa-clipboard"></i> Copy
+                    <i class="fa fa-clipboard"></i>&nbsp;Copy
                 </button>
                 <button type="button" class="btn-close pull-right" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>

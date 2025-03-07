@@ -2820,6 +2820,7 @@ var reportViewModel = function (options) {
 
 	self.copySqlToClipboard = function (button) {
 		var sqlText = document.getElementById('reportSqlCode').innerText;
+		if (!navigator || !navigator.clipboard) return;
 		navigator.clipboard.writeText(sqlText).then(function () {
 			var originalText = button.innerHTML;
 			button.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
@@ -2830,7 +2831,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.RunReportSqlPreview = function () {
-		self.RunReport(false, false, null, null, true);
+		self.RunReport(false, true, null, null, true);
 	}
 
 	self.RunReport = function (saveOnly, skipValidation, dashboardRun, importJson, previewOnly) {
@@ -5521,6 +5522,9 @@ var dashboardViewModel = function (options) {
 	self.DontExecuteOnRun = ko.observable(false);
 	self.searchReports = ko.observable('');
 	self.arrangeDashboard = ko.observable(false);
+	self.ReportResult = ko.observable({
+		ReportSql: ko.observable()		
+	});
 	var currentDash = options.dashboardId > 0
 		? (_.find(self.dashboards(), { id: options.dashboardId }) || { name: '', description: '' })
 		: (self.dashboards().length > 0 ? self.dashboards()[0] : { name: '', description: '' });
