@@ -876,6 +876,7 @@ var reportViewModel = function (options) {
 	self.PivotColumns = ko.observable();
 	self.PivotColumnsWidth = ko.observable();
 	self.ReportColumns = ko.observable();
+	self.useAltPivot = true;
 	self.FilterGroups.subscribe(function (newArray) {
 		if (newArray && newArray.length == 0) {
 			self.FilterGroups.push(new filterGroupViewModel({ isRoot: true, parent: self, options: options }));
@@ -3412,7 +3413,8 @@ var reportViewModel = function (options) {
 						reportSeries: reportSeries || '',
 						pivotColumn: '',
 						pivotFunction: '',
-						reportData: ''
+						reportData: '',
+						SubTotalMode: false
 					}),
 					noBlocking: true
 				}).done(function (ddData) {
@@ -3621,7 +3623,7 @@ var reportViewModel = function (options) {
 	}
 
 	self.hasPivotColumn = ko.computed(function () {
-		return _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' }) != null;
+		return !self.useAltPivot && _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' }) != null;
 	});
 
 	self.executingReport = false;
@@ -3662,7 +3664,8 @@ var reportViewModel = function (options) {
 				reportSeries: reportSeries || "",
 				pivotColumn: pivotData.pivotColumn,
 				pivotFunction: pivotData.pivotFunction,
-				reportData: pivotData.pivotColumn ? JSON.stringify(reportData) : ''
+				reportData: pivotData.pivotColumn ? JSON.stringify(reportData) : '',
+				SubTotalMode: false
 			}),
 			noBlocking: self.ReportMode() == 'dashboard'
 		}).done(function (result) {
@@ -5072,6 +5075,7 @@ var reportViewModel = function (options) {
 
 	self.downloadCsv = function () {
 		var reportData = self.BuildReportData();
+		reportData.DrillDownRowUsePlaceholders = true;
 		var pivotData = self.preparePivotData();
 		self.downloadExport("DownloadCsv", {
 			reportSql: self.currentSql(),
@@ -5090,6 +5094,7 @@ var reportViewModel = function (options) {
 	};
 	self.downloadXml = function () {
 		var reportData = self.BuildReportData();
+		reportData.DrillDownRowUsePlaceholders = true;
 		var pivotData = self.preparePivotData();
 		self.downloadExport("DownloadXml", {
 			reportSql: self.currentSql(),
@@ -5102,6 +5107,7 @@ var reportViewModel = function (options) {
 	}
 	self.downloadWord = function () {
 		var reportData = self.BuildReportData();
+		reportData.DrillDownRowUsePlaceholders = true;
 		var pivotData = self.preparePivotData();
 		self.downloadExport("DownloadWord", {
 			reportSql: self.currentSql(),
