@@ -145,22 +145,19 @@ namespace ReportBuilder.Web.Controllers
 
         private async Task<IActionResult> ExecuteCallReportApi(string method, string model, DotNetReportSettings settings = null)
         {
-            try
+            using (var client = new HttpClient())
             {
-                using (var client = new HttpClient())
+                settings = settings ?? GetSettings();
+                var keyvalues = new List<KeyValuePair<string, string>>
                 {
-                    settings = settings ?? GetSettings();
-
-                    var requestData = new Dictionary<string, object>
-                    {
-                        { "account", settings.AccountApiToken },
-                        { "dataConnect", settings.DataConnectApiToken },
-                        { "clientId", settings.ClientId },
-                        { "userId", settings.UserId },
-                        { "userIdForSchedule", settings.UserIdForSchedule },
-                        { "userRole", string.Join(",", settings.CurrentUserRole) },
-                        { "useParameters", true }
-                    };
+                    new KeyValuePair<string, string>("account", settings.AccountApiToken),
+                    new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
+                    new KeyValuePair<string, string>("clientId", settings.ClientId),
+                    new KeyValuePair<string, string>("userId", settings.UserId),
+                    new KeyValuePair<string, string>("userIdForSchedule", settings.UserIdForSchedule),
+                    new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
+                    new KeyValuePair<string, string>("useParameters", "false")
+            };
 
                 var data = JsonSerializer.Deserialize<Dictionary<string, dynamic>>(model);
                 foreach (var key in data.Keys)
