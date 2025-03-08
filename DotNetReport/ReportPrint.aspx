@@ -173,14 +173,15 @@
                     <!-- /ko -->
                     <!-- /ko -->
                 </tbody>
-                <!-- ko if: $parent.SubTotals().length == 1 -->
+                <!-- ko if: $parent.SubTotals().length == 1 && $parentContext.$parent.OuterGroupColumns().length == 0 -->
                 <tfoot data-bind="foreach: $parent.SubTotals">
-                    <tr>
-                        <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() -->
-                        <td></td>
-                        <!-- /ko -->
+                    <tr class="sub-total">                        
                         <!-- ko foreach: Items -->
-                        <td data-bind="html: FormattedValue, css: {'right-align': Column.IsNumeric}"></td>
+                        <!-- ko if: Value != 'NA' && Value != 'NaN' && !outerGroup() -->
+                        <td data-bind="style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '48px' : ''}">
+                            <span data-bind="html: formattedVal, css: {'right-align': true}"></span>
+                        </td>
+                        <!-- /ko -->
                         <!-- /ko -->
                     </tr>
                 </tfoot>
@@ -247,7 +248,7 @@
                 AllSqlQuries: '<%= Model.ReportSql %>',
                 reportHeader: 'report-header',
                 userSettings: data,
-                dataFilters: data.dataFilters,
+                dataFilters: JSON.parse(data.dataFilters),
                 reportData: JSON.parse(decodeHTMLEntities('<%= Model.ReportData.Replace("'", "\\'") %>')),
                 getTimeZonesUrl: svc + "GetAllTimezones",
                 chartSize: { width: 1000, height: 450 }

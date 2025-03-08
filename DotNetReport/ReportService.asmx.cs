@@ -24,8 +24,6 @@ namespace ReportBuilder.WebForms.DotNetReport
     [System.Web.Script.Services.ScriptService]
     public class ReportService : System.Web.Services.WebService
     {
-        public readonly static string dbtype = DbTypes.MS_SQL.ToString().Replace("_", " ");
-
         public DotNetReportSettings GetSettings()
         {
             var settings = new DotNetReportSettings
@@ -68,7 +66,7 @@ namespace ReportBuilder.WebForms.DotNetReport
             var dt = new DataTable();
 
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
-            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(DotNetReportHelper.dbtype);
 
             dt = databaseConnection.ExecuteQuery(connectionString, sql, qry.parameters);
 
@@ -171,7 +169,7 @@ namespace ReportBuilder.WebForms.DotNetReport
 
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
-        public async Task<DotNetReportResultModel> RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, bool desc = false, string reportSeries = null, string pivotColumn = null, string pivotFunction = null, string reportData = null, bool subtotalMode = false)
+        public async Task<DotNetReportResultModel> RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, bool desc = false, string reportSeries = null, string pivotColumn = null, string pivotFunction = null, string reportData = null, bool SubTotalMode = false)
         {
             var sql = "";
             var sqlCount = "";
@@ -247,11 +245,11 @@ namespace ReportBuilder.WebForms.DotNetReport
                     }
                     // Execute sql
                     var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
-                    IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+                    IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(DotNetReportHelper.dbtype);
 
                     var dtPagedRun = new DataTable();
 
-                    if (!string.IsNullOrEmpty(pivotColumn))
+                    if (!string.IsNullOrEmpty(pivotColumn) && !DotNetReportHelper.useAltPivot)
                     {
                         sql = sql.Remove(sql.IndexOf("SELECT "), "SELECT ".Length).Insert(sql.IndexOf("SELECT "), "SELECT TOP 1 ");
                     }
@@ -281,13 +279,18 @@ namespace ReportBuilder.WebForms.DotNetReport
 
                         if (!string.IsNullOrEmpty(pivotColumn))
                         {
-                            var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dtPagedRun, sql, sqlFields, reportData, pivotColumn, pivotFunction, pageNumber, pageSize, sortBy, desc, subtotalMode);
-                            dtPagedRun = pd.dt;
-                            if (!string.IsNullOrEmpty(pd.sql)) sql = pd.sql;
-                            totalRecords = pd.totalRecords;
-
-                            //var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dtPagedRun, sqlFields, reportData);
-                            //dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn, pivotFunction, reportData);
+                            if (!DotNetReportHelper.useAltPivot)
+                            {
+                                var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dtPagedRun, sql, sqlFields, reportData, pivotColumn, pivotFunction, pageNumber, pageSize, sortBy, desc, SubTotalMode);
+                                dtPagedRun = pd.dt;
+                                if (!string.IsNullOrEmpty(pd.sql)) sql = pd.sql;
+                                totalRecords = pd.totalRecords;
+                            }
+                            else
+                            {
+                                var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dtPagedRun, sqlFields, reportData);
+                                dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn, pivotFunction, reportData);
+                            }
                             var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
                             fields = fields
                                 .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
@@ -717,7 +720,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                 }
 
                 var connect = DotNetReportHelper.GetConnection(databaseApiKey);
-                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(DotNetReportHelper.dbtype);
                 var tables = new List<TableViewModel>();
                 var procedures = new List<TableViewModel>();
                 var functions = new List<CustomFunctionModel>();
@@ -789,7 +792,7 @@ namespace ReportBuilder.WebForms.DotNetReport
 
                 var connString = DotNetReportHelper.GetConnectionString(dataConnectKey);
 
-                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(DotNetReportHelper.dbtype);
                 table = databaseConnection.GetSchemaFromSql(connString, table, value, dynamicColumns).Result;
 
                 return table;
@@ -824,7 +827,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                 // Execute sql
                 var connString = DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey), false).Result;
 
-                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(DotNetReportHelper.dbtype);
                 var dtPaged = databaseConnection.ExecuteQuery(connString, sql);
 
                 var model = new DotNetReportResultModel
@@ -865,7 +868,7 @@ namespace ReportBuilder.WebForms.DotNetReport
         {
 
             var connString = DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey), false).Result;
-            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(DotNetReportHelper.dbtype);
 
             return databaseConnection.GetSearchProcedure(value, accountKey, dataConnectKey);
         }
