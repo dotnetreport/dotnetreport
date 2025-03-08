@@ -25,6 +25,9 @@ var manageViewModel = function (options) {
 	self.activeProcedure = ko.observable();
 	self.schedules = ko.observableArray([]);
 	self.settings = new settingPageViewModel(options);
+	self.ReportResult = ko.observable({
+		ReportSql: ko.observable()
+	});
 	self.loadFromDatabase = function() {
 		bootbox.confirm("Confirm loading all Tables and Views from the database? Note: This action will discard unsaved changes and it may take some time.", function (r) {
 			if (r) {
@@ -2196,10 +2199,11 @@ var settingPageViewModel = function (options) {
 
 		return ajaxcall({
 			url: options.apiUrl,
-			data: {
+			type: 'POST',
+			data: JSON.stringify({
 				method: "/ReportApi/GetAccountSettings",
 				model: "{}"
-			}
+			})
 		}).done(function (response) {
 
 			if (response) {
