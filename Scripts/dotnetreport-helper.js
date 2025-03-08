@@ -2,8 +2,60 @@
 
 // Ajax call wrapper function
 function ajaxcall(options) {
-    var noBlocking = options.noBlocking === true ? true : false
-    if ($.blockUI && !noBlocking) {
+    var noBlocking = options.noBlocking === true ? true : false;
+    var useProgressBar = options.useProgressBar === true;
+    var progressBarMessage = options.progressBarMessage || "Processing...";
+    var progressBarId = 'ajaxProgressBarPopup';
+    var progressInterval;
+
+    if (useProgressBar && !document.getElementById(progressBarId)) {
+        $('body').append(`
+            <div id="${progressBarId}" class="progress-popup" style="position: fixed; top: 20px; right: 20px; z-index: 1050; width: 300px; display: none; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; box-shadow: 0px 0px 10px rgba(0,0,0,0.1);">
+                <div class="progress-popup-header" style="padding: 8px 12px; font-weight: bold; cursor: move; background: #007bff; color: #fff; border-top-left-radius: 8px; border-top-right-radius: 8px;">
+                    <span>${progressBarMessage}</span>
+                    <button type="button" class="close" style="background: none; border: none; color: #fff; float: right; font-size: 20px; line-height: 1;" onclick="$('#${progressBarId}').hide();">&times;</button>
+                </div>
+                <div class="progress" style="height: 10px; margin: 12px;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+            </div>
+        `);
+
+        $('#' + progressBarId).draggable({ handle: ".progress-popup-header" });
+    }
+
+    var $progressBarPopup = $('#' + progressBarId);
+    var $progressBar = $progressBarPopup.find('.progress-bar');
+    var currentProgress = 0;
+
+    function showProgress() {
+        $progressBarPopup.find('.progress-popup-header span').text(progressBarMessage); // Set message text
+        $progressBarPopup.show();
+        currentProgress = 0;
+        $progressBar.css('width', currentProgress + '%').attr('aria-valuenow', currentProgress);
+
+        progressInterval = setInterval(function () {
+            if (currentProgress < 90) { // Incrementally go up to 90%
+                currentProgress += 10;
+                $progressBar.css('width', currentProgress + '%').attr('aria-valuenow', currentProgress);
+            }
+        }, 500);
+    }
+    
+    function completeProgress() {
+        clearInterval(progressInterval); 
+        $progressBar.css('width', '100%').attr('aria-valuenow', 100);
+        setTimeout(hideProgress, 500); 
+    }
+
+    function hideProgress() {
+        $progressBarPopup.hide();
+    }
+
+    options.hideProgress = hideProgress;
+
+    // Show blocking spinner if not using progress bar
+    if ($.blockUI && !noBlocking && !useProgressBar) {
         $.blockUI({ baseZ: 500 });
     }
 
@@ -13,12 +65,41 @@ function ajaxcall(options) {
     var headers = new Headers();
     headers.append('Authorization', 'Bearer ' + token);
 
-    if (options.success) {
-        options.beforeSend = function (x) {
-            if (token && !options.url.startsWith("https://dotnetreport.com")) {
-                x.setRequestHeader("Authorization", "Bearer " + token);
-            }
+    var validationToken = $('input[name="__RequestVerificationToken"]').val();
+    if (options.type == 'POST' && validationToken) {
+        options.headers = options.headers || {};
+        options.headers['RequestVerificationToken'] = validationToken;
+    }
+
+    var beforeSend = function (x) {
+        if (token && !options.url.startsWith("https://dotnetreport.com")) {
+            x.setRequestHeader("Authorization", "Bearer " + token);
         }
+        if (useProgressBar) showProgress();
+    }
+    var xhr = function () {
+        var xhr = new window.XMLHttpRequest();
+        if (useProgressBar) {
+            xhr.upload.addEventListener("progress", function (evt) {
+                if (evt.lengthComputable) {
+                    var percentComplete = Math.min(90, Math.round((evt.loaded / evt.total) * 90)); // Cap to 90%
+                    $progressBar.css('width', percentComplete + '%').attr('aria-valuenow', percentComplete);
+                }
+            }, false);
+            xhr.addEventListener("progress", function (evt) {
+                if (evt.lengthComputable) {
+                    var percentComplete = Math.min(90, Math.round((evt.loaded / evt.total) * 90)); // Cap to 90%
+                    $progressBar.css('width', percentComplete + '%').attr('aria-valuenow', percentComplete);
+                }
+            }, false);
+        }
+        return xhr;
+    }
+
+    if (options.success) {
+        options.beforeSend = beforeSend;
+        options.xhr = xhr;
+
         return $.ajax(options);
     }
 
@@ -31,45 +112,70 @@ function ajaxcall(options) {
         contentType: options.contentType || "application/json; charset=utf-8",
         headers: options.headers || {},
         async: options.async === false ? options.async : true,
-        beforeSend: function (x) {
-            if (token && !options.url.startsWith("https://dotnetreport.com")) {
-                x.setRequestHeader("Authorization", "Bearer " + token);
-            }
-        }
+        xhr: xhr,
+        beforeSend: beforeSend
     }).done(function (data) {
+        if (useProgressBar) {
+            completeProgress(); 
+        }
         if ($.unblockUI && !noBlocking) {
             $.unblockUI();
             setTimeout(function () { $.unblockUI(); }, 1000);
         }
         delete options;
     }).fail(function (jqxhr, status, error) {
+        if (useProgressBar) {
+            hideProgress();
+        }
         if ($.unblockUI) {
             $.unblockUI();
         }
         delete options;
-        if (jqxhr.responseJSON && jqxhr.responseJSON.d) jqxhr.responseJSON = jqxhr.responseJSON.d;
-        if (jqxhr.responseJSON && jqxhr.responseJSON.Result && jqxhr.responseJSON.Result.Message) jqxhr.responseJSON = jqxhr.responseJSON.Result;
-        var msg = jqxhr.responseJSON && jqxhr.responseJSON.Message ? "\n" + jqxhr.responseJSON.Message : "";
-
-        if (error == "Conflict") {
-            toastr.error("Conflict detected. Please ensure the record is not a duplicate and that it has no related records." + msg);
-        } else if (error == "Bad Request") {
-            toastr.error("Validation failed for your request. Please make sure the data provided is correct." + msg);
-        } else if (error == "Unauthorized") {
-            toastr.error("You are not authorized to make that request." + msg);
-        } else if (error == "Forbidden") {
-            location.reload(true);
-        } else if (error == "Not Found") {
-            toastr.error("Record not found." + msg);
-        } else if (error == "Internal Server Error") {
-            toastr.error("The system was unable to complete your request. <br>Service Reponse: " + msg);
-        } else {
-            toastr.error(status + ": " + msg);
-        }
+        handleAjaxError(jqxhr, status, error);
     });
 }
 
-// knockout binding extenders
+function handleAjaxError(jqxhr, status, error) {
+    if (jqxhr.responseJSON && jqxhr.responseJSON.d) jqxhr.responseJSON = jqxhr.responseJSON.d;
+    if (jqxhr.responseJSON && jqxhr.responseJSON.Result && jqxhr.responseJSON.Result.Message) jqxhr.responseJSON = jqxhr.responseJSON.Result;
+    var msg = jqxhr.responseJSON && jqxhr.responseJSON.Message ? "\n" + jqxhr.responseJSON.Message : "";
+
+    switch (error) {
+        case "Conflict":
+            toastr.error("Conflict detected. Please ensure the record is not a duplicate and that it has no related records." + msg);
+            break;
+        case "Bad Request":
+            toastr.error("Validation failed for your request. Please make sure the data provided is correct." + msg);
+            break;
+        case "Unauthorized":
+            toastr.error("You are not authorized to make that request." + msg);
+            break;
+        case "Forbidden":
+            location.reload(true);
+            break;
+        case "Not Found":
+            toastr.error("Record not found." + msg);
+            break;
+        case "Internal Server Error":
+            toastr.error("The system was unable to complete your request. <br>Service Response: " + msg);
+            break;
+        default:
+            toastr.error(status + ": " + msg);
+    }
+}
+
+function downloadJson(content, fileName, contentType) {
+    var jsonBlob = new Blob([content], { type: contentType });
+    var url = URL.createObjectURL(jsonBlob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
+   // knockout binding extenders
 ko.bindingHandlers.datepicker = {
     init: function (element, valueAccessor, allBindingsAccessor) {
         //initialize datepicker with some optional options
@@ -78,23 +184,30 @@ ko.bindingHandlers.datepicker = {
 
         //handle the field changing
         ko.utils.registerEventHandler(element, "change", function () {
-            var observable = valueAccessor();
-            observable($(element).datepicker({ dateFormat: options.dateFormat || 'mm/dd/yyyy' }).val());
+           var observable = valueAccessor();
+           var date = $(element).datepicker('getDate');
+            if (date) {
+                var value = options.value;
+                if (value) value(date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }));
+            }
         });
 
-        //handle disposal (if KO removes by the template binding)
         ko.utils.domNodeDisposal.addDisposeCallback(element, function () {
             $(element).datepicker("destroy");
         });
-
+        
     },
     //update the control when the view model changes
     update: function (element, valueAccessor) {
-        var value = ko.utils.unwrapObservable(valueAccessor()),
-            current = $(element).datepicker("getDate");
-
-        if (value - current !== 0) {
-            $(element).datepicker("setDate", value);
+        var value = ko.utils.unwrapObservable(valueAccessor());
+        if (value === null || value === undefined) {
+            $(element).datepicker("setDate", null);
+            $(element).val('');
+        } else {
+            var formattedDate = $.datepicker.formatDate($(element).datepicker("option", "dateFormat") || 'mm/dd/yy', new Date(value));
+            if (formattedDate !== $(element).val()) {
+                $(element).datepicker("setDate", formattedDate);
+            }
         }
     }
 };
@@ -119,17 +232,26 @@ ko.bindingHandlers.checkedInArray = {
                 array = options.array, // don't unwrap array because we want to update the observable array itself
                 value = ko.utils.unwrapObservable(options.value),
                 checked = element.checked;
-
+            if (value && value.dynamicTableId !== null && value.fieldId === 0) {
+                var arraylist = ko.utils.unwrapObservable(array);
+                var matchingItem = arraylist.find(item => item.fieldName === value.fieldName && item.dynamicTableId === value.dynamicTableId);
+                value = matchingItem || value;
+            }
             ko.utils.addOrRemoveItem(array, value, checked);
-
         });
     },
     update: function (element, valueAccessor) {
         var options = ko.utils.unwrapObservable(valueAccessor()),
             array = ko.utils.unwrapObservable(options.array),
             value = ko.utils.unwrapObservable(options.value);
-
-        element.checked = ko.utils.arrayIndexOf(array, value) >= 0;
+            isChecked = ko.utils.arrayIndexOf(array, value) >= 0;
+        if (value && value.dynamicTableId !== null && value.fieldId === 0) {
+            var matchingItem = array.find(item => item.fieldName === value.fieldName && item.dynamicTableId === value.dynamicTableId);
+            if (matchingItem) {
+                isChecked = true;
+            }
+        }
+        element.checked = isChecked;
     }
 };
 
@@ -162,6 +284,50 @@ ko.bindingHandlers.select2 = {
     }
 };
 
+ko.bindingHandlers.select2Value = {
+    init: function (element, valueAccessor, allBindingsAccessor) {
+        var allBindings = allBindingsAccessor();
+        var value = ko.unwrap(valueAccessor());
+
+        // Initialize select2
+        $(element).select2(allBindings.select2Value);
+
+        // When an item is selected, update the observable with the full item object
+        $(element).on('select2:select', function (e) {
+            var selectedItem = e.params.data;
+            //valueAccessor()(selectedItem); // Update the observable with the full object
+        });
+
+        // Handle clearing the selection
+        $(element).on('select2:unselect', function () {
+            valueAccessor()(null);
+        });
+    },
+    update: function (element, valueAccessor) {
+        var value = ko.unwrap(valueAccessor());
+        $(element).val(value ? value.id : null).trigger('change');
+    }
+};
+
+ko.bindingHandlers.select2Text = {
+    init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+        var options = allBindings.get('select2') || {};
+
+        $(element).select2(options);
+
+        $(element).on('select2:select', function (event) {
+            var selectedText = event.params.data.text;
+            var value = valueAccessor();
+            value(selectedText);  // Set the observable to the selected text instead of the id
+        });
+    },
+    update: function (element, valueAccessor, allBindings) {
+        var value = ko.unwrap(valueAccessor());
+        $(element).val(value).trigger('change');
+    }
+};
+
+
 ko.bindingHandlers.highlightedText = {
     update: function (element, valueAccessor) {
         var options = valueAccessor();
@@ -180,6 +346,46 @@ ko.bindingHandlers.highlightedText = {
         }
 
         element.innerHTML = value.replace(regex, getReplacement);
+    }
+};
+
+ko.bindingHandlers.sortableColumns = {
+    init: function (element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+        var options = valueAccessor() || {};
+        var selectedFields = options.selectedFields;
+        $(element).sortable({
+            items: "> th",
+            handle: options.handle || ".sortable",
+            axis: options.axis || "x", // Restrict to horizontal movement
+            cursor: options.cursor || "move",
+            placeholder: options.placeholder || "drop-highlight",
+            stop: function (event, ui) {
+                var newOrder = $(element).sortable("toArray");
+                var itemId = ui.item.attr('id');
+                var isPivotColumn = itemId.includes('pivot--');
+                if (isPivotColumn) {
+                    var pivotColumnOrder = newOrder.filter(function (item) {
+                        return item.includes('pivot--');
+                    });
+                    if (pivotColumnOrder.length > 0) {
+                        var pivotColumnOrderWithoutPrefix = pivotColumnOrder.map(function (item) {
+                            return '[' + item.replace('pivot--', '') + ']';
+                        });
+                        var pivotColumnOrderString = pivotColumnOrderWithoutPrefix.join(',');
+                        bindingContext.$parents[2].PivotColumns(pivotColumnOrderString);
+                    }
+                }
+                else if (ko.isObservable(selectedFields)) {
+                    var sortedFields = selectedFields().slice().sort(function (a, b) {
+                        var indexA = newOrder.indexOf(a.fieldId.toString());
+                        var indexB = newOrder.indexOf(b.fieldId.toString());
+                        return indexA - indexB;
+                    });
+                    selectedFields(sortedFields);
+                }
+                bindingContext.$parents[2].sortReportHeaderColumn();
+            }
+        }).disableSelection(); // Prevent text selection while dragging
     }
 };
 
@@ -334,6 +540,10 @@ var manageAccess = function (options) {
     return access;
 };
 
+function generateUniqueId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+}
+
 function beautifySql(sql, htmlMode=true) {
     var _sql = sql;
     try {
@@ -399,29 +609,29 @@ var textQuery = function (options) {
             data: {
                 method: "/ReportApi/ParseQuery",
                 model: JSON.stringify({
-                    token: token,
-                    text: text
+                    token: encodeURIComponent(token),
+                    text: encodeURIComponent(text)
                 })
             }
         });
     }
 
     self.QueryMethods = [
-        { value: 'Sum', key: '<span class="fa fa-flash"></span> Sum of', type: 'Function' },
-        { value: 'Avg', key: '<span class="fa fa-flash"></span> Average of', type: 'Function' },
-        { value: 'Sum', key: '<span class="fa fa-flash"></span> Total of', type: 'Function' },
-        { value: 'Count', key: '<span class="fa fa-flash"></span> Count of', type: 'Function' },
-        { value: 'Percent', key: '<span class="fa fa-flash"></span> Percentage of', type: 'Function' },
-        { value: 'OrderBy', key: '<span class="fa fa-gear"></span> Order by', type: 'Order' },
-        { value: 'Bar', key: '<span class="fa fa-bar-chart"></span> as Bar Chart', type: 'ReportType' },
-        { value: 'Pie', key: '<span class="fa fa-pie-chart"></span> as Pie Chart', type: 'ReportType' },
+        { value: 'Sum', key: '<span class="fa fa-flash"></span> Sum of', type: 'Function', searchKey: 'Sum of' },
+        { value: 'Avg', key: '<span class="fa fa-flash"></span> Average of', type: 'Function', searchKey: 'Average of' },
+        { value: 'Sum', key: '<span class="fa fa-flash"></span> Total of', type: 'Function', searchKey: 'Total of' },
+        { value: 'Count', key: '<span class="fa fa-flash"></span> Count of', type: 'Function', searchKey: 'Count of' },
+        { value: 'Percent', key: '<span class="fa fa-flash"></span> Percentage of', type: 'Function', searchKey: 'Percentage of' },
+        { value: 'OrderBy', key: '<span class="fa fa-gear"></span> Order by', type: 'Order', searchKey: 'Order By' },
+        { value: 'Bar', key: '<span class="fa fa-bar-chart"></span> as Bar Chart', type: 'ReportType', searchKey: 'as Bar Chart' },
+        { value: 'Pie', key: '<span class="fa fa-pie-chart"></span> as Pie Chart', type: 'ReportType', searchKey: 'as Pie Chart' },
     ];
 
     self.FilterMethods = [
-        { value: 'Today', key: '<span class="fa fa-filter"></span> for Today', type: 'DateFilter' },
-        { value: 'Yesterday', key: '<span class="fa fa-filter"></span> for Yesterday', type: 'DateFilter' },
-        { value: 'This Month', key: '<span class="fa fa-filter"></span> for This Month', type: 'DateFilter' },
-        { value: 'Last Month', key: '<span class="fa fa-filter"></span> for Last Month', type: 'DateFilter' },
+        { value: 'Today', key: '<span class="fa fa-filter"></span> for Today', type: 'DateFilter', searchKey: 'for Today' },
+        { value: 'Yesterday', key: '<span class="fa fa-filter"></span> for Yesterday', type: 'DateFilter', searchKey: 'for Yesterday' },
+        { value: 'This Month', key: '<span class="fa fa-filter"></span> for This Month', type: 'DateFilter', searchKey: 'for This Month' },
+        { value: 'Last Month', key: '<span class="fa fa-filter"></span> for Last Month', type: 'DateFilter', searchKey: 'for Last Month' },
     ];
 
     self.getAggregate = function (columnId) {
@@ -464,7 +674,7 @@ var textQuery = function (options) {
             return params.term ? {
                 method: "/ReportApi/ParseQuery",
                 model: JSON.stringify({
-                    token: params.term,
+                    token: encodeURIComponent(params.term),
                     text: ''
                 })
             } : null;
@@ -481,17 +691,75 @@ var textQuery = function (options) {
         }
     }
 
-    self.addQueryItem = function (newItem) {
-        if (self.usingFilter() && !self.filterField) {
-            self.filterField = newItem;
-            return;
-        }
+    self.searchFunctions = {
+        selectedOption: ko.observable(),
+        url: options.apiUrl,
+        headers: { "Authorization": "Bearer " + token },
+        query: function (params) {
+            return params.term ? {
+                method: "/ReportApi/SearchFunction",
+                model: JSON.stringify({
+                    token: params.term,
+                    text: ''
+                })
+            } : null;
+        },
+        processResults: function (data) {
+            if (data.d) results = data.d;
+            var items = _.map(data, function (x) {
+                x.Parameters.forEach(function (p) {
+                    p.selectedField = ko.observable();
+                });
+                return { id: x.Id, text: x.DisplayName || x.Name, type: 'Field', description: x.Description, functionType: x.functionType, name: x.Name, parameters: x.Parameters || []};
+            });
 
-        if (self.usingFilter() && self.filterField) {
-            // add to filters
-            return;
-        }
+            return {
+                results: items
+            };
+        },
+        templateResult: function (item) {
+            if (!item.id) {
+                return item.text;
+            }
 
+            var $result = $(
+                '<div class="select2-result-repository clearfix">' +
+                '   <div class="select2-result-repository__meta">' +
+                '       <div class="select2-result-repository__title"><strong>' + item.text + '</strong></div>' +
+                '       <div class="select2-result-repository__description"><small style="font-size:smaller;">' + item.description + '</small></div>' +
+                '       <div class="select2-result-repository__description"><small style="font-size:smaller;">Parameters: ' + '</small></div>' +
+                '   </div>' +
+                '</div>'
+            );
+
+            if (item.parameters && item.parameters.length) {
+                var $parametersList = $('<ul style="font-size:smaller;"></ul>'); // Making the list small
+                item.parameters.forEach(function (param) {
+                    var requiredText = param.Required ? ' (Required)' : '';
+                    $parametersList.append('<li>' + param.DisplayName + ': ' + (param.Description || '') + requiredText + '</li>');
+                });
+                $result.append($parametersList); // Appending the list to the result
+            }
+
+            $result.append('</div></div>'); // Closing the main structure
+
+            return $result;
+        }
+    }
+
+    self.addQueryItem = function (newItem, skipFilter) {
+        if (skipFilter != true) {
+
+            if (self.usingFilter() && !self.filterField) {
+                self.filterField = newItem;
+                return;
+            }
+
+            if (self.usingFilter() && self.filterField) {
+                // add to filters
+                return;
+            }
+        }
         // add to columns
         var match = _.find(self.queryItems, { 'value': newItem.value });
         if (!match) {
@@ -513,23 +781,36 @@ var textQuery = function (options) {
         return containsFilter;
     }
 
-    self.setupQuery = function () {
+    self.getTributeAttributes = function (options) {
+        options = options || { concatFilterAndQuery: true, wrapText: false };
+
         var tributeAttributes = {
             allowSpaces: true,
             autocompleteMode: true,
             noMatchTemplate: "",
+            searchOpts: {
+                skip: true, // Disable the default matching
+                extract: function (el) {
+                    return el.searchKey; // Use stripped key for matching
+                }
+            },
             values: function (token, callback) {
                 if (token == "=" || token == ">" || token == "<") return;
                 self.ParseQuery(token, "").done(function (results) {
                     if (results.d) results = results.d;
                     var items = _.map(results, function (x) {
-                        return { value: x.fieldId, key: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey };
+                        var item = { value: x.fieldId, key: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey, searchKey: x.tableDisplay + ' > ' + x.fieldDisplay };
+                        if (options.wrapText) {
+                            item.key = `{${item.key}}`;
+                        }
+                        return item;
                     });
-
-                    if (self.usingFilter() && self.filterField != null) {
-                        items = items.concat(self.FilterMethods);
-                    } else {
-                        items = items.concat(self.QueryMethods);
+                    if (options.concatFilterAndQuery) {
+                        if (self.usingFilter() && self.filterField != null) {
+                            items = items.concat(self.FilterMethods);
+                        } else {
+                            items = items.concat(self.QueryMethods);
+                        }
                     }
                     callback(items);
                 });
@@ -551,6 +832,30 @@ var textQuery = function (options) {
             }
         };
 
+        return tributeAttributes;
+    }
+
+    self.setupHints = function () {
+        var tributeAttributes = self.getTributeAttributes({ concatFilterAndQuery: false, wrapText: true });
+        var tribute = new Tribute(tributeAttributes);
+
+        var hintInputs = document.querySelectorAll(".hint-input");
+        hintInputs.forEach(function (inputElement) {
+            tribute.attach(inputElement);
+
+            inputElement.addEventListener("tribute-replaced", function (e) {
+                self.addQueryItem(e.detail.item.original, true);
+            });
+
+            inputElement.addEventListener("menuItemRemoved", function (e) {
+                self.queryItems.remove(e.detail.item.original);
+            });
+        });
+
+    }
+
+    self.setupQuery = function () {       
+        var tributeAttributes = self.getTributeAttributes();
         var tribute = new Tribute(tributeAttributes);
         tribute.attach(document.getElementById("query-input"));
 

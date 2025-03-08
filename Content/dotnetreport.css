@@ -458,7 +458,7 @@ select.is-invalid ~ span .select2-selection {
 .query-builder .rules-group-container {
     padding: 10px;
     padding-bottom: 6px;
-    border: 1px solid #dcc896;
+    border: 1px solid #ccc;
 }
 
 .query-builder .rules-group-header {
@@ -522,7 +522,7 @@ select.is-invalid ~ span .select2-selection {
 
 .select2-container {
     width: 100% !important;
-    min-width: 380px !important;
+    min-width: 180px !important;
 }
 
 .select2-selection {
@@ -541,6 +541,21 @@ select.is-invalid ~ span .select2-selection {
 }
 
     .query-input a {
+        background-color: transparent;
+        color: #2ba6cb !important;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+.hint-input {
+    outline: none;
+    border: 1px solid #eee;
+    padding: 3px 5px;
+    border-radius: 2px;
+    cursor: text;
+}
+
+    .hint-input a {
         background-color: transparent;
         color: #2ba6cb !important;
         text-decoration: none;
@@ -582,6 +597,7 @@ select.is-invalid ~ span .select2-selection {
     }
 
 .ui-datepicker {
+    display: none;
     font-family: Arial, sans-serif;
     font-size: 14px;
     background-color: #fff;
@@ -845,24 +861,9 @@ h2 {
     height: 20px; /* Set a fixed height */
 }
 
-/* Style Gray */
-.style-gray tbody tr:nth-child(odd) {
-    background-color: #d1d1d1;
-}
-
-.style-gray tbody tr:nth-child(even) {
-    background-color: #e0e0e0;
-}
-
-.style-gray thead th {
-    background-color: #b3b3b3;
-    color: #333333;
-    padding: 10px;
-    border-bottom: 2px solid #868686;
-}
-
-.style-gray a {
-    color: #1a1a1a;
+thead th {
+    border-top: 1px solid var(--bs-border-color);
+    border-bottom: 1px solid var(--bs-border-color);
 }
 
 /* Style Blue */
@@ -873,11 +874,16 @@ h2 {
 .style-blue tbody tr:nth-child(even) {
 }
 
+.style-blue > tbody > tr:nth-of-type(odd) > * {
+    background-color: #DEEBF7;
+}
+
 .style-blue thead th {
     background-color: #CFE2F3;
     color: #000000;
     padding: 10px;
     border-bottom: 1px solid #4dc3ff;
+    border-top: 1px solid #4dc3ff;
 }
 
 .style-blue a {
@@ -893,11 +899,16 @@ h2 {
     background-color: #d3efd3;
 }
 
+.style-green > tbody > tr:nth-of-type(odd) > * {
+    background-color: #bde6bd;
+}
+
 .style-green thead th {
     background-color: #90d690;
     color: #333333;
     padding: 10px;
     border-bottom: 2px solid #64c764;
+    border-top: 2px solid #64c764;
 }
 
 .style-green a {
@@ -912,12 +923,16 @@ h2 {
 .style-red tbody tr:nth-child(even) {
     background-color: #ffcccc;
 }
+.style-red > tbody > tr:nth-of-type(odd) > * {
+    background-color: #ffb3b3;
+}
 
 .style-red thead th {
     background-color: #ff8080;
     color: #333333;
     padding: 10px;
     border-bottom: 2px solid #ff4d4d;
+    border-top: 2px solid #ff4d4d;
 }
 
 .style-red a {
@@ -926,6 +941,9 @@ h2 {
 
 /* Style Yellow */
 .style-yellow tbody tr:nth-child(odd) {
+    background-color: #ffffb3;
+}
+.style-yellow > tbody > tr:nth-of-type(odd) > * {
     background-color: #ffffb3;
 }
 
@@ -938,6 +956,7 @@ h2 {
     color: #333333;
     padding: 10px;
     border-bottom: 2px solid #ffff4d;
+    border-top: 2px solid #ffff4d;
 }
 
 .style-yellow a {
@@ -946,6 +965,9 @@ h2 {
 
 /* Style Orange */
 .style-orange tbody tr:nth-child(odd) {
+    background-color: #FCE5CD;
+}
+.style-orange > tbody > tr:nth-of-type(odd) > * {
     background-color: #FCE5CD;
 }
 
@@ -957,6 +979,7 @@ h2 {
     color: #333333;
     padding: 10px;
     border-bottom: 1px solid #ffb84d;
+    border-top: 1px solid #ffb84d;
 }
 
 .style-orange a {
@@ -967,144 +990,31 @@ h2 {
 .style-mixed tbody tr:nth-child(odd) {
     background-color: #c8d8d8;
 }
+.style-mixed > tbody > tr:nth-of-type(odd) > * {
+    background-color: #c8d8d8;
+}
 
 .style-mixed tbody tr:nth-child(even) {
     background-color: #d8e4e4;
 }
 
-.style-mixed thead th {
-    background-color: #c8d8e4;
-    color: #333333;
-    padding: 10px;
-    border-bottom: 2px solid #c8e4d8;
+.style-mixed > tbody > tr:nth-of-type(even) > * {
+    background-color: #d8e4e4;
 }
-
-    .style-mixed thead th a {
-        color: #8a6755; /* A complementary yet distinct color */
-        text-decoration: none;
-    }
-
-        .style-mixed thead th a:hover {
-            text-decoration: underline;
-        }
-
-
 .style-mixed-bright tbody tr:nth-child(odd) {
     background-color: #D5A6BD;
 }
-
-/* Style Blue */
-.style-blue tbody tr:nth-child(odd) {
-    background-color: #DEEBF7;
+.style-mixed-bright > tbody > tr:nth-of-type(odd) > * {
+    background-color: #D5A6BD;
 }
 
-.style-blue tbody tr:nth-child(even) {
-}
-
-.style-blue thead th {
-    background-color: #CFE2F3;
-    color: #000000;
-    padding: 10px;
-    border-bottom: 1px solid #4dc3ff;
-}
-
-.style-blue a {
-    color: #005c99;
-}
-
-/* Style Green */
-.style-green tbody tr:nth-child(odd) {
-    background-color: #bde6bd;
-}
-
-.style-green tbody tr:nth-child(even) {
-    background-color: #d3efd3;
-}
-
-.style-green thead th {
-    background-color: #90d690;
-    color: #333333;
-    padding: 10px;
-    border-bottom: 2px solid #64c764;
-}
-
-.style-green a {
-    color: #2d862d;
-}
-
-/* Style Red */
-.style-red tbody tr:nth-child(odd) {
-    background-color: #ffb3b3;
-}
-
-.style-red tbody tr:nth-child(even) {
-    background-color: #ffcccc;
-}
-
-.style-red thead th {
-    background-color: #ff8080;
-    color: #333333;
-    padding: 10px;
-    border-bottom: 2px solid #ff4d4d;
-}
-
-.style-red a {
-    color: #b30000;
-}
-
-/* Style Yellow */
-.style-yellow tbody tr:nth-child(odd) {
-    background-color: #ffffb3;
-}
-
-.style-yellow tbody tr:nth-child(even) {
-    background-color: #ffffcc;
-}
-
-.style-yellow thead th {
-    background-color: #ffff80;
-    color: #333333;
-    padding: 10px;
-    border-bottom: 2px solid #ffff4d;
-}
-
-.style-yellow a {
-    color: #cc9900;
-}
-
-/* Style Orange */
-.style-orange tbody tr:nth-child(odd) {
-    background-color: #FCE5CD;
-}
-
-.style-orange tbody tr:nth-child(even) {
-}
-
-.style-orange thead th {
-    background-color: #F9CB9C;
-    color: #333333;
-    padding: 10px;
-    border-bottom: 1px solid #ffb84d;
-}
-
-.style-orange a {
-    color: #cc6600;
-}
-
-/* Style Mixed */
-.style-mixed tbody tr:nth-child(odd) {
-    background-color: #c8d8d8;
-}
-
-.style-mixed tbody tr:nth-child(even) {
-    background-color: #d8e4e4;
-}
 
 .style-mixed thead th {
     background-color: #c8d8e4;
     color: #333333;
     padding: 10px;
     border-bottom: 2px solid #c8e4d8;
+    border-top: 2px solid #c8e4d8;
 }
 
     .style-mixed thead th a {
@@ -1161,8 +1071,8 @@ h2 {
 }
 
 .mini-table-preview {
-    width: 80px; /* Set a fixed width for the mini-table previews */
-    height: 50px; /* Set a fixed height for the mini-table previews */
+    width: 60px; /* Set a fixed width for the mini-table previews */
+    height: 40px; /* Set a fixed height for the mini-table previews */
     overflow: hidden; /* Hides any overflow */
     display: flex; /* Use flexbox for the mini-table layout */
     flex-direction: column; /* Aligns the rows vertically */
@@ -1177,8 +1087,8 @@ h2 {
     flex-grow: 1; /* Allows cells to expand, maintaining the flex layout */
     border: 1px solid #ddd; /* Adds a border to each cell */
     box-sizing: border-box; /* Ensures the border is included in the cell's dimensions */
-    width: 15px; /* Sets a fixed width for each cell */
-    height: 10px; /* Sets a different fixed height for each cell, making it rectangular */
+    width: 12px; /* Sets a fixed width for each cell */
+    height: 8px; /* Sets a different fixed height for each cell, making it rectangular */
 }
 
 .dropdown-option-selected {
@@ -1204,7 +1114,379 @@ h2 {
     }
 }
 
+.cm-error {
+    background: url('data:image/png;base64,iVBORw0...') bottom left repeat-x; /* red squiggly line image */
+    background-size: auto 100%;
+}
+
+.CodeMirror-hint.cm-function-hint:before {
+    content: "\f0c3";
+    font-family: FontAwesome;
+    font-weight: 900;
+    color: #3366CC;
+    padding-right: 5px;
+}
+
+.CodeMirror-hint.cm-field-hint:before {
+    content: "\f1c0";
+    font-family: FontAwesome;
+    font-weight: 900;
+    color: #E65100;
+    padding-right: 5px;
+}
+
+.cm-function-hint-text {
+    color: #3366CC;
+}
+
+.cm-field-hint-text {
+    color: #E65100;
+}
+
+.single-line-codemirror {
+    border: 1px solid #e0e0e0;
+    height: 40px !important;
+    overflow-y: hidden;
+}
+
+    .single-line-codemirror .CodeMirror-scroll {
+        overflow-y: hidden !important;
+        overflow-x: auto !important;
+    }
+
+.CodeMirror-hints {
+    z-index: 9999 !important;
+    position: fixed;
+}
+
 tfoot tr.sub-total {
     border-top: double 4px #dee2e6;
     border-bottom: double 4px #dee2e6;
+}
+
+.formula-field-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.delete-btn {
+    display: none;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    right: 5px;
+}
+
+.formula-field-item:hover .delete-btn {
+    display: inline-block;
+}
+
+
+.select2-container--open {
+    z-index: 2000;
+}
+
+.bubble-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 8px;
+    border-radius: 15px;
+    background-color: #007bff;
+    color: white;
+    font-size: 12px;
+}
+
+    .bubble-badge .form-check-input {
+        margin-left: 5px;
+        margin-top: 5px;
+        font-size: 14px;
+    }
+
+
+    .dropdown-item a {
+        text-decoration: none;
+    }
+
+.row{
+    padding-top: 5px; padding-bottom: 5px;
+}
+
+.sticky-column {
+    position: sticky;
+    top: 0;
+    height: 100%;
+    z-index: 1000;
+}
+
+@media (max-width: 768px) {
+    .sticky-column {
+        position: static; /* Disable sticky on smaller screens */
+    }
+}
+
+.toolbar-button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 80px;
+    font-size: 12px;
+    text-align: center;
+    border: 1px solid #d1d5db;
+    padding: 5px;
+    border-radius: 5px;
+    margin: 0px;
+}
+
+    .toolbar-button i {
+        font-size: 14px;
+    }
+
+    .toolbar-button span {
+        font-size: 10px;
+        margin-top: 3px;
+    }
+
+.top-menu-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 10px;
+}
+
+@media (max-width: 768px) {
+    .toolbar-button {
+        min-width: 50px;
+        margin: 1px;
+    }
+
+        .toolbar-button i {
+            font-size: 12px;
+        }
+
+        .toolbar-button span {
+            font-size: 8px;
+        }
+
+    .top-menu-toolbar {
+        justify-content: center;
+    }
+}
+
+.arrow-wrapper {
+    margin-top: 10px;
+    text-align: left;
+}
+
+.dropdown-hover:hover > .dropdown-menu {
+    display: block;
+    position: absolute;
+    left: 100%;
+    top: 0;
+    margin-top: 0;
+}
+
+.dropdown-menu {
+    display: none;
+}
+
+.dropdown-hover:hover > .dropdown-menu {
+    display: block;
+}
+
+.dropdown-menu {
+    z-index: 1050; /* Ensure it appears above other elements */
+    min-width: 10rem;
+}
+
+.dropdown-menu.small {
+    font-size: 10pt;
+
+}
+    .dropdown-menu.small a {
+       
+    }
+
+.file-explorer-container {
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 10px;
+}
+
+.breadcrumb {
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.file-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+    .file-table th, .file-table td {
+        vertical-align: middle;
+        padding: 8px;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .file-table th {
+        background-color: #f8f9fa;
+    }
+
+    .file-table .fa {
+        font-size: 18px;
+    }
+
+.clickable {
+    cursor: pointer;
+}
+
+.empty-message {
+    text-align: center;
+    padding: 15px;
+    font-weight: bold;
+    color: #777;
+}
+
+.dropdown-submenu {
+    position: relative;
+}
+
+    .dropdown-submenu .dropdown-menu {
+        display: none;
+        position: absolute;
+        left: 100%;
+        top: 0;
+        margin-top: -5px;
+        min-width: 180px;
+    }
+
+    .dropdown-submenu:hover .dropdown-menu {
+        display: block;
+    }
+.pager-container {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 3px;
+}
+
+.pager-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px; 
+    height: 28px; 
+    font-size: 14px;
+    text-decoration: none;
+    border-radius: 5px;
+    text-align: center;
+    font-weight: bold;
+    padding: 2px 4px;
+}
+
+    .pager-btn:disabled,
+    .pager-btn[disabled] {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+
+.pager-control {
+    width: 55px;
+    height: 28px; 
+    font-size: 14px;
+    padding: 3px 5px;
+    border-radius: 5px;
+    appearance: none;
+    text-align: center;
+}
+
+.zoom-level {
+    font-size: 14px;
+    font-weight: bold;
+    padding: 0 8px;
+    display: inline-block;
+    min-width: 40px;
+    text-align: center;
+}
+
+.report-inner {
+    transition: transform 0.2s ease-in-out;
+}
+
+
+.rule-container .form-control {
+    min-width: 100%;
+}
+
+.rule-container select {
+    min-width: 100%;
+}
+
+.rule-container .col-md-1 {
+    min-width: 60px; /* Ensures space for And/Or dropdown */
+}
+
+    .rule-container .col-md-1 .form-select {
+        padding: 5px 3px;
+    }
+
+    .rule-container .col-md-1 .form-control {
+        padding: 5px 3px;
+    }
+
+.rule-container .btn {
+    white-space: nowrap;
+}
+
+.rule-container .d-flex {
+    gap: 5px;
+}
+
+.btn-sm i {
+    vertical-align: middle;
+}
+
+@media (max-width: 768px) {
+    .rule-container .row {
+        flex-wrap: wrap;
+    }
+
+    .rule-container .col-md-1 {
+        width: 100%;
+        text-align: center;
+        margin-bottom: 5px;
+    }
+
+        .rule-container .col-md-1 select {
+            width: auto;
+            display: inline-block;
+        }
+
+        .rule-container .col-md-1 .form-control {
+            width: auto;
+        }
+
+        .rule-container .col-md-1 .btn {
+            display: block;
+            width: auto;
+            margin: auto;
+        }
+
+            .rule-container .col-md-1 .btn i {
+                display: inline-block;
+            }
+}
+
+.rule-container .row {
+    margin-left: -3px;
+    margin-right: -3px;
+}
+
+.rule-container [class^="col-"] {
+    padding-left: 3px;
+    padding-right: 3px;
 }
