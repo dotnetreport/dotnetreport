@@ -248,7 +248,7 @@
                 AllSqlQuries: '<%= Model.ReportSql %>',
                 reportHeader: 'report-header',
                 userSettings: data,
-                dataFilters: JSON.parse(data.dataFilters),
+                dataFilters: JSON.parse(data.dataFilters || '{}'),
                 reportData: JSON.parse(decodeHTMLEntities('<%= Model.ReportData.Replace("'", "\\'") %>')),
                 getTimeZonesUrl: svc + "GetAllTimezones",
                 chartSize: { width: 1000, height: 450 }
