@@ -1538,6 +1538,7 @@ namespace ReportBuilder.Web.Models
         public async static Task<DataSet> GetDrillDownData(IDatabaseConnection databaseConnection, string connectionString, DataTable dt, List<string> sqlFields, string reportDataJson, List<KeyValuePair<string, string>> parameters = null)
         {
             var drilldownRow = new List<string>();
+            if (dt.Rows.Count == 0) return new DataSet();
             var dr = dt.Rows[0];
             int i = 0;
             foreach (DataColumn dc in dt.Columns)
