@@ -57,7 +57,7 @@ namespace ReportBuilder.Web.Controllers
             return View();
         }
 
-        private async Task LoginUser(string email, string contact, bool dotnetAdmin)
+        private async Task LoginUser(string email, string contact, bool dotnetAdmin, List<ClaimInfo> userclaims=null, List<string> roles=null)
         {
             var claims = new List<Claim>
                     {
@@ -67,11 +67,19 @@ namespace ReportBuilder.Web.Controllers
                         new Claim(ClaimTypes.Name, contact)
                     };
 
-            if (dotnetAdmin)
+            //if (dotnetAdmin)
+            //{
+            //    claims.Add(
+            //        new Claim(ClaimTypes.Role, DotNetReportRoles.DotNetReportAdmin)
+            //    );
+            //}
+            if (userclaims != null)
             {
-                claims.Add(
-                    new Claim(ClaimTypes.Role, DotNetReportRoles.DotNetReportAdmin)
-                );
+                claims.AddRange(userclaims.Select(uc => new Claim(uc.Type, uc.Value)));
+            }
+            if (roles != null)
+            {
+                claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
             }
             var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             var authProperties = new AuthenticationProperties
@@ -127,9 +135,8 @@ namespace ReportBuilder.Web.Controllers
 
                 if (loginResult.Success)
                 {
-                    await LoginUser(model.Email, loginResult.PrimaryContact, true);
+                    await LoginUser(model.Email, loginResult.PrimaryContact, true,loginResult.User.Claims,loginResult.User.Roles);
                     DotNetReportHelper.UpdateConfigurationFile(loginResult.AccountKey, loginResult.PrivateKey, loginResult.DataConnect, true);
-
                     if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
                     {
                         return Redirect(returnUrl);
@@ -149,7 +156,6 @@ namespace ReportBuilder.Web.Controllers
                         return RedirectToAction("Index", "Home");
                     }
                 }
-                
                 ModelState.AddModelError(string.Empty, loginResult.Message);
                 return View(model);
             }

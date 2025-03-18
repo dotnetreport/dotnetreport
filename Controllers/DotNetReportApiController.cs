@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
+using ReportBuilder.Web.Helper;
 using ReportBuilder.Web.Models;
 using System.Data;
 using System.Net;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using System.Web;
@@ -57,7 +59,7 @@ namespace ReportBuilder.Web.Controllers
 
             settings.Users = new List<dynamic>(); // Populate all your application's user, ex  { "Jane", "John" } or { new { id="1", text="Jane" }, new { id="2", text="John" }}
             settings.UserRoles = new List<string>(); // Populate all your application's user roles, ex  { "Admin", "Normal" }       
-            settings.CanUseAdminMode = User.IsInRole(DotNetReportRoles.DotNetReportAdmin); // Set to true only if current user can use Admin mode to setup reports, dashboard and schema
+            settings.CanUseAdminMode = ClaimsHelper.HasAnyRequiredClaim(User as ClaimsPrincipal, ClaimsStore.AllowAdminMode); // Set to true only if current user can use Admin mode to setup reports, dashboard and schema
             settings.DataFilters = new { }; // add global data filters to apply as needed https://dotnetreport.com/kb/docs/advance-topics/global-filters/
 
             if (userConfig == "dnr-managed")
@@ -771,7 +773,7 @@ namespace ReportBuilder.Web.Controllers
             return warning;
         }
 
-        [Authorize(Roles=DotNetReportRoles.DotNetReportAdmin)]
+        [CustomAuthorize(ClaimsStore.AllowSetupPageAccess)]
         [HttpGet]
         public async Task<IActionResult> LoadSetupSchema(string? databaseApiKey = "", bool? onlyApi = null)
         {
@@ -826,8 +828,8 @@ namespace ReportBuilder.Web.Controllers
                 return new JsonResult(new { Message = ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null }) { StatusCode = (int)HttpStatusCode.InternalServerError };
             }
         }
-       
-        [Authorize(Roles=DotNetReportRoles.DotNetReportAdmin)]
+
+        [CustomAuthorize(ClaimsStore.AllowSetupPageAccess)]
         [HttpPost]
         public async Task<IActionResult> UpdateDbConnection(UpdateDbConnectionModel model)
         {
@@ -866,7 +868,7 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        [Authorize(Roles = DotNetReportRoles.DotNetReportAdmin)]
+        [CustomAuthorize(ClaimsStore.AllowSetupPageAccess)]
         [HttpPost]
         public async Task<IActionResult> UpdateUserConfigSetting(UpdateUserConfigModel model)
         {
@@ -900,7 +902,7 @@ namespace ReportBuilder.Web.Controllers
         }
         
 
-        [Authorize(Roles = DotNetReportRoles.DotNetReportAdmin)]
+        [CustomAuthorize(ClaimsStore.AllowSetupPageAccess)]
         [HttpPost]
         public async Task<IActionResult> SaveAppSettings(AppSettingModel model)
         {
@@ -932,7 +934,7 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        [Authorize(Roles = DotNetReportRoles.DotNetReportAdmin)]
+        [CustomAuthorize(ClaimsStore.AllowSetupPageAccess)]
         [HttpPost]
         public async Task<IActionResult> SwitchDbConnection([FromBody] string dataConnection)
         {

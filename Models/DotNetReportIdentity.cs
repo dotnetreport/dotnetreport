@@ -1,9 +1,11 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Caching.Memory;
 using ReportBuilder.Web.Controllers;
 using System.ComponentModel.DataAnnotations;
-
+using System.Net;
+using System.Security.Claims;
 namespace ReportBuilder.Web.Models
 {
 
@@ -155,9 +157,33 @@ namespace ReportBuilder.Web.Models
         }
     }
 
-    public static class  DotNetReportRoles
+    public static class ClaimsHelper
     {
-        public const string DotNetReportAdmin = "DotNetReport Admin";   
+        public static bool HasAnyRequiredClaim(ClaimsPrincipal user, params string[] requiredClaims)
+        {
+            if (user?.Identity == null || !user.Identity.IsAuthenticated)
+            {
+                return false;
+            }
+            var identity = (ClaimsIdentity)user.Identity;
+            return identity.Claims.Any(c => requiredClaims.Contains(c.Type));
+        }
+    }
+    public static class ClaimsStore
+    {
+        public static List<Claim> AllClaims { get; } = new List<Claim>()
+        {
+            new Claim(AllowBillingAccess, "Account and Subscription management in Portal"),
+            new Claim(AllowManageUsersAndRoles, "Manage Users and Roles in Portal"),
+            new Claim(AllowSetupPageAccess, "Allow Setup Page Access in Dotnet Report"),
+            new Claim(AllowAdminMode, "Allow Admin Mode Access in Dotnet Report"),
+        };
+
+        // Properties for easy access
+        public const string AllowBillingAccess = "AllowBillingAccess";
+        public const string AllowManageUsersAndRoles = "AllowManageUsersAndRoles";
+        public const string AllowSetupPageAccess = "AllowSetupPageAccess";
+        public const string AllowAdminMode = "AllowAdminMode";
     }
 
     public class LoginViewModel
@@ -228,8 +254,20 @@ namespace ReportBuilder.Web.Models
         public string PrivateKey { get; set; }
         public string DataConnect { get; set; }
         public string PrimaryContact { get; set; }
+        public UserInfo User { get; set; }
     }
-
+    public class UserInfo
+    {
+        public string Id { get; set; }
+        public string Email { get; set; }
+        public List<string> Roles { get; set; }
+        public List<ClaimInfo> Claims { get; set; }
+    }
+    public class ClaimInfo
+    {
+        public string Type { get; set; }
+        public string Value { get; set; }
+    }
     public class DotNetReportUserStore : IUserStore<IdentityUser>, IUserPasswordStore<IdentityUser>
     {
         private string _connectionString;

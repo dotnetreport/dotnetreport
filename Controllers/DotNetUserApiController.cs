@@ -5,10 +5,11 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authorization;
 using ReportBuilder.Web.Models;
+using ReportBuilder.Web.Helper;
 
 namespace ReportBuilder.Web.Controllers
 {
-    [Authorize(Roles = DotNetReportRoles.DotNetReportAdmin)]
+    [CustomAuthorize(ClaimsStore.AllowSetupPageAccess)]
     [Route("api/[controller]/[action]")]
     [ApiController]
     public class DotNetUserApiController : ControllerBase
