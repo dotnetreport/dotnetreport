@@ -24,7 +24,7 @@ services.ConfigureApplicationCookie(options =>
     options.ExpireTimeSpan = TimeSpan.FromDays(365); 
     options.SlidingExpiration = true;
 });
-
+services.AddHttpClient();
 
 builder.Services.AddControllersWithViews();
 

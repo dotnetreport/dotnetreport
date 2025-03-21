@@ -31,130 +31,7 @@ namespace ReportBuilder.Web.Models
         }
 
 
-        public static List<UserViewModel> GetAppUsers()
-        {
-            const string cacheKey = "AppUsers";
-            if (!Cache.TryGetValue(cacheKey, out List<UserViewModel> users))
-            {
-                var connstring = GetConnection();
-                if (string.IsNullOrEmpty(connstring)) return new List<UserViewModel>();
-                using (var conn = new SqlConnection(connstring))
-                {
-                    conn.Open();
-                    users = GetAppUsers(conn);
-                    var cacheEntryOptions = new MemoryCacheEntryOptions()
-                        .SetSlidingExpiration(CacheExpirationOptions);
 
-                    Cache.Set(cacheKey, users, cacheEntryOptions);
-                }
-            }
-            return users;
-        }
-
-        public static List<UserViewModel> GetAppUsers(SqlConnection connection)
-        {
-            List<UserViewModel> usersData = new List<UserViewModel>();
-
-            using (var command = new SqlCommand("SELECT Id, UserName, Email, [LockoutEnabled] as [IsActive] FROM AspNetUsers", connection))
-            {
-                using (var reader = command.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        var user = new UserViewModel
-                        {
-                            UserId = reader.GetString(0),
-                            UserName = reader.GetString(1),
-                            Email = reader.GetString(2),
-                            IsActive = !reader.GetBoolean(3)
-                        };
-                        usersData.Add(user);
-                    }
-                }
-            }
-
-            return usersData;
-        }
-
-
-        public static List<UserViewModel> GetAppRoles()
-        {
-            const string cacheKey = "AppRoles";
-            if (!Cache.TryGetValue(cacheKey, out List<UserViewModel> roles))
-            {
-                var connstring = GetConnection();
-                if (string.IsNullOrEmpty(connstring)) return new List<UserViewModel>();
-                using (var conn = new SqlConnection(connstring))
-                {
-                    conn.Open();
-                    roles = GetAppRoles(conn);
-
-                    var cacheEntryOptions = new MemoryCacheEntryOptions()
-                        .SetSlidingExpiration(CacheExpirationOptions);
-
-                    Cache.Set(cacheKey, roles, cacheEntryOptions);
-                }
-            }
-
-            return roles;
-        }
-
-        public static List<UserViewModel> GetAppRoles(SqlConnection connection)
-        {
-            List<UserViewModel> usersData = new List<UserViewModel>();
-
-            // Assuming there is a Users table with columns UserId, UserName, Email
-            using (var command = new SqlCommand("SELECT Id , Name FROM AspNetRoles;", connection))
-            {
-                using (var reader = command.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        // Map data to UserViewModel
-                        var user = new UserViewModel
-                        {
-                            RoleId = reader.GetString(0),
-                            RoleName = reader.GetString(1)
-                        };
-                        usersData.Add(user);
-                    }
-                }
-            }
-
-            return usersData;
-        }
-        public static List<UserViewModel> GetAppUserRoles(SqlConnection connection)
-        {
-            List<UserViewModel> usersData = new List<UserViewModel>();
-
-            using (var command = new SqlCommand("SELECT u.Id AS UserId, u.UserName, r.Name AS RoleName " +
-                                               "FROM AspNetUsers u " +
-                                               "JOIN AspNetUserRoles ur ON u.Id = ur.UserId " +
-                                               "JOIN AspNetRoles r ON ur.RoleId = r.Id", connection))
-            {
-                using (var reader = command.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        // Map data to UserViewModel
-                        var user = new UserViewModel
-                        {
-                            UserId = reader.GetString(0),
-                            UserName = reader.GetString(1),
-                            RoleName = reader.GetString(2)
-                        };
-                        usersData.Add(user);
-                    }
-                }
-            }
-
-            return usersData;
-        }
-        public static void BustCache()
-        {
-            Cache.Remove("AppUsers");
-            Cache.Remove("AppRoles");
-        }
     }
 
     public static class ClaimsHelper
@@ -222,17 +99,7 @@ namespace ReportBuilder.Web.Models
 
     }
 
-    public class UserViewModel
-    {
-        public string RoleId { get; set; }
-        public string UserId { get; set; }
-        public string UserName { get; set; }
-        public string Email { get; set; }
-        public string RoleName { get; set; }
-        public bool IsActive { get; set; }
 
-
-    }
     public class UserModel
     {
         public string account { get; set; }
@@ -256,12 +123,54 @@ namespace ReportBuilder.Web.Models
         public string PrimaryContact { get; set; }
         public UserInfo User { get; set; }
     }
+    public class ApiResult<T>
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; }
+        public T data { get; set; }
+        public ApiResult(bool success, string message, T dt)
+        {
+            Success = success;
+            Message = message;
+            data = dt;
+        }
+    }
     public class UserInfo
     {
         public string Id { get; set; }
         public string Email { get; set; }
         public List<string> Roles { get; set; }
         public List<ClaimInfo> Claims { get; set; }
+    }
+    public class KeyModel
+    {
+        public string? account { get; set; }
+    }
+    public class UserViewModel : KeyModel
+    {
+        public UserViewModel()
+        {
+            Claims = new List<UserClaims>();
+            Roles = new List<RoleViewModel>();
+        }
+        public string? UserId { get; set; }
+        public bool? IsPrimary { get; set; }
+        public string? Name { get; set; }
+        public string? Email { get; set; }
+        public List<UserClaims> Claims { get; set; }
+        public List<RoleViewModel> Roles { get; set; }
+    }
+    public class UserClaims
+    {
+        public string ClaimType { get; set; }
+        public string ClaimValue { get; set; }
+        public bool IsSelected { get; set; }
+    }
+    public class RoleViewModel : KeyModel
+    {
+        public string? RoleId { get; set; }
+        public string? RoleName { get; set; }
+        public bool? IsSelected { get; set; }
     }
     public class ClaimInfo
     {

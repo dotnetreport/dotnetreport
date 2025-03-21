@@ -1613,85 +1613,159 @@ var usersAndRolesViewModel = function (options) {
 
 	self.usersTableData = ko.observableArray([]);
 	self.roleTableData = ko.observableArray([]);
-	self.userRoleTableData = ko.observableArray([]);
-
+	self.claimsTableData = ko.observableArray([]);
+	self.name = ko.observable("");
+	self.email = ko.observable("");
+	self.roleName = ko.observable("");
 	self.SelectedRole = ko.observable({
 		roleId: ko.observable(),
 		roleName: ko.observable()
 	})
-	self.SelectedUser = ko.observable({
+	self.SelectedUser =ko.observable({
 		userId: ko.observable(),
-		userName: ko.observable(),
+		name: ko.observable(),
 		email: ko.observable(),
-		password: ko.observable(),
-		isactive: ko.observable()
-	})
-	self.SelectedUserRole = ko.observable({
-		userId: ko.observable(),
-		roleId: ko.observable(),
-		userName: ko.observable(),
-	});
+		isPrimary: ko.observable(),
+		selectedClaims: ko.observableArray([]),
+		selectedRoles: ko.observableArray([])
+	}),
 
-	self.tableName = ko.observable("");
-	self.userName = ko.observable("");
-	self.email = ko.observable("");
-	self.password = ko.observable("");
-	self.roleName = ko.observable("");
-	self.roleId = ko.observable("");
-	self.isactive = ko.observable(false);
 	self.selectedUserId = ko.observable();
 	self.selectedRolesId = ko.observable();
 
-	self.openEditRoleModal = function (roleData) {
+	self.openEditDeleteRoleModal = function (roleData) {
 		self.SelectedRole({
-			roleId: roleData.RoleId,
-			roleName: roleData.RoleName
+			roleId: roleData.roleId,
+			roleName: roleData.roleName
 		});
 	};
-	self.openDeleteRoleModal = function (roleData) {
-		self.SelectedRole({
-			roleId: roleData.RoleId,
-			roleName: roleData.RoleName
-		});
-	};
-	self.openEditUserModal = function (roleData) {
+	self.openEditDeleteUserModal = function (userData) {
 		self.SelectedUser({
-			userId: roleData.UserId,
-			userName: roleData.UserName,
-			email: roleData.Email,
-			isactive: roleData.IsActive
+			userId: userData.userId,
+			name: userData.name,
+			email: userData.email,
+			selectedClaims: userData.claims,
+			selectedRoles: userData.roles,
+			isPrimary: userData.isPrimary
 		});
 	};
-	self.openDeleteUserModal = function (roleData) {
-		self.SelectedUser({
-			userId: roleData.UserId,
-			userName: roleData.UserName,
-			email: roleData.Email
+	self.getSelectedClaims = function (userClaims) {
+		return ko.utils.arrayFilter(userClaims, function (claim) {
+			return claim.isSelected;
 		});
 	};
-	self.openEditUserRoleModal = function (userroledata) {
-		self.SelectedUserRole({
-			userId: userroledata.UserId,
-			userName: userroledata.UserName
+	self.getSelectedRoles = function (roles) {
+		return ko.utils.arrayFilter(roles, function (role) {
+			return role.isSelected;
 		});
 	};
-	self.openDeleteUserRoleModal = function (roleData) {
-		self.SelectedUserRole({
-			userId: roleData.UserId,
-			userName: roleData.UserName
+	self.clearField =  function () {
+		self.name('');
+		self.email(''),
+		self.roleName('');
+	},
+
+	self.deleteUser = function () {
+		var userId = self.SelectedUser().userId;
+		ajaxcall({
+			url: '/api/dotnetusersroles/DeleteUser',
+			type: 'POST',
+			data: JSON.stringify({
+				UserId: self.SelectedUser().userId
+			})
+		}).done(function (response) {
+			if (response) {
+				if (response.success) {
+					toastr.success(response.message);
+					self.loadUsersData();
+				} else {
+					toastr.error(response.message);
+					return false;
+				}
+			} else {
+				toastr.error('Connection Error');
+				return false;
+			}
 		});
 	};
-	self.EditRole = function() {
+	self.createUser = function () {
+		if (self.isValidforCreateUser()) {
+			var selectedClaims = self.claimsTableData()
+				.filter(function (claim) {
+					return claim.isSelected;
+				}).map(function (claim) {
+					return { ClaimType: claim.claimType, ClaimValue: claim.claimValue, isSelected: true };
+				});
+			var selectedRoles = self.roleTableData()
+				.filter(function (role) {
+					return role.isSelected;
+				})
+				.map(function (role) {
+					return { RoleId: role.roleId, RoleName: role.roleName, isSelected: true };
+				});
+			var requestData = {
+				name: self.name(),
+				email: self.email(),
+				claims: selectedClaims,
+				roles: selectedRoles
+			};
+			ajaxcall({
+				url: '/api/dotnetusersroles/CreateUser',  // Replace with your actual endpoint
+				type: 'POST',
+				data: JSON.stringify(requestData)
+			}).done(function (response) {
+				if (response) {
+					if (response.success) {
+						toastr.success(response.message);
+						self.clearField();
+						self.hideCreateUserModel();
+						self.loadUsersData();
+					} else {
+						toastr.error(response.message);
+						return false;
+					}
+				} else {
+					toastr.error('Error');
+					return false;
+				}
+			});
+		}
+	};
+	self.createRole = function() {
+		if (self.isValidforCreateRole()) {
+			var requestData = {
+				roleName: self.roleName()
+			};
+			ajaxcall({
+				url: '/api/dotnetusersroles/CreateRole',
+				type: 'POST',
+				data: JSON.stringify(requestData)
+			}).done(function (response) {
+				if (response) {
+					if (response.success) {
+						toastr.success(response.message);
+						self.clearField();
+						self.hideCreateRoleModel();
+						self.loadRolesData();
+					} else {
+						toastr.error(response.message);
+						return false;
+					}
+				} else {
+					toastr.error('Error creating tables');
+					return false;
+				}
+			});
+		}
+	};
+	self.updateRole = function () {
 		if (self.isValidforEditRole()) {
 			const roledataid = self.SelectedRole().roleId;
 			const rolename = self.SelectedRole().roleName;
-			
 			ajaxcall({
-				url: options.UpdateRoleDataUrl,
+				url: '/api/dotnetusersroles/UpdateRole',
 				type: 'POST',
 				data: JSON.stringify({
-					account: apiKey,
-					dataConnect: dbKey,
 					RoleId: roledataid,
 					rolename: rolename
 				})
@@ -1699,7 +1773,9 @@ var usersAndRolesViewModel = function (options) {
 				if (response) {
 					if (response.success) {
 						toastr.success(response.message);
-						self.loadRolesData(apiKey, dbKey);
+						self.clearField();
+						self.hideEditRoleModel();
+						self.loadRolesData();
 					} else {
 						toastr.error(response.message);
 						return false;
@@ -1710,29 +1786,63 @@ var usersAndRolesViewModel = function (options) {
 				}
 			});
 		}
-
-	}
-	self.EditUser = function() {
+	};
+	self.deleteRole = function () {
+		ajaxcall({
+			url: '/api/dotnetusersroles/DeleteRole',
+			type: 'POST',
+			data: JSON.stringify({
+				RoleId: self.SelectedRole().roleId
+			})
+		}).done(function (response) {
+			if (response) {
+				if (response.success) {
+					toastr.success(response.message);
+					self.loadRolesData();
+				} else {
+					toastr.error(response.Message);
+					return false;
+				}
+			} else {
+				toastr.error('Connection Error');
+				return false;
+			}
+		});
+	};
+	self.updateUser=function () {
 		if (self.isValidforEditUser()) {
 			const userid = self.SelectedUser().userId;
-			const username = self.SelectedUser().userName;
+			const name = self.SelectedUser().name;
 			const email = self.SelectedUser().email;
-			const isactive = self.SelectedUser().isactive;
+			var selectedClaims = self.SelectedUser().selectedClaims
+				.filter(function (claim) {
+					return claim.isSelected;
+				}).map(function (claim) {
+					return { ClaimType: claim.claimType, ClaimValue: claim.claimValue, isSelected: true };
+				});
+			var selectedRoles = self.SelectedUser().selectedRoles
+				.filter(function (role) {
+					return role.isSelected;
+				})
+				.map(function (role) {
+					return { RoleId: role.roleId, RoleName: role.roleName, isSelected: true };
+				});
 			ajaxcall({
-				url: options.UpdateUserDataUrl,
+				url: '/api/dotnetusersroles/UpdateUser',
 				type: 'POST',
 				data: JSON.stringify({
-					account: apiKey,
-					dataConnect: dbKey,
-					UserName: username,
+					Name: name,
 					UserId: userid,
 					Email: email,
-					IsActive: isactive
+					Claims: selectedClaims,
+					Roles: selectedRoles
 				})
 			}).done(function (response) {
 				if (response) {
 					if (response.success) {
 						toastr.success(response.message);
+						self.clearField();
+						self.hideEditUserModel();
 						self.loadUsersData()
 					} else {
 						toastr.error(response.message);
@@ -1743,211 +1853,11 @@ var usersAndRolesViewModel = function (options) {
 				}
 			});
 		}
-	}
-	self.EditUserRoles = function() {
-		if (self.isValidforEditUserRole()) {
-			const userid = self.SelectedUserRole().userId;
-			const username = self.SelectedUserRole().userName;
-			const roleid = self.selectedRolesId();
-			
-			ajaxcall({
-				url: options.UpdateUserRoleDataUrl,
-				type: 'POST',
-				data: JSON.stringify({
-					account: apiKey,
-					dataConnect: dbKey,
-					UserId: userid,
-					RoleId: roleid
-				})
-			}).done(function (response) {
-				if (response) {
-					if (response.success) {
-						toastr.success(response.message);
-						self.loadUserRolesData()
-					} else {
-						toastr.error(response.message);
-						return false;
-					}
-				} else {
-					toastr.error('Connection Error');
-					return false;
-				}
-			});
-		}
-	}
-	
-	self.DeleteRole = function() {
-		var roledataid = self.SelectedRole().roleId;
-		ajaxcall({
-			url: options.DeleteRoleDataUrl,
-			type: 'POST',
-			data: JSON.stringify({
-				account: apiKey,
-				dataConnect: dbKey,
-				RoleId: self.SelectedRole().roleId
-			})
-		}).done(function (response) {
-			if (response) {
-				if (response.success) {
-					toastr.success(response.message);
-					self.loadRolesData(apiKey, dbKey);
-				} else {
-					toastr.error(response.message);
-					return false;
-				}
-			} else {
-				toastr.error('Connection Error');
-				return false;
-			}
-		});
-	};
-	self.DeleteUser = function() {
-		var userId = self.SelectedUser().userId;
-		ajaxcall({
-			url: options.DeleteUserDataUrl,
-			type: 'POST',
-			data: JSON.stringify({
-				account: apiKey,
-				dataConnect: dbKey,
-				UserId: self.SelectedUser().userId
-			})
-		}).done(function (response) {
-			if (response) {
-				if (response.success) {
-					toastr.success(response.message);
-					self.loadUsersData(apiKey, dbKey);
-
-				} else {
-					toastr.error(response.message);
-					return false;
-				}
-			} else {
-				toastr.error('Connection Error');
-				return false;
-			}
-		});
-	};
-	self.DeleteUserRole = function() {
-		var userId = self.SelectedUserRole().userId;
-		var roleId = self.SelectedUserRole().roleId;
-		ajaxcall({
-			url: options.DeleteUserRoleDataUrl,
-			type: 'POST',
-			data: JSON.stringify({
-				account: apiKey,
-				dataConnect: dbKey,
-				UserId: self.SelectedUserRole().userId,
-				RoleId: self.SelectedUserRole().roleId
-			})
-		}).done(function (response) {
-			if (response) {
-				if (response.success) {
-					toastr.success(response.message);
-					self.loadUserRolesData(apiKey, dbKey);
-				} else {
-					toastr.error(response.message);
-					return false;
-				}
-			} else {
-				toastr.error('Connection Error');
-				return false;
-			}
-		});
-	};
-	self.createUser = function() {
-		if (self.isValidforCreateUser()) {
-			var requestData = {
-				account: apiKey,
-				dataConnect: dbKey,
-				userName: self.userName(),
-				email: self.email(),
-				password: self.password(),
-				isactive: self.isactive(),
-			};
-			ajaxcall({
-				url: options.CreatingUserTableUrl,  // Replace with your actual endpoint
-				type: 'POST',
-				data: JSON.stringify(requestData)
-			}).done(function (response) {
-				if (response) {
-					if (response.success) {
-						toastr.success(response.message);
-						self.loadUsersData(apiKey, dbKey);
-					} else {
-						toastr.error(response.message);
-						return false;
-					}
-				} else {
-					toastr.error('Error creating tables');
-					return false;
-				}
-			});
-		}
-	};
-	self.createRole = function() {
-
-		if (self.isValidforCreateRole()) {
-			var requestData = {
-				account: apiKey,
-				dataConnect: dbKey,
-				roleName: self.roleName()
-			};
-			ajaxcall({
-				url: options.CreatingRoleTableUrl,  
-				type: 'POST',
-				data: JSON.stringify(requestData)
-			}).done(function (response) {
-				if (response) {
-					if (response.success) {
-						toastr.success(response.message);
-						self.loadRolesData(apiKey, dbKey);
-					} else {
-						toastr.error(response.message);
-						return false;
-					}
-				} else {
-					toastr.error('Error creating tables');
-					return false;
-				}
-			});
-		}
-	};
-	self.createUserRoleTable = function() {
-		if (self.isValidforCreateUserRole()) {
-			var requestData = {
-				account: apiKey,
-				dataConnect: dbKey,
-				RoleId: self.selectedRolesId(),
-				UserId: self.selectedUserId()
-			};
-			ajaxcall({
-				url: options.CreatingUserRoleTableUrl, 
-				type: 'POST',
-				data: JSON.stringify(requestData)
-			}).done(function (response) {
-				if (response) {
-					if (response.success) {
-						toastr.success(response.message);
-						self.loadUserRolesData(apiKey, dbKey);
-					} else {
-						toastr.error(response.message);
-						return false;
-					}
-				} else {
-					toastr.error('Error creating tables');
-					return false;
-				}
-			});
-		}
 	};
 	self.loadUsersData = function() {
 		ajaxcall({
-			url: options.ExistingUsersUrl,
-			type: 'POST',
-			data: JSON.stringify({
-				account: apiKey,
-				dataConnect: dbKey
-			})
+			url: '/api/dotnetusersroles/LoadUsers',
+			type: 'POST'
 		}).done(function (response) {
 			if (response) {
 				if (response.success) {
@@ -1962,16 +1872,11 @@ var usersAndRolesViewModel = function (options) {
 			}
 		});
 	};
-
 	self.loadRolesData = function() {
 
 		ajaxcall({
-			url: options.ExistingRoleUrl,
-			type: 'POST',
-			data: JSON.stringify({
-				account: apiKey,
-				dataConnect: dbKey
-			})
+			url: '/api/dotnetusersroles/LoadRoles',
+			type: 'POST'
 		}).done(function (response) {
 			if (response) {
 				if (response.success) {
@@ -1987,21 +1892,16 @@ var usersAndRolesViewModel = function (options) {
 		});
 
 	};
-	self.loadUserRolesData = function() {
-
+	self.loadClaimsData = function () {
 		ajaxcall({
-			url: options.ExistingUserRoleUrl,
+			url: '/api/dotnetusersroles/LoadClaims',
 			type: 'POST',
-			data: JSON.stringify({
-				account: apiKey,
-				dataConnect: dbKey
-			})
 		}).done(function (response) {
 			if (response) {
 				if (response.success) {
-					self.userRoleTableData(response.data);
+					self.claimsTableData(response.data);
 				} else {
-					toastr.error(response.message || 'Could not find or load User Roles Table');
+					toastr.error(response.message || 'Could not find or load Users Table');
 					return false;
 				}
 			} else {
@@ -2009,8 +1909,7 @@ var usersAndRolesViewModel = function (options) {
 				return false;
 			}
 		});
-
-	};
+	}
 	self.isValidforEditRole = function () {
 		var valid = validator.validateForm('#editRoleModal');
 		return valid;
@@ -2024,19 +1923,22 @@ var usersAndRolesViewModel = function (options) {
 		var valid = validator.validateForm('#createUserModal');
 		return valid;
 	};
+	self.hideCreateUserModel = function () {
+		$("#createUserModal").modal("hide");
+	}
+	self.hideEditUserModel = function () {
+		$("#editUserModal").modal("hide");
+	};
+	self.hideCreateRoleModel =function () {
+		$("#createRoleModal").modal("hide");
+	}
 	self.isValidforEditUser = function () {
 		var valid = validator.validateForm('#editUserModal');
 		return valid;
 	};
-	self.isValidforCreateUserRole = function () {
-		var valid = validator.validateForm('#createUserRoleModal');
-		return valid;
+	self.hideEditRoleModel = function () {
+		$("#editRoleModal").modal("hide");
 	};
-	self.isValidforEditUserRole = function () {
-		var valid = validator.validateForm('#editUserRoleModal');
-		return valid;
-	};
-
 	self.selectedUserConfig.subscribe(function (x) {
 		if (x == 'dnr-managed') {
 			self.init();
@@ -2045,7 +1947,7 @@ var usersAndRolesViewModel = function (options) {
 
 	self.init = function () {
 		if (self.selectedUserConfig() == 'dnr-managed') {
-			return $.when(self.loadUsersData(), self.loadRolesData(), self.loadUserRolesData());
+			return $.when(self.loadUsersData(), self.loadRolesData(), self.loadClaimsData());
 		}
 	}
 }
