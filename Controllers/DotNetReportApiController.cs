@@ -64,11 +64,7 @@ namespace ReportBuilder.Web.Controllers
 
             if (userConfig == "dnr-managed")
             {
-                var users = DotNetReportIdentity.GetAppUsers();
-                var roles = DotNetReportIdentity.GetAppRoles();
-
-                settings.Users = users.Select(x => new { id = x.Email, text = x.UserName }).ToList<dynamic>();
-                settings.UserRoles = roles.Select(x=>x.RoleName).ToList();
+               //Handle Dnr-Managed Code
             }
 
             return settings;
