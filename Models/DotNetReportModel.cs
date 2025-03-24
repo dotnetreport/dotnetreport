@@ -444,6 +444,7 @@ namespace ReportBuilder.Web.Models
         public string pivotFunction { get; set; }
         public string chartData { get; set; }
         public string columnDetails { get; set; }
+        public string onlyAndGroupInColumnDetail { get; set; }
         public bool includeSubTotal { get; set; }
         public bool pivot { get; set; }
     }
@@ -2761,7 +2762,7 @@ namespace ReportBuilder.Web.Models
                 await page.AddStyleTagAsync(new AddTagOptions { Content = "@page {size: landscape }" });
                 pdfOptions.Width = $"{width}px";
             }
-
+            await page.EvaluateExpressionAsync("$('.report-inner').css('transform','none')");
             await page.PdfAsync(pdfFile, pdfOptions);
             return File.ReadAllBytes(pdfFile);
         }
