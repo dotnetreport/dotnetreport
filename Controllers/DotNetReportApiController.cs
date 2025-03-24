@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
+using ReportBuilder.Web.Helper;
 using ReportBuilder.Web.Models;
 using System.Data;
 using System.Net;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using System.Web;
@@ -57,16 +59,12 @@ namespace ReportBuilder.Web.Controllers
 
             settings.Users = new List<dynamic>(); // Populate all your application's user, ex  { "Jane", "John" } or { new { id="1", text="Jane" }, new { id="2", text="John" }}
             settings.UserRoles = new List<string>(); // Populate all your application's user roles, ex  { "Admin", "Normal" }       
-            settings.CanUseAdminMode = User.IsInRole(DotNetReportRoles.DotNetReportAdmin); // Set to true only if current user can use Admin mode to setup reports, dashboard and schema
+            settings.CanUseAdminMode = ClaimsHelper.HasAnyRequiredClaim(User as ClaimsPrincipal, ClaimsStore.AllowAdminMode); // Set to true only if current user can use Admin mode to setup reports, dashboard and schema
             settings.DataFilters = new { }; // add global data filters to apply as needed https://dotnetreport.com/kb/docs/advance-topics/global-filters/
 
             if (userConfig == "dnr-managed")
             {
-                var users = DotNetReportIdentity.GetAppUsers();
-                var roles = DotNetReportIdentity.GetAppRoles();
-
-                settings.Users = users.Select(x => new { id = x.Email, text = x.UserName }).ToList<dynamic>();
-                settings.UserRoles = roles.Select(x=>x.RoleName).ToList();
+               //Handle Dnr-Managed Code
             }
 
             return settings;
@@ -289,8 +287,19 @@ namespace ReportBuilder.Web.Controllers
                         sqlFields = DotNetReportHelper.SplitSqlColumns(sql);
 
                         var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(fromIndex)}";
-                        sqlCount = $"SELECT COUNT(*) FROM ({(sqlFrom.Contains("ORDER BY") ? sqlFrom.Substring(0, sqlFrom.IndexOf("ORDER BY")) : sqlFrom)}) as countQry";
+                        bool hasDistinct = sql.Contains("DISTINCT", StringComparison.OrdinalIgnoreCase);
+                        if (hasDistinct)
+                        {
+                            int distinctIndex = sqlFrom.IndexOf("DISTINCT", StringComparison.OrdinalIgnoreCase) + 8;
+                            int fromClauseIndex = sqlFrom.IndexOf("FROM", StringComparison.OrdinalIgnoreCase);
+                            string distinctColumns = sqlFrom.Substring(distinctIndex, fromClauseIndex - distinctIndex).Trim();
 
+                            sqlCount = $"SELECT COUNT(*) FROM (SELECT DISTINCT {distinctColumns} {sql.Substring(fromIndex)}) AS countQry";
+                        }
+                        else
+                        {
+                            sqlCount = $"SELECT COUNT(*) FROM ({(sqlFrom.Contains("ORDER BY", StringComparison.OrdinalIgnoreCase) ? sqlFrom.Substring(0, sqlFrom.IndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase)) : sqlFrom)}) AS countQry";
+                        }
                         if (!String.IsNullOrEmpty(sortBy))
                         {
                             if (sortBy.StartsWith("DATENAME(MONTH, "))
@@ -311,7 +320,9 @@ namespace ReportBuilder.Web.Controllers
                             }
                         }
 
-                        if (sql.Contains("ORDER BY") && !sql.Contains(" TOP ") && string.IsNullOrEmpty(pivotColumn))
+                        if (!sql.Contains("ORDER BY"))
+                            sql = sql + $" ORDER BY {(hasDistinct ? "1" : "NEWID()")} ";
+                        if (!sql.Contains(" TOP ") && string.IsNullOrEmpty(pivotColumn))
                             sql = sql + $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
 
                         if (sql.Contains("__jsonc__"))
@@ -771,7 +782,7 @@ namespace ReportBuilder.Web.Controllers
             return warning;
         }
 
-        [Authorize(Roles=DotNetReportRoles.DotNetReportAdmin)]
+        [CustomAuthorize(ClaimsStore.AllowSetupPageAccess)]
         [HttpGet]
         public async Task<IActionResult> LoadSetupSchema(string? databaseApiKey = "", bool? onlyApi = null)
         {
@@ -826,8 +837,8 @@ namespace ReportBuilder.Web.Controllers
                 return new JsonResult(new { Message = ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null }) { StatusCode = (int)HttpStatusCode.InternalServerError };
             }
         }
-       
-        [Authorize(Roles=DotNetReportRoles.DotNetReportAdmin)]
+
+        [CustomAuthorize(ClaimsStore.AllowSetupPageAccess)]
         [HttpPost]
         public async Task<IActionResult> UpdateDbConnection(UpdateDbConnectionModel model)
         {
@@ -866,7 +877,7 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        [Authorize(Roles = DotNetReportRoles.DotNetReportAdmin)]
+        [CustomAuthorize(ClaimsStore.AllowSetupPageAccess)]
         [HttpPost]
         public async Task<IActionResult> UpdateUserConfigSetting(UpdateUserConfigModel model)
         {
@@ -900,7 +911,7 @@ namespace ReportBuilder.Web.Controllers
         }
         
 
-        [Authorize(Roles = DotNetReportRoles.DotNetReportAdmin)]
+        [CustomAuthorize(ClaimsStore.AllowSetupPageAccess)]
         [HttpPost]
         public async Task<IActionResult> SaveAppSettings(AppSettingModel model)
         {
@@ -932,7 +943,7 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        [Authorize(Roles = DotNetReportRoles.DotNetReportAdmin)]
+        [CustomAuthorize(ClaimsStore.AllowSetupPageAccess)]
         [HttpPost]
         public async Task<IActionResult> SwitchDbConnection([FromBody] string dataConnection)
         {

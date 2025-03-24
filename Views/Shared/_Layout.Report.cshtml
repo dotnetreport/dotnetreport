@@ -64,7 +64,7 @@
                             <i class="fa fa-user"></i> @User.Identity.Name
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                            @if (User.IsInRole(DotNetReportRoles.DotNetReportAdmin))
+                            @if (ClaimsHelper.HasAnyRequiredClaim(User as System.Security.Claims.ClaimsPrincipal, ClaimsStore.AllowSetupPageAccess))
                             {
                                 <li><a class="dropdown-item" href="/DotnetSetup"><span class="fa fa-gear"></span> Configure Database</a></li>
                             }

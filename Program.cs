@@ -21,8 +21,10 @@ services.ConfigureApplicationCookie(options =>
     options.LoginPath = "/Home/Login";
     options.LogoutPath = "/Home/Logout";
     options.AccessDeniedPath = "/Home/Index";
+    options.ExpireTimeSpan = TimeSpan.FromDays(365); 
+    options.SlidingExpiration = true;
 });
-
+services.AddHttpClient();
 
 builder.Services.AddControllersWithViews();
 
@@ -36,6 +38,8 @@ services.AddAuthentication(options =>
     options.LoginPath = "/Home/Login";
     options.LogoutPath = "/Home/Logout";
     options.AccessDeniedPath = "/Home/Index";
+    options.ExpireTimeSpan = TimeSpan.FromDays(365);
+    options.SlidingExpiration = true;
 });
 
 builder.Services.AddCors(options =>

@@ -165,8 +165,9 @@
             <li role="presentation" class="nav-item"><a class="nav-link" href="#procedure" aria-controls="procedure" role="tab" data-bs-toggle="tab"><i class="fa fa-code"></i> Stored Procs</a></li>
             <li role="presentation" class="nav-item"><a class="nav-link" href="#schedules" aria-controls="schedules" role="tab" data-bs-toggle="tab"><i class="fa fa-clock-o"></i> Schedules</a></li>
             <li role="presentation" class="nav-item" style="display: none;"><a class="nav-link" href="#functions" aria-controls="functions" role="tab" data-bs-toggle="tab"> Custom Functions</a></li>
-            <li role="presentation" class="nav-item" style="display: none;"><a class="nav-link" href="#manageaccess" aria-controls="manageaccess" role="tab" data-bs-toggle="tab"><i class="fa fa-user"></i> Manage Reports Access</a></li>
+            <li role="presentation" class="nav-item"><a class="nav-link" href="#manageaccess" aria-controls="manageaccess" role="tab" data-bs-toggle="tab"><i class="fa fa-user"></i> Manage Reports Access</a></li>
             <li role="presentation" class="nav-item"><a class="nav-link active" href="#connection" aria-controls="home" role="tab" data-bs-toggle="tab"><i class="fa fa-plug"></i> Data Connection</a></li>
+            <li role="presentation" class="nav-item"><a class="nav-link" href="#settings" aria-controls="home" role="tab" data-bs-toggle="tab"><i class="fa fa-gears"></i> Settings</a></li>
         </ul>
 
     </div>
@@ -795,6 +796,83 @@
                 </div>
             </div>
         </div>
+
+        <div role="tabpanel" id="settings" class="tab-pane">
+            <b>Settings</b>
+            <p>
+                Configure local Application level settings
+            </p>
+            <hr />
+            <div class="row">
+                <div class="col-md-8 mb-4">
+                    <div class="card" style="margin: 20px;">
+                        <div class="card-body">
+                            <form id="appSettingsForm" data-bind="with: SettingPage">
+                                <label for="backendApiUrl">Backend Service API Url:</label>
+                                <input type="text" class="form-control" required data-bind="value: backendApiUrl">
+                                <div class="invalid-feedback">BackendApiUrl is required.</div>
+                                <div>
+                                    <label for="themeSelect">Application Theme:</label>
+                                    <select class="form-control" id="themeSelect" data-bind="options: appThemes,
+                                               optionsText: 'name',
+                                               optionsValue: 'value',
+                                               value:selectedAppTheme
+                                               optionsCaption: 'Select a Theme'"></select>
+                                    <br>
+                                    <div class="invalid-feedback">Application Theme is required.</div>
+                                </div>
+                                <div>
+                                    <label for="timezone">Default time zone:</label>
+                                    <select class="form-control" id="timezoneSelect" data-bind="options: timeZones,
+                                               optionsText: 'displayName',
+                                               optionsValue: 'value',
+                                               value:selectedTimeZone
+                                               optionsCaption: 'Select a timezone'"></select>
+                                    <br>
+                                    <div class="invalid-feedback">Select timezone is required.</div>
+                                </div>
+                                <div>
+                                    <div class="card-body">
+                                        <h5 class="card-title">Scheduled Job Email Settings:</h5>
+                                        <div class="form-group">
+                                            <label for="emailUsername">Email Username:</label>
+                                            <input type="text" class="form-control" data-bind="value: emailUsername">
+                                            <div class="invalid-feedback">Email Username is required.</div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="emailPassword">Email Password:</label>
+                                            <input type="password" class="form-control" data-bind="value: emailPassword">
+                                            <div class="invalid-feedback">Email Password is required.</div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="emailServer">Email Server:</label>
+                                            <input type="text" class="form-control" data-bind="value: emailServer">
+                                            <div class="invalid-feedback">Email Server is required.</div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="emailPort">Email Port:</label>
+                                            <input type="text" class="form-control" data-bind="value: emailPort">
+                                            <div class="invalid-feedback">Email Port is required.</div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="emailName">From Email Name:</label>
+                                            <input type="text" class="form-control" data-bind="value: emailName">
+                                            <div class="invalid-feedback">Email Name is required.</div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="emailaddress">From Email:</label>
+                                            <input type="email" class="form-control" data-bind="value: emailAddress">
+                                            <div class="invalid-feedback">From Email is required.</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" id="saveAppSettings" class="btn btn-primary" data-bind="click: saveAppSettings">Save</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -1188,7 +1266,7 @@
                                         <span class="badge text-bg-info text-white" data-bind="text: FieldType"></span>
                                     </div>
                                 </div>
-                                <label class="small">Paramters</label>
+                                <label class="small">Parameters</label>
 
                                 <div class="list-group" data-bind="foreach: Parameters">
                                     <div class="list-group-item">

@@ -236,17 +236,26 @@ ko.bindingHandlers.checkedInArray = {
                 array = options.array, // don't unwrap array because we want to update the observable array itself
                 value = ko.utils.unwrapObservable(options.value),
                 checked = element.checked;
-
+            if (value && value.dynamicTableId !== null && value.fieldId === 0) {
+                var arraylist = ko.utils.unwrapObservable(array);
+                var matchingItem = arraylist.find(item => item.fieldName === value.fieldName && item.dynamicTableId === value.dynamicTableId);
+                value = matchingItem || value;
+            }
             ko.utils.addOrRemoveItem(array, value, checked);
-
         });
     },
     update: function (element, valueAccessor) {
         var options = ko.utils.unwrapObservable(valueAccessor()),
             array = ko.utils.unwrapObservable(options.array),
             value = ko.utils.unwrapObservable(options.value);
-
-        element.checked = ko.utils.arrayIndexOf(array, value) >= 0;
+            isChecked = ko.utils.arrayIndexOf(array, value) >= 0;
+        if (value && value.dynamicTableId !== null && value.fieldId === 0) {
+            var matchingItem = array.find(item => item.fieldName === value.fieldName && item.dynamicTableId === value.dynamicTableId);
+            if (matchingItem) {
+                isChecked = true;
+            }
+        }
+        element.checked = isChecked;
     }
 };
 

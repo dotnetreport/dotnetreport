@@ -6,22 +6,22 @@
 
 @section head {
     <style>
-        
+
         .hero {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            background: transparent;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: transparent;
         }
 
         .hero-image img {
-            max-width: 100%;
-            height: auto;
+        max-width: 100%;
+        height: auto;
         }
 
         .hero-text {
-            margin-left: 20px; /* Adjust the spacing between the image and text as needed */
+        margin-left: 20px; /* Adjust the spacing between the image and text as needed */
         }
 
     </style>
@@ -34,9 +34,9 @@
         </div>
         <div class="hero-text">
             @if (User.Identity.IsAuthenticated)
-                {
+            {
                 <h4>Hi @User.Identity.Name</h4>
-                }
+            }
             <h1>Welcome to Dotnet Report</h1>
             <p>Dotnet Report is an easy-to-use and feature-rich Reports, Analytics and Dashboards system.</p>
 
@@ -67,32 +67,25 @@
             </div>
 
         </div>
-        @if (User.IsInRole(DotNetReportRoles.DotNetReportAdmin))
-        {
             <div class="col-md-4">
 
-            <div class="list-group">
+                <div class="list-group">
 
-                <div class="list-group-item list-group-item-dark list-group-item-heading">
-                    Backend Options for Admins
-                </div>                
-                <a href="/dotnetsetup" class="list-group-item list-group-item-action">
-                    <i class="fa fa-database mr-2"></i> Manage Database
-                </a>
-                <a href="/dotnetsetup/usersandroles" class="list-group-item list-group-item-action">
-                    <i class="fa fa-users mr-2"></i> Manage Users, Roles and Access
-                </a>
-                @*<a href="/dotnetsetup/usersandroles" class="list-group-item list-group-item-action">
-                    <i class="fa fa-bar-chart mr-2"></i>System Settings
-                </a>*@
+                    <div class="list-group-item list-group-item-dark list-group-item-heading">
+                        Backend Options for Admins
+                    </div> 
+                    @if(ClaimsHelper.HasAnyRequiredClaim(User as System.Security.Claims.ClaimsPrincipal, ClaimsStore.AllowSetupPageAccess))
+                    {
+                        <a href="/dotnetsetup" class="list-group-item list-group-item-action">
+                            <i class="fa fa-database mr-2"></i> Manage Database
+                        </a>
+                    }
                 <a href="https://dotnetreport.com/app/AccountProfile/Dashboard" class="list-group-item list-group-item-action" target="_blank">
                     <i class="fa fa-gear mr-2"></i> Manage your Account (Online Portal)
                 </a>
             </div>
 
         </div>
-        }
-
     </div>
 </div>
 
