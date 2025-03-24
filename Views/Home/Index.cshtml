@@ -80,15 +80,6 @@
                             <i class="fa fa-database mr-2"></i> Manage Database
                         </a>
                     }
-                    @if (ClaimsHelper.HasAnyRequiredClaim(User as System.Security.Claims.ClaimsPrincipal, ClaimsStore.AllowManageUsersAndRoles))
-                    {
-                        <a href="/dotnetsetup/usersandroles" class="list-group-item list-group-item-action">
-                            <i class="fa fa-users mr-2"></i> Manage Users, Roles and Access
-                        </a>
-                    }
-                @*<a href="/dotnetsetup/usersandroles" class="list-group-item list-group-item-action">
-                    <i class="fa fa-bar-chart mr-2"></i>System Settings
-                </a>*@
                 <a href="https://dotnetreport.com/app/AccountProfile/Dashboard" class="list-group-item list-group-item-action" target="_blank">
                     <i class="fa fa-gear mr-2"></i> Manage your Account (Online Portal)
                 </a>
