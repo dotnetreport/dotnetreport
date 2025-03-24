@@ -67,12 +67,6 @@ namespace ReportBuilder.Web.Controllers
                         new Claim(ClaimTypes.Name, contact)
                     };
 
-            //if (dotnetAdmin)
-            //{
-            //    claims.Add(
-            //        new Claim(ClaimTypes.Role, DotNetReportRoles.DotNetReportAdmin)
-            //    );
-            //}
             if (userclaims != null)
             {
                 claims.AddRange(userclaims.Select(uc => new Claim(uc.Type, uc.Value)));
@@ -122,16 +116,6 @@ namespace ReportBuilder.Web.Controllers
                     Success = false,
                     Message = "Could not Login, please try again."
                 };
-
-                var accountkey = _configuration.GetValue<string>("dotNetReport:accountApiToken");
-                if (loginResult.Success && loginResult.AccountKey.ToUpper() != accountkey.ToUpper() && accountkey != "Your Account API Key")
-                {
-                    loginResult = new LoginResult
-                    {
-                        Success = false,
-                        Message = "Could not Login, Account does not match settings."
-                    };
-                }
 
                 if (loginResult.Success)
                 {

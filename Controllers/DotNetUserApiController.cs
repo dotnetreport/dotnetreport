@@ -11,7 +11,7 @@ using ReportBuilder.Web.Helper;
 
 namespace ReportBuilder.Web.Controllers
 {
-    [Route("api/dotnetusersroles")]
+    [Route("api/DotnetUsersRoles")]
     [ApiController]
     public class DotNetUserApiController : ControllerBase
     {
@@ -52,7 +52,7 @@ namespace ReportBuilder.Web.Controllers
         {
             AddUserClaimsToRequestHeaders();
             var response = await _httpClient.PostAsync(
-                _apiBaseUrl + "/dotnetusersroles/LoadUsers",
+                _apiBaseUrl + "/DotnetUsersRoles/LoadUsers",
                 CreateAuthContent());
             var apiResponse = JsonConvert.DeserializeObject<ApiResult<List<UserViewModel>>>(await response.Content.ReadAsStringAsync());
             return apiResponse.Success ? Ok(apiResponse) : BadRequest(apiResponse);
@@ -93,7 +93,7 @@ namespace ReportBuilder.Web.Controllers
             AddUserClaimsToRequestHeaders();
             model.account = accountKey;
             var response = await _httpClient.PostAsJsonAsync(
-                _apiBaseUrl + "/dotnetusersroles/CreateUser", model);
+                _apiBaseUrl + "/DotnetUsersRoles/CreateUser", model);
             var apiResponse = JsonConvert.DeserializeObject<ApiResult<UserViewModel>>(await response.Content.ReadAsStringAsync());
             return apiResponse.Success ? Ok(apiResponse) : BadRequest(apiResponse);
         }
@@ -103,7 +103,7 @@ namespace ReportBuilder.Web.Controllers
             AddUserClaimsToRequestHeaders();
             model.account = accountKey;
             var response = await _httpClient.PostAsJsonAsync(
-                _apiBaseUrl + $"/dotnetusersroles/UpdateUser", model);
+                _apiBaseUrl + $"/DotnetUsersRoles/UpdateUser", model);
             var apiResponse = JsonConvert.DeserializeObject<ApiResult<UserViewModel>>(await response.Content.ReadAsStringAsync());
             return apiResponse.Success ? Ok(apiResponse) : BadRequest(apiResponse);
         }
@@ -113,7 +113,7 @@ namespace ReportBuilder.Web.Controllers
             AddUserClaimsToRequestHeaders();
             model.account = accountKey;
             var response = await _httpClient.PostAsJsonAsync(
-                _apiBaseUrl + $"/dotnetusersroles/DeleteUser", model);
+                _apiBaseUrl + $"/DotnetUsersRoles/DeleteUser", model);
             var apiResponse = JsonConvert.DeserializeObject<ApiResult<UserViewModel>>(await response.Content.ReadAsStringAsync());
             return apiResponse.Success ? Ok(apiResponse) : BadRequest(apiResponse);
         }
@@ -122,7 +122,7 @@ namespace ReportBuilder.Web.Controllers
         {
             AddUserClaimsToRequestHeaders();
             var response = await _httpClient.PostAsync(
-                _apiBaseUrl + "/dotnetusersroles/LoadRoles",
+                _apiBaseUrl + "/DotnetUsersRoles/LoadRoles",
                 CreateAuthContent());
             var apiResponse = JsonConvert.DeserializeObject<ApiResult<List<RoleViewModel>>>(await response.Content.ReadAsStringAsync());
             return apiResponse.Success ? Ok(apiResponse) : BadRequest(apiResponse);
@@ -133,7 +133,7 @@ namespace ReportBuilder.Web.Controllers
             AddUserClaimsToRequestHeaders();
             model.account = accountKey;
             var response = await _httpClient.PostAsJsonAsync(
-                _apiBaseUrl + "/dotnetusersroles/CreateRole", model);
+                _apiBaseUrl + "/DotnetUsersRoles/CreateRole", model);
             var apiResponse = JsonConvert.DeserializeObject<ApiResult<RoleViewModel>>(await response.Content.ReadAsStringAsync());
             return apiResponse.Success ? Ok(apiResponse) : BadRequest(apiResponse);
         }
@@ -143,7 +143,7 @@ namespace ReportBuilder.Web.Controllers
             AddUserClaimsToRequestHeaders();
             model.account = accountKey;
             var response = await _httpClient.PostAsJsonAsync(
-               _apiBaseUrl + "/dotnetusersroles/UpdateRole", model);
+               _apiBaseUrl + "/DotnetUsersRoles/UpdateRole", model);
             var apiResponse = JsonConvert.DeserializeObject<ApiResult<RoleViewModel>>(await response.Content.ReadAsStringAsync());
             return apiResponse.Success ? Ok(apiResponse) : BadRequest(apiResponse);
         }
@@ -152,7 +152,7 @@ namespace ReportBuilder.Web.Controllers
         {
             AddUserClaimsToRequestHeaders();
             model.account = accountKey;
-            var response = await _httpClient.PostAsJsonAsync($"{_apiBaseUrl}/dotnetusersroles/DeleteRole", model);
+            var response = await _httpClient.PostAsJsonAsync($"{_apiBaseUrl}/DotnetUsersRoles/DeleteRole", model);
             var apiResponse = JsonConvert.DeserializeObject<ApiResult<bool>>(await response.Content.ReadAsStringAsync());
             return apiResponse.Success ? Ok(apiResponse) : BadRequest(apiResponse);
         }
