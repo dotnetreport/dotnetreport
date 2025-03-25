@@ -2663,9 +2663,9 @@ namespace ReportBuilder.Web.Models
             int averageCharWidthInTwips = 120;
             return text.Length * averageCharWidthInTwips;
         }
-        public static byte[] GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
+        public async static Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
                     string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false, string expandSqls = null, 
-                    string pivotColumn = null, string pivotFunction = null, bool imageOnly = false)
+                    string pivotColumn = null, string pivotFunction = null, bool imageOnly = false, bool debug = false)
         {
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
             await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
