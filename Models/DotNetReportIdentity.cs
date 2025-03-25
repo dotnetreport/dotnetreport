@@ -141,6 +141,7 @@ namespace ReportBuilder.Web.Models
         public string Email { get; set; }
         public List<string> Roles { get; set; }
         public List<ClaimInfo> Claims { get; set; }
+        public List<string> AllRoles { get; set; }
     }
     public class KeyModel
     {
