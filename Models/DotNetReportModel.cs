@@ -3421,9 +3421,9 @@ namespace ReportBuilder.Web.Models
         int GetTotalRecords(string connectionString, string sqlCount, string sql, List<KeyValuePair<string, string>> parameters = null);
         DataTable ExecuteQuery(string connectionString, string sql, List<KeyValuePair<string, string>> parameters = null);
         DataSet ExecuteDataSetQuery(string connectionString, string combinedSqls, List<KeyValuePair<string, string>> parameters = null);
-        Task<List<TableViewModel>> GetTables(string type = "TABLE", string? accountKey = null, string? dataConnectKey = null);
+        Task<List<TableViewModel>> GetTables(string connectionString, string type = "TABLE", string? accountKey = null, string? dataConnectKey = null);
         Task<TableViewModel> GetSchemaFromSql(string connString, TableViewModel table, string sql, bool dynamicColumns);
-        Task<List<TableViewModel>> GetSearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null);
+        Task<List<TableViewModel>> GetSearchProcedure(string connectionString, string value = null, string accountKey = null, string dataConnectKey = null);
 
     }
     public class SqlServerDatabaseConnection : IDatabaseConnection
@@ -3658,7 +3658,7 @@ namespace ReportBuilder.Web.Models
             }
         }
 
-        public async Task<List<TableViewModel>> GetTables(string type = "TABLE", string? accountKey = null, string? dataConnectKey = null)
+        public async Task<List<TableViewModel>> GetTables(string connString, string type = "TABLE", string? accountKey = null, string? dataConnectKey = null)
         {
             var tables = new List<TableViewModel>();
 
@@ -3670,7 +3670,7 @@ namespace ReportBuilder.Web.Models
                 currentTables = currentTables.Where(x => !string.IsNullOrEmpty(x.TableName)).ToList();
             }
 
-            var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey), false);
+            //var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey), false);
             using (SqlConnection conn = new SqlConnection(connString))
             {
                 // open the connection to the database 
@@ -3773,10 +3773,10 @@ namespace ReportBuilder.Web.Models
 
             return tables;
         }
-        public async Task<List<TableViewModel>> GetSearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
+        public async Task<List<TableViewModel>> GetSearchProcedure(string connString, string value = null, string accountKey = null, string dataConnectKey = null)
         {
             var tables = new List<TableViewModel>();
-            var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey), false);
+            //var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey), false);
             using (SqlConnection conn = new SqlConnection(connString))
             {
                 // open the connection to the database 
@@ -3977,10 +3977,10 @@ namespace ReportBuilder.Web.Models
             }
             return dts;
         }
-        public async Task<List<TableViewModel>> GetTables(string type = "TABLE", string? accountKey = null, string? dataConnectKey = null)
+        public async Task<List<TableViewModel>> GetTables(string connectionString, string type = "TABLE", string? accountKey = null, string? dataConnectKey = null)
         {
             var conn = new OleDbDatabaseConnection();
-            return await conn.GetTables(type, accountKey, dataConnectKey);
+            return await conn.GetTables(connectionString, type, accountKey, dataConnectKey);
         }
 
         public Task<TableViewModel> GetSchemaFromSql(string connString, TableViewModel table, string sql, bool dynamicColumns)
@@ -3989,10 +3989,10 @@ namespace ReportBuilder.Web.Models
             return conn.GetSchemaFromSql(connString, table, sql, dynamicColumns);
         }
 
-        public Task<List<TableViewModel>> GetSearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
+        public Task<List<TableViewModel>> GetSearchProcedure(string connectionString, string value = null, string accountKey = null, string dataConnectKey = null)
         {
             var conn = new OleDbDatabaseConnection();
-            return conn.GetSearchProcedure(value, accountKey, dataConnectKey);
+            return conn.GetSearchProcedure(connectionString, value, accountKey, dataConnectKey);
         }
     }
     public class PostgresDatabaseConnection : IDatabaseConnection
@@ -4152,13 +4152,12 @@ namespace ReportBuilder.Web.Models
                     return FieldTypes.Varchar;
             }
         }
-        public async Task<List<TableViewModel>> GetTables(string type = "TABLE", string? accountKey = null, string? dataConnectKey = null)
+        public async Task<List<TableViewModel>> GetTables(string connString, string type = "TABLE", string? accountKey = null, string? dataConnectKey = null)
         {
             var tables = new List<TableViewModel>();
 
             var currentTables = new List<TableViewModel>();
 
-            var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey));
             using (NpgsqlConnection conn = new NpgsqlConnection(connString))
             {
                 // open the connection to the database 
@@ -4312,11 +4311,10 @@ namespace ReportBuilder.Web.Models
             }
         }
 
-        public async Task<List<TableViewModel>> GetSearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
+        public async Task<List<TableViewModel>> GetSearchProcedure(string connString, string value = null, string accountKey = null, string dataConnectKey = null)
         {
             var tables = new List<TableViewModel>();
-            var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey));
-
+            
             using (NpgsqlConnection conn = new NpgsqlConnection(connString))
             {
                 // open the connection to the database 
@@ -4580,7 +4578,7 @@ namespace ReportBuilder.Web.Models
             }
         }
 
-        public async Task<List<TableViewModel>> GetTables(string type = "TABLE", string? accountKey = null, string? dataConnectKey = null)
+        public async Task<List<TableViewModel>> GetTables(string connString, string type = "TABLE", string? accountKey = null, string? dataConnectKey = null)
         {
             var tables = new List<TableViewModel>();
 
@@ -4592,7 +4590,6 @@ namespace ReportBuilder.Web.Models
                 currentTables = currentTables.Where(x => !string.IsNullOrEmpty(x.TableName)).ToList();
             }
 
-            var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey));
             using (OleDbConnection conn = new OleDbConnection(connString))
             {
                 // open the connection to the database 
@@ -4745,10 +4742,10 @@ namespace ReportBuilder.Web.Models
             }
         }
 
-        public async Task<List<TableViewModel>> GetSearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
+        public async Task<List<TableViewModel>> GetSearchProcedure(string connString, string value = null, string accountKey = null, string dataConnectKey = null)
         {
             var tables = new List<TableViewModel>();
-            var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey));
+
             using (OleDbConnection conn = new OleDbConnection(connString))
             {
                 // open the connection to the database 
