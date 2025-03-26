@@ -803,7 +803,16 @@ namespace ReportBuilder.Web.Controllers
                 }
 
                 var connect = DotNetReportHelper.GetConnection(databaseApiKey);
+                var dbConfig = DotNetReportHelper.GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey) ?? new JObject();
+                if (dbConfig == null)
+                {
+                    throw new Exception("Data Connection settings not found");
+                }
+
+                var _dbtype = dbConfig["DatabaseType"]?.ToString() ?? dbtype;
+                string connectionString = dbConfig["ConnectionString"]?.ToString();
                 IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+
                 var tables = new List<TableViewModel>();
                 var procedures = new List<TableViewModel>();
                 var functions = new List<CustomFunctionModel>();
@@ -813,13 +822,12 @@ namespace ReportBuilder.Web.Controllers
                 }
                 else
                 {
-                    tables.AddRange(await databaseConnection.GetTables("TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
-                    tables.AddRange(await databaseConnection.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
+                    tables.AddRange(await databaseConnection.GetTables(connectionString, "TABLE", connect.AccountApiKey, connect.DatabaseApiKey));
+                    tables.AddRange(await databaseConnection.GetTables(connectionString, "VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
                 }
                 procedures.AddRange(await DotNetReportHelper.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
                 functions.AddRange(await DotNetReportHelper.GetApiFunctions(connect.AccountApiKey, connect.DatabaseApiKey));
 
-                var dbConfig = DotNetReportHelper.GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey) ?? new JObject();
                 var model = new ManageViewModel
                 {
                     ApiUrl = connect.ApiUrl,
@@ -1014,9 +1022,18 @@ namespace ReportBuilder.Web.Controllers
             try
             {
                 string value = data.value; string accountKey = data.accountKey; string dataConnectKey = data.dataConnectKey;
+                var dbConfig = DotNetReportHelper.GetDbConnectionSettings(accountKey, dataConnectKey) ?? new JObject();
+                if (dbConfig == null)
+                {
+                    throw new Exception("Data Connection settings not found");
+                }
+
+                var dbtype = dbConfig["DatabaseType"].ToString();
+                string connectionString = dbConfig["ConnectionString"].ToString();
                 IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
 
-                return new JsonResult(await databaseConnection.GetSearchProcedure(value, accountKey, dataConnectKey), new JsonSerializerOptions() { PropertyNamingPolicy = null });
+
+                return new JsonResult(await databaseConnection.GetSearchProcedure(connectionString, value, accountKey, dataConnectKey), new JsonSerializerOptions() { PropertyNamingPolicy = null });
             }
             catch (Exception ex)
 
