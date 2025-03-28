@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
+using ReportBuilder.Web.Helper;
 using ReportBuilder.Web.Models;
 using System.Security.Claims;
 using System.Text.Json;
@@ -16,13 +18,13 @@ namespace ReportBuilder.Web.Controllers
         private readonly IConfigurationRoot _configuration;
         private readonly SignInManager<IdentityUser> _signInManager;
         private readonly UserManager<IdentityUser> _userManager;
-
-        public HomeController(SignInManager<IdentityUser> signInManager, UserManager<IdentityUser> userManager)
+        private readonly DotNetUserApiController _userApiController;
+        public HomeController(SignInManager<IdentityUser> signInManager, UserManager<IdentityUser> userManager, DotNetUserApiController dotNetUserApiController)
         {
             _signInManager = signInManager;
             _userManager = userManager;
-        
-            var builder = new ConfigurationBuilder()
+            _userApiController=dotNetUserApiController;
+                var builder = new ConfigurationBuilder()
                  .SetBasePath(Directory.GetCurrentDirectory())
                  .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
             _configuration = builder.Build();
@@ -76,6 +78,7 @@ namespace ReportBuilder.Web.Controllers
                 claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
             }
             var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
             var authProperties = new AuthenticationProperties
             {
                 
@@ -85,6 +88,7 @@ namespace ReportBuilder.Web.Controllers
             await HttpContext.SignInAsync(
                 IdentityConstants.ApplicationScheme,
                 new ClaimsPrincipal(claimsIdentity), authProperties);
+            HttpContext.User = claimsPrincipal;
 
         }
 
@@ -119,7 +123,18 @@ namespace ReportBuilder.Web.Controllers
 
                 if (loginResult.Success)
                 {
-                    await LoginUser(model.Email, loginResult.PrimaryContact, true,loginResult.User.Claims,loginResult.User.Roles);
+                    SessionHelper.SetUserRoles(HttpContext, loginResult.User.AllRoles);
+                    SessionHelper.SetCurrentUserRoles(HttpContext, loginResult.User.Roles);
+                    await LoginUser(model.Email, loginResult.PrimaryContact, true, loginResult.User.Claims, loginResult.User.Roles);
+                    var usersResult = await _userApiController.LoadUsers();
+                    if (usersResult.Result is OkObjectResult okResult)
+                    {
+                        var apiResult = okResult.Value as ApiResult<List<UserViewModel>>;
+                        if (apiResult != null && apiResult.Success)
+                        {
+                            SessionHelper.SetUsers(HttpContext, apiResult.data);
+                        }
+                    }
                     DotNetReportHelper.UpdateConfigurationFile(loginResult.AccountKey, loginResult.PrivateKey, loginResult.DataConnect, true);
                     if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
                     {

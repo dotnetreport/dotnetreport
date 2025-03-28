@@ -55,10 +55,10 @@ namespace ReportBuilder.Web.Controllers
             settings.ClientId = "";  // You can pass your multi-tenant client id here to track their reports and folders
             settings.UserId = ""; // You can pass your current authenticated user id here to track their reports and folders            
             settings.UserName = "";
-            settings.CurrentUserRole = new List<string>(); // Populate your current authenticated user's roles
+            settings.CurrentUserRole = SessionHelper.GetCurrentUserRoles(HttpContext)?.Any() == true ? SessionHelper.GetCurrentUserRoles(HttpContext) : new List<string>(); // Populate your current authenticated user's roles
 
-            settings.Users = new List<dynamic>(); // Populate all your application's user, ex  { "Jane", "John" } or { new { id="1", text="Jane" }, new { id="2", text="John" }}
-            settings.UserRoles = new List<string>(); // Populate all your application's user roles, ex  { "Admin", "Normal" }       
+            settings.Users = SessionHelper.GetUsers(HttpContext)?.Any()== true? SessionHelper.GetUsers(HttpContext) : new List<dynamic>(); // Populate all your application's user, ex  { "Jane", "John" } or { new { id="1", text="Jane" }, new { id="2", text="John" }}
+            settings.UserRoles = SessionHelper.GetUserRoles(HttpContext)?.Any() == true ? SessionHelper.GetUserRoles(HttpContext) : new List<string>();// Populate all your application's user roles, ex  { "Admin", "Normal" }
             settings.CanUseAdminMode = ClaimsHelper.HasAnyRequiredClaim(User as ClaimsPrincipal, ClaimsStore.AllowAdminMode); // Set to true only if current user can use Admin mode to setup reports, dashboard and schema
             settings.DataFilters = new { }; // add global data filters to apply as needed https://dotnetreport.com/kb/docs/advance-topics/global-filters/
 

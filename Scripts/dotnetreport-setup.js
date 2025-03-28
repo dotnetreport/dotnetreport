@@ -1668,7 +1668,7 @@ var usersAndRolesViewModel = function (options) {
 	self.deleteUser = function () {
 		var userId = self.SelectedUser().userId;
 		ajaxcall({
-			url: '/api/dotnetusersroles/DeleteUser',
+			url: '/api/DotnetUserRoles/DeleteUser',
 			type: 'POST',
 			data: JSON.stringify({
 				UserId: self.SelectedUser().userId
@@ -1710,7 +1710,7 @@ var usersAndRolesViewModel = function (options) {
 				roles: selectedRoles
 			};
 			ajaxcall({
-				url: '/api/dotnetusersroles/CreateUser',  // Replace with your actual endpoint
+				url: '/api/DotnetUserRoles/CreateUser',  // Replace with your actual endpoint
 				type: 'POST',
 				data: JSON.stringify(requestData)
 			}).done(function (response) {
@@ -1737,7 +1737,7 @@ var usersAndRolesViewModel = function (options) {
 				roleName: self.roleName()
 			};
 			ajaxcall({
-				url: '/api/dotnetusersroles/CreateRole',
+				url: '/api/DotnetUserRoles/CreateRole',
 				type: 'POST',
 				data: JSON.stringify(requestData)
 			}).done(function (response) {
@@ -1763,7 +1763,7 @@ var usersAndRolesViewModel = function (options) {
 			const roledataid = self.SelectedRole().roleId;
 			const rolename = self.SelectedRole().roleName;
 			ajaxcall({
-				url: '/api/dotnetusersroles/UpdateRole',
+				url: '/api/DotnetUserRoles/UpdateRole',
 				type: 'POST',
 				data: JSON.stringify({
 					RoleId: roledataid,
@@ -1789,7 +1789,7 @@ var usersAndRolesViewModel = function (options) {
 	};
 	self.deleteRole = function () {
 		ajaxcall({
-			url: '/api/dotnetusersroles/DeleteRole',
+			url: '/api/DotnetUserRoles/DeleteRole',
 			type: 'POST',
 			data: JSON.stringify({
 				RoleId: self.SelectedRole().roleId
@@ -1828,7 +1828,7 @@ var usersAndRolesViewModel = function (options) {
 					return { RoleId: role.roleId, RoleName: role.roleName, isSelected: true };
 				});
 			ajaxcall({
-				url: '/api/dotnetusersroles/UpdateUser',
+				url: '/api/DotnetUserRoles/UpdateUser',
 				type: 'POST',
 				data: JSON.stringify({
 					Name: name,
@@ -1856,7 +1856,7 @@ var usersAndRolesViewModel = function (options) {
 	};
 	self.loadUsersData = function() {
 		ajaxcall({
-			url: '/api/dotnetusersroles/LoadUsers',
+			url: '/api/DotnetUserRoles/LoadUsers',
 			type: 'POST'
 		}).done(function (response) {
 			if (response) {
@@ -1875,7 +1875,7 @@ var usersAndRolesViewModel = function (options) {
 	self.loadRolesData = function() {
 
 		ajaxcall({
-			url: '/api/dotnetusersroles/LoadRoles',
+			url: '/api/DotnetUserRoles/LoadRoles',
 			type: 'POST'
 		}).done(function (response) {
 			if (response) {
@@ -1894,7 +1894,7 @@ var usersAndRolesViewModel = function (options) {
 	};
 	self.loadClaimsData = function () {
 		ajaxcall({
-			url: '/api/dotnetusersroles/LoadClaims',
+			url: '/api/DotnetUserRoles/LoadClaims',
 			type: 'POST',
 		}).done(function (response) {
 			if (response) {

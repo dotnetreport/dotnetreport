@@ -51,8 +51,13 @@ builder.Services.AddCors(options =>
               .AllowAnyOrigin();
     });
 });
-
-
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromDays(365); // Session timeout (adjust as needed)
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
+builder.Services.AddScoped<DotNetUserApiController>();
 var app = builder.Build();
 
 JobScheduler.Start(); //<--- Add this line manually
@@ -74,7 +79,7 @@ app.UseCors();
 
 app.UseAuthentication(); 
 app.UseAuthorization();
-
+app.UseSession();
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
