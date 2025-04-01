@@ -2004,12 +2004,18 @@ var reportViewModel = function (options) {
 			if (_.filter(self.SelectedFields(), function (x) { return x.fieldId == e.fieldId; }).length === 0) {
 				self.SelectedFields.push(e);
 			}
+			if (_.filter(self.SelectedFields(), function (x) { return x.fieldName == e.fieldName && x.dynamicTableId == e.dynamicTableId; }).length === 0) {
+				self.SelectedFields.push(e);
+			}
 		});
 	};
 
 	self.RemoveSelectedFields = function () {
 		_.forEach(self.ChooseFields(), function (e) {
 			self.SelectedFields.remove(e);
+			self.SelectedFields.remove(function (x) {
+				return (e.dynamicTableId !== null && e.dynamicTableId !== 0) && x.fieldName === e.fieldName;
+			});
 		});
 	};
 
