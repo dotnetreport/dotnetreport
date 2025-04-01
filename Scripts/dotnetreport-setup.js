@@ -1448,30 +1448,30 @@ var manageViewModel = function (options) {
 		var getReports = function () {
 			return ajaxcall({
 				type: 'POST',
-				url: options.reportsApiUrl,
-				data: {
+				url: options.apiUrl,
+				data: JSON.stringify({
 					method: "/ReportApi/GetSavedReports",
 					model: JSON.stringify({
 						account: self.keys.AccountApiKey,
 						dataConnect: self.keys.DatabaseApiKey,
 						adminMode: true
 					})
-				}
+				})
 			});
 		};
 
 		var getFolders = function () {
 			return ajaxcall({
 				type: 'POST',
-				url: options.reportsApiUrl,
-				data: {
+				url: options.apiUrl,
+				data: JSON.stringify({
 					method: "/ReportApi/GetFolders",
 					model: JSON.stringify({
 						account: self.keys.AccountApiKey,
 						dataConnect: self.keys.DatabaseApiKey,
 						adminMode: true
 					})
-				}
+				})
 			});
 		};
 
