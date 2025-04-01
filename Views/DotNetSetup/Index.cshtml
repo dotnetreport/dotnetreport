@@ -542,7 +542,7 @@
                             <div class="card-header clearfix">
                                 <div class="pull-left">
                                     <label>
-                                        <span data-bind="text: TableName"></span>
+                                        <span data-bind="text: TableName, click: function() { $root.activeProcedure($data); }" style="cursor: pointer"></span>
                                     </label>
                                     <button class="btn btn-sm" title="Save this Procedure" data-bind="click: function() { $root.saveProcedure($data.TableName, false); }">
                                         <span class="fa fa-save"></span>
@@ -553,7 +553,7 @@
                                 </div>
                                 <!-- Click to activate procedure -->
                                 <a class="pull-right" data-bind="click: function() { $root.activeProcedure($data); }">
-                                    <span class="fa fa-chevron-right"></span>
+                                    <span class="fa fa-chevron-right" style="cursor: pointer"></span>
                                 </a>
                             </div>
                         </div>
