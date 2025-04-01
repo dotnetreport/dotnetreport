@@ -1022,11 +1022,25 @@ var reportViewModel = function (options) {
 
 		if (self.isExpanded()) {
 			self.headerDesigner.resizeCanvas();
+			self.removeZoomDashboard();
 		} else {
+			self.applyZoomDashboard();
 			$('.report-expanded-scroll').css('height', 'auto');
 		}
 		self.DrawChart();
 	}
+	self.removeZoomDashboard = function () {
+		const grid = document.querySelector('.grid-stack');
+		if (grid) grid.style.transform = 'none';
+	};
+
+	self.applyZoomDashboard = function () {
+		const grid = document.querySelector('.grid-stack');
+		if (grid) {
+			grid.style.transform = `scale(0.9)`;
+			grid.style.transformOrigin = 'top center';
+		}
+	};
 
 	self.fieldFormatTypes = ['Auto', 'Number', 'Decimal', 'Currency', 'Percentage', 'Date', 'Date and Time', 'Time', 'String'];
 	self.decimalFormatTypes = ['Number', 'Decimal', 'Currency', 'Percentage'];
