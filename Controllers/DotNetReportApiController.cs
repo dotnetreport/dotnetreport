@@ -185,7 +185,7 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("userId", settings.UserId),
                     new KeyValuePair<string, string>("userIdForSchedule", settings.UserIdForSchedule),
                     new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
-                    new KeyValuePair<string, string>("useParameters", "false")
+                    new KeyValuePair<string, string>("useParameters", "true")
             };
 
                 var data = JsonSerializer.Deserialize<Dictionary<string, dynamic>>(model);
@@ -286,15 +286,15 @@ namespace ReportBuilder.Web.Controllers
                         var fromIndex = DotNetReportHelper.FindFromIndex(sql);
                         sqlFields = DotNetReportHelper.SplitSqlColumns(sql);
 
-                        var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(fromIndex)}";
-                        bool hasDistinct = sql.Contains("DISTINCT", StringComparison.OrdinalIgnoreCase);
+                        var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(fromIndex)}".Replace("{FROM}", "FROM");
+                        bool hasDistinct = sql.Contains("DISTINCT");
                         if (hasDistinct)
                         {
                             int distinctIndex = sqlFrom.IndexOf("DISTINCT", StringComparison.OrdinalIgnoreCase) + 8;
                             int fromClauseIndex = sqlFrom.IndexOf("FROM", StringComparison.OrdinalIgnoreCase);
                             string distinctColumns = sqlFrom.Substring(distinctIndex, fromClauseIndex - distinctIndex).Trim();
 
-                            sqlCount = $"SELECT COUNT(*) FROM (SELECT DISTINCT {distinctColumns} {sql.Substring(fromIndex)}) AS countQry";
+                            sqlCount = $"SELECT COUNT(*) FROM (SELECT DISTINCT {distinctColumns} {sql.Substring(fromIndex).Replace("{FROM}", "FROM")}) AS countQry";
                         }
                         else
                         {
@@ -327,6 +327,8 @@ namespace ReportBuilder.Web.Controllers
 
                         if (sql.Contains("__jsonc__"))
                             sql = sql.Replace("__jsonc__", "");
+
+                        sql = sql.Replace("{FROM}", "FROM");
                     }
 
                     // Execute sql
