@@ -111,7 +111,7 @@ namespace ReportBuilder.Web.Controllers
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
             var pdf = await DotNetReportHelper.GetPdfFile(HttpUtility.UrlDecode(printUrl), reportId, reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName),
-                                userId, clientId, userRoles, dataFilters, expandAll, expandSqls, pivotColumn, pivotFunction, debug);
+                                userId, clientId, userRoles, dataFilters, expandAll, expandSqls, pivotColumn, pivotFunction, false, debug);
 
             return File(pdf, "application/pdf", reportName + ".pdf");
         }
