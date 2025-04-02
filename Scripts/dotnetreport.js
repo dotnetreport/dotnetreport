@@ -2103,7 +2103,15 @@ var reportViewModel = function (options) {
 	};
 
 	self.selectedFieldsCanFilter = ko.computed(function () {
-		return _.filter(self.SelectedFields(), function (x) { return x.tableId !== 0 && !x.isFormulaField() });
+		return _.filter(self.SelectedFields(), function (x) {
+			if (x.tableId === 0) {
+				return false;
+			}
+			else if (x.tableId !== 0 && x.dynamicTableId !== undefined && x.dynamicTableId !== null) {
+				return false;
+			}
+			return true; 
+		});
 	});
 
 	self.clearFormulaField = function () {
