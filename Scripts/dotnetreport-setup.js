@@ -23,7 +23,11 @@ var manageViewModel = function (options) {
 	self.activeTable = ko.observable();
 	self.activeProcedure = ko.observable();
 	self.schedules = ko.observableArray([]);
-	self.SettingPage = new settingPageViewModel(options);
+	self.settings = new settingPageViewModel(options);
+	self.ReportResult = ko.observable({
+		ReportSql: ko.observable()
+	});
+	self.SettingPage = self.settings;
 
 	self.loadFromDatabase = function() {
 		bootbox.confirm("Confirm loading all Tables and Views from the database? Note: This action will discard unsaved changes and it may take some time.", function (r) {
@@ -937,7 +941,7 @@ var manageViewModel = function (options) {
 			toastr.error('Please enter a term to search stored procs');
 			return false;
 		}
-
+		self.foundProcedures([]);
 		ajaxcall({
 			url: options.searchProcUrl,
 			type: 'POST',
@@ -948,6 +952,10 @@ var manageViewModel = function (options) {
 			})
 		}).done(function (result) {
 			if (result.d) result = result.d;
+
+			if (result.length == 0) {
+				toastr.error('No matching stored proc found, please try again.');
+			}
 			_.forEach(result, function (s) {
 				_.forEach(s.Columns, function (c) {
 					c.DisplayName = ko.observable(c.DisplayName);
@@ -1459,29 +1467,31 @@ var manageViewModel = function (options) {
 
 		var getReports = function () {
 			return ajaxcall({
-				url: options.reportsApiUrl,
-				data: {
+				type: 'POST',
+				url: options.apiUrl,
+				data: JSON.stringify({
 					method: "/ReportApi/GetSavedReports",
 					model: JSON.stringify({
 						account: self.keys.AccountApiKey,
 						dataConnect: self.keys.DatabaseApiKey,
 						adminMode: true
 					})
-				}
+				})
 			});
 		};
 
 		var getFolders = function () {
 			return ajaxcall({
-				url: options.reportsApiUrl,
-				data: {
+				type: 'POST',
+				url: options.apiUrl,
+				data: JSON.stringify({
 					method: "/ReportApi/GetFolders",
 					model: JSON.stringify({
 						account: self.keys.AccountApiKey,
 						dataConnect: self.keys.DatabaseApiKey,
 						adminMode: true
 					})
-				}
+				})
 			});
 		};
 
@@ -1668,7 +1678,7 @@ var usersAndRolesViewModel = function (options) {
 	self.deleteUser = function () {
 		var userId = self.SelectedUser().userId;
 		ajaxcall({
-			url: '/api/dotnetusersroles/DeleteUser',
+			url: '/api/DotnetUserRoles/DeleteUser',
 			type: 'POST',
 			data: JSON.stringify({
 				UserId: self.SelectedUser().userId
@@ -1710,7 +1720,7 @@ var usersAndRolesViewModel = function (options) {
 				roles: selectedRoles
 			};
 			ajaxcall({
-				url: '/api/dotnetusersroles/CreateUser',  // Replace with your actual endpoint
+				url: '/api/DotnetUserRoles/CreateUser',  // Replace with your actual endpoint
 				type: 'POST',
 				data: JSON.stringify(requestData)
 			}).done(function (response) {
@@ -1737,7 +1747,7 @@ var usersAndRolesViewModel = function (options) {
 				roleName: self.roleName()
 			};
 			ajaxcall({
-				url: '/api/dotnetusersroles/CreateRole',
+				url: '/api/DotnetUserRoles/CreateRole',
 				type: 'POST',
 				data: JSON.stringify(requestData)
 			}).done(function (response) {
@@ -1763,7 +1773,7 @@ var usersAndRolesViewModel = function (options) {
 			const roledataid = self.SelectedRole().roleId;
 			const rolename = self.SelectedRole().roleName;
 			ajaxcall({
-				url: '/api/dotnetusersroles/UpdateRole',
+				url: '/api/DotnetUserRoles/UpdateRole',
 				type: 'POST',
 				data: JSON.stringify({
 					RoleId: roledataid,
@@ -1789,7 +1799,7 @@ var usersAndRolesViewModel = function (options) {
 	};
 	self.deleteRole = function () {
 		ajaxcall({
-			url: '/api/dotnetusersroles/DeleteRole',
+			url: '/api/DotnetUserRoles/DeleteRole',
 			type: 'POST',
 			data: JSON.stringify({
 				RoleId: self.SelectedRole().roleId
@@ -1828,7 +1838,7 @@ var usersAndRolesViewModel = function (options) {
 					return { RoleId: role.roleId, RoleName: role.roleName, isSelected: true };
 				});
 			ajaxcall({
-				url: '/api/dotnetusersroles/UpdateUser',
+				url: '/api/DotnetUserRoles/UpdateUser',
 				type: 'POST',
 				data: JSON.stringify({
 					Name: name,
@@ -1856,7 +1866,7 @@ var usersAndRolesViewModel = function (options) {
 	};
 	self.loadUsersData = function() {
 		ajaxcall({
-			url: '/api/dotnetusersroles/LoadUsers',
+			url: '/api/DotnetUserRoles/LoadUsers',
 			type: 'POST'
 		}).done(function (response) {
 			if (response) {
@@ -1875,7 +1885,7 @@ var usersAndRolesViewModel = function (options) {
 	self.loadRolesData = function() {
 
 		ajaxcall({
-			url: '/api/dotnetusersroles/LoadRoles',
+			url: '/api/DotnetUserRoles/LoadRoles',
 			type: 'POST'
 		}).done(function (response) {
 			if (response) {
@@ -1894,7 +1904,7 @@ var usersAndRolesViewModel = function (options) {
 	};
 	self.loadClaimsData = function () {
 		ajaxcall({
-			url: '/api/dotnetusersroles/LoadClaims',
+			url: '/api/DotnetUserRoles/LoadClaims',
 			type: 'POST',
 		}).done(function (response) {
 			if (response) {
@@ -2026,6 +2036,9 @@ var dbConnectionViewModel = function(options) {
 				if (response) {
 					if (response.success) {
 						toastr.success(response.message);
+						if (!testOnly) {
+							$('#connection-setup-modal').modal('hide');
+						}
 					} else {
 						toastr.error(response.message || 'Connection changes were not successful');
 						return false;
@@ -2419,6 +2432,7 @@ var customSqlModel = function (options, keys, tables) {
 	self.useAi = ko.observable(false);
 	self.dynamicColumns = ko.observable(false);
 	self.columnTranslation = ko.observable('{column}');
+	self.dynamicValuesTableId = ko.observable();
 	self.textQuery = new textQuery(options);
 	self.selectedTable = null;
 	var validator = new validation();
@@ -2439,6 +2453,8 @@ var customSqlModel = function (options, keys, tables) {
 		self.customSql(e.CustomTableSql());
 		self.dynamicColumns(e.DynamicColumns());
 		self.columnTranslation(e.DynamicColumnTranslation());
+		self.dynamicValuesTableId(e.DynamicValuesTableId());
+
 		$('#custom-sql-modal').modal('show');
 	}
 	
@@ -2505,6 +2521,11 @@ var customSqlModel = function (options, keys, tables) {
 			toastr.error("You must use {column} in the code to use the dynamic column");
 			valid = false;
 		}
+
+		if (self.dynamicColumns() && !self.dynamicValuesTableId()) {
+			toastr.error("Please pick a table that contains dynamic column values");
+			valid = false;
+		}
 		var matchTable = _.find(tables.model(), function (x) {
 			return x.TableName() == self.customTableName() && (!self.selectedTable || self.selectedTable.Id != x.Id());
 		});
@@ -2540,6 +2561,7 @@ var customSqlModel = function (options, keys, tables) {
 				result.DisplayName = self.customTableName();
 				result.DynamicColumns = self.dynamicColumns();
 				result.DynamicColumnTranslation = self.columnTranslation() ? self.columnTranslation() : "{column}";
+				result.DynamicValuesTableId = self.dynamicValuesTableId();
 				var t = ko.mapping.fromJS(result);
 
 				tables.model.push(tables.processTable(t));
@@ -2550,6 +2572,7 @@ var customSqlModel = function (options, keys, tables) {
 				table.CustomTableSql(self.customSql());
 				table.DynamicColumns(self.dynamicColumns());
 				table.DynamicColumnTranslation(self.columnTranslation() ? self.columnTranslation() : "{column}");
+				table.DynamicValuesTableId(self.dynamicValuesTableId());
 
 				_.forEach(result.Columns, function (c) {
 					// if column id matches, update display name and data type, otherwise add it
@@ -2601,6 +2624,15 @@ var settingPageViewModel = function (options) {
 	self.emailAddress = ko.observable("");
 	self.selectedAppTheme = ko.observable();
 	self.selectedTimeZone = ko.observable();
+	self.useClientIdInAdmin = ko.observable(false);
+	self.useSqlBuilderInAdminMode = ko.observable(false);
+	self.useSqlCustomField = ko.observable(true);
+	self.noFolders = ko.observable(false);
+	self.noDefaultFolder = ko.observable(false);
+	self.showEmptyFolders = ko.observable(false);
+	self.allowUsersToManageFolders = ko.observable(true);
+	self.allowUsersToCreateReports = ko.observable(true);
+
 	self.appThemes = ko.observableArray([
 		{ name: 'Default', value: 'default' },
 		{ name: 'Dark', value: 'dark' },
@@ -2645,11 +2677,11 @@ var settingPageViewModel = function (options) {
 		{ displayName: '(UTC+4:00) Asia/Dubai', value: 4 },
 		{ displayName: '(UTC+4:00) Asia/Baku', value: 4 }
 	]);
-	self.saveAppSettings = function () {
+	self.saveLocalAppSettings = function () {
 
 		if (this.isValidforAppSetting()) {
 			ajaxcall({
-				url: options.saveAppSettingUrl,
+				url: options.saveLocalAppSettingUrl,
 				type: 'POST',
 				data: JSON.stringify({
 					account: apiKey,
@@ -2661,7 +2693,7 @@ var settingPageViewModel = function (options) {
 					emailName: self.emailName() || '',
 					emailAddress: self.emailAddress() || '',
 					backendApiUrl: self.backendApiUrl() || '',
-					timeZone: `${self.selectedTimeZone() }`,
+					timeZone: `${self.selectedTimeZone()}`,
 					appThemes: self.selectedAppTheme(),
 				})
 			}).done(function (response) {
@@ -2679,26 +2711,92 @@ var settingPageViewModel = function (options) {
 		};
 
 	}
-	self.getAppSettings = function () {
+	self.getLocalAppSettings = function () {
 		ajaxcall({
-			url: options.getAppSettingUrl,
+			url: options.getLocalAppSettingUrl,
 		}).done(function (response) {
 
 			if (response) {
-					var settings = response; // Assuming the response contains the settings object
-					self.backendApiUrl(settings.backendApiUrl);
-					self.emailServer(settings.emailServer);
-					self.emailPort(settings.emailPort);
-					self.emailUsername(settings.emailUserName);
-					self.emailPassword(settings.emailPassword);
-					self.emailName(settings.emailName);
-					self.emailAddress(settings.emailAddress);
-					self.selectedAppTheme(settings.appThemes);
-					self.selectedTimeZone(settings.timeZone);
+				var settings = response; // Assuming the response contains the settings object
+				self.backendApiUrl(settings.backendApiUrl);
+				self.emailServer(settings.emailServer);
+				self.emailPort(settings.emailPort);
+				self.emailUsername(settings.emailUserName);
+				self.emailPassword(settings.emailPassword);
+				self.emailName(settings.emailName);
+				self.emailAddress(settings.emailAddress);
+				self.selectedAppTheme(settings.appThemes);
+				self.selectedTimeZone(settings.timeZone);
 
-					//// Optionally, you can manually trigger change event for select elements
-					$('#themeSelect').trigger('change');
-					$('#timezoneSelect').trigger('change');
+				//// Optionally, you can manually trigger change event for select elements
+				$('#themeSelect').trigger('change');
+				$('#timezoneSelect').trigger('change');
+			} else {
+				toastr.error('Connection Error');
+				return false;
+			}
+		});
+	};
+	self.saveAppSettings = function () {
+
+		if (this.isValidforAppSetting()) {
+			ajaxcall({
+				url: options.apiUrl,
+				type: 'POST',
+				data: JSON.stringify({
+					method: options.saveAppSettingUrl,
+					model: JSON.stringify({
+						account: apiKey,
+						dataConnect: dbKey,
+						settings: JSON.stringify({							
+							useClientIdInAdmin: self.useClientIdInAdmin(),
+							useSqlBuilderInAdminMode: self.useSqlBuilderInAdminMode(),
+							useSqlCustomField: self.useSqlCustomField(),
+							noFolders: self.noFolders(),
+							noDefaultFolder: self.noDefaultFolder(),
+							showEmptyFolders: self.showEmptyFolders(),
+							allowUsersToManageFolders: self.allowUsersToManageFolders(),
+							allowUsersToCreateReports: self.allowUsersToCreateReports()
+						})
+					})
+				})
+			}).done(function (response) {
+				if (response) {
+					if (response.success) {
+						toastr.success('Account Settings Updated');
+					} else {
+						toastr.error(response.message);
+					}
+				} else {
+					toastr.error('Error Saving Settings');
+					return false;
+				}
+			});
+		};
+
+	}
+	self.getAppSettings = function () {
+
+		return ajaxcall({
+			url: options.apiUrl,
+			type: 'POST',
+			data: JSON.stringify({
+				method: "/ReportApi/GetAccountSettings",
+				model: "{}"
+			})
+		}).done(function (response) {
+
+			if (response) {
+				var settings = response; // Assuming the response contains the settings object
+				self.useClientIdInAdmin(settings.useClientIdInAdmin);
+				self.useSqlBuilderInAdminMode(settings.useSqlBuilderInAdminMode);
+				self.useSqlCustomField(settings.useSqlCustomField);
+				self.noFolders(settings.noFolders);
+				self.noDefaultFolder(settings.noDefaultFolder);
+				self.showEmptyFolders(settings.showEmptyFolders);
+				self.allowUsersToManageFolders(settings.allowUsersToManageFolders);
+				self.allowUsersToCreateReports(settings.allowUsersToCreateReports);
+
 			} else {
 				toastr.error('Connection Error');
 				return false;
@@ -2709,7 +2807,8 @@ var settingPageViewModel = function (options) {
 		var valid = validator.validateForm('#appSettingsForm');
 		return valid;
 	};
-		 self.getAppSettings();
+	self.getAppSettings();
+	self.getLocalAppSettings();
 }
 
 var customFunctionManageModel = function (options, keys) {
@@ -2866,10 +2965,24 @@ var customFunctionManageModel = function (options, keys) {
 	self.deleteFunction = function (functionModel) {
 		bootbox.confirm("Are you sure you want to delete this function?", function (result) {
 			if (result) {
-				self.functions.remove(functionModel);
-				if (self.selectedFunction() === functionModel) {
-					self.selectedFunction(null);
-				}
+				ajaxcall({
+					url: options.apiUrl,
+					type: 'POST',
+					data: JSON.stringify({
+						method: options.deleteCustomFuncUrl,
+						model: JSON.stringify({
+							account: self.keys.AccountApiKey,
+							dataConnect: self.keys.DatabaseApiKey,
+							funcId: functionModel.id()
+						})
+					})
+				}).done(function () {
+					toastr.success("Deleted Function " + functionModel.name());		
+					self.functions.remove(functionModel);
+					if (self.selectedFunction() === functionModel) {
+						self.selectedFunction(null);
+					}								
+				});
 			}
 		});
 	}
@@ -2898,6 +3011,7 @@ var customFunctionParameterModel = function (options, parentParameters) {
 	self.parameterName = ko.observable(options.ParameterName || '');
 	self.displayName = ko.observable(options.DisplayName || '').extend({ required: true });
 	self.description = ko.observable(options.Description || '');
+	self.datatype = ko.observable(options.DataType || 'object');
 	self.required = ko.observable(options.Required || true);
 	self.isValid = ko.observable(true);
 	self.errorMessage = ko.observable();
@@ -2907,12 +3021,12 @@ var customFunctionParameterModel = function (options, parentParameters) {
 
 		// Required
 		if (!self.parameterName().trim()) {
-			errors.push("Parameter name is required.");
+			errors.push("Argument name is required.");
 		}
 
 		// Format
 		if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(self.parameterName())) {
-			errors.push("Parameter name must start with a letter and can only contain alphanumeric characters and underscores.");
+			errors.push("Argument name must start with a letter and can only contain alphanumeric characters and underscores.");
 		}
 
 		// Unique
@@ -2920,7 +3034,7 @@ var customFunctionParameterModel = function (options, parentParameters) {
 			return param === self || param.parameterName() !== self.parameterName();
 		});
 		if (!isUnique) {
-			errors.push("Parameter name must be unique.");
+			errors.push("Argument name must be unique.");
 		}
 
 		self.isValid(errors.length === 0);

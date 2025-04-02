@@ -548,7 +548,8 @@ function generateUniqueId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 }
 
-function beautifySql(sql, htmlMode=true) {
+function beautifySql(sql, htmlMode = true) {
+    sql = sql.replace("{FROM}", "FROM");
     var _sql = sql;
     try {
         const keywords = [
@@ -593,6 +594,7 @@ function beautifySql(sql, htmlMode=true) {
             return 'SELECT ' + fields.join((htmlMode ? ',<br>' : ',\n') + indent) + indent + (htmlMode ? '' : '\n') + 'FROM';
         });
 
+        if (htmlMode) sql = sql.replaceAll('\\n', '<br>');
         return sql.trim();
     }
     catch {

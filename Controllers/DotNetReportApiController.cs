@@ -55,10 +55,10 @@ namespace ReportBuilder.Web.Controllers
             settings.ClientId = "";  // You can pass your multi-tenant client id here to track their reports and folders
             settings.UserId = ""; // You can pass your current authenticated user id here to track their reports and folders            
             settings.UserName = "";
-            settings.CurrentUserRole = new List<string>(); // Populate your current authenticated user's roles
+            settings.CurrentUserRole = SessionHelper.GetCurrentUserRoles(HttpContext)?.Any() == true ? SessionHelper.GetCurrentUserRoles(HttpContext) : new List<string>(); // Populate your current authenticated user's roles
 
-            settings.Users = new List<dynamic>(); // Populate all your application's user, ex  { "Jane", "John" } or { new { id="1", text="Jane" }, new { id="2", text="John" }}
-            settings.UserRoles = new List<string>(); // Populate all your application's user roles, ex  { "Admin", "Normal" }       
+            settings.Users = SessionHelper.GetUsers(HttpContext)?.Any()== true? SessionHelper.GetUsers(HttpContext) : new List<dynamic>(); // Populate all your application's user, ex  { "Jane", "John" } or { new { id="1", text="Jane" }, new { id="2", text="John" }}
+            settings.UserRoles = SessionHelper.GetUserRoles(HttpContext)?.Any() == true ? SessionHelper.GetUserRoles(HttpContext) : new List<string>();// Populate all your application's user roles, ex  { "Admin", "Normal" }
             settings.CanUseAdminMode = ClaimsHelper.HasAnyRequiredClaim(User as ClaimsPrincipal, ClaimsStore.AllowAdminMode); // Set to true only if current user can use Admin mode to setup reports, dashboard and schema
             settings.DataFilters = new { }; // add global data filters to apply as needed https://dotnetreport.com/kb/docs/advance-topics/global-filters/
 
@@ -185,7 +185,7 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("userId", settings.UserId),
                     new KeyValuePair<string, string>("userIdForSchedule", settings.UserIdForSchedule),
                     new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
-                    new KeyValuePair<string, string>("useParameters", "false")
+                    new KeyValuePair<string, string>("useParameters", "true")
             };
 
                 var data = JsonSerializer.Deserialize<Dictionary<string, dynamic>>(model);
@@ -286,15 +286,15 @@ namespace ReportBuilder.Web.Controllers
                         var fromIndex = DotNetReportHelper.FindFromIndex(sql);
                         sqlFields = DotNetReportHelper.SplitSqlColumns(sql);
 
-                        var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(fromIndex)}";
-                        bool hasDistinct = sql.Contains("DISTINCT", StringComparison.OrdinalIgnoreCase);
+                        var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(fromIndex)}".Replace("{FROM}", "FROM");
+                        bool hasDistinct = sql.Contains("DISTINCT");
                         if (hasDistinct)
                         {
                             int distinctIndex = sqlFrom.IndexOf("DISTINCT", StringComparison.OrdinalIgnoreCase) + 8;
                             int fromClauseIndex = sqlFrom.IndexOf("FROM", StringComparison.OrdinalIgnoreCase);
                             string distinctColumns = sqlFrom.Substring(distinctIndex, fromClauseIndex - distinctIndex).Trim();
 
-                            sqlCount = $"SELECT COUNT(*) FROM (SELECT DISTINCT {distinctColumns} {sql.Substring(fromIndex)}) AS countQry";
+                            sqlCount = $"SELECT COUNT(*) FROM (SELECT DISTINCT {distinctColumns} {sql.Substring(fromIndex).Replace("{FROM}", "FROM")}) AS countQry";
                         }
                         else
                         {
@@ -327,6 +327,8 @@ namespace ReportBuilder.Web.Controllers
 
                         if (sql.Contains("__jsonc__"))
                             sql = sql.Replace("__jsonc__", "");
+
+                        sql = sql.Replace("{FROM}", "FROM");
                     }
 
                     // Execute sql
@@ -756,6 +758,8 @@ namespace ReportBuilder.Web.Controllers
 
             return timeZoneList;
         }
+
+        [AllowAnonymous]
         [HttpGet]
         public async Task<IActionResult> GetAllTimezones()
         {
@@ -936,7 +940,7 @@ namespace ReportBuilder.Web.Controllers
                 return new JsonResult(new
                 {
                     success = true,
-                    message = $"Settings Access Saved Successfully"
+                    message = $"Settings Saved Successfully"
                 }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
             }
             catch (Exception ex)
