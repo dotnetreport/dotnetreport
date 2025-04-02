@@ -1089,13 +1089,20 @@ namespace ReportBuilder.Web.Models
                     {
                         if (table.DynamicColumns)
                         {
-                            var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey));
-                            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection();
-
-                            var dt = databaseConnection.ExecuteQuery(connString, table.CustomTableSql);
-                            foreach (DataRow dr in dt.Rows)
+                            try
                             {
-                                table.Columns.Add(new ColumnViewModel { ColumnName = Convert.ToString(dr[0]), DisplayName = Convert.ToString(dr[0]) });
+                                var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey));
+                                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection();
+
+                                var dt = databaseConnection.ExecuteQuery(connString, table.CustomTableSql);
+                                foreach (DataRow dr in dt.Rows)
+                                {
+                                    table.Columns.Add(new ColumnViewModel { ColumnName = Convert.ToString(dr[0]), DisplayName = Convert.ToString(dr[0]) });
+                                }
+                            }
+                            catch(Exception ex)
+                            {
+                                //continue
                             }
                         }
                         else
