@@ -1091,10 +1091,18 @@ namespace ReportBuilder.Web.Models
                         {
                             try
                             {
-                                var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey));
-                                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection();
+                                var connect = DotNetReportHelper.GetConnection();
+                                var dbConfig = DotNetReportHelper.GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey);
+                                if (dbConfig == null)
+                                {
+                                    throw new Exception("Data Connection settings not found");
+                                }
 
-                                var dt = databaseConnection.ExecuteQuery(connString, table.CustomTableSql);
+                                var dbtype = dbConfig["DatabaseType"].ToString();
+                                string connectionString = dbConfig["ConnectionString"].ToString();
+                                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+
+                                var dt = databaseConnection.ExecuteQuery(connectionString, table.CustomTableSql);
                                 foreach (DataRow dr in dt.Rows)
                                 {
                                     table.Columns.Add(new ColumnViewModel { ColumnName = Convert.ToString(dr[0]), DisplayName = Convert.ToString(dr[0]) });
@@ -1907,7 +1915,15 @@ namespace ReportBuilder.Web.Models
             var sqlFields = SplitSqlColumns(sql);
 
             // Execute sql
-            var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
+            var connect = DotNetReportHelper.GetConnection();
+            var dbConfig = DotNetReportHelper.GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey);
+            if (dbConfig == null)
+            {
+                throw new Exception("Data Connection settings not found");
+            }
+
+            var dbtype = dbConfig["DatabaseType"].ToString();
+            string connectionString = dbConfig["ConnectionString"].ToString();
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
             var dt = databaseConnection.ExecuteQuery(connectionString, sql, qry.parameters);
 
@@ -1917,7 +1933,15 @@ namespace ReportBuilder.Web.Models
         public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
                 string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, List<ReportHeaderColumn> onlyAndGroupInDetailColumns = null)
         {
-            var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
+            var connect = DotNetReportHelper.GetConnection();
+            var dbConfig = DotNetReportHelper.GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey);
+            if (dbConfig == null)
+            {
+                throw new Exception("Data Connection settings not found");
+            }
+
+            var dbtype = dbConfig["DatabaseType"].ToString();
+            string connectionString = dbConfig["ConnectionString"].ToString();
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
             var data = GetDataTable(reportSql, connectKey);
 
@@ -2383,7 +2407,15 @@ namespace ReportBuilder.Web.Models
         public static async Task<byte[]> GetWordFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
             string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
         {
-            var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
+            var connect = DotNetReportHelper.GetConnection();
+            var dbConfig = DotNetReportHelper.GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey);
+            if (dbConfig == null)
+            {
+                throw new Exception("Data Connection settings not found");
+            }
+
+            var dbtype = dbConfig["DatabaseType"].ToString();
+            string connectionString = dbConfig["ConnectionString"].ToString();
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
             var data = GetDataTable(reportSql, connectKey);
 
@@ -2699,7 +2731,15 @@ namespace ReportBuilder.Web.Models
             var page = await browser.NewPageAsync();
             await page.SetRequestInterceptionAsync(true);
 
-            var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
+            var connect = DotNetReportHelper.GetConnection();
+            var dbConfig = DotNetReportHelper.GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey);
+            if (dbConfig == null)
+            {
+                throw new Exception("Data Connection settings not found");
+            }
+
+            var dbtype = dbConfig["DatabaseType"].ToString();
+            string connectionString = dbConfig["ConnectionString"].ToString();
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
             var data = GetDataTable(reportSql, connectKey);
 
@@ -2929,7 +2969,15 @@ namespace ReportBuilder.Web.Models
             var data = GetDataTable(reportSql, connectKey);
             var dt = data.dt;
             RemoveColumnsBySubstring(dt, "__prm__");
-            var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
+            var connect = DotNetReportHelper.GetConnection();
+            var dbConfig = DotNetReportHelper.GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey);
+            if (dbConfig == null)
+            {
+                throw new Exception("Data Connection settings not found");
+            }
+
+            var dbtype = dbConfig["DatabaseType"].ToString();
+            string connectionString = dbConfig["ConnectionString"].ToString();
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
             var qry = data.qry;
             var sqlFields = data.sqlFields;            
@@ -3004,7 +3052,15 @@ namespace ReportBuilder.Web.Models
             var data = GetDataTable(reportSql, connectKey);
             var dt = data.dt;
             var subTotals = new decimal[dt.Columns.Count];
-            var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
+            var connect = DotNetReportHelper.GetConnection();
+            var dbConfig = DotNetReportHelper.GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey);
+            if (dbConfig == null)
+            {
+                throw new Exception("Data Connection settings not found");
+            }
+
+            var dbtype = dbConfig["DatabaseType"].ToString();
+            string connectionString = dbConfig["ConnectionString"].ToString();
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
             var qry = data.qry;
             var sqlFields = data.sqlFields;
