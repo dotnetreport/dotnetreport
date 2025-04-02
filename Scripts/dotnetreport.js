@@ -291,12 +291,12 @@ function filterGroupViewModel(args) {
 	var self = this;
 
 	self.isRoot = args.isRoot === true ? true : false;
-	self.AndOr = ko.observable(args.AndOr || ' AND ');
+	self.AndOr = ko.observable(args.AndOr || 'And');
 	self.Filters = ko.observableArray([]);
 	self.FilterGroups = ko.observableArray([]);
 
 	self.AddFilterGroup = function (e) {
-		var newGroup = new filterGroupViewModel({ parent: args.parent, AndOr: e.AndOr, options: args.options });
+		var newGroup = new filterGroupViewModel({ parent: args.parent, AndOr: ko.unwrap(e.AndOr), options: args.options });
 		self.FilterGroups.push(newGroup);
 		return newGroup;
 	};

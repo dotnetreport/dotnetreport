@@ -509,35 +509,35 @@
     </div>
 </script>
 <script type="text/html" id="filter-group">
-    <div class="query-builder form-inline" data-bind="foreach: FilterGroups">
-        <div class="rules-group-container">
-            <div class="rules-group-header">
-                <div data-bind="visible: !isRoot">
-                    <div class="pull-left">
-                        <div class="btn-group btn-group-toggle btn-group-sm" data-bs-toggle="buttons" role="group">
-                            <label class="btn btn-light active" style="margin-right: 0px;">
-                                <input type="radio" name="andoroption" data-bind="checked: AndOr, checkedValue: 'And'"> And
-                            </label>
-                            <label class="btn btn-light active">
-                                <input type="radio" name="andoroption" data-bind="checked: AndOr, checkedValue: 'Or'"> Or
-                            </label>
+        <div class="query-builder form-inline" data-bind="foreach: FilterGroups">
+            <div class="rules-group-container">
+                <div class="rules-group-header" data-bind="attr: {parentdivid: generateUniqueId()}">
+                    <div data-bind="visible: !isRoot">
+                        <div class="pull-left">
+                            <div class="btn-group btn-group-toggle btn-group-sm" data-bs-toggle="buttons" role="group">
+                                <label class="btn btn-light active" style="margin-right: 0px;">
+                                    <input type="radio" data-bind="attr: { name: 'andOrGroup-' + $element.closest('.rules-group-header').getAttribute('parentdivid') }, checked: AndOr" value="And" /> And
+                                </label>
+                                <label class="btn btn-light active">
+                                    <input type="radio" data-bind="attr: { name: 'andOrGroup-' + $element.closest('.rules-group-header').getAttribute('parentdivid') }, checked: AndOr" value="Or" /> Or
+                                </label>
+                            </div>
+                        </div>
+                        <div class="pull-right">
+                            <button class="btn btn-sm btn-secondary" data-bind="click: $parent.RemoveFilterGroup, visible: !isRoot">Remove Group</button>&nbsp;
                         </div>
                     </div>
-                    <div class="pull-right">
-                        <button class="btn btn-sm btn-secondary" data-bind="click: $parent.RemoveFilterGroup, visible: !isRoot">Remove Group</button>&nbsp;
+                    <div data-bind="visible: isRoot">
+                        <div class="pull-left padded-div">
+                            <label> &nbsp;Filter Conditions</label>
+                        </div>
                     </div>
+                    <div class="clearfix"></div>
                 </div>
-                <div data-bind="visible: isRoot">
-                    <div class="pull-left padded-div">
-                        <label> &nbsp;Filter Conditions</label>
-                    </div>
-                </div>
-                <div class="clearfix"></div>
-            </div>
 
-            <div class="rules-group-body" data-bind="template: {name: 'filter-inner'}"></div>
+                <div class="rules-group-body" data-bind="template: {name: 'filter-inner'}"></div>
+            </div>
         </div>
-    </div>
 </script>
 <script type="text/html" id="fly-filter-template">
     <div class="card" data-bind="visible: FlyFilters().length>0">
