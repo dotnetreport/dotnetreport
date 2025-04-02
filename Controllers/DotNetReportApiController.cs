@@ -758,6 +758,8 @@ namespace ReportBuilder.Web.Controllers
 
             return timeZoneList;
         }
+
+        [AllowAnonymous]
         [HttpGet]
         public async Task<IActionResult> GetAllTimezones()
         {
