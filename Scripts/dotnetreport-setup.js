@@ -2036,6 +2036,9 @@ var dbConnectionViewModel = function(options) {
 				if (response) {
 					if (response.success) {
 						toastr.success(response.message);
+						if (!testOnly) {
+							$('#connection-setup-modal').modal('hide');
+						}
 					} else {
 						toastr.error(response.message || 'Connection changes were not successful');
 						return false;

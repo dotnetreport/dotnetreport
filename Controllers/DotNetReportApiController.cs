@@ -938,7 +938,7 @@ namespace ReportBuilder.Web.Controllers
                 return new JsonResult(new
                 {
                     success = true,
-                    message = $"Settings Access Saved Successfully"
+                    message = $"Settings Saved Successfully"
                 }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
             }
             catch (Exception ex)
