@@ -24,8 +24,6 @@ namespace ReportBuilder.WebForms.DotNetReport
     [System.Web.Script.Services.ScriptService]
     public class ReportService : System.Web.Services.WebService
     {
-        public readonly static string dbtype = DbTypes.MS_SQL.ToString().Replace("_", " ");
-
         public DotNetReportSettings GetSettings()
         {
             var settings = new DotNetReportSettings
@@ -68,7 +66,7 @@ namespace ReportBuilder.WebForms.DotNetReport
             var dt = new DataTable();
 
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
-            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(DotNetReportHelper.dbtype);
 
             dt = databaseConnection.ExecuteQuery(connectionString, sql, qry.parameters);
 
@@ -171,7 +169,7 @@ namespace ReportBuilder.WebForms.DotNetReport
 
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
-        public async Task<DotNetReportResultModel> RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, bool desc = false, string reportSeries = null, string pivotColumn = null, string pivotFunction = null, string reportData = null, bool subtotalMode = false)
+        public async Task<DotNetReportResultModel> RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, bool desc = false, string reportSeries = null, string pivotColumn = null, string pivotFunction = null, string reportData = null, bool SubTotalMode = false)
         {
             var sql = "";
             var sqlCount = "";
@@ -247,11 +245,11 @@ namespace ReportBuilder.WebForms.DotNetReport
                     }
                     // Execute sql
                     var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
-                    IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+                    IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(DotNetReportHelper.dbtype);
 
                     var dtPagedRun = new DataTable();
 
-                    if (!string.IsNullOrEmpty(pivotColumn))
+                    if (!string.IsNullOrEmpty(pivotColumn) && !DotNetReportHelper.useAltPivot)
                     {
                         sql = sql.Remove(sql.IndexOf("SELECT "), "SELECT ".Length).Insert(sql.IndexOf("SELECT "), "SELECT TOP 1 ");
                     }
@@ -281,13 +279,18 @@ namespace ReportBuilder.WebForms.DotNetReport
 
                         if (!string.IsNullOrEmpty(pivotColumn))
                         {
-                            var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dtPagedRun, sql, sqlFields, reportData, pivotColumn, pivotFunction, pageNumber, pageSize, sortBy, desc, subtotalMode);
-                            dtPagedRun = pd.dt;
-                            if (!string.IsNullOrEmpty(pd.sql)) sql = pd.sql;
-                            totalRecords = pd.totalRecords;
-
-                            //var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dtPagedRun, sqlFields, reportData);
-                            //dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn, pivotFunction, reportData);
+                            if (!DotNetReportHelper.useAltPivot)
+                            {
+                                var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dtPagedRun, sql, sqlFields, reportData, pivotColumn, pivotFunction, pageNumber, pageSize, sortBy, desc, SubTotalMode);
+                                dtPagedRun = pd.dt;
+                                if (!string.IsNullOrEmpty(pd.sql)) sql = pd.sql;
+                                totalRecords = pd.totalRecords;
+                            }
+                            else
+                            {
+                                var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dtPagedRun, sqlFields, reportData);
+                                dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn, pivotFunction, reportData);
+                            }
                             var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
                             fields = fields
                                 .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
@@ -577,11 +580,13 @@ namespace ReportBuilder.WebForms.DotNetReport
         }
 
         [WebMethod(EnableSession = true)]
-        public async Task DownloadWord(string reportSql, string connectKey, string reportName, bool allExpanded, string expandSqls, string columnDetails = null, bool includeSubtotal = false, bool pivot = false, string chartData = "")
+        public async Task DownloadWord(string reportSql, string connectKey, string reportName, bool allExpanded, string expandSqls, string chartData = null, string columnDetails = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
+            chartData = HttpUtility.UrlDecode(chartData);
+            chartData = chartData?.Replace(" ", " +");
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
-            var word = await DotNetReportHelper.GetWordFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot);
+            var word = await DotNetReportHelper.GetWordFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction);
 
             Context.Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".docx");
             Context.Response.ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -608,7 +613,7 @@ namespace ReportBuilder.WebForms.DotNetReport
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
             var pdf = DotNetReportHelper.GetPdfFile(HttpUtility.UrlDecode(printUrl), reportId, reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName),
-                                userId, clientId, userRoles, dataFilters, expandAll, expandSqls, pivotColumn, pivotFunction = null);
+                                userId, clientId, userRoles, dataFilters, expandAll, expandSqls, pivotColumn, pivotFunction);
 
             Context.Response.AddHeader("content-disposition", "attachment; filename=" + reportName + ".pdf");
             Context.Response.ContentType = "application/pdf";
@@ -633,15 +638,16 @@ namespace ReportBuilder.WebForms.DotNetReport
         }
 
         [WebMethod(EnableSession = true)]
-        public async void DownloadCsv(string reportSql, string connectKey, string reportName, string columnDetails = null, bool includeSubtotal = false)
+        public async Task DownloadCsv(string reportSql, string connectKey, string reportName, string columnDetails = null, bool includeSubtotal = false, string expandSqls = null, string pivotColumn = null, string pivotFunction = null)
         {
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
-            var excel = await DotNetReportHelper.GetCSVFile(reportSql, HttpUtility.UrlDecode(connectKey), columns, includeSubtotal);
+            reportSql = HttpUtility.HtmlDecode(reportSql);
+            var csv = await DotNetReportHelper.GetCSVFile(reportSql, HttpUtility.UrlDecode(connectKey), columns, includeSubtotal, expandSqls, pivotColumn, pivotFunction);
 
             Context.Response.ClearContent();
             Context.Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".csv");
             Context.Response.ContentType = "text/csv";
-            Context.Response.BinaryWrite(excel);
+            Context.Response.BinaryWrite(csv);
             Context.Response.End();
         }
 
@@ -714,7 +720,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                 }
 
                 var connect = DotNetReportHelper.GetConnection(databaseApiKey);
-                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(DotNetReportHelper.dbtype);
                 var tables = new List<TableViewModel>();
                 var procedures = new List<TableViewModel>();
                 var functions = new List<CustomFunctionModel>();
@@ -786,7 +792,7 @@ namespace ReportBuilder.WebForms.DotNetReport
 
                 var connString = DotNetReportHelper.GetConnectionString(dataConnectKey);
 
-                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(DotNetReportHelper.dbtype);
                 table = databaseConnection.GetSchemaFromSql(connString, table, value, dynamicColumns).Result;
 
                 return table;
@@ -821,7 +827,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                 // Execute sql
                 var connString = DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey), false).Result;
 
-                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(DotNetReportHelper.dbtype);
                 var dtPaged = databaseConnection.ExecuteQuery(connString, sql);
 
                 var model = new DotNetReportResultModel
@@ -862,7 +868,7 @@ namespace ReportBuilder.WebForms.DotNetReport
         {
 
             var connString = DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey), false).Result;
-            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(DotNetReportHelper.dbtype);
 
             return databaseConnection.GetSearchProcedure(value, accountKey, dataConnectKey);
         }

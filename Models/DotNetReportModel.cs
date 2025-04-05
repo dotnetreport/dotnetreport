@@ -2706,7 +2706,7 @@ namespace ReportBuilder.Web.Models
                     formData.AppendLine($"<input name=\"clientId\" value=\"{clientId}\" />");
                     formData.AppendLine($"<input name=\"currentUserRole\" value=\"{currentUserRole}\" />");
                     formData.AppendLine($"<input name=\"expandAll\" value=\"{expandAll}\" />");
-                    formData.AppendLine($"<input name=\"dataFilters\" value=\"{HttpUtility.HtmlEncode(dataFilters)}\" />");
+                    formData.AppendLine($"<input name=\"dataFilters\" value=\"{HttpUtility.HtmlEncode(string.IsNullOrEmpty(dataFilters) ? "{}" : "")}\" />");
                     formData.AppendLine($"<input name=\"reportData\" value=\"{HttpUtility.HtmlEncode(JsonConvert.SerializeObject(model))}\" />");
                     formData.AppendLine($"</form>");
                     formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");
