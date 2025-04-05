@@ -379,8 +379,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 <span data-bind="text: FolderName"></span>
                                             </div>
                                             <div class="col-md-6 text-end" data-bind="visible: $parent.adminMode">
-                                                @*  <div class="badge bg-info text-white" data-bind="text: userId ? userId : 'Any User'"></div>
-                                                    <div class="badge bg-info text-white" data-bind="text: userRole ? userRole : 'No Role'"></div> *@
+                                                <!--<div class="badge bg-info text-white" data-bind="text: userId ? userId : 'Any User'"></div>
+                                                <div class="badge bg-info text-white" data-bind="text: userRole ? userRole : 'No Role'"></div>-->
                                             </div>
                                         </div>
                                     </div>
