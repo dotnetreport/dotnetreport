@@ -288,7 +288,7 @@
                 </div>
 
                 <div data-bind="visible: $parent.adminMode" class="card card-body mb-3">
-                    <div data-bind="template: {name: 'manage-access-template'}"></div>
+                    <div data-bind="template: {name: 'manage-access-template', data: manageAccess}"></div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -348,7 +348,7 @@
                             </ul>
                         </li>
                         <li>
-                            <a class="dropdown-item" data-bind="attr: {href: '/DotNetReport/Report.aspx?linkedreport=true&noparent=true&reportId=' + ReportID() }" target="_blank">
+                            <a class="dropdown-item" data-bind="attr: {href: '/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + ReportID() }" target="_blank">
                                 <span class="fa fa-file"></span> Report
                             </a>
                         </li>

@@ -195,7 +195,6 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         </button>
                     </div>
 
-
                     <div data-bind="if: layout()=='icons'">
                         <div data-bind="visible: !SelectedFolder() && !searchReports()">
                             <p>Please choose Folders below to view Reports</p>
@@ -217,7 +216,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             </div>
                             <div class="list-group list-overflow">
                                 <div data-bind="if: SelectedFolder()!=null && reportsInFolder().length==0">
-                                    No Reports Saved in this Folder
+                                    This folder is empty.
                                 </div>
                                 <div data-bind="if: searchReports() && reportsInSearch().length==0">
                                     No Reports found matching your Search
@@ -295,6 +294,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                             <span class="sr-only"></span>
                                                         </button>
                                                         <div class="dropdown-menu dropdown-menu-right">
+                                                            <a class="dropdown-item" href="#" data-bind="click: function() {exportReport('pdf');}">
+                                                                <span class="fa fa-file-excel-o"></span> Download PDF
+                                                            </a>
                                                             <a class="dropdown-item" href="#" data-bind="click: function() {exportReport('excel');}">
                                                                 <span class="fa fa-file-excel-o"></span> Download Excel
                                                             </a>
@@ -377,8 +379,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 <span data-bind="text: FolderName"></span>
                                             </div>
                                             <div class="col-md-6 text-end" data-bind="visible: $parent.adminMode">
-                                                <!--  <div class="badge bg-info text-white" data-bind="text: userId ? userId : 'Any User'"></div>
-                                                    <div class="badge bg-info text-white" data-bind="text: userRole ? userRole : 'No Role'"></div> -->
+                                                @*  <div class="badge bg-info text-white" data-bind="text: userId ? userId : 'Any User'"></div>
+                                                    <div class="badge bg-info text-white" data-bind="text: userRole ? userRole : 'No Role'"></div> *@
                                             </div>
                                         </div>
                                     </div>
@@ -388,7 +390,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             <div data-bind="visible: SelectedFolder() || searchReports()">
                                 <div class="container-fluid">
                                     <div data-bind="if: SelectedFolder()!=null && reportsInFolder().length==0">
-                                        <p class="text-center text-muted">This folder is empty.</p>
+                                        <p class="text-muted">This folder is empty.</p>
                                     </div>
 
                                     <div data-bind="if: searchReports() && reportsInSearch().length==0">
@@ -418,7 +420,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                     'fa-random': reportType=='Pivot',
                                                     'fa-window-restore': reportType=='Treemap'
                                                 }"></span>
-                                                    <a class="ms-2" data-bind="click: runReport, text: reportName" style="cursor: pointer"></a>&nbsp;
+                                                    <a class="ms-2" data-bind="click: runReport, highlightedText: { text: reportName, highlight: $parent.searchReports, css: 'highlight' }" style="cursor: pointer"></a>&nbsp;
                                                     <span data-bind="text: message" class="highlight small"></span>
                                                 </div>
 
@@ -453,6 +455,11 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                                 <a class="dropdown-item dropdown-toggle" href="#">Export</a>
                                                                 <ul class="dropdown-menu">
                                                                     <li>
+                                                                        <a class="dropdown-item" href="#" data-bind="click: function() {exportReport('pdf');}">
+                                                                            <span class="fa fa-file-excel-o"></span> Download PDF
+                                                                        </a>
+                                                                    </li>
+                                                                    <li>
                                                                         <a class="dropdown-item" href="#" data-bind="click: function() {exportReport('excel');}">
                                                                             <span class="fa fa-file-excel-o"></span> Download Excel
                                                                         </a>
@@ -482,7 +489,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 <div class="col-md-1" data-bind="visible: $parent.adminMode">
                                                     <a data-bind="attr: {href: '/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + reportId }" target="_blank"><span class="fa fa-link"></span></a>
                                                     &nbsp;
-                                                    <a href="#" data-bind="click: function() { navigator.clipboard.writeText('/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + reportId) }">
+                                                    <a href="#" data-bind="click: function() { navigator && navigator.clipboard && navigator.clipboard.writeText('/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + reportId) }">
                                                         <span class="fa fa-copy" title="Copy Link"></span>
                                                     </a>
                                                 </div>
@@ -536,8 +543,13 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end">
                                     <li>
-                                        <a href="#" class="dropdown-item" data-bind="click: downloadPdf">
+                                        <a href="#" class="dropdown-item" data-bind="click: function() {downloadPdf(false);}">
                                             <i class="fa fa-file-pdf-o"></i> Pdf
+                                        </a>
+                                    </li>
+                                    <li data-bind="visible: adminMode">
+                                        <a href="#" class="dropdown-item" data-bind="click: function() {downloadPdf(true);}">
+                                            <i class="fa fa-file-pdf-o"></i> Pdf (Debug)
                                         </a>
                                     </li>
                                     <li>
@@ -725,26 +737,6 @@ Its Recommended you use it as is, and only change styling as needed to match you
     </div>
 </div>
 
-<div class="modal" id="sqlModal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header d-flex justify-content-between align-items-center">
-                <h4 class="modal-title">Report Code</h4>
-                <button class="btn btn-outline-secondary btn-sm d-flex align-items-center"
-                        data-bind="click: function(data, event) { copySqlToClipboard(event.target); }">
-                    <i class="fa fa-clipboard"></i> Copy
-                </button>
-                <button type="button" class="btn-close pull-right" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body" data-bind="with: ReportResult">
-                <div style="overflow-x: auto; max-height: 500px; overflow-y: scroll; border: 1px solid; padding: 10px;" class="bg-dark text-light">
-                    <pre><code id="reportSqlCode" data-bind="html: ReportSql" style="white-space: pre-wrap;"></code></pre>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Report Builder -->
 <div class="modal modal-fullscreen" id="modal-reportbuilder" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="padding-right: 0px !important;">
     <div data-bind="template: {name: 'report-designer', data: $data}"></div>
@@ -762,7 +754,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
 
 <!-- Folder Edit Modal -->
 <div class="modal" id="folderModal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog" data-bind="css: {'modal-lg': adminMode}">
         <div class="modal-content" data-bind="with: ManageFolder">
             <div class="modal-header">
                 <h5 class="modal-title  fs-5">Manage Folder</h5>
@@ -776,6 +768,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
                     </div>
                 </div>
                 <br />
+                <div data-bind="visible: $root.adminMode" class="card card-body">
+                    <div data-bind="template: {name: 'manage-access-template', data: $root.manageFolderAccess}"></div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
