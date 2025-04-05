@@ -142,6 +142,8 @@ namespace ReportBuilder.Web.Jobs
                                 byte[] fileData;
                                 string fileExt = "";
                                 string imageData = "";
+
+                                (string PivotColumn, string PivotFunction) pivotInfo;
                                 switch ((schedule.Format ?? "Excel").ToUpper())
                                 {
                                     case "PDF":
@@ -162,9 +164,10 @@ namespace ReportBuilder.Web.Jobs
                                         fileExt = ".pdf"; 
                                         break;
 
-                                    case "CSV": 
+                                    case "CSV":
+                                        pivotInfo = PreparePivotData(reportToRun.Columns);
                                         fileExt = ".csv";
-                                        fileData = await DotNetReportHelper.GetCSVFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.Columns, reportToRun.IncludeSubTotals);
+                                        fileData = await DotNetReportHelper.GetCSVFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.Columns, reportToRun.IncludeSubTotals, expandSqls: reportToRun.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction);
                                         break;
 
                                     case "WORD":
@@ -181,6 +184,7 @@ namespace ReportBuilder.Web.Jobs
                                         }
                                         else
                                         {
+                                            pivotInfo = PreparePivotData(reportToRun.Columns);
                                             fileExt = ".docx";
                                             imageData = await DotNetReportHelper.GetChartImage(JobScheduler.WebAppRootUrl + "/Report/ReportPrint.aspx", reportToRun.ReportId, reportToRun.ConnectKey, reportToRun.ReportSql);
                                             fileData = await DotNetReportHelper.GetWordFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: reportToRun.Columns, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot", chartData: imageData);
@@ -188,7 +192,8 @@ namespace ReportBuilder.Web.Jobs
                                         break;
 
                                     case "EXCEL-SUB":
-                                        fileData = await DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: reportToRun.Columns, allExpanded: true, expandSqls: reportToRun.ReportData, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot");
+                                        pivotInfo = PreparePivotData(reportToRun.Columns);
+                                        fileData = await DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: reportToRun.Columns, allExpanded: true, expandSqls: reportToRun.ReportData, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot", pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction);
                                         fileExt = ".xlsx";
                                         break;
                                     
@@ -229,7 +234,7 @@ namespace ReportBuilder.Web.Jobs
                                 {
                                     mail.Body = $"Please click on the link below to Run your Report:<br><br><a href=\"{JobScheduler.WebAppRootUrl}/DotnetReport/Report?linkedreport=true&noparent=true&reportId={reportToRun.ReportId}\">{report.Description}</a>";
                                 }
-                                else
+                                else if (fileData != null)
                                 {
                                     var attachment = new Attachment(new MemoryStream(fileData), report.Name + fileExt);
                                     mail.Attachments.Add(attachment);
@@ -251,6 +256,28 @@ namespace ReportBuilder.Web.Jobs
                     }
                 }
             }
+        }
+
+        public (string PivotColumn, string PivotFunction) PreparePivotData(List<ReportHeaderColumn> columns)
+        {
+            var pivotColumn = columns.FirstOrDefault(x => x.aggregateFunction == "Pivot");
+            string pivotFunction = string.Empty;
+
+            if (pivotColumn != null)
+            {
+                int pivotColumnIndex = columns.FindIndex(x => x.aggregateFunction == "Pivot");
+
+                if (pivotColumnIndex >= 0 && pivotColumnIndex < columns.Count - 1)
+                {
+                    var nextValue = columns[pivotColumnIndex + 1];
+                    pivotFunction = nextValue.aggregateFunction;
+                }
+            }
+
+            return (
+                 pivotColumn?.fieldName ?? string.Empty,
+                 pivotColumn != null && !string.IsNullOrEmpty(pivotFunction) ? pivotFunction : string.Empty
+             );
         }
     }
 }

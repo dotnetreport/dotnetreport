@@ -119,11 +119,11 @@ namespace ReportBuilder.Web.Controllers
 
         [HttpPost]
         public async Task<ActionResult> DownloadPdf(string printUrl, int reportId, string reportSql, string connectKey, string reportName, bool expandAll,
-                                                                    string clientId = null, string userId = null, string userRoles = null, string dataFilters = "", string expandSqls = null, string pivotColumn = null, string pivotFunction = null)
+                                                                    string clientId = null, string userId = null, string userRoles = null, string dataFilters = "", string expandSqls = null, string pivotColumn = null, string pivotFunction = null, bool debug = false)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            var pdf = DotNetReportHelper.GetPdfFile(HttpUtility.UrlDecode(printUrl), reportId, reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName),
-                                                userId, clientId, userRoles, dataFilters, expandAll, expandSqls, pivotColumn, pivotFunction = null);
+            var pdf = await DotNetReportHelper.GetPdfFile(HttpUtility.UrlDecode(printUrl), reportId, reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName),
+                                userId, clientId, userRoles, dataFilters, expandAll, expandSqls, pivotColumn, pivotFunction, false, debug);
 
             return File(pdf, "application/pdf", reportName + ".pdf");
         }

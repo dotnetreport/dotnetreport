@@ -151,6 +151,7 @@ namespace ReportBuilder.Web.Models
         public List<CategoryViewModel> Categories { get; set; } = new List<CategoryViewModel>();
         public bool DynamicColumns { get; set; }
         public string DynamicColumnTranslation { get; set; }
+        public int? DynamicValuesTableId { get; set; }
     }
     public class CategoryViewModel
     {
@@ -217,6 +218,7 @@ namespace ReportBuilder.Web.Models
 
         public bool Required { get; set; }
         public string DefaultValue { get; set; } = "";
+        public string DataType { get; set; } = "object";
     }
 
 
@@ -418,6 +420,7 @@ namespace ReportBuilder.Web.Models
         public bool isNumeric { get; set; }
         public bool isCurrency { get; set; }
         public bool isJsonColumn { get; set; }
+        public string aggregateFunction { get; set; }
         public LinkFieldItem LinkFieldItem { get; set; }
     }
     public class LinkFieldItem
@@ -492,6 +495,7 @@ namespace ReportBuilder.Web.Models
     {
         private readonly static string _configFileName = "appsettings.dotnetreport.json";
         public readonly static string dbtype = DbTypes.MS_SQL.ToString().Replace("_", " ");
+        public readonly static bool useAltPivot = true;
 
         public static string GetConnectionString(string key, bool addOledbProvider = false)
         {
@@ -790,7 +794,8 @@ namespace ReportBuilder.Web.Models
             int i = colstart; var isNumeric = false;int counter = 1;
             foreach (DataColumn dc in dt.Columns)
             {
-                var formatColumn = columns?[counter - 1];
+                var value = "";
+                var formatColumn = GetColumnFormatting(dc, columns, ref value);
                 string decimalFormat = new string('0', formatColumn.decimalPlacesDigit.GetValueOrDefault());
                 isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
                 if (rowstart == 3 & !string.IsNullOrEmpty(formatColumn.fieldLabel))
@@ -973,6 +978,11 @@ namespace ReportBuilder.Web.Models
 
         public static int FindFromIndex(string sql)
         {
+            if (sql.Contains("{FROM} "))
+            {
+                return sql.IndexOf("{FROM} ");
+            }
+
             int parenthesesCount = 0;
 
             for (int i = 0; i < sql.Length - 4; i++)  // -4 because "FROM" has 4 characters
@@ -1019,6 +1029,7 @@ namespace ReportBuilder.Web.Models
                         CustomTableSql = Convert.ToBoolean(item.customTable) == true ? DotNetReportHelper.Decrypt(Convert.ToString(item.customTableSql)) : "",
                         DynamicColumns = item.dynamicColumns != null ? Convert.ToBoolean(item.dynamicColumns) : false,
                         DynamicColumnTranslation = item.dynamicColumns != null && Convert.ToBoolean(item.dynamicColumns) == true ? DotNetReportHelper.Decrypt(Convert.ToString(item.dynamicColumnTranslation)) : "",
+                        DynamicValuesTableId = item.dynamicValuesTableId != null ? Convert.ToInt32(item.dynamicValuesTableId) : null,
                         Columns = new List<ColumnViewModel>(),
                         Selected = true
                     };
@@ -1487,6 +1498,7 @@ namespace ReportBuilder.Web.Models
         public async static Task<DataSet> GetDrillDownData(IDatabaseConnection databaseConnection, string connectionString, DataTable dt, List<string> sqlFields, string reportDataJson, List<KeyValuePair<string, string>> parameters = null)
         {
             var drilldownRow = new List<string>();
+            if (dt.Rows.Count == 0) return new DataSet();
             var dr = dt.Rows[0];
             int i = 0;
             foreach (DataColumn dc in dt.Columns)
@@ -1562,18 +1574,19 @@ namespace ReportBuilder.Web.Models
         {
             if (!sql.Contains("/*|")) return dataTable;
 
-            Regex regex = new Regex(@"/\*\|(.*?)\|\*/");
+            Regex regex = new Regex(@"/\*\|(.*?)\|\*/[^,]+AS\s+\[([^\]]+)\]");
             var matches = regex.Matches(sql);
 
             foreach (Match match in matches)
             {
                 string functionCall = match.Groups[1].Value;
+                string columnName = match.Groups[2].Value;
                 int columnIndex = -1;
 
                 // Find the column that contains the function call to replace it later
                 foreach (DataColumn column in dataTable.Columns)
                 {
-                    if (column.Expression.Contains(match.Value))
+                    if (column.ColumnName.Equals(columnName))
                     {
                         columnIndex = column.Ordinal;
                         break;
@@ -1868,14 +1881,20 @@ namespace ReportBuilder.Web.Models
             }
             if (!string.IsNullOrEmpty(pivotColumn))
             {
-                var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
-                dt = pd.dt;
-                if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
-                allExpanded = false;
-
-                //var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
-                //dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);
+                if (!useAltPivot)
+                {
+                    var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
+                    dt = pd.dt;
+                    if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
+                    allExpanded = false;
+                }
+                else
+                {
+                    var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
+                    dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);
+                }
             }
+
             using (ExcelPackage xp = new ExcelPackage())
             {
                 ExcelWorksheet ws = xp.Workbook.Worksheets.Add(reportName);
@@ -1913,6 +1932,7 @@ namespace ReportBuilder.Web.Models
                         int i = 0;
                         foreach (DataColumn dc in dt.Columns)
                         {
+                            if (i >= sqlFields.Count) break;
                             var col = sqlFields[i++]; //columns.FirstOrDefault(x => x.fieldName == dc.ColumnName) ?? new ReportHeaderColumn();
                             drilldownRow.Add($@"
                                     {{
@@ -1967,7 +1987,7 @@ namespace ReportBuilder.Web.Models
                             {
                                 ws.InsertRow(insertRowIndex + 2, ddt.Rows.Count);
 
-                                FormatExcelSheet(ddt, ws, insertRowIndex == 3 ? 3 : (insertRowIndex + 1), ddt.Columns.Count + 1, columns, false, insertRowIndex == 3,isexpanded:true);
+                                FormatExcelSheet(ddt, ws, insertRowIndex == 3 ? 3 : (insertRowIndex + 1), dt.Columns.Count + 2, columns, false, insertRowIndex == 3,isexpanded:true);
 
                                 insertRowIndex += ddt.Rows.Count + 1;
                             }
@@ -2334,13 +2354,19 @@ namespace ReportBuilder.Web.Models
 
             if (!string.IsNullOrEmpty(pivotColumn))
             {
-                var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
-                dt = pd.dt;
-                if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
+                if (!useAltPivot)
+                {
+                    var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
+                    dt = pd.dt;
+                    if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
+                }
+                else
+                {
+                    var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
+                    dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);                    
+                }
+                subTotals = new decimal[dt.Columns.Count];
                 allExpanded = false;
-                subTotals = new decimal[pd.dt.Columns.Count];
-                //ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
-                //dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);
             }
 
             using (MemoryStream memStream = new MemoryStream())
@@ -2599,7 +2625,8 @@ namespace ReportBuilder.Web.Models
             return text.Length * averageCharWidthInTwips;
         }
         public static byte[] GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
-                    string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false, string expandSqls = null, string pivotColumn = null, string pivotFunction = null)
+                    string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false, string expandSqls = null, 
+                    string pivotColumn = null, string pivotFunction = null, bool imageOnly = false, bool debug = false)
         {
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
             Task.Run(async () =>
@@ -2630,11 +2657,20 @@ namespace ReportBuilder.Web.Models
                     var qry = data.qry;
                     var sqlFields = data.sqlFields;
                     var dt = data.dt;
+                   
                     if (!string.IsNullOrEmpty(pivotColumn))
                     {
-                        var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
-                        dt = pd.dt;
-                        if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
+                        if (!useAltPivot)
+                        {
+                            var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
+                            dt = pd.dt;
+                            if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
+                        }
+                        else
+                        {
+                            var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
+                            dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);
+                        }
                         var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
                         sqlFields = sqlFields
                             .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
@@ -2699,11 +2735,32 @@ namespace ReportBuilder.Web.Models
                     });
 
                     await page.WaitForSelectorAsync(".report-inner", new WaitForSelectorOptions { Visible = true });
+                    if (imageOnly)
+                    {
+                        try
+                        {
+                            var imageData = await page.EvaluateExpressionAsync<string>("window.chartImageUrl");
+                            await page.EvaluateExpressionAsync("delete window.chartImageUrl;");
 
-            int height = await page.EvaluateExpressionAsync<int>("document.body.offsetHeight");
-            int width = 700;
-            try { width = await page.EvaluateExpressionAsync<int>("$('table').width()"); } catch { }
-            var pdfFile = Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
+                            if (!string.IsNullOrEmpty(imageData))
+                            {
+                                string base64String = imageData.Split(',')[1];
+
+                                return Convert.FromBase64String(base64String);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            return new byte[0];
+                        }
+
+                        return new byte[0];
+                    }
+
+                    int height = await page.EvaluateExpressionAsync<int>("document.body.offsetHeight");
+                    int width = 700;
+                    try { width = await page.EvaluateExpressionAsync<int>("$('table').width()"); } catch { }
+                    var pdfFile = Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
 
                     var pdfOptions = new PdfOptions
                     {
@@ -2825,104 +2882,6 @@ namespace ReportBuilder.Web.Models
                 return memStream.ToArray();
             }
         }
-        public static async Task<string> GetChartImage(string printUrl, int reportId, string connectKey, string reportSql = null, string dataFilters = "")
-        {
-            var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
-            Task.Run(async () =>
-            {
-                var browserFetcher = new BrowserFetcher(new BrowserFetcherOptions { Path = installPath });
-                await browserFetcher.DownloadAsync();
-            }).GetAwaiter().GetResult();
-
-            var executablePath = "";
-            foreach (var d in Directory.GetDirectories($"{installPath}\\Chrome"))
-            {
-                executablePath = $"{d}\\chrome-win64\\chrome.exe";
-                if (File.Exists(executablePath)) break;
-            }
-
-            try
-            {
-                var file = Task.Run(async () =>
-                {
-                    var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = true, ExecutablePath = executablePath });
-                    var page = await browser.NewPageAsync();
-                    await page.SetRequestInterceptionAsync(true);
-
-                    var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
-                    IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
-                    var data = GetDataTable(reportSql, connectKey);
-
-                    var qry = data.qry;
-                    var sqlFields = data.sqlFields;
-                    var dt = data.dt;
-                    var model = new DotNetReportResultModel
-                    {
-                        ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dt, sqlFields, false),
-                        Warnings = "",
-                        ReportSql = qry.sql,
-                        ReportDebug = false,
-                        Pager = new DotNetReportPagerModel
-                        {
-                            CurrentPage = 1,
-                            PageSize = 100000,
-                            TotalRecords = dt.Rows.Count,
-                            TotalPages = 1
-                        }
-                    };
-
-                    var formPosted = false;
-                    var formData = new StringBuilder();
-                    formData.AppendLine("<html><body>");
-                    formData.AppendLine($"<form action=\"{printUrl}\" method=\"post\">");
-                    formData.AppendLine($"<input name=\"reportSql\" value=\"{HttpUtility.UrlEncode(reportSql)}\" />");
-                    formData.AppendLine($"<input name=\"connectKey\" value=\"{HttpUtility.UrlEncode(connectKey)}\" />");
-                    formData.AppendLine($"<input name=\"reportId\" value=\"{reportId}\" />");
-                    formData.AppendLine($"<input name=\"pageNumber\" value=\"{1}\" />");
-                    formData.AppendLine($"<input name=\"pageSize\" value=\"{99999}\" />");
-                    formData.AppendLine($"<input name=\"dataFilters\" value=\"{HttpUtility.UrlEncode(dataFilters)}\" />");
-                    formData.AppendLine($"<input name=\"reportData\" value=\"{HttpUtility.UrlEncode(JsonConvert.SerializeObject(model))}\" />");
-                    formData.AppendLine($"</form>");
-                    formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");
-                    formData.AppendLine("</body></html>");
-
-                    page.Request += async (sender, e) =>
-                    {
-                        if (formPosted)
-                        {
-                            await e.Request.ContinueAsync();
-                            return;
-                        }
-
-                        await e.Request.RespondAsync(new ResponseData
-                        {
-                            Status = System.Net.HttpStatusCode.OK,
-                            Body = formData.ToString()
-                        });
-
-                        formPosted = true;
-                    };
-                    // Navigate to the chart URL
-                    await page.GoToAsync(printUrl, new NavigationOptions
-                    {
-                        WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
-                    });
-
-                    // Wait for the chart element to be visible
-                    await page.WaitForSelectorAsync(".report-inner", new WaitForSelectorOptions { Visible = true });
-                    var imageData = await page.EvaluateExpressionAsync<string>("window.chartImageUrl");
-                    await page.EvaluateExpressionAsync("delete window.chartImageUrl;");
-
-                    return imageData;
-                }).GetAwaiter().GetResult();
-
-                return file;
-            }
-            catch (Exception ex)
-            {
-                return null;
-            }
-        }
 
         public static async Task<string> GetXmlFile(string reportSql, string connectKey, string reportName, string expandSqls = null, string pivotColumn = null, string pivotFunction = null)
         {
@@ -2933,18 +2892,23 @@ namespace ReportBuilder.Web.Models
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
             var qry = data.qry;
-            var sqlFields = data.sqlFields;
+            var sqlFields = data.sqlFields;            
+
             if (!string.IsNullOrEmpty(pivotColumn))
             {
-                var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
-                dt = pd.dt;
-                if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
-                var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
-                sqlFields = sqlFields
-                    .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
-                    .ToList();
-                sqlFields.AddRange(dt.Columns.Cast<DataColumn>().Skip(sqlFields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
+                if (!useAltPivot)
+                {
+                    var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
+                    dt = pd.dt;
+                    if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
+                }
+                else
+                {
+                    var dds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
+                    dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, dds, pivotColumn, pivotFunction, expandSqls);
+                }
             }
+
             ds.Tables.Add(dt);
             ds.DataSetName = "data";
             foreach (DataColumn c in dt.Columns)
@@ -3004,17 +2968,21 @@ namespace ReportBuilder.Web.Models
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
             var qry = data.qry;
             var sqlFields = data.sqlFields;
+            
             if (!string.IsNullOrEmpty(pivotColumn))
             {
-                var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
-                dt = pd.dt;
+                if (!useAltPivot)
+                {
+                    var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
+                    dt = pd.dt;
+                    if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
+                }
+                else
+                {
+                    var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
+                    dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);
+                }
                 subTotals = new decimal[dt.Columns.Count];
-                if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
-                var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
-                sqlFields = sqlFields
-                    .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
-                    .ToList();
-                sqlFields.AddRange(dt.Columns.Cast<DataColumn>().Skip(sqlFields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
             }
             //Build the CSV file data as a Comma separated string.
             string csv = string.Empty;
@@ -3033,7 +3001,7 @@ namespace ReportBuilder.Web.Models
                 var i = 0;
                 foreach (DataColumn column in dt.Columns)
                 {
-                    var value = row[column.ColumnName].ToString();
+                    var value = row[column.ColumnName]?.ToString() ?? string.Empty;
                     var formatColumn = GetColumnFormatting(column, columns, ref value);
 
                     if (includeSubtotal)
@@ -3043,8 +3011,14 @@ namespace ReportBuilder.Web.Models
                             subTotals[i] += Convert.ToDecimal(row[column.ColumnName]);
                         }
                     }
-                    value = value.Replace("\r", " ").Replace("\n", " ").Replace("\"", "\"\"");
-                    //Add the Data rows.
+
+                    // Prevent formula injection by prefixing values starting with '=', '@', '+', or '-'
+                    if (!string.IsNullOrEmpty(value) && (value.StartsWith("=") || value.StartsWith("@") || value.StartsWith("+") || value.StartsWith("-")))
+                    {
+                        value = "'" + value;  // Prefix with an apostrophe
+                    }
+
+                    value = value.Replace("\r", " ").Replace("\n", " ").Replace("\"", "\"\"");  // Escape double quotes
                     csv += $"{(i == 0 ? "" : ",")}\"{value}\"";
                     i++;
                 }
@@ -3535,9 +3509,38 @@ namespace ReportBuilder.Web.Models
             }
             return table;
         }
+        private bool IsAllowedSql(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return false;
+
+            // Convert to lowercase for case-insensitive checks
+            string lowerInput = input.ToLowerInvariant();
+
+            // Disallow dangerous SQL keywords
+            string[] blockedKeywords = { "drop ", "delete ", "insert ", "update ", "truncate ", "alter ", "exec ", "execute ", "create ", "--", ";", "/*", "*/" };
+
+            foreach (var keyword in blockedKeywords)
+            {
+                if (lowerInput.Contains(keyword))
+                {
+                    return false; // Invalid SQL detected
+                }
+            }
+
+            // Only allow SELECT statements 
+            if (!lowerInput.TrimStart().StartsWith("select "))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
 
         public DataTable ExecuteQuery(string connectionString, string sql, List<KeyValuePair<string, string>> parameters = null)
         {
+            //if (!IsAllowedSql(sql)) throw new Exception("Invalid Query found");
+
             DataTable dataTable = new DataTable();
 
             try
@@ -3546,7 +3549,7 @@ namespace ReportBuilder.Web.Models
                 {
                     conn.Open();
 
-                    using (SqlCommand command = new SqlCommand(sql, conn))
+                    using (SqlCommand command = new SqlCommand(sql.Replace("{FROM}", "FROM"), conn))
                     {
                         command.CommandTimeout = 60 * 5;
                         if (parameters != null)
@@ -3764,9 +3767,15 @@ namespace ReportBuilder.Web.Models
             {
                 // open the connection to the database 
                 conn.Open();
-                string spQuery = "SELECT ROUTINE_NAME, ROUTINE_DEFINITION, ROUTINE_SCHEMA FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_DEFINITION LIKE '%" + value + "%' AND ROUTINE_TYPE = 'PROCEDURE'";
+                string spQuery = @"
+                        SELECT ROUTINE_NAME, ROUTINE_DEFINITION, ROUTINE_SCHEMA 
+                        FROM INFORMATION_SCHEMA.ROUTINES 
+                        WHERE ROUTINE_DEFINITION LIKE @SearchValue 
+                        AND ROUTINE_TYPE = 'PROCEDURE'";
                 SqlCommand cmd = new SqlCommand(spQuery, conn);
                 cmd.CommandType = CommandType.Text;
+                cmd.Parameters.Add(new SqlParameter("@SearchValue", SqlDbType.NVarChar)).Value = $"%{value}%";
+
                 DataTable dtProcedures = new DataTable();
                 dtProcedures.Load(cmd.ExecuteReader());
                 int count = 1;
