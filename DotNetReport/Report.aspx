@@ -89,7 +89,7 @@
                 <div class="collapse navbar-collapse" id="navbarSupportedContent">
                     <ul class="navbar-nav me-auto"></ul>
                     <div class="d-flex align-items-center gap-2">
-                        <a href="@Url.Action("Index","DotNetReport")?folderId=@Model.SelectedFolder" class="btn btn-light btn-sm">
+                        <a href="/DotNetReport/Index.aspx?folderId=<%= Model.SelectedFolder %>" class="btn btn-light btn-sm">
                             <i class="fa fa-arrow-left"></i>
                             <span>Back to Reports</span>
                         </a>
