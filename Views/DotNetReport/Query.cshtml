@@ -67,6 +67,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
         <button data-bind="click: function() {runQuery(false);}" class="btn btn-primary btn-sm">Process your Query</button>&nbsp;
         <button data-bind="click: function() {runQuery(true);}" class="btn btn-primary btn-sm">Process with ChatGPT</button>&nbsp;
         <button data-bind="click: resetQuery" class="btn btn-secondary btn-sm">Start over</button>
+        <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: adminMode">
+            View Code
+        </button>
         <button data-bind="click: openDesigner, hidden: usingAi" class="btn btn-secondary btn-sm">Design/Save Report</button>
     </p>
 </div>
@@ -100,13 +103,6 @@ Its Recommended you use it as is, and only change styling as needed to match you
         <p>
             <div data-bind="text: Exception"></div>
         </p>
-    </div>
-
-    <div data-bind="if: $root.adminMode()">
-        <br />
-        <br />
-        <code data-bind="html: ReportSql">
-        </code>
     </div>
 
 </div>
