@@ -2210,6 +2210,7 @@ var settingPageViewModel = function (options) {
 				})
 			}).done(function (response) {
 				if (response) {
+					if (response.d) response = response.d;
 					if (response.success) {
 						toastr.success('Account Settings Updated');
 					} else {
@@ -2235,6 +2236,7 @@ var settingPageViewModel = function (options) {
 		}).done(function (response) {
 
 			if (response) {
+				if (response.d) response = response.d;
 				var settings = response; // Assuming the response contains the settings object
 				self.backendApiUrl(settings.backendApiUrl);
 				self.emailServer(settings.emailServer);
