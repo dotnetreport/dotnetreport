@@ -1330,7 +1330,7 @@ var reportViewModel = function (options) {
 		else {
 			self.AggregateReport(true);
 		}
-		if (self.isChart()) {
+		if (self.chartTypes.indexOf(newvalue) < 0) {
 			self.DrawChart();
 		}
 	});
@@ -2372,8 +2372,9 @@ var reportViewModel = function (options) {
 		return true;
 	};
 
+	self.chartTypes = ["List", "Summary", "Single", "Pivot"];
 	self.isChart = ko.computed(function () {
-		return ["List", "Summary", "Single", "Pivot"].indexOf(self.ReportType()) < 0;
+		return self.chartTypes.indexOf(self.ReportType()) < 0;
 	});
 
 	self.isFieldValidForSubGroup = function (i, fieldType) {
@@ -3014,7 +3015,7 @@ var reportViewModel = function (options) {
 	self.printReport = function () {
 		self.processReportResult(options.reportData, options.reportSql, options.reportConnect, options.ReportSeries);
 	}
-
+	
 	self.processReportResult = function (result, reportSql, connectKey, reportSeries, previewOnly) {
 
 		var reportResult = self.ReportResult();
@@ -3033,6 +3034,12 @@ var reportViewModel = function (options) {
 
 			if (agg && dbSrc && dbDst && agg + '(' + dbSrc + ')' == dbDst) return true;
 			if (agg == 'Count Distinct' && dbSrc && dbDst && 'Count(Distinct ' + dbSrc + ')' == dbDst) return true;
+
+			if (dst.indexOf('(Last ') > -1 || dst.indexOf('Months ago)') > -1 || dst.indexOf('Years ago)') > -1) {
+				const match = dst.match(/\((Last Year|Last Month|\d+ Years? ago|\d+ Months? ago)\)$/);
+				dst = match ? dst.replace(match[0], '').trim() : dst;
+				if (src == dst) return true;
+			}
 
 			if (dst.indexOf('(Count)') < 0 && dst.indexOf("(Avg)") < 0 && dst.indexOf("(Sum)") < 0 && dst.indexOf("(Average)") < 0)
 				return false;
@@ -3274,6 +3281,9 @@ var reportViewModel = function (options) {
 						switch (col.fieldFormat()) {
 							case 'Percentage': r.FormattedValue = r.FormattedValue + '%'; break;
 						}
+					}
+					if (col.fieldFormat() === 'String') {
+						r.FormattedValue = r.Value;
 					}
 					if (col.fieldFormat()==='Currency') {
 						switch (col.currencyFormat()) {
