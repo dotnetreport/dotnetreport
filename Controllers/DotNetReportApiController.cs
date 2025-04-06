@@ -240,9 +240,20 @@ namespace ReportBuilder.Web.Controllers
                         var fromIndex = DotNetReportHelper.FindFromIndex(sql);
                         sqlFields = DotNetReportHelper.SplitSqlColumns(sql);
 
-                        var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(fromIndex)}";
-                        sqlCount = $"SELECT COUNT(*) FROM ({(sqlFrom.Contains("ORDER BY") ? sqlFrom.Substring(0, sqlFrom.IndexOf("ORDER BY")) : sqlFrom)}) as countQry";
+                        var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(fromIndex)}".Replace("{FROM}", "FROM");
+                        bool hasDistinct = sql.Contains("DISTINCT");
+                        if (hasDistinct)
+                        {
+                            int distinctIndex = sqlFrom.IndexOf("DISTINCT", StringComparison.OrdinalIgnoreCase) + 8;
+                            int fromClauseIndex = sqlFrom.IndexOf("FROM", StringComparison.OrdinalIgnoreCase);
+                            string distinctColumns = sqlFrom.Substring(distinctIndex, fromClauseIndex - distinctIndex).Trim();
 
+                            sqlCount = $"SELECT COUNT(*) FROM (SELECT DISTINCT {distinctColumns} {sql.Substring(fromIndex).Replace("{FROM}", "FROM")}) AS countQry";
+                        }
+                        else
+                        {
+                            sqlCount = $"SELECT COUNT(*) FROM ({(sqlFrom.Contains("ORDER BY") ? sqlFrom.Substring(0, sqlFrom.LastIndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase)) : sqlFrom)}) AS countQry";
+                        }
                         if (!String.IsNullOrEmpty(sortBy))
                         {
                             if (sortBy.StartsWith("DATENAME(MONTH, "))
@@ -263,11 +274,15 @@ namespace ReportBuilder.Web.Controllers
                             }
                         }
 
-                        if (sql.Contains("ORDER BY") && !sql.Contains(" TOP ") && string.IsNullOrEmpty(pivotColumn))
+                        if (!sql.Contains("ORDER BY"))
+                            sql = sql + $" ORDER BY {(hasDistinct ? "1" : "NEWID()")} ";
+                        if (!sql.Contains(" TOP ") && string.IsNullOrEmpty(pivotColumn))
                             sql = sql + $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
 
                         if (sql.Contains("__jsonc__"))
                             sql = sql.Replace("__jsonc__", "");
+
+                        sql = sql.Replace("{FROM}", "FROM");
                     }
                     // Execute sql
                     var connectionString = DotNetReportHelper.GetConnectionString(connectKey);

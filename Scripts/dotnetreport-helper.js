@@ -244,17 +244,26 @@ ko.bindingHandlers.checkedInArray = {
                 array = options.array, // don't unwrap array because we want to update the observable array itself
                 value = ko.utils.unwrapObservable(options.value),
                 checked = element.checked;
-
+            if (value && value.dynamicTableId !== null && value.fieldId === 0) {
+                var arraylist = ko.utils.unwrapObservable(array);
+                var matchingItem = arraylist.find(item => item.fieldName === value.fieldName && item.dynamicTableId === value.dynamicTableId);
+                value = matchingItem || value;
+            }
             ko.utils.addOrRemoveItem(array, value, checked);
-
         });
     },
     update: function (element, valueAccessor) {
         var options = ko.utils.unwrapObservable(valueAccessor()),
             array = ko.utils.unwrapObservable(options.array),
             value = ko.utils.unwrapObservable(options.value);
-
-        element.checked = ko.utils.arrayIndexOf(array, value) >= 0;
+            isChecked = ko.utils.arrayIndexOf(array, value) >= 0;
+        if (value && value.dynamicTableId !== null && value.fieldId === 0) {
+            var matchingItem = array.find(item => item.fieldName === value.fieldName && item.dynamicTableId === value.dynamicTableId);
+            if (matchingItem) {
+                isChecked = true;
+            }
+        }
+        element.checked = isChecked;
     }
 };
 
@@ -547,7 +556,8 @@ function generateUniqueId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 }
 
-function beautifySql(sql, htmlMode=true) {
+function beautifySql(sql, htmlMode = true) {
+    sql = sql.replace("{FROM}", "FROM");
     var _sql = sql;
     try {
         const keywords = [
@@ -592,6 +602,7 @@ function beautifySql(sql, htmlMode=true) {
             return 'SELECT ' + fields.join((htmlMode ? ',<br>' : ',\n') + indent) + indent + (htmlMode ? '' : '\n') + 'FROM';
         });
 
+        if (htmlMode) sql = sql.replaceAll('\\n', '<br>');
         return sql.trim();
     }
     catch {

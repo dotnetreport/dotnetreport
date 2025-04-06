@@ -159,55 +159,59 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         <p class="alert alert-info">
                             You can design the common report header below that will be applied to all reports where report headers are turned on.
                         </p>
-                        <canvas id="report-header" width="900" height="120" style="border: solid 1px #ccc"></canvas>
-                        <div class="form-inline">
-                            <div class="form-group">
-                                <button class="btn btn-sm" title="Add Text" data-bind="click: addText"><span class="fa fa-font"></span></button>
-                                <label class="btn btn-sm" title="Add Image">
+                        <div class="d-flex align-items-center report-menubar">
+                            <div class="btn-group me-2">
+                                <button class="btn btn-sm btn-outline-secondary" title="Add Text" data-bind="click: addText">
+                                    <span class="fa fa-font"></span>
+                                </button>
+                                <label class="btn btn-sm btn-outline-secondary" title="Add Image">
                                     <span class="fa fa-image"></span>
                                     <input type="file" accept="image/*" hidden data-bind="event: { change: function() { uploadImage($element.files[0]) } }" />
                                 </label>
-                                <button class="btn btn-sm" title="Add Line" data-bind="click: addLine"><span class="fa fa-arrows-h"></span></button>
+                                <button class="btn btn-sm btn-outline-secondary" title="Add Line" data-bind="click: addLine">
+                                    <span class="fa fa-arrows-h"></span>
+                                </button>
                             </div>
-                            <div data-bind="if: selectedObject()">
-                                <div class="form-group">
-                                    &nbsp;|&nbsp;
-                                    <button class="btn btn-sm" data-bind="click: remove" title="Delete"><span class="fa fa-trash"></span></button>
-                                    <div data-bind="if: getText()">
-                                        <select class="form-control form-control-sm" title="Font Family" data-bind="event: {change: setFontFamily }, value: objectProperties.fontFamily">
-                                            <option value="arial" selected>Arial</option>
-                                            <option value="helvetica">Helvetica</option>
-                                            <option value="myriad pro">Myriad Pro</option>
-                                            <option value="delicious">Delicious</option>
-                                            <option value="verdana">Verdana</option>
-                                            <option value="georgia">Georgia</option>
-                                            <option value="courier">Courier</option>
-                                            <option value="comic sans ms">Comic Sans MS</option>
-                                            <option value="impact">Impact</option>
-                                            <option value="monaco">Monaco</option>
-                                            <option value="optima">Optima</option>
-                                            <option value="hoefler text">Hoefler Text</option>
-                                            <option value="plaster">Plaster</option>
-                                            <option value="engagement">Engagement</option>
-                                        </select>
-                                        &nbsp;
-                                        <select class="form-control form-control-sm" title="Text Align" data-bind="event: {change: setTextAlign }, value: objectProperties.textAlign">
-                                            <option>Left</option>
-                                            <option>Center</option>
-                                            <option>Right</option>
-                                            <option>Justify</option>
-                                        </select>
-                                        &nbsp;
-                                        <input type="color" size="5" class="btn-object-action" title="Font Color" data-bind="event: {change: setFontColor }, value: objectProperties.fontColor">
-                                        <button class="btn btn-sm" title="Bold" data-bind="event: {click: setFontBold }, value: objectProperties.fontBold"><span class="fa fa-bold"></span></button>
-                                        <button class="btn btn-sm" title="Italic" data-bind="event: {click: setFontItalic }, value: objectProperties.fontItalic"><span class="fa fa-italic"></span></button>
-                                        <button class="btn btn-sm" title="Underline" data-bind="event: {click: setFontUnderline }, value: objectProperties.fontUnderline"><span class="fa fa-underline"></span></button>
-                                    </div>
+                            <div data-bind="if: selectedObject()" class="d-flex align-items-center me-2">
+                                <span class="mx-2">|</span>
+                                <button class="btn btn-sm btn-outline-danger me-2" data-bind="click: remove" title="Delete">
+                                    <span class="fa fa-trash"></span>
+                                </button>
+                                <div data-bind="if: getText()" class="d-flex align-items-center">
+                                    <select class="form-select form-select-sm me-2" title="Font Family" data-bind="event: {change: setFontFamily }, value: objectProperties.fontFamily">
+                                        <option value="arial" selected>Arial</option>
+                                        <option value="helvetica">Helvetica</option>
+                                        <option value="myriad pro">Myriad Pro</option>
+                                        <option value="delicious">Delicious</option>
+                                        <option value="verdana">Verdana</option>
+                                        <option value="georgia">Georgia</option>
+                                        <option value="courier">Courier</option>
+                                        <option value="comic sans ms">Comic Sans MS</option>
+                                    </select>
+                                    <select class="form-select form-select-sm me-2" title="Text Align" data-bind="event: {change: setTextAlign }, value: objectProperties.textAlign">
+                                        <option>Left</option>
+                                        <option>Center</option>
+                                        <option>Right</option>
+                                        <option>Justify</option>
+                                    </select>
+                                    <input type="color" class="form-control form-control-color me-2" style="width: 100px; height: 30px;" title="Font Color" data-bind="event: {change: setFontColor }, value: objectProperties.fontColor" style="min-width: 20px;">
+                                    <button class="btn btn-sm btn-outline-secondary me-2" title="Bold" data-bind="event: {click: setFontBold }, value: objectProperties.fontBold">
+                                        <span class="fa fa-bold"></span>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary me-2" title="Italic" data-bind="event: {click: setFontItalic }, value: objectProperties.fontItalic">
+                                        <span class="fa fa-italic"></span>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary me-2" title="Underline" data-bind="event: {click: setFontUnderline }, value: objectProperties.fontUnderline">
+                                        <span class="fa fa-underline"></span>
+                                    </button>
                                 </div>
                             </div>
+                            <button class="btn btn-primary btn-sm ms-auto" data-bind="click: saveCanvas">Save Changes</button>
                         </div>
+
+                        <canvas id="report-header" width="900" height="120" style="border: solid 1px #ccc"></canvas>
+
                     </div>
-                    <button class="btn btn-primary" data-bind="click: saveCanvas">Save Changes</button>
                 </div>
                 <div data-bind="ifnot: designingHeader">
                     <div class="btn-group pull-right" role="group">
@@ -220,7 +224,6 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             <span class="fa fa-th-large"></span>
                         </button>
                     </div>
-
 
                     <div data-bind="if: layout()=='icons'">
                         <div data-bind="visible: !SelectedFolder() && !searchReports()">
@@ -243,7 +246,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             </div>
                             <div class="list-group list-overflow">
                                 <div data-bind="if: SelectedFolder()!=null && reportsInFolder().length==0">
-                                    No Reports Saved in this Folder
+                                    This folder is empty.
                                 </div>
                                 <div data-bind="if: searchReports() && reportsInSearch().length==0">
                                     No Reports found matching your Search
@@ -321,6 +324,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                             <span class="sr-only"></span>
                                                         </button>
                                                         <div class="dropdown-menu dropdown-menu-right">
+                                                            <a class="dropdown-item" href="#" data-bind="click: function() {exportReport('pdf');}">
+                                                                <span class="fa fa-file-excel-o"></span> Download PDF
+                                                            </a>
                                                             <a class="dropdown-item" href="#" data-bind="click: function() {exportReport('excel');}">
                                                                 <span class="fa fa-file-excel-o"></span> Download Excel
                                                             </a>
@@ -414,7 +420,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             <div data-bind="visible: SelectedFolder() || searchReports()">
                                 <div class="container-fluid">
                                     <div data-bind="if: SelectedFolder()!=null && reportsInFolder().length==0">
-                                        <p class="text-center text-muted">This folder is empty.</p>
+                                        <p class="text-muted">This folder is empty.</p>
                                     </div>
 
                                     <div data-bind="if: searchReports() && reportsInSearch().length==0">
@@ -444,7 +450,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                     'fa-random': reportType=='Pivot',
                                                     'fa-window-restore': reportType=='Treemap'
                                                 }"></span>
-                                                    <a class="ms-2" data-bind="click: runReport, text: reportName" style="cursor: pointer"></a>&nbsp;
+                                                    <a class="ms-2" data-bind="click: runReport, highlightedText: { text: reportName, highlight: $parent.searchReports, css: 'highlight' }" style="cursor: pointer"></a>&nbsp;
                                                     <span data-bind="text: message" class="highlight small"></span>
                                                 </div>
 
@@ -479,6 +485,11 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                                 <a class="dropdown-item dropdown-toggle" href="#">Export</a>
                                                                 <ul class="dropdown-menu">
                                                                     <li>
+                                                                        <a class="dropdown-item" href="#" data-bind="click: function() {exportReport('pdf');}">
+                                                                            <span class="fa fa-file-excel-o"></span> Download PDF
+                                                                        </a>
+                                                                    </li>
+                                                                    <li>
                                                                         <a class="dropdown-item" href="#" data-bind="click: function() {exportReport('excel');}">
                                                                             <span class="fa fa-file-excel-o"></span> Download Excel
                                                                         </a>
@@ -508,7 +519,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 <div class="col-md-1" data-bind="visible: $parent.adminMode">
                                                     <a data-bind="attr: {href: '/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + reportId }" target="_blank"><span class="fa fa-link"></span></a>
                                                     &nbsp;
-                                                    <a href="#" data-bind="click: function() { navigator.clipboard.writeText('/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + reportId) }">
+                                                    <a href="#" data-bind="click: function() { navigator && navigator.clipboard && navigator.clipboard.writeText('/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + reportId) }">
                                                         <span class="fa fa-copy" title="Copy Link"></span>
                                                     </a>
                                                 </div>
@@ -562,8 +573,13 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end">
                                     <li>
-                                        <a href="#" class="dropdown-item" data-bind="click: downloadPdf">
+                                        <a href="#" class="dropdown-item" data-bind="click: function() {downloadPdf(false);}">
                                             <i class="fa fa-file-pdf-o"></i> Pdf
+                                        </a>
+                                    </li>
+                                    <li data-bind="visible: adminMode">
+                                        <a href="#" class="dropdown-item" data-bind="click: function() {downloadPdf(true);}">
+                                            <i class="fa fa-file-pdf-o"></i> Pdf (Debug)
                                         </a>
                                     </li>
                                     <li>
@@ -832,26 +848,6 @@ Its Recommended you use it as is, and only change styling as needed to match you
     </div>
 </div>
 
-<div class="modal" id="sqlModal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header d-flex justify-content-between align-items-center">
-                <h4 class="modal-title">Report Code</h4>
-                <button class="btn btn-outline-secondary btn-sm d-flex align-items-center"
-                        data-bind="click: function(data, event) { copySqlToClipboard(event.target); }">
-                    <i class="fa fa-clipboard"></i> Copy
-                </button>
-                <button type="button" class="btn-close pull-right" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body" data-bind="with: ReportResult">
-                <div style="overflow-x: auto; max-height: 500px; overflow-y: scroll; border: 1px solid; padding: 10px;" class="bg-dark text-light">
-                    <pre><code id="reportSqlCode" data-bind="html: ReportSql" style="white-space: pre-wrap;"></code></pre>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Report Builder -->
 <div class="modal modal-fullscreen" id="modal-reportbuilder" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="padding-right: 0px !important;">
     <div data-bind="template: {name: 'report-designer', data: $data}"></div>
@@ -869,7 +865,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
 
 <!-- Folder Edit Modal -->
 <div class="modal" id="folderModal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog" data-bind="css: {'modal-lg': adminMode}">
         <div class="modal-content" data-bind="with: ManageFolder">
             <div class="modal-header">
                 <h5 class="modal-title  fs-5">Manage Folder</h5>
@@ -883,6 +879,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
                     </div>
                 </div>
                 <br />
+                <div data-bind="visible: $root.adminMode" class="card card-body">
+                    <div data-bind="template: {name: 'manage-access-template', data: $root.manageFolderAccess}"></div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
