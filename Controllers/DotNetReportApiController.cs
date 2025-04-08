@@ -142,7 +142,10 @@ namespace ReportBuilder.Web.Controllers
             {
                 string dataConnect = Request.QueryString["dataConnect"];
                 settings = GetSettings();
-                settings.DataConnectApiToken = dataConnect;
+                if (!string.IsNullOrEmpty(dataConnect))
+                {
+                    settings.DataConnectApiToken = dataConnect;
+                }
             }
 
             if (method== "/ReportApi/Ignore")
