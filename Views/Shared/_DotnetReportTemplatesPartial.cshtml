@@ -1719,7 +1719,7 @@
                                                 <span class="fa fa-columns"></span>
                                                 <span data-bind="text: selectedFieldName"></span>
                                                 <span data-bind="text: isFormulaField() ? '(' + fieldFormat() + ')' : ''"></span>
-                                                <span data-bind="visible: !$parent.isFieldValidForYAxis($index(), fieldType || fieldFormat(), selectedAggregate()) && $parent.ReportType() !='Treemap'">
+                                                <span data-bind="visible: !$parent.isFieldValidForYAxis($index(), fieldType || fieldFormat(), selectedAggregate()) && $parent.ReportType() !='Treemap' && $parent.isChart()">
                                                     <span class="badge bg-danger" data-bind="visible: !groupInGraph()">Will not show in <span data-bind="text: $parent.ReportType"></span>Chart</span>
                                                 </span>
                                             </div>
