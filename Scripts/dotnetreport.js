@@ -870,6 +870,7 @@ var reportViewModel = function (options) {
 	self.noDashboardBorders = ko.observable(false);
 	self.OnlyTop = ko.observable();
 	self.barChartHorizontal = ko.observable();
+	self.pieChartDonut = ko.observable();
 	self.barChartStacked = ko.observable();
 	self.DefaultPageSize = ko.observable();
 	self.FilterGroups = ko.observableArray();
@@ -1334,7 +1335,7 @@ var reportViewModel = function (options) {
 			self.DrawChart();
 		}
 	});
-
+	
 	self.setReportType = function (reportType) {
 		self.ReportType(reportType);
 	};
@@ -1714,6 +1715,7 @@ var reportViewModel = function (options) {
 		self.lastPickedField(null);
 		self.OuterGroupColumns([]);
 		self.barChartHorizontal(false);
+		self.pieChartDonut(false);
 		self.barChartStacked(false);
 		self.selectedStyle('default');
 	};
@@ -2678,6 +2680,7 @@ var reportViewModel = function (options) {
 				DontExecuteOnRun: self.DontExecuteOnRun(),
 				barChartStacked: self.barChartStacked(),
 				barChartHorizontal: self.barChartHorizontal(),
+				pieChartDonut: self.pieChartDonut(),
 				DefaultPageSize: self.DefaultPageSize() || 30,
 				noHeaderRow: self.noHeaderRow(),
 				noDashboardBorders: self.noDashboardBorders(),
@@ -3930,6 +3933,7 @@ var reportViewModel = function (options) {
 
 		if (self.ReportType() == "Pie") {
 			chart = new google.visualization.PieChart(chartDiv);
+			chartOptions.pieHole = self.pieChartDonut() === true ? 0.6 : 0.0;
 		}
 
 		if (self.ReportType() == "Bar") {
@@ -4125,6 +4129,13 @@ var reportViewModel = function (options) {
 			});
 		}
 	};
+
+	ko.computed(function () {
+		var h = self.barChartHorizontal();
+		var s = self.barChartStacked();
+		var d = self.pieChartDonut();
+		self.DrawChart();
+	});
 
 	self.loadFolders = function (folderId) {
 		// Load folders
@@ -4431,6 +4442,7 @@ var reportViewModel = function (options) {
 		self.DontExecuteOnRun(reportSettings.DontExecuteOnRun === true ? true : false);
 		self.barChartHorizontal(reportSettings.barChartHorizontal === true ? true : false);
 		self.barChartStacked(reportSettings.barChartStacked === true ? true : false);
+		self.pieChartDonut(reportSettings.pieChartDonut === true ? true : false);
 		self.DefaultPageSize(reportSettings.DefaultPageSize || 30);
 		self.noHeaderRow(reportSettings.noHeaderRow);
 		self.noDashboardBorders(reportSettings.noDashboardBorders);
