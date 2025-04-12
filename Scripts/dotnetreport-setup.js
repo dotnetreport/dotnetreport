@@ -1604,10 +1604,38 @@ var tablesViewModel = function (options, keys, previewData) {
 
 	self.processTable = function (t) {
 		t.availableColumns = ko.computed(function () {
-			return _.filter(t.Columns(), function (e) {
-				return e.Id() > 0 && e.Selected();
+			const columns = [];
+
+			ko.utils.arrayForEach(t.Columns(), function (col) {
+				if (col.Id() > 0 && col.Selected()) {
+					columns.push(col);
+				}
+
+				if (col.FieldType() === "Json" && col.Selected() && col.JsonStructure()) {
+					let jsonFields = {};
+					try {
+						jsonFields = JSON.parse(col.JsonStructure());
+					} catch (e) {
+						return;
+					}
+
+					for (const key in jsonFields) {
+						if (jsonFields.hasOwnProperty(key)) {
+							columns.push({
+								Id: -1,
+								ColumnName: col.ColumnName() + "." + key,
+								DisplayName: col.DisplayName() + " > " + key,
+								ParentJsonColumn: col,
+								FieldType: "JsonField"
+							});
+						}
+					}
+				}
 			});
+
+			return columns;
 		});
+
 
 		_.forEach(t.Columns(), function (e) {
 			var tableMatch = _.filter(self.model(), function (x) { return x.TableName() == e.ForeignTable(); });
