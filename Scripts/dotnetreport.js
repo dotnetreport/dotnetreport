@@ -869,6 +869,7 @@ var reportViewModel = function (options) {
 	self.changePageSize = ko.observable(false);
 	self.noHeaderRow = ko.observable(false);
 	self.noDashboardBorders = ko.observable(false);
+	self.showPriorInKpi = ko.observable(false);
 	self.OnlyTop = ko.observable();
 	self.barChartHorizontal = ko.observable();
 	self.pieChartDonut = ko.observable();
@@ -1718,6 +1719,7 @@ var reportViewModel = function (options) {
 		self.changePageSize(false);
 		self.noHeaderRow(false);
 		self.noDashboardBorders(false);
+		self.showPriorInKpi(false);
 		self.OnlyTop(null);
 		self.lastPickedField(null);
 		self.OuterGroupColumns([]);
@@ -2698,6 +2700,7 @@ var reportViewModel = function (options) {
 				DefaultPageSize: self.DefaultPageSize() || 30,
 				noHeaderRow: self.noHeaderRow(),
 				noDashboardBorders: self.noDashboardBorders(),
+				showPriorInKpi: self.showPriorInKpi(),
 				PivotColumns: self.PivotColumns(),
 				PivotColumnsWidth: _.map(self.ReportColumns(), function (column) {
 					return {
@@ -4481,6 +4484,7 @@ var reportViewModel = function (options) {
 		self.DefaultPageSize(reportSettings.DefaultPageSize || 30);
 		self.noHeaderRow(reportSettings.noHeaderRow);
 		self.noDashboardBorders(reportSettings.noDashboardBorders);
+		self.showPriorInKpi(reportSettings.showPriorInKpi);
 		self.PivotColumns(reportSettings.PivotColumns || null)
 		self.PivotColumnsWidth(reportSettings.PivotColumnsWidth || null)
 		if (self.ReportMode() == "execute") {

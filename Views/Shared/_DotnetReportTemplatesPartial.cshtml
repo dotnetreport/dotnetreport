@@ -170,7 +170,7 @@
             <div data-bind="with: $parent.rows[0].Items[0]">
                 <span data-bind="html: formattedVal"></span>
 
-                <!-- ko if: $parent.Rows.length > 1 -->
+                <!-- ko if: $parent.Rows.length > 1 && $parents[$parents.length-2].showPriorInKpi() -->
                 <span data-bind="style: {'color': $parent.calculateRate() > 0 ? 'green' : 'red', 'font-size': '24px'}">
                     <span data-bind="html: $parent.calculateRate() + '%'"></span>
                 </span>
@@ -1925,6 +1925,12 @@
                                             <label>
                                                 <input type="checkbox" data-bind="checked: noDashboardBorders" />
                                                 Borderless on Dashboard
+                                            </label>
+                                        </div>
+                                        <div class="checkbox" data-bind="if: ReportType() == 'Single'">
+                                            <label>
+                                                <input type="checkbox" data-bind="checked: showPriorInKpi" />
+                                                Show previous comparision in KPI if applicable
                                             </label>
                                         </div>
                                     </div>
