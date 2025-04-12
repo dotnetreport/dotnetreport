@@ -1006,7 +1006,11 @@ var reportViewModel = function (options) {
 			case 'style-yellow': self.colorScheme(styleYellow); break;
 			case 'style-mixed': self.colorScheme(styleMixed); break;
 			case 'style-mixed-bright': self.colorScheme(styleMixedBright); break;
-			default: self.colorScheme([]);
+			default:
+				delete self.chartOptions().colors;
+				self.chartOptions().backgroundColor = '#fff';
+				self.colorScheme([]);
+				break;
 		}
 	});
 
@@ -2701,7 +2705,8 @@ var reportViewModel = function (options) {
 						FieldName: column.fieldName,
 						FieldWidth:column.fieldWidth()
 					};
-				})
+				}),
+				chartOptions: self.chartOptions()
 			}),
 			OnlyTop: self.maxRecords() ? self.OnlyTop() : null,
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : self.AggregateReport(),
@@ -2876,9 +2881,10 @@ var reportViewModel = function (options) {
 		saveOnly = saveOnly === true ? true : false;
 		skipValidation = skipValidation === true ? true : false;
 		self.setFlyFilters();
+		var saveAlertFlag = false;
 
 		self.TotalSeries(self.AdditionalSeries().length);
-		if (self.TotalSeries() > 0) self.ReportMode('start');
+		if (self.TotalSeries() > 0 && !saveOnly) self.ReportMode('start');
 
 		if (self.ReportType() == 'Single') {
 			if (self.enabledFields().length != 1) {
@@ -2932,8 +2938,8 @@ var reportViewModel = function (options) {
 
 						self.ReportID(result.reportId);
 						if (previewOnly !== true && (self.SaveReport() || saveOnly)) {
-							if (saveOnly && seriesCount === 0) {
-								//SeriesCount = 0;
+							if (saveOnly && !saveAlertFlag) {
+								saveAlertFlag = true;
 								toastr.success("Report Saved");
 								self.allSqlQueries("");
 								self.LoadAllSavedReports(true);
@@ -3938,8 +3944,7 @@ var reportViewModel = function (options) {
 
 		if (self.colorScheme() != null && self.colorScheme().length > 0) {
 			chartOptions.colors = self.colorScheme().slice(1);
-			chartOptions.backgroundColor = self.colorScheme()[0], // Set the background color here
-			chartOptions.chartArea = { backgroundColor: self.colorScheme()[0] }
+			chartOptions.backgroundColor = self.colorScheme()[0];
 		}
 		var chartDiv = document.getElementById('chart_div_' + self.ReportID());
 		var chart = null;
@@ -4472,6 +4477,7 @@ var reportViewModel = function (options) {
 		self.pieChartDonut(reportSettings.pieChartDonut === true ? true : false);
 		self.lineChartArea(reportSettings.lineChartArea === true ? true : false);
 		self.comboChartType(reportSettings.comboChartType || 'bars');
+		if (reportSettings.chartOptions) self.chartOptions(reportSettings.chartOptions);
 		self.DefaultPageSize(reportSettings.DefaultPageSize || 30);
 		self.noHeaderRow(reportSettings.noHeaderRow);
 		self.noDashboardBorders(reportSettings.noDashboardBorders);
