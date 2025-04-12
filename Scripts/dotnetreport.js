@@ -835,6 +835,7 @@ var reportViewModel = function (options) {
 	self.ReportDescription = ko.observable();
 	self.FolderID = ko.observable();
 	self.ReportID = ko.observable();
+	self.seriesTypes = ['bars', 'line', 'area'];
 
 	self.Tables = ko.observableArray([]);
 	self.CategorizedTables = ko.observableArray([]);
@@ -871,7 +872,9 @@ var reportViewModel = function (options) {
 	self.OnlyTop = ko.observable();
 	self.barChartHorizontal = ko.observable();
 	self.pieChartDonut = ko.observable();
+	self.lineChartArea = ko.observable();
 	self.barChartStacked = ko.observable();
+	self.comboChartType = ko.observable('bars');
 	self.DefaultPageSize = ko.observable();
 	self.FilterGroups = ko.observableArray();
 	self.PivotColumns = ko.observable();
@@ -1716,7 +1719,9 @@ var reportViewModel = function (options) {
 		self.OuterGroupColumns([]);
 		self.barChartHorizontal(false);
 		self.pieChartDonut(false);
+		self.lineChartArea(false);
 		self.barChartStacked(false);
+		self.comboChartType('bars');
 		self.selectedStyle('default');
 	};
 
@@ -2365,16 +2370,19 @@ var reportViewModel = function (options) {
 	};
 
 	self.isFieldValidForYAxis = function (i, fieldType, aggregate) {
-		if (self.ReportType() == 'Treemap') return false;
+		if (self.ReportType() == 'Treemap'
+			|| ["Int", "Integer", "Double", "Decimal", "Money"].indexOf(fieldType) < 0
+			|| ["Only in Detail", "Pivot"].indexOf(aggregate) > 0
+			|| i == 0) return false;
 		if (i > 0) {
-			if (self.ReportType() == "Bar" && ["Int", "Double", "Money"].indexOf(fieldType) < 0 && aggregate != "Count") {
+			if (self.ReportType() == "Bar" && ["Int", "Integer", "Double", "Decimal", "Money"].indexOf(fieldType) < 0 && aggregate != "Count") {
 				return false;
 			}
 		}
 		return true;
 	};
 
-	self.chartTypes = ["List", "Summary", "Single", "Pivot"];
+	self.chartTypes = ["List", "Summary", "Single", "Pivot", "Html"];
 	self.isChart = ko.computed(function () {
 		return self.chartTypes.indexOf(self.ReportType()) < 0;
 	});
@@ -2681,6 +2689,8 @@ var reportViewModel = function (options) {
 				barChartStacked: self.barChartStacked(),
 				barChartHorizontal: self.barChartHorizontal(),
 				pieChartDonut: self.pieChartDonut(),
+				lineChartArea: self.lineChartArea(),
+				comboChartType: self.comboChartType(),
 				DefaultPageSize: self.DefaultPageSize() || 30,
 				noHeaderRow: self.noHeaderRow(),
 				noDashboardBorders: self.noDashboardBorders(),
@@ -2741,6 +2751,7 @@ var reportViewModel = function (options) {
 						currencyFormat: x.currencyFormat(),
 						fieldLabel2: x.fieldLabel2(),
 						drillDataFormat: x.drillDataFormat(),
+						seriesType: x.seriesType(),
 						formulaType: x.formulaType,
 						functionConfig: x.functionConfig,
 						customSqlField: x.customSqlField 
@@ -3117,6 +3128,7 @@ var reportViewModel = function (options) {
 				})();
 				e.fontBold = col.fontBold || ko.observable();
 				e.drillDataFormat = col.drillDataFormat || ko.observable();
+				e.seriesType = col.seriesType || ko.observable();
 				e.headerFontBold = col.headerFontBold || ko.observable();
 				e.headerFontColor = col.headerFontColor || ko.observable();
 				e.headerBackColor = col.headerBackColor || ko.observable();
@@ -3830,6 +3842,7 @@ var reportViewModel = function (options) {
 
 		var subGroups = [];
 		var valColumns = [];
+		var series = {}
 		_.forEach(reportData.Columns, function (e, i) {
 			var field = self.SelectedFields()[i];
 			if (i == 0) {
@@ -3838,6 +3851,7 @@ var reportViewModel = function (options) {
 				//	subGroups.push({ index: i, column: e.fieldLabel || e.ColumnName });
 			} else if (e.IsNumeric && !e.groupInGraph()) {
 				valColumns.push({ index: i, column: e.fieldLabel() || e.ColumnName });
+			 	if (e.seriesType() != self.comboChartType()) series[i-1] = { type: e.seriesType() };
 			} else if (!e.groupInGraph() && self.ReportType() == 'Treemap') {
 				data.addColumn(e.IsNumeric ? 'number' : 'string', e.fieldLabel() || e.ColumnName);
 			}
@@ -3944,7 +3958,15 @@ var reportViewModel = function (options) {
 		}
 
 		if (self.ReportType() == "Line") {
-			chart = new google.visualization.LineChart(chartDiv);
+			chart = self.lineChartArea() === true
+				? new google.visualization.AreaChart(chartDiv)
+				: new google.visualization.LineChart(chartDiv);
+		}
+
+		if (self.ReportType() == 'Combo') {
+			chart = new google.visualization.ComboChart(chartDiv);
+			chartOptions.seriesType = self.comboChartType();			
+			chartOptions.series = series;
 		}
 
 		if (self.ReportType() == "Map") {
@@ -4134,6 +4156,8 @@ var reportViewModel = function (options) {
 		var h = self.barChartHorizontal();
 		var s = self.barChartStacked();
 		var d = self.pieChartDonut();
+		var a = self.lineChartArea();
+		var c = self.comboChartType();
 		self.DrawChart();
 	});
 
@@ -4196,6 +4220,7 @@ var reportViewModel = function (options) {
 		e.customDateFormat = ko.observable(e.fieldSettings.customDateFormat || '');
 		e.fieldLabel2 = ko.observable(e.fieldSettings.fieldLabel2 || '');
 		e.drillDataFormat = ko.observable(e.fieldSettings.drillDataFormat || '');
+		e.seriesType = ko.observable(e.fieldSettings.seriesType || 'bars');
 		e.formulaType = e.fieldSettings.formulaType || 'build';
 		e.fieldAlign = ko.observable(e.fieldAlign);
 		e.fontColor = ko.observable(e.fontColor);
@@ -4313,7 +4338,8 @@ var reportViewModel = function (options) {
 				fieldWidth: e.fieldWidth(),
 				fieldConditionOp: e.fieldConditionOp(),
 				fieldConditionVal: e.fieldConditionVal,
-				drillDataFormat: e.drillDataFormat()
+				drillDataFormat: e.drillDataFormat(),
+				seriesType: e.seriesType()
 			}
 
 			e.fieldCondtionalFormats([]);
@@ -4368,6 +4394,7 @@ var reportViewModel = function (options) {
 			e.customDateFormat(self.currentFieldOptions.customDateFormat);
 			e.fieldLabel2(self.currentFieldOptions.fieldLabel2);
 			e.drillDataFormat(self.currentFieldOptions.drillDataFormat);
+			e.seriesType(self.currentFieldOptions.seriesType);
 			e.fontColor(self.currentFieldOptions.fontColor);
 			e.backColor(self.currentFieldOptions.backColor);
 			e.headerFontColor(self.currentFieldOptions.headerFontColor);
@@ -4443,6 +4470,8 @@ var reportViewModel = function (options) {
 		self.barChartHorizontal(reportSettings.barChartHorizontal === true ? true : false);
 		self.barChartStacked(reportSettings.barChartStacked === true ? true : false);
 		self.pieChartDonut(reportSettings.pieChartDonut === true ? true : false);
+		self.lineChartArea(reportSettings.lineChartArea === true ? true : false);
+		self.comboChartType(reportSettings.comboChartType || 'bars');
 		self.DefaultPageSize(reportSettings.DefaultPageSize || 30);
 		self.noHeaderRow(reportSettings.noHeaderRow);
 		self.noDashboardBorders(reportSettings.noDashboardBorders);

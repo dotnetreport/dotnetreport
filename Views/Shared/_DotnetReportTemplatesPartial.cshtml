@@ -1314,6 +1314,10 @@
                                         <span class="fa fa-2x fa-line-chart"></span>
                                         <p>Line</p>
                                     </button>
+                                    <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Combo'); }, css: { active: ReportType()=='Combo' }">
+                                        <span class="fa fa-2x fa-signal"></span>
+                                        <p>Combo</p>
+                                    </button>
                                     <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Map'); }, css: { active: ReportType().indexOf('Map')==0 }">
                                         <span class="fa fa-2x fa-globe"></span>
                                         <p>Map</p>
@@ -1631,7 +1635,7 @@
                             <div>
                                 <div data-bind="visible: ReportType()=='Bar'" class="card card-body" style="margin-bottom: 15px">
                                     <div class="alert alert-info">
-                                        <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For Bar Graph, the first field below will show on the x-axis. All other fields will show on y-axis, but they must be numeric.
+                                        <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For Bar Graph, the first field below will show on the x-axis. All other numeric fields will show on y-axis.
                                     </div>
                                     <div class="form-group row">
                                         <div class="checkbox col-6">
@@ -1665,7 +1669,28 @@
                                     <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For Treemap, the data must be in a hierarchical format with 2nd column having parent and third column having a numeric value. The data must have a single root node having null as its parent as well.
                                 </div>
                                 <div class="alert alert-info" data-bind="visible: ReportType()=='Line'">
-                                    <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For Line Graph, the first field below will show on the x-axis and it needs to be numeric.
+                                    <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For Line Graph, the first field below will show on the x-axis. All other fields will numeric fields will show on y-axis.
+                                    <div class="form-group row">
+                                        <div class="checkbox col-6">
+                                            <label>
+                                                <input type="checkbox" data-bind="checked: lineChartArea" />
+                                                Area Chart
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div data-bind="visible: ReportType()=='Combo'" class="card card-body" style="margin-bottom: 15px">
+                                    <div class="alert alert-info">
+                                        <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For Combo Graph, the first field below will show on the x-axis. All other numeric fields will show on y-axis, and you can choose display each series as line, bar or area.
+                                    </div>
+                                    <div class="form-group row">
+                                        <div class="col-6">
+                                            <label>
+                                                Default Series Type
+                                            </label>
+                                            <select class="form-select input-sm form-select-sm" data-bind="options: seriesTypes, value: comboChartType"></select>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="alert alert-info" data-bind="visible: ReportType()=='Pivot'">
                                     <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For Transpose, the first field below will be used to Pivot/Transpose the rows as columns, and it must be grouped.
@@ -1694,7 +1719,7 @@
                                                 <span class="fa fa-columns"></span>
                                                 <span data-bind="text: selectedFieldName"></span>
                                                 <span data-bind="text: isFormulaField() ? '(' + fieldFormat() + ')' : ''"></span>
-                                                <span data-bind="visible: !$parent.isFieldValidForYAxis($index(), fieldType, selectedAggregate()) && $parent.ReportType() !='Treemap'">
+                                                <span data-bind="visible: !$parent.isFieldValidForYAxis($index(), fieldType || fieldFormat(), selectedAggregate()) && $parent.ReportType() !='Treemap'">
                                                     <span class="badge bg-danger" data-bind="visible: !groupInGraph()">Will not show in <span data-bind="text: $parent.ReportType"></span>Chart</span>
                                                 </span>
                                             </div>
@@ -1722,9 +1747,9 @@
                                                         <span class="fa fa-eye-slash" aria-hidden="true" title="Hide in Details"></span>
                                                     </span>
                                                 </div>
-                                                <div class="pull-right" style="padding-right: 10px;" data-bind="visible: $parent.isFieldValidForYAxis($index(), fieldType, selectedAggregate())  && $parent.isChart() && $index()>0">
+                                                <div class="pull-right" style="padding-right: 10px;" data-bind="visible: $parent.isFieldValidForYAxis($index(), fieldType || fieldFormat(), selectedAggregate())  && $parent.isChart() && $index()>0">
                                                     <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ groupInGraph(!groupInGraph()); }, css: {active: groupInGraph()==false}">
-                                                        <span class="fa fa-line-chart" aria-hidden="true" title="Include in series"></span>
+                                                        <span class="fa fa-signal" aria-hidden="true" title="Include in series"></span>
                                                     </span>
                                                 </div>
                                                 <div class="pull-right" style="padding-right: 10px;" data-bind="visible: $parent.IncludeSubTotal()  &&  (['Int', 'Double', 'Money', 'Decimal', 'Currency'].indexOf(fieldType) >= 0 || ['Int', 'Double', 'Money', 'Decimal', 'Currency'].indexOf(fieldFormat()) >= 0)">
@@ -1737,6 +1762,11 @@
                                                         <span class="fa fa-link" aria-hidden="true" title="Link to another Report or Url"></span>
                                                     </span>
                                                 </div>
+                                                <div class="pull-right" style="padding-right: 10px;" data-bind="visible: $parent.ReportType()=='Combo' && $parent.isFieldValidForYAxis($index(), fieldType || fieldFormat(), selectedAggregate())  && $parent.isChart() && $index()>0">
+                                                    <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ seriesType(seriesType() == 'line' ? 'area' : (seriesType()=='bars' ? 'line' : 'bars')); }">
+                                                        <span class="fa" aria-hidden="true" data-bind="css: {'fa-line-chart': seriesType() == 'line', 'fa-bar-chart': seriesType() == 'bars', 'fa-area-chart': seriesType()=='area' }, attr: {title: seriesType}"></span>
+                                                    </span>
+                                                </div>                                                
                                                 <div class="pull-right" style="padding-right: 10px;">
                                                     <span class="button-box no-padding" tabindex="0" data-bind="click: setupFieldOptions">
                                                         <span class="fa fa-gear" aria-hidden="true" title="More Options"></span>
@@ -1975,6 +2005,16 @@
                 </div>
             </div>
         </div>
+            <div data-bind="visible: ReportType()=='Line'">
+                <div class="form-group row">
+                    <div class="checkbox col-6">
+                        <label>
+                            <input type="checkbox" data-bind="checked: lineChartArea" />
+                            Area
+                        </label>
+                    </div>
+                </div>
+            </div>
 
         <div class="mb-2">
             <label class="form-label small">Background Color</label>
@@ -1993,7 +2033,7 @@
                         <button class="btn btn-sm btn-danger remove-color" data-bind="click: $parent.removeSeriesColor">&times;</button>
                     </div>
                 </div>
-                <button class="color-box" data-bind="click: addSeriesColor" title="Add Series Color">
+                <button class="color-box btn btn-sm btn-secondary" data-bind="click: addSeriesColor" title="Add Series Color">
                     <i class="fa fa-plus"></i>
                 </button>
             </div>
