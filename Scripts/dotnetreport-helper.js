@@ -630,10 +630,17 @@ var textQuery = function (options) {
     ];
 
     self.FilterMethods = [
-        { value: 'Today', key: '<span class="fa fa-filter"></span> for Today', type: 'DateFilter', searchKey: 'for Today' },
-        { value: 'Yesterday', key: '<span class="fa fa-filter"></span> for Yesterday', type: 'DateFilter', searchKey: 'for Yesterday' },
-        { value: 'This Month', key: '<span class="fa fa-filter"></span> for This Month', type: 'DateFilter', searchKey: 'for This Month' },
-        { value: 'Last Month', key: '<span class="fa fa-filter"></span> for Last Month', type: 'DateFilter', searchKey: 'for Last Month' },
+        { value: 'is', key: '<span class="fa fa-filter"></span> is', type: 'Filter', searchKey: 'is equal to' },
+        { value: 'is not', key: '<span class="fa fa-filter"></span> is not', type: 'Filter', searchKey: 'is not equal to' },
+    ];
+
+    self.DateFilterMethods = [
+        { value: 'Today', key: '<span class="fa fa-calendar"></span> for Today', operator: 'range', type: 'DateFilter', searchKey: 'for Today' },
+        { value: 'Yesterday', key: '<span class="fa fa-calendar"></span> for Yesterday', operator: 'range', type: 'DateFilter', searchKey: 'for Yesterday' },
+        { value: 'This Month', key: '<span class="fa fa-calendar"></span> for This Month', operator: 'range', type: 'DateFilter', searchKey: 'for This Month' },
+        { value: 'Last Month', key: '<span class="fa fa-calendar"></span> for Last Month', operator: 'range', type: 'DateFilter', searchKey: 'for Last Month' },
+        { value: 'This Year', key: '<span class="fa fa-calendar"></span> for This Year', operator: 'range', type: 'DateFilter', searchKey: 'for This Year' },
+        { value: 'Last Year', key: '<span class="fa fa-calendar"></span> for Last Year', operator: 'range', type: 'DateFilter', searchKey: 'for Last Year' },
     ];
 
     self.getAggregate = function (columnId) {
@@ -649,6 +656,20 @@ var textQuery = function (options) {
 
         return func;
     }
+    self.getFilters = function (columnId) {
+        var filters = [];
+
+        _.forEach(self.queryItems, function (x, i) {
+            if (x.value == columnId && x.type === 'Field') {
+                if (i < self.queryItems.length - 1 && self.queryItems[i + 1].type === 'DateFilter') {
+                    var filter = self.queryItems[i + 1];
+                    filters.push(filter);
+                }
+            }
+        });
+
+        return filters;
+    };
 
     self.getReportType = function () {
         var reportType = _.find(self.queryItems, { type: 'ReportType' });
@@ -750,19 +771,6 @@ var textQuery = function (options) {
     }
 
     self.addQueryItem = function (newItem, skipFilter) {
-        if (skipFilter != true) {
-
-            if (self.usingFilter() && !self.filterField) {
-                self.filterField = newItem;
-                return;
-            }
-
-            if (self.usingFilter() && self.filterField) {
-                // add to filters
-                return;
-            }
-        }
-        // add to columns
         var match = _.find(self.queryItems, { 'value': newItem.value });
         if (!match) {
             self.queryItems.push(newItem);
@@ -773,7 +781,7 @@ var textQuery = function (options) {
         // Check if the user has typed "where" or "for" and add filter methods
         var textInput = document.getElementById("query-input");
         var inputText = textInput.textContent.toLowerCase().trim();
-        var filterTexts = ['where ', 'when ', 'for ']
+        var filterTexts = ['where ', 'when ', 'for ', 'is ', 'is not ', 'equal to ']
         var containsFilter = false;
 
         var containsFilter = _.some(filterTexts, function (filter) {
@@ -782,6 +790,15 @@ var textQuery = function (options) {
 
         return containsFilter;
     }
+
+    self.detectFilterTrigger = function (text) {
+        var triggers = ['where', 'when', 'for', 'is', 'is not', 'equal to', 'between', 'greater than', 'less than'];
+        return triggers.find(trigger => text.toLowerCase().includes(trigger));
+    };
+
+    self.getLastField = function () {
+        return _.findLast(self.queryItems, { type: 'Field' }) || null;
+    };
 
     self.getTributeAttributes = function (options) {
         options = options || { concatFilterAndQuery: true, wrapText: false };
@@ -797,7 +814,7 @@ var textQuery = function (options) {
                 }
             },
             values: function (token, callback) {
-                if (token == "=" || token == ">" || token == "<") return;
+                if (token == "=" || token == ">" || token == "<") return;                
                 self.ParseQuery(token, "").done(function (results) {
                     if (results.d) results = results.d;
                     var items = _.map(results, function (x) {
@@ -808,10 +825,15 @@ var textQuery = function (options) {
                         return item;
                     });
                     if (options.concatFilterAndQuery) {
-                        if (self.usingFilter() && self.filterField != null) {
-                            items = items.concat(self.FilterMethods);
+                        var lastField = self.getLastField();
+                        if (self.detectFilterTrigger(token) && lastField != null) 
+                        {
+                            if (lastField.dataType == 'DateTime') {
+                                items = self.DateFilterMethods;
+                            }
                         } else {
                             items = items.concat(self.QueryMethods);
+                            items = items.concat(self.FilterMethods);
                         }
                     }
                     callback(items);
@@ -855,9 +877,9 @@ var textQuery = function (options) {
         });
 
     }
-
+    
     self.setupQuery = function () {       
-        var tributeAttributes = self.getTributeAttributes();
+        var tributeAttributes = self.getTributeAttributes({ concatFilterAndQuery: true });
         var tribute = new Tribute(tributeAttributes);
         tribute.attach(document.getElementById("query-input"));
 

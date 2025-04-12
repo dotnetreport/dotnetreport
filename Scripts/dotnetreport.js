@@ -1210,17 +1210,31 @@ var reportViewModel = function (options) {
 			if (result.d) result = result.d;
 
 			self.ReportType(self.textQuery.getReportType());
+			var filters = [];
 
 			_.forEach(result, function (e) {
 				if (self.ReportType() != 'List') {
 					e.aggregateFunction = self.textQuery.getAggregate(e.fieldId);
 				}
 				e = self.setupField(e);
+
+				var fltrs = self.textQuery.getFilters(e.fieldId);
+
+				fltrs.forEach(f => {
+					filters.push({
+						FieldId: e.fieldId,
+						Operator: f.operator || '',
+						Value1: f.value || '',
+						Value2: f.value2 || '',
+					})
+				});
 			});
 
 			self.ReportMode('execute');
 			self.SortByField(fieldIds[0]);
 			self.SelectedFields(result);
+			filters.forEach(f => self.FilterGroups()[0].AddFilter(f));
+
 			self.SaveReport(false);
 
 			if (useAi === true) {
