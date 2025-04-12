@@ -4133,8 +4133,11 @@ var reportViewModel = function (options) {
 		}
 		// Call retrieveDimensions to load saved dimensions when the chart is initialized
 		if (self.ReportMode() != 'print') retrieveDimensions();
-		
-		chartOptions.gridlines = chartOptions.showGridlines ? { count: -1 } : { count: 0 };
+		chartOptions.hAxis = {}; chartOptions.vAxis = {};
+		if (!chartOptions.showGridlines) { chartOptions.hAxis.gridlines = { color: 'none' }; chartOptions.vAxis.gridlines = { color: 'none' }; }
+		if (!chartOptions.showXAxisLabel) { chartOptions.hAxis.textPosition = 'none'; }
+		if (!chartOptions.showYAxisLabel) { chartOptions.vAxis.textPosition = 'none'; }
+
 		if (chartOptions.seriesColors.length > 0) chartOptions.colors = chartOptions.seriesColors;
 		chartOptions.legend = { position: self.chartOptions().legendPosition }
 		chart.draw(data, chartOptions);

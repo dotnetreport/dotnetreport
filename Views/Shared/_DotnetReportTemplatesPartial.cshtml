@@ -2047,15 +2047,13 @@
 
         <div class="d-flex justify-content-between mb-1">
             <div>
-                <label class="form-label small">Font</label>
-                <select class="form-select form-select-sm" data-bind="value: chartOptions().fontFamily, event: { change: updateChart }">
-                    <option value="">Default</option>
-                    <option value="Arial">Arial</option>
-                    <option value="Verdana">Verdana</option>
-                    <option value="Tahoma">Tahoma</option>
-                    <option value="Georgia">Georgia</option>
-                    <option value="Times New Roman">Times New Roman</option>
-                    <option value="Courier New">Courier New</option>
+                <label class="form-label small">Legend Position</label>
+                <select class="form-select form-select-sm" data-bind="value: chartOptions().legendPosition, event: { change: updateChart }">
+                    <option value="right">Right</option>
+                    <option value="left">Left</option>
+                    <option value="top">Top</option>
+                    <option value="bottom">Bottom</option>
+                    <option value="none">None</option>
                 </select>
             </div>
             <div>
@@ -2063,16 +2061,7 @@
                 <input type="number" class="form-control form-control-sm font-size-input" data-bind="value: chartOptions().fontSize, event: { change: updateChart }">
             </div>
         </div>
-        <div class="mb-2">
-            <label class="form-label small">Legend Position</label>
-            <select class="form-select form-select-sm" data-bind="value: chartOptions().legendPosition, event: { change: updateChart }">
-                <option value="right">Right</option>
-                <option value="left">Left</option>
-                <option value="top">Top</option>
-                <option value="bottom">Bottom</option>
-                <option value="none">None</option>
-            </select>
-        </div>
+        
         <div data-bind="visible: ReportType()!='Pie'">
             <div class="form-check form-switch small mb-1">
                 <input class="form-check-input" type="checkbox" data-bind="checked: chartOptions().showXAxisLabel, event: { change: updateChart }">
