@@ -73,9 +73,12 @@
         <!-- /ko -->
         <!-- /ko -->
         <!-- ko if: ['Int','Money','Float','Double'].indexOf(fieldType) != -1 -->
-        <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
-        <input class="form-control" type="number" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default'" required />
-        <!-- /ko -->
+            <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
+            <input class="form-control" type="number" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default'" required />
+            <!-- /ko -->
+             <!-- ko if: ['in', 'not in'].indexOf($parent.Operator()) != -1 -->
+            <input class="form-control" type="text" data-bind="value: $parent.Value" required />
+            <!-- /ko -->
         <!-- /ko -->
         <!-- ko if: fieldType=='Boolean' && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
         <select required class="form-select" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default'">
