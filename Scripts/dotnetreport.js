@@ -507,6 +507,8 @@ function filterGroupViewModel(args) {
 
 		if (e.FieldId) {
 			field(args.parent.FindField(e.FieldId));
+		} else if (e.FilterSettings) {
+			field(args.parent.FindDynamicField(JSON.parse(e.FilterSettings)));
 		}
 
 		filter.compareTo = ko.computed(function () {
@@ -1944,7 +1946,7 @@ var reportViewModel = function (options) {
 						fieldId: x.Id,
 						fieldName: x.DisplayName,
 						fieldAggregate: [],
-						fieldFilter: [],
+						fieldFilter: ['=', 'in', 'not in', 'like', 'not like', 'not equal', 'is blank', 'is not blank'],
 						fieldType:  x.FieldType,
 						isPrimary:  x.PrimaryKey,
 						fieldDbName:  x.FieldName,
@@ -2186,7 +2188,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.selectedFieldsCanFilter = ko.computed(function () {
-		return _.filter(self.SelectedFields(), function (x) { return x.tableId !== 0 && !x.isFormulaField() });
+		return _.filter(self.SelectedFields(), function (x) { return !x.isFormulaField() });
 	});
 
 	self.clearFormulaField = function () {
@@ -2549,6 +2551,9 @@ var reportViewModel = function (options) {
 	self.FindField = function (fieldId) {
 		return _.filter(self.SelectedFields(), function (x) { return x.fieldId == fieldId; })[0];
 	};
+	self.FindDynamicField = function (fieldSettings) {
+		return _.filter(self.SelectedFields(), function (x) { return x.dynamicTableId == fieldSettings.DynamicTableId && x.fieldName == fieldSettings.DynamicFieldName; })[0];
+	};
 
 	self.SaveWithoutRun = function () {
 		self.RunReport(true);
@@ -2600,6 +2605,14 @@ var reportViewModel = function (options) {
 					ParentIn: e.ParentIn().join(","),
 					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
 				} : null;
+
+				if (f && !f.FieldId && e.Field().dynamicTableId) {
+					f.FieldId = null;
+					f.FilterSettings = JSON.stringify({
+						DynamicFieldName: e.Field().fieldName,
+						DynamicTableId: e.Field().dynamicTableId
+					})
+				}
 
 				if (f != null && !f.Value1 && !f.Value2) {
 					f = null;
@@ -4519,9 +4532,10 @@ var reportViewModel = function (options) {
 			if (!filters || filters.length == 0) return;
 
 			_.forEach(filters, function (e) {
-				if (!e.FieldId) {
+				if (!e.FieldId && !e.FilterSettings) {
 					group = (group == null) ? self.FilterGroups()[0] : group.AddFilterGroup({ AndOr: e.AndOr });
-				} else if (filterFieldsOnFly.indexOf(e.FieldId) < 0) {
+				}
+				else if (filterFieldsOnFly.indexOf(e.FieldId) < 0) {
 					var onFly = _.filter(self.SelectedFields(), function (x) { return x.filterOnFly() == true && x.fieldId == e.FieldId; }).length > 0;
 					if (onFly) filterFieldsOnFly.push({ fieldId: e.FieldId });
 
