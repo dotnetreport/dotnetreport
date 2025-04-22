@@ -2255,7 +2255,7 @@ var reportViewModel = function (options) {
 	}
 
 	self.editFormulaField = function (field) {
-		if (field.fieldSettings && field.fieldSettings.functionConfig) {
+		if (field.fieldSettings && field.fieldSettings.functionConfig && Object.keys(field.fieldSettings.functionConfig).length > 0) { 
 			self.designFunctionField();
 			codeEditor.setValue(field.fieldSettings.functionConfig.input);
 			self.isFunctionField(true);	
