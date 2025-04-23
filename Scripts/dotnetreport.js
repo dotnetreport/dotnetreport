@@ -1191,7 +1191,9 @@ var reportViewModel = function (options) {
 		useSqlCustomField: false,
 		noFolders: false,
 		noDefaultFolder: false,
-		showEmptyFolders: false
+		showEmptyFolders: false,
+		useAltPdf: false,
+		dontXmlExport: false
 	};
 	self.runQuery = function (useAi) {
 		self.SelectedFields([]);
@@ -5062,6 +5064,8 @@ var reportViewModel = function (options) {
 			self.appSettings.noFolders = x.noFolders;
 			self.appSettings.noDefaultFolder = x.noDefaultFolder;
 			self.appSettings.showEmptyFolders = x.showEmptyFolders;
+			self.appSettings.useAltPdf = x.useAltPdf;
+			self.appSettings.dontXmlExport = x.dontXmlExport;
 		});
 	}
 
@@ -5697,7 +5701,9 @@ var dashboardViewModel = function (options) {
 		useSqlCustomField: false,
 		noFolders: false,
 		noDefaultFolder: false,
-		showEmptyFolders: false
+		showEmptyFolders: false,
+		useAltPdf: false,
+		dontXmlExport: false
 	};
 	self.loadAppSettings = function () {
 		return ajaxcall({
@@ -5719,7 +5725,8 @@ var dashboardViewModel = function (options) {
 			self.appSettings.noFolders = x.noFolders;
 			self.appSettings.noDefaultFolder = x.noDefaultFolder;
 			self.appSettings.showEmptyFolders = x.showEmptyFolders;
-
+			self.appSettings.useAltPdf = x.useAltPdf;
+			self.appSettings.dontXmlExport = x.dontXmlExport;
 		});
 	}
 
