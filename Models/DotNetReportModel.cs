@@ -2146,18 +2146,22 @@ namespace ReportBuilder.Web.Models
         }
 
         public static byte[] GetPdfFileAlt(string reportSql, string connectKey, string reportName, string chartData = null,
-         List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
+                 List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
         {
             var data = GetDataTable(reportSql, connectKey);
             var sqlFields = data.sqlFields;
             var dt = data.dt;
 
             var document = new PdfDocument();
-            var page = document.AddPage();
-            var gfx = XGraphics.FromPdfPage(page);
-            var tfx = new XTextFormatter(gfx);
             int leftMargin = 40;
             int rightMargin = 40;
+            double columnWidth = Math.Max(100, 100f);
+
+            double totalWidth = dt.Columns.Count * columnWidth + leftMargin + rightMargin;
+            var page = document.AddPage();
+            page.Width = totalWidth;
+            var gfx = XGraphics.FromPdfPage(page);
+            var tfx = new XTextFormatter(gfx);
 
             if (pivot)
             {
@@ -2167,11 +2171,7 @@ namespace ReportBuilder.Web.Models
 
             DataTableToDotNetReportDataModel(dt, sqlFields, false);
 
-            // Expand page width to fit all columns
-            double columnWidth = Math.Max(100, 100f);
-            page.Width = dt.Columns.Count * columnWidth + leftMargin + rightMargin;
             double pageHeight = page.Height.Point - 50;
-
             var subTotals = new decimal[dt.Columns.Count];
 
             using (var ms = new MemoryStream())
@@ -2184,7 +2184,6 @@ namespace ReportBuilder.Web.Models
                 double cellPadding = 3;
                 XRect rect = new XRect();
 
-                // Report header
                 gfx.DrawString(reportName,
                     new XFont("Arial", 14, XFontStyleEx.Bold), XBrushes.Black,
                     new XRect(0, currentYPosition, page.Width, 30),
@@ -2192,7 +2191,6 @@ namespace ReportBuilder.Web.Models
 
                 currentYPosition += 40;
 
-                // Render chart
                 if (!string.IsNullOrEmpty(chartData) && chartData != "undefined")
                 {
                     byte[] sPDFDecoded = Convert.FromBase64String(chartData.Substring(chartData.LastIndexOf(',') + 1));
@@ -2225,27 +2223,33 @@ namespace ReportBuilder.Web.Models
                     currentYPosition += (int)rect.Height + 20;
                 }
 
-                // Draw column headers
-                currentXPosition = leftMargin;
-                for (int k = 0; k < dt.Columns.Count; k++)
+                void AddNewPageWithHeaders()
                 {
-                    var columnFormatting = columns[k];
-                    var columnName = !string.IsNullOrEmpty(columnFormatting.fieldLabel) ? columnFormatting.fieldLabel : columnFormatting.fieldName;
-                    rect = new XRect(currentXPosition, currentYPosition, columnWidth, 20);
-                    gfx.DrawRectangle(XPens.LightGray, rect);
-                    rect.Inflate(-cellPadding, -cellPadding);
-                    tfx.DrawString(columnName, fontBold, GetBrushWithColor(), rect, XStringFormats.TopLeft);
-                    currentXPosition += (int) columnWidth;
+                    page = document.AddPage();
+                    page.Width = totalWidth;
+                    gfx = XGraphics.FromPdfPage(page);
+                    tfx = new XTextFormatter(gfx);
+                    currentYPosition = 20;
+
+                    currentXPosition = leftMargin;
+                    for (int k = 0; k < dt.Columns.Count; k++)
+                    {
+                        var columnFormatting = columns[k];
+                        var columnName = !string.IsNullOrEmpty(columnFormatting.fieldLabel) ? columnFormatting.fieldLabel : columnFormatting.fieldName;
+                        rect = new XRect(currentXPosition, currentYPosition, columnWidth, 20);
+                        gfx.DrawRectangle(XPens.LightGray, rect);
+                        rect.Inflate(-cellPadding, -cellPadding);
+                        tfx.DrawString(columnName, fontBold, GetBrushWithColor(), rect, XStringFormats.TopLeft);
+                        currentXPosition += (int) columnWidth;
+                    }
+                    currentYPosition += 20;
                 }
 
-                currentYPosition += 20;
+                AddNewPageWithHeaders();
 
-                // Draw table rows
                 for (int i = 0; i < dt.Rows.Count; i++)
                 {
                     currentXPosition = leftMargin;
-
-                    // Measure max lines for row
                     int maxLines = 1;
                     for (int j = 0; j < dt.Columns.Count; j++)
                     {
@@ -2255,34 +2259,21 @@ namespace ReportBuilder.Web.Models
                         var formatColumn = GetColumnFormatting(dc, columns, ref tempVal);
                         var lines = WrapText(gfx, tempVal, new XRect(0, 0, columnWidth, 9999), fontNormal, XStringFormats.Center);
                         maxLines = Math.Max(maxLines, lines.Count);
+
+                        if (formatColumn.isNumeric && !formatColumn.dontSubTotal)
+                        {
+                            if (decimal.TryParse(value, out decimal decVal))
+                                subTotals[j] += decVal;
+                        }
                     }
 
                     int rowHeight = 20 * maxLines;
 
                     if (currentYPosition + rowHeight > pageHeight)
                     {
-                        page = document.AddPage();
-                        gfx = XGraphics.FromPdfPage(page);
-                        tfx = new XTextFormatter(gfx);
-                        currentYPosition = 20;
-
-                        // Re-draw headers
-                        currentXPosition = leftMargin;
-                        for (int k = 0; k < dt.Columns.Count; k++)
-                        {
-                            var columnFormatting = columns[k];
-                            var columnName = !string.IsNullOrEmpty(columnFormatting.fieldLabel) ? columnFormatting.fieldLabel : columnFormatting.fieldName;
-                            rect = new XRect(currentXPosition, currentYPosition, columnWidth, 20);
-                            gfx.DrawRectangle(XPens.LightGray, rect);
-                            rect.Inflate(-cellPadding, -cellPadding);
-                            tfx.DrawString(columnName, fontBold, GetBrushWithColor(), rect, XStringFormats.TopLeft);
-                            currentXPosition += (int) columnWidth;
-                        }
-
-                        currentYPosition += 20;
+                        AddNewPageWithHeaders();
                     }
 
-                    // Draw row cells
                     currentXPosition = leftMargin;
                     for (int j = 0; j < dt.Columns.Count; j++)
                     {
@@ -2319,12 +2310,38 @@ namespace ReportBuilder.Web.Models
                     currentYPosition += rowHeight;
                 }
 
+                if (includeSubtotal)
+                {
+                    currentYPosition += 10;
+                    currentXPosition = leftMargin;
+
+                    for (int j = 0; j < dt.Columns.Count; j++)
+                    {
+                        var value = subTotals[j].ToString();
+                        var dc = dt.Columns[j];
+                        var formatColumn = GetColumnFormatting(dc, columns, ref value);
+
+                        rect = new XRect(currentXPosition, currentYPosition, columnWidth, 20);
+                        gfx.DrawRectangle(XPens.LightGray, rect);
+
+                        if (formatColumn.isNumeric && !(formatColumn?.dontSubTotal ?? false))
+                        {
+                            gfx.DrawString(value, fontNormal, XBrushes.Black, rect, XStringFormats.CenterRight);
+                        }
+                        else
+                        {
+                            gfx.DrawString(" ", fontNormal, XBrushes.Black, rect, XStringFormats.Center);
+                        }
+
+                        currentXPosition += (int)columnWidth;
+                    }
+                }
+
                 gfx.Save();
                 document.Save(ms);
                 return ms.ToArray();
             }
         }
-
 
         public static async Task<byte[]> GetWordFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
             string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
