@@ -225,7 +225,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <div class="list-group-item">
                                         <div class="row">
                                             <div class="col-sm-7">
-                                                <div class="fa fa-2x pull-left" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType.indexOf('Map')==0, 'fa-window-maximize': reportType=='Single', 'fa-random': reportType=='Pivot', 'fa-window-restore': reportType=='Treemap'}"></div>
+                                                <div class="fa fa-2x pull-left" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType.indexOf('Map')==0, 'fa-window-maximize': reportType=='Single', 'fa-random': reportType=='Pivot', 'fa-window-restore': reportType=='Treemap', 'fa-signal': reportType == 'Combo'}"></div>
                                                 <div class="pull-left">
                                                     <h4>
                                                         <a data-bind="click: runReport" style="cursor: pointer">
@@ -380,7 +380,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             </div>
                                             <div class="col-md-6 text-end" data-bind="visible: $parent.adminMode">
                                                 <!--<div class="badge bg-info text-white" data-bind="text: userId ? userId : 'Any User'"></div>
-                                                <div class="badge bg-info text-white" data-bind="text: userRole ? userRole : 'No Role'"></div>-->
+                                                    <div class="badge bg-info text-white" data-bind="text: userRole ? userRole : 'No Role'"></div>-->
                                             </div>
                                         </div>
                                     </div>
@@ -415,6 +415,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                     'fa-bar-chart': reportType=='Bar',
                                                     'fa-pie-chart': reportType=='Pie',
                                                     'fa-line-chart': reportType=='Line',
+                                                    'fa-signal': reportType=='Combo',
                                                     'fa-globe': reportType.indexOf('Map')==0,
                                                     'fa-window-maximize': reportType=='Single',
                                                     'fa-random': reportType=='Pivot',
@@ -542,14 +543,19 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <span>Export</span>
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end">
-                                    <li>
+                                    <li data-bind="hidden: appSettings.useAltPdf">
                                         <a href="#" class="dropdown-item" data-bind="click: function() {downloadPdf(false);}">
                                             <i class="fa fa-file-pdf-o"></i> Pdf
                                         </a>
                                     </li>
-                                    <li data-bind="visible: adminMode">
+                                    <li data-bind="visible: adminMode() && !appSettings.useAltPdf">
                                         <a href="#" class="dropdown-item" data-bind="click: function() {downloadPdf(true);}">
                                             <i class="fa fa-file-pdf-o"></i> Pdf (Debug)
+                                        </a>
+                                    </li>
+                                    <li data-bind="visible: appSettings.useAltPdf">
+                                        <a href="#" class="dropdown-item" data-bind="click: function() {downloadPdfAlt();}">
+                                            <i class="fa fa-file-pdf-o"></i> Pdf
                                         </a>
                                     </li>
                                     <li>
@@ -572,7 +578,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             <i class="fa fa-file-excel-o"></i> Csv
                                         </a>
                                     </li>
-                                    <li>
+                                    <li data-bind="hidden: appSettings.dontXmlExport">
                                         <a href="#" class="dropdown-item" data-bind="click: downloadXml">
                                             <i class="fa fa-file-code-o"></i> Xml
                                         </a>
@@ -679,20 +685,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <div class="report-canvas">
                                     <div class="report-container">
                                         <div class="report-inner">
-                                            <div class="btn-group pull-right" role="group" data-bind="visible: ReportType() === 'Bar' || ReportType() === 'Pie' || ReportType() === 'Line'">
-                                                <button type="button" class="btn btn-light" data-bs-toggle="tooltip" title="Bar Chart"
-                                                        data-bind="css: { 'active': ReportType() === 'Bar' }, click: function() { ReportType('Bar'); }">
-                                                    <span class="fa fa-bar-chart"></span>
-                                                </button>
-                                                <button type="button" class="btn btn-light" data-bs-toggle="tooltip" title="Pie Chart"
-                                                        data-bind="css: { 'active': ReportType() === 'Pie' }, click: function() { ReportType('Pie'); }">
-                                                    <span class="fa fa-pie-chart"></span>
-                                                </button>
-                                                <button type="button" class="btn btn-light" data-bs-toggle="tooltip" title="Line Chart"
-                                                        data-bind="css: { 'active': ReportType() === 'Line' }, click: function() { ReportType('Line'); }">
-                                                    <span class="fa fa-line-chart"></span>
-                                                </button>
-                                            </div>
+                                            <div data-bind="template: 'chart-settings', data: $data"></div>
                                             <div class="canvas-container">
                                                 <canvas id="report-header" width="900" height="120" data-bind="visible: useReportHeader"></canvas>
                                             </div>

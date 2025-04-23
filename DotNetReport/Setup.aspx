@@ -20,6 +20,19 @@
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
+
+        .table-selected rect.main-rect {
+            filter: drop-shadow(3px 3px 5px #999);
+        }
+
+        .column-selected {
+            font-weight: bold;
+        }
+
+        .line-highlight {
+            stroke: #33f !important;
+            stroke-width: 2 !important;
+        }
     </style>
 </asp:Content>
 <asp:Content ID="Content1" ContentPlaceHolderID="scripts" runat="server">    
@@ -99,7 +112,7 @@
 
 </asp:Content>
 <asp:Content ID="Content4" ContentPlaceHolderID="body" runat="server">
-
+    
 <div>
     <h2>Manage Database</h2>
     <p>
@@ -249,6 +262,16 @@
                                     <input type="checkbox" class="form-check-input" id="allowUsersToCreateReports" data-bind="checked: allowUsersToCreateReports">
                                     <label class="form-check-label" for="allowUsersToCreateReports">Allow All Users to Create Reports</label>
                                     <small class="text-muted d-block">Permits users to generate and customize reports even when not in Admin Mode.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: useAltPdf">
+                                    <label class="form-check-label">PDF Export without Chromium</label>
+                                    <small class="text-muted d-block">Use alternate PDF export method that doesn't rely on Chromium'.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: dontXmlExport">
+                                    <label class="form-check-label">Hide XML Export option</label>
+                                    <small class="text-muted d-block">Remove XML Export option, as it's not common for all users'.</small>
                                 </div>
                             </div>
                         </div>
@@ -435,13 +458,18 @@
             <button class="btn btn-sm btn-primary" data-bind="click: AddJoin">Add new Join</button>&nbsp;
             <button class="btn btn-sm btn-primary" data-bind="click: SaveJoins">Save Joins</button>&nbsp;
             <button class="btn btn-sm btn-primary" data-bind="click: visualizeJoins">Visualize Joins</button>&nbsp;
+            <button class="btn btn-sm btn-primary" data-bind="click: DeleteVisibleJoins">Delete Joins</button>&nbsp;
             <button class="btn btn-sm btn-primary" data-bind="click: ExportJoins">Export Joins</button>&nbsp;
             <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadJoinsFileModal" aria-haspopup="true" aria-expanded="false">
                 <span class="fa fa-file"></span> Import Joins
             </button>
             <br />
             <br />
-            <form id="form-joins">
+            <div id="form-joins">
+                <div class="alert alert-warning" data-bind="visible: isDirty">
+                    You have unsaved changes. Please be sure to click <b>Save Joins</b> to save your changes.
+                </div>
+
                 <table class="table">
                     <thead data-bind="with: JoinFilters">
                         <tr>
@@ -497,6 +525,28 @@
                             <th></th>
                         </tr>
                     </thead>
+                    <tbody>
+                        <tr class="table-info" data-bind="if: showNewJoinRow">
+                            <td>
+                                <select class="form-select input-medium" data-bind="options: Tables.availableTables, optionsText: 'DisplayName', value: NewJoin().JoinTable, optionsCaption: 'Pick a table...'"></select>
+                            </td>
+                            <td data-bind="with: NewJoin().JoinTable">
+                                <select class="form-select" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsCaption: 'Pick a field...', optionsValue: 'ColumnName', value: $root.NewJoin().FieldName"></select>
+                            </td>
+                            <td>
+                                <select class="form-select input-small" data-bind="options: $root.JoinTypes, value: NewJoin().JoinType"></select>
+                            </td>
+                            <td>
+                                <select class="form-select input-medium" data-bind="options: NewJoin().OtherTables, optionsText: 'DisplayName', value: NewJoin().OtherTable, optionsCaption: 'Pick a table...'"></select>
+                            </td>
+                            <td data-bind="with: NewJoin().OtherTable">
+                                <select class="form-select" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsValue: 'ColumnName', value: $root.NewJoin().JoinFieldName, optionsCaption: 'Pick a field...'"></select>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-success" data-bind="click: ConfirmAddJoin">+ Add Join</button>
+                            </td>
+                        </tr>
+                    </tbody>
                     <tbody data-bind="foreach: pagedJoins">
                         <tr>
                             <td>
@@ -525,7 +575,7 @@
                         <div data-bind="template: 'pager-template', data: $data"></div>
                     </div>
                 </div>
-            </form>
+            </div>
             <br />
             <br />
         </div>

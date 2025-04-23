@@ -115,14 +115,19 @@
                                 <span>Export</span>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end">
-                                <li>
+                                <li data-bind="hidden: appSettings.useAltPdf">
                                     <a href="#" class="dropdown-item" data-bind="click: function() {downloadPdf(false);}">
                                         <i class="fa fa-file-pdf-o"></i> Pdf
                                     </a>
                                 </li>
-                                <li data-bind="visible: adminMode">
+                                <li data-bind="visible: adminMode() && !appSettings.useAltPdf">
                                     <a href="#" class="dropdown-item" data-bind="click: function() {downloadPdf(true);}">
                                         <i class="fa fa-file-pdf-o"></i> Pdf (Debug)
+                                    </a>
+                                </li>
+                                <li data-bind="visible: appSettings.useAltPdf">
+                                    <a href="#" class="dropdown-item" data-bind="click: function() {downloadPdfAlt();}">
+                                        <i class="fa fa-file-pdf-o"></i> Pdf
                                     </a>
                                 </li>
                                 <li>
@@ -145,7 +150,7 @@
                                         <i class="fa fa-file-excel-o"></i> Csv
                                     </a>
                                 </li>
-                                <li>
+                                <li data-bind="hidden: appSettings.dontXmlExport">
                                     <a href="#" class="dropdown-item" data-bind="click: downloadXml">
                                         <i class="fa fa-file-code-o"></i> Xml
                                     </a>
@@ -252,20 +257,7 @@
                             <div class="report-canvas">
                                 <div class="report-container">
                                     <div class="report-inner">
-                                        <div class="btn-group pull-right" role="group" data-bind="visible: ReportType() === 'Bar' || ReportType() === 'Pie' || ReportType() === 'Line'">
-                                            <button type="button" class="btn btn-light" data-bs-toggle="tooltip" title="Bar Chart"
-                                                    data-bind="css: { 'active': ReportType() === 'Bar' }, click: function() { ReportType('Bar'); }">
-                                                <span class="fa fa-bar-chart"></span>
-                                            </button>
-                                            <button type="button" class="btn btn-light" data-bs-toggle="tooltip" title="Pie Chart"
-                                                    data-bind="css: { 'active': ReportType() === 'Pie' }, click: function() { ReportType('Pie'); }">
-                                                <span class="fa fa-pie-chart"></span>
-                                            </button>
-                                            <button type="button" class="btn btn-light" data-bs-toggle="tooltip" title="Line Chart"
-                                                    data-bind="css: { 'active': ReportType() === 'Line' }, click: function() { ReportType('Line'); }">
-                                                <span class="fa fa-line-chart"></span>
-                                            </button>
-                                        </div>
+                                        <div data-bind="template: 'chart-settings', data: $data"></div>
                                         <div class="canvas-container">
                                             <canvas id="report-header" width="900" height="120" data-bind="visible: useReportHeader"></canvas>
                                         </div>

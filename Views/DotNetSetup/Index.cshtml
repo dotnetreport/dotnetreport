@@ -24,19 +24,6 @@
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
-
-        .table-selected rect.main-rect {
-            filter: drop-shadow(3px 3px 5px #999);
-        }
-
-        .column-selected {
-            font-weight: bold;
-        }
-
-        .line-highlight {
-            stroke: #33f !important;
-            stroke-width: 2 !important;
-        }
     </style>
 }
 @section scripts{
@@ -103,7 +90,6 @@
 
     </script>
 }
-
 
 <div>
     <h2>Manage Database</h2>
@@ -173,6 +159,7 @@
             <p>
                 Data Connection groups data schemas (including tables and stored procedures and other configuration), Reports, and Dashboards into a single environment. You can create multiple Data Connections and easily switch between them for separate environment management.
             </p>
+            <hr />
             <div class="form-row" data-bind="visible: true">
                 <div class="form-group">
                     <div class="control-group">
@@ -271,6 +258,8 @@
                 </div>
             </div>
 
+        </div>
+
         <div role="tabpanel" class="tab-pane active" id="tablesfields">
             <b data-bind="text: customTableMode() ? 'Custom Tables' : 'Database Tables'"></b>
             <p>
@@ -317,7 +306,7 @@
                                 <div class="checkbox pull-left">
                                     <label>
                                         <input type="checkbox" data-bind="checked: Selected" title="Check to use in Dotnet Report, uncheck to Remove">
-                                        <span data-bind="text: TableName"></span>
+                                        <span data-bind="text: TableName, click: function() { $root.activeTable($data); }" style="cursor: pointer"></span>
                                         <span data-bind="visible: IsView" class="label-sm">(view)</span>
                                     </label>
                                     <button class="btn btn-sm" title="Save this Table" data-bind="click: function() { saveTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey); }">
@@ -328,7 +317,7 @@
                                     </button>
                                 </div>
                                 <a class="pull-right" data-bind="click: function() { $root.activeTable($data); }">
-                                    <span class="fa fa-chevron-right"></span>
+                                    <span class="fa fa-chevron-right" style="cursor: pointer"></span>
                                 </a>
                             </div>
                         </div>
@@ -348,7 +337,7 @@
                         <div class="mt-3 fw-bold" style="float:left; padding-left: 5px;">No <span data-bind="visible: $root.customTableMode">Custom </span> Tables added yet, click "<span data-bind="text: customTableMode() ? 'Add New Custom Table' : 'Load All Tables'"></span>" to get started!</div>
                     </div>
 
-                    <div data-bind="visible: !activeTable()">
+                    <div data-bind="visible: !activeTable() && pagedTables().length > 0">
                         <br />
                         <br />
                         <svg style="width:40px;float:left;transform:rotate(-45deg) translateY(6px);transform-origin:center center;" fill="#000000" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="icon flat-line"><g stroke-width="0"></g><g stroke-linecap="round" stroke-linejoin="round" stroke="#CCCCCC" stroke-width="0.048"></g><g><path d="M18,21A13.17,13.17,0,0,1,9,8.51V3" style="fill:none;stroke:#000000;stroke-linecap:round;stroke-linejoin:round;stroke-width:2;"></path><polyline points="12 6 9 3 6 6" style="fill:none;stroke:#000000;stroke-linecap:round;stroke-linejoin:round;stroke-width:2;"></polyline></g></svg>
@@ -539,19 +528,19 @@
                     <tbody data-bind="foreach: pagedJoins">
                         <tr>
                             <td>
-                                <select class="form-control input-medium" data-bind="options: $root.Tables.availableTables, optionsText: 'DisplayName', value: JoinTable"></select>
+                                <select class="form-select input-medium" data-bind="options: $root.Tables.availableTables, optionsText: 'DisplayName', value: JoinTable"></select>
                             </td>
                             <td data-bind="with: JoinTable">
-                                <select class="form-control" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsValue: 'ColumnName', value: $parent.FieldName"></select>
+                                <select class="form-select" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsValue: 'ColumnName', value: $parent.FieldName"></select>
                             </td>
                             <td>
-                                <select class="form-control input-small" data-bind="options: $root.JoinTypes, value: JoinType"></select>
+                                <select class="form-select input-small" data-bind="options: $root.JoinTypes, value: JoinType"></select>
                             </td>
                             <td>
-                                <select class="form-control input-medium" data-bind="options: OtherTables, optionsText: 'DisplayName', value: OtherTable"></select>
+                                <select class="form-select input-medium" data-bind="options: OtherTables, optionsText: 'DisplayName', value: OtherTable"></select>
                             </td>
                             <td data-bind="with: OtherTable">
-                                <select class="form-control" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsValue: 'ColumnName', value: $parent.JoinFieldName"></select>
+                                <select class="form-select" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsValue: 'ColumnName', value: $parent.JoinFieldName"></select>
                             </td>
                             <td>
                                 <button class="btn btn-sm btn-secondary" data-bind="click: DeleteJoin">Delete</button>
@@ -591,7 +580,7 @@
                             <div class="card-header clearfix">
                                 <div class="pull-left">
                                     <label>
-                                        <span data-bind="text: TableName"></span>
+                                        <span data-bind="text: TableName, click: function() { $root.activeProcedure($data); }" style="cursor: pointer"></span>
                                     </label>
                                     <button class="btn btn-sm" title="Save this Procedure" data-bind="click: function() { $root.saveProcedure($data.TableName, false); }">
                                         <span class="fa fa-save"></span>
@@ -602,7 +591,7 @@
                                 </div>
                                 <!-- Click to activate procedure -->
                                 <a class="pull-right" data-bind="click: function() { $root.activeProcedure($data); }">
-                                    <span class="fa fa-chevron-right"></span>
+                                    <span class="fa fa-chevron-right" style="cursor: pointer"></span>
                                 </a>
                             </div>
                         </div>
@@ -668,9 +657,14 @@
 
         </div>
         <div id="manageaccess" class="tab-pane">
-            <div data-bind="foreach: reportsAndFolders" class="card">
-                <div class="card-body">
-                    <a class="btn btn-link" role="button" data-bs-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }">
+            <b>Reports Access</b>
+            <p>
+                You can setup access to invidiual Reports here
+            </p>
+            <hr />
+            <div data-bind="foreach: reportsAndFolders" class="list-group">
+                <div class="list-group-item">
+                    <a data-bs-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }">
                         <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: folder"></span>
                     </a>
                     <div class="collapse" data-bind="attr: {id: 'folder-' + folderId }">
@@ -680,7 +674,7 @@
                         <ul class="list-group" data-bind="foreach: reports">
                             <li class="list-group-item">
                                 <div class="row">
-                                    <div class="col-md-3">
+                                    <div class="col-md-3 border-end">
                                         <div>
                                             <label class="list-group-item-heading">
                                                 <span class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map'}" style="font-size: 14pt; color: #808080"></span>
@@ -722,8 +716,8 @@
                                     </div>
 
                                     <div data-bind="if: changeAccess" class="col-md-9">
-                                        <div style="border-left: 1px solid; padding-left: 10px;">
-                                            <div data-bind="template: {name: 'manage-access-template', data: $root }"></div>
+                                        <div style="padding-left: 10px;">
+                                            <div data-bind="template: {name: 'manage-access-template', data: $root.manageAccess }"></div>
                                             <br />
                                             <br />
                                             <button class="btn btn-sm btn-primary" data-bind="click: saveAccessChanges">Save Access Changes</button>
@@ -747,9 +741,9 @@
             <br />
             <hr />
 
-            <div class="container-fluid card card-body">
+            <div class="container-fluid">
                 <div class="row">
-                    <div class="col-md-3">
+                    <div class="col-md-3 border-end" style="height: 100vh; overflow-y: auto;">
                         <input id="searchInput" class="form-control mb-2" type="text" placeholder="Search..." data-bind="value: search, valueUpdate: 'input', visible: functions().length > 0">
                         <ul class="list-group" data-bind="foreach: filteredFunctions">
                             <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -765,61 +759,78 @@
                         </div>
                     </div>
                     <div class="col-md-9" data-bind="with: selectedFunction">
-                        <div style="border-left: 1px solid; padding-left: 10px;">
-                            <div class="mb-3" data-bind="validationElement: functionName">
-                                <label for="functionName" class="form-label">Function Name</label>
-                                <input id="functionName" class="form-control" required data-bind="value: name, valueUpdate: 'input'" />
-                                <div class="invalid-feedback">Function Name is required.</div>
-                            </div>
-                            <div class="mb-3">
-                                <label for="functionType" class="form-label">Function Type</label>
-                                <select id="functionType" class="form-control" data-bind="value: functionType, event: { change: $parent.updateCodeEditorMode }">
-                                    <option value="javascript">JavaScript</option>
-                                    <option value="csharp">C#</option>
-                                    <option value="sql">SQL</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="functionDescription" class="form-label">Description</label>
-                                <textarea id="functionDescription" class="form-control" data-bind="value: description, valueUpdate: 'input'" placeholder="Add any helpful description here for the user..."></textarea>
-                            </div>
+                        <div style="padding-left: 10px;">
+                            <div class="card">
+                                <div class="card-header">
+                                    <b>Setup Function</b>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3" data-bind="validationElement: functionName">
+                                        <label for="functionName" class="form-label">Function Name</label>
+                                        <input id="functionName" class="form-control" required data-bind="value: name, valueUpdate: 'input'" />
+                                        <div class="invalid-feedback">Function Name is required.</div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="functionType" class="form-label">Function Type</label>
+                                        <select id="functionType" class="form-control" data-bind="value: functionType, event: { change: $parent.updateCodeEditorMode }">
+                                            <option value="csharp">C#</option>
+                                            <!--<option value="javascript">JavaScript</option>
+                                            <option value="sql">SQL</option>-->
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="functionDescription" class="form-label">Description</label>
+                                        <textarea id="functionDescription" class="form-control" data-bind="value: description, valueUpdate: 'input'" placeholder="Add any helpful description here for the user..."></textarea>
+                                    </div>
 
-                            <div>
-                                <h4>Parameters</h4>
-                                <table class="table table-bordered">
-                                    <thead>
-                                        <tr>
-                                            <th>Name</th>
-                                            <th>Display Name</th>
-                                            <th>Description</th>
-                                            <th>Required</th>
-                                            <th></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody data-bind="foreach: parameters">
-                                        <tr>
-                                            <td>
-                                                <input class="form-control" data-bind="value: parameterName, valueUpdate: 'input'" />
-                                                <span class="text-danger" data-bind="visible: name.hasError, text: name.validationMessage"></span>
-                                            </td>
-                                            <td><input class="form-control" data-bind="value: displayName, valueUpdate: 'input'" /></td>
-                                            <td><input class="form-control" data-bind="value: description, valueUpdate: 'input'" placeholder="Friendly description for user..." /></td>
-                                            <td><input type="checkbox" data-bind="checked: required" /></td>
-                                            <td><button class="btn btn-sm btn-danger" data-bind="click: $parent.removeParameter">Remove</button></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                                <button class="btn btn-sm btn-primary" data-bind="click: addParameter">Add Parameter</button>
-                            </div>
-                            <br />
-                            <div class="mb-3">
-                                <label for="codeEditor" class="form-label">Write the <b>Code</b> for the function below:</label>
-                                <div style="border: 1px solid">
-                                    <textarea id="codeEditor" class="code-editor form-control" data-bind="value: code"></textarea>
+                                    <div>
+                                        <b>Arguments</b>
+                                        <table class="table table-bordered">
+                                            <thead>
+                                                <tr>
+                                                    <th>Name</th>
+                                                    <th>Display Name</th>
+                                                    <th>Description</th>
+                                                    <th>Data Type</th>
+                                                    <th>Required</th>
+                                                    <th></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody data-bind="foreach: parameters">
+                                                <tr>
+                                                    <td>
+                                                        <input class="form-control" data-bind="value: parameterName, valueUpdate: 'input'" />
+                                                        <span class="text-danger" data-bind="visible: name.hasError, text: name.validationMessage"></span>
+                                                    </td>
+                                                    <td><input class="form-control" data-bind="value: displayName, valueUpdate: 'input'" /></td>
+                                                    <td><input class="form-control" data-bind="value: description, valueUpdate: 'input'" placeholder="Friendly description for user..." /></td>
+                                                    <td>
+                                                        <select class="form-select" data-bind="value: datatype">
+                                                            <option>object</option>
+                                                            <option>string</option>
+                                                            <option>int</option>
+                                                            <option>float</option>
+                                                            <option>bool</option>
+                                                        </select>
+                                                    </td>
+                                                    <td><input type="checkbox" data-bind="checked: required" /></td>
+                                                    <td><button class="btn btn-sm btn-danger" data-bind="click: $parent.removeParameter">Remove</button></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                        <button class="btn btn-sm btn-primary" data-bind="click: addParameter">Add Argument</button>
+                                    </div>
+                                    <br />
+                                    <div class="mb-3">
+                                        <label for="codeEditor" class="form-label">Write the <b>Code</b> for the function below:</label>
+                                        <div style="border: 1px solid">
+                                            <textarea id="codeEditor" class="code-editor form-control" data-bind="value: code"></textarea>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-primary" data-bind="click: $parent.saveFunction">Save</button>
+                                    <button class="btn btn-secondary" data-bind="click: $parent.cancelEdit">Cancel</button>
                                 </div>
                             </div>
-                            <button class="btn btn-primary" data-bind="click: $parent.saveFunction">Save</button>
-                            <button class="btn btn-secondary" data-bind="click: $parent.cancelEdit">Cancel</button>
                         </div>
                     </div>
                 </div>
@@ -919,7 +930,7 @@
                                 <div class="form-group row">
                                     <label class="col-md-3 col-sm-3 control-label" for="Field_Type" data-bind="">Field Type</label>
                                     <div class="col-md-6 col-sm-6">
-                                        <select class="form-control" id="FieldType_SelectedId" name="FieldType.SelectedId" data-bind="value: FieldType">
+                                        <select class="form-select" id="FieldType_SelectedId" name="FieldType.SelectedId" data-bind="value: FieldType">
                                             <option value="Boolean">Boolean</option>
                                             <option value="DateTime">Date Time</option>
                                             <option value="Varchar">Varchar</option>
@@ -1018,7 +1029,7 @@
                                         <input class="form-control" type="number" data-bind="value: restrictDateRangeNumber" />
                                     </div>
                                     <div class="col-md-3 col-sm-3" data-bind="if: restrictDateRangeFilter">
-                                        <select class="form-control" data-bind="value: restrictDateRangeValue">
+                                        <select class="form-select" data-bind="value: restrictDateRangeValue">
                                             <option value="Days">Day(s)</option>
                                             <option value="Months">Month(s)</option>
                                             <option value="Years">Year(s)</option>
@@ -1050,7 +1061,7 @@
                                 <div class="form-group row">
                                     <label class="col-md-3 col-sm-3 control-label" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null, placeholder: 'Ex tblEmployees'}" placeholder="Ex tblEmployees" style="display: none;">Foreign Table</label>
                                     <div class="col-md-6 col-sm-6">
-                                        <select class="form-control" data-bind="value: JoinTable, visible:ForeignKey(), options: $root.Tables.model, optionsText: 'TableName'" placeholder="Ex tblEmployees" style="display: none;"></select>
+                                        <select class="form-select" data-bind="value: JoinTable, visible:ForeignKey(), options: $root.Tables.model, optionsText: 'TableName'" placeholder="Ex tblEmployees" style="display: none;"></select>
 
                                     </div>
                                     <div class="col-md-3 col-sm-3">
@@ -1062,7 +1073,7 @@
                                 <div class="form-group row">
                                     <label class="col-md-3 col-sm-3 control-label" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" style="display: none;">Foreign Join</label>
                                     <div class="col-md-6 col-sm-6">
-                                        <select class="form-control" id="ForeignJoin_SelectedId" name="ForeignJoin.SelectedId" data-bind="value: ForeignJoin, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" style="display: none;">
+                                        <select class="form-select" id="ForeignJoin_SelectedId" name="ForeignJoin.SelectedId" data-bind="value: ForeignJoin, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" style="display: none;">
                                             <option selected="selected" value="Inner">Inner</option>
                                             <option value="Left">Left</option>
                                             <option value="Right">Right</option>
@@ -1077,7 +1088,7 @@
                                 <div class="form-group row">
                                     <label class="col-md-3 col-sm-3 control-label" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null, placeholder: 'Ex EmployeeId'}" placeholder="Ex EmployeeId" style="display: none;">Foreign Key Field</label>
                                     <div class="col-md-6 col-sm-6">
-                                        <select class="form-control" id="ForeignKeyField" name="ForeignKeyField" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignKeyField, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" placeholder="Ex EmployeeId" style="display: none;"></select>
+                                        <select class="form-select" id="ForeignKeyField" name="ForeignKeyField" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignKeyField, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" placeholder="Ex EmployeeId" style="display: none;"></select>
                                     </div>
                                     <div class="col-md-3 col-sm-3">
                                         <span data-bind="visible:ForeignKey()" data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Foreign Key field is a Column from the Foreign table which is used as the Key field"></span>
@@ -1088,7 +1099,7 @@
                                 <div class="form-group row">
                                     <label class="col-md-3 col-sm-3 control-label" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null, placeholder: 'Ex EmployeeName'}" placeholder="Ex EmployeeName" style="display: none;">Foreign Value Field</label>
                                     <div class="col-md-6 col-sm-6">
-                                        <select class="form-control" id="ForeignValueField" name="ForeignValueField" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignValueField, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" placeholder="Ex EmployeeName" style="display: none;"></select>
+                                        <select class="form-select" id="ForeignValueField" name="ForeignValueField" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignValueField, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" placeholder="Ex EmployeeName" style="display: none;"></select>
                                     </div>
                                     <div class="col-md-3 col-sm-3">
                                         <span data-bind="visible:ForeignKey()" data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Foreign Value field is a Column from the Foreign table which is used to display the value to the User in the Report Designer"></span>
@@ -1135,7 +1146,7 @@
                                     <div class="form-group row">
                                         <label class="col-md-3 col-sm-3 control-label" data-bind="visible:ForeignParentKey(), attr: {required: ForeignParentKey()?'True':null, placeholder: 'Ex tblEmployees'}" placeholder="Ex tblEmployees" style="display: none;">Parent Table</label>
                                         <div class="col-md-6 col-sm-6">
-                                            <select class="form-control" data-bind="value: ForeignJoinTable, visible:ForeignParentKey(), options: $root.Tables.model, optionsText: 'TableName'" placeholder="Ex tblEmployees" style="display: none;"></select>
+                                            <select class="form-select" data-bind="value: ForeignJoinTable, visible:ForeignParentKey(), options: $root.Tables.model, optionsText: 'TableName'" placeholder="Ex tblEmployees" style="display: none;"></select>
 
                                         </div>
                                         <div class="col-md-3 col-sm-3">
@@ -1148,7 +1159,7 @@
                                     <div class="form-group row">
                                         <label class="col-md-3 col-sm-3 control-label" data-bind="attr: {required: ForeignParentKey()?'True':null, placeholder: 'Ex EmployeeId'}">Parent Key Field</label>
                                         <div class="col-md-6 col-sm-6">
-                                            <select class="form-control" data-bind="options: ForeignJoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignParentKeyField, attr: {required: ForeignParentKey()?'True':null}" placeholder="Ex EmployeeId"></select>
+                                            <select class="form-select" data-bind="options: ForeignJoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignParentKeyField, attr: {required: ForeignParentKey()?'True':null}" placeholder="Ex EmployeeId"></select>
                                         </div>
                                         <div class="col-md-3 col-sm-3">
                                             <span data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" title="Parent Key field is a Column from the Parent table which is used as the key in cascading filters"></span>
@@ -1159,7 +1170,7 @@
                                     <div class="form-group row">
                                         <label class="col-md-3 col-sm-3 control-label" data-bind="attr: {required: ForeignParentKey()?'True':null, placeholder: 'Ex EmployeeName'}">Parent Value Field</label>
                                         <div class="col-md-6 col-sm-6">
-                                            <select class="form-control" data-bind="options: ForeignJoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignParentValueField, attr: {required: ForeignParentKey()?'True':null}" placeholder="Ex EmployeeName"></select>
+                                            <select class="form-select" data-bind="options: ForeignJoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignParentValueField, attr: {required: ForeignParentKey()?'True':null}" placeholder="Ex EmployeeName"></select>
                                         </div>
                                         <div class="col-md-3 col-sm-3">
                                             <span data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" title="Parent Value field is a Column from the Parent table which is used to display the value to the User in the Report Designer for cascading filters"></span>
@@ -1170,7 +1181,7 @@
                                     <div class="form-group row">
                                         <label class="col-md-3 col-sm-3 control-label" data-bind="attr: {required: ForeignParentKey()?'True':null, placeholder: 'Ex EmployeeName'}">Foreign Key Filter Field</label>
                                         <div class="col-md-6 col-sm-6">
-                                            <select class="form-control" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignParentApplyTo, attr: {required: ForeignParentKey()?'True':null}" placeholder="Ex EmployeeName"></select>
+                                            <select class="form-select" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignParentApplyTo, attr: {required: ForeignParentKey()?'True':null}" placeholder="Ex EmployeeName"></select>
                                         </div>
                                         <div class="col-md-3 col-sm-3">
                                             <span data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" title="Foreign Key Filter Value field is a Column from the Foreign table where the selected parent filter will be applied for cascading filters"></span>
@@ -1367,7 +1378,7 @@
                         <div class="form-group row">
                             <label class="col-md-3 col-sm-3 control-label" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null, placeholder: 'Ex tblEmployees'}" placeholder="Ex tblEmployees" style="display: none;">Lookup Table</label>
                             <div class="col-md-6 col-sm-6">
-                                <select class="form-control" data-bind="value: JoinTable, visible:ForeignKey(), options: $root.Procedures.tables, optionsText: 'TableName'" placeholder="Ex tblEmployees" style="display: none;"></select>
+                                <select class="form-select" data-bind="value: JoinTable, visible:ForeignKey(), options: $root.Procedures.tables, optionsText: 'TableName'" placeholder="Ex tblEmployees" style="display: none;"></select>
 
                             </div>
                             <div class="col-md-3 col-sm-3">
@@ -1379,7 +1390,7 @@
                         <div class="form-group row">
                             <label class="col-md-3 col-sm-3 control-label" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null, placeholder: 'Ex EmployeeId'}" placeholder="Ex EmployeeId" style="display: none;">Lookup Key Field</label>
                             <div class="col-md-6 col-sm-6">
-                                <select class="form-control" name="ForeignKeyField" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignKeyField, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" placeholder="Ex EmployeeId" style="display: none;"></select>
+                                <select class="form-select" name="ForeignKeyField" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignKeyField, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" placeholder="Ex EmployeeId" style="display: none;"></select>
                             </div>
                             <div class="col-md-3 col-sm-3">
                                 <span data-bind="visible:ForeignKey()" data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Foreign Key field is a Column from the Foreign table which is used as the Key field"></span>
@@ -1390,7 +1401,7 @@
                         <div class="form-group row">
                             <label class="col-md-3 col-sm-3 control-label" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null, placeholder: 'Ex EmployeeName'}" placeholder="Ex EmployeeName" style="display: none;">Lookup Value Field</label>
                             <div class="col-md-6 col-sm-6">
-                                <select class="form-control" name="ForeignValueField" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignValueField, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" placeholder="Ex EmployeeName" style="display: none;"></select>
+                                <select class="form-select" name="ForeignValueField" data-bind="options: JoinTable().Columns, optionsText: 'ColumnName', optionsValue: 'ColumnName', value: ForeignValueField, visible:ForeignKey(), attr: {required: ForeignKey()?'True':null}" placeholder="Ex EmployeeName" style="display: none;"></select>
                             </div>
                             <div class="col-md-3 col-sm-3">
                                 <span data-bind="visible:ForeignKey()" data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" style="display: none;" title="Lookup Value field is a Column from the Lookup table which is used to display the value to the User in the Report Designer"></span>
@@ -1584,7 +1595,7 @@
                 <div class="form-group row" data-bind="visible: copySchema">
                     <label class="col-md-3 col-sm-3 control-label">Choose Connection</label>
                     <div class="col-md-6 col-sm-6">
-                        <select class="form-control" style="max-width: 300px;" data-bind="options: $root.DataConnections, optionsText: 'DataConnectName', optionsValue: 'DataConnectGuid', value: copyFrom"></select>
+                        <select class="form-select" style="max-width: 300px;" data-bind="options: $root.DataConnections, optionsText: 'DataConnectName', optionsValue: 'DataConnectGuid', value: copyFrom"></select>
                     </div>
                 </div>
             </div>
@@ -1669,6 +1680,8 @@
                     <div data-bind="if: dynamicColumns">
                         <label>Add SQL code to use the dynamic column</label>
                         <textarea class="form-control" style="height: 240px;" name="columnTranslation" data-bind="textInput: columnTranslation" required></textarea>
+                        <label>Pick Values Table</label>
+                        <select class="form-select input-medium" data-bind="options: $root.Tables.availableTables, optionsText: 'DisplayName', optionsValue: 'Id', optionsCaption: 'Choose Values Table...', value: dynamicValuesTableId"></select>
                     </div>
                 </div>
             </div>
