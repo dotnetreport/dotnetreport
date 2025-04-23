@@ -29,6 +29,8 @@ var manageViewModel = function (options) {
 	});
 	self.SettingPage = self.settings;
 
+	self.isDirty = ko.observable(false);
+
 	self.loadFromDatabase = function() {
 		bootbox.confirm("Confirm loading all Tables and Views from the database? Note: This action will discard unsaved changes and it may take some time.", function (r) {
 			if (r) {
@@ -70,6 +72,18 @@ var manageViewModel = function (options) {
 	self.foundProcedures = ko.observableArray([]);
 	self.searchProcedureTerm = ko.observable("");
 	self.Joins = ko.observableArray([]);
+	self.Joins.subscribe(function () {
+		self.isDirty(true);
+	});
+
+	self.trackJoinChanges = function (join) {
+		join.JoinTable.subscribe(() => self.isDirty(true));
+		join.OtherTable.subscribe(() => self.isDirty(true));
+		join.FieldName.subscribe(() => self.isDirty(true));
+		join.JoinFieldName.subscribe(() => self.isDirty(true));
+		join.JoinType.subscribe(() => self.isDirty(true));
+	};
+
 
 	self.currentConnectionKey = ko.observable(self.keys.DatabaseApiKey);
 	self.canSwitchConnection = ko.computed(function () {
@@ -1039,20 +1053,62 @@ var manageViewModel = function (options) {
 				})
 			})
 		}).done(function (result) {
-			self.Joins($.map(result, function (item) {
-				return self.setupJoin(item);
+			self.Joins($.map(result, function (item) {				
+				var join = self.setupJoin(item);
+				self.trackJoinChanges(join);
+				return join;
 			}));
+			self.isDirty(false);
 		});
 	};
 
-	self.AddJoin = function () {
-		self.Joins.push(self.setupJoin({
+	self.showNewJoinRow = ko.observable(false);
+	self.NewJoin = ko.observable(self.setupJoin({
+		TableId: 0,
+		JoinedTableId: 0,
+		JoinType: "INNER",
+		FieldName: "",
+		JoinFieldName: ""
+	}));
+
+	self.ConfirmAddJoin = function () {
+		const join = self.NewJoin();
+
+		if (!join.JoinTable() || !join.OtherTable()) {
+			toastr.error("Please select both Primary Table and Join Table.");
+			return;
+		}
+
+		if (!join.FieldName() || !join.JoinFieldName()) {
+			toastr.error("Please select both join fields.");
+			return;
+		}
+
+		self.trackJoinChanges(join);
+		self.Joins.push(join);
+		// Reset form
+		self.NewJoin(self.setupJoin({
 			TableId: 0,
 			JoinedTableId: 0,
 			JoinType: "INNER",
 			FieldName: "",
 			JoinFieldName: ""
 		}));
+		self.showNewJoinRow(false);
+	};
+
+	self.AddJoin = function () {
+		self.showNewJoinRow(true);
+	};
+
+	self.DeleteVisibleJoins = function () {
+		bootbox.confirm("Are you sure you would like to delete 'All Filtered' Joins?", function (r) {
+			if (r) {
+				const toDelete = self.filteredJoins();
+				self.Joins.removeAll(toDelete);
+				self.isDirty(true);
+			}
+		});
 	};
 
 	self.getJoinsToSave = function () {
@@ -1095,6 +1151,7 @@ var manageViewModel = function (options) {
 				})
 			})
 		}).done(function (result) {
+			self.isDirty(false);
 			if (result == "Success") toastr.success("Changes saved successfully.");
 		});
 	};
@@ -2062,10 +2119,38 @@ var tablesViewModel = function (options, keys, previewData) {
 
 	self.processTable = function (t) {
 		t.availableColumns = ko.computed(function () {
-			return _.filter(t.Columns(), function (e) {
-				return e.Id() > 0 && e.Selected();
+			const columns = [];
+
+			ko.utils.arrayForEach(t.Columns(), function (col) {
+				if (col.Id() > 0 && col.Selected()) {
+					columns.push(col);
+				}
+
+				if (col.FieldType() === "Json" && col.Selected() && col.JsonStructure()) {
+					let jsonFields = {};
+					try {
+						jsonFields = JSON.parse(col.JsonStructure());
+					} catch (e) {
+						return;
+					}
+
+					for (const key in jsonFields) {
+						if (jsonFields.hasOwnProperty(key)) {
+							columns.push({
+								Id: -1,
+								ColumnName: col.ColumnName() + "." + key,
+								DisplayName: col.DisplayName() + " > " + key,
+								ParentJsonColumn: col,
+								FieldType: "JsonField"
+							});
+						}
+					}
+				}
 			});
+
+			return columns;
 		});
+
 
 		_.forEach(t.Columns(), function (e) {
 			var tableMatch = _.filter(self.model(), function (x) { return x.TableName() == e.ForeignTable(); });
@@ -2632,6 +2717,8 @@ var settingPageViewModel = function (options) {
 	self.showEmptyFolders = ko.observable(false);
 	self.allowUsersToManageFolders = ko.observable(true);
 	self.allowUsersToCreateReports = ko.observable(true);
+	self.useAltPdf = ko.observable(false);
+	self.dontXmlExport = ko.observable(false);
 
 	self.appThemes = ko.observableArray([
 		{ name: 'Default', value: 'default' },
@@ -2756,7 +2843,9 @@ var settingPageViewModel = function (options) {
 							noDefaultFolder: self.noDefaultFolder(),
 							showEmptyFolders: self.showEmptyFolders(),
 							allowUsersToManageFolders: self.allowUsersToManageFolders(),
-							allowUsersToCreateReports: self.allowUsersToCreateReports()
+							allowUsersToCreateReports: self.allowUsersToCreateReports(),
+							useAltPdf: self.useAltPdf(),
+							dontXmlExport: self.dontXmlExport()
 						})
 					})
 				})
@@ -2796,7 +2885,12 @@ var settingPageViewModel = function (options) {
 				self.showEmptyFolders(settings.showEmptyFolders);
 				self.allowUsersToManageFolders(settings.allowUsersToManageFolders);
 				self.allowUsersToCreateReports(settings.allowUsersToCreateReports);
+				self.useAltPdf(settings.useAltPdf);
+				self.dontXmlExport(settings.dontXmlExport);
 
+				//// Optionally, you can manually trigger change event for select elements
+				$('#themeSelect').trigger('change');
+				$('#timezoneSelect').trigger('change');
 			} else {
 				toastr.error('Connection Error');
 				return false;

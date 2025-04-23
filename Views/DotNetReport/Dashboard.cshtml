@@ -1,6 +1,7 @@
 ﻿@using System.Configuration
 @{
     Layout = "~/Views/shared/_Layout.Report.cshtml";
+    ViewBag.Title = "Dashboard";
 }
 
 @section head {
@@ -18,7 +19,7 @@
             left: 0 !important;
             width: 100% !important;
             height: 100% !important;
-            z-index: 99993 !important;
+            z-index: 1050 !important;
         }
     </style>
 }
@@ -148,18 +149,42 @@
     </div>
     <div class="clearfix"></div>
     <div class="d-flex align-items-center gap-2">
-        <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard">
-            <i class="fa fa-plus"></i>
-            <span>Add</span>
-        </button>
-        <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: editDashboard">
-            <i class="fa fa-pencil"></i>
-            <span>Edit</span>
-        </button>
         <button class="btn btn-light btn-sm" data-bind="click: RefreshAllReports">
             <i class="fa fa-refresh"></i>
             <span>Refresh</span>
         </button>
+        <div class="dropdown">
+            <button class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fa fa-pencil-square"></i>
+                <span>Manage</span>
+            </button>
+            <ul class="dropdown-menu">
+                <!--<li>
+                    <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard">
+                        <i class="fa fa-plus"></i>
+                        <span>Add New Report</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: editDashboard">
+                        <i class="fa fa-plus"></i>
+                        <span>Add Existing Report</span>
+                    </button>
+                </li>-->
+                <li>
+                    <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard">
+                        <i class="fa fa-plus"></i>
+                        <span>Add New Dashboard</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: editDashboard">
+                        <i class="fa fa-pencil"></i>
+                        <span>Edit this Dashboard</span>
+                    </button>
+                </li>
+            </ul>
+        </div>       
         <div class="dropdown">
             <button class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                 <i class="fa fa-download"></i>
@@ -328,7 +353,7 @@
                                 <span class="fa fa-pencil"></span> Edit
                             </a>
                         </li>
-                        <li class="dropdown dropdown-hover">
+                        <li class="dropdown dropdown-hover" data-bind="visible: ReportType()!='Single'">
                             <a href="#" class="dropdown-toggle dropdown-item">
                                 <span class="fa fa-download"></span> Export
                             </a>
@@ -344,7 +369,7 @@
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="#" class="dropdown-item" data-bind="click: downloadPdf">
+                                    <a href="#" class="dropdown-item" data-bind="click: function() { $parent.appSettings.useAltPdf ? downloadPdfAlt() : downloadPdf() }">
                                         <span class="fa fa-file-pdf-o"></span> PDF
                                     </a>
                                 </li>
@@ -355,9 +380,14 @@
                                 </li>
                             </ul>
                         </li>
-                        <li>
+                        <li data-bind="visible: ReportType()!='Single'">
                             <a class="dropdown-item" data-bind="attr: {href: '/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + ReportID() }" target="_blank">
                                 <span class="fa fa-file"></span> Report
+                            </a>
+                        </li>
+                        <li data-bind="visible: CanEdit() && CanSaveReports()">
+                            <a href="#" class="dropdown-item" data-bind="click: SaveWithoutRun">
+                                <span class="fa fa-save"></span> Save
                             </a>
                         </li>
                         <li>
@@ -380,20 +410,7 @@
                 </div>
             </div>
             <div class="card-body list-overflow-auto" style="padding-top: 0; margin-top: 0;">
-                <div class="btn-group pull-right" role="group" data-bind="visible: ReportType() === 'Bar' || ReportType() === 'Pie' || ReportType() === 'Line'">
-                    <button type="button" class="btn btn-light btn-sm" data-bs-toggle="tooltip" title="Bar Chart"
-                            data-bind="css: { 'active': ReportType() === 'Bar' }, click: function() { ReportType('Bar'); }">
-                        <span class="fa fa-bar-chart"></span>
-                    </button>
-                    <button type="button" class="btn btn-light btn-sm" data-bs-toggle="tooltip" title="Pie Chart"
-                            data-bind="css: { 'active': ReportType() === 'Pie' }, click: function() { ReportType('Pie'); }">
-                        <span class="fa fa-pie-chart"></span>
-                    </button>
-                    <button type="button" class="btn btn-light btn-sm" data-bs-toggle="tooltip" title="Line Chart"
-                            data-bind="css: { 'active': ReportType() === 'Line' }, click: function() { ReportType('Line'); }">
-                        <span class="fa fa-line-chart"></span>
-                    </button>
-                </div>
+                <div data-bind="template: 'chart-settings', data: $data"></div>
                 <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
                 <div data-bind="template: {name: 'fly-filter-template'}, visible: showFlyFilters"></div>
                 <div data-bind="with: ReportResult" class="small">

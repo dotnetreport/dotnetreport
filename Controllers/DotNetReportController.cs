@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using DocumentFormat.OpenXml.Office2016.Drawing.ChartDrawing;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using ReportBuilder.Web.Models;
@@ -130,6 +131,26 @@ namespace ReportBuilder.Web.Controllers
             var combinedPdf = DotNetReportHelper.GetCombinePdfFile(pdfBytesList);
             return File(combinedPdf, "application/pdf", "CombinedReports.pdf");
         }
+
+        [HttpPost]
+        public async Task<IActionResult> DownloadAllPdfAlt(string reportdata)
+        {
+            var pdfBytesList = new List<byte[]>();
+            var ListofReports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
+
+            foreach (var report in ListofReports)
+            {
+                report.reportSql = HttpUtility.HtmlDecode(report.reportSql);
+                report.chartData = HttpUtility.UrlDecode(report.chartData)?.Replace(" ", " +");
+                var columns = report.columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(report.columnDetails));
+
+                var pdf = await DotNetReportHelper.GetPdfFileAlt(report.reportSql, report.connectKey, HttpUtility.UrlDecode(report.reportName), report.chartData, report.expandAll, report.expandSqls, columns, report.includeSubTotal, report.pivot, report.pivotColumn, report.pivotFunction);
+                pdfBytesList.Add(pdf);
+            }
+            var combinedPdf = DotNetReportHelper.GetCombinePdfFile(pdfBytesList);
+            return File(combinedPdf, "application/pdf", "CombinedReports.pdf");
+        }
+
         [HttpPost]
         public async Task<IActionResult> DownloadAllExcel(string reportdata)
         {
@@ -169,20 +190,20 @@ namespace ReportBuilder.Web.Controllers
             return File(combinedWord, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "CombinedReports.docx");
         }
         [HttpPost]
-        public async Task<IActionResult> DownloadWord(string reportSql, string connectKey, string reportName,  bool allExpanded, string expandSqls, string chartData = null, string columnDetails = null, bool includeSubtotal = false, bool pivot = false,string pivotColumn= null, string pivotFunction = null)
+        public async Task<IActionResult> DownloadWord(string reportSql, string connectKey, string reportName, bool allExpanded, string expandSqls, string chartData = null, string columnDetails = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn= null, string pivotFunction = null)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
-            var word = await DotNetReportHelper.GetWordFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName),chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot,pivotColumn,pivotFunction);
+            var word = await DotNetReportHelper.GetWordFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction);
             Response.Headers.Add("content-disposition", "attachment; filename=" + reportName + ".docx");
             Response.ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
             return File(word, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", reportName + ".docx");
         }
 
         [HttpPost]
-        public async Task<IActionResult> DownloadPdfAlt(string reportSql, string connectKey, string reportName, string chartData = null, string columnDetails = null, bool includeSubtotal = false, bool pivot = false)
+        public async Task<IActionResult> DownloadPdfAlt(string reportSql, string connectKey, string reportName, bool allExpanded, string expandSqls, string chartData = null, string columnDetails = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
             chartData = HttpUtility.UrlDecode(chartData);
@@ -190,17 +211,18 @@ namespace ReportBuilder.Web.Controllers
             reportName = HttpUtility.UrlDecode(reportName);
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
 
-            var pdf = DotNetReportHelper.GetPdfFileAlt(reportSql, connectKey, reportName, chartData, columns, includeSubtotal, pivot);
+            var pdf = await DotNetReportHelper.GetPdfFileAlt(reportSql, connectKey, reportName, chartData, allExpanded, expandSqls, columns, includeSubtotal, pivot, pivotColumn, pivotFunction);
 
             return File(pdf, "application/pdf", reportName + ".pdf");
         }
 
         [HttpPost]
-        public async Task<IActionResult> DownloadCsv(string reportSql, string connectKey, string reportName, string columnDetails = null, bool includeSubtotal = false,string expandSqls= null, string pivotColumn = null, string pivotFunction = null)
+        public async Task<IActionResult> DownloadCsv(string reportSql, string connectKey, string reportName, bool allExpanded, string expandSqls, string chartData = null, string columnDetails = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
         {
-            var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            var csv = await DotNetReportHelper.GetCSVFile(reportSql, HttpUtility.UrlDecode(connectKey), columns, includeSubtotal,expandSqls,pivotColumn,pivotFunction);
+            var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
+            
+            var csv = await DotNetReportHelper.GetCSVFile(reportSql, HttpUtility.UrlDecode(connectKey), columns, includeSubtotal, expandSqls, pivot, pivotColumn, pivotFunction);
 
             Response.Headers.Add("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".csv");
             Response.ContentType = "text/csv";

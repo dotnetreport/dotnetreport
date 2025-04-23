@@ -298,7 +298,7 @@ namespace ReportBuilder.Web.Controllers
                         }
                         else
                         {
-                            sqlCount = $"SELECT COUNT(*) FROM ({(sqlFrom.Contains("ORDER BY", StringComparison.OrdinalIgnoreCase) ? sqlFrom.Substring(0, sqlFrom.IndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase)) : sqlFrom)}) AS countQry";
+                            sqlCount = $"SELECT COUNT(*) FROM ({(sqlFrom.Contains("ORDER BY", StringComparison.OrdinalIgnoreCase) ? sqlFrom.Substring(0, sqlFrom.LastIndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase)) : sqlFrom)}) AS countQry";
                         }
                         if (!String.IsNullOrEmpty(sortBy))
                         {
