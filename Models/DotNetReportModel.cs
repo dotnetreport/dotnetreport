@@ -30,7 +30,6 @@ using System.Collections.Concurrent;
 using A = DocumentFormat.OpenXml.Drawing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
-using System.Data.SqlClient;
 using static ReportBuilder.Web.Controllers.DotNetReportApiController;
 using PdfSharp.Pdf.IO;
 
@@ -1895,7 +1894,7 @@ namespace ReportBuilder.Web.Models
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
             var dt = databaseConnection.ExecuteQuery(connectionString, sql, qry.parameters);
-
+            
             return (dt, qry, sqlFields);
         }
 
@@ -2158,80 +2157,83 @@ namespace ReportBuilder.Web.Models
             double columnWidth = Math.Max(100, 100f);
 
             double totalWidth = dt.Columns.Count * columnWidth + leftMargin + rightMargin;
-            var page = document.AddPage();
-            page.Width = totalWidth;
-            var gfx = XGraphics.FromPdfPage(page);
-            var tfx = new XTextFormatter(gfx);
+            PdfPage page = null;
+            XGraphics gfx = null;
+            XTextFormatter tfx = null;
 
             if (pivot)
             {
                 dt = Transpose(dt);
-                page.Orientation = PageOrientation.Landscape;
             }
 
             DataTableToDotNetReportDataModel(dt, sqlFields, false);
 
-            double pageHeight = page.Height.Point - 50;
+            double pageHeight = 0;
             var subTotals = new decimal[dt.Columns.Count];
 
             using (var ms = new MemoryStream())
             {
                 Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
                 var fontNormal = new XFont("Arial", 11, XFontStyleEx.Regular);
-                var fontBold = new XFont("Arial", 12, XFontStyleEx.Bold);
+                var fontBold = new XFont("Arial", 11, XFontStyleEx.Bold);
                 var currentYPosition = 30;
                 var currentXPosition = leftMargin;
                 double cellPadding = 3;
                 XRect rect = new XRect();
 
-                gfx.DrawString(reportName,
-                    new XFont("Arial", 14, XFontStyleEx.Bold), XBrushes.Black,
-                    new XRect(0, currentYPosition, page.Width, 30),
-                    XStringFormats.Center);
-
-                currentYPosition += 40;
-
-                if (!string.IsNullOrEmpty(chartData) && chartData != "undefined")
-                {
-                    byte[] sPDFDecoded = Convert.FromBase64String(chartData.Substring(chartData.LastIndexOf(',') + 1));
-                    var imageStream = new MemoryStream(sPDFDecoded, 0, sPDFDecoded.Length, false, true);
-                    var image = XImage.FromStream(imageStream);
-                    var maxWidth = page.Width - 100;
-                    var maxHeight = page.Height - currentYPosition - 20;
-
-                    if (image.PixelWidth > maxWidth || image.PixelHeight > maxHeight)
-                    {
-                        var aspectRatio = (double)image.PixelWidth / image.PixelHeight;
-                        var width = maxWidth;
-                        var height = maxWidth / aspectRatio;
-
-                        if (height > maxHeight)
-                        {
-                            height = maxHeight;
-                            width = maxHeight * aspectRatio;
-                        }
-
-                        rect = new XRect(50, currentYPosition, width, height);
-                        gfx.DrawImage(image, rect);
-                    }
-                    else
-                    {
-                        rect = new XRect(50, currentYPosition, image.PixelWidth, image.PixelHeight);
-                        gfx.DrawImage(image, rect);
-                    }
-
-                    currentYPosition += (int)rect.Height + 20;
-                }
-
-                void AddNewPageWithHeaders()
+                void AddNewPageWithHeaders(bool firstPage = false)
                 {
                     page = document.AddPage();
                     page.Width = totalWidth;
+                    pageHeight = page.Height.Point - 50;
                     gfx = XGraphics.FromPdfPage(page);
                     tfx = new XTextFormatter(gfx);
                     currentYPosition = 20;
 
+                    if (firstPage)
+                    {
+                        gfx.DrawString(reportName,
+                            new XFont("Arial", 14, XFontStyleEx.Bold), XBrushes.Black,
+                            new XRect(0, currentYPosition, page.Width, 30),
+                            XStringFormats.Center);
+
+                        currentYPosition += 40;
+
+                        if (!string.IsNullOrEmpty(chartData) && chartData != "undefined")
+                        {
+                            byte[] sPDFDecoded = Convert.FromBase64String(chartData.Substring(chartData.LastIndexOf(',') + 1));
+                            var imageStream = new MemoryStream(sPDFDecoded, 0, sPDFDecoded.Length, false, true);
+                            var image = XImage.FromStream(imageStream);
+                            var maxWidth = page.Width - 100;
+                            var maxHeight = page.Height - currentYPosition - 20;
+
+                            if (image.PixelWidth > maxWidth || image.PixelHeight > maxHeight)
+                            {
+                                var aspectRatio = (double)image.PixelWidth / image.PixelHeight;
+                                var width = maxWidth;
+                                var height = maxWidth / aspectRatio;
+
+                                if (height > maxHeight)
+                                {
+                                    height = maxHeight;
+                                    width = maxHeight * aspectRatio;
+                                }
+
+                                rect = new XRect(50, currentYPosition, width, height);
+                                gfx.DrawImage(image, rect);
+                            }
+                            else
+                            {
+                                rect = new XRect(50, currentYPosition, image.PixelWidth, image.PixelHeight);
+                                gfx.DrawImage(image, rect);
+                            }
+
+                            currentYPosition += (int)rect.Height + 20;
+                        }
+                    }
+
                     currentXPosition = leftMargin;
+
                     for (int k = 0; k < dt.Columns.Count; k++)
                     {
                         var columnFormatting = columns[k];
@@ -2242,10 +2244,11 @@ namespace ReportBuilder.Web.Models
                         tfx.DrawString(columnName, fontBold, GetBrushWithColor(), rect, XStringFormats.TopLeft);
                         currentXPosition += (int) columnWidth;
                     }
+
                     currentYPosition += 20;
                 }
-
-                AddNewPageWithHeaders();
+                
+                AddNewPageWithHeaders(true);
 
                 for (int i = 0; i < dt.Rows.Count; i++)
                 {
@@ -2256,18 +2259,12 @@ namespace ReportBuilder.Web.Models
                         var value = dt.Rows[i][j].ToString();
                         var dc = dt.Columns[j];
                         var tempVal = value;
-                        var formatColumn = GetColumnFormatting(dc, columns, ref tempVal);
                         var lines = WrapText(gfx, tempVal, new XRect(0, 0, columnWidth, 9999), fontNormal, XStringFormats.Center);
                         maxLines = Math.Max(maxLines, lines.Count);
 
-                        if (formatColumn.isNumeric && !formatColumn.dontSubTotal)
-                        {
-                            if (decimal.TryParse(value, out decimal decVal))
-                                subTotals[j] += decVal;
-                        }
                     }
 
-                    int rowHeight = 20 * maxLines;
+                    int rowHeight = (int)((fontNormal.Height + cellPadding * 2) * maxLines);
 
                     if (currentYPosition + rowHeight > pageHeight)
                     {
@@ -2279,8 +2276,15 @@ namespace ReportBuilder.Web.Models
                     {
                         var value = dt.Rows[i][j].ToString();
                         var dc = dt.Columns[j];
-                        var formatColumn = GetColumnFormatting(dc, columns, ref value);
-                        var lines = WrapText(gfx, value, new XRect(0, 0, columnWidth, 9999), fontNormal, XStringFormats.Center);
+                        var tempVal = GetFormattedValue(dc, dt.Rows[i], null, false);
+                        var formatColumn = GetColumnFormatting(dc, columns, ref tempVal);
+                        var lines = WrapText(gfx, tempVal, new XRect(0, 0, columnWidth, 9999), fontNormal, XStringFormats.Center);
+                        
+                        if (formatColumn.isNumeric && !formatColumn.dontSubTotal)
+                        {
+                            if (decimal.TryParse(value, out decimal decVal))
+                                subTotals[j] += decVal;
+                        }
 
                         rect = new XRect(currentXPosition, currentYPosition, columnWidth, rowHeight);
                         gfx.DrawRectangle(XPens.WhiteSmoke, rect);
@@ -2312,7 +2316,6 @@ namespace ReportBuilder.Web.Models
 
                 if (includeSubtotal)
                 {
-                    currentYPosition += 10;
                     currentXPosition = leftMargin;
 
                     for (int j = 0; j < dt.Columns.Count; j++)
