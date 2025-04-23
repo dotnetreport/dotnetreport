@@ -5169,11 +5169,11 @@ var reportViewModel = function (options) {
 		});
 	}
 
-	self.downloadPdfAlt = function () {
+	self.getExportJson = function () {
 		var reportData = self.BuildReportData();
 		reportData.DrillDownRowUsePlaceholders = true;
 		var pivotData = self.preparePivotData();
-		self.downloadExport("DownloadPdfAlt", {
+		return {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
@@ -5185,7 +5185,12 @@ var reportViewModel = function (options) {
 			pivot: self.ReportType() == 'Pivot',
 			pivotColumn: pivotData.pivotColumn,
 			pivotFunction: pivotData.pivotFunction,
-		}, 'pdf');
+		};
+	}
+
+	self.downloadPdfAlt = function () {
+		var data = self.getExportJson();
+		self.downloadExport("DownloadPdfAlt", data, 'pdf');
 	}
 
 	self.downloadPdf = function (debug) {
@@ -5241,54 +5246,20 @@ var reportViewModel = function (options) {
 	}
 
 	self.downloadCsv = function () {
-		var reportData = self.BuildReportData();
-		reportData.DrillDownRowUsePlaceholders = true;
-		var pivotData = self.preparePivotData();
-		self.downloadExport("DownloadCsv", {
-			reportSql: self.currentSql(),
-			connectKey: self.currentConnectKey(),
-			reportName: self.ReportName(),
-			columnDetails: self.getColumnDetails(),
-			includeSubTotal: self.IncludeSubTotal(),
-			expandSqls: JSON.stringify(reportData),
-			pivotColumn: pivotData.pivotColumn,
-			pivotFunction: pivotData.pivotFunction,
-		}, 'csv');
+		var data = self.getExportJson();
+		self.downloadExport("DownloadCsv", data, 'csv');
 	}
 	self.downloadReportJson = function () {
 		var reportData = self.BuildReportData();
 		downloadJson(JSON.stringify(reportData, null, 2), self.ReportName(), 'application/json')
 	};
 	self.downloadXml = function () {
-		var reportData = self.BuildReportData();
-		reportData.DrillDownRowUsePlaceholders = true;
-		var pivotData = self.preparePivotData();
-		self.downloadExport("DownloadXml", {
-			reportSql: self.currentSql(),
-			connectKey: self.currentConnectKey(),
-			reportName: self.ReportName(),
-			expandSqls: JSON.stringify(reportData),
-			pivotColumn: pivotData.pivotColumn,
-			pivotFunction: pivotData.pivotFunction,
-		}, 'xml');
+		var data = self.getExportJson();
+		self.downloadExport("DownloadXml", data, 'xml');
 	}
 	self.downloadWord = function () {
-		var reportData = self.BuildReportData();
-		reportData.DrillDownRowUsePlaceholders = true;
-		var pivotData = self.preparePivotData();
-		self.downloadExport("DownloadWord", {
-			reportSql: self.currentSql(),
-			connectKey: self.currentConnectKey(),
-			reportName: self.ReportName(),
-			allExpanded: false,
-			expandSqls: JSON.stringify(reportData),
-			chartData: self.ChartData() || '',
-			columnDetails: self.getColumnDetails(),
-			includeSubTotal: self.IncludeSubTotal(),
-			pivot: self.ReportType() == 'Pivot',
-			pivotColumn: pivotData.pivotColumn ,
-			pivotFunction: pivotData.pivotFunction,
-		}, 'docx');
+		var data = self.getExportJson();		
+		self.downloadExport("DownloadWord", data, 'docx');
 	}
 	self.preparePivotData = function () {
 		var pivotColumn = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot'; });

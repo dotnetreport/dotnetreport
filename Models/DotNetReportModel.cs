@@ -2144,9 +2144,9 @@ namespace ReportBuilder.Web.Models
             return lines;
         }
 
-        public async static Task<byte[]> GetPdfFileAlt(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
+        private async static Task<DataTable> BuildExportData(string reportSql, string connectKey, string expandSqls = null, List<ReportHeaderColumn> columns = null, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
         {
+
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
             var data = GetDataTable(reportSql, connectKey);
@@ -2155,9 +2155,8 @@ namespace ReportBuilder.Web.Models
             var sqlFields = data.sqlFields;
             var dt = data.dt;
             RemoveColumnsBySubstring(dt, "__prm__");
-            var subTotals = new decimal[dt.Columns.Count];
 
-          
+
             if (pivot) dt = Transpose(dt);
 
             if (columns?.Count > 0)
@@ -2179,19 +2178,27 @@ namespace ReportBuilder.Web.Models
             {
                 if (!useAltPivot)
                 {
-                    var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
+                    var pd = await GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
                     dt = pd.dt;
                     if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
                 }
                 else
                 {
-                    var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
-                    dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);
+                    var ds = await GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
+                    dt = PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);
                 }
-                subTotals = new decimal[dt.Columns.Count];
-                allExpanded = false;
             }
 
+            return dt;
+        }
+
+        public async static Task<byte[]> GetPdfFileAlt(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
+            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
+        {
+
+            var dt = await BuildExportData(reportSql, connectKey, expandSqls, columns, pivot, pivotColumn, pivotFunction);
+            var subTotals = new decimal[dt.Columns.Count];
+            
             var document = new PdfDocument();
             int leftMargin = 40;
             int rightMargin = 40;
@@ -2382,49 +2389,8 @@ namespace ReportBuilder.Web.Models
         public static async Task<byte[]> GetWordFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
             string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
         {
-            var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
-            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
-            var data = GetDataTable(reportSql, connectKey);
-
-            var qry = data.qry;
-            var sqlFields = data.sqlFields;
-            var dt = data.dt;
-            RemoveColumnsBySubstring(dt, "__prm__");
+            var dt = await BuildExportData(reportSql, connectKey, expandSqls, columns, pivot, pivotColumn, pivotFunction);           
             var subTotals = new decimal[dt.Columns.Count];
-
-            if (pivot) dt = Transpose(dt);
-
-            if (columns?.Count > 0)
-            {
-                foreach (var col in columns)
-                {
-                    if (dt.Columns.Contains(col.fieldName) && col.hideStoredProcColumn)
-                    {
-                        dt.Columns.Remove(col.fieldName);
-                    }
-                    else if (!String.IsNullOrWhiteSpace(col.fieldLabel))
-                    {
-                        dt.Columns[col.fieldName].ColumnName = col.fieldLabel;
-                    }
-                }
-            }
-
-            if (!string.IsNullOrEmpty(pivotColumn))
-            {
-                if (!useAltPivot)
-                {
-                    var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
-                    dt = pd.dt;
-                    if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
-                }
-                else
-                {
-                    var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
-                    dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);                    
-                }
-                subTotals = new decimal[dt.Columns.Count];
-                allExpanded = false;
-            }
 
             using (MemoryStream memStream = new MemoryStream())
             {
@@ -2998,31 +2964,11 @@ namespace ReportBuilder.Web.Models
                 }
             }
         }
-        public static async Task<byte[]> GetCSVFile(string reportSql, string connectKey, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, string expandSqls = null, string pivotColumn = null, string pivotFunction = null)
+        public static async Task<byte[]> GetCSVFile(string reportSql, string connectKey, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, string expandSqls = null, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
         {
-            var data = GetDataTable(reportSql, connectKey);
-            var dt = data.dt;
+            var dt = await BuildExportData(reportSql, connectKey, expandSqls, columns, pivot, pivotColumn, pivotFunction);
             var subTotals = new decimal[dt.Columns.Count];
-            var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
-            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
-            var qry = data.qry;
-            var sqlFields = data.sqlFields;
-            
-            if (!string.IsNullOrEmpty(pivotColumn))
-            {
-                if (!useAltPivot)
-                {
-                    var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
-                    dt = pd.dt;
-                    if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
-                }
-                else
-                {
-                    var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
-                    dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);
-                }
-                subTotals = new decimal[dt.Columns.Count];
-            }
+
             //Build the CSV file data as a Comma separated string.
             string csv = string.Empty;
             for (int i = 0; i < dt.Columns.Count; i++)
