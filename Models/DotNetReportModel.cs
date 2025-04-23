@@ -2184,7 +2184,7 @@ namespace ReportBuilder.Web.Models
                 void AddNewPageWithHeaders(bool firstPage = false)
                 {
                     page = document.AddPage();
-                    page.Width = totalWidth;
+                    if (totalWidth > page.Width) page.Width = totalWidth;
                     pageHeight = page.Height.Point - 50;
                     gfx = XGraphics.FromPdfPage(page);
                     tfx = new XTextFormatter(gfx);
@@ -2236,12 +2236,12 @@ namespace ReportBuilder.Web.Models
 
                     for (int k = 0; k < dt.Columns.Count; k++)
                     {
-                        var columnFormatting = columns[k];
+                        var columnFormatting = columns.Count > k ? columns[k] : new ReportHeaderColumn();
                         var columnName = !string.IsNullOrEmpty(columnFormatting.fieldLabel) ? columnFormatting.fieldLabel : columnFormatting.fieldName;
                         rect = new XRect(currentXPosition, currentYPosition, columnWidth, 20);
                         gfx.DrawRectangle(XPens.LightGray, rect);
                         rect.Inflate(-cellPadding, -cellPadding);
-                        tfx.DrawString(columnName, fontBold, GetBrushWithColor(), rect, XStringFormats.TopLeft);
+                        tfx.DrawString(columnName ?? "", fontBold, GetBrushWithColor(), rect, XStringFormats.TopLeft);
                         currentXPosition += (int) columnWidth;
                     }
 

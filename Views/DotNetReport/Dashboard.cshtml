@@ -369,7 +369,7 @@
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="#" class="dropdown-item" data-bind="click: downloadPdf">
+                                    <a href="#" class="dropdown-item" data-bind="click: function() { $parent.appSettings.useAltPdf ? downloadPdfAlt() : downloadPdf() }">
                                         <span class="fa fa-file-pdf-o"></span> PDF
                                     </a>
                                 </li>
