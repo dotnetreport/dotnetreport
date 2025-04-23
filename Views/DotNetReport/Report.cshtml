@@ -259,20 +259,7 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
                             <div class="report-canvas">
                                 <div class="report-container">
                                     <div class="report-inner">
-                                        <div class="btn-group pull-right" role="group" data-bind="visible: ReportType() === 'Bar' || ReportType() === 'Pie' || ReportType() === 'Line'">
-                                            <button type="button" class="btn btn-light" data-bs-toggle="tooltip" title="Bar Chart"
-                                                    data-bind="css: { 'active': ReportType() === 'Bar' }, click: function() { ReportType('Bar'); }">
-                                                <span class="fa fa-bar-chart"></span>
-                                            </button>
-                                            <button type="button" class="btn btn-light" data-bs-toggle="tooltip" title="Pie Chart"
-                                                    data-bind="css: { 'active': ReportType() === 'Pie' }, click: function() { ReportType('Pie'); }">
-                                                <span class="fa fa-pie-chart"></span>
-                                            </button>
-                                            <button type="button" class="btn btn-light" data-bs-toggle="tooltip" title="Line Chart"
-                                                    data-bind="css: { 'active': ReportType() === 'Line' }, click: function() { ReportType('Line'); }">
-                                                <span class="fa fa-line-chart"></span>
-                                            </button>
-                                        </div>
+                                        <div data-bind="template: 'chart-settings', data: $data"></div>
                                         <div class="canvas-container">
                                             <canvas id="report-header" width="900" height="120" data-bind="visible: useReportHeader"></canvas>
                                         </div>
