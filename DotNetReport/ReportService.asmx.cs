@@ -520,6 +520,28 @@ namespace ReportBuilder.WebForms.DotNetReport
         }
 
         [WebMethod(EnableSession = true)]
+        public async Task DownloadAllPdfAlt(string reportdata)
+        {
+            var pdfBytesList = new List<byte[]>();
+            var ListofReports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
+            foreach (var report in ListofReports)
+            {
+                report.reportSql = HttpUtility.HtmlDecode(report.reportSql);
+                report.chartData = HttpUtility.UrlDecode(report.chartData)?.Replace(" ", " +");
+                var columns = report.columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(report.columnDetails));
+
+                var pdf = await DotNetReportHelper.GetPdfFileAlt(report.reportSql, report.connectKey, HttpUtility.UrlDecode(report.reportName), report.chartData, report.expandAll, report.expandSqls, columns, report.includeSubTotal, report.pivot, report.pivotColumn, report.pivotFunction);
+                pdfBytesList.Add(pdf);
+            }
+            var combinedPdf = DotNetReportHelper.GetCombinePdfFile(pdfBytesList);
+
+            Context.Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode("Dashboard") + ".pdf");
+            Context.Response.ContentType = "application/pdf";
+            Context.Response.BinaryWrite(combinedPdf);
+            Context.Response.End();
+        }
+
+        [WebMethod(EnableSession = true)]
         public async Task DownloadAllExcel(string reportdata)
         {
             var excelbyteList = new List<byte[]>();
@@ -622,7 +644,7 @@ namespace ReportBuilder.WebForms.DotNetReport
         }
 
         [WebMethod(EnableSession = true)]
-        public void DownloadPdfAlt(string reportSql, string connectKey, string reportName, string chartData = null, string columnDetails = null, bool includeSubtotal = false)
+        public async Task DownloadPdfAlt(string reportSql, string connectKey, string reportName, bool allExpanded, string expandSqls, string chartData = null, string columnDetails = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
             chartData = HttpUtility.UrlDecode(chartData);
@@ -630,7 +652,7 @@ namespace ReportBuilder.WebForms.DotNetReport
             reportName = HttpUtility.UrlDecode(reportName);
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
 
-            var pdf = DotNetReportHelper.GetPdfFileAlt(reportSql, connectKey, reportName, chartData, columns, includeSubtotal);
+            var pdf = await DotNetReportHelper.GetPdfFileAlt(reportSql, connectKey, reportName, chartData, allExpanded, expandSqls, columns, includeSubtotal, pivot, pivotColumn, pivotFunction);
             Context.Response.AddHeader("content-disposition", "attachment; filename=" + reportName + ".pdf");
             Context.Response.ContentType = "application/pdf";
             Context.Response.BinaryWrite(pdf);
@@ -638,11 +660,11 @@ namespace ReportBuilder.WebForms.DotNetReport
         }
 
         [WebMethod(EnableSession = true)]
-        public async Task DownloadCsv(string reportSql, string connectKey, string reportName, string columnDetails = null, bool includeSubtotal = false, string expandSqls = null, string pivotColumn = null, string pivotFunction = null)
+        public async Task DownloadCsv(string reportSql, string connectKey, string reportName, string columnDetails = null, bool includeSubtotal = false, string expandSqls = null, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
         {
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            var csv = await DotNetReportHelper.GetCSVFile(reportSql, HttpUtility.UrlDecode(connectKey), columns, includeSubtotal, expandSqls, pivotColumn, pivotFunction);
+            var csv = await DotNetReportHelper.GetCSVFile(reportSql, HttpUtility.UrlDecode(connectKey), columns, includeSubtotal, expandSqls, pivot, pivotColumn, pivotFunction);
 
             Context.Response.ClearContent();
             Context.Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".csv");

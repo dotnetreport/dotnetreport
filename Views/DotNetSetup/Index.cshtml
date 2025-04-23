@@ -201,7 +201,75 @@
                     </div>
                 </div>
             </div>
-        </div>
+
+            <br />
+            <br />
+            <div class="card">
+                <div class="card-header">
+                    <b>Account Level Settings</b>
+                </div>
+                <div class="card-body">
+                    <div data-bind="with: settings">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="useClientIdInAdmin" data-bind="checked: useClientIdInAdmin">
+                                    <label class="form-check-label" for="useClientIdInAdmin">Use Client ID in Admin</label>
+                                    <small class="text-muted d-block">Enable this to use client IDs in the admin panel.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="useSqlBuilderInAdminMode" data-bind="checked: useSqlBuilderInAdminMode">
+                                    <label class="form-check-label" for="useSqlBuilderInAdminMode">Use SQL Builder in Admin Mode</label>
+                                    <small class="text-muted d-block">Allows SQL query builder access in admin mode.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="useSqlCustomField" data-bind="checked: useSqlCustomField">
+                                    <label class="form-check-label" for="useSqlCustomField">Use SQL in Custom Field</label>
+                                    <small class="text-muted d-block">Allows the use of SQL expressions in custom fields.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check" data-bind="visible: false">
+                                    <input type="checkbox" class="form-check-input" id="noFolders" data-bind="checked: noFolders">
+                                    <label class="form-check-label" for="noFolders">No Folders</label>
+                                    <small class="text-muted d-block">Disables the use of folders in the application.</small>
+                                </div>
+                                <div class="form-check" data-bind="visible: false">
+                                    <input type="checkbox" class="form-check-input" id="noDefaultFolder" data-bind="checked: noDefaultFolder">
+                                    <label class="form-check-label" for="noDefaultFolder">No Default Folder</label>
+                                    <small class="text-muted d-block">Removes the Default folder.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: showEmptyFolders">
+                                    <label class="form-check-label">Show Empty Folders</label>
+                                    <small class="text-muted d-block">Will show empty folders for non admin users.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="allowUsersToManageFolders" data-bind="checked: allowUsersToManageFolders">
+                                    <label class="form-check-label" for="allowUsersToManageFolders">Allow All Users to Manage Folders</label>
+                                    <small class="text-muted d-block">Grants users permission to organize and manage folders even when not in Admin Mode.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="allowUsersToCreateReports" data-bind="checked: allowUsersToCreateReports">
+                                    <label class="form-check-label" for="allowUsersToCreateReports">Allow All Users to Create Reports</label>
+                                    <small class="text-muted d-block">Permits users to generate and customize reports even when not in Admin Mode.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: useAltPdf">
+                                    <label class="form-check-label">PDF Export without Chromium</label>
+                                    <small class="text-muted d-block">Use alternate PDF export method that doesn't rely on Chromium'.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: dontXmlExport">
+                                    <label class="form-check-label">Hide XML Export option</label>
+                                    <small class="text-muted d-block">Remove XML Export option, as it's not common for all users'.</small>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" id="saveAppSettings" class="btn btn-primary" data-bind="click: saveAppSettings">Save</button>
+                    </div>
+                </div>
+            </div>
 
         <div role="tabpanel" class="tab-pane active" id="tablesfields">
             <b data-bind="text: customTableMode() ? 'Custom Tables' : 'Database Tables'"></b>
@@ -379,13 +447,18 @@
             <button class="btn btn-sm btn-primary" data-bind="click: AddJoin">Add new Join</button>&nbsp;
             <button class="btn btn-sm btn-primary" data-bind="click: SaveJoins">Save Joins</button>&nbsp;
             <button class="btn btn-sm btn-primary" data-bind="click: visualizeJoins">Visualize Joins</button>&nbsp;
+            <button class="btn btn-sm btn-primary" data-bind="click: DeleteVisibleJoins">Delete Joins</button>&nbsp;
             <button class="btn btn-sm btn-primary" data-bind="click: ExportJoins">Export Joins</button>&nbsp;
             <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadJoinsFileModal" aria-haspopup="true" aria-expanded="false">
                 <span class="fa fa-file"></span> Import Joins
             </button>
             <br />
             <br />
-            <form id="form-joins">
+            <div id="form-joins">
+                <div class="alert alert-warning" data-bind="visible: isDirty">
+                    You have unsaved changes. Please be sure to click <b>Save Joins</b> to save your changes.
+                </div>
+
                 <table class="table">
                     <thead data-bind="with: JoinFilters">
                         <tr>
@@ -441,6 +514,28 @@
                             <th></th>
                         </tr>
                     </thead>
+                    <tbody>
+                        <tr class="table-info" data-bind="if: showNewJoinRow">
+                            <td>
+                                <select class="form-select input-medium" data-bind="options: Tables.availableTables, optionsText: 'DisplayName', value: NewJoin().JoinTable, optionsCaption: 'Pick a table...'"></select>
+                            </td>
+                            <td data-bind="with: NewJoin().JoinTable">
+                                <select class="form-select" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsCaption: 'Pick a field...', optionsValue: 'ColumnName', value: $root.NewJoin().FieldName"></select>
+                            </td>
+                            <td>
+                                <select class="form-select input-small" data-bind="options: $root.JoinTypes, value: NewJoin().JoinType"></select>
+                            </td>
+                            <td>
+                                <select class="form-select input-medium" data-bind="options: NewJoin().OtherTables, optionsText: 'DisplayName', value: NewJoin().OtherTable, optionsCaption: 'Pick a table...'"></select>
+                            </td>
+                            <td data-bind="with: NewJoin().OtherTable">
+                                <select class="form-select" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsValue: 'ColumnName', value: $root.NewJoin().JoinFieldName, optionsCaption: 'Pick a field...'"></select>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-success" data-bind="click: ConfirmAddJoin">+ Add Join</button>
+                            </td>
+                        </tr>
+                    </tbody>
                     <tbody data-bind="foreach: pagedJoins">
                         <tr>
                             <td>
@@ -469,7 +564,7 @@
                         <div data-bind="template: 'pager-template', data: $data"></div>
                     </div>
                 </div>
-            </form>
+            </div>
             <br />
             <br />
         </div>
