@@ -2144,12 +2144,53 @@ namespace ReportBuilder.Web.Models
             return lines;
         }
 
-        public static byte[] GetPdfFileAlt(string reportSql, string connectKey, string reportName, string chartData = null,
-                 List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false)
+        public async static Task<byte[]> GetPdfFileAlt(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
+            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
         {
+            var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
+            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
             var data = GetDataTable(reportSql, connectKey);
+
+            var qry = data.qry;
             var sqlFields = data.sqlFields;
             var dt = data.dt;
+            RemoveColumnsBySubstring(dt, "__prm__");
+            var subTotals = new decimal[dt.Columns.Count];
+
+          
+            if (pivot) dt = Transpose(dt);
+
+            if (columns?.Count > 0)
+            {
+                foreach (var col in columns)
+                {
+                    if (dt.Columns.Contains(col.fieldName) && col.hideStoredProcColumn)
+                    {
+                        dt.Columns.Remove(col.fieldName);
+                    }
+                    else if (!String.IsNullOrWhiteSpace(col.fieldLabel))
+                    {
+                        dt.Columns[col.fieldName].ColumnName = col.fieldLabel;
+                    }
+                }
+            }
+
+            if (!string.IsNullOrEmpty(pivotColumn))
+            {
+                if (!useAltPivot)
+                {
+                    var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
+                    dt = pd.dt;
+                    if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
+                }
+                else
+                {
+                    var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
+                    dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);
+                }
+                subTotals = new decimal[dt.Columns.Count];
+                allExpanded = false;
+            }
 
             var document = new PdfDocument();
             int leftMargin = 40;
@@ -2161,15 +2202,7 @@ namespace ReportBuilder.Web.Models
             XGraphics gfx = null;
             XTextFormatter tfx = null;
 
-            if (pivot)
-            {
-                dt = Transpose(dt);
-            }
-
-            DataTableToDotNetReportDataModel(dt, sqlFields, false);
-
             double pageHeight = 0;
-            var subTotals = new decimal[dt.Columns.Count];
 
             using (var ms = new MemoryStream())
             {
@@ -2649,8 +2682,8 @@ namespace ReportBuilder.Web.Models
             return text.Length * averageCharWidthInTwips;
         }
         public async static Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
-                    string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false, string expandSqls = null, 
-                    string pivotColumn = null, string pivotFunction = null, bool imageOnly = false, bool debug = false)
+                      string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false, string expandSqls = null,
+                      string pivotColumn = null, string pivotFunction = null, bool imageOnly = false, bool debug = false)
         {
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
             await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
@@ -2669,63 +2702,63 @@ namespace ReportBuilder.Web.Models
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
             var data = GetDataTable(reportSql, connectKey);
 
-                    var qry = data.qry;
-                    var sqlFields = data.sqlFields;
-                    var dt = data.dt;
-                   
-                    if (!string.IsNullOrEmpty(pivotColumn))
-                    {
-                        if (!useAltPivot)
-                        {
-                            var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
-                            dt = pd.dt;
-                            if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
-                        }
-                        else
-                        {
-                            var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
-                            dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);
-                        }
-                        var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
-                        sqlFields = sqlFields
-                            .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
-                            .ToList();
-                        sqlFields.AddRange(dt.Columns.Cast<DataColumn>().Skip(sqlFields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
-                    }
+            var qry = data.qry;
+            var sqlFields = data.sqlFields;
+            var dt = data.dt;
 
-                    var model = new DotNetReportResultModel
-                    {
-                        ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dt, sqlFields, false),
-                        Warnings = "",
-                        ReportSql = qry.sql,
-                        ReportDebug = false,
-                        Pager = new DotNetReportPagerModel
-                        {
-                            CurrentPage = 1,
-                            PageSize = 100000,
-                            TotalRecords = dt.Rows.Count,
-                            TotalPages = 1
-                        }
-                    };
+            if (!string.IsNullOrEmpty(pivotColumn))
+            {
+                if (!useAltPivot)
+                {
+                    var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
+                    dt = pd.dt;
+                    if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
+                }
+                else
+                {
+                    var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
+                    dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);
+                }
+                var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
+                sqlFields = sqlFields
+                    .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
+                    .ToList();
+                sqlFields.AddRange(dt.Columns.Cast<DataColumn>().Skip(sqlFields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
+            }
 
-                    var formPosted = false;
-                    var formData = new StringBuilder();
-                    formData.AppendLine("<html><body>");
-                    formData.AppendLine($"<form action=\"{printUrl}\" method=\"post\">");
-                    formData.AppendLine($"<input name=\"reportSql\" value=\"{HttpUtility.HtmlEncode(reportSql)}\" />");
-                    formData.AppendLine($"<input name=\"connectKey\" value=\"{HttpUtility.HtmlEncode(connectKey)}\" />");
-                    formData.AppendLine($"<input name=\"reportId\" value=\"{reportId}\" />");
-                    formData.AppendLine($"<input name=\"pageNumber\" value=\"{1}\" />");
-                    formData.AppendLine($"<input name=\"pageSize\" value=\"{99999}\" />");
-                    formData.AppendLine($"<input name=\"userId\" value=\"{userId}\" />");
-                    formData.AppendLine($"<input name=\"clientId\" value=\"{clientId}\" />");
-                    formData.AppendLine($"<input name=\"currentUserRole\" value=\"{currentUserRole}\" />");
-                    formData.AppendLine($"<input name=\"expandAll\" value=\"{expandAll}\" />");
-                    formData.AppendLine($"<input name=\"dataFilters\" value=\"{HttpUtility.HtmlEncode(string.IsNullOrEmpty(dataFilters) ? "{}" : "")}\" />");
-                    formData.AppendLine($"<input name=\"reportData\" value=\"{HttpUtility.HtmlEncode(JsonConvert.SerializeObject(model))}\" />");
-                    formData.AppendLine($"</form>");
-                    formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");
-                    formData.AppendLine("</body></html>");
+            var model = new DotNetReportResultModel
+            {
+                ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dt, sqlFields, false),
+                Warnings = "",
+                ReportSql = qry.sql,
+                ReportDebug = false,
+                Pager = new DotNetReportPagerModel
+                {
+                    CurrentPage = 1,
+                    PageSize = 100000,
+                    TotalRecords = dt.Rows.Count,
+                    TotalPages = 1
+                }
+            };
+
+            var formPosted = false;
+            var formData = new StringBuilder();
+            formData.AppendLine("<html><body>");
+            formData.AppendLine($"<form action=\"{printUrl}\" method=\"post\">");
+            formData.AppendLine($"<input name=\"reportSql\" value=\"{HttpUtility.HtmlEncode(reportSql)}\" />");
+            formData.AppendLine($"<input name=\"connectKey\" value=\"{HttpUtility.HtmlEncode(connectKey)}\" />");
+            formData.AppendLine($"<input name=\"reportId\" value=\"{reportId}\" />");
+            formData.AppendLine($"<input name=\"pageNumber\" value=\"1\" />");
+            formData.AppendLine($"<input name=\"pageSize\" value=\"99999\" />");
+            formData.AppendLine($"<input name=\"userId\" value=\"{userId}\" />");
+            formData.AppendLine($"<input name=\"clientId\" value=\"{clientId}\" />");
+            formData.AppendLine($"<input name=\"currentUserRole\" value=\"{currentUserRole}\" />");
+            formData.AppendLine($"<input name=\"expandAll\" value=\"{expandAll}\" />");
+            formData.AppendLine($"<input name=\"dataFilters\" value=\"{HttpUtility.HtmlEncode(string.IsNullOrEmpty(dataFilters) ? "{}" : "")}\" />");
+            formData.AppendLine($"<input name=\"reportData\" value=\"{HttpUtility.HtmlEncode(JsonConvert.SerializeObject(model))}\" />");
+            formData.AppendLine($"</form>");
+            formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");
+            formData.AppendLine("</body></html>");
 
             page.Request += async (sender, e) =>
             {
@@ -2749,33 +2782,33 @@ namespace ReportBuilder.Web.Models
                 WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
             });
 
-                    await page.WaitForSelectorAsync(".report-inner", new WaitForSelectorOptions { Visible = true });
-                    if (imageOnly)
+            await page.WaitForSelectorAsync(".report-inner", new WaitForSelectorOptions { Visible = true });
+            if (imageOnly)
+            {
+                try
+                {
+                    var imageData = await page.EvaluateExpressionAsync<string>("window.chartImageUrl");
+                    await page.EvaluateExpressionAsync("delete window.chartImageUrl;");
+
+                    if (!string.IsNullOrEmpty(imageData))
                     {
-                        try
-                        {
-                            var imageData = await page.EvaluateExpressionAsync<string>("window.chartImageUrl");
-                            await page.EvaluateExpressionAsync("delete window.chartImageUrl;");
+                        string base64String = imageData.Split(',')[1];
 
-                            if (!string.IsNullOrEmpty(imageData))
-                            {
-                                string base64String = imageData.Split(',')[1];
-
-                                return Convert.FromBase64String(base64String);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            return new byte[0];
-                        }
-
-                        return new byte[0];
+                        return Convert.FromBase64String(base64String);
                     }
+                }
+                catch (Exception ex)
+                {
+                    return new byte[0];
+                }
 
-                    int height = await page.EvaluateExpressionAsync<int>("document.body.offsetHeight");
-                    int width = 700;
-                    try { width = await page.EvaluateExpressionAsync<int>("$('table').width()"); } catch { }
-                    var pdfFile = Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
+                return new byte[0];
+            }
+
+            int height = await page.EvaluateExpressionAsync<int>("document.body.offsetHeight");
+            int width = 700;
+            try { width = await page.EvaluateExpressionAsync<int>("$('table').width()"); } catch { }
+            var pdfFile = Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
 
             var pdfOptions = new PdfOptions
             {
@@ -2799,7 +2832,7 @@ namespace ReportBuilder.Web.Models
             await page.PdfAsync(pdfFile, pdfOptions);
             return File.ReadAllBytes(pdfFile);
         }
-        
+
         public static byte[] GetCombinePdfFile(List<byte[]> pdfFiles)
         {
             using (var outputDocument = new PdfDocument())

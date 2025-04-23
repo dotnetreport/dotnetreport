@@ -5170,14 +5170,21 @@ var reportViewModel = function (options) {
 	}
 
 	self.downloadPdfAlt = function () {
+		var reportData = self.BuildReportData();
+		reportData.DrillDownRowUsePlaceholders = true;
+		var pivotData = self.preparePivotData();
 		self.downloadExport("DownloadPdfAlt", {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
+			allExpanded: false,
+			expandSqls: JSON.stringify(reportData),
 			chartData: self.ChartData() || '',
 			columnDetails: self.getColumnDetails(),
 			includeSubTotal: self.IncludeSubTotal(),
-			pivot: self.ReportType() == 'Pivot'
+			pivot: self.ReportType() == 'Pivot',
+			pivotColumn: pivotData.pivotColumn,
+			pivotFunction: pivotData.pivotFunction,
 		}, 'pdf');
 	}
 
