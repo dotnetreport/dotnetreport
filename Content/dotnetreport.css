@@ -1564,10 +1564,10 @@ main {
     right: -5px;
     width: 16px;
     height: 16px;
-    font-size: 10px;
     line-height: 12px;
     text-align: center;
     border-radius: 50%;
+    padding: 0px
 }
 
 .font-size-input {
