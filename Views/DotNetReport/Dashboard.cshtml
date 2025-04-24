@@ -5,7 +5,7 @@
 }
 
 @section head {
-    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.min.css" />
+    <link rel="stylesheet" href="~/lib/gridstack/gridstack.min.css" />
     <style type="text/css">
         .report-chart {
             min-height: auto !important;
@@ -25,8 +25,7 @@
 }
 
 @section scripts{
-    <script type="text/javascript" src='//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.min.js'></script>
-    <script type="text/javascript" src='//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.jQueryUI.min.js'></script>
+    <script src="~/lib/gridstack/gridstack-all.js"></script>
     <script type="text/javascript">
         $(document).ready(function () {
             if ($.blockUI) {
@@ -86,35 +85,37 @@
                                 $.unblockUI();
                             }
                             ko.applyBindings(vm);
-                            $(function () {
-                                var options = {
-                                    cellHeight: 80,
-                                    verticalMargin: 10,
+                            setTimeout(() => {
+                                $('.grid-stack').show();
+                                const grid = GridStack.init({
+                                    cellHeight: 60,
+                                    margin: 10,
                                     resizable: {
-                                        handles: 'se, sw, ne, nw, n, e, s, w' 
+                                        handles: 'se, sw, ne, nw, n, e, s, w'
                                     }
-                                };
-                                $('.grid-stack').gridstack(options);
-                                $('.grid-stack').on('change', function (event, items) {
-                                    _.forEach(items, function (x) {
+                                });
+
+                                grid.on('change', function (event, items) {
+                                    items.forEach(function (x) {
                                         vm.updatePosition(x);
                                     });
                                 });
-                                $('.grid-stack').on('resizestop', function (event, item) {
-                                    var e = $(event.target).find('.report-chart');
-                                    var d = $(event.target).find('table');
-                                    if (e.length > 0 && d.length == 0) {
+
+                                grid.on('resizestop', function (event, el) {
+                                    const e = el.querySelector('.report-chart');
+                                    const d = el.querySelector('table');
+                                    if (e && !d) {
                                         vm.drawChart();
                                     }
                                 });
-                            });
 
-                            setTimeout(function () {
-                                vm.drawChart();
-                                var grid = $('.grid-stack').data("gridstack");
-                                grid.disable();
+                                setTimeout(() => {
+                                    vm.drawChart();
+                                    grid.enableMove(false);
+                                    grid.enableResize(false);
+                                }, 1000);
+                            }, 10);
 
-                            }, 1000);
                         });
 
                         window.addEventListener('resize', function () {
@@ -333,8 +334,8 @@
 </div>
 
 
-<div class="grid-stack" data-bind="visible: reports().length>0, foreach: reports" style="display: none;">
-    <div class="grid-stack-item" data-bind="attr: {'data-gs-x': x, 'data-gs-y': y, 'data-gs-width': width, 'data-gs-height': height, 'data-gs-auto-position': true, 'data-gs-id': ReportID}">
+<div class="grid-stack" data-bind="foreach: reports" style="display: none;">
+    <div class="grid-stack-item" data-bind="attr: {'gs-x': x, 'gs-y': y, 'gs-w': width, 'gs-h': height, 'gs-auto-position': true, 'gs-id': ReportID}">
 
         <div class="card" data-bind="attr: {class: 'card ' + panelStyle + ' grid-stack-item-content'}, css: { expanded: isExpanded }, style: { border: noDashboardBorders() ? 'none' : '', 'box-shadow': noDashboardBorders() ? 'none' : '' }" " style="overflow-y: hidden;">
             <div class="padded-div" style="padding-bottom: 0; margin-bottom: 0;">

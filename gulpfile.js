@@ -68,6 +68,10 @@ var deps = {
 	"bootbox": {
 		"dist/*": ""
 	},
+	"gridstack": {
+		"dist/gridstack-all.js": "",
+		"dist/gridstack.min.css": ""
+	},
 	"knockout-sortable": {
 		"build/*": ""
 	},

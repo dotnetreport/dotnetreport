@@ -6067,27 +6067,34 @@ var dashboardViewModel = function (options) {
 					return;
 				}
 
-				var grid = $('.grid-stack').data("gridstack");
-				grid.removeAll();
+				const grid = document.querySelector('.grid-stack')?.gridstack;
+				if (!grid) return;
 
-				// Reload the grid items from the screen
-				var gridItems = $('.grid-stack-item');
-				i = 0;
-				gridItems.each(function () {
-					var item = $(this);
-					var x = parseInt(item.attr('data-gs-x'));
-					var y = parseInt(item.attr('data-gs-y'));
-					var width = parseInt(item.attr('data-gs-width'));
-					var height = parseInt(item.attr('data-gs-height'));
-					var id = reports[i++].reportId;
-					item.attr('data-gs-id', id);
+				grid.removeAll(false); 
 
-					// Add the grid item to the GridStack
-					grid.addWidget(item, x, y, width, height);
+				const gridItems = document.querySelectorAll('.grid-stack-item');
+				let i = 0;
+
+				gridItems.forEach(item => {
+					const x = parseInt(item.getAttribute('gs-x'));
+					const y = parseInt(item.getAttribute('gs-y'));
+					const width = parseInt(item.getAttribute('gs-w'));
+					const height = parseInt(item.getAttribute('gs-h'));
+					const id = reports[i++].reportId;
+
+					item.setAttribute('gs-id', id);
+					item.setAttribute('gs-x', x);
+					item.setAttribute('gs-y', y);
+					item.setAttribute('gs-w', width);
+					item.setAttribute('gs-h', height);
+
+					grid.makeWidget(item);
 				});
 
-				if (!self.arrangeDashboard())
-					grid.disable();
+				if (!self.arrangeDashboard()) {
+					grid.enableMove(false);
+					grid.enableResize(false);
+				}
 
 				self.skipGridRefresh = false;
 
@@ -6109,15 +6116,15 @@ var dashboardViewModel = function (options) {
 				model: JSON.stringify({
 					x: item.x,
 					y: item.y,
-					width: item.width,
-					height: item.height,
+					width: item.w,
+					height: item.h,
 					dashboardId: self.currentDashboard().id,
 					reportId: parseInt(item.id),
 					widgetSettings: JSON.stringify({
-						gridChartHeight: item.height,
-						gridChartWidth: item.width,
-						expandedChartHeight: item.height,
-						expandedChartWidth: item.width
+						gridChartHeight: item.h,
+						gridChartWidth: item.w,
+						expandedChartHeight: item.h,
+						expandedChartWidth: item.w
 					}),
 				})
 			}
@@ -6368,48 +6375,51 @@ var dashboardViewModel = function (options) {
 
 
 	var eventHandlers = {};
-	self.arrangeDashboard.subscribe(function (newValue) {		
-		var grid = $('.grid-stack').data("gridstack");
-		if (grid) {
-			if (newValue) {
-				grid.enable();
+	self.arrangeDashboard.subscribe(function (newValue) {
+		const grid = document.querySelector('.grid-stack')?.gridstack;
 
-				_.forEach(self.reports(), function (report) {
-					// Add event listener for pointer down on the chart container
-					var parentDiv = document.getElementById('chart_div_' + report.ReportID());
-					var chartContainer = (parentDiv && parentDiv.children[0]) ? parentDiv.children[0].children[0] : null;
-					if (chartContainer) {
-						
-						chartContainer.addEventListener('pointerenter', function () {
-							chartContainer.style.cursor = 'nwse-resize';
-							chartContainer.style.border = '1px dashed black';
-							chartContainer.style.boxSizing = 'content-box';
-						});
-						chartContainer.addEventListener('pointerleave', function () {
-							chartContainer.style.cursor = 'default';
-							chartContainer.style.border = 'none';
-							chartContainer.style.boxSizing = 'border-box';
-						});
-					}
-				});
+		if (!grid) return;
 
-			}
-			else {
-				grid.disable();
+		if (newValue) {
+			grid.enableMove(true);
+			grid.enableResize(true);
 
-				_.forEach(self.reports(), function (report) {
-					// Add event listener for pointer down on the chart container
-					var parentDiv = document.getElementById('chart_div_' + report.ReportID());
-					var chartContainer = (parentDiv && parentDiv.children[0]) ? parentDiv.children[0].children[0] : null;
-					if (chartContainer) {
-						chartContainer.addEventListener('pointerenter', function () {
-							chartContainer.style.cursor = 'default';
-							chartContainer.style.border = 'none';
-							chartContainer.style.boxSizing = 'border-box';
-						});
-					}
-				});
-			}
+			self.reports().forEach(function (report) {
+				const parentDiv = document.getElementById('chart_div_' + report.ReportID());
+				const chartContainer = parentDiv?.children?.[0]?.children?.[0] || null;
+
+				if (chartContainer) {
+					chartContainer.addEventListener('pointerenter', () => {
+						chartContainer.style.cursor = 'nwse-resize';
+						chartContainer.style.border = '1px dashed black';
+						chartContainer.style.boxSizing = 'content-box';
+					});
+
+					chartContainer.addEventListener('pointerleave', () => {
+						chartContainer.style.cursor = 'default';
+						chartContainer.style.border = 'none';
+						chartContainer.style.boxSizing = 'border-box';
+					});
+				}
+			});
+
+		} else {
+			grid.enableMove(false);
+			grid.enableResize(false);
+
+			self.reports().forEach(function (report) {
+				const parentDiv = document.getElementById('chart_div_' + report.ReportID());
+				const chartContainer = parentDiv?.children?.[0]?.children?.[0] || null;
+
+				if (chartContainer) {
+					chartContainer.addEventListener('pointerenter', () => {
+						chartContainer.style.cursor = 'default';
+						chartContainer.style.border = 'none';
+						chartContainer.style.boxSizing = 'border-box';
+					});
+				}
+			});
 		}
 	});
+
 };
