@@ -30,6 +30,7 @@
 
 <body>
     <link type="text/css" rel="stylesheet" media="all" href="~/Content/themes/default.min.css" id="theme-css" />
+    <link href="~/Content/dotnetreport.css?v=@(System.IO.File.GetLastWriteTime(Server.MapPath("~/Scripts/dotnetreport-helper.js")).Ticks)" rel="stylesheet" />
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow p-2">
         <div class="container-fluid">
             <a class="navbar-brand d-flex align-items-center" href="@Url.Action("Index", "Home")" id="mainNavImage">
