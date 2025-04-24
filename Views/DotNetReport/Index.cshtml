@@ -68,7 +68,19 @@ Its Recommended you use it as is, and only change styling as needed to match you
             switchVm.selectedTheme.subscribe(function (newValue) {
                 if (newValue) {
                     localStorage.setItem('dotnetreport-selectedTheme', newValue);
-                    window.location.href = window.location.pathname;
+                    const themeUrl = 'https://cdnjs.cloudflare.com/ajax/libs/bootswatch/5.3.2/' + newValue.toLowerCase() + '/bootstrap.min.css?v=' + new Date().getTime();
+
+                    let themeLink = document.getElementById('theme-css');
+                    if (themeLink) {
+                        const newLink = themeLink.cloneNode();
+                        newLink.href = themeUrl;
+                        newLink.onload = function () {
+                            // Remove the old one once the new one is fully loaded
+                            themeLink.parentNode.removeChild(themeLink);
+                        };
+                        themeLink.parentNode.insertBefore(newLink, themeLink.nextSibling);
+                    }
+
                 }
             });
 
