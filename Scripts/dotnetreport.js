@@ -5817,7 +5817,14 @@ var dashboardViewModel = function (options) {
 			});
 		});
 	};
-
+	self.addExistingReport = function () {
+		var selectedReports = (self.currentDashboard().selectedReports || '').split(',');
+		_.forEach(self.reportsAndFolders(), function (f) {
+			_.forEach(f.reports, function (r) {
+				r.selected(selectedReports.indexOf(r.reportId.toString()) >= 0);
+			});
+		});
+	};
 	self.removeReportFromDashboard = function (reportId) {
 
 		bootbox.confirm("Are you sure you would like to remove this Report from the Dashboard?", function (result) {
