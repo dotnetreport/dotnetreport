@@ -5860,12 +5860,21 @@ var dashboardViewModel = function (options) {
 		}
 
 		var list = '';
+		var selectedCount = 0;
 		_.forEach(self.reportsAndFolders(), function (f) {
 			_.forEach(f.reports, function (r) {
-				if (r.selected()) list += (list ? ',' : '') + r.reportId;
+				if (r.selected()) {
+					selectedCount++;
+					if (selectedCount > 10) {
+						toastr.error('You can select a maximum of 10 reports for a dashboard.');
+						return false; // stop inner loop
+					}
+					list += (list ? ',' : '') + r.reportId;
+				}
 			});
 		});
 
+		if (selectedCount > 10) return false; // stop if outer loop continued
 		var model = {
 			id: self.dashboard.Id() || 0,
 			name: self.dashboard.Name(),
