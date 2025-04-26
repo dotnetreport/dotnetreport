@@ -1161,94 +1161,125 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body needs-validation" style="overflow-y: auto; flex-grow: 1;">
-                <div class="row">
-               <div class="col-md-4 sticky-column">
-                    <div class="card card-body" id="choose-data-card">
-                        <h5><span class="fa fa-database"></span>&nbsp;Choose Data for Report</h5>
-                        <div>
-                            <div class="pull-left btn-group btn-group-toggle" role="group" data-bind="if: ReportID() <= 0">
-                                <label class="btn btn-sm btn-light active" style="margin-right: 0px;" title="You can change the Data source only when creating a new report, changing this will clear all selections">
-                                    <input type="radio" name="dataoption" id="table" checked data-bind="checked: useStoredProc, checkedValue: false"> Dynamic
+               <div class="row">
+                    <div class="col-md-4">
+                        <div class="card card-body" id="choose-data-card">
+                            <div class="form-group row align-items-center">
+                                <label class="col-sm-4 col-form-label h6">
+                                    <i class="fa fa-file"></i> Report Name
                                 </label>
-                                <label class="btn btn-sm btn-light active">
-                                    <input type="radio" name="dataoption" id="proc" value="1" data-bind="checked: useStoredProc, checkedValue: true"> Predefined
-                                </label>
+                                <div class="col-sm-8">
+                                    <input type="text" class="form-control" required placeholder="Report Name" data-bind="value: ReportName">
+                                </div>
                             </div>
-                            <div class="pull-right">
-                                <a href="#" class="btn btn-secondary btn-sm" title="Add Custom Field using Formula" data-bind="hidden: isFunctionField() || useStoredProc(), click: cancelFormulaField, text: isFormulaField()? 'Cancel': 'Custom Field', css: {'btn-primary': !isFormulaField(), 'btn-danger': isFormulaField}"></a>
-                                <a href="#" class="btn btn-secondary btn-sm" title="Add Custom Field using Function" data-bind="hidden: true || isFormulaField() || useStoredProc(), click: function(){designFunctionField()}, text: isFunctionField()? 'Cancel': 'Function Field', css: {'btn-primary': !isFunctionField(), 'btn-danger': isFunctionField}"></a>
+                            <hr />
+                            <h5><span class="fa fa-database"></span>&nbsp;Choose Data for Report</h5>
+                            <div>
+                                <div class="pull-left btn-group btn-group-toggle" role="group" data-bind="if: ReportID() <= 0">
+                                    <label class="btn btn-sm btn-light active" style="margin-right: 0px;" title="You can change the Data source only when creating a new report, changing this will clear all selections">
+                                        <input type="radio" name="dataoption" id="table" checked data-bind="checked: useStoredProc, checkedValue: false"> Dynamic
+                                    </label>
+                                    <label class="btn btn-sm btn-light active">
+                                        <input type="radio" name="dataoption" id="proc" value="1" data-bind="checked: useStoredProc, checkedValue: true"> Predefined
+                                    </label>
+                                </div>
+                                <div class="pull-right">
+                                    <a href="#" class="btn btn-secondary btn-sm" title="Add Custom Field using Formula" data-bind="hidden: isFunctionField() || useStoredProc(), click: cancelFormulaField, text: isFormulaField()? 'Cancel': 'Custom Field', css: {'btn-primary': !isFormulaField(), 'btn-danger': isFormulaField}"></a>
+                                    <a href="#" class="btn btn-secondary btn-sm" title="Add Custom Field using Function" data-bind="hidden: true || isFormulaField() || useStoredProc(), click: function(){designFunctionField()}, text: isFunctionField()? 'Cancel': 'Function Field', css: {'btn-primary': !isFunctionField(), 'btn-danger': isFunctionField}"></a>
+                                </div>
                             </div>
-                        </div>
-                        <div class="clearfix"></div>
-                        <div class="row">
+                            <div class="clearfix"></div>
+                            <div class="row">
+                                <div class="col-md-12" data-bind="disable: isFormulaField, hidden: useStoredProc">
+                                    <div data-bind="with: textQuery.searchFields">
+                                        <select id="search-field" class="form-control" data-bind="select2: {dropdownParent: $('#choose-data-card'), placeholder: 'Search for a Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults, headers: headers }, minimumInputLength: 2, allowClear: true }, value: selectedOption"></select>
+                                    </div>
+                                </div>
 
-                                    <div class="col-md-12" data-bind="disable: isFormulaField, hidden: useStoredProc">
-                                        <div data-bind="with: textQuery.searchFields">
-                                            <select id="search-field" class="form-control" data-bind="select2: {dropdownParent: $('#choose-data-card'), placeholder: 'Search for a Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults, headers: headers }, minimumInputLength: 2, allowClear: true }, value: selectedOption"></select>
-                                        </div>
+                                <div class="col-md-12" data-bind="visible: useStoredProc">
+                                    <div>
+                                        <select class="form-control" data-bind="select2Value: {dropdownParent: $('#choose-data-card')}, options: Procs, optionsCaption: 'Choose Section...', optionsText: 'DisplayName', value: SelectedProc, visible: useStoredProc"></select>
+                                    </div>
+                                </div>
+                                <div class="col-md-12" data-bind="hidden: useStoredProc">
+                                    <div class="d-flex justify-content-between align-items-center mb-2" style="padding-top: 15px;">
+                                        <span>
+                                            Select Data to use in Report
+                                            <i class="fa fa-info-circle text-muted" data-toggle="tooltip" title="Choose a table to show fields to select."></i>
+                                        </span>
                                     </div>
 
-                                    <div class="col-md-12" data-bind="visible: useStoredProc">
+                                    <div id="table-tree-view" style="max-height: 400px; overflow-y: auto;">
                                         <div>
-                                            <select class="form-control" data-bind="select2Value: {dropdownParent: $('#choose-data-card')}, options: Procs, optionsCaption: 'Choose Section...', optionsText: 'DisplayName', value: SelectedProc, visible: useStoredProc"></select>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-12" data-bind="hidden: useStoredProc">
-                                        <!-- Heading with Tooltip -->
-                                        <div class="d-flex justify-content-between align-items-center mb-2" style="padding-top: 15px;">
-                                            <span>
-                                                Select Data to use in Report
-                                                <i class="fa fa-info-circle text-muted" data-toggle="tooltip" title="Choose a table to show fields to select."></i>
-                                            </span>
-                                        </div>
+                                            <!-- ko foreach: CategorizedTables -->
+                                            <div class="mb-3">
+                                                <div data-bind="click: function() { isExpanded(!isExpanded()); }, visible: categoryName" style="cursor: pointer;">
+                                                    <i class="fa" data-bind="css: isExpanded() ? 'fa-chevron-down text-secondary' : 'fa-chevron-right text-secondary'"></i>
+                                                    <i class="fa" data-bind="css: isExpanded() ? 'fa-folder-open' : 'fa-folder'"></i>
+                                                    <span data-bind="text: categoryName" class="ml-2"></span>
+                                                </div>
+                                                <div class="report-list" data-bind="visible: isExpanded(), foreach: tables" style="padding-left: 15px;">
+                                                    <div class="row border-bottom py-2 w-100">
+                                                        <div class="col-md-12">
+                                                            <div class="pull-left" data-bind="click: function() { selectTable($data); }, css: {'text-muted': !isEnabled()}, style: {cursor: isEnabled() ? 'pointer' : ''}, attr: {title: !isEnabled() ? 'Cannot use table as joins do not exist': ''}">
+                                                                <span class="text-secondary fa" data-bind="css: isEnabled() ? ($data === $parents[2].SelectedTable() ? 'fa-chevron-down' : 'fa-chevron-right') : 'fa-ban'"></span>&nbsp;
+                                                                <span class="fa fa-table"></span>&nbsp;<span data-bind="text: tableName" class=""></span>
+                                                            </div>
+                                                            <div class="pull-right" data-bind="visible: $data === $parents[2].SelectedTable() && !$parents[2].isFormulaField() && !$parents[2].SelectedTable().dynamicColumns">
+                                                                <a href="#" class="small text-muted" data-bind="click: $parents[2].MoveAllFields">Select all</a> |
+                                                                <a href="#" class="small text-muted" data-bind="click: $parents[2].RemoveSelectedFields">Remove all</a>
+                                                            </div>
+                                                        </div>
 
-                                        <div id="table-tree-view" style="max-height: 500px; overflow-y: auto;">
-                                            <div class="">
-                                                <!-- ko foreach: CategorizedTables -->
-                                                <div class="mb-3">
-                                                    <div data-bind="click: function() { isExpanded(!isExpanded()); }, visible: categoryName" style="cursor: pointer;">
-                                                        <i class="fa" data-bind="css: isExpanded() ? 'fa-chevron-down text-secondary' : 'fa-chevron-right text-secondary'"></i>
-                                                        <i class="fa" data-bind="css: isExpanded() ? 'fa-folder-open' : 'fa-folder'"></i>
-                                                        <span data-bind="text: categoryName" class="ml-2"></span>
-                                                    </div>
-                                                    <div class="report-list" data-bind="visible: isExpanded(), foreach: tables" style="padding-left: 15px;">
-                                                        <div class="row border-bottom py-2 w-100">
-                                                            <div class="col-md-12">
-                                                                <div class="pull-left" data-bind="click: function() { selectTable($data); }, css: {'text-muted': !isEnabled()}, style: {cursor: isEnabled() ? 'pointer' : ''}, attr: {title: !isEnabled() ? 'Cannot use table as joins do not exist': ''}">
-                                                                    <span class="text-secondary fa" data-bind="css: isEnabled() ? ($data === $parents[2].SelectedTable() ? 'fa-chevron-down' : 'fa-chevron-right') : 'fa-ban'"></span>&nbsp;
-                                                                    <span class="fa fa-table"></span>&nbsp;<span data-bind="text: tableName" class=""></span>
-                                                                </div>
-                                                                <div class="pull-right" data-bind="visible: $data === $parents[2].SelectedTable() && !$parents[2].isFormulaField() && !$parents[2].SelectedTable().dynamicColumns">
-                                                                    <a href="#" class="small text-muted" data-bind="click: $parents[2].MoveAllFields">Select all</a> |
-                                                                    <a href="#" class="small text-muted" data-bind="click: $parents[2].RemoveSelectedFields">Remove all</a>
+                                                        <!-- Fields Expand Here -->
+                                                        <div data-bind="visible: $data === $parents[2].SelectedTable()" style="padding-left: 30px;">
+                                                            <!-- ko foreach: $parents[2].ChooseFields -->
+                                                            <div class="row border-bottom py-2 align-items-center w-100">
+                                                                <div class="checkbox">
+                                                                    <label>
+                                                                        <input type="checkbox" data-bind="checkedInArray: {array: $parents[2].isFormulaField() ? $parents[2].formulaFields : $parents[2].SelectedFields, value: $data}">
+                                                                        <span data-bind="text: fieldName"></span>
+                                                                    </label>
                                                                 </div>
                                                             </div>
-
-                                                            <!-- Fields Expand Here -->
-                                                            <div data-bind="visible: $data === $parents[2].SelectedTable()" style="padding-left: 30px;">
-                                                                <!-- ko foreach: $parents[2].ChooseFields -->
-                                                                <div class="row border-bottom py-2 align-items-center w-100">
-                                                                    <div class="checkbox">
-                                                                        <label>
-                                                                            <input type="checkbox" data-bind="checkedInArray: {array: $parents[2].isFormulaField() ? $parents[2].formulaFields : $parents[2].SelectedFields, value: $data}">
-                                                                            <span data-bind="text: fieldName"></span>
-                                                                        </label>
-                                                                    </div>
-                                                                </div>
-                                                                <!--/ko-->
-                                                            </div>
+                                                            <!--/ko-->
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <!-- /ko -->
                                             </div>
+                                            <!-- /ko -->
                                         </div>
                                     </div>
-
                                 </div>
-
                             </div>
+                        </div>
+                        <br />
 
+                        <div class="card card-body">
+
+                            <div class="form-group row">
+                                <label class="control-label h6">
+                                    <i class="fa fa-info-circle"></i> Report Description
+                                </label>
+                                <div>
+                                    <textarea class="form-control" style="width: 100%;" rows="3" placeholder="Additional details (optional)" data-bind="value: ReportDescription"></textarea>
+                                </div>
+                            </div>
+                            <div class="checkbox" data-bind="visible: CanSaveReports()">
+                                <label>
+                                    <input type="checkbox" data-bind="checked: SaveReport">
+                                    Save Report
+                                </label>
+                            </div>
+                            <div class="form-group row" data-bind="visible: SaveReport">
+                                <label class="control-label h6">
+                                    <i class="fa fa-folder-open"></i> Choose Folder
+                                </label>
+                                <div>
+                                    <select class="form-select" style="width: 100%;" data-bind="options: Folders, optionsText: 'FolderName', optionsValue: 'Id', value: FolderID"></select>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-md-8">
                         <div class="card card-body">
@@ -1629,8 +1660,10 @@
                                 <div class="alert alert-info" data-bind="visible: ReportType()=='Treemap'">
                                     <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For Treemap, the data must be in a hierarchical format with 2nd column having parent and third column having a numeric value. The data must have a single root node having null as its parent as well.
                                 </div>
-                                <div class="alert alert-info" data-bind="visible: ReportType()=='Line'">
-                                    <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For Line Graph, the first field below will show on the x-axis. All other fields will numeric fields will show on y-axis.
+                                <div data-bind="visible: ReportType()=='Line'" class="card card-body" style="margin-bottom: 15px">
+                                    <div class="alert alert-info">
+                                        <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For Line Graph, the first field below will show on the x-axis. All other fields will numeric fields will show on y-axis.
+                                    </div>
                                     <div class="form-group row">
                                         <div class="checkbox col-6">
                                             <label>
@@ -1908,40 +1941,7 @@
                         <div data-bind="visible: adminMode" class="card card-body">
                             <div data-bind="template: {name: 'manage-access-template', data: manageAccess}"></div>
                         </div>
-                        <br />
 
-                        <div class="card card-body">
-                            <div class="form-group row">
-                                <label class="control-label h6">
-                                    <i class="fa fa-file"></i> Report Name
-                                </label>
-                                <div>
-                                    <input type="text" style="width: 100%;" class="form-control" required placeholder="Report Name" data-bind="value: ReportName">
-                                </div>
-                            </div>
-                            <div class="form-group row">
-                                <label class="control-label h6">
-                                    <i class="fa fa-info-circle"></i> Description
-                                </label>
-                                <div>
-                                    <textarea class="form-control" style="width: 100%;" rows="3" placeholder="Additional details (optional)" data-bind="value: ReportDescription"></textarea>
-                                </div>
-                            </div>
-                            <div class="checkbox" data-bind="visible: CanSaveReports()">
-                                <label>
-                                    <input type="checkbox" data-bind="checked: SaveReport">
-                                    Save Report
-                                </label>
-                            </div>
-                            <div class="form-group row" data-bind="visible: SaveReport">
-                                <label class="control-label h6">
-                                    <i class="fa fa-folder-open"></i> Choose Folder
-                                </label>
-                                <div>
-                                    <select class="form-select" style="width: 100%;" data-bind="options: Folders, optionsText: 'FolderName', optionsValue: 'Id', value: FolderID"></select>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
