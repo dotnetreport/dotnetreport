@@ -1234,7 +1234,6 @@ var reportViewModel = function (options) {
 				});
 			});
 
-			self.ReportMode('execute');
 			self.SortByField(fieldIds[0]);
 			self.SelectedFields(result);
 			filters.forEach(f => self.FilterGroups()[0].AddFilter(f));
@@ -1349,6 +1348,12 @@ var reportViewModel = function (options) {
 		self.clearReport();
 		self.ReportMode("generate");
 	};
+
+	self.createNewReportAi = function () {
+		self.clearReport();
+		self.resetQuery(false);
+		self.ReportMode("design");
+	}
 
 	self.ReportType.subscribe(function (newvalue) {
 		if (newvalue == 'List' || newvalue == 'Treemap') {
@@ -3031,7 +3036,8 @@ var reportViewModel = function (options) {
 							self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, _.map(self.AdditionalSeries(), function (e, i) {
 								return e.Value();
 							}).join(','));
-							self.ReportMode("execute");
+
+							if (self.ReportMode() != 'design') self.ReportMode("execute");
 
 							if (self.useReportHeader()) {
 								self.headerDesigner.init(true);
@@ -4586,7 +4592,7 @@ var reportViewModel = function (options) {
 			})).join(",");
 		}
 
-		if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard" || self.ReportMode() == "linked") {
+		if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard" || self.ReportMode() == "linked" || self.ReportMode() == 'design') {
 
 			if (self.ReportMode() == "linked") {
 
