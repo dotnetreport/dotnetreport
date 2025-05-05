@@ -183,6 +183,7 @@
             </button>
             <ul class="dropdown-menu">
                 <li><a class="dropdown-item" href="#" data-bind="click: ExportAllPdfReports"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
+                <li><a class="dropdown-item" href="#" data-bind="click: ExportAllPdfAltReports"><i class="fa fa-file-pdf-o"></i> Pdf Alt</a></li>
                 <li><a class="dropdown-item" href="#" data-bind="click: ExportAllExcelReports"><i class="fa fa-file-excel-o"></i> Excel</a></li>
                 <li data-bind="visible: canDrilldown"><a class="dropdown-item" href="#" data-bind="click: ExportAllExcelExpandedReports"><i class="fa fa-file-excel-o"></i> Excel (Expanded)</a></li>
                 <li><a class="dropdown-item" href="#" data-bind="click: ExportAllWordReports"><i class="fa fa-file-word-o"></i> Word</a></li>
