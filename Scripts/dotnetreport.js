@@ -2929,7 +2929,10 @@ var reportViewModel = function (options) {
 			toastr.error("Select only one field for Pivot.");
 			return;
 		}
-
+		if (self.SelectedFields().slice(-1)[0]?.selectedAggregate() === 'Pivot') {
+			toastr.error("Pivot field cannot be the last column.");
+			return;
+		}
 		if (!skipValidation && !self.validateReport()) {
 			toastr.error("Please correct validation issues");
 			return;
