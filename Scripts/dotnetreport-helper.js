@@ -203,7 +203,7 @@ ko.bindingHandlers.datepicker = {
         if (value === null || value === undefined) {
             $(element).datepicker("setDate", null);
             $(element).val('');
-        } else {
+        } else if (value) {
             var formattedDate = $.datepicker.formatDate($(element).datepicker("option", "dateFormat") || 'mm/dd/yy', new Date(value));
             if (formattedDate !== $(element).val()) {
                 $(element).datepicker("setDate", formattedDate);
