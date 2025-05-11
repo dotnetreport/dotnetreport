@@ -2405,7 +2405,9 @@ var reportViewModel = function (options) {
 		}
 		return true;
 	};
-
+	self.IsPivotFieldLastColumn = function (i, aggregate) {
+		return i === self.SelectedFields().length - 1 && aggregate === 'Pivot';
+	};
 	self.chartTypes = ["List", "Summary", "Single", "Pivot", "Html"];
 	self.isChart = ko.computed(function () {
 		return self.chartTypes.indexOf(self.ReportType()) < 0;
