@@ -1267,9 +1267,16 @@ var reportViewModel = function (options) {
 		});
 	}
 
-	self.resetQuery = function (resetText = true) {
+	self.resetSearch = function () {
+		self.SelectedFolder(null);
+		self.designingHeader(false);
+		self.searchReports('');
+	}
+
+	self.resetQuery = function (resetText = true, searchReportFlag = false) {
 		if (resetText !== false) {
-			self.textQuery.resetQuery();
+			if (searchReportFlag === true) self.resetSearch();
+			self.textQuery.resetQuery(searchReportFlag);
 		}
 		self.ReportResult().ReportData(null);
 		self.ReportResult().HasError(false);
@@ -1670,6 +1677,10 @@ var reportViewModel = function (options) {
 
 	self.reportsInSearch = ko.observableArray([]);
 
+	self.searchForReports = function () {
+		self.searchReports($('#search-input').text());
+	}
+
 	self.searchReports.subscribe(function (x) {
 		if (x) {
 			ajaxcall({
@@ -1682,9 +1693,9 @@ var reportViewModel = function (options) {
 					})
 				}
 			}).done(function (reports) {
+				self.reportsInSearch([]);
 				if (reports.d) { reports = reports.d; }
 				if (reports.length > 0) {
-					var foundReportIds = _.map(reports, function (x) { return x.reportId });
 					self.reportsInSearch(_.filter(self.SavedReports(), function (x) {
 						var match = _.find(reports, function (y) {
 							return x.reportId == y.reportId;
@@ -1871,7 +1882,7 @@ var reportViewModel = function (options) {
 
 			self.CategorizedTables().forEach(category => {
 				category.tables.forEach(table => {
-					table.isEnabled(joinTableIds && joinTableIds.size > 0 ? joinTableIds.has(table.tableId) || !table.tableId || table.dynamicColumns : true);
+					table.isEnabled(joinTableIds && joinTableIds.size > 0 ? joinTableIds.has(table.tableId) || !table.tableId : true);
 				});
 			});
 		}, 500);
@@ -2190,7 +2201,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.selectedFieldsCanFilter = ko.computed(function () {
-		return _.filter(self.SelectedFields(), function (x) { return !x.isFormulaField() });
+		return self.SelectedFields();
 	});
 
 	self.clearFormulaField = function () {
@@ -2394,16 +2405,9 @@ var reportViewModel = function (options) {
 	};
 
 	self.isFieldValidForYAxis = function (i, fieldType, aggregate) {
-		if (self.ReportType() == 'Treemap'
-			|| ["Int", "Integer", "Double", "Decimal", "Money"].indexOf(fieldType) < 0
-			|| ["Only in Detail", "Pivot"].indexOf(aggregate) > 0
-			|| i == 0) return false;
-		if (i > 0) {
-			if (self.ReportType() == "Bar" && ["Int", "Integer", "Double", "Decimal", "Money"].indexOf(fieldType) < 0 && aggregate != "Count") {
-				return false;
-			}
-		}
-		return true;
+		return !(i > 0 && (self.ReportType() == 'Treemap'
+			|| (["Int", "Integer", "Double", "Decimal", "Money"].indexOf(fieldType) < 0 && aggregate != 'Count' && aggregate != 'Count Distinct')
+			|| ["Only in Detail", "Pivot"].indexOf(aggregate) > 0))
 	};
 	self.IsPivotFieldLastColumn = function (i, aggregate) {
 		return i === self.SelectedFields().length - 1 && aggregate === 'Pivot';
@@ -2427,7 +2431,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.canDrilldown = ko.computed(function () {
-		return ["List", "Pivot", "Treemap"].indexOf(self.ReportType()) < 0;
+		return ["List", "Pivot", "Treemap"].indexOf(self.ReportType()) < 0 && !self.useStoredProc();
 	});
 
 	self.dateFields = ko.computed(function () {

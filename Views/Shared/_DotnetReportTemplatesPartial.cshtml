@@ -250,7 +250,7 @@
             </thead>
             <tbody data-bind="attr: {id: 'report-table-body' + $parents[2].ReportID()}">
                 <tr style="display: none;" data-bind="visible: Rows.length < 1">
-                    <td class="text-info" data-bind="attr:{colspan: Columns.length}">
+                    <td data-bind="attr:{colspan: Columns.length + 1}">
                         No records found
                     </td>
                 </tr>
@@ -281,7 +281,7 @@
                             </thead>
                             <tbody>
                                 <tr style="display: none;" data-bind="visible: Rows && Rows.length < 1">
-                                    <td class="text-info" data-bind="attr:{colspan: Columns.length}">
+                                    <td data-bind="attr:{colspan: Columns.length}">
                                         No records found
                                     </td>
                                 </tr>
