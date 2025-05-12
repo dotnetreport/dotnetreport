@@ -1684,7 +1684,10 @@
                                                     <span class="badge bg-danger" data-bind="visible: !groupInGraph()">Will not show in <span data-bind="text: $parent.ReportType"></span>Chart</span>
                                                 </span>
                                                 <span data-bind="visible: $parent.IsPivotFieldLastColumn($index(),selectedAggregate())">
-                                                    <span class="badge bg-danger" data-bind="visible: !groupInGraph()">Pivot field cannot be the last column.</span>
+                                                    <span class="badge bg-danger" >Pivot field cannot be the last column.</span>
+                                                </span>
+                                                <span data-bind="visible: $parent.IsDynamicFiledFirstColumn($index())">
+                                                    <span class="badge bg-danger" >Dynamic cannot be first column.</span>
                                                 </span>
                                             </div>
                                             <div class="col-7">

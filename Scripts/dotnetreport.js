@@ -2408,6 +2408,10 @@ var reportViewModel = function (options) {
 	self.IsPivotFieldLastColumn = function (i, aggregate) {
 		return i === self.SelectedFields().length - 1 && aggregate === 'Pivot';
 	};
+	self.IsDynamicFiledFirstColumn = function (i) {
+		const field = self.SelectedFields()[0];
+		return i === 0 && field?.fieldId != null && field?.dynamicTableId != null;
+	};
 	self.chartTypes = ["List", "Summary", "Single", "Pivot", "Html"];
 	self.isChart = ko.computed(function () {
 		return self.chartTypes.indexOf(self.ReportType()) < 0;
