@@ -1882,7 +1882,7 @@ var reportViewModel = function (options) {
 
 			self.CategorizedTables().forEach(category => {
 				category.tables.forEach(table => {
-					table.isEnabled(joinTableIds && joinTableIds.size > 0 ? joinTableIds.has(table.tableId) || !table.tableId || table.dynamicColumns : true);
+					table.isEnabled(joinTableIds && joinTableIds.size > 0 ? joinTableIds.has(table.tableId) || !table.tableId : true);
 				});
 			});
 		}, 500);
@@ -2201,7 +2201,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.selectedFieldsCanFilter = ko.computed(function () {
-		return _.filter(self.SelectedFields(), function (x) { return !x.isFormulaField() });
+		return self.SelectedFields();
 	});
 
 	self.clearFormulaField = function () {
