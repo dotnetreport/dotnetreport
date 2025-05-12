@@ -2412,9 +2412,12 @@ var reportViewModel = function (options) {
 	self.IsPivotFieldLastColumn = function (i, aggregate) {
 		return i === self.SelectedFields().length - 1 && aggregate === 'Pivot';
 	};
-	self.IsDynamicFiledFirstColumn = function (i) {
+	self.IsDynamicFieldFirstColumn = function (i) {
 		const field = self.SelectedFields()[0];
-		return i === 0 && field?.fieldId != null && field?.dynamicTableId != null;
+		return i === 0 && field?.fieldId == 0 && field?.dynamicTableId != null;
+	};
+	self.IsAllDynamicFieldSelected = function () {
+		return self.SelectedFields().every(field => field?.fieldId == 0 && field?.dynamicTableId != null);
 	};
 	self.chartTypes = ["List", "Summary", "Single", "Pivot", "Html"];
 	self.isChart = ko.computed(function () {
@@ -2941,6 +2944,10 @@ var reportViewModel = function (options) {
 		}
 		if (self.SelectedFields().slice(-1)[0]?.selectedAggregate() === 'Pivot') {
 			toastr.error("Pivot field cannot be the last column.");
+			return;
+		}
+		if (self.IsDynamicFieldFirstColumn(0) || self.IsAllDynamicFieldSelected()) {
+			toastr.error("Dynamic cannot be first column.\n Cannot be only dynamic without a parent field.");
 			return;
 		}
 		if (!skipValidation && !self.validateReport()) {
