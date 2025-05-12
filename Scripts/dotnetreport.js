@@ -2405,16 +2405,9 @@ var reportViewModel = function (options) {
 	};
 
 	self.isFieldValidForYAxis = function (i, fieldType, aggregate) {
-		if (self.ReportType() == 'Treemap'
-			|| ["Int", "Integer", "Double", "Decimal", "Money"].indexOf(fieldType) < 0
-			|| ["Only in Detail", "Pivot"].indexOf(aggregate) > 0
-			|| i == 0) return false;
-		if (i > 0) {
-			if (self.ReportType() == "Bar" && ["Int", "Integer", "Double", "Decimal", "Money"].indexOf(fieldType) < 0 && aggregate != "Count") {
-				return false;
-			}
-		}
-		return true;
+		return !(i > 0 && (self.ReportType() == 'Treemap'
+			|| (["Int", "Integer", "Double", "Decimal", "Money"].indexOf(fieldType) < 0 && aggregate != 'Count' && aggregate != 'Count Distinct')
+			|| ["Only in Detail", "Pivot"].indexOf(aggregate) > 0))
 	};
 	self.IsPivotFieldLastColumn = function (i, aggregate) {
 		return i === self.SelectedFields().length - 1 && aggregate === 'Pivot';
