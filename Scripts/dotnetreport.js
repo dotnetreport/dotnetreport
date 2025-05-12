@@ -3099,14 +3099,16 @@ var reportViewModel = function (options) {
 		self.ReportSeries = reportSeries;
 		self.OuterGroupColumns([]);
 		if (result.HasError || previewOnly === true) return;
-
+		function isContained(src, dst) {
+			return typeof src === 'string' && typeof dst === 'string' && dst.includes(src);
+		}
 		function matchColumnName(src, dst, dbSrc, dbDst, agg) {
 			if (src == dst) return true;
 			if (dbSrc && dbDst && dbSrc == dbDst) return true;
 
 			if (agg && dbSrc && dbDst && agg + '(' + dbSrc + ')' == dbDst) return true;
 			if (agg == 'Count Distinct' && dbSrc && dbDst && 'Count(Distinct ' + dbSrc + ')' == dbDst) return true;
-
+			if ((agg == '% over Count' || agg == '% over Sum') && src && dst && isContained(src, dst)) return true;
 			if (dst.indexOf('(Last ') > -1 || dst.indexOf('Months ago)') > -1 || dst.indexOf('Years ago)') > -1) {
 				const match = dst.match(/\((Last Year|Last Month|\d+ Years? ago|\d+ Months? ago)\)$/);
 				dst = match ? dst.replace(match[0], '').trim() : dst;
