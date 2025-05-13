@@ -250,7 +250,7 @@
             </thead>
             <tbody data-bind="attr: {id: 'report-table-body' + $parents[2].ReportID()}">
                 <tr style="display: none;" data-bind="visible: Rows.length < 1">
-                    <td class="text-info" data-bind="attr:{colspan: Columns.length}">
+                    <td data-bind="attr:{colspan: Columns.length + 1}">
                         No records found
                     </td>
                 </tr>
@@ -281,7 +281,7 @@
                             </thead>
                             <tbody>
                                 <tr style="display: none;" data-bind="visible: Rows && Rows.length < 1">
-                                    <td class="text-info" data-bind="attr:{colspan: Columns.length}">
+                                    <td data-bind="attr:{colspan: Columns.length}">
                                         No records found
                                     </td>
                                 </tr>
@@ -1682,6 +1682,12 @@
                                                 <span data-bind="text: isFormulaField() ? '(' + fieldFormat() + ')' : ''"></span>
                                                 <span data-bind="visible: !$parent.isFieldValidForYAxis($index(), fieldType || fieldFormat(), selectedAggregate()) && $parent.ReportType() !='Treemap' && $parent.isChart()">
                                                     <span class="badge bg-danger" data-bind="visible: !groupInGraph()">Will not show in <span data-bind="text: $parent.ReportType"></span>Chart</span>
+                                                </span>
+                                                <span data-bind="visible: $parent.IsPivotFieldLastColumn($index(),selectedAggregate())">
+                                                    <span class="badge bg-danger" >Pivot field cannot be the last column.</span>
+                                                </span>
+                                                <span data-bind="visible: $parent.IsDynamicFieldFirstColumn($index())">
+                                                    <span class="badge bg-danger" >Dynamic cannot be first column.</span>
                                                 </span>
                                             </div>
                                             <div class="col-7">
