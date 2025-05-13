@@ -2954,7 +2954,11 @@ var reportViewModel = function (options) {
 			toastr.error("Please correct validation issues");
 			return;
 		}
-
+		let field = self.FilterGroups()[0]?.FilterGroups()[0]?.Filters()[0]?.Field();
+		if (field && field.fieldId === 0 && field.dynamicTableId != null) {
+			toastr.error("You can not use dynamic field is first in filter group");
+			return;
+		}
 		self.ValidateTableJoins().done(function (isValid) {
 			if (isValid) {
 
