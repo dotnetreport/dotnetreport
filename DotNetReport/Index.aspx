@@ -44,6 +44,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
 
                 vm.init(queryParams.folderid || 0, data.noAccount);
                 ko.applyBindings(vm);
+                vm.textQuery.setupSearch();
 
                 $(window).resize(function () {
                     vm.DrawChart();
@@ -111,8 +112,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         </ul>
                         <div class="form-inline my-2 my-lg-0 ms-auto w-50">
                             <div class="input-group w-100">
-                                <span class="input-group-text"><i class="fa fa-search"></i></span>
-                                <input type="text" class="form-control" data-bind="value: searchReports" placeholder="Search Report by Name, Description or Data Field..." />
+                                <p id="search-input" class="form-control search-input" data-placeholder="Search Report by Name, Description or Data Field..."></p>
+                                <span data-bind="click: searchForReports" class="input-group-text" style="height: 38px; cursor: pointer;" title="Search"><i class="fa fa-search"></i></span>
+                                <span data-bind="click: function() {resetQuery(true, true);}" class="input-group-text" style="height: 38px; cursor: pointer;" title="Clear Search"><i class="fa fa-close"></i></span>
                             </div>
                         </div>
                     </div>
@@ -517,7 +519,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                     <div class="collapse navbar-collapse" id="navbarSupportedContent">
                         <ul class="navbar-nav me-auto"></ul>
                         <div class="d-flex align-items-center gap-2">
-                            <button class="btn btn-light btn-sm" data-bind="click: function() {$root.ReportMode('start');}">
+                            <button class="btn btn-light btn-sm" data-bind="click: function() {$root.ReportMode('start'); $root.textQuery.setupSearch();}">
                                 <i class="fa fa-arrow-left"></i>
                                 <span>Back to Reports</span>
                             </button>
