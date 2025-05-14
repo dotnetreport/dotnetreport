@@ -878,8 +878,8 @@
                             <select class="form-select" data-bind="options: $parents[1].dateFormats, value: dateFormat"></select>
                         </div>
                     </div>
-                    <div class="form-group row" data-bind="visible: fieldFormat()=='Date'">
-                        <label class="col-sm-5 col-md-5 control-label">Drilldown Date Format</label>
+                    <div class="form-group row" data-bind="visible:selectedAggregate()=='Pivot' && fieldFormat()=='Date'">
+                        <label class="col-sm-5 col-md-5 control-label">Pivot Drilldown Date Format</label>
                         <div class="col-sm-7 col-md-7">
                             <select class="form-select" data-bind="options: ['', 'Day', 'Month', 'Year', 'Month/Year'], value: drillDataFormat"></select>
                         </div>
