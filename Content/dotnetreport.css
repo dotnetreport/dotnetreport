@@ -547,6 +547,13 @@ select.is-invalid ~ span .select2-selection {
         cursor: pointer;
     }
 
+    .search-input a {
+        background-color: transparent;
+        color: #2ba6cb !important;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
 .hint-input {
     outline: none;
     border: 1px solid #eee;
@@ -1575,4 +1582,15 @@ main {
 
 .menu-text {
     display: none;
+}
+
+#search-input:empty::before {
+    content: attr(data-placeholder);
+    color: #999;
+    display: block;
+    pointer-events: none;
+}
+
+#search-input:focus:empty::before {
+    content: attr(data-placeholder);
 }
