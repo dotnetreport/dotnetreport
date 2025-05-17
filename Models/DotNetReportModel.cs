@@ -3090,7 +3090,7 @@ namespace ReportBuilder.Web.Models
             return Encoding.ASCII.GetBytes(csv);
         }
 
-        public static dynamic GetDbConnectionSettings(string account, string dataConnect, bool addOledbProvider = true)
+        public static dynamic GetDbConnectionSettings(string account, string dataConnect, bool addOledbProvider = false)
         {
             var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
             if (!System.IO.File.Exists(_configFilePath))
