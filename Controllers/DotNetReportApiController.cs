@@ -660,9 +660,17 @@ namespace ReportBuilder.Web.Controllers
                 }
                 table.CustomTableSql = data.value;
 
-                var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(data.dataConnectKey), false);
+                var connect = DotNetReportHelper.GetConnection();
+                var dbConfig = DotNetReportHelper.GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey);
+                if (dbConfig == null)
+                {
+                    throw new Exception("Data Connection settings not found");
+                }
+
+                var dbtype = dbConfig["DatabaseType"].ToString();
+                string connectionString = dbConfig["ConnectionString"].ToString();
                 IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
-                table = await databaseConnection.GetSchemaFromSql(connString, table, data.value, data.dynamicColumns);
+                table = await databaseConnection.GetSchemaFromSql(connectionString, table, data.value, data.dynamicColumns);
 
                 return new JsonResult(table, new JsonSerializerOptions() { PropertyNamingPolicy = null });
             }
@@ -695,9 +703,17 @@ namespace ReportBuilder.Web.Controllers
                 List<string> fields = new List<string>();
                 List<string> sqlFields = new List<string>();
                 // Execute sql
-                var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(data.dataConnectKey), false);
+                var connect = DotNetReportHelper.GetConnection();
+                var dbConfig = DotNetReportHelper.GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey);
+                if (dbConfig == null)
+                {
+                    throw new Exception("Data Connection settings not found");
+                }
+
+                var dbtype = dbConfig["DatabaseType"].ToString();
+                string connectionString = dbConfig["ConnectionString"].ToString();
                 IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
-                var dtPaged = databaseConnection.ExecuteQuery(connString, sql);
+                var dtPaged = databaseConnection.ExecuteQuery(connectionString, sql);
 
                 var model = new DotNetReportResultModel
                 {
