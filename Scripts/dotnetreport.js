@@ -4432,6 +4432,7 @@ var reportViewModel = function (options) {
 				if (e.applyAllFontColor()) f.fontColor(e.fontColor());
 				if (e.applyAllBackColor()) f.backColor(e.backColor());
 				if (e.applyAllBold()) f.fontBold(e.fontBold());
+				if (e.applyAllHeaderBold()) f.headerFontBold(e.headerFontBold());
 			});
 
 			e.fieldConditionVal = [];
