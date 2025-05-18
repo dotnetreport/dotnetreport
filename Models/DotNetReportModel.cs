@@ -2550,7 +2550,7 @@ namespace ReportBuilder.Web.Models
                     }
                     else
                     {
-                        Paragraph expandedData = new Paragraph(new Run(new Text("No RecordS Found")));
+                        Paragraph expandedData = new Paragraph(new Run(new Text("No records found")));
                         body.AppendChild(expandedData);
                     }
                     // Ensure word wrapping doesn't break words

@@ -3620,44 +3620,42 @@ var reportViewModel = function (options) {
 			}
 			processRow(e.Items, result.ReportData.Columns);
 		});
-		function renderTable(data) {
+		function renderTable(data, colspan) {
 			const tableBody = document.getElementById('report-table-body' + self.ReportID());
 			if (tableBody) {
 				let rowsHTML = '';
 
-				data.forEach(row => {
-					rowsHTML += '<tr>';
-					row.Items.forEach(item => {
-						let tdStyle = `style="background-color: ${item._backColor ?? item.backColor()};
-                            color: ${item._fontColor ?? item.fontColor()}; 
-                            font-weight: ${(item.fontBold() || item._fontBold) ? 'bold' : 'normal'}; 
-                            text-align: ${item.fieldAlign() ? item.fieldAlign() : (item.Column.IsNumeric ? 'right' : 'left')}"`;
+					data.forEach(row => {
+						rowsHTML += '<tr>';
+						row.Items.forEach(item => {
+							let tdStyle = `style="background-color: ${item._backColor ?? item.backColor()};
+						color: ${item._fontColor ?? item.fontColor()}; 
+						font-weight: ${(item.fontBold() || item._fontBold) ? 'bold' : 'normal'}; 
+						text-align: ${item.fieldAlign() ? item.fieldAlign() : (item.Column.IsNumeric ? 'right' : 'left')}"`;
 
-						if (item.LinkTo) {
-							rowsHTML +=
-								`<td ${tdStyle}>
-									<a href="${item.LinkTo}" target="_blank"><span>${item.FormattedValue}</span></a>  
-								</td>`;
-						}
-						else {
-							rowsHTML +=
-								`<td ${tdStyle}>
+							if (item.LinkTo) {
+								rowsHTML +=
+									`<td ${tdStyle}>
+								<a href="${item.LinkTo}" target="_blank"><span>${item.FormattedValue}</span></a>  
+							</td>`;
+							}
+							else {
+								rowsHTML +=
+									`<td ${tdStyle}>
 								${item.FormattedValue}
 							</td>`;
-						}
+							}
+						});
+						rowsHTML += '</tr>';
 					});
-					rowsHTML += '</tr>';
-				});
-
-				// Replace the table body content in one go
-				tableBody.innerHTML = rowsHTML ? rowsHTML : '<tr><td>No records found</td></tr>';
+				tableBody.innerHTML = rowsHTML ? rowsHTML : '<tr><td colspan="'+colspan+'">No records found</td></tr>';
 			}
 		}
 
 		reportResult.ReportData(result.ReportData);
 
 		if (self.ReportType() == 'List' || self.ShowExpandOption() || self.hasPivotColumn()) {
-			renderTable(result.ReportData.Rows);
+			renderTable(result.ReportData.Rows, result.ReportData.Columns.length);
 		}
 
 		self.pager.totalRecords(result.Pager.TotalRecords);

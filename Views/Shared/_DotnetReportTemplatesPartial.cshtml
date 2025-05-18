@@ -129,7 +129,7 @@
 
 <script type="text/html" id="report-column-header">
     <!-- ko foreach: Columns -->
-    <th data-bind="attr: { id: !IsPivotField ? fieldId : 'pivot--' + fieldName }, style: {'text-align': fieldAlign ? fieldAlign : (IsNumeric ? 'right' : 'left'), 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
+    <th data-bind="attr: { id: !IsPivotField ? fieldId : 'pivot--' + fieldName }, style: {'text-align': fieldAlign() ? fieldAlign() : (IsNumeric ? 'right' : 'left'), 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
 
         <div class="pull-left" data-bind="if: !$parent.IsDrillDown()" style="padding-right: 5px;">
             <div class="dropup">
@@ -191,7 +191,7 @@
 
 <script type="text/html" id="report-column">
     <!-- ko foreach: Items -->
-    <td data-bind="hidden: outerGroup, style: {'background-color': _backColor ?? backColor(), 'color': _fontColor ?? fontColor(), 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')}">
+    <td data-bind="hidden: outerGroup, style: {'background-color': _backColor ?? backColor(), 'color': _fontColor ?? fontColor(), 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': fieldAlign() ? fieldAlign() : (Column.IsNumeric ? 'right' : 'left')}">
         <div data-bind="style: {'width': fieldWidth }">
             <!-- ko if: LinkTo-->
             <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: formattedVal"></span></a>
@@ -281,7 +281,7 @@
                             </thead>
                             <tbody>
                                 <tr style="display: none;" data-bind="visible: Rows && Rows.length < 1">
-                                    <td data-bind="attr:{colspan: Columns.length}">
+                                    <td data-bind="attr: {colspan: Columns.length}">
                                         No records found
                                     </td>
                                 </tr>
@@ -321,8 +321,10 @@
                     <!-- /ko -->
                     <!-- ko foreach: Items -->
                     <!-- ko if: Value != 'NA' && Value != 'NaN' && !outerGroup() -->
-                    <td data-bind="style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '48px' : ''}">
-                        <span data-bind="html: formattedVal, css: {'right-align': true}"></span>
+                    <td data-bind="style: {'background-color': _backColor ?? backColor(), 'color': _fontColor ?? fontColor(), 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': fieldAlign() ? fieldAlign() : 'right'}">
+                        <div data-bind="style: {'width': fieldWidth }">
+                        <span data-bind="html: formattedVal"></span>
+                        </div>
                     </td>
                     <!-- /ko -->
                     <!-- /ko -->
@@ -2110,7 +2112,7 @@
                         </thead>
                         <tbody>
                             <tr style="display: none;" data-bind="visible: Rows && Rows.length < 1">
-                                <td class="text-info" data-bind="attr:{colspan: Columns.length}">
+                                <td data-bind="attr:{colspan: Columns.length}">
                                     No records found
                                 </td>
                             </tr>
