@@ -2413,11 +2413,15 @@ var reportViewModel = function (options) {
 		return i === self.SelectedFields().length - 1 && aggregate === 'Pivot';
 	};
 	self.IsDynamicFieldFirstColumn = function (i) {
-		const field = self.SelectedFields()[0];
-		return i === 0 && field?.fieldId == 0 && field?.dynamicTableId != null;
+		const selectedFields = self.SelectedFields();
+		if (!selectedFields || selectedFields.length === 0) return false;
+		const field = selectedFields[0];
+		return i === 0 && field?.fieldId === 0 && field?.dynamicTableId != null;
 	};
 	self.IsAllDynamicFieldSelected = function () {
-		return self.SelectedFields().every(field => field?.fieldId == 0 && field?.dynamicTableId != null);
+		const selectedFields = self.SelectedFields();
+		if (!Array.isArray(selectedFields) || selectedFields.length === 0) return false;
+		return selectedFields.every(field => field?.fieldId === 0 && field?.dynamicTableId != null);
 	};
 	self.chartTypes = ["List", "Summary", "Single", "Pivot", "Html"];
 	self.isChart = ko.computed(function () {
@@ -2936,6 +2940,10 @@ var reportViewModel = function (options) {
 				toastr.error("All fields except one must be hidden for Widget type report");
 				return;
 			}
+		}
+		if (self.SelectedFields().length === 0) {
+			toastr.error("Please select at least one field to save or run the report.");
+			return;
 		}
 
 		if (_.filter(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' }).length > 1) {
