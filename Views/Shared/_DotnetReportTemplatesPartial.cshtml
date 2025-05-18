@@ -316,7 +316,7 @@
             <!-- ko if: $parentContext.$parent.SubTotals().length == 1 && $parentContext.$parentContext.$parent.OuterGroupColumns().length == 0 -->
             <tfoot data-bind="foreach: $parentContext.$parent.SubTotals">
                 <tr class="sub-total">
-                    <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() -->
+                    <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() && !$parent.CanExpandOption() -->
                     <td></td>
                     <!-- /ko -->
                     <!-- ko foreach: Items -->
