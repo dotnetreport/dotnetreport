@@ -3611,7 +3611,8 @@ var reportViewModel = function (options) {
 					allExpanded: false,
 					expandSqls: '',
 					columnDetails: self.getColumnDetails(),
-					includeSubTotals: false
+					includeSubTotals: false,
+					isSubReport:true
 				}, 'xlsx');
 			}
 
