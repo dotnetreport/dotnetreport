@@ -3175,7 +3175,7 @@ var reportViewModel = function (options) {
 				col.decimalPlacesDigit = col.decimalPlaces ? col.decimalPlaces() : null;
 				col.fieldFormating = col.fieldFormat ? col.fieldFormat() : null;
 				col.IsPivotField = e.IsPivotField ;
-				if (skipColDetails !== true) self.columnDetails.push(col);
+				if (skipColDetails !== true) self.columnDetails.push(ko.toJS(col));
 
 				e.decimalPlaces = col.decimalPlaces || ko.observable();
 				e.currencyFormat = col.currencyFormat || ko.observable();
