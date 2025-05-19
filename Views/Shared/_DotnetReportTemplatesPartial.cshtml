@@ -129,7 +129,7 @@
 
 <script type="text/html" id="report-column-header">
     <!-- ko foreach: Columns -->
-    <th data-bind="attr: { id: !IsPivotField ? fieldId : 'pivot--' + fieldName }, style: {'text-align': fieldAlign ? fieldAlign : (IsNumeric ? 'right' : 'left'), 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
+    <th data-bind="attr: { id: !IsPivotField ? fieldId : 'pivot--' + fieldName }, style: {'text-align': fieldAlign() ? fieldAlign() : (IsNumeric ? 'right' : 'left'), 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
 
         <div class="pull-left" data-bind="if: !$parent.IsDrillDown()" style="padding-right: 5px;">
             <div class="dropup">
@@ -191,7 +191,7 @@
 
 <script type="text/html" id="report-column">
     <!-- ko foreach: Items -->
-    <td data-bind="hidden: outerGroup, style: {'background-color': _backColor ?? backColor(), 'color': _fontColor ?? fontColor(), 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')}">
+    <td data-bind="hidden: outerGroup, style: {'background-color': _backColor ?? backColor(), 'color': _fontColor ?? fontColor(), 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': fieldAlign() ? fieldAlign() : (Column.IsNumeric ? 'right' : 'left')}">
         <div data-bind="style: {'width': fieldWidth }">
             <!-- ko if: LinkTo-->
             <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: formattedVal"></span></a>
@@ -281,7 +281,7 @@
                             </thead>
                             <tbody>
                                 <tr style="display: none;" data-bind="visible: Rows && Rows.length < 1">
-                                    <td data-bind="attr:{colspan: Columns.length}">
+                                    <td data-bind="attr: {colspan: Columns.length}">
                                         No records found
                                     </td>
                                 </tr>
@@ -316,13 +316,15 @@
             <!-- ko if: $parentContext.$parent.SubTotals().length == 1 && $parentContext.$parentContext.$parent.OuterGroupColumns().length == 0 -->
             <tfoot data-bind="foreach: $parentContext.$parent.SubTotals">
                 <tr class="sub-total">
-                    <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() -->
+                    <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() && !$parent.CanExpandOption() -->
                     <td></td>
                     <!-- /ko -->
                     <!-- ko foreach: Items -->
                     <!-- ko if: Value != 'NA' && Value != 'NaN' && !outerGroup() -->
-                    <td data-bind="style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '48px' : ''}">
-                        <span data-bind="html: formattedVal, css: {'right-align': true}"></span>
+                    <td data-bind="style: {'background-color': _backColor ?? backColor(), 'color': _fontColor ?? fontColor(), 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': fieldAlign() ? fieldAlign() : 'right'}">
+                        <div data-bind="style: {'width': fieldWidth }">
+                        <span data-bind="html: formattedVal"></span>
+                        </div>
                     </td>
                     <!-- /ko -->
                     <!-- /ko -->
@@ -878,14 +880,14 @@
                             <select class="form-select" data-bind="options: $parents[1].dateFormats, value: dateFormat"></select>
                         </div>
                     </div>
-                    <div class="form-group row" data-bind="visible: fieldFormat()=='Date'">
-                        <label class="col-sm-5 col-md-5 control-label">Drilldown Date Format</label>
+                    <div class="form-group row" data-bind="visible:selectedAggregate()=='Pivot' && fieldFormat()=='Date'">
+                        <label class="col-sm-5 col-md-5 control-label">Pivot Drilldown Date Format</label>
                         <div class="col-sm-7 col-md-7">
                             <select class="form-select" data-bind="options: ['', 'Day', 'Month', 'Year', 'Month/Year'], value: drillDataFormat"></select>
                         </div>
                     </div>
 
-                    <div class="form-group row" data-bind="visible: dateFormat()==='Custom'">
+                    <div class="form-group row" data-bind="visible: fieldFormat()=='Date' && dateFormat()==='Custom'">
                         <label class="col-sm-5 col-md-5 control-label">Enter Custom Date Format</label>
                         <div class="col-sm-7 col-md-7">
                             <input type="text" class="form-control" data-bind="value: customDateFormat" placeholder="dd/mm/yyyy" />
@@ -2110,7 +2112,7 @@
                         </thead>
                         <tbody>
                             <tr style="display: none;" data-bind="visible: Rows && Rows.length < 1">
-                                <td class="text-info" data-bind="attr:{colspan: Columns.length}">
+                                <td data-bind="attr:{colspan: Columns.length}">
                                     No records found
                                 </td>
                             </tr>

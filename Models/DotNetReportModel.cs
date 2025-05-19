@@ -772,7 +772,7 @@ namespace ReportBuilder.Web.Models
                 }
             }
         }
-        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool loadHeader = true, string chartData = null,bool isexpanded=false)
+        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool loadHeader = true, string chartData = null,bool isexpanded=false,bool isSubReport=false)
         {
             RemoveColumnsBySubstring(dt, "__prm__");
             ws.Cells[rowstart, colstart].LoadFromDataTable(dt, loadHeader);
@@ -801,6 +801,10 @@ namespace ReportBuilder.Web.Models
                     ws.Cells[rowstart, i].Value = formatColumn.fieldLabel;
                 }
                 if (rowstart == 3 & isexpanded && !string.IsNullOrEmpty(formatColumn.fieldLabel2))
+                {
+                    ws.Cells[rowstart, i].Value = formatColumn.fieldLabel2;
+                }
+                if (rowstart == 3 & isSubReport && !string.IsNullOrEmpty(formatColumn.fieldLabel2))
                 {
                     ws.Cells[rowstart, i].Value = formatColumn.fieldLabel2;
                 }
@@ -1880,7 +1884,7 @@ namespace ReportBuilder.Web.Models
         }
 
         public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, List<ReportHeaderColumn> onlyAndGroupInDetailColumns = null)
+                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, List<ReportHeaderColumn> onlyAndGroupInDetailColumns = null,bool isSubReport=false)
         {
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
@@ -1937,7 +1941,7 @@ namespace ReportBuilder.Web.Models
                     rowstart += 2;
                     rowend = rowstart + dt.Rows.Count;
 
-                    FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeSubtotal, true, chartData);
+                    FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeSubtotal, true, chartData,isSubReport:isSubReport);
 
                     if (allExpanded)
                     {
@@ -2531,7 +2535,7 @@ namespace ReportBuilder.Web.Models
                     }
                     else
                     {
-                        Paragraph expandedData = new Paragraph(new Run(new Text("No RecordS Found")));
+                        Paragraph expandedData = new Paragraph(new Run(new Text("No records found")));
                         body.AppendChild(expandedData);
                     }
                     // Ensure word wrapping doesn't break words
