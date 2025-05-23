@@ -2173,6 +2173,7 @@ var reportViewModel = function (options) {
 
 	self.getEmptyFormulaField = function () {
 		return {
+			tableId:0,
 			tableName: 'Custom',
 			fieldName: self.formulaFieldLabel() || 'Custom',
 			fieldFormat: self.formulaDataFormat() || 'String',
