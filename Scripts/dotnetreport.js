@@ -4811,6 +4811,15 @@ var reportViewModel = function (options) {
 			}
 
 			self.SavedReports(reports);
+			if (self.searchReports()) {
+				_.forEach(self.reportsInSearch(), (searchItem, index) => {
+					const updatedItem = _.find(reports, { reportId: searchItem.reportId });
+					if (updatedItem) {
+						self.reportsInSearch.splice(index, 1);
+						self.reportsInSearch.splice(index, 0, updatedItem);
+					}
+				});
+			}
 		});
 	};
 
