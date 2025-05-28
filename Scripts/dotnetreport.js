@@ -4782,6 +4782,7 @@ var reportViewModel = function (options) {
 								}
 							}).done(function () {
 								self.SavedReports.remove(e);
+								self.reportsInSearch.remove(e);
 							});
 						}
 					});
