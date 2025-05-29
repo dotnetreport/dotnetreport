@@ -838,6 +838,7 @@ var reportViewModel = function (options) {
 	self.FolderID = ko.observable();
 	self.ReportID = ko.observable();
 	self.seriesTypes = ['bars', 'line', 'area'];
+	self.htmlEditorInit = false;
 
 	self.Tables = ko.observableArray([]);
 	self.CategorizedTables = ko.observableArray([]);
@@ -916,6 +917,7 @@ var reportViewModel = function (options) {
 	self.CanEdit = ko.observable(true);
 	self.useReportHeader = ko.observable(false);
 	self.searchReports = ko.observable();
+	self.reportHtml = ko.observable();
 
 	const styleMixed = ["#c8d8e4", "#e4d8c8", "#d8e4c8", "#e4c8d8", "#c8e4d8","#d8c8e4", "#e4c8c8", "#c8e4e4", "#e4e4c8", "#d8e4e4","#c8d8d8", "#d8c8c8", "#c8c8e4", "#e4d8d8", "#d8d8c8","#c8d8e4", "#e4c8e4", "#d8e4d8", "#e4d8e4", "#d8d8e4","#e4e4d8", "#c8e4c8", "#e4c8d8", "#d8c8d8", "#c8e4e4"];
 	const styleMixedBright = ["#fff", "#ff9999", "#99ff99", "#9999ff", "#ffff99", "#99ffff", "#ff99ff", "#d9d9d9", "#b3b3ff", "#ffb3b3", "#b3ffb3", "#ffcc66", "#ccff66", "#66ffcc", "#66ccff", "#cc66ff", "#ff6666", "#66ff66", "#6666ff", "#ffff66", "#66ffff"];
@@ -1238,7 +1240,6 @@ var reportViewModel = function (options) {
 			self.SelectedFields(result);
 			filters.forEach(f => self.FilterGroups()[0].AddFilter(f));
 
-			self.SaveReport(false);
 
 			if (useAi === true) {
 				var queryText = document.getElementById("query-input").innerText;
@@ -1372,8 +1373,43 @@ var reportViewModel = function (options) {
 		if (self.chartTypes.indexOf(newvalue) < 0) {
 			self.DrawChart();
 		}
+
+		if (newvalue == 'Html' && !self.htmlEditorInit) {
+			self.htmlEditorInit = true;
+			$('#summernote-editor').summernote({
+				height: 300,
+				popover: {
+					image: [],
+					link: [],
+					air: []
+				},
+				toolbar: [
+					['style', ['style']],
+					['font', ['bold', 'italic', 'underline', 'clear']],
+					['color', ['color']],
+					['para', ['ul', 'ol', 'paragraph']],
+					['table', ['table']],
+					['insert', ['link', 'picture']],
+					['view', ['codeview']]
+				],
+				popoverContainer: 'body',
+				dialogsInBody: true
+			});
+			
+			$('#summernote-editor').summernote('code', decodeURIComponent(self.reportHtml()));
+		}
 	});
-	
+
+	self.insertField = function () {
+		if (!self.SelectedField()) return;
+		const placeholder = `{{${self.SelectedField().selectedFieldName}}}`;
+		$('#summernote-editor').summernote('pasteHTML', placeholder);
+	};
+
+	self.getReportHtml = function () {
+		return $('#summernote-editor').summernote('code');
+	};
+
 	self.setReportType = function (reportType) {
 		self.ReportType(reportType);
 	};
@@ -1763,6 +1799,7 @@ var reportViewModel = function (options) {
 		self.barChartStacked(false);
 		self.comboChartType('bars');
 		self.selectedStyle('default');
+		self.reportHtml('');
 	};
 
 	self.SelectedProc.subscribe(function (proc) {
@@ -2761,7 +2798,8 @@ var reportViewModel = function (options) {
 						FieldWidth:column.fieldWidth()
 					};
 				}),
-				chartOptions: self.chartOptions()
+				chartOptions: self.chartOptions(),
+				reportHtml: self.ReportType() == 'Html' ? encodeURIComponent(self.getReportHtml()) : '' 
 			}),
 			OnlyTop: self.maxRecords() ? self.OnlyTop() : null,
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : self.AggregateReport(),
@@ -3337,7 +3375,14 @@ var reportViewModel = function (options) {
 			return { start, end };
 		}
 
+		function decodeHtmlEntities(html) {
+			const txt = document.createElement("textarea");
+			txt.innerHTML = html;
+			return txt.value;
+		}
+
 		function processRow(row, columns) {
+			let renderedHtml = decodeHtmlEntities(self.reportHtml());
 			_.forEach(row, function (r, i) {
 				r.LinkTo = '';
 				var col = columns[i];
@@ -3492,7 +3537,23 @@ var reportViewModel = function (options) {
 					return r.FormattedValue;
 				});
 
+				if (self.ReportType()=='Html' && columns[i]) {
+					const col = columns[i];
+					let tableName = '';
+					if (col.SqlField) {
+						const match = col.SqlField.match(/\[([^\]]+)\]\.\[([^\]]+)\]/);
+						tableName = match ? match[1] : '';
+					}
+
+					const placeholderKey = `${tableName} > ${col.fieldName}`.trim();
+
+					const val = ko.unwrap(r.formattedVal || r.Value || '');
+					renderedHtml = renderedHtml.replaceAll(`{{${placeholderKey}}}`, val);
+				}
+
 			});
+
+			return renderedHtml;			
 		}
 		self.ReportColumns(result.ReportData.Columns);
 		processCols(result.ReportData.Columns);
@@ -3634,7 +3695,7 @@ var reportViewModel = function (options) {
 			if (self.useStoredProc()) {
 				e.Items = _.filter(e.Items, function (x) { return _.includes(validFieldNames, x.Column.SqlField); });
 			}
-			processRow(e.Items, result.ReportData.Columns);
+			e.renderedHtml = processRow(e.Items, result.ReportData.Columns);
 		});
 		function renderTable(data, colspan) {
 			const tableBody = document.getElementById('report-table-body' + self.ReportID());
@@ -4558,8 +4619,13 @@ var reportViewModel = function (options) {
 		self.noHeaderRow(reportSettings.noHeaderRow);
 		self.noDashboardBorders(reportSettings.noDashboardBorders);
 		self.showPriorInKpi(reportSettings.showPriorInKpi);
-		self.PivotColumns(reportSettings.PivotColumns || null)
-		self.PivotColumnsWidth(reportSettings.PivotColumnsWidth || null)
+		self.PivotColumns(reportSettings.PivotColumns || null);
+		self.PivotColumnsWidth(reportSettings.PivotColumnsWidth || null);
+		self.reportHtml(decodeURIComponent(reportSettings.reportHtml));
+
+		if (self.ReportType() == 'Html')
+			$('#summernote-editor').summernote('code', self.reportHtml());
+		
 		if (self.ReportMode() == "execute") {
 			if (self.useReportHeader()) {
 				self.headerDesigner.init(true);

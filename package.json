@@ -19,6 +19,7 @@
     "knockout-sortable": "1.2.2",
     "knockout-x-editable": "0.1.2",
     "lodash": "4.17.21",
+    "summernote": "0.9.1",
     "select2": "4.0.13",
     "toastr": "2.1.4",
     "tributejs": "5.1.3",

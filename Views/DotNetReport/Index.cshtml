@@ -227,7 +227,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <div class="list-group-item">
                                         <div class="row">
                                             <div class="col-sm-7">
-                                                <div class="fa fa-2x pull-left" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType.indexOf('Map')==0, 'fa-window-maximize': reportType=='Single', 'fa-random': reportType=='Pivot', 'fa-window-restore': reportType=='Treemap', 'fa-signal': reportType == 'Combo'}"></div>
+                                                <div class="fa fa-2x pull-left" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType.indexOf('Map')==0, 'fa-window-maximize': reportType=='Single', 'fa-random': reportType=='Pivot', 'fa-window-restore': reportType=='Treemap', 'fa-signal': reportType == 'Combo', 'fa-code': reportType == 'Html'}"></div>
                                                 <div class="pull-left">
                                                     <h4>
                                                         <a data-bind="click: runReport" style="cursor: pointer">
@@ -421,7 +421,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                     'fa-globe': reportType.indexOf('Map')==0,
                                                     'fa-window-maximize': reportType=='Single',
                                                     'fa-random': reportType=='Pivot',
-                                                    'fa-window-restore': reportType=='Treemap'
+                                                    'fa-window-restore': reportType=='Treemap',
+                                                    'fa-code': reportType == 'Html'
                                                 }"></span>
                                                     <a class="ms-2" data-bind="click: runReport, highlightedText: { text: reportName, highlight: $parent.searchReports, css: 'highlight' }" style="cursor: pointer"></a>&nbsp;
                                                     <span data-bind="text: message" class="highlight small"></span>

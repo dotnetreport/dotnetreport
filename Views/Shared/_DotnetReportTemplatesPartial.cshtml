@@ -335,12 +335,25 @@
     </div>
 </script>
 
+<script type="text/html" id="report-render">
+    <div data-bind="with: ReportData">
+        <div data-bind="foreach: Rows">
+            <div data-bind="html: renderedHtml"></div>
+        </div>
+    </div>
+</script>
+
 <script type="text/html" id="report-template">
     <div class="report-chart" data-bind="attr: {id: 'chart_div_' + $parent.ReportID()}, visible: $parent.isChart"></div>
     <!-- ko if: $parent.ReportType() == 'Pivot' -->
     <div data-bind="template: {name: 'report-pivot', data: $data }"></div>
     <!-- /ko -->
-    <!-- ko if: $parent.ReportType() != 'Pivot' && (!$parent.isChart() || $parent.ShowDataWithGraph()) -->
+
+    <!-- ko if: $parent.ReportType() == 'Html' -->
+    <div data-bind="template: {name: 'report-render', data: $data }"></div>
+    <!-- /ko -->
+
+    <!-- ko if: $parent.ReportType() != 'Pivot' && $parent.ReportType() != 'Html' && (!$parent.isChart() || $parent.ShowDataWithGraph()) -->
     <div class="pull-right" data-bind="if: $parent.OuterGroupColumns().length > 0">
         <a href="#" data-bs-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
             Manage Groups <span class="fa fa-ellipsis-v"></span>
@@ -1312,6 +1325,10 @@
                                         <span class="fa fa-2x fa-signal"></span>
                                         <p>Combo</p>
                                     </button>
+                                    <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Html'); }, css: { active: ReportType()=='Html' }">
+                                        <span class="fa fa-2x fa-code"></span>
+                                        <p>Custom</p>
+                                    </button>
                                     <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Map'); }, css: { active: ReportType().indexOf('Map')==0 }">
                                         <span class="fa fa-2x fa-globe"></span>
                                         <p>Map</p>
@@ -1537,19 +1554,19 @@
                                                         <label class="form-label">Select the Data Field to use:</label>
                                                         <select class="form-select"
                                                                 data-bind="select2: {
-                                                dropdownParent: $('#choose-data-card'),
-                                                placeholder: 'Select Field...',
-                                                ajax: {
-                                                    url: $parent.textQuery.searchFields.url,
-                                                    dataType: 'json',
-                                                    data: $parent.textQuery.searchFields.query,
-                                                    processResults: $parent.textQuery.searchFields.processResults,
-                                                    headers: $parent.textQuery.searchFields.headers
-                                                },
-                                                minimumInputLength: 2,
-                                                allowClear: true
-                                            }, select2Text: selectedField"></select>
-                                      </div>
+                                                                dropdownParent: $('#choose-data-card'),
+                                                                placeholder: 'Select Field...',
+                                                                ajax: {
+                                                                    url: $parent.textQuery.searchFields.url,
+                                                                    dataType: 'json',
+                                                                    data: $parent.textQuery.searchFields.query,
+                                                                    processResults: $parent.textQuery.searchFields.processResults,
+                                                                    headers: $parent.textQuery.searchFields.headers
+                                                                },
+                                                                minimumInputLength: 2,
+                                                                allowClear: true
+                                                            }, select2Text: selectedField"></select>
+                                                      </div>
 
                                                     <div class="mb-3" data-bind="if: requiresValue">
                                                         <label for="inputValue" class="form-label">Provide the relevant value to use:</label>
@@ -1662,6 +1679,7 @@
                                 <div class="alert alert-info" data-bind="visible: ReportType()=='Treemap'">
                                     <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For Treemap, the data must be in a hierarchical format with 2nd column having parent and third column having a numeric value. The data must have a single root node having null as its parent as well.
                                 </div>
+
                                 <div data-bind="visible: ReportType()=='Line'" class="card card-body" style="margin-bottom: 15px">
                                     <div class="alert alert-info">
                                         <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For Line Graph, the first field below will show on the x-axis. All other fields will numeric fields will show on y-axis.
@@ -1783,6 +1801,31 @@
                                         </div>
                                     </li>
                                 </ul>
+                            </div>
+                        </div>
+                        <div data-bind="visible: ReportType()=='Html'">
+                            <br />
+                            <div class="card mb-4">
+                                <div class="card-header bg-light">
+                                <h5 class="mb-0">
+                                    <i class="fa fa-pencil"></i> Design your Report
+                                </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row align-items-center mb-3">
+                                        <div class="col-md-4">
+                                        <select class="form-select" data-bind="options: SelectedFields, value: SelectedField, optionsCaption: 'Select a field...', optionsText: 'selectedFieldName'"></select>
+                                        </div>
+                                        <div class="col-md-2">
+                                        <button class="btn btn-primary w-100 btn-sm" data-bind="click: insertField">
+                                            Add to Report
+                                        </button>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <textarea id="summernote-editor"></textarea>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <br />
