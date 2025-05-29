@@ -110,7 +110,7 @@
         <a href="" title="Previous" data-bind="click: previous, enable: !isFirstPage()" class="pager-btn btn btn-light"><i class="fa fa-caret-left"></i></a>
 
         <select class="form-control form-control-sm pager-control"
-                data-bind="options: [10,30,50,100,150,200,500], value: pageSize">
+                data-bind="options: [1,10,30,50,100,150,200,500,1000], value: pageSize">
         </select>
 
         <div class="d-flex align-items-center gap-1">
@@ -1948,7 +1948,7 @@
                                                 </label>
                                             </div>
                                             <div class="col-md-5" data-bind="visible: changePageSize">
-                                                <select style="width: 150px;" class="form-select" data-bind="options: [10,30,50,100,150,200,500,1000], value: DefaultPageSize"></select>
+                                                <select style="width: 150px;" class="form-select" data-bind="options: [1,10,30,50,100,150,200,500,1000], value: DefaultPageSize"></select>
                                             </div>
                                         </div>
                                     </div>

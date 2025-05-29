@@ -1408,7 +1408,8 @@ var reportViewModel = function (options) {
 	};
 
 	self.getReportHtml = function () {
-		return $('#summernote-editor').summernote('code');
+		self.reportHtml($('#summernote-editor').summernote('code'));
+		return self.reportHtml();
 	};
 
 	self.setReportType = function (reportType) {
@@ -3540,12 +3541,13 @@ var reportViewModel = function (options) {
 
 				if (self.ReportType()=='Html' && columns[i]) {
 					const col = columns[i];
-					let tableName = '';
-					if (col.SqlField) {
-						const match = col.SqlField.match(/\[([^\]]+)\]\.\[([^\]]+)\]/);
-						tableName = match ? match[1] : '';
+					let tableName = 'Custom';
+					if (col.SqlField && col.SqlField.startsWith('[')) {
+						const match = col.SqlField.match(/^\[([^\]]+)\]\.\[([^\]]+)\]/);
+						if (match) {
+							tableName = match[1];
+						}
 					}
-
 					const placeholderKey = `${tableName} > ${col.fieldName}`.trim();
 
 					const val = ko.unwrap(r.formattedVal || r.Value || '');
