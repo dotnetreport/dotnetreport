@@ -1240,6 +1240,7 @@ var reportViewModel = function (options) {
 			self.SelectedFields(result);
 			filters.forEach(f => self.FilterGroups()[0].AddFilter(f));
 
+			self.SaveReport(false);
 
 			if (useAi === true) {
 				var queryText = document.getElementById("query-input").innerText;
@@ -1374,7 +1375,7 @@ var reportViewModel = function (options) {
 			self.DrawChart();
 		}
 
-		if (newvalue == 'Html' && !self.htmlEditorInit) {
+		if (newvalue == 'Html' && self.ReportMode() != 'print' && !self.htmlEditorInit) {
 			self.htmlEditorInit = true;
 			$('#summernote-editor').summernote({
 				height: 300,
@@ -4623,7 +4624,7 @@ var reportViewModel = function (options) {
 		self.PivotColumnsWidth(reportSettings.PivotColumnsWidth || null);
 		self.reportHtml(decodeURIComponent(reportSettings.reportHtml));
 
-		if (self.ReportType() == 'Html')
+		if (self.ReportType() == 'Html' && self.ReportMode() != 'print')
 			$('#summernote-editor').summernote('code', self.reportHtml());
 		
 		if (self.ReportMode() == "execute") {
