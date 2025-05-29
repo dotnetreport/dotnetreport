@@ -3945,36 +3945,42 @@ var reportViewModel = function (options) {
 
 			_.forEach(e.Items, function (r, n) {
 				var column = reportData.Columns[n];
+				var isNumeric = r.Column.IsNumeric;
+
+				var value = (function () {
+					if (isNumeric && typeof r.FormattedValue === 'string' && r.FormattedValue.trim().endsWith('%')) {
+						var num = parseFloat(r.FormattedValue.replace('%', '').trim());
+						return isNaN(num) ? 0 : Math.round((num / 100) * 100) / 100; // Round to 2 decimal places
+					}
+					return isNumeric ? parseFloat(r.Value) : r.FormattedValue || (isNumeric ? 0 : '');
+				})();
 
 				if (n == 0) {
 					if (subGroups.length > 0) {
-						itemArray = _.filter(rowArray, function (x) { return x[0] == r.Value; });
-						if (itemArray.length > 0) {
-							rowArray = rowArray.filter(function (x) { return x[0] != r.Value; });
-							itemArray = itemArray[0];
+						var match = _.find(rowArray, x => x[0] == r.Value);
+						if (match) {
+							rowArray = rowArray.filter(x => x[0] != r.Value);
+							itemArray = match;
 						} else {
-							itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.FormattedValue) || (r.Column.IsNumeric ? 0 : ''));
+							itemArray.push(value);
 						}
 					} else {
 						itemArray.push(r.FormattedValue || '');
 					}
 				} else if (subGroups.length > 0) {
-					var subgroup = _.filter(subGroups, function (x) { return x.index == n; });
-					if (subgroup.length == 1) {
-						if (_.filter(dataColumns, function (x) { return x == r.Value; }).length == 0) {
+					var isSubGroup = _.some(subGroups, x => x.index == n);
+					if (isSubGroup) {
+						if (!_.includes(dataColumns, r.Value)) {
 							dataColumns.push(r.Value || '');
-
-							_.forEach(valColumns, function (j) {
-								data.addColumn('number', r.Value + (j == 0 ? '' : '-' + j));
+							_.forEach(valColumns, function (j, idx) {
+								data.addColumn('number', r.Value + (idx === 0 ? '' : '-' + idx));
 							});
 						}
-					} else if (r.Column.IsNumeric) {
-						itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.FormattedValue) || (r.Column.IsNumeric ? 0 : ''));
+					} else if (isNumeric) {
+						itemArray.push(value);
 					}
-				} else if (r.Column.IsNumeric && !column.groupInGraph()) {
-					itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.FormattedValue) || (r.Column.IsNumeric ? 0 : ''));
-				} else if (!column.groupInGraph() && self.ReportType() == 'Treemap') {
-					itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.FormattedValue) || (r.Column.IsNumeric ? 0 : ''));
+				} else if ((isNumeric || self.ReportType() === 'Treemap') && !column.groupInGraph()) {
+					itemArray.push(value);
 				}
 			});
 
