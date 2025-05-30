@@ -2203,6 +2203,7 @@ var settingPageViewModel = function (options) {
 	self.allowUsersToManageFolders = ko.observable(true);
 	self.allowUsersToCreateReports = ko.observable(true);
 	self.useAltPdf = ko.observable(false);
+	self.useAltPivot = ko.observable(false);
 	self.dontXmlExport = ko.observable(false);
 
 	self.appThemes = ko.observableArray([
@@ -2277,6 +2278,7 @@ var settingPageViewModel = function (options) {
 							allowUsersToManageFolders: self.allowUsersToManageFolders(),
 							allowUsersToCreateReports: self.allowUsersToCreateReports(),
 							useAltPdf: self.useAltPdf(),
+							useAltPivot: self.useAltPivot(),
 							dontXmlExport: self.dontXmlExport()
 						})
 					})
@@ -2328,6 +2330,7 @@ var settingPageViewModel = function (options) {
 				self.allowUsersToManageFolders(settings.allowUsersToManageFolders);
 				self.allowUsersToCreateReports(settings.allowUsersToCreateReports);
 				self.useAltPdf(settings.useAltPdf);
+				self.useAltPivot(settings.useAltPivot);
 				self.dontXmlExport(settings.dontXmlExport);
 ;
 				//// Optionally, you can manually trigger change event for select elements

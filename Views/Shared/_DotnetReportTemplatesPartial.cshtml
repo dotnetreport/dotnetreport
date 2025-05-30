@@ -92,13 +92,13 @@
         <!-- /ko -->
         <!-- ko if: hasForeignKey && $parent.Operator() != 'all' -->
         <!-- ko if: hasForeignParentKey && $parent.showParentFilter() -->
-        <select multiple class="form-control" data-bind="select2: { dropdownParent: $parent.inModal ? '#filter-'+uiId : '', placeholder: 'Please Choose', allowClear: true }, options: $parent.ParentList, optionsText: 'text', optionsValue: $parent.IsConditionalFilter ? 'text': 'id', selectedOptions: $parent.ParentIn"></select>
+        <select multiple class="form-control" data-bind="select2: { dropdownParent: '#filter-'+uiId, placeholder: 'Please Choose', allowClear: true }, options: $parent.ParentList, optionsText: 'text', optionsValue: $parent.IsConditionalFilter ? 'text': 'id', selectedOptions: $parent.ParentIn"></select>
         <!-- /ko -->
         <!-- ko if: $parent.Operator()=='='-->
-        <select required class="form-control" data-bind="select2: { dropdownParent: $parent.inModal ? '#filter-'+uiId : '', placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue:   $parent.IsConditionalFilter ? 'text': 'id', value: $parent.Value, optionsCaption: 'Please Choose'"></select>
+        <select required class="form-control" data-bind="select2: { dropdownParent: '#filter-'+uiId, placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue:   $parent.IsConditionalFilter ? 'text': 'id', value: $parent.Value, optionsCaption: 'Please Choose'"></select>
         <!-- /ko -->
         <!-- ko if: $parent.Operator()=='in' || $parent.Operator()=='not in'-->
-        <select required multiple class="form-control" data-bind="select2: { dropdownParent: $parent.inModal ? '#filter-'+uiId : '', placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: $parent.IsConditionalFilter ? 'text': 'id', selectedOptions: $parent.ValueIn"></select>
+        <select required multiple class="form-control" data-bind="select2: { dropdownParent: '#filter-'+uiId, placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: $parent.IsConditionalFilter ? 'text': 'id', selectedOptions: $parent.ValueIn"></select>
         <!-- /ko -->
         <!-- /ko -->
     </div>
@@ -241,7 +241,7 @@
         <table class="table table-hover table-condensed" data-bind="attr: {class: 'table table-striped table-hover table-condensed ' + $parents[2].selectedStyle()}">
             <thead style="position: sticky; top: -1px; z-index: 2;" data-bind="if: !$parents[2].noHeaderRow()">
                 <tr class="no-highlight" data-bind="sortableColumns: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight',selectedFields: $parents[2].SelectedFields }">
-                    <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !IsDrillDown() && !CanExpandOption() && !$parents[2].hasPivotColumn() -->
+                    <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !IsDrillDown() && !CanExpandOption() && (!$parents[2].hasPivotColumn() || ($parents[2].hasPivotColumn() && $parents[2].appSettings.useAltPivot)) -->
                     <th style="width: 30px; border-left: 1px solid;"></th>
                     <!-- /ko -->
                     <!-- ko template: 'report-column-header', data: $data -->
@@ -255,7 +255,7 @@
                     </td>
                 </tr>
 
-                <!-- ko if: !$parents[2].hasPivotColumn() && (!$parents[2].ShowExpandOption() || $parents[2].ReportType() == 'List') -->
+                <!-- ko if: !$parents[2].useRenderTable() -->
                 <!-- ko foreach: $parent.rows  -->
                 <tr>
                     <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() && !$parent.CanExpandOption() && $parentContext.$parentContext.$parentContext.$parent.ReportType() != 'Single' -->
@@ -1554,19 +1554,22 @@
                                                         <label class="form-label">Select the Data Field to use:</label>
                                                         <select class="form-select"
                                                                 data-bind="select2: {
-                                                                dropdownParent: $('#choose-data-card'),
-                                                                placeholder: 'Select Field...',
-                                                                ajax: {
-                                                                    url: $parent.textQuery.searchFields.url,
-                                                                    dataType: 'json',
-                                                                    data: $parent.textQuery.searchFields.query,
-                                                                    processResults: $parent.textQuery.searchFields.processResults,
-                                                                    headers: $parent.textQuery.searchFields.headers
-                                                                },
-                                                                minimumInputLength: 2,
-                                                                allowClear: true
-                                                            }, select2Text: selectedField"></select>
-                                                      </div>
+                                                                    dropdownParent: $('#choose-data-card'),
+                                                                    placeholder: 'Search Field...',
+                                                                    ajax: {
+                                                                        url: $parent.textQuery.searchFields.url,
+                                                                        dataType: 'json',
+                                                                        data: $parent.textQuery.searchFields.query,
+                                                                        processResults: $parent.textQuery.searchFields.processResults,
+                                                                        headers: $parent.textQuery.searchFields.headers
+                                                                    },
+                                                                    minimumInputLength: 2,
+                                                                    allowClear: true
+                                                                }, select2Text: selectedField"></select>
+                                                        <div data-bind="with: selectedField" class="small">
+                                                             Selected: <span class="highlight" data-bind="text: $data"></span>
+                                                        </div>
+                                                    </div>
 
                                                     <div class="mb-3" data-bind="if: requiresValue">
                                                         <label for="inputValue" class="form-label">Provide the relevant value to use:</label>

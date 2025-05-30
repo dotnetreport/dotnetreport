@@ -203,6 +203,7 @@ namespace ReportBuilder.Web.Controllers
             public string pivotFunction { get; set; }
             public string reportData { get; set; }
             public bool SubTotalMode { get; set; }
+            public bool useAltPivot { get; set; }
         }
 
         public class SqlQuery
@@ -230,6 +231,7 @@ namespace ReportBuilder.Web.Controllers
             var sql = "";
             var sqlCount = "";
             int totalRecords = 0;
+            var useAltPivot = data.useAltPivot;
             var qry = new SqlQuery();
 
             try
@@ -307,7 +309,7 @@ namespace ReportBuilder.Web.Controllers
 
                     var dtPagedRun = new DataTable();
 
-                    if (!string.IsNullOrEmpty(pivotColumn))
+                    if (!string.IsNullOrEmpty(pivotColumn) && !useAltPivot)
                     {
                         sql = sql.Remove(sql.IndexOf("SELECT "), "SELECT ".Length).Insert(sql.IndexOf("SELECT "), "SELECT TOP 1 ");
                     }
@@ -337,13 +339,19 @@ namespace ReportBuilder.Web.Controllers
 
                         if (!string.IsNullOrEmpty(pivotColumn))
                         {
-                            var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dtPagedRun, sql, sqlFields, reportData, pivotColumn, pivotFunction, pageNumber, pageSize, sortBy, desc, subtotalMode);
-                            dtPagedRun = pd.dt; 
-                            if (!string.IsNullOrEmpty(pd.sql)) sql = pd.sql;
-                            totalRecords =pd.totalRecords;
-
-                            //var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dtPagedRun, sqlFields, reportData);
-                            //dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn, pivotFunction, reportData);
+                            if (!useAltPivot)
+                            {
+                                var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dtPagedRun, sql, sqlFields, reportData, pivotColumn, pivotFunction, pageNumber, pageSize, sortBy, desc, subtotalMode);
+                                dtPagedRun = pd.dt;
+                                if (!string.IsNullOrEmpty(pd.sql)) sql = pd.sql;
+                                totalRecords = pd.totalRecords;
+                            }
+                            else
+                            {
+                                reportData = reportData.Replace("\"DrillDownRowUsePlaceholders\":false", $"\"DrillDownRowUsePlaceholders\":true");
+                                var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dtPagedRun, sqlFields, reportData);
+                                dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn, pivotFunction, reportData);
+                            }
                             var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
                             fields = fields
                                 .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
