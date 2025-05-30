@@ -203,6 +203,7 @@ namespace ReportBuilder.Web.Controllers
             public string pivotFunction { get; set; }
             public string reportData { get; set; }
             public bool SubTotalMode { get; set; }
+            public bool useAltPivot { get; set; }
         }
 
         public class SqlQuery
@@ -230,6 +231,7 @@ namespace ReportBuilder.Web.Controllers
             var sql = "";
             var sqlCount = "";
             int totalRecords = 0;
+            var useAltPivot = data.useAltPivot;
             var qry = new SqlQuery();
 
             try
@@ -307,7 +309,7 @@ namespace ReportBuilder.Web.Controllers
 
                     var dtPagedRun = new DataTable();
 
-                    if (!string.IsNullOrEmpty(pivotColumn))
+                    if (!string.IsNullOrEmpty(pivotColumn) && !useAltPivot)
                     {
                         sql = sql.Remove(sql.IndexOf("SELECT "), "SELECT ".Length).Insert(sql.IndexOf("SELECT "), "SELECT TOP 1 ");
                     }
@@ -337,7 +339,7 @@ namespace ReportBuilder.Web.Controllers
 
                         if (!string.IsNullOrEmpty(pivotColumn))
                         {
-                            if (!DotNetReportHelper.useAltPivot)
+                            if (!useAltPivot)
                             {
                                 var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dtPagedRun, sql, sqlFields, reportData, pivotColumn, pivotFunction, pageNumber, pageSize, sortBy, desc, subtotalMode);
                                 dtPagedRun = pd.dt;
