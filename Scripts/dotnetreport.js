@@ -1,4 +1,4 @@
-﻿/// dotnet Report Builder view model v6.0.1
+﻿/// dotnet Report Builder view model v6.1.0
 /// License must be purchased for commercial use
 /// 2024 (c) www.dotnetreport.com
 
@@ -1364,18 +1364,9 @@ var reportViewModel = function (options) {
 		self.ReportMode("design");
 	}
 
-	self.ReportType.subscribe(function (newvalue) {
-		if (newvalue == 'List' || newvalue == 'Treemap') {
-			self.AggregateReport(false);
-		}
-		else {
-			self.AggregateReport(true);
-		}
-		if (self.chartTypes.indexOf(newvalue) < 0) {
-			self.DrawChart();
-		}
-
-		if (newvalue == 'Html' && self.ReportMode() != 'print' && !self.htmlEditorInit) {
+	self.initHtmlEditor = function () {
+		if (self.ReportType() == 'Html' && self.ReportMode() != 'print') {
+			if ($('#summernote-editor').length == 0) return;
 			self.htmlEditorInit = true;
 			$('#summernote-editor').summernote({
 				height: 300,
@@ -1396,19 +1387,35 @@ var reportViewModel = function (options) {
 				popoverContainer: 'body',
 				dialogsInBody: true
 			});
-			
+
 			$('#summernote-editor').summernote('code', decodeURIComponent(self.reportHtml()));
 		}
+	}
+	self.ReportType.subscribe(function (newvalue) {
+		if (newvalue == 'List' || newvalue == 'Treemap') {
+			self.AggregateReport(false);
+		}
+		else {
+			self.AggregateReport(true);
+		}
+		if (self.chartTypes.indexOf(newvalue) < 0) {
+			self.DrawChart();
+		}		
+
+		self.initHtmlEditor();
 	});
 
-	self.insertField = function () {
-		if (!self.SelectedField()) return;
-		const placeholder = `{{${self.SelectedField().selectedFieldName}}}`;
+	self.SelectFieldToInsert = ko.observable();
+	self.SelectFieldToInsert.subscribe(function (newValue) {
+		if (!newValue) return;
+		const placeholder = `{{${newValue.selectedFieldName}}}`;
 		$('#summernote-editor').summernote('pasteHTML', placeholder);
-	};
+	});
 
 	self.getReportHtml = function () {
-		self.reportHtml($('#summernote-editor').summernote('code'));
+		if ($('#summernote-editor').length) { 
+			self.reportHtml($('#summernote-editor').summernote('code'));
+		}
 		return self.reportHtml();
 	};
 
@@ -4657,7 +4664,7 @@ var reportViewModel = function (options) {
 		self.PivotColumnsWidth(reportSettings.PivotColumnsWidth || null);
 		self.reportHtml(decodeURIComponent(reportSettings.reportHtml));
 
-		if (self.ReportType() == 'Html' && self.ReportMode() != 'print')
+		if (self.ReportType() == 'Html' && self.ReportMode() != 'print' && self.ReportMode() != 'dashboard')
 			$('#summernote-editor').summernote('code', self.reportHtml());
 		
 		if (self.ReportMode() == "execute") {
@@ -4835,6 +4842,7 @@ var reportViewModel = function (options) {
 					var saveReportFlag = self.SaveReport();
 					// Load report
 					return self.LoadReport(e.reportId).done(function () {
+						self.initHtmlEditor();
 						if (!e.runMode) {
 							self.SaveReport(true);
 							self.ReportMode("generate");
@@ -6161,6 +6169,7 @@ var dashboardViewModel = function (options) {
 						if ($.unblockUI) {
 							$.unblockUI();
 						}
+						report.initHtmlEditor();
 					}, 1000);
 				});
 			};
