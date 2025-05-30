@@ -879,7 +879,7 @@ var reportViewModel = function (options) {
 	self.lineChartArea = ko.observable();
 	self.barChartStacked = ko.observable();
 	self.comboChartType = ko.observable('bars');
-	self.DefaultPageSize = ko.observable();
+	self.DefaultPageSize = ko.observable(30);
 	self.FilterGroups = ko.observableArray();
 	self.PivotColumns = ko.observable();
 	self.PivotColumnsWidth = ko.observable();
@@ -1809,6 +1809,7 @@ var reportViewModel = function (options) {
 		self.comboChartType('bars');
 		self.selectedStyle('default');
 		self.reportHtml('');
+		self.DefaultPageSize(30);
 	};
 
 	self.SelectedProc.subscribe(function (proc) {
@@ -3078,7 +3079,7 @@ var reportViewModel = function (options) {
 					}).done(function (result) {
 						if (result.d) { result = result.d; }
 						if (result.result) { result = result.result; }
-						_result = result;						
+						_result = result;
 						self.allSqlQueries(self.allSqlQueries() + (self.allSqlQueries() ? ',' : '') + result.sql);
 
 						self.ReportID(result.reportId);
@@ -3135,17 +3136,17 @@ var reportViewModel = function (options) {
 									self.downloadReportJson(); break;
 							}
 
-									self.ReportMode('start');
-									return;
-								}
-								self.LoadAllSavedReports(true);
-								if (options.samePageOnRun || dashboardRun) {
-									self.ReportID(_result.reportId);
-									self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, _.map(self.AdditionalSeries(), function (e, i) {
-										return e.Value();
-									}).join(','));
+							self.ReportMode('start');
+							return;
+						}
+						self.LoadAllSavedReports(true);
+						if (options.samePageOnRun || dashboardRun) {
+							self.ReportID(_result.reportId);
+							self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, _.map(self.AdditionalSeries(), function (e, i) {
+								return e.Value();
+							}).join(','));
 
-									if (self.ReportMode() != 'design') self.ReportMode("execute");
+							if (self.ReportMode() != 'design') self.ReportMode("execute");
 
 							if (self.useReportHeader()) {
 								self.headerDesigner.init(true);
@@ -3172,8 +3173,8 @@ var reportViewModel = function (options) {
 							});
 						}
 					}
-				}
-			});
+				});
+			}
 		});
 	};
 
