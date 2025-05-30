@@ -500,7 +500,7 @@ namespace ReportBuilder.Web.Models
         private static readonly IConfigurationRoot _configuration;
         private readonly static string _configFileName = "appsettings.dotnetreport.json";
         public readonly static string dbtype = DbTypes.MS_SQL.ToString().Replace("_", " ");
-        public readonly static bool useAltPivot = false;
+        public static bool useAltPivot = false;
 
 
         static DotNetReportHelper()
@@ -1344,7 +1344,7 @@ namespace ReportBuilder.Web.Models
                                 ");
             }
 
-            var reportData = reportDataJson.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(',', drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
+            var reportData = reportDataJson.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false,\"IsPivotMode\":true");
             var drilldownSql = await RunReportApiCall(reportData);
 
             var dts = new DataSet();
@@ -1404,7 +1404,7 @@ namespace ReportBuilder.Web.Models
                 ");
             }
 
-            var reportData = reportDataJson.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
+            var reportData = reportDataJson.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false,\"IsPivotMode\":true");
             var drilldownSql = await RunReportApiCall(reportData);
 
             if (!string.IsNullOrEmpty(drilldownSql))
@@ -1567,7 +1567,7 @@ namespace ReportBuilder.Web.Models
                                 ");
             }
 
-            var reportData = reportDataJson.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(',', drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
+            var reportData = reportDataJson.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false,\"IsPivotMode\":true");
             var drilldownSql = await RunReportApiCall(reportData);
 
             var dts = new DataSet();

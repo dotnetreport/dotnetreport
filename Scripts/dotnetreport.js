@@ -883,7 +883,7 @@ var reportViewModel = function (options) {
 	self.PivotColumns = ko.observable();
 	self.PivotColumnsWidth = ko.observable();
 	self.ReportColumns = ko.observable();
-	self.useAltPivot = true;
+	self.useAltPivot = false;
 	self.FilterGroups.subscribe(function (newArray) {
 		if (newArray && newArray.length == 0) {
 			self.FilterGroups.push(new filterGroupViewModel({ isRoot: true, parent: self, options: options }));
@@ -1655,7 +1655,7 @@ var reportViewModel = function (options) {
 					text: '',
 					onlyInReports: true
 				})
-			} : null;
+			} : {};
 		},
 		processResults: function (data) {
 			if (data.d) data = data.d;
@@ -2438,9 +2438,17 @@ var reportViewModel = function (options) {
 		return true;
 	};
 
+	self.hasPivotColumn = ko.computed(function () {
+		return _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' }) != null;
+	});
+
 	self.canDrilldown = ko.computed(function () {
 		return ["List", "Pivot", "Treemap"].indexOf(self.ReportType()) < 0 && !self.useStoredProc();
 	});
+
+	self.useRenderTable = ko.computed(function () {
+		return self.ReportType() == 'List' || self.ShowExpandOption() || (self.hasPivotColumn() && !self.useAltPivot);
+	})
 
 	self.dateFields = ko.computed(function () {
 		return _.filter(self.SelectedFields(), function (x) { return x.fieldType == "DateTime"; });
@@ -2652,6 +2660,11 @@ var reportViewModel = function (options) {
 				if (f) filters.push(f);
 			});
 
+			if (g.Filters().length == 0 && g.FilterGroups().length > 0) {
+				// empty group
+				filters = self.BuildFilterData(g.FilterGroups());
+			}
+
 			groups.push({
 				SavedReportId: self.ReportID(),
 				isRoot: g.isRoot,
@@ -2848,6 +2861,7 @@ var reportViewModel = function (options) {
 			DeleteOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUserRoles),
 			ClientId: self.manageAccess.clientId(),
 			DataFilters: options.dataFilters,
+			DrillDownRowUsePlaceholders: false,
 			SelectedParameters: self.useStoredProc() ? _.map(self.Parameters(), function (x) {
 				return {
 					UseDefault: x.Operator() == 'is default',
@@ -2882,6 +2896,7 @@ var reportViewModel = function (options) {
 				})
 			}
 		}).done(function (result) {
+			if (result.d) result = result.d;
 			if (result.valid) {
 				deferred.resolve(true);
 			} else {
@@ -3676,7 +3691,7 @@ var reportViewModel = function (options) {
 
 		reportResult.ReportData(result.ReportData);
 
-		if (self.ReportType() == 'List' || self.ShowExpandOption() || self.hasPivotColumn()) {
+		if (self.useRenderTable()) {
 			renderTable(result.ReportData.Rows, result.ReportData.Columns.length);
 		}
 
@@ -3750,10 +3765,6 @@ var reportViewModel = function (options) {
 			self.allowTableResize();
 		}, 2000);
 	}
-
-	self.hasPivotColumn = ko.computed(function () {
-		return !self.useAltPivot && _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' }) != null;
-	});
 
 	self.executingReport = false;
 	self.ExecuteReport = function () {
@@ -4668,6 +4679,9 @@ var reportViewModel = function (options) {
 			}
 		}
 	}
+	self.RefreshReport = function () {
+		self.LoadReport(self.ReportID(), true, '');
+	};
 
 	self.RefreshReport = function () {
 		self.LoadReport(self.ReportID(), true, '');
@@ -5297,6 +5311,7 @@ var reportViewModel = function (options) {
 			pivotColumn: pivotData.pivotColumn,
 			pivotFunction: pivotData.pivotFunction,
 			onlyAndGroupInColumnDetail: hasOnlyAndGroupInDetail ? JSON.stringify(onlyAndGroupInDetailColumnDetails) : null,
+			isSubReport: false
 		}, 'xlsx');
 	}
 
@@ -6363,12 +6378,12 @@ var dashboardViewModel = function (options) {
 				});
 			};
 
-			return $.when(getReports(), getFolders()).done(function (allReports, allFolders) {
-				var setup = [];
-				if (allFolders[0].d) { allFolders[0] = allFolders[0].d; }
-				if (allReports[0].d) { allReports[0] = allReports[0].d; }
-				if (allFolders[0].result) { allFolders[0] = allFolders[0].result; }
-				if (allReports[0].result) { allReports[0] = allReports[0].result; }
+		return $.when(getReports(), getFolders()).done(function (allReports, allFolders) {
+			var setup = [];
+			if (allFolders[0].d) { allFolders[0] = allFolders[0].d; }
+			if (allReports[0].d) { allReports[0] = allReports[0].d; }
+			if (allFolders[0].result) { allFolders[0] = allFolders[0].result; }
+			if (allReports[0].result) { allReports[0] = allReports[0].result; }
 
 				_.forEach(allFolders[0], function (x) {
 					var folderReports = _.filter(allReports[0], { folderId: x.Id });
