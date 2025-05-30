@@ -4232,7 +4232,7 @@ var reportViewModel = function (options) {
 		if (!chartOptions.showXAxisLabel) { chartOptions.hAxis.textPosition = 'none'; }
 		if (!chartOptions.showYAxisLabel) { chartOptions.vAxis.textPosition = 'none'; }
 
-		if (chartOptions.seriesColors.length > 0) chartOptions.colors = chartOptions.seriesColors;
+		if (chartOptions.seriesColors && chartOptions.seriesColors.length > 0) chartOptions.colors = chartOptions.seriesColors;
 		chartOptions.legend = { position: self.chartOptions().legendPosition }
 		chart.draw(data, chartOptions);
 
