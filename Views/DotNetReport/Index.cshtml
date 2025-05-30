@@ -524,7 +524,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
             </div>
             <div class="card-body">
                 <p>
-                    What would you like to know? Try typing in below to search your data
+                    What would you like to know? Try typing a <b>"Prompt"</b> below to search your data. Be sure to use "Auto Complete" suggestions to help guide your query.
                 </p>
                 <p id="query-input" class="query-input">
                     Show me&nbsp;
@@ -532,7 +532,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 <p>
                     <button data-bind="click: function() {runQuery(false);}" class="btn btn-primary btn-sm">Process your Query</button>
                     <button data-bind="click: function() {runQuery(true);}, visible: adminMode" class="btn btn-primary btn-sm">Process with ChatGPT (Cannot Save)</button>
-                    <button data-bind="click: resetQuery" class="btn btn-secondary btn-sm">Start over</button>
+                    <button data-bind="click: function() {resetQuery(true, false);}" class="btn btn-secondary btn-sm">Start over</button>
                     <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: adminMode">
                         View Code
                     </button>
