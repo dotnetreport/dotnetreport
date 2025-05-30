@@ -883,7 +883,7 @@ var reportViewModel = function (options) {
 	self.PivotColumns = ko.observable();
 	self.PivotColumnsWidth = ko.observable();
 	self.ReportColumns = ko.observable();
-	self.useAltPivot = true;
+	self.useAltPivot = false;
 	self.FilterGroups.subscribe(function (newArray) {
 		if (newArray && newArray.length == 0) {
 			self.FilterGroups.push(new filterGroupViewModel({ isRoot: true, parent: self, options: options }));
@@ -2438,9 +2438,20 @@ var reportViewModel = function (options) {
 		return true;
 	};
 
-	self.canDrilldown = ko.computed(function () {
-		return ["List", "Pivot", "Treemap"].indexOf(self.ReportType()) < 0 && !self.useStoredProc();
+	self.hasPivotColumn = ko.computed(function () {
+		return _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' }) != null;
 	});
+
+	self.canDrilldown = ko.computed(function () {
+		var c1 = ["List", "Pivot", "Treemap"].indexOf(self.ReportType()) < 0 && !self.useStoredProc();
+		var c2 = self.hasPivotColumn() && !self.useAltPivot && !self.useStoredProc();
+
+		return c2 || (c1 && !c2);
+	});
+
+	self.useRenderTable = ko.computed(function () {
+		return self.ReportType() == 'List' || self.ShowExpandOption() || (self.hasPivotColumn() && !self.useAltPivot);
+	})
 
 	self.dateFields = ko.computed(function () {
 		return _.filter(self.SelectedFields(), function (x) { return x.fieldType == "DateTime"; });
@@ -3682,7 +3693,7 @@ var reportViewModel = function (options) {
 
 		reportResult.ReportData(result.ReportData);
 
-		if (self.ReportType() == 'List' || self.ShowExpandOption() || self.hasPivotColumn()) {
+		if (self.useRenderTable()) {
 			renderTable(result.ReportData.Rows, result.ReportData.Columns.length);
 		}
 
@@ -3756,10 +3767,6 @@ var reportViewModel = function (options) {
 			self.allowTableResize();
 		}, 2000);
 	}
-
-	self.hasPivotColumn = ko.computed(function () {
-		return !self.useAltPivot && _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' }) != null;
-	});
 
 	self.executingReport = false;
 	self.ExecuteReport = function () {
