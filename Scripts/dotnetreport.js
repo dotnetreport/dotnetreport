@@ -837,7 +837,7 @@ var reportViewModel = function (options) {
 	self.ReportDescription = ko.observable();
 	self.FolderID = ko.observable();
 	self.ReportID = ko.observable();
-	self.seriesTypes = ['bars', 'line', 'area'];
+	self.seriesTypes = ['Bars', 'Line', 'Area'];
 	self.htmlEditorInit = false;
 
 	self.Tables = ko.observableArray([]);
@@ -1195,7 +1195,8 @@ var reportViewModel = function (options) {
 		showEmptyFolders: false,
 		useAltPdf: false,
 		useAltPivot: false,
-		dontXmlExport: false
+		dontXmlExport: false,
+		usePromptBuilder: ko.observable(true)
 	};
 	self.runQuery = function (useAi) {
 		self.SelectedFields([]);
@@ -5220,8 +5221,8 @@ var reportViewModel = function (options) {
 				allowUsersToCreateReports: true,
 				allowUsersToManageFolders: true
 			};
-			self.CanSaveReports(x.allowUsersToCreateReports);
-			self.CanManageFolders(x.allowUsersToManageFolders);
+			self.CanSaveReports(x.allowUsersToCreateReports !== false ? true : false);
+			self.CanManageFolders(x.allowUsersToManageFolders !== false ? true : false);
 			self.appSettings.useClientIdInAdmin = x.useClientIdInAdmin;
 			self.appSettings.useSqlBuilderInAdminMode = x.useSqlBuilderInAdminMode;
 			self.appSettings.useSqlCustomField = x.useSqlCustomField;
@@ -5231,6 +5232,7 @@ var reportViewModel = function (options) {
 			self.appSettings.useAltPdf = x.useAltPdf;
 			self.appSettings.useAltPivot = x.useAltPivot;
 			self.appSettings.dontXmlExport = x.dontXmlExport;
+			self.appSettings.usePromptBuilder(x.usePromptBuilder);
 		});
 	}
 
@@ -5840,6 +5842,8 @@ var dashboardViewModel = function (options) {
 		: (self.dashboards().length > 0 ? self.dashboards()[0] : { name: '', description: '' });
 
 	self.appSettings = {
+		allowUsersToCreateReports: true,
+		allowUsersToManageFolders: true,
 		useClientIdInAdmin: false,
 		useSqlBuilderInAdminMode: false,
 		useSqlCustomField: false,
@@ -5848,8 +5852,10 @@ var dashboardViewModel = function (options) {
 		showEmptyFolders: false,
 		useAltPdf: false,
 		useAltPivot: false,
-		dontXmlExport: false
+		dontXmlExport: false,
+		usePromptBuilder: true
 	};
+
 	self.loadAppSettings = function () {
 		return ajaxcall({
 			url: options.apiUrl,
@@ -5873,6 +5879,7 @@ var dashboardViewModel = function (options) {
 			self.appSettings.useAltPdf = x.useAltPdf;
 			self.appSettings.useAltPivot = x.useAltPivot;
 			self.appSettings.dontXmlExport = x.dontXmlExport;
+			self.appSettings.usePromptBuilder = x.usePromptBuilder;
 		});
 	}
 

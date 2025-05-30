@@ -214,6 +214,11 @@
                                     <small class="text-muted d-block">Allows the use of SQL expressions in custom fields.</small>
                                 </div>
                                 <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: usePromptBuilder">
+                                    <label class="form-check-label">Use AI aided, prompt based Report Builder</label>
+                                    <small class="text-muted d-block">Let non Admin users create reports using the AI aided Prompt based builder</small>
+                                </div>
+                                <div class="form-check">
                                     <input type="checkbox" class="form-check-input" data-bind="checked: useAltPivot">
                                     <label class="form-check-label">Pivot with Drilldown</label>
                                     <small class="text-muted d-block">Use alternate Pivot method that doesn't use SQL's PIVOT function.<br>It allows drilldown, but it might be slower than using PIVOT</small>

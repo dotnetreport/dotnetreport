@@ -2205,6 +2205,7 @@ var settingPageViewModel = function (options) {
 	self.useAltPdf = ko.observable(false);
 	self.useAltPivot = ko.observable(false);
 	self.dontXmlExport = ko.observable(false);
+	self.usePromptBuilder = ko.observable(true);
 
 	self.appThemes = ko.observableArray([
 		{ name: 'Default', value: 'default' },
@@ -2279,7 +2280,8 @@ var settingPageViewModel = function (options) {
 							allowUsersToCreateReports: self.allowUsersToCreateReports(),
 							useAltPdf: self.useAltPdf(),
 							useAltPivot: self.useAltPivot(),
-							dontXmlExport: self.dontXmlExport()
+							dontXmlExport: self.dontXmlExport(),
+							usePromptBuilder: self.usePromptBuilder()
 						})
 					})
 				})
@@ -2327,11 +2329,12 @@ var settingPageViewModel = function (options) {
 				self.noFolders(settings.noFolders);
 				self.noDefaultFolder(settings.noDefaultFolder);
 				self.showEmptyFolders(settings.showEmptyFolders);
-				self.allowUsersToManageFolders(settings.allowUsersToManageFolders);
-				self.allowUsersToCreateReports(settings.allowUsersToCreateReports);
+				self.allowUsersToManageFolders(settings.allowUsersToManageFolders === false ? false : true);
+				self.allowUsersToCreateReports(settings.allowUsersToCreateReports === false ? false : true);
 				self.useAltPdf(settings.useAltPdf);
 				self.useAltPivot(settings.useAltPivot);
 				self.dontXmlExport(settings.dontXmlExport);
+				self.usePromptBuilder(settings.usePromptBuilder === false ? false : true);
 ;
 				//// Optionally, you can manually trigger change event for select elements
 				$('#themeSelect').trigger('change');
