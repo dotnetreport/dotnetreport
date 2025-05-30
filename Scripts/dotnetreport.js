@@ -2212,18 +2212,19 @@ var reportViewModel = function (options) {
 		self.formulaDecimalPlaces(null);
 		self.customSqlField.clear();
 		self.formulaType('build');
+		self.currentFormulaField(null);
 	};
 
 	self.isFormulaField.subscribe(function () {
 		self.clearFormulaField();
 	});
 	self.cancelFormulaField = function () {
-		self.isFormulaField(!self.isFormulaField());
 		if (self.currentFormulaField() != null) {
 			self.SelectedFields.push(self.currentFormulaField());
 			self.customSqlField.clear();
 			self.currentFormulaField(null);
 		}
+		self.isFormulaField(!self.isFormulaField());
 	};
 	self.removeField = function (field) {
 		bootbox.confirm("Are you sure you would like to remove this field?", function (r) {
