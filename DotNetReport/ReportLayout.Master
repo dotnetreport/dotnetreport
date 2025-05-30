@@ -1257,7 +1257,7 @@
 
                                     <div class="col-md-12" data-bind="disable: isFormulaField, hidden: useStoredProc">
                                         <div data-bind="with: textQuery.searchFields">
-                                            <select id="search-field" class="form-control" data-bind="select2: {dropdownParent: $('#choose-data-card'), placeholder: 'Search for a Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults, headers: headers }, minimumInputLength: 2, allowClear: true }, value: selectedOption"></select>
+                                            <select id="search-field" class="form-control" data-bind="select2: {dropdownParent: $('#choose-data-card'), placeholder: 'Search for a Data Field...', ajax: { url: url, dataType: 'json', contentType: 'application/json; charset=utf-8', data: query, processResults: processResults, type: 'POST', headers: headers }, minimumInputLength: 2, allowClear: true }, value: selectedOption"></select>
                                         </div>
                                     </div>
 
@@ -1577,19 +1577,21 @@
                                                         <label class="form-label">Select the Data Field to use:</label>
                                                         <select class="form-select"
                                                                 data-bind="select2: {
-                                                dropdownParent: $('#choose-data-card'),
-                                                placeholder: 'Select Field...',
-                                                ajax: {
-                                                    url: $parent.textQuery.searchFields.url,
-                                                    dataType: 'json',
-                                                    data: $parent.textQuery.searchFields.query,
-                                                    processResults: $parent.textQuery.searchFields.processResults,
-                                                    headers: $parent.textQuery.searchFields.headers
-                                                },
-                                                minimumInputLength: 2,
-                                                allowClear: true
-                                            }, select2Text: selectedField"></select>
-                                            </div>
+                                                                    dropdownParent: $('#choose-data-card'),
+                                                                    placeholder: 'Select Field...',
+                                                                    ajax: {
+                                                                        url: $parent.textQuery.searchFields.url,
+                                                                        dataType: 'json',
+                                                                        data: $parent.textQuery.searchFields.query,
+                                                                        contentType: 'application/json; charset=utf-8',
+                                                                        processResults: $parent.textQuery.searchFields.processResults,
+                                                                        type: 'POST',
+                                                                        headers: $parent.textQuery.searchFields.headers
+                                                                    },
+                                                                    minimumInputLength: 2,
+                                                                    allowClear: true
+                                                                }, value: selectedField"></select>
+                                                    </div>
 
                                                     <div class="mb-3" data-bind="if: requiresValue">
                                                         <label for="inputValue" class="form-label">Provide the relevant value to use:</label>

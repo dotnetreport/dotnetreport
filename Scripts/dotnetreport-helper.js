@@ -718,16 +718,16 @@ var textQuery = function (options) {
                     token: encodeURIComponent(params.term),
                     text: ''
                 })
-            }) : null;
+            }) : {};
         },
         query: function (params) {
-            return params.term ? {
+            return JSON.stringify(params.term ? {
                 method: "/ReportApi/ParseQuery",
                 model: JSON.stringify({
                     token: encodeURIComponent(params.term),
                     text: ''
                 })
-            } : null;
+            } : {});
         },
         processResults: function (data) {
             if (data.d) data = data.d;
