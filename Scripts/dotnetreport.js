@@ -3048,132 +3048,133 @@ var reportViewModel = function (options) {
 			toastr.error("You can not use dynamic field is first in filter group");
 			return;
 		}
-
-		var i = 0;
-		var isComparison = false;
-		var isExecuteReportQuery = false;
-		var _result = null;
-		var seriesCount = self.AdditionalSeries().length;
-		self.allSqlQueries('');
-		var promises = [];
-		do {
-			if (i > 0) {
-				isComparison = true;
-			}
-
-			promises.push(ajaxcall({
-				url: options.runReportApiUrl,
-				type: "POST",
-				data: JSON.stringify({
-					method: "/ReportApi/RunReport",
-					SaveReport: self.CanSaveReports() && !isComparison && previewOnly !== true ? (saveOnly || self.SaveReport()) : false,
-					ReportJson: importJson ? JSON.stringify(importJson) : JSON.stringify(self.BuildReportData([], isComparison, i - 1)),
-					adminMode: self.adminMode(),
-					userIdForFilter: self.userIdForFilter,
-					SubTotalMode: false,
-					useAltPivot: self.appSettings.useAltPivot
-				}),
-				async: false
-			}).done(function (result) {
-				if (result.d) { result = result.d; }
-				if (result.result) { result = result.result; }
-				_result = result;						
-				self.allSqlQueries(self.allSqlQueries() + (self.allSqlQueries() ? ',' : '') + result.sql);
-
-				self.ReportID(result.reportId);
-				if (previewOnly !== true && (self.SaveReport() || saveOnly)) {
-					if (saveOnly && !saveAlertFlag) {
-						saveAlertFlag = true;
-						toastr.success("Report Saved");
-						self.allSqlQueries("");
-						self.LoadAllSavedReports(true);
-					}
-				}
-
-				if (!saveOnly) {
-					if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard" || previewOnly === true) {
-
-						isExecuteReportQuery = true;
-						self.ExecuteReportQuery(result.sql, result.connectKey, self.ReportSeries, previewOnly);
-					}
-				}
-			}));
-			i++;
-		}
-		while (i < seriesCount + 1);
-		$.when.apply($, promises).done(function () {
-			if (previewOnly === true) {
-				$("#sqlModal").modal('show');
-				return;
-			}
-			options.reportWizard.modal('hide');
-
-			if (isExecuteReportQuery === false) {
-				if (saveOnly) {
-					return;
-				}
-				if (self.ReportMode().indexOf('export-') == 0) {
-
-					self.ReportID(_result.reportId);
-					self.currentSql(_result.sql);
-					self.currentConnectKey(_result.connectKey);
-					switch (self.ReportMode()) {
-						case 'export-pdf':
-							self.downloadPdf(); break;
-						case 'export-pdf-debug':
-							self.downloadPdf(true); break;
-						case 'export-pdfalt':
-							self.downloadPdfAlt(); break;
-						case 'export-excel':
-							self.downloadExcel(); break;
-						case 'export-excel-sub':
-							self.downloadExcelWithDrilldown(); break;
-						case 'export-csv':
-							self.downloadCsv(); break;
-						case 'export-json':
-							self.downloadReportJson(); break;
+		self.ValidateTableJoins().done(function (isValid) {
+			if (isValid) {
+				var i = 0;
+				var isComparison = false;
+				var isExecuteReportQuery = false;
+				var _result = null;
+				var seriesCount = self.AdditionalSeries().length;
+				self.allSqlQueries('');
+				var promises = [];
+				do {
+					if (i > 0) {
+						isComparison = true;
 					}
 
-							self.ReportMode('start');
+					promises.push(ajaxcall({
+						url: options.runReportApiUrl,
+						type: "POST",
+						data: JSON.stringify({
+							method: "/ReportApi/RunReport",
+							SaveReport: self.CanSaveReports() && !isComparison && previewOnly !== true ? (saveOnly || self.SaveReport()) : false,
+							ReportJson: importJson ? JSON.stringify(importJson) : JSON.stringify(self.BuildReportData([], isComparison, i - 1)),
+							adminMode: self.adminMode(),
+							userIdForFilter: self.userIdForFilter,
+							SubTotalMode: false,
+							useAltPivot: self.appSettings.useAltPivot
+						}),
+						async: false
+					}).done(function (result) {
+						if (result.d) { result = result.d; }
+						if (result.result) { result = result.result; }
+						_result = result;						
+						self.allSqlQueries(self.allSqlQueries() + (self.allSqlQueries() ? ',' : '') + result.sql);
+
+						self.ReportID(result.reportId);
+						if (previewOnly !== true && (self.SaveReport() || saveOnly)) {
+							if (saveOnly && !saveAlertFlag) {
+								saveAlertFlag = true;
+								toastr.success("Report Saved");
+								self.allSqlQueries("");
+								self.LoadAllSavedReports(true);
+							}
+						}
+
+						if (!saveOnly) {
+							if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard" || previewOnly === true) {
+
+								isExecuteReportQuery = true;
+								self.ExecuteReportQuery(result.sql, result.connectKey, self.ReportSeries, previewOnly);
+							}
+						}
+					}));
+					i++;
+				}
+				while (i < seriesCount + 1);
+				$.when.apply($, promises).done(function () {
+					if (previewOnly === true) {
+						$("#sqlModal").modal('show');
+						return;
+					}
+					options.reportWizard.modal('hide');
+
+					if (isExecuteReportQuery === false) {
+						if (saveOnly) {
 							return;
 						}
-						self.LoadAllSavedReports(true);
-						if (options.samePageOnRun || dashboardRun) {
+						if (self.ReportMode().indexOf('export-') == 0) {
+
 							self.ReportID(_result.reportId);
-							self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, _.map(self.AdditionalSeries(), function (e, i) {
-								return e.Value();
-							}).join(','));
+							self.currentSql(_result.sql);
+							self.currentConnectKey(_result.connectKey);
+							switch (self.ReportMode()) {
+								case 'export-pdf':
+									self.downloadPdf(); break;
+								case 'export-pdf-debug':
+									self.downloadPdf(true); break;
+								case 'export-pdfalt':
+									self.downloadPdfAlt(); break;
+								case 'export-excel':
+									self.downloadExcel(); break;
+								case 'export-excel-sub':
+									self.downloadExcelWithDrilldown(); break;
+								case 'export-csv':
+									self.downloadCsv(); break;
+								case 'export-json':
+									self.downloadReportJson(); break;
+							}
 
-							if (self.ReportMode() != 'design') self.ReportMode("execute");
+									self.ReportMode('start');
+									return;
+								}
+								self.LoadAllSavedReports(true);
+								if (options.samePageOnRun || dashboardRun) {
+									self.ReportID(_result.reportId);
+									self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, _.map(self.AdditionalSeries(), function (e, i) {
+										return e.Value();
+									}).join(','));
 
-					if (self.useReportHeader()) {
-						self.headerDesigner.init(true);
-						self.headerDesigner.loadCanvas(true);
+									if (self.ReportMode() != 'design') self.ReportMode("execute");
+
+							if (self.useReportHeader()) {
+								self.headerDesigner.init(true);
+								self.headerDesigner.loadCanvas(true);
+							}
+						}
+						else {
+							redirectToReport(options.runReportUrl, {
+								reportId: _result.reportId,
+								reportName: self.ReportName(),
+								reportDescription: self.ReportDescription(),
+								includeSubTotal: self.IncludeSubTotal(),
+								showUniqueRecords: self.ShowUniqueRecords(),
+								aggregateReport: self.AggregateReport(),
+								showDataWithGraph: self.ShowDataWithGraph(),
+								reportSql: self.allSqlQueries(),
+								connectKey: _result.connectKey,
+								reportFilter: JSON.stringify(_.map(self.FlyFilters(), function (x) { return ko.toJS(x); })),
+								reportType: self.ReportType(),
+								selectedFolder: self.SelectedFolder() != null ? self.SelectedFolder().Id : 0,
+								reportSeries: _.map(self.AdditionalSeries(), function (e, i) {
+									return e.Value();
+								})
+							});
+						}
 					}
 				}
-				else {
-					redirectToReport(options.runReportUrl, {
-						reportId: _result.reportId,
-						reportName: self.ReportName(),
-						reportDescription: self.ReportDescription(),
-						includeSubTotal: self.IncludeSubTotal(),
-						showUniqueRecords: self.ShowUniqueRecords(),
-						aggregateReport: self.AggregateReport(),
-						showDataWithGraph: self.ShowDataWithGraph(),
-						reportSql: self.allSqlQueries(),
-						connectKey: _result.connectKey,
-						reportFilter: JSON.stringify(_.map(self.FlyFilters(), function (x) { return ko.toJS(x); })),
-						reportType: self.ReportType(),
-						selectedFolder: self.SelectedFolder() != null ? self.SelectedFolder().Id : 0,
-						reportSeries: _.map(self.AdditionalSeries(), function (e, i) {
-							return e.Value();
-						})
-					});
-				}
-			}
+			});
 		});
-			
-		
 	};
 
 	self.printReport = function () {
