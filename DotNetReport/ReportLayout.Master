@@ -1578,7 +1578,7 @@
                                                         <select class="form-select"
                                                                 data-bind="select2: {
                                                                     dropdownParent: $('#choose-data-card'),
-                                                                    placeholder: 'Select Field...',
+                                                                    placeholder: 'Search Field...',
                                                                     ajax: {
                                                                         url: $parent.textQuery.searchFields.url,
                                                                         dataType: 'json',
@@ -1590,7 +1590,10 @@
                                                                     },
                                                                     minimumInputLength: 2,
                                                                     allowClear: true
-                                                                }, value: selectedField"></select>
+                                                                }, select2Text: selectedField"></select>
+                                                        <div data-bind="with: selectedField" class="small">
+                                                             Selected: <span class="highlight" data-bind="text: $data"></span>
+                                                        </div>
                                                     </div>
 
                                                     <div class="mb-3" data-bind="if: requiresValue">
