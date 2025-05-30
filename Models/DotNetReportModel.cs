@@ -1363,7 +1363,7 @@ namespace ReportBuilder.Web.Models
                 ");
             }
 
-            var reportData = reportDataJson.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
+            var reportData = reportDataJson.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false,\"IsPivotMode\":true");
             var drilldownSql = RunReportApiCall(reportData);
 
             if (!string.IsNullOrEmpty(drilldownSql))

@@ -2443,10 +2443,7 @@ var reportViewModel = function (options) {
 	});
 
 	self.canDrilldown = ko.computed(function () {
-		var c1 = ["List", "Pivot", "Treemap"].indexOf(self.ReportType()) < 0 && !self.useStoredProc();
-		var c2 = self.hasPivotColumn() && !self.useAltPivot && !self.useStoredProc();
-
-		return c2 || (c1 && !c2);
+		return ["List", "Pivot", "Treemap"].indexOf(self.ReportType()) < 0 && !self.useStoredProc();
 	});
 
 	self.useRenderTable = ko.computed(function () {
