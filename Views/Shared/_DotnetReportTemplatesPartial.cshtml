@@ -1506,19 +1506,22 @@
                                                         <label class="form-label">Select the Data Field to use:</label>
                                                         <select class="form-select"
                                                                 data-bind="select2: {
-                                                dropdownParent: $('#choose-data-card'),
-                                                placeholder: 'Select Field...',
-                                                ajax: {
-                                                    url: $parent.textQuery.searchFields.url,
-                                                    dataType: 'json',
-                                                    data: $parent.textQuery.searchFields.query,
-                                                    processResults: $parent.textQuery.searchFields.processResults,
-                                                    headers: $parent.textQuery.searchFields.headers
-                                                },
-                                                minimumInputLength: 2,
-                                                allowClear: true
-                                            }, select2Text: selectedField"></select>
-                                      </div>
+                                                                    dropdownParent: $('#choose-data-card'),
+                                                                    placeholder: 'Select Field...',
+                                                                    ajax: {
+                                                                        url: $parent.textQuery.searchFields.url,
+                                                                        dataType: 'json',
+                                                                        data: $parent.textQuery.searchFields.query,
+                                                                        processResults: $parent.textQuery.searchFields.processResults,
+                                                                        headers: $parent.textQuery.searchFields.headers
+                                                                    },
+                                                                    minimumInputLength: 2,
+                                                                    allowClear: true
+                                                                }, select2Text: selectedField"></select>
+                                                        <div data-bind="with: selectedField" class="small">
+                                                             Selected: <span class="highlight" data-bind="text: $data"></span>
+                                                        </div>
+                                                    </div>
 
                                                     <div class="mb-3" data-bind="if: requiresValue">
                                                         <label for="inputValue" class="form-label">Provide the relevant value to use:</label>
