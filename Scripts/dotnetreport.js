@@ -2572,7 +2572,10 @@ var reportViewModel = function (options) {
 		return _.filter(self.SelectedFields(), function (x) { return x.fieldId == fieldId; })[0];
 	};
 	self.FindDynamicField = function (fieldSettings) {
-		return _.filter(self.SelectedFields(), function (x) { return x.dynamicTableId == fieldSettings.DynamicTableId && x.fieldName == fieldSettings.DynamicFieldName; })[0];
+		return _.filter(self.SelectedFields(), function (x) {
+			return (x.dynamicTableId == fieldSettings.DynamicTableId && x.fieldName == fieldSettings.DynamicFieldName)
+					||	(x.tableName == 'Custom' && fieldSettings.IsCustomField && x.fieldName == fieldSettings.CustomFieldName);
+		})[0];
 	};
 
 	self.SaveWithoutRun = function () {
@@ -2623,15 +2626,24 @@ var reportViewModel = function (options) {
 										  : (e.Operator() == "in" || e.Operator() == "not in" ? (e.ValueIn().length > 0 ? e.ValueIn().join(",") : e.Value()) : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' ? "blank" : e.Value())), 
 					Value2: hasTimeInDate ? (e.Value2() ? e.Value2() + " " + e.Valuetime2() : e.Value2()) : e.Value2(), 
 					ParentIn: e.ParentIn().join(","),
-					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
+					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : [],
+					FilterSettings: ''
 				} : null;
 
-				if (f && !f.FieldId && e.Field().dynamicTableId) {
+				if (f && !f.FieldId) {
 					f.FieldId = null;
-					f.FilterSettings = JSON.stringify({
-						DynamicFieldName: e.Field().fieldName,
-						DynamicTableId: e.Field().dynamicTableId
-					})
+					if (e.Field().dynamicTableId) {
+						f.FilterSettings = JSON.stringify({
+							DynamicFieldName: e.Field().fieldName,
+							DynamicTableId: e.Field().dynamicTableId
+						});
+					} else if (e.Field().tableName == 'Custom') {
+						f.FilterSettings = JSON.stringify({
+							CustomFieldName: e.Field().fieldName,
+							CustomFieldFormat: e.Field().fieldFormat(),
+							IsCustomField: true
+						});
+					}
 				}
 
 				if (f != null && !f.Value1 && !f.Value2) {
