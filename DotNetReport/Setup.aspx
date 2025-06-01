@@ -236,6 +236,11 @@
                                     <label class="form-check-label" for="useSqlCustomField">Use SQL in Custom Field</label>
                                     <small class="text-muted d-block">Allows the use of SQL expressions in custom fields.</small>
                                 </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: useAltPivot">
+                                    <label class="form-check-label">Pivot with Drilldown</label>
+                                    <small class="text-muted d-block">Use alternate Pivot method that doesn't use SQL's PIVOT function.<br>It allows drilldown, but it might be slower than using PIVOT</small>
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-check" data-bind="visible: false">
@@ -266,7 +271,7 @@
                                 <div class="form-check">
                                     <input type="checkbox" class="form-check-input" data-bind="checked: useAltPdf">
                                     <label class="form-check-label">PDF Export without Chromium</label>
-                                    <small class="text-muted d-block">Use alternate PDF export method that doesn't rely on Chromium'.</small>
+                                    <small class="text-muted d-block">Use alternate PDF export method that doesn't rely on Chromium.</small>
                                 </div>
                                 <div class="form-check">
                                     <input type="checkbox" class="form-check-input" data-bind="checked: dontXmlExport">
