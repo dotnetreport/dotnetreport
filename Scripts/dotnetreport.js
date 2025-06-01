@@ -883,7 +883,6 @@ var reportViewModel = function (options) {
 	self.PivotColumns = ko.observable();
 	self.PivotColumnsWidth = ko.observable();
 	self.ReportColumns = ko.observable();
-	self.useAltPivot = false;
 	self.FilterGroups.subscribe(function (newArray) {
 		if (newArray && newArray.length == 0) {
 			self.FilterGroups.push(new filterGroupViewModel({ isRoot: true, parent: self, options: options }));
@@ -1193,6 +1192,7 @@ var reportViewModel = function (options) {
 		noDefaultFolder: false,
 		showEmptyFolders: false,
 		useAltPdf: false,
+		useAltPivot: false,
 		dontXmlExport: false
 	};
 	self.runQuery = function (useAi) {
@@ -2448,7 +2448,7 @@ var reportViewModel = function (options) {
 	});
 
 	self.useRenderTable = ko.computed(function () {
-		return self.ReportType() == 'List' || self.ShowExpandOption() || (self.hasPivotColumn() && !self.useAltPivot);
+		return self.ReportType() == 'List' || self.ShowExpandOption() || (self.hasPivotColumn() && !self.appSettings.useAltPivot);
 	})
 
 	self.dateFields = ko.computed(function () {
@@ -2996,132 +2996,130 @@ var reportViewModel = function (options) {
 			toastr.error("You can not use dynamic field is first in filter group");
 			return;
 		}
-		self.ValidateTableJoins().done(function (isValid) {
-			if (isValid) {
 
-				var i = 0;
-				var isComparison = false;
-				var isExecuteReportQuery = false;
-				var _result = null;
-				var seriesCount = self.AdditionalSeries().length;
-				self.allSqlQueries('');
-				var promises = [];
-				do {
-					if (i > 0) {
-						isComparison = true;
-					}
+		var i = 0;
+		var isComparison = false;
+		var isExecuteReportQuery = false;
+		var _result = null;
+		var seriesCount = self.AdditionalSeries().length;
+		self.allSqlQueries('');
+		var promises = [];
+		do {
+			if (i > 0) {
+				isComparison = true;
+			}
 
-					promises.push(ajaxcall({
-						url: options.runReportApiUrl,
-						type: "POST",
-						data: JSON.stringify({
-							method: "/ReportApi/RunReport",
-							SaveReport: self.CanSaveReports() && !isComparison && previewOnly !== true ? (saveOnly || self.SaveReport()) : false,
-							ReportJson: importJson ? JSON.stringify(importJson) : JSON.stringify(self.BuildReportData([], isComparison, i - 1)),
-							adminMode: self.adminMode(),
-							userIdForFilter: self.userIdForFilter,
-							SubTotalMode: false
-						}),
-						async: false
-					}).done(function (result) {
-						if (result.d) { result = result.d; }
-						if (result.result) { result = result.result; }
-						_result = result;						
-						self.allSqlQueries(self.allSqlQueries() + (self.allSqlQueries() ? ',' : '') + result.sql);
+			promises.push(ajaxcall({
+				url: options.runReportApiUrl,
+				type: "POST",
+				data: JSON.stringify({
+					method: "/ReportApi/RunReport",
+					SaveReport: self.CanSaveReports() && !isComparison && previewOnly !== true ? (saveOnly || self.SaveReport()) : false,
+					ReportJson: importJson ? JSON.stringify(importJson) : JSON.stringify(self.BuildReportData([], isComparison, i - 1)),
+					adminMode: self.adminMode(),
+					userIdForFilter: self.userIdForFilter,
+					SubTotalMode: false,
+					useAltPivot: self.appSettings.useAltPivot
+				}),
+				async: false
+			}).done(function (result) {
+				if (result.d) { result = result.d; }
+				if (result.result) { result = result.result; }
+				_result = result;						
+				self.allSqlQueries(self.allSqlQueries() + (self.allSqlQueries() ? ',' : '') + result.sql);
 
-						self.ReportID(result.reportId);
-						if (previewOnly !== true && (self.SaveReport() || saveOnly)) {
-							if (saveOnly && !saveAlertFlag) {
-								saveAlertFlag = true;
-								toastr.success("Report Saved");
-								self.allSqlQueries("");
-								self.LoadAllSavedReports(true);
-							}
-						}
-
-						if (!saveOnly) {
-							if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard" || previewOnly === true) {
-
-								isExecuteReportQuery = true;
-								self.ExecuteReportQuery(result.sql, result.connectKey, self.ReportSeries, previewOnly);
-							}
-						}
-					}));
-					i++;
-				}
-				while (i < seriesCount + 1);
-				$.when.apply($, promises).done(function () {
-					if (previewOnly === true) {
-						$("#sqlModal").modal('show');
-						return;
-					}
-					options.reportWizard.modal('hide');
-
-					if (isExecuteReportQuery === false) {
-						if (saveOnly) {
-							return;
-						}
-						if (self.ReportMode().indexOf('export-') == 0) {
-
-							self.ReportID(_result.reportId);
-							self.currentSql(_result.sql);
-							self.currentConnectKey(_result.connectKey);
-							switch (self.ReportMode()) {
-								case 'export-pdf':
-									self.downloadPdf(); break;
-								case 'export-pdf-debug':
-									self.downloadPdf(true); break;
-								case 'export-pdfalt':
-									self.downloadPdfAlt(); break;
-								case 'export-excel':
-									self.downloadExcel(); break;
-								case 'export-excel-sub':
-									self.downloadExcelWithDrilldown(); break;
-								case 'export-csv':
-									self.downloadCsv(); break;
-								case 'export-json':
-									self.downloadReportJson(); break;
-							}
-
-							self.ReportMode('start');
-							return;
-						}
+				self.ReportID(result.reportId);
+				if (previewOnly !== true && (self.SaveReport() || saveOnly)) {
+					if (saveOnly && !saveAlertFlag) {
+						saveAlertFlag = true;
+						toastr.success("Report Saved");
+						self.allSqlQueries("");
 						self.LoadAllSavedReports(true);
-						if (options.samePageOnRun || dashboardRun) {
-							self.ReportID(_result.reportId);
-							self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, _.map(self.AdditionalSeries(), function (e, i) {
-								return e.Value();
-							}).join(','));
-							self.ReportMode("execute");
-
-							if (self.useReportHeader()) {
-								self.headerDesigner.init(true);
-								self.headerDesigner.loadCanvas(true);
-							}
-						}
-						else {
-							redirectToReport(options.runReportUrl, {
-								reportId: _result.reportId,
-								reportName: self.ReportName(),
-								reportDescription: self.ReportDescription(),
-								includeSubTotal: self.IncludeSubTotal(),
-								showUniqueRecords: self.ShowUniqueRecords(),
-								aggregateReport: self.AggregateReport(),
-								showDataWithGraph: self.ShowDataWithGraph(),
-								reportSql: self.allSqlQueries(),
-								connectKey: _result.connectKey,
-								reportFilter: JSON.stringify(_.map(self.FlyFilters(), function (x) { return ko.toJS(x); })),
-								reportType: self.ReportType(),
-								selectedFolder: self.SelectedFolder() != null ? self.SelectedFolder().Id : 0,
-								reportSeries: _.map(self.AdditionalSeries(), function (e, i) {
-									return e.Value();
-								})
-							});
-						}
 					}
-				});
+				}
+
+				if (!saveOnly) {
+					if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard" || previewOnly === true) {
+
+						isExecuteReportQuery = true;
+						self.ExecuteReportQuery(result.sql, result.connectKey, self.ReportSeries, previewOnly);
+					}
+				}
+			}));
+			i++;
+		}
+		while (i < seriesCount + 1);
+		$.when.apply($, promises).done(function () {
+			if (previewOnly === true) {
+				$("#sqlModal").modal('show');
+				return;
+			}
+			options.reportWizard.modal('hide');
+
+			if (isExecuteReportQuery === false) {
+				if (saveOnly) {
+					return;
+				}
+				if (self.ReportMode().indexOf('export-') == 0) {
+
+					self.ReportID(_result.reportId);
+					self.currentSql(_result.sql);
+					self.currentConnectKey(_result.connectKey);
+					switch (self.ReportMode()) {
+						case 'export-pdf':
+							self.downloadPdf(); break;
+						case 'export-pdf-debug':
+							self.downloadPdf(true); break;
+						case 'export-pdfalt':
+							self.downloadPdfAlt(); break;
+						case 'export-excel':
+							self.downloadExcel(); break;
+						case 'export-excel-sub':
+							self.downloadExcelWithDrilldown(); break;
+						case 'export-csv':
+							self.downloadCsv(); break;
+						case 'export-json':
+							self.downloadReportJson(); break;
+					}
+
+					self.ReportMode('start');
+					return;
+				}
+				self.LoadAllSavedReports(true);
+				if (options.samePageOnRun || dashboardRun) {
+					self.ReportID(_result.reportId);
+					self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, _.map(self.AdditionalSeries(), function (e, i) {
+						return e.Value();
+					}).join(','));
+					self.ReportMode("execute");
+
+					if (self.useReportHeader()) {
+						self.headerDesigner.init(true);
+						self.headerDesigner.loadCanvas(true);
+					}
+				}
+				else {
+					redirectToReport(options.runReportUrl, {
+						reportId: _result.reportId,
+						reportName: self.ReportName(),
+						reportDescription: self.ReportDescription(),
+						includeSubTotal: self.IncludeSubTotal(),
+						showUniqueRecords: self.ShowUniqueRecords(),
+						aggregateReport: self.AggregateReport(),
+						showDataWithGraph: self.ShowDataWithGraph(),
+						reportSql: self.allSqlQueries(),
+						connectKey: _result.connectKey,
+						reportFilter: JSON.stringify(_.map(self.FlyFilters(), function (x) { return ko.toJS(x); })),
+						reportType: self.ReportType(),
+						selectedFolder: self.SelectedFolder() != null ? self.SelectedFolder().Id : 0,
+						reportSeries: _.map(self.AdditionalSeries(), function (e, i) {
+							return e.Value();
+						})
+					});
+				}
 			}
 		});
+			
 		
 	};
 
@@ -3723,7 +3721,8 @@ var reportViewModel = function (options) {
 					SubTotalMode: true,
 					reportData: '',
 					pivotColumn: '',
-					pivotFunction: ''
+					pivotFunction: '',
+					useAltPivot: self.appSettings.useAltPivot
 				}),
 				noBlocking: self.ReportMode()=='dashboard'
 			}).done(function (subtotalsqlResult) {
@@ -3747,6 +3746,7 @@ var reportViewModel = function (options) {
 						SubTotalMode: pivotData.pivotColumn ? true : false,
 						pivotColumn: pivotData.pivotColumn,
 						pivotFunction: pivotData.pivotFunction,
+						useAltPivot: self.appSettings.useAltPivot
 					}),
 					noBlocking: self.ReportMode() == 'dashboard'
 				}).done(function (subtotalResult) {
@@ -3775,7 +3775,7 @@ var reportViewModel = function (options) {
 	}
 	self.ChartDrillDownData = ko.observable();
 
-	self.ExecuteReportQuery = function (reportSql, connectKey, reportSeries,isPageSizeClick=false, previewOnly=false) {
+	self.ExecuteReportQuery = function (reportSql, connectKey, reportSeries, isPageSizeClick=false, previewOnly=false) {
 		if (!reportSql || !connectKey) return;
 		self.ChartData('');
 		self.ReportResult().ReportData(null);
@@ -3806,7 +3806,8 @@ var reportViewModel = function (options) {
 				pivotColumn: pivotData.pivotColumn,
 				pivotFunction: pivotData.pivotFunction,
 				reportData: pivotData.pivotColumn ? JSON.stringify(reportData) : '',
-				SubTotalMode: false
+				SubTotalMode: false,
+				useAltPivot: self.appSettings.useAltPivot
 			}),
 			noBlocking: self.ReportMode() == 'dashboard'
 		}).done(function (result) {
@@ -4231,7 +4232,7 @@ var reportViewModel = function (options) {
 		if (!chartOptions.showXAxisLabel) { chartOptions.hAxis.textPosition = 'none'; }
 		if (!chartOptions.showYAxisLabel) { chartOptions.vAxis.textPosition = 'none'; }
 
-		if (chartOptions.seriesColors.length > 0) chartOptions.colors = chartOptions.seriesColors;
+		if (chartOptions.seriesColors && chartOptions.seriesColors.length > 0) chartOptions.colors = chartOptions.seriesColors;
 		chartOptions.legend = { position: self.chartOptions().legendPosition }
 		chart.draw(data, chartOptions);
 
@@ -5143,6 +5144,7 @@ var reportViewModel = function (options) {
 			self.appSettings.noDefaultFolder = x.noDefaultFolder;
 			self.appSettings.showEmptyFolders = x.showEmptyFolders;
 			self.appSettings.useAltPdf = x.useAltPdf;
+			self.appSettings.useAltPivot = x.useAltPivot;
 			self.appSettings.dontXmlExport = x.dontXmlExport;
 		});
 	}
@@ -5760,6 +5762,7 @@ var dashboardViewModel = function (options) {
 		noDefaultFolder: false,
 		showEmptyFolders: false,
 		useAltPdf: false,
+		useAltPivot: false,
 		dontXmlExport: false
 	};
 	self.loadAppSettings = function () {
@@ -5783,6 +5786,7 @@ var dashboardViewModel = function (options) {
 			self.appSettings.noDefaultFolder = x.noDefaultFolder;
 			self.appSettings.showEmptyFolders = x.showEmptyFolders;
 			self.appSettings.useAltPdf = x.useAltPdf;
+			self.appSettings.useAltPivot = x.useAltPivot;
 			self.appSettings.dontXmlExport = x.dontXmlExport;
 		});
 	}

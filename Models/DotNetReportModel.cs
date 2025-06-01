@@ -2744,8 +2744,7 @@ namespace ReportBuilder.Web.Models
             }
 
             int height = await page.EvaluateExpressionAsync<int>("document.body.offsetHeight");
-            int width = 700;
-            try { width = await page.EvaluateExpressionAsync<int>("$('table').width()"); } catch { }
+            int width = Convert.ToInt32(await page.EvaluateExpressionAsync<decimal>("$('table').width()"));
             var pdfFile = Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
 
                     var pdfOptions = new PdfOptions
@@ -2765,6 +2764,7 @@ namespace ReportBuilder.Web.Models
                         await page.SetViewportAsync(new ViewPortOptions { Width = width });
                         await page.AddStyleTagAsync(new AddTagOptions { Content = "@page {size: landscape }" });
                         pdfOptions.Width = $"{width}px";
+                        pdfOptions.MarginOptions.Right = "0.5in";
                     }
                     await page.EvaluateExpressionAsync("$('.report-inner').css('transform','none')");
                     await page.PdfAsync(pdfFile, pdfOptions);
