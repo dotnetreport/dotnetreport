@@ -204,12 +204,11 @@ namespace ReportBuilder.Web.Controllers
         [ValidateAntiForgeryToken]
         [HttpPost]
         public async Task<JsonResult> RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, 
-            bool desc = false, string reportSeries = null, string pivotColumn = null, string pivotFunction = null, string reportData = null, bool subtotalMode = false)
+            bool desc = false, string reportSeries = null, string pivotColumn = null, string pivotFunction = null, string reportData = null, bool subtotalMode = false, bool useAltPivot = false)
         {
             var sql = "";
             var sqlCount = "";
             int totalRecords = 0;
-            var useAltPivot = data.useAltPivot;
             var qry = new SqlQuery();
 
             try
