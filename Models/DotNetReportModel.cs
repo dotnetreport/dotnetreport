@@ -501,7 +501,7 @@ namespace ReportBuilder.Web.Models
         private static readonly IConfigurationRoot _configuration;
         private readonly static string _configFileName = "appsettings.dotnetreport.json";
         public readonly static string dbtype = DbTypes.MS_SQL.ToString().Replace("_", " ");
-        public readonly static bool useAltPivot = false;
+        public static bool useAltPivot = false;
 
 
         static DotNetReportHelper()
@@ -799,7 +799,7 @@ namespace ReportBuilder.Web.Models
                 }
             }
         }
-        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool loadHeader = true, string chartData = null,bool isexpanded=false)
+        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool loadHeader = true, string chartData = null,bool isexpanded=false,bool isSubReport=false)
         {
             RemoveColumnsBySubstring(dt, "__prm__");
             ws.Cells[rowstart, colstart].LoadFromDataTable(dt, loadHeader);
@@ -828,6 +828,10 @@ namespace ReportBuilder.Web.Models
                     ws.Cells[rowstart, i].Value = formatColumn.fieldLabel;
                 }
                 if (rowstart == 3 & isexpanded && !string.IsNullOrEmpty(formatColumn.fieldLabel2))
+                {
+                    ws.Cells[rowstart, i].Value = formatColumn.fieldLabel2;
+                }
+                if (rowstart == 3 & isSubReport && !string.IsNullOrEmpty(formatColumn.fieldLabel2))
                 {
                     ws.Cells[rowstart, i].Value = formatColumn.fieldLabel2;
                 }
@@ -1363,7 +1367,7 @@ namespace ReportBuilder.Web.Models
                                 ");
             }
 
-            var reportData = reportDataJson.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(',', drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
+            var reportData = reportDataJson.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false,\"IsPivotMode\":true");
             var drilldownSql = await RunReportApiCall(reportData);
 
             var dts = new DataSet();
@@ -1423,7 +1427,7 @@ namespace ReportBuilder.Web.Models
                 ");
             }
 
-            var reportData = reportDataJson.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
+            var reportData = reportDataJson.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false,\"IsPivotMode\":true");
             var drilldownSql = await RunReportApiCall(reportData);
 
             if (!string.IsNullOrEmpty(drilldownSql))
@@ -1586,7 +1590,7 @@ namespace ReportBuilder.Web.Models
                                 ");
             }
 
-            var reportData = reportDataJson.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(',', drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
+            var reportData = reportDataJson.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false,\"IsPivotMode\":true");
             var drilldownSql = await RunReportApiCall(reportData);
 
             var dts = new DataSet();
@@ -1930,7 +1934,7 @@ namespace ReportBuilder.Web.Models
         }
 
         public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, List<ReportHeaderColumn> onlyAndGroupInDetailColumns = null)
+                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, List<ReportHeaderColumn> onlyAndGroupInDetailColumns = null,bool isSubReport=false)
         {
             var connect = DotNetReportHelper.GetConnection();
             var dbConfig = DotNetReportHelper.GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey);
@@ -1995,7 +1999,7 @@ namespace ReportBuilder.Web.Models
                     rowstart += 2;
                     rowend = rowstart + dt.Rows.Count;
 
-                    FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeSubtotal, true, chartData);
+                    FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeSubtotal, true, chartData,isSubReport:isSubReport);
 
                     if (allExpanded)
                     {
@@ -2589,7 +2593,7 @@ namespace ReportBuilder.Web.Models
                     }
                     else
                     {
-                        Paragraph expandedData = new Paragraph(new Run(new Text("No RecordS Found")));
+                        Paragraph expandedData = new Paragraph(new Run(new Text("No records found")));
                         body.AppendChild(expandedData);
                     }
                     // Ensure word wrapping doesn't break words
@@ -2819,8 +2823,7 @@ namespace ReportBuilder.Web.Models
             }
 
             int height = await page.EvaluateExpressionAsync<int>("document.body.offsetHeight");
-            int width = 700;
-            try { width = await page.EvaluateExpressionAsync<int>("$('table').width()"); } catch { }
+            int width = Convert.ToInt32(await page.EvaluateExpressionAsync<decimal>("$('table').width()"));
             var pdfFile = Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
 
             var pdfOptions = new PdfOptions
@@ -2840,6 +2843,7 @@ namespace ReportBuilder.Web.Models
                 await page.SetViewportAsync(new ViewPortOptions { Width = width });
                 await page.AddStyleTagAsync(new AddTagOptions { Content = "@page {size: landscape }" });
                 pdfOptions.Width = $"{width}px";
+                pdfOptions.MarginOptions.Right = "0.5in";
             }
             await page.EvaluateExpressionAsync("$('.report-inner').css('transform','none')");
             await page.PdfAsync(pdfFile, pdfOptions);
