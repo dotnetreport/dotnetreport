@@ -3975,7 +3975,8 @@ var reportViewModel = function (options) {
 				var value = (function () {
 					if (isNumeric && typeof r.FormattedValue === 'string' && r.FormattedValue.trim().endsWith('%')) {
 						var num = parseFloat(r.FormattedValue.replace('%', '').trim());
-						return isNaN(num) ? 0 : Math.round((num / 100) * 100) / 100; // Round to 2 decimal places
+						//return isNaN(num) ? 0 : Math.round((num / 100) * 100) / 100; // Round to 2 decimal places
+						return num;
 					}
 					return isNumeric ? parseFloat(r.Value) : r.FormattedValue || (isNumeric ? 0 : '');
 				})();
@@ -4024,7 +4025,7 @@ var reportViewModel = function (options) {
 
 		// Set chart options
 		var chartOptions = self.chartOptions();
-		if (reportData?.Columns[1]?.fieldFormat() === 'Currency') {
+		if (!reportData?.Columns[1].groupInGraph() && reportData?.Columns[1]?.fieldFormat() === 'Currency') {
 			var prefixFormat = reportData?.Columns[1]?.currencyFormat ? reportData?.Columns[1]?.currencyFormat() : null;
 			if (prefixFormat != null && prefixFormat != "") {
 				var formatter = new google.visualization.NumberFormat({
@@ -4033,6 +4034,15 @@ var reportViewModel = function (options) {
 				formatter.format(data, 1);
 				chartOptions.vAxis = { format: `${prefixFormat}#` }
 			}
+		}
+		if (!reportData?.Columns[1].groupInGraph() && (reportData?.Rows?.[0]?.Items?.[1]?.FormattedValue || '').trim().endsWith('%'))
+		{
+			var percentFormatter = new google.visualization.NumberFormat({
+				suffix: '%',
+				fractionDigits: 2 // optional: 2 decimal points
+			});
+			percentFormatter.format(data, 1);
+			chartOptions.vAxis = { format: '#%' };
 		}
 		if (options.chartSize) {
 			chartOptions.width = options.chartSize.width;
