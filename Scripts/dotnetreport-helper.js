@@ -421,7 +421,7 @@ function pagerViewModel(args) {
     args = args || {};
     var self = this;
 
-    self.pageSize = ko.observable(args.pageSize || 20);
+    self.pageSize = ko.observable(args.pageSize || 30);
     self.pages = ko.observable(args.pages || 1);
     self.currentPage = ko.observable(args.currentPage || 1);
     self.pauseNavigation = ko.observable(false);
