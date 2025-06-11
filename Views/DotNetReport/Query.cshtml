@@ -1,6 +1,7 @@
 ﻿@using System.Configuration
 @{
-Layout = "~/Views/shared/_Layout.Report.cshtml";
+    Layout = "~/Views/shared/_Layout.Report.cshtml";
+    ViewBag.Title = "Query Builder";
 }
 
 <!--
@@ -10,13 +11,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
 
 -->
 
-@section head {
-<link href="~/lib/tributejs/tribute.css" rel="stylesheet" />
-}
-
 @section scripts {
 
-<script src="~/lib/tributejs/tribute.min.js"></script>
 <script type="text/javascript">
     $(document).ready(function() {
         ajaxcall({ url: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")' }).done(function(data) {
@@ -24,6 +20,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 runReportUrl: '@Url.Action("Report")',
                 execReportUrl: "@Url.Action("RunReport", "DotNetReportApi")",
                 runLinkReportUrl: "@Url.Action("RunReportLink", "DotNetReportApi")",
+                getSchemaFromSql: '@Url.Action("GetSchemaFromSql", "DotNetReportApi")',                
                 reportWizard: $("#modal-reportbuilder"),
                 linkModal: $("#linkModal"),
                 fieldOptionsModal: $("#fieldOptionsModal"),
@@ -52,8 +49,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
 }
 
 <div>
-    <br />
-    <h4>Smarter Report Builder</h4>
+    <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
+    <h4>Smarter Report Builder <small style="color: red">(Beta)</small> </h4>
+
     <p>
         What would you like to know? Try typing in below to search your data
     </p>
@@ -64,7 +62,10 @@ Its Recommended you use it as is, and only change styling as needed to match you
         <button data-bind="click: function() {runQuery(false);}" class="btn btn-primary btn-sm">Process your Query</button>&nbsp;
         <button data-bind="click: function() {runQuery(true);}" class="btn btn-primary btn-sm">Process with ChatGPT</button>&nbsp;
         <button data-bind="click: resetQuery" class="btn btn-secondary btn-sm">Start over</button>
-        <button data-bind="click: openDesigner" class="btn btn-secondary btn-sm">Design/Save Report</button>
+        <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: adminMode">
+            View Code
+        </button>
+        <button data-bind="click: openDesigner, hidden: usingAi" class="btn btn-secondary btn-sm">Design/Save Report</button>
     </p>
 </div>
 
@@ -97,14 +98,6 @@ Its Recommended you use it as is, and only change styling as needed to match you
         <p>
             <div data-bind="text: Exception"></div>
         </p>
-    </div>
-
-    <div data-bind="if: ReportDebug()">
-        <br />
-        <br />
-        <hr />
-        <code data-bind="html: ReportSql">
-        </code>
     </div>
 
 </div>

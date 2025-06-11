@@ -3,6 +3,7 @@ var uglify = require('gulp-uglify');
 var concat = require('gulp-concat');
 var rimraf = require("rimraf");
 var merge = require('merge-stream');
+var pump = require('pump');
 
 gulp.task('dist', function (cb) {
 	rimraf("wwwroot/js/dist/", cb);
@@ -89,41 +90,56 @@ var deps = {
 };
 
 gulp.task("clean", function (cb) {
-	rimraf("wwwroot/js/dotnetreport.js", cb);
-	rimraf("wwwroot/js/dotnetreport-helper.js", cb);
-	rimraf("wwwroot/js/dotnetreport-setup.js", cb);
-	rimraf("wwwroot/css/dotnetreport.css", cb);
-	rimraf("wwwroot/img/report-logo.png", cb);
-	return rimraf("wwwroot/lib/", cb);
+	const cleanTasks = [
+		rimraf.sync("wwwroot/js/dotnetreport.js"),
+		rimraf.sync("wwwroot/js/dotnetreport-helper.js"),
+		rimraf.sync("wwwroot/js/dotnetreport-setup.js"),
+		rimraf.sync("wwwroot/css/dotnetreport.css"),
+		rimraf.sync("wwwroot/img/report-logo.png"),
+		rimraf.sync("wwwroot/lib/")
+	];
+	cb();
+	return Promise.all(cleanTasks); // Optional, to make sure all tasks are resolved
 });
 
-gulp.task("scripts", function () {
+gulp.task("scripts", function (done) {
+	const tasks = [];
 
-	var streams = [];
+	for (const prop in deps) {
 
-	for (var prop in deps) {
 		console.log("Prepping Scripts for: " + prop);
-		for (var itemProp in deps[prop]) {
-			streams.push(gulp.src("node_modules/" + prop + "/" + itemProp)
-				.pipe(gulp.dest("wwwroot/lib/" + prop + "/" + deps[prop][itemProp])));
+		for (const itemProp in deps[prop]) {
+			tasks.push(function (cb) {
+				pump(
+					gulp.src(`node_modules/${prop}/${itemProp}`, { encoding: false }),
+					gulp.dest(`wwwroot/lib/${prop}/${deps[prop][itemProp]}`),
+					cb
+				);
+			});
 		}
 	}
 
 	// move dotnet report files
-	streams.push(gulp.src("Scripts/dotnetreport.js").pipe(gulp.dest("wwwroot/js/")));
-	streams.push(gulp.src("Scripts/dotnetreport-helper.js").pipe(gulp.dest("wwwroot/js/")));
-	streams.push(gulp.src("Scripts/dotnetreport-setup.js").pipe(gulp.dest("wwwroot/js/")));
-	streams.push(gulp.src("Content/dotnetreport.css").pipe(gulp.dest("wwwroot/css/")));
-	streams.push(gulp.src("Content/img/report-logo.png").pipe(gulp.dest("wwwroot/img/")));
+	tasks.push(function (cb) { pump(gulp.src("Scripts/dotnetreport.js"), gulp.dest("wwwroot/js/"), cb); });
+	tasks.push(function (cb) { pump(gulp.src("Scripts/dotnetreport-helper.js"), gulp.dest("wwwroot/js/"), cb); });
+	tasks.push(function (cb) { pump(gulp.src("Scripts/dotnetreport-setup.js"),gulp.dest("wwwroot/js/"),cb);})
+	tasks.push(function (cb) { pump(gulp.src("Content/dotnetreport.css"), gulp.dest("wwwroot/css/"), cb); });
 
-	return merge(streams);
+	tasks.push(function (cb) {
+		pump(
+			gulp.src("Content/img/report-logo.png", { encoding: false }),
+			gulp.dest("wwwroot/img/"),
+			cb
+		);
+	});
 
+	// Run tasks in series
+	gulp.series(...tasks)(done);
 });
 
 gulp.task('watch', function () {
 	gulp.watch('Scripts/*.js', gulp.series('scripts'));
 	gulp.watch('Content/*.css', gulp.series('scripts'));
-	gulp.watch('Content/img/*.png', gulp.series('scripts'));
 })
 
 gulp.task('build', gulp.series(

@@ -12,18 +12,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="keywords" content="ad-hoc reporting, reporting, asp .net reporting, asp .net report, report builder, ad hoc report builder, ad-hoc report builder, adhoc report, ad hoc reports, .net report viewer, reportviewer, sql reportviewer, report builder mvc, report mvc, report builder web forms, query builder, sql report builder,visual report builder,custom query,query maker" />
     <meta name="description" content="Ad hoc Reporting software that allows programmers to easily add Reporting functionality to their ASP .NET Web Software Solution" />
-    <link href="~/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet" />
     <link href="~/lib/bootstrap-datepicker/css/bootstrap-datepicker.min.css" rel="stylesheet" />
     <link href="~/lib/toastr/toastr.min.css" rel="stylesheet" />
     <link href="~/lib/font-awesome/css/font-awesome.min.css" rel="stylesheet" />
     <link href="~/lib/select2/css/select2.min.css" rel="stylesheet" />
-    <link href="~/css/dotnetreport.css?v=4.2.0" rel="stylesheet" />
+    <link href="~/css/dotnetreport.css?v=6.0.0" rel="stylesheet" />
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <style type="text/css">
         .report-view {
             margin: 0 50px 0 50px;
             max-width: inherit;
         }
+        
+        .table {
+          width: 100%;
+          margin-bottom: 1rem;
+          color: #212529;
+          border-collapse: collapse;
+        }
+
+        .table th,
+        .table td {
+          padding: 0.75rem;
+          vertical-align: top;
+          border: 1px solid #dee2e6;
+        }
+
+        .table-borderless th,
+        .table-borderless td,
+        .table-borderless thead th,
+        .table-borderless tbody + tbody {
+          border: 0;
+        }
+
+        .table-striped tbody tr:nth-of-type(odd) {
+          background-color: rgba(0, 0, 0, 0.05);
+        }
+
     </style>
 </head>
 
@@ -40,18 +65,20 @@
                 <p data-bind="html: ReportDescription">
                 </p>
 
-                <div data-bind="with: $root">
+                <!--<div data-bind="with: $root">
                     <div class="" data-bind="ifnot: EditFiltersOnReport">
                         <div data-bind="template: {name: 'fly-filter-template'}"></div>
+                        <div style="padding-bottom: 20px;"></div>
                     </div>
-                </div>
+                </div>-->
 
                 <div data-bind="with: ReportResult">
                     <div data-bind="template: 'report-template', data: $data"></div>
                 </div>
             </div>
             <br />
-            <span>Report ran on: @DateTime.Now.ToShortDateString() @DateTime.Now.ToShortTimeString()</span>
+            <span>Report ran on: <span data-bind="text: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString()"></span></span>
+
         </div>
         <!-- /ko -->
         <!-- ko if: HasError -->
@@ -63,7 +90,7 @@
         <h3>An unexpected error occured while running the Report</h3>
         <hr />
         <b>Error Details</b>
-        <p>
+        <p class="report-inner" style="display: none;">
             <div data-bind="text: Exception"></div>
         </p>
 
@@ -76,18 +103,19 @@
         <div class="report-chart" data-bind="attr: {id: 'chart_div_' + $parent.ReportID()}, visible: $parent.isChart"></div>
 
         <div class="table-responsive" data-bind="with: ReportData">
-            <table class="table table-hover table-condensed">
+            <table class="table table-condensed table-striped" data-bind="attr: {class: 'table table-hover table-condensed table-striped ' +  $root.selectedStyle()}">
                 <thead>
                     <tr class="no-highlight">
-                        <!-- ko if: $parentContext.$parent.canDrilldown() && !IsDrillDown() -->
-                        <th></th>
-                        <!-- /ko -->
                         <!-- ko foreach: Columns -->
-                        <th data-bind="attr: { id: 'col' + $index() }, css: {'right-align': IsNumeric}">
-                            <a href="" data-bind="click: function(){ $parentContext.$parentContext.$parent.changeSort(SqlField); }">
-                                <span data-bind="text: ColumnName"></span>
-                                <span data-bind="text: $parentContext.$parentContext.$parent.pager.sortColumn() === SqlField ? ($parentContext.$parentContext.$parent.pager.sortDescending() ? '&#9660;' : '&#9650;') : ''"></span>
-                            </a>
+                        <th data-bind="attr: { id: fieldId }, css: {'right-align': IsNumeric}, style: {'width': fieldWidth, 'background-color': headerBackColor }" style="border-right: 1px solid;">
+                            <!-- ko if: $root.useStoredProc() -->
+                            <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
+                            <!-- /ko -->
+                            <!-- ko ifnot: $root.useStoredProc()  -->
+                            <span data-bind="style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}">
+                                <span data-bind="text: fieldLabel() ? fieldLabel() : ColumnName"></span>
+                            </span>
+                            <!-- /ko -->
                         </th>
                         <!-- /ko -->
                     </tr>
@@ -100,18 +128,15 @@
                     </tr>
                     <!-- ko foreach: Rows  -->
                     <tr>
-                        <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() -->
-                        <td>&nbsp;</td>
-                        <!-- /ko -->
                         <!-- ko foreach: Items -->
-                        <!-- ko if: LinkTo-->
-                        <td data-bind="css: {'right-align': Column.IsNumeric}">
-                            <a data-bind="attr: {href: LinkTo}"><span data-bind="html: FormattedValue"></span></a>
+                        <td data-bind="style: {'background-color': _backColor != 'none' ? backColor() : '', 'color': _fontColor != 'none' ? fontColor() : '', 'font-weight': fontBold() && _fontBold != 'none' ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '48px' : ''}">
+                            <!-- ko if: LinkTo-->
+                            <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: FormattedValue"></span></a>
+                            <!-- /ko-->
+                            <!-- ko ifnot: LinkTo-->
+                            <span data-bind="html: FormattedValue"></span>
+                            <!-- /ko-->
                         </td>
-                        <!-- /ko-->
-                        <!-- ko ifnot: LinkTo-->
-                        <td data-bind="html: FormattedValue, css: {'right-align': Column.IsNumeric}"></td>
-                        <!-- /ko-->
                         <!-- /ko -->
                     </tr>
                     <!-- ko if: isExpanded -->
@@ -153,14 +178,15 @@
                     <!-- /ko -->
                     <!-- /ko -->
                 </tbody>
-                <!-- ko if: $parent.SubTotals().length == 1 -->
+                <!-- ko if: $parent.SubTotals().length == 1 && $parentContext.$parent.OuterGroupColumns().length == 0 -->
                 <tfoot data-bind="foreach: $parent.SubTotals">
-                    <tr>
-                        <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() -->
-                        <td></td>
-                        <!-- /ko -->
+                    <tr class="sub-total">
                         <!-- ko foreach: Items -->
-                        <td data-bind="html: FormattedValue, css: {'right-align': Column.IsNumeric}"></td>
+                        <!-- ko if: Value != 'NA' && Value != 'NaN' && !outerGroup() -->
+                        <td data-bind="style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '48px' : ''}">
+                            <span data-bind="html: formattedVal, css: {'right-align': true}"></span>
+                        </td>
+                        <!-- /ko -->
                         <!-- /ko -->
                     </tr>
                 </tfoot>
@@ -184,7 +210,7 @@
     <script src="~/lib/lodash/lodash.min.js"></script>
     <script src="~/lib/fabric/fabric.min.js"></script>
     <script src="~/js/dotnetreport-helper.js"></script>
-    <script src="~/js/dotnetreport.js?v=4.2.0"></script>
+    <script src="~/js/dotnetreport.js?v=6.0.0"></script>
 
     <style type="text/css">
         a[href]:after {
@@ -192,11 +218,11 @@
         }
     </style>
     <script type="text/javascript">
-
+    
     $(document).ready(function () {
         var data = {
             currentUserId: '@Model.UserId',
-            currentUserRoles: '@Model.CurrentUserRoles',
+            currentUserRoles: ('@Model.CurrentUserRoles' ||'').split(','),
             dataFilters: '@Model.DataFilters',
             clientId: '@Model.ClientId'
         };
@@ -226,32 +252,36 @@
             ReportSeries : "@Model.ReportSeries",
             reportHeader: 'report-header',
             userSettings: data,
-            dataFilters: data.dataFilters,
-            reportData: JSON.parse(decodeHTMLEntities('@Model.ReportData'))
+            dataFilters: JSON.parse(data.dataFilters || '{}'),
+            reportData: JSON.parse(decodeHTMLEntities('@Model.ReportData')),
+            getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
+            chartSize: { width: 1000, height: 450 }
         });
 
         vm.pager.pageSize(10000);
-
         ko.applyBindings(vm);
-            vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {                
-                if (vm.useReportHeader()) {
-                    vm.headerDesigner.init(true);
-                    vm.headerDesigner.loadCanvas(true);
-                }
-
-                if (vm.useStoredProc()) {
-                    setTimeout(function(){
-                        vm.printReport();
-                    }, 1000);
-                } else {
+        vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {                
+            if (vm.useReportHeader()) {
+                vm.headerDesigner.init(true);
+                vm.headerDesigner.loadCanvas(true);
+            }
+            
+            if (vm.useStoredProc()) {
+                setTimeout(function(){
                     vm.printReport();
-                }
+                }, 1000);
+            } else {
+                vm.printReport();
+            }
 
-                setTimeout(function () {
+            setTimeout(function () {
+                $('.report-inner').show();
+            }, 1500);
+
+            setTimeout(function () {
                     $('.report-inner').show();
-                }, 1100);
-
-            });
+            }, 15000);
+        });
 
         $(window).resize(function(){
             vm.DrawChart();
@@ -264,7 +294,8 @@
 
     <script type="text/html" id="fly-filter-template">
         <div data-bind="visible: FlyFilters().length>0" style="padding-left: 30px; padding-right: 30px; padding-top: 20px">
-            <div class="card card-body">
+            <b>Filters</b>
+            <div class="">
                 <!-- ko foreach: FlyFilters -->
                 <div class="row">
                     <div class="col-sm-5 col-xs-4">
@@ -298,78 +329,52 @@
             <!-- ko if: !hasForeignKey-->
             <!-- ko if: fieldType=='DateTime'-->
             <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 -->
-            <input class="form-control" data-bind="datepicker: $parent.Value" required />
+            <span data-bind="text: $parent.Value"></span>
             <!-- /ko -->
             <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
-            From
-            <input required class="form-control" data-bind="datepicker: $parent.Value" />
-            to
-            <input data-bind="datepicker: $parent.Value2" class="form-control" required />
+            From &nbsp; 
+            <span data-bind="text: $parent.Value"></span>
+            to &nbsp;
+            <span data-bind="text: $parent.Value2"></span>
             <!-- /ko -->
             <!-- ko if: ['range'].indexOf($parent.Operator()) != -1 -->
-            <select data-bind="value: $parent.Value" class="form-control" required>
-                <option value=""></option>
-                <option>Today</option>
-                <option>Today +</option>
-                <option>Today -</option>
-                <option>Yesterday</option>
-                <option>This Week</option>
-                <option>Last Week</option>
-                <option>This Month</option>
-                <option>Last Month</option>
-                <option>This Year</option>
-                <option>Last Year</option>
-                <option>This Month To Date</option>
-                <option>This Year To Date</option>
-                <option>Last 30 Days</option>
-                <optgroup label="Comparison Options">
-                    <option>>= Today</option>
-                    <option><= Today</option>
-                    <option>>= Today +</option>
-                    <option><= Today +</option>
-                    <option>>= Today -</option>
-                    <option><= Today -</option>
-                </optgroup>
-            </select>
-            <div data-bind="if: $parent.Value().indexOf('Today +') >= 0 || $parent.Value().indexOf('Today -') >= 0" class="form-group pull-left" style="padding-top: 5px;">
-                <input type="number" class="form-control input-sm pull-left" style="width: 80px;" data-bind="value: $parent.Value2" required /><span style="padding: 5px 5px;" class="pull-left"> days</span>
+            <span data-bind="text: $parent.Value"></span>
+            <div data-bind="if: $parent.Value().indexOf('Today +') >= 0 || $parent.Value().indexOf('Today -') >= 0">
+                <span type="number" style="width: 80px;" data-bind="text: $parent.Value2" ></span><span> days</span>
             </div>
             <!-- /ko -->
             <!-- /ko -->
             <!-- ko if: ['Int','Money','Float','Double'].indexOf(fieldType) != -1 -->
             <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
-            <input class="form-control" type="number" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default'" required />
+            <span type="number" data-bind="text: $parent.Value, disable: $parent.Operator() == 'is default'" ></span>
             <!-- /ko -->
             <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
-            From
-            <input class="form-control" type="number" data-bind="value: $parent.Value" required />
-            to
-            <input class="form-control" type="number" data-bind="value: $parent.Value2" required />
+            From &nbsp;
+            <span type="number" data-bind="text: $parent.Value" ></span>
+            to &nbsp;
+            <span type="number" data-bind="text: $parent.Value2" ></span>
             <!-- /ko -->
             <!-- /ko -->
             <!-- ko if: fieldType=='Boolean' && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
-            <select required class="form-control" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default'">
-                <option value="1">Yes</option>
-                <option value="0">No</option>
-            </select>
+            <span data-bind="text: $parent.Value== '0' ? 'No' : 'Yes'">
+           </span>
             <!-- /ko -->
             <!-- ko if: ['Int','Money','Float','Double','Date','DateTime','Boolean'].indexOf(fieldType) == -1 && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
-            <input class="form-control" type="text" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default'" required />
+            <span type="text" data-bind="text: $parent.Value, disable: $parent.Operator() == 'is default'" ></span>
             <!-- /ko -->
             <!-- /ko -->
             <!-- ko if: hasForeignKey && $parent.Operator() != 'all' -->
             <!-- ko if: hasForeignParentKey && $parent.showParentFilter() -->
-            <select multiple class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.ParentList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ParentIn"></select>
+            <span data-bind="text: $parent.ParentIn"></span>
             <!-- /ko -->
             <!-- ko if: $parent.Operator()=='='-->
-            <select required class="form-control" data-bind="options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', value: $parent.Value, optionsCaption: 'Please Choose'"></select>
+            <span data-bind="text: $parent.Value"></span>
             <!-- /ko -->
             <!-- ko if: $parent.Operator()=='in' || $parent.Operator()=='not in'-->
-            <select required multiple class="form-control" data-bind="select2: { placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: 'id', selectedOptions: $parent.ValueIn"></select>
+            <span data-bind="text: $parent.ValueIn"></span>
             <!-- /ko -->
             <!-- /ko -->
         </div>
-    </script>
     </script>
 </body>
 </html>
