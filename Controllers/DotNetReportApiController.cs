@@ -17,7 +17,7 @@ namespace ReportBuilder.Web.Controllers
     {
         private readonly IConfigurationRoot _configuration;
         public readonly static string _configFileName = "appsettings.dotnetreport.json";
-        public readonly static string dbtype = DbTypes.MS_SQL.ToString().Replace("_", " ");
+        public readonly static string dbtype = DbTypes.Postgre_Sql.ToString().Replace("_", " ");
         public DotNetReportApiController()
         {
             var builder = new ConfigurationBuilder()

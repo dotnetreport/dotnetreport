@@ -501,7 +501,7 @@ namespace ReportBuilder.Web.Models
     {
         private static readonly IConfigurationRoot _configuration;
         private readonly static string _configFileName = "appsettings.dotnetreport.json";
-        public readonly static string dbtype = DbTypes.MS_SQL.ToString().Replace("_", " ");
+        public readonly static string dbtype = DbTypes.Postgre_Sql.ToString().Replace("_", " ");
         public readonly static bool useAltPivot = false;
 
 
