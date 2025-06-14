@@ -2784,7 +2784,7 @@ var reportViewModel = function (options) {
 				}),
 				chartOptions: self.chartOptions()
 			}),
-			OnlyTop: self.maxRecords() ? self.OnlyTop() : null,
+			OnlyTop: drilldown.length > 0 ? null : (self.maxRecords() ? self.OnlyTop() : null),
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : self.AggregateReport(),
 			ShowDataWithGraph: self.ShowDataWithGraph(),
 			ShowOnDashboard: self.ShowOnDashboard(),
