@@ -173,7 +173,7 @@
             <div data-bind="with: $parent.rows[0].Items[0]">
                 <span data-bind="html: formattedVal"></span>
 
-                <!-- ko if: $parent.Rows.length > 1 && $parents[$parents.length-2].showPriorInKpi() -->
+                <!-- ko if: $parent.Rows.length > 1 && $root.showPriorInKpi -->
                 <span data-bind="style: {'color': $parent.calculateRate() > 0 ? 'green' : 'red', 'font-size': '24px'}">
                     <span data-bind="html: $parent.calculateRate() + '%'"></span>
                 </span>
