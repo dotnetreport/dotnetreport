@@ -156,7 +156,7 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("userId", settings.UserId),
                     new KeyValuePair<string, string>("userIdForSchedule", settings.UserIdForSchedule),
                     new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
-                    new KeyValuePair<string, string>("useParameters", "true")
+                    new KeyValuePair<string, string>("useParameters", "false")
             };
 
                 var data = JsonSerializer.Deserialize<Dictionary<string, dynamic>>(model);
@@ -351,6 +351,11 @@ namespace ReportBuilder.Web.Controllers
                                 reportData = reportData.Replace("\"DrillDownRowUsePlaceholders\":false", $"\"DrillDownRowUsePlaceholders\":true");
                                 var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dtPagedRun, sqlFields, reportData);
                                 dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn, pivotFunction, reportData);
+                                if (subtotalMode)
+                                {
+                                    var columnorder = DotNetReportHelper.GetuseAltPivotColumnOrder(reportData);
+                                    dtPagedRun = DotNetReportHelper.ReorderDataTableColumns(dtPagedRun, columnorder);
+                                }
                             }
                             var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
                             fields = fields
