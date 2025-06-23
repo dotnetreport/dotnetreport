@@ -1317,7 +1317,7 @@ var reportViewModel = function (options) {
 					const joinIds = self.joinIds(); 
 					const isJoinRequiredButMissing =  joinIds && joinIds.size > 0 ? !joinIds.has(tableId) && tableId: false;
 					if (isJoinRequiredButMissing) {
-						toastr.error("Cannot use table as joins do not exist");
+						toastr.error(`Cannot use table as joins do not exist ${result[0].tableName} > ${result[0].fieldName}`);
 						return;
 					}
 					self.SelectedFields.push(self.setupField(result[0]));
@@ -1678,7 +1678,7 @@ var reportViewModel = function (options) {
 		processResults: function (data) {
 			if (data.d) data = data.d;
 			var items = _.map(data, function (x) {
-				return { id: x.fieldId, text: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey };
+				return { id: x.fieldId, text: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey, tableId: x.tableId };
 			});
 
 			return {
@@ -2366,6 +2366,14 @@ var reportViewModel = function (options) {
 		if (!self.validateReport(true)) {
 			toastr.error("Please correct validation issues");
 			return;
+		}
+		if (self.joinIds() != null) {
+			const joinIds = self.joinIds();
+			const isJoinRequiredButMissing = joinIds && joinIds.size > 0 ? !joinIds.has(self.customSqlField.selectedFieldTableId) && self.customSqlField.selectedFieldTableId : false;
+			if (isJoinRequiredButMissing) {
+				toastr.error(`Cannot use table as joins do not exist ${self.customSqlField.selectedField()}`);
+				return;
+			}
 		}
 		_.forEach(self.formulaFields(), function (e) {
 			e.tableId = e.tableId;
@@ -5512,6 +5520,7 @@ var sqlFieldModel = function (options) {
 	}
 
 	self.selectedField = ko.observable();
+	self.selectedFieldTableId = ko.observable();
 	self.selectedSqlFunction = ko.observable();
 	self.inputValue = ko.observable();
 	self.customSQL = ko.observable('');
@@ -5524,6 +5533,7 @@ var sqlFieldModel = function (options) {
 	self.toJSON = function () {
 		return {
 			selectedField: self.selectedField(),
+			selectedFieldTableId: self.selectedFieldTableId(),
 			selectedSqlFunction: self.selectedSqlFunction(),
 			inputValue: encodeURIComponent(self.inputValue()),
 			fieldSql: encodeURIComponent(self.generateSQL()),
@@ -5541,6 +5551,7 @@ var sqlFieldModel = function (options) {
 
 	self.fromJs = function (x) {
 		self.selectedField(x.selectedField);
+		self.selectedFieldTableId(x.selectedFieldTableId);
 		self.selectedSqlFunction(x.selectedSqlFunction);
 		self.inputValue(decodeURIComponent(x.inputValue));
 		self.fieldSql(decodeURIComponent(x.fieldSql));
