@@ -1,6 +1,6 @@
 {
   "name": "dotnetreport",
-  "version": "6.0.4",
+  "version": "6.0.5-beta",
   "description": "module that contains all scripts needed for dotnetreport",
   "main": "dotnetreport.js",
   "author": "dotnetreport",
@@ -10,6 +10,7 @@
     "bootstrap-datepicker": "1.10.0",
     "fabric": "5.4.0",
     "font-awesome": "4.7.0",
+    "gridstack": "12.1.0",
     "jquery": "3.7.1",
     "jquery-blockui": "2.7.0",
     "jquery-ui-dist": "1.13.3",
