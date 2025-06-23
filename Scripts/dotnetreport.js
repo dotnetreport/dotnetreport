@@ -883,6 +883,17 @@ var reportViewModel = function (options) {
 	self.PivotColumns = ko.observable();
 	self.PivotColumnsWidth = ko.observable();
 	self.ReportColumns = ko.observable();
+	self.isModalOpen = ko.observable(false);
+
+	$(document).on('shown.bs.modal', '.modal', function () {
+		self.isModalOpen(true);
+	});
+
+	$(document).on('hidden.bs.modal', '.modal', function () {
+		const anyOpen = $('.modal.show').length > 0;
+		self.isModalOpen(anyOpen);
+	});
+
 	self.FilterGroups.subscribe(function (newArray) {
 		if (newArray && newArray.length == 0) {
 			self.FilterGroups.push(new filterGroupViewModel({ isRoot: true, parent: self, options: options }));
@@ -5784,6 +5795,17 @@ var dashboardViewModel = function (options) {
 	self.ReportResult = ko.observable({
 		ReportSql: ko.observable()		
 	});
+	self.isModalOpen = ko.observable(false);
+
+	$(document).on('shown.bs.modal', '.modal', function () {
+		self.isModalOpen(true);
+	});
+
+	$(document).on('hidden.bs.modal', '.modal', function () {
+		const anyOpen = $('.modal.show').length > 0;
+		self.isModalOpen(anyOpen);
+	});
+
 	var currentDash = options.dashboardId > 0
 		? (_.find(self.dashboards(), { id: options.dashboardId }) || { name: '', description: '' })
 		: (self.dashboards().length > 0 ? self.dashboards()[0] : { name: '', description: '' });

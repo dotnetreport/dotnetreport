@@ -1153,7 +1153,7 @@
 </script>
 
 <script type="text/html" id="report-designer">
-    <div class="modal-dialog modal-dialog-scrollable" style="height: 100vh;">
+    <div class="modal-dialog modal-dialog-scrollable" style="height: 100vh;" id="report-designer-modal">
         <div class="modal-content" style="display: flex; flex-direction: column; height: 100%;">
 
             <div class="modal-header">
@@ -1756,7 +1756,7 @@
                             </div>
                         </div>
                         <br />
-                        <div class="card card-body">
+                        <div class="card card-body" data-bind="if: isModalOpen">
                             <h5><span class="fa fa-filter"></span>&nbsp;Choose Filters</h5>
 
                             <div class="row" style="padding: 10px 10px; overflow-x: auto;">
