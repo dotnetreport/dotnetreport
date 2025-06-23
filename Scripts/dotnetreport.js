@@ -884,6 +884,17 @@ var reportViewModel = function (options) {
 	self.PivotColumns = ko.observable();
 	self.PivotColumnsWidth = ko.observable();
 	self.ReportColumns = ko.observable();
+	self.isModalOpen = ko.observable(false);
+
+	$(document).on('shown.bs.modal', '.modal', function () {
+		self.isModalOpen(true);
+	});
+
+	$(document).on('hidden.bs.modal', '.modal', function () {
+		const anyOpen = $('.modal.show').length > 0;
+		self.isModalOpen(anyOpen);
+	});
+
 	self.FilterGroups.subscribe(function (newArray) {
 		if (newArray && newArray.length == 0) {
 			self.FilterGroups.push(new filterGroupViewModel({ isRoot: true, parent: self, options: options }));
@@ -1304,6 +1315,13 @@ var reportViewModel = function (options) {
 					}
 				}).done(function (result) {
 					if (result.d) result = result.d;
+					const tableId = result[0].tableId;
+					const joinIds = self.joinIds(); 
+					const isJoinRequiredButMissing =  joinIds && joinIds.size > 0 ? !joinIds.has(tableId) && tableId: false;
+					if (isJoinRequiredButMissing) {
+						toastr.error(`Cannot use table as joins do not exist ${result[0].tableName} > ${result[0].fieldName}`);
+						return;
+					}
 					self.SelectedFields.push(self.setupField(result[0]));
 					self.textQuery.searchFields.selectedOption(null);
 				});
@@ -1711,7 +1729,7 @@ var reportViewModel = function (options) {
 		processResults: function (data) {
 			if (data.d) data = data.d;
 			var items = _.map(data, function (x) {
-				return { id: x.fieldId, text: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey };
+				return { id: x.fieldId, text: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey, tableId: x.tableId };
 			});
 
 			return {
@@ -1925,6 +1943,7 @@ var reportViewModel = function (options) {
 	}
 
 	self.lastPickedField = ko.observable();
+	self.joinIds = ko.observable();
 	self.SelectedFields.subscribe(function (fields) {
 		setTimeout(function () {
 			self.RemoveInvalidFilters(self.FilterGroups());
@@ -1932,7 +1951,7 @@ var reportViewModel = function (options) {
 			const joinTableIds = fields.length > 0
 				? new Set(fields.map(field => field.joinTableIds).flat().filter(id => id))
 				: null;
-
+			self.joinIds(joinTableIds);
 			self.CategorizedTables().forEach(category => {
 				category.tables.forEach(table => {
 					table.isEnabled(joinTableIds && joinTableIds.size > 0 ? joinTableIds.has(table.tableId) || !table.tableId : true);
@@ -2401,12 +2420,24 @@ var reportViewModel = function (options) {
 			toastr.error("Please correct validation issues");
 			return;
 		}
+		if (self.joinIds() != null) {
+			const joinIds = self.joinIds();
+			const isJoinRequiredButMissing = joinIds && joinIds.size > 0 ? !joinIds.has(self.customSqlField.selectedFieldTableId) && self.customSqlField.selectedFieldTableId : false;
+			if (isJoinRequiredButMissing) {
+				toastr.error(`Cannot use table as joins do not exist ${self.customSqlField.selectedField()}`);
+				return;
+			}
+		}
 		_.forEach(self.formulaFields(), function (e) {
 			e.tableId = e.tableId;
 		});
 
 		var field = self.getEmptyFormulaField();
-
+		if (field.fieldFormat == 'Integer' || field.fieldFormat == 'Decimal' || field.fieldFormat == 'Currency') {
+			field.fieldType = "Int"
+		} else {
+			field.fieldFilter = ['=', 'in', 'not in', 'like', 'not like', 'not equal', 'is blank', 'is not blank'];
+		}
 		self.SelectedFields.push(self.setupField(field));
 		self.clearFormulaField();
 		self.isFormulaField(false);
@@ -4055,7 +4086,8 @@ var reportViewModel = function (options) {
 				var value = (function () {
 					if (isNumeric && typeof r.FormattedValue === 'string' && r.FormattedValue.trim().endsWith('%')) {
 						var num = parseFloat(r.FormattedValue.replace('%', '').trim());
-						return isNaN(num) ? 0 : Math.round((num / 100) * 100) / 100; // Round to 2 decimal places
+						//return isNaN(num) ? 0 : Math.round((num / 100) * 100) / 100; // Round to 2 decimal places
+						return num;
 					}
 					return isNumeric ? parseFloat(r.Value) : r.FormattedValue || (isNumeric ? 0 : '');
 				})();
@@ -4104,7 +4136,7 @@ var reportViewModel = function (options) {
 
 		// Set chart options
 		var chartOptions = self.chartOptions();
-		if (reportData?.Columns[1]?.fieldFormat() === 'Currency') {
+		if (!reportData?.Columns[1].groupInGraph() && reportData?.Columns[1]?.fieldFormat() === 'Currency') {
 			var prefixFormat = reportData?.Columns[1]?.currencyFormat ? reportData?.Columns[1]?.currencyFormat() : null;
 			if (prefixFormat != null && prefixFormat != "") {
 				var formatter = new google.visualization.NumberFormat({
@@ -4113,6 +4145,15 @@ var reportViewModel = function (options) {
 				formatter.format(data, 1);
 				chartOptions.vAxis = { format: `${prefixFormat}#` }
 			}
+		}
+		if (!reportData?.Columns[1].groupInGraph() && (reportData?.Rows?.[0]?.Items?.[1]?.FormattedValue || '').trim().endsWith('%'))
+		{
+			var percentFormatter = new google.visualization.NumberFormat({
+				suffix: '%',
+				fractionDigits: 2 // optional: 2 decimal points
+			});
+			percentFormatter.format(data, 1);
+			chartOptions.vAxis = { format: '#%' };
 		}
 		if (options.chartSize) {
 			chartOptions.width = options.chartSize.width;
@@ -4150,7 +4191,9 @@ var reportViewModel = function (options) {
 			chartOptions.seriesType = self.comboChartType();			
 			chartOptions.series = series;
 		}
-
+		if (self.ReportType() != 'Combo') {
+			delete chartOptions.seriesType;
+		}
 		if (self.ReportType() == "Map") {
 			chart = new google.visualization.GeoChart(chartDiv);
 			// Refer to for full list of regions https://developers.google.com/chart/interactive/docs/gallery/geochart#Continent_Hierarchy
@@ -4820,6 +4863,16 @@ var reportViewModel = function (options) {
 					e = self.setupField(e);
 				});
 
+				_.forEach(report.SelectedFields,function (field) {
+					if (
+						field.fieldId === 0 &&
+						field.tableName === "Custom" &&
+						field.dynamicTableId === null
+					) {
+						if (field.fieldFormat() === 'Integer' || field.fieldFormat() === 'Decimal' || field.fieldFormat() === 'Currency')
+							field.fieldType = "Int"; 
+					}
+				});
 				self.SelectedFields(report.SelectedFields);
 				self.lastPickedField(null);
 				return self.PopulateReport(report, filterOnFly, reportSeries);
@@ -5554,6 +5607,7 @@ var sqlFieldModel = function (options) {
 	}
 
 	self.selectedField = ko.observable();
+	self.selectedFieldTableId = ko.observable();
 	self.selectedSqlFunction = ko.observable();
 	self.inputValue = ko.observable();
 	self.customSQL = ko.observable('');
@@ -5566,6 +5620,7 @@ var sqlFieldModel = function (options) {
 	self.toJSON = function () {
 		return {
 			selectedField: self.selectedField(),
+			selectedFieldTableId: self.selectedFieldTableId(),
 			selectedSqlFunction: self.selectedSqlFunction(),
 			inputValue: encodeURIComponent(self.inputValue()),
 			fieldSql: encodeURIComponent(self.generateSQL()),
@@ -5583,6 +5638,7 @@ var sqlFieldModel = function (options) {
 
 	self.fromJs = function (x) {
 		self.selectedField(x.selectedField);
+		self.selectedFieldTableId(x.selectedFieldTableId);
 		self.selectedSqlFunction(x.selectedSqlFunction);
 		self.inputValue(decodeURIComponent(x.inputValue));
 		self.fieldSql(decodeURIComponent(x.fieldSql));
@@ -5837,6 +5893,17 @@ var dashboardViewModel = function (options) {
 	self.ReportResult = ko.observable({
 		ReportSql: ko.observable()		
 	});
+	self.isModalOpen = ko.observable(false);
+
+	$(document).on('shown.bs.modal', '.modal', function () {
+		self.isModalOpen(true);
+	});
+
+	$(document).on('hidden.bs.modal', '.modal', function () {
+		const anyOpen = $('.modal.show').length > 0;
+		self.isModalOpen(anyOpen);
+	});
+
 	var currentDash = options.dashboardId > 0
 		? (_.find(self.dashboards(), { id: options.dashboardId }) || { name: '', description: '' })
 		: (self.dashboards().length > 0 ? self.dashboards()[0] : { name: '', description: '' });

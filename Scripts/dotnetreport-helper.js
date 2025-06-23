@@ -312,13 +312,16 @@ ko.bindingHandlers.select2Value = {
 ko.bindingHandlers.select2Text = {
     init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
         var options = allBindings.get('select2') || {};
-
+        var idObservable = allBindings.get('select2TableId');
         $(element).select2(options);
 
         $(element).on('select2:select', function (event) {
             var selectedText = event.params.data.text;
             var value = valueAccessor();
             value(selectedText);  // Set the observable to the selected text instead of the id
+            if (ko.isObservable(idObservable)) {
+                idObservable(event.params.data.tableId); // adjust based on object
+            }
         });
     },
     update: function (element, valueAccessor, allBindings) {
@@ -710,7 +713,7 @@ var textQuery = function (options) {
         processResults: function (data) {
             if (data.d) results = data.d;
             var items = _.map(data, function (x) {
-                return { id: x.fieldId, text: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey };
+                return { id: x.fieldId, text: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey, tableId: x.tableId };
             });
 
             return {
