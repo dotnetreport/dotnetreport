@@ -16,7 +16,7 @@
     <link href="~/lib/toastr/toastr.min.css" rel="stylesheet" />
     <link href="~/lib/font-awesome/css/font-awesome.min.css" rel="stylesheet" />
     <link href="~/lib/select2/css/select2.min.css" rel="stylesheet" />
-    <link href="~/css/dotnetreport.css?v=4.2.0" rel="stylesheet" />
+    <link href="~/css/dotnetreport.css?v=6.0.0" rel="stylesheet" />
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <style type="text/css">
         .report-view {
@@ -131,7 +131,7 @@
                         <!-- ko foreach: Items -->
                         <td data-bind="style: {'background-color': _backColor != 'none' ? backColor() : '', 'color': _fontColor != 'none' ? fontColor() : '', 'font-weight': fontBold() && _fontBold != 'none' ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '48px' : ''}">
                             <!-- ko if: LinkTo-->
-                                <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: FormattedValue"></span></a>
+                            <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: FormattedValue"></span></a>
                             <!-- /ko-->
                             <!-- ko ifnot: LinkTo-->
                             <span data-bind="html: FormattedValue"></span>
@@ -178,14 +178,15 @@
                     <!-- /ko -->
                     <!-- /ko -->
                 </tbody>
-                <!-- ko if: $parent.SubTotals().length == 1 -->
+                <!-- ko if: $parent.SubTotals().length == 1 && $parentContext.$parent.OuterGroupColumns().length == 0 -->
                 <tfoot data-bind="foreach: $parent.SubTotals">
-                    <tr>
-                        <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() -->
-                        <td></td>
-                        <!-- /ko -->
+                    <tr class="sub-total">
                         <!-- ko foreach: Items -->
-                        <td data-bind="html: FormattedValue, css: {'right-align': Column.IsNumeric}"></td>
+                        <!-- ko if: Value != 'NA' && Value != 'NaN' && !outerGroup() -->
+                        <td data-bind="style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '48px' : ''}">
+                            <span data-bind="html: formattedVal, css: {'right-align': true}"></span>
+                        </td>
+                        <!-- /ko -->
                         <!-- /ko -->
                     </tr>
                 </tfoot>
@@ -209,7 +210,7 @@
     <script src="~/lib/lodash/lodash.min.js"></script>
     <script src="~/lib/fabric/fabric.min.js"></script>
     <script src="~/js/dotnetreport-helper.js"></script>
-    <script src="~/js/dotnetreport.js?v=4.2.0"></script>
+    <script src="~/js/dotnetreport.js?v=6.0.0"></script>
 
     <style type="text/css">
         a[href]:after {
@@ -251,8 +252,9 @@
             ReportSeries : "@Model.ReportSeries",
             reportHeader: 'report-header',
             userSettings: data,
-            dataFilters: data.dataFilters,
-            reportData: JSON.parse(decodeHTMLEntities('@System.Web.HttpUtility.HtmlDecode(Model.ReportData)')),
+            dataFilters: JSON.parse(data.dataFilters || '{}'),
+            reportData: JSON.parse(decodeHTMLEntities('@Model.ReportData')),
+            getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
             chartSize: { width: 1000, height: 450 }
         });
 

@@ -24,6 +24,12 @@ var manageViewModel = function (options) {
 	self.activeTable = ko.observable();
 	self.activeProcedure = ko.observable();
 	self.schedules = ko.observableArray([]);
+	self.settings = new settingPageViewModel(options);
+	self.ReportResult = ko.observable({
+		ReportSql: ko.observable()
+	});
+	self.isDirty = ko.observable(false);
+
 	self.loadFromDatabase = function() {
 		bootbox.confirm("Confirm loading all Tables and Views from the database? Note: This action will discard unsaved changes and it may take some time.", function (r) {
 			if (r) {
@@ -64,6 +70,18 @@ var manageViewModel = function (options) {
 	self.foundProcedures = ko.observableArray([]);
 	self.searchProcedureTerm = ko.observable("");
 	self.Joins = ko.observableArray([]);
+	self.Joins.subscribe(function () {
+		self.isDirty(true);
+	});
+
+	self.trackJoinChanges = function (join) {
+		join.JoinTable.subscribe(() => self.isDirty(true));
+		join.OtherTable.subscribe(() => self.isDirty(true));
+		join.FieldName.subscribe(() => self.isDirty(true));
+		join.JoinFieldName.subscribe(() => self.isDirty(true));
+		join.JoinType.subscribe(() => self.isDirty(true));
+	};
+
 
 	self.currentConnectionKey = ko.observable(self.keys.DatabaseApiKey);
 	self.canSwitchConnection = ko.computed(function () {
@@ -917,7 +935,7 @@ var manageViewModel = function (options) {
 			toastr.error('Please enter a term to search stored procs');
 			return false;
 		}
-
+		self.foundProcedures([]);
 		ajaxcall({
 			url: options.searchProcUrl,
 			type: 'POST',
@@ -928,6 +946,10 @@ var manageViewModel = function (options) {
 			})
 		}).done(function (result) {
 			if (result.d) result = result.d;
+
+			if (result.length == 0) {
+				toastr.error('No matching stored proc found, please try again.');
+			}
 			_.forEach(result, function (s) {
 				_.forEach(s.Columns, function (c) {
 					c.DisplayName = ko.observable(c.DisplayName);
@@ -1011,20 +1033,62 @@ var manageViewModel = function (options) {
 				})
 			})
 		}).done(function (result) {
-			self.Joins($.map(result, function (item) {
-				return self.setupJoin(item);
+			self.Joins($.map(result, function (item) {				
+				var join = self.setupJoin(item);
+				self.trackJoinChanges(join);
+				return join;
 			}));
+			self.isDirty(false);
 		});
 	};
 
-	self.AddJoin = function () {
-		self.Joins.push(self.setupJoin({
+	self.showNewJoinRow = ko.observable(false);
+	self.NewJoin = ko.observable(self.setupJoin({
+		TableId: 0,
+		JoinedTableId: 0,
+		JoinType: "INNER",
+		FieldName: "",
+		JoinFieldName: ""
+	}));
+
+	self.ConfirmAddJoin = function () {
+		const join = self.NewJoin();
+
+		if (!join.JoinTable() || !join.OtherTable()) {
+			toastr.error("Please select both Primary Table and Join Table.");
+			return;
+		}
+
+		if (!join.FieldName() || !join.JoinFieldName()) {
+			toastr.error("Please select both join fields.");
+			return;
+		}
+
+		self.trackJoinChanges(join);
+		self.Joins.push(join);
+		// Reset form
+		self.NewJoin(self.setupJoin({
 			TableId: 0,
 			JoinedTableId: 0,
 			JoinType: "INNER",
 			FieldName: "",
 			JoinFieldName: ""
 		}));
+		self.showNewJoinRow(false);
+	};
+
+	self.AddJoin = function () {
+		self.showNewJoinRow(true);
+	};
+
+	self.DeleteVisibleJoins = function () {
+		bootbox.confirm("Are you sure you would like to delete 'All Filtered' Joins?", function (r) {
+			if (r) {
+				const toDelete = self.filteredJoins();
+				self.Joins.removeAll(toDelete);
+				self.isDirty(true);
+			}
+		});
 	};
 
 	self.getJoinsToSave = function () {
@@ -1067,6 +1131,7 @@ var manageViewModel = function (options) {
 				})
 			})
 		}).done(function (result) {
+			self.isDirty(false);
 			if (result == "Success") toastr.success("Changes saved successfully.");
 		});
 	};
@@ -1439,29 +1504,31 @@ var manageViewModel = function (options) {
 
 		var getReports = function () {
 			return ajaxcall({
-				url: options.reportsApiUrl,
-				data: {
+				type: 'POST',
+				url: options.apiUrl,
+				data: JSON.stringify({
 					method: "/ReportApi/GetSavedReports",
 					model: JSON.stringify({
 						account: self.keys.AccountApiKey,
 						dataConnect: self.keys.DatabaseApiKey,
 						adminMode: true
 					})
-				}
+				})
 			});
 		};
 
 		var getFolders = function () {
 			return ajaxcall({
-				url: options.reportsApiUrl,
-				data: {
+				type: 'POST',
+				url: options.apiUrl,
+				data: JSON.stringify({
 					method: "/ReportApi/GetFolders",
 					model: JSON.stringify({
 						account: self.keys.AccountApiKey,
 						dataConnect: self.keys.DatabaseApiKey,
 						adminMode: true
 					})
-				}
+				})
 			});
 		};
 
@@ -1537,10 +1604,38 @@ var tablesViewModel = function (options, keys, previewData) {
 
 	self.processTable = function (t) {
 		t.availableColumns = ko.computed(function () {
-			return _.filter(t.Columns(), function (e) {
-				return e.Id() > 0 && e.Selected();
+			const columns = [];
+
+			ko.utils.arrayForEach(t.Columns(), function (col) {
+				if (col.Id() > 0 && col.Selected()) {
+					columns.push(col);
+				}
+
+				if (col.FieldType() === "Json" && col.Selected() && col.JsonStructure()) {
+					let jsonFields = {};
+					try {
+						jsonFields = JSON.parse(col.JsonStructure());
+					} catch (e) {
+						return;
+					}
+
+					for (const key in jsonFields) {
+						if (jsonFields.hasOwnProperty(key)) {
+							columns.push({
+								Id: -1,
+								ColumnName: col.ColumnName() + "." + key,
+								DisplayName: col.DisplayName() + " > " + key,
+								ParentJsonColumn: col,
+								FieldType: "JsonField"
+							});
+						}
+					}
+				}
 			});
+
+			return columns;
 		});
+
 
 		_.forEach(t.Columns(), function (e) {
 			var tableMatch = _.filter(self.model(), function (x) { return x.TableName() == e.ForeignTable(); });
@@ -1907,6 +2002,7 @@ var customSqlModel = function (options, keys, tables) {
 	self.useAi = ko.observable(false);
 	self.dynamicColumns = ko.observable(false);
 	self.columnTranslation = ko.observable('{column}');
+	self.dynamicValuesTableId = ko.observable();
 	self.textQuery = new textQuery(options);
 	self.selectedTable = null;
 	var validator = new validation();
@@ -1927,6 +2023,8 @@ var customSqlModel = function (options, keys, tables) {
 		self.customSql(e.CustomTableSql());
 		self.dynamicColumns(e.DynamicColumns());
 		self.columnTranslation(e.DynamicColumnTranslation());
+		self.dynamicValuesTableId(e.DynamicValuesTableId());
+
 		$('#custom-sql-modal').modal('show');
 	}
 	
@@ -1993,6 +2091,11 @@ var customSqlModel = function (options, keys, tables) {
 			toastr.error("You must use {column} in the code to use the dynamic column");
 			valid = false;
 		}
+
+		if (self.dynamicColumns() && !self.dynamicValuesTableId()) {
+			toastr.error("Please pick a table that contains dynamic column values");
+			valid = false;
+		}
 		var matchTable = _.find(tables.model(), function (x) {
 			return x.TableName() == self.customTableName() && (!self.selectedTable || self.selectedTable.Id != x.Id());
 		});
@@ -2028,6 +2131,7 @@ var customSqlModel = function (options, keys, tables) {
 				result.DisplayName = self.customTableName();
 				result.DynamicColumns = self.dynamicColumns();
 				result.DynamicColumnTranslation = self.columnTranslation() ? self.columnTranslation() : "{column}";
+				result.DynamicValuesTableId = self.dynamicValuesTableId();
 				var t = ko.mapping.fromJS(result);
 
 				tables.model.push(tables.processTable(t));
@@ -2038,6 +2142,7 @@ var customSqlModel = function (options, keys, tables) {
 				table.CustomTableSql(self.customSql());
 				table.DynamicColumns(self.dynamicColumns());
 				table.DynamicColumnTranslation(self.columnTranslation() ? self.columnTranslation() : "{column}");
+				table.DynamicValuesTableId(self.dynamicValuesTableId());
 
 				_.forEach(result.Columns, function (c) {
 					// if column id matches, update display name and data type, otherwise add it
@@ -2073,6 +2178,173 @@ var customSqlModel = function (options, keys, tables) {
     }
 }
 
+var settingPageViewModel = function (options) {
+	var self = this;
+	var dbConfig = options.model.DbConfig || {};
+	var validator = new validation();
+	var apiKey = options.model.AccountApiKey;
+	var dbKey = options.model.DatabaseApiKey;
+
+	self.backendApiUrl = ko.observable("");
+	self.emailServer = ko.observable("");
+	self.emailPort = ko.observable("");
+	self.emailUsername = ko.observable("");
+	self.emailPassword = ko.observable("");
+	self.emailName = ko.observable("");
+	self.emailAddress = ko.observable("");
+	self.selectedAppTheme = ko.observable();
+	self.selectedTimeZone = ko.observable();
+	self.useClientIdInAdmin = ko.observable(false);
+	self.useSqlBuilderInAdminMode = ko.observable(false);
+	self.useSqlCustomField = ko.observable(true);
+	self.noFolders = ko.observable(false);
+	self.noDefaultFolder = ko.observable(false);
+	self.showEmptyFolders = ko.observable(false);
+	self.allowUsersToManageFolders = ko.observable(true);
+	self.allowUsersToCreateReports = ko.observable(true);
+	self.useAltPdf = ko.observable(false);
+	self.dontXmlExport = ko.observable(false);
+
+	self.appThemes = ko.observableArray([
+		{ name: 'Default', value: 'default' },
+		{ name: 'Dark', value: 'dark' },
+		{ name: 'Serenity', value: 'teal' },
+		{ name: 'Flatly', value: 'flatly' },
+		{ name: 'Lumen', value: 'lumen' },
+		{ name: 'Monotone', value: 'monotone' },
+		{ name: 'Morph', value: 'morph' },
+		{ name: 'Quartz', value: 'quartz' },
+		{ name: 'Sandstone', value: 'sandstone' },
+		{ name: 'Sketchy', value: 'sketchy' },
+		{ name: 'Solar', value: 'solar' }
+	]);
+	// Define an observable array to hold the list of timezones
+	self.timeZones = ko.observableArray([
+		{ displayName: '(UTC-11:00) Pacific/Midway', value: -11 },
+		{ displayName: '(UTC-10:00) Pacific/Honolulu', value: -10 },
+		{ displayName: '(UTC-9:00) America/Anchorage', value: -9 },
+		{ displayName: '(UTC-8:00) America/Los_Angeles', value: -8 },
+		{ displayName: '(UTC-7:00) America/Denver', value: -7 },
+		{ displayName: '(UTC-6:00) America/Chicago', value: -6 },
+		{ displayName: '(UTC-5:00) America/New_York', value: -5 },
+		{ displayName: '(UTC-4:30) America/Caracas', value: -4.5 },
+		{ displayName: '(UTC-4:00) America/Halifax', value: -4 },
+		{ displayName: '(UTC-3:00) America/Sao_Paulo', value: -3 },
+		{ displayName: '(UTC-3:30) America/St_Johns', value: -3.5 },
+		{ displayName: '(UTC-3:00) America/Argentina/Buenos_Aires', value: -3 },
+		{ displayName: '(UTC-2:00) Atlantic/South_Georgia', value: -2 },
+		{ displayName: '(UTC-1:00) Atlantic/Azores', value: -1 },
+		{ displayName: '(UTC-1:00) Atlantic/Cape_Verde', value: -1 },
+		{ displayName: '(UTC+0:00) Africa/Casablanca', value: 0 },
+		{ displayName: '(UTC+0:00) Europe/London', value: 0 },
+		{ displayName: '(UTC+1:00) Europe/Paris', value: 1 },
+		{ displayName: '(UTC+2:00) Europe/Istanbul', value: 2 },
+		{ displayName: '(UTC+2:00) Africa/Johannesburg', value: 2 },
+		{ displayName: '(UTC+2:00) Asia/Damascus', value: 2 },
+		{ displayName: '(UTC+2:00) Asia/Amman', value: 2 },
+		{ displayName: '(UTC+2:00) Asia/Beirut', value: 2 },
+		{ displayName: '(UTC+2:00) Asia/Jerusalem', value: 2 },
+		{ displayName: '(UTC+3:00) Asia/Riyadh', value: 3 },
+		{ displayName: '(UTC+3:30) Asia/Tehran', value: 3.5 },
+		{ displayName: '(UTC+4:00) Asia/Dubai', value: 4 },
+		{ displayName: '(UTC+4:00) Asia/Baku', value: 4 }
+	]);
+	self.saveAppSettings = function () {
+
+		if (this.isValidforAppSetting()) {
+			ajaxcall({
+				url: options.apiUrl,
+				type: 'POST',
+				data: JSON.stringify({
+					method: options.saveAppSettingUrl,
+					model: JSON.stringify({
+						account: apiKey,
+						dataConnect: dbKey,
+						settings: JSON.stringify({
+							emailUserName: self.emailUsername() || '',
+							emailPassword: self.emailPassword() || '',
+							emailServer: self.emailServer() || '',
+							emailPort: self.emailPort() || '',
+							emailName: self.emailName() || '',
+							emailAddress: self.emailAddress() || '',
+							backendApiUrl: self.backendApiUrl() || '',
+							useClientIdInAdmin: self.useClientIdInAdmin(),
+							useSqlBuilderInAdminMode: self.useSqlBuilderInAdminMode(),
+							useSqlCustomField: self.useSqlCustomField(),
+							noFolders: self.noFolders(),
+							noDefaultFolder: self.noDefaultFolder(),
+							showEmptyFolders: self.showEmptyFolders(),
+							allowUsersToManageFolders: self.allowUsersToManageFolders(),
+							allowUsersToCreateReports: self.allowUsersToCreateReports(),
+							useAltPdf: self.useAltPdf(),
+							dontXmlExport: self.dontXmlExport()
+						})
+					})
+				})
+			}).done(function (response) {
+				if (response) {
+					if (response.success) {
+						toastr.success('Account Settings Updated');
+					} else {
+						toastr.error(response.message);
+					}
+				} else {
+					toastr.error('Error Saving Settings');
+					return false;
+				}
+			});
+		};
+
+	}
+	self.getAppSettings = function () {
+
+		return ajaxcall({
+			url: options.apiUrl,
+			type: 'POST',
+			data: JSON.stringify({
+				method: "/ReportApi/GetAccountSettings",
+				model: "{}"
+			})
+		}).done(function (response) {
+
+			if (response) {
+				var settings = response; // Assuming the response contains the settings object
+				self.backendApiUrl(settings.backendApiUrl);
+				self.emailServer(settings.emailServer);
+				self.emailPort(settings.emailPort);
+				self.emailUsername(settings.emailUserName);
+				self.emailPassword(settings.emailPassword);
+				self.emailName(settings.emailName);
+				self.emailAddress(settings.emailAddress);
+				self.selectedAppTheme(settings.appThemes);
+				self.selectedTimeZone(settings.timeZone);
+
+				self.useClientIdInAdmin(settings.useClientIdInAdmin);
+				self.useSqlBuilderInAdminMode(settings.useSqlBuilderInAdminMode);
+				self.useSqlCustomField(settings.useSqlCustomField);
+				self.noFolders(settings.noFolders);
+				self.noDefaultFolder(settings.noDefaultFolder);
+				self.showEmptyFolders(settings.showEmptyFolders);
+				self.allowUsersToManageFolders(settings.allowUsersToManageFolders);
+				self.allowUsersToCreateReports(settings.allowUsersToCreateReports);
+				self.useAltPdf(settings.useAltPdf);
+				self.dontXmlExport(settings.dontXmlExport);
+;
+				//// Optionally, you can manually trigger change event for select elements
+				$('#themeSelect').trigger('change');
+				$('#timezoneSelect').trigger('change');
+			} else {
+				toastr.error('Connection Error');
+				return false;
+			}
+		});
+	};
+	self.isValidforAppSetting = function () {
+		var valid = validator.validateForm('#appSettingsForm');
+		return valid;
+	};
+	self.getAppSettings();
+}
 var customFunctionManageModel = function (options, keys) {
 	var self = this;
 	self.keys = keys;
@@ -2227,10 +2499,24 @@ var customFunctionManageModel = function (options, keys) {
 	self.deleteFunction = function (functionModel) {
 		bootbox.confirm("Are you sure you want to delete this function?", function (result) {
 			if (result) {
-				self.functions.remove(functionModel);
-				if (self.selectedFunction() === functionModel) {
-					self.selectedFunction(null);
-				}
+				ajaxcall({
+					url: options.apiUrl,
+					type: 'POST',
+					data: JSON.stringify({
+						method: options.deleteCustomFuncUrl,
+						model: JSON.stringify({
+							account: self.keys.AccountApiKey,
+							dataConnect: self.keys.DatabaseApiKey,
+							funcId: functionModel.id()
+						})
+					})
+				}).done(function () {
+					toastr.success("Deleted Function " + functionModel.name());		
+					self.functions.remove(functionModel);
+					if (self.selectedFunction() === functionModel) {
+						self.selectedFunction(null);
+					}								
+				});
 			}
 		});
 	}
@@ -2259,6 +2545,7 @@ var customFunctionParameterModel = function (options, parentParameters) {
 	self.parameterName = ko.observable(options.ParameterName || '');
 	self.displayName = ko.observable(options.DisplayName || '').extend({ required: true });
 	self.description = ko.observable(options.Description || '');
+	self.datatype = ko.observable(options.DataType || 'object');
 	self.required = ko.observable(options.Required || true);
 	self.isValid = ko.observable(true);
 	self.errorMessage = ko.observable();
@@ -2268,12 +2555,12 @@ var customFunctionParameterModel = function (options, parentParameters) {
 
 		// Required
 		if (!self.parameterName().trim()) {
-			errors.push("Parameter name is required.");
+			errors.push("Argument name is required.");
 		}
 
 		// Format
 		if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(self.parameterName())) {
-			errors.push("Parameter name must start with a letter and can only contain alphanumeric characters and underscores.");
+			errors.push("Argument name must start with a letter and can only contain alphanumeric characters and underscores.");
 		}
 
 		// Unique
@@ -2281,7 +2568,7 @@ var customFunctionParameterModel = function (options, parentParameters) {
 			return param === self || param.parameterName() !== self.parameterName();
 		});
 		if (!isUnique) {
-			errors.push("Parameter name must be unique.");
+			errors.push("Argument name must be unique.");
 		}
 
 		self.isValid(errors.length === 0);
