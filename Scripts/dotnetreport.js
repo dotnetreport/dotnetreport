@@ -2381,7 +2381,8 @@ var reportViewModel = function (options) {
 
 		var field = self.getEmptyFormulaField();
 		if (field.fieldFormat == 'Integer' || field.fieldFormat == 'Decimal' || field.fieldFormat == 'Currency') {
-			field.fieldType = "Int"
+			field.fieldType = "Int";
+			field.fieldFilter = ['=', '>', '<', '>=', '<=', 'not equal','is blank', 'is not blank'];
 		} else {
 			field.fieldFilter = ['=', 'in', 'not in', 'like', 'not like', 'not equal', 'is blank', 'is not blank'];
 		}
