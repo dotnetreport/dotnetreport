@@ -2369,7 +2369,7 @@ var reportViewModel = function (options) {
 		}
 		if (self.joinIds() != null) {
 			const joinIds = self.joinIds();
-			const isJoinRequiredButMissing = joinIds && joinIds.size > 0 ? !joinIds.has(self.customSqlField.selectedFieldTableId) && self.customSqlField.selectedFieldTableId : false;
+			const isJoinRequiredButMissing = joinIds && joinIds.size > 0 ? !joinIds.has(ko.unwrap(self.customSqlField.selectedFieldTableId)) && ko.unwrap(self.customSqlField.selectedFieldTableId) : false;
 			if (isJoinRequiredButMissing) {
 				toastr.error(`Cannot use table as joins do not exist ${self.customSqlField.selectedField()}`);
 				return;
