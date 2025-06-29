@@ -1776,6 +1776,8 @@ var reportViewModel = function (options) {
 		self.barChartStacked(false);
 		self.comboChartType('bars');
 		self.selectedStyle('default');
+		self.reportRan(false);
+		self.executingReport = false;
 	};
 
 	self.SelectedProc.subscribe(function (proc) {
@@ -3799,9 +3801,11 @@ var reportViewModel = function (options) {
 		}, 2000);
 	}
 
+	self.reportRan = ko.observable(false);
 	self.executingReport = false;
 	self.ExecuteReport = function () {
 		self.executingReport = true;
+		self.reportRan(true);
 		self.SaveReport(false);
 		self.RunReport();
 	}
@@ -4850,7 +4854,8 @@ var reportViewModel = function (options) {
 				}
 
 				e.runReport = function () {
-					self.SaveReport(false);
+					self.reportRan(false);
+					self.executingReport = false;
 					e.runMode = true;
 					e.openReport();
 				};

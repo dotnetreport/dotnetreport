@@ -535,7 +535,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <i class="fa fa-save"></i>
                                 <span>Save Report</span>
                             </button>
-                            <div class="dropdown">
+                            <div class="dropdown" data-bind="hidden: DontExecuteOnRun() && !reportRan()">
                                 <button type="button" class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="fa fa-download"></i>
                                     <span>Export</span>
@@ -622,7 +622,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             </div>
                             </div>
                             <div class="report-render" data-bind="css: { 'report-expanded': isExpanded }">
-                                <div class="report-menubar">
+                                <div class="report-menubar" data-bind="hidden: DontExecuteOnRun() && !reportRan()">
                                     <div class="col-xs-12 col-centered" data-bind="with: pager">
                                         <div class="form-inline pull-left" data-bind="visible: pages()">
                                             <div class="form-group pull-left total-records">
@@ -681,7 +681,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         </div>
                                     </div>
                                 </div>
-                                <div class="report-canvas">
+                                <div class="report-canvas" data-bind="hidden: DontExecuteOnRun() && !reportRan()">
                                     <div class="report-container">
                                         <div class="report-inner">
                                             <div data-bind="template: 'chart-settings', data: $data"></div>

@@ -545,7 +545,7 @@
     </div>
 </script>
 <script type="text/html" id="fly-filter-template">
-    <div class="card" data-bind="visible: FlyFilters().length>0">
+    <div class="card" data-bind="visible: FlyFilters().length>0 || DontExecuteOnRun">
         <div class="card-header">
             <a data-bs-toggle="collapse" data-bind="attr: {'data-bs-target': '#filter-panel-' + ReportID() }" href="#">
                 <i class="fa fa-filter"></i> Choose Filters
