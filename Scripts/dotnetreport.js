@@ -5824,7 +5824,6 @@ var dashboardViewModel = function (options) {
 	self.isModalOpen = ko.observable(false);
 
 	$(document).on('shown.bs.modal', '.modal', function () {
-		self.SaveReport(true);
 		self.isModalOpen(true);
 	});
 

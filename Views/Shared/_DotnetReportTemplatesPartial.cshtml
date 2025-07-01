@@ -173,7 +173,7 @@
             <div data-bind="with: $parent.rows[0].Items[0]">
                 <span data-bind="html: formattedVal"></span>
 
-                <!-- ko if: $parent.Rows.length > 1 && $parents[$parents.length-2].showPriorInKpi() -->
+                <!-- ko if: $parent.Rows.length > 1 ? ($parents[$parents.length-2].showPriorInKpi != undefined ? $parents[$parents.length-2].showPriorInKpi() : $parents[$parents.length-1].showPriorInKpi()) : false -->
                 <span data-bind="style: {'color': $parent.calculateRate() > 0 ? 'green' : 'red', 'font-size': '24px'}">
                     <span data-bind="html: $parent.calculateRate() + '%'"></span>
                 </span>
@@ -1756,7 +1756,7 @@
                             </div>
                         </div>
                         <br />
-                        <div class="card card-body" data-bind="if: isModalOpen">
+                        <div class="card card-body">
                             <h5><span class="fa fa-filter"></span>&nbsp;Choose Filters</h5>
 
                             <div class="row" style="padding: 10px 10px; overflow-x: auto;">
