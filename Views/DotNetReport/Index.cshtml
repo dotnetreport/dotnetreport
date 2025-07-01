@@ -523,7 +523,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <i class="fa fa-arrow-circle-left"></i>
                                 <span>Back to Parent Report</span>
                             </button>
-                            <a href="#" class="btn btn-light btn-sm" data-bind="visible: $root.CanEdit()" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
+                            <a href="#" class="btn btn-light btn-sm" data-bind="visible: $root.CanEdit(), click: function(){SaveReport(true);}" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
                                 <i class="fa fa-edit"></i>
                                 <span>Edit Report</span>
                             </a>

@@ -1250,7 +1250,7 @@ var reportViewModel = function (options) {
 			self.ReportMode('execute');
 			self.SortByField(fieldIds[0]);
 			self.SelectedFields(result);
-			filters.forEach(f => self.FilterGroups()[0].AddFilter(f));			
+			filters.forEach(f => self.FilterGroups()[0].AddFilter(f));
 
 			if (useAi === true) {
 				var queryText = document.getElementById("query-input").innerText;
@@ -3804,6 +3804,7 @@ var reportViewModel = function (options) {
 	self.executingReport = false;
 	self.ExecuteReport = function () {
 		self.executingReport = true;
+		self.SaveReport(false);
 		self.reportRan(true);
 		self.RunReport();
 	}
@@ -5823,6 +5824,7 @@ var dashboardViewModel = function (options) {
 	self.isModalOpen = ko.observable(false);
 
 	$(document).on('shown.bs.modal', '.modal', function () {
+		self.SaveReport(true);
 		self.isModalOpen(true);
 	});
 
