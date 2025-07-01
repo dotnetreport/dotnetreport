@@ -2246,6 +2246,14 @@ var reportViewModel = function (options) {
 			self.currentFormulaField(null);
 		}
 		self.isFormulaField(!self.isFormulaField());
+		if (self.isFormulaField()) {
+			setTimeout(function () {
+				var target = document.getElementById("customFieldSection");
+				if (target) {
+					target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				}
+			}, 300); // delay ensures DOM is updated
+		}
 	};
 	self.removeField = function (field) {
 		bootbox.confirm("Are you sure you would like to remove this field?", function (r) {
@@ -2340,6 +2348,14 @@ var reportViewModel = function (options) {
 
 		self.currentFormulaField(field)
 		self.SelectedFields.remove(field);
+		if (self.isFormulaField()) {
+			setTimeout(function () {
+				var target = document.getElementById("customFieldSection");
+				if (target) {
+					target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				}
+			}, 300); // delay ensures DOM is updated
+		}
 	}
 
 	self.saveFormulaField = function () {
