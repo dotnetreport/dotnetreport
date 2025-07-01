@@ -507,8 +507,10 @@ function filterGroupViewModel(args) {
 
 		if (e.FieldId) {
 			field(args.parent.FindField(e.FieldId));
+			field().uiId = generateUniqueId();
 		} else if (e.FilterSettings) {
 			field(args.parent.FindDynamicField(JSON.parse(e.FilterSettings)));
+			field().uiId = generateUniqueId();
 		}
 
 		filter.compareTo = ko.computed(function () {
@@ -1248,9 +1250,7 @@ var reportViewModel = function (options) {
 			self.ReportMode('execute');
 			self.SortByField(fieldIds[0]);
 			self.SelectedFields(result);
-			filters.forEach(f => self.FilterGroups()[0].AddFilter(f));
-
-			self.SaveReport(false);
+			filters.forEach(f => self.FilterGroups()[0].AddFilter(f));			
 
 			if (useAi === true) {
 				var queryText = document.getElementById("query-input").innerText;
@@ -3054,8 +3054,7 @@ var reportViewModel = function (options) {
 					userIdForFilter: self.userIdForFilter,
 					SubTotalMode: false,
 					useAltPivot: self.appSettings.useAltPivot
-				}),
-				async: false
+				})
 			}).done(function (result) {
 				if (result.d) { result = result.d; }
 				if (result.result) { result = result.result; }
@@ -3806,7 +3805,6 @@ var reportViewModel = function (options) {
 	self.ExecuteReport = function () {
 		self.executingReport = true;
 		self.reportRan(true);
-		self.SaveReport(false);
 		self.RunReport();
 	}
 	self.ChartDrillDownData = ko.observable();
@@ -5020,6 +5018,10 @@ var reportViewModel = function (options) {
 		if (options.reportWizard == null) return;
 		var curInputs = options.reportWizard.find(validateCustomOnly === true ? ".custom-field-design input, .custom-field-design select" : "input, select"),
 			isValid = true;
+
+		if (!self.isModalOpen()) {
+			curInputs = $("#filter-panel-" + self.ReportID()).find("input, select");
+		}
 
 		$(".needs-validation").removeClass("was-validated");
 		for (var i = 0; i < curInputs.length; i++) {
