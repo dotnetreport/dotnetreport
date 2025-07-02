@@ -192,7 +192,8 @@
                 <span>Export</span>
             </button>
             <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="#" data-bind="click: ExportAllPdfReports"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
+                <li><a class="dropdown-item" href="#" data-bind="click: ExportAllPdfReports, hidden: appSettings.useAltPdf"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
+                <li><a class="dropdown-item" href="#" data-bind="click: ExportAllPdfAltReports, visible: appSettings.useAltPdf"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
                 <li><a class="dropdown-item" href="#" data-bind="click: ExportAllExcelReports"><i class="fa fa-file-excel-o"></i> Excel</a></li>
                 <li data-bind="visible: canDrilldown"><a class="dropdown-item" href="#" data-bind="click: ExportAllExcelExpandedReports"><i class="fa fa-file-excel-o"></i> Excel (Expanded)</a></li>
                 <li><a class="dropdown-item" href="#" data-bind="click: ExportAllWordReports"><i class="fa fa-file-word-o"></i> Word</a></li>
@@ -422,10 +423,10 @@
             </div>
             <div class="form-inline" data-bind="ifnot: noDashboardBorders">
                 <div class="small" data-bind="with: pager">
-                    <div class="form-group pull-left total-records" data-bind="if: totalRecords()>1">
+                    <div class="form-group pull-left total-records" data-bind="if: totalRecords()>1 && $parent.ReportType() != 'Single'">
                         <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
                     </div>
-                    <div class="form-group pull-right" data-bind="if: pages()>1">
+                    <div class="form-group pull-right" data-bind="if: pages()>1 && $parent.ReportType() != 'Single'">
                         <div data-bind="template: 'pager-template', data: $data"></div>
                     </div>
                     <div class="clearfix"></div>

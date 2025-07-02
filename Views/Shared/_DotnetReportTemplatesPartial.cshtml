@@ -173,7 +173,7 @@
             <div data-bind="with: $parent.rows[0].Items[0]">
                 <span data-bind="html: formattedVal"></span>
 
-                <!-- ko if: $parent.Rows.length > 1 && $parents[$parents.length-2].showPriorInKpi() -->
+                <!-- ko if: $parent.Rows.length > 1 ? ($parents[$parents.length-2].showPriorInKpi != undefined ? $parents[$parents.length-2].showPriorInKpi() : $parents[$parents.length-1].showPriorInKpi()) : false -->
                 <span data-bind="style: {'color': $parent.calculateRate() > 0 ? 'green' : 'red', 'font-size': '24px'}">
                     <span data-bind="html: $parent.calculateRate() + '%'"></span>
                 </span>
@@ -558,7 +558,7 @@
     </div>
 </script>
 <script type="text/html" id="fly-filter-template">
-    <div class="card" data-bind="visible: FlyFilters().length>0">
+    <div class="card" data-bind="visible: FlyFilters().length>0 || DontExecuteOnRun">
         <div class="card-header">
             <a data-bs-toggle="collapse" data-bind="attr: {'data-bs-target': '#filter-panel-' + ReportID() }" href="#">
                 <i class="fa fa-filter"></i> Choose Filters
@@ -1827,7 +1827,7 @@
                             </div>
                         </div>
                         <br />
-                        <div class="card card-body" data-bind="if: isModalOpen">
+                        <div class="card card-body">
                             <h5><span class="fa fa-filter"></span>&nbsp;Choose Filters</h5>
 
                             <div class="row" style="padding: 10px 10px; overflow-x: auto;">
@@ -2013,7 +2013,7 @@
             <i class="fa fa-cog"></i>
         </button>
 
-        <div class="chart-settings-panel border p-2 shadow-sm" data-bind="visible: showSettings">
+        <div class="chart-settings-panel border p-2 shadow-sm bg-light" data-bind="visible: showSettings">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <h6 class="mb-0">Chart Settings</h6>
                 <button class="btn btn-sm btn-close" data-bind="click: toggleChartSettings"></button>
