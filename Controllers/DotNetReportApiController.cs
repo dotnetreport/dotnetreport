@@ -190,9 +190,9 @@ namespace ReportBuilder.Web.Controllers
         [AllowAnonymous]
         [HttpPost]
         public async Task<JsonResult> RunReportUnAuth(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, 
-            bool desc = false, string reportSeries = null, string pivotColumn = null, string pivotFunction = null, string reportData = null, bool subtotalMode = false)
+            bool desc = false, string reportSeries = null, string pivotColumn = null, string pivotFunction = null, string reportData = null, bool subtotalMode = false, bool useAltPivot = false)
         {
-            return await RunReport(reportSql, connectKey, reportType, pageNumber, pageSize, sortBy, desc, reportSeries, pivotColumn, pivotFunction, reportData, subtotalMode);
+            return await RunReport(reportSql, connectKey, reportType, pageNumber, pageSize, sortBy, desc, reportSeries, pivotColumn, pivotFunction, reportData, subtotalMode, useAltPivot);
         }
 
         public class SqlQuery
@@ -204,7 +204,7 @@ namespace ReportBuilder.Web.Controllers
         [ValidateAntiForgeryToken]
         [HttpPost]
         public async Task<JsonResult> RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, 
-            bool desc = false, string reportSeries = null, string pivotColumn = null, string pivotFunction = null, string reportData = null, bool subtotalMode = false)
+            bool desc = false, string reportSeries = null, string pivotColumn = null, string pivotFunction = null, string reportData = null, bool subtotalMode = false, bool useAltPivot = false)
         {
             var sql = "";
             var sqlCount = "";
@@ -244,7 +244,16 @@ namespace ReportBuilder.Web.Controllers
                             int fromClauseIndex = sqlFrom.IndexOf("FROM", StringComparison.OrdinalIgnoreCase);
                             string distinctColumns = sqlFrom.Substring(distinctIndex, fromClauseIndex - distinctIndex).Trim();
 
-                            sqlCount = $"SELECT COUNT(*) FROM (SELECT DISTINCT {distinctColumns} {sql.Substring(fromIndex).Replace("{FROM}", "FROM")}) AS countQry";
+                            string fromClause = sql.Substring(fromIndex).Replace("{FROM}", "FROM");
+
+                            // Remove ORDER BY if present
+                            int orderByIndex = fromClause.LastIndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
+                            if (orderByIndex > -1)
+                            {
+                                fromClause = fromClause.Substring(0, orderByIndex).Trim();
+                            }
+
+                            sqlCount = $"SELECT COUNT(*) FROM (SELECT DISTINCT {distinctColumns} {fromClause}) AS countQry";
                         }
                         else
                         {
@@ -286,7 +295,7 @@ namespace ReportBuilder.Web.Controllers
 
                     var dtPagedRun = new DataTable();
 
-                    if (!string.IsNullOrEmpty(pivotColumn))
+                    if (!string.IsNullOrEmpty(pivotColumn) && !useAltPivot)
                     {
                         sql = sql.Remove(sql.IndexOf("SELECT "), "SELECT ".Length).Insert(sql.IndexOf("SELECT "), "SELECT TOP 1 ");
                     }
@@ -316,13 +325,24 @@ namespace ReportBuilder.Web.Controllers
 
                         if (!string.IsNullOrEmpty(pivotColumn))
                         {
-                            var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dtPagedRun, sql, sqlFields, reportData, pivotColumn, pivotFunction, pageNumber, pageSize, sortBy, desc, subtotalMode);
-                            dtPagedRun = pd.dt; 
-                            if (!string.IsNullOrEmpty(pd.sql)) sql = pd.sql;
-                            totalRecords =pd.totalRecords;
-
-                            //var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dtPagedRun, sqlFields, reportData);
-                            //dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn, pivotFunction, reportData);
+                            if (!useAltPivot)
+                            {
+                                var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dtPagedRun, sql, sqlFields, reportData, pivotColumn, pivotFunction, pageNumber, pageSize, sortBy, desc, subtotalMode);
+                                dtPagedRun = pd.dt;
+                                if (!string.IsNullOrEmpty(pd.sql)) sql = pd.sql;
+                                totalRecords = pd.totalRecords;
+                            }
+                            else
+                            {
+                                reportData = reportData.Replace("\"DrillDownRowUsePlaceholders\":false", $"\"DrillDownRowUsePlaceholders\":true");
+                                var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dtPagedRun, sqlFields, reportData);
+                                dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn, pivotFunction, reportData);
+                                if (subtotalMode)
+                                {
+                                    var columnorder = DotNetReportHelper.GetuseAltPivotColumnOrder(reportData);
+                                    dtPagedRun = DotNetReportHelper.ReorderDataTableColumns(dtPagedRun, columnorder);
+                                }
+                            }
                             var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
                             fields = fields
                                 .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords

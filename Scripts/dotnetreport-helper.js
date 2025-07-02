@@ -324,13 +324,16 @@ ko.bindingHandlers.select2Value = {
 ko.bindingHandlers.select2Text = {
     init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
         var options = allBindings.get('select2') || {};
-
+        var idObservable = allBindings.get('select2TableId');
         $(element).select2(options);
 
         $(element).on('select2:select', function (event) {
             var selectedText = event.params.data.text;
             var value = valueAccessor();
             value(selectedText);  // Set the observable to the selected text instead of the id
+            if (ko.isObservable(idObservable)) {
+                idObservable(event.params.data.tableId); // adjust based on object
+            }
         });
     },
     update: function (element, valueAccessor, allBindings) {
@@ -692,10 +695,15 @@ var textQuery = function (options) {
         return (_.find(self.queryItems, { type: 'Function' })) ? 'Summary' : 'List';
     }
 
-    self.resetQuery = function () {
+    self.resetQuery = function (searchReportFlag) {
         self.queryItems = [];
         self.filterItems = [];
-        document.getElementById("query-input").innerHTML = "Show me&nbsp;";
+        if (searchReportFlag) {
+            document.getElementById("search-input").innerHTML = '';
+        } else {
+            document.getElementById("query-input").innerHTML = "Show me&nbsp;";
+        }
+        
     }
 
     var tokenKey = '';
@@ -717,7 +725,7 @@ var textQuery = function (options) {
         processResults: function (data) {
             if (data.d) results = data.d;
             var items = _.map(data, function (x) {
-                return { id: x.fieldId, text: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey };
+                return { id: x.fieldId, text: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey, tableId: x.tableId };
             });
 
             return {
@@ -817,7 +825,7 @@ var textQuery = function (options) {
 
         var tributeAttributes = {
             allowSpaces: true,
-            autocompleteMode: true,
+            autocompleteMode: options.searchReportFlag == true ? false : true,
             noMatchTemplate: "",
             searchOpts: {
                 skip: true, // Disable the default matching
@@ -847,7 +855,7 @@ var textQuery = function (options) {
                             items = items.concat(self.QueryMethods);
                             items = items.concat(self.FilterMethods);
                         }
-                    }
+                    }                   
                     callback(items);
                 });
             },
@@ -904,5 +912,41 @@ var textQuery = function (options) {
             .addEventListener("menuItemRemoved", function (e) {
                 self.queryItems.remove(e.detail.item.original);
             });
+
+    }
+
+    self.setupSearch = function () {
+        var tributeAttributes = self.getTributeAttributes({ searchReportFlag: true });
+        var tribute = new Tribute(tributeAttributes);
+        var searchInput = document.getElementById('search-input');
+
+        if (searchInput) {
+            tribute.attach(searchInput);
+
+            searchInput.addEventListener("tribute-replaced", function (e) {
+                    self.addQueryItem(e.detail.item.original);
+                });
+
+            searchInput.addEventListener("menuItemRemoved", function (e) {
+                    self.queryItems.remove(e.detail.item.original);
+                });
+
+
+
+            searchInput.addEventListener('blur', function () {
+                const vm = ko.dataFor(searchInput);
+                if (vm && typeof vm.searchForReports === 'function') {
+                    vm.searchForReports();
+                }
+            });
+
+            searchInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault(); 
+                    searchInput.blur();
+                }
+            });
+
+        }
     }
 }
