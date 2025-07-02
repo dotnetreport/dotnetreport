@@ -1505,7 +1505,6 @@ tfoot tr.sub-total {
 .chart-settings-panel {
     position: absolute;
     width: 260px;
-    background: #fff;
     border-radius: 5px;
     z-index: 100;
     top: 0;
