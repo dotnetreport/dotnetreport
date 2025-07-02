@@ -6325,7 +6325,32 @@ var dashboardViewModel = function (options) {
 			reportdata: JSON.stringify(allreports)
 		}, 'pdf','CombinedReport');
 	}
-
+	self.ExportAllPdfAltReports = function () {
+		const reports = self.reports();
+		const allreports = [];
+		_.forEach(reports, function (report) {
+			const reportData = report.BuildReportData();
+			const pivotData = report.preparePivotData();
+			allreports.push({
+				reportId: report.ReportID(),
+				reportSql: report.currentSql(),
+				connectKey: report.currentConnectKey(),
+				reportName: report.ReportName(),
+				expandAll: report.allExpanded(),
+				printUrl: options.printReportUrl,
+				clientId: report.clientid || '',
+				userId: report.currentUserId || '',
+				userRoles: report.currentUserRole || '',
+				dataFilters: JSON.stringify(options.dataFilters),
+				expandSqls: JSON.stringify(reportData),
+				pivotColumn: pivotData.pivotColumn,
+				pivotFunction: pivotData.pivotFunction,
+			});
+		});
+		reports[0]?.downloadExport("DownloadAllPdfAlt", {
+			reportdata: JSON.stringify(allreports)
+		}, 'pdf', 'CombinedReport');
+	}
 	self.ExportAllExcelReports = function () {
 		const reports = self.reports();
 		const allreports = [];
