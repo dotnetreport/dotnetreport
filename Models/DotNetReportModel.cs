@@ -3009,47 +3009,41 @@ namespace ReportBuilder.Web.Models
             var dt = await BuildExportData(reportSql, connectKey, expandSqls, columns, pivot, pivotColumn, pivotFunction);
             var subTotals = new decimal[dt.Columns.Count];
 
-            //Build the CSV file data as a Comma separated string.
-            string csv = string.Empty;
+            var sb = new StringBuilder(capacity: dt.Rows.Count * dt.Columns.Count * 10); // Estimate initial capacity
+
             for (int i = 0; i < dt.Columns.Count; i++)
             {
-                DataColumn column = dt.Columns[i];
-                var columnName = !string.IsNullOrEmpty(columns[i].fieldLabel) ? columns[i].fieldLabel : columns[i].fieldName;
-                csv += columnName + ',';
+                var columnName = !string.IsNullOrEmpty(columns?[i].fieldLabel) ? columns[i].fieldLabel : dt.Columns[i].ColumnName;
+                sb.Append('"').Append(columnName.Replace("\"", "\"\"")).Append('"').Append(',');
             }
-
-            //Add new line.
-            csv += "\r\n";
+            sb.Length--; // Remove trailing comma
+            sb.AppendLine();
 
             foreach (DataRow row in dt.Rows)
             {
-                var i = 0;
-                foreach (DataColumn column in dt.Columns)
+                for (int i = 0; i < dt.Columns.Count; i++)
                 {
-                    var value = row[column.ColumnName]?.ToString() ?? string.Empty;
+                    var column = dt.Columns[i];
+                    var value = row[column]?.ToString() ?? string.Empty;
+
                     var formatColumn = GetColumnFormatting(column, columns, ref value);
 
-                    if (includeSubtotal)
+                    if (includeSubtotal && formatColumn.isNumeric && !(formatColumn?.dontSubTotal ?? false))
                     {
-                        if (formatColumn.isNumeric && !(formatColumn?.dontSubTotal ?? false))
-                        {
-                            subTotals[i] += Convert.ToDecimal(row[column.ColumnName]);
-                        }
+                        if (decimal.TryParse(row[column]?.ToString(), out decimal num))
+                            subTotals[i] += num;
                     }
 
-                    // Prevent formula injection by prefixing values starting with '=', '@', '+', or '-'
-                    if (!string.IsNullOrEmpty(value) && (value.StartsWith("=") || value.StartsWith("@") || value.StartsWith("+") || value.StartsWith("-")))
-                    {
-                        value = "'" + value;  // Prefix with an apostrophe
-                    }
+                    // Prevent formula injection
+                    if (!string.IsNullOrEmpty(value) && ("=+-@".Contains(value[0])))
+                        value = "'" + value;
 
-                    value = value.Replace("\r", " ").Replace("\n", " ").Replace("\"", "\"\"");  // Escape double quotes
-                    csv += $"{(i == 0 ? "" : ",")}\"{value}\"";
-                    i++;
+                    value = value.Replace("\r", " ").Replace("\n", " ").Replace("\"", "\"\"");
+
+                    sb.Append('"').Append(value).Append('"').Append(',');
                 }
-
-                //Add new line.
-                csv += "\r\n";
+                sb.Length--; // Remove trailing comma
+                sb.AppendLine();
             }
 
             if (includeSubtotal)
@@ -3059,20 +3053,19 @@ namespace ReportBuilder.Web.Models
                     var value = subTotals[j].ToString();
                     var dc = dt.Columns[j];
                     var formatColumn = GetColumnFormatting(dc, columns, ref value);
-                    if (formatColumn.isNumeric && !(formatColumn?.dontSubTotal ?? false))
-                    {
-                        csv += $"{(j == 0 ? "" : ",")}\"{value}\"";
-                    }
-                    else
-                    {
-                        csv += $"{(j == 0 ? "" : ",")}\"\"";
-                    }
-                }
 
-                csv += "\r\n";
+                    if (formatColumn.isNumeric && !(formatColumn?.dontSubTotal ?? false))
+                        sb.Append('"').Append(value).Append('"');
+                    else
+                        sb.Append("\"\"");
+
+                    sb.Append(',');
+                }
+                sb.Length--; // Remove trailing comma
+                sb.AppendLine();
             }
 
-            return Encoding.ASCII.GetBytes(csv);
+            return Encoding.UTF8.GetBytes(sb.ToString());
         }
 
         public static dynamic GetDbConnectionSettings(string account, string dataConnect, bool addOledbProvider = true)
