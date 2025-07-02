@@ -267,7 +267,16 @@ namespace ReportBuilder.Web.Controllers
                             int fromClauseIndex = sqlFrom.IndexOf("FROM", StringComparison.OrdinalIgnoreCase);
                             string distinctColumns = sqlFrom.Substring(distinctIndex, fromClauseIndex - distinctIndex).Trim();
 
-                            sqlCount = $"SELECT COUNT(*) FROM (SELECT DISTINCT {distinctColumns} {sql.Substring(fromIndex).Replace("{FROM}", "FROM")}) AS countQry";
+                            string fromClause = sql.Substring(fromIndex).Replace("{FROM}", "FROM");
+
+                            // Remove ORDER BY if present
+                            int orderByIndex = fromClause.LastIndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
+                            if (orderByIndex > -1)
+                            {
+                                fromClause = fromClause.Substring(0, orderByIndex).Trim();
+                            }
+
+                            sqlCount = $"SELECT COUNT(*) FROM (SELECT DISTINCT {distinctColumns} {fromClause}) AS countQry";
                         }
                         else
                         {
