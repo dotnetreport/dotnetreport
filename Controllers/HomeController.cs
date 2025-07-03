@@ -64,9 +64,9 @@ namespace ReportBuilder.Web.Controllers
             var claims = new List<Claim>
                     {
                         new Claim(ClaimTypes.Email, email),
-                        new Claim(ClaimTypes.NameIdentifier, contact),
+                        new Claim(ClaimTypes.NameIdentifier, contact ?? email),
                         new Claim("http://schemas.microsoft.com/accesscontrolservice/2010/07/claims/identityprovider", "AspNet.Identity"),
-                        new Claim(ClaimTypes.Name, contact)
+                        new Claim(ClaimTypes.Name, contact ?? email)
                     };
 
             if (userclaims != null)
