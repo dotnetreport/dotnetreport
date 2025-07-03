@@ -1452,65 +1452,66 @@
     </div>
 </div>
 
-<div class="modal" id="role-access-modal" role="dialog" tabindex="-2">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content" data-bind="with: editAllowedRoles">
-            <div class="modal-header">
-                <h4 class="modal-title">Manage Access by Roles</h4>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Choose User Roles that will have Access</p>
-                <p class="small">Note: All Users will have access if no restricted roles are setup</p>
-                <div class="list-group" data-bind="foreach: AllowedRoles">
-                    <div class="list-group-item" style="padding-top: 2px; padding-bottom: 2px;">
-                        <span data-bind="text: $data"></span>
-                        <button class="btn btn-sm btn-danger pull-right"><i class="fa fa-trash" data-bind="click: $root.removeAllowedRole"></i></button>
-                    </div>
+    <div class="modal" id="role-access-modal" role="dialog" tabindex="-2">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content" data-bind="with: editAllowedRoles">
+                <div class="modal-header">
+                    <h4 class="modal-title">Manage Access by Roles</h4>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-
-                <div class="row">
-                    <div class="col-10">
-                        <input class="form-control" type="text" data-bind="value: $root.newAllowedRole" placeholder="Ex Sales">
+                <div class="modal-body">
+                    <p>Choose User Roles that will have Access</p>
+                    <p class="small">Note: All Users will have access if no restricted roles are setup</p>
+                    <!-- ko if: $root.allRoles().length === 0 -->
+                    <div class="alert alert-warning">
+                        <strong>No roles available.</strong> Please add roles first.
                     </div>
-                    <div class="col-2">
-                        <button class="btn btn-primary" data-bind="click: $root.addAllowedRole">Add</button>
+                    <!-- /ko -->
+                    <!-- ko if: $root.allRoles().length > 0 -->
+                    <div class="list-group" data-bind="foreach: $root.allRoles">
+                        <div class="list-group-item" style="padding: 2px 10px;">
+                            <label>
+                                <input type="checkbox"
+                                       data-bind="value: $data,
+                                  checked: $root.editAllowedRoles().AllowedRoles" />
+                                <span data-bind="text: $data"></span>
+                            </label>
+                        </div>
                     </div>
+                    <!-- /ko -->
                 </div>
-
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
-<div class="modal" id="category-manage-modal" role="dialog" tabindex="-2">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content" data-bind="with: manageCategories">
-            <div class="modal-header">
-                <b class="modal-title">Manage Categories for <span data-bind="text: TableName"></span></b>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div data-bind="visble: $root.Categories().lenth == 0">
-                    No categories have been set up yet.
+    <div class="modal" id="category-manage-modal" role="dialog" tabindex="-2">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content" data-bind="with: manageCategories">
+                <div class="modal-header">
+                    <b class="modal-title">Manage Categories for <span data-bind="text: TableName"></span></b>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="list-group" data-bind="foreach: $root.Categories">
-                    <div class="checkbox list-group-item" style="padding-top: 2px; padding-bottom: 2px;">
-                        <label>
-                            <input type="checkbox" data-bind="checked: $parent.Categories, checkedValue: $data" />
-                            <span data-bind="text: Name"></span> <!-- Display category name -->
-                        </label>
+                <div class="modal-body">
+                    <div data-bind="visble: $root.Categories().lenth == 0">
+                        No categories have been set up yet.
+                    </div>
+                    <div class="list-group" data-bind="foreach: $root.Categories">
+                        <div class="checkbox list-group-item" style="padding-top: 2px; padding-bottom: 2px;">
+                            <label>
+                                <input type="checkbox" data-bind="checked: $parent.Categories, checkedValue: $data" />
+                                <span data-bind="text: Name"></span> <!-- Display category name -->
+                            </label>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
 
 <div class="modal" id="category-modal" role="dialog" tabindex="-2">

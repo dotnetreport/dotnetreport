@@ -605,22 +605,9 @@ var manageViewModel = function (options) {
 	}
 
 	self.editAllowedRoles = ko.observable();
-	self.newAllowedRole = ko.observable();
+	self.allRoles = ko.observableArray(); 
 	self.selectAllowedRoles = function (e) {
 		self.editAllowedRoles(e);
-	}
-
-	self.removeAllowedRole = function (e) {
-		self.editAllowedRoles().AllowedRoles.remove(e);
-	}
-
-	self.addAllowedRole = function () {
-		if (!self.newAllowedRole() || _.filter(self.editAllowedRoles().AllowedRoles(), function (x) { return x == self.newAllowedRole(); }).length > 0) {
-			toastr.error("Please add a new unique Role");
-			return;
-		}
-		self.editAllowedRoles().AllowedRoles.push(self.newAllowedRole());
-		self.newAllowedRole(null);
 	}
 
 	self.manageCategories = ko.observable();
@@ -1530,6 +1517,7 @@ var manageViewModel = function (options) {
 
 		ajaxcall({ url: options.getUsersAndRoles }).done(function (data) {
 			if (data.d) data = data.d;
+			self.allRoles(data.userRoles)
 			self.manageAccess = manageAccess(data);
 		});
 
