@@ -81,8 +81,9 @@
                     apiUrl: '@Url.Action("CallPostReportApi", "DotNetReportApi")',
                     getPreviewFromSqlUrl: "@Url.Action("GetPreviewFromSql", "DotNetReportApi")",
                     getLocalAppSettingUrl: '@Url.Action("AppSettings", "DotNetReportApi")',
-                    saveLocalAppSettingUrl: '@Url.Action("SaveAppSettings", "DotNetReportApi")',
-                    onlyApi: queryParams.onlyApi !== 'false'
+                    saveLocalAppSettingUrl: '@Url.Action("SaveAppSettings", "DotNetReportApi")',                    
+                    onlyApi: queryParams.onlyApi !== 'false',
+                    loadSchemaUrl: '@Url.Action("LoadSetupSchema", "DotNetReportApi")'
                 };
 
                 var vm = new manageViewModel(options);
@@ -394,6 +395,9 @@
                                 </button>
                                 <button class="btn btn-sm" title="Preview this Table" data-bind="click: function() { previewTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey); }">
                                     <i class="fa fa-table"></i> Preview Data
+                                </button>
+                                <button class="btn btn-sm btn-danger" title="Delete this Table" data-bind="click: function() { deleteTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey); }">
+                                    <i class="fa fa-trash"></i> Remove Table
                                 </button>
                             </div>
                             <div class="card-body">
