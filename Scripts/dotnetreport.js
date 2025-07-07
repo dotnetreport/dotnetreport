@@ -3954,7 +3954,10 @@ var reportViewModel = function (options) {
 		showYAxisLabel: true,
 		showLegend: true,
 		legendPosition: "right",
-		showGridlines: true
+		showGridlines: true,
+		yAxisFormat: "",
+		yMin: null,
+		yMax: null
 	});
 
 	self.showSettings = ko.observable(false);
@@ -4307,7 +4310,15 @@ var reportViewModel = function (options) {
 		if (!chartOptions.showGridlines) { chartOptions.hAxis.gridlines = { color: 'none' }; chartOptions.vAxis.gridlines = { color: 'none' }; }
 		if (!chartOptions.showXAxisLabel) { chartOptions.hAxis.textPosition = 'none'; }
 		if (!chartOptions.showYAxisLabel) { chartOptions.vAxis.textPosition = 'none'; }
-
+		if (self.chartOptions().yAxisFormat) { chartOptions.vAxis.format = self.chartOptions().yAxisFormat;}
+		if (self.chartOptions().yMin !== null && self.chartOptions().yMin !== "") {
+			chartOptions.vAxis.viewWindow = chartOptions.vAxis.viewWindow || {};
+			chartOptions.vAxis.viewWindow.min = Number(self.chartOptions().yMin);
+		}
+		if (self.chartOptions().yMax !== null && self.chartOptions().yMax !== "") {
+			chartOptions.vAxis.viewWindow = chartOptions.vAxis.viewWindow || {};
+			chartOptions.vAxis.viewWindow.max = Number(self.chartOptions().yMax);
+		}
 		if (chartOptions.seriesColors && chartOptions.seriesColors.length > 0) chartOptions.colors = chartOptions.seriesColors;
 		chartOptions.legend = { position: self.chartOptions().legendPosition }
 		chart.draw(data, chartOptions);

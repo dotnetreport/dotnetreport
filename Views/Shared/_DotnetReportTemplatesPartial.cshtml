@@ -2152,6 +2152,20 @@
                     <input class="form-check-input" type="checkbox" data-bind="checked: chartOptions().showGridlines, event: { change: updateChart }">
                     <label class="form-check-label">Gridlines</label>
                 </div>
+                <div class="form-group small mb-1">
+                    <label class="form-label">Y-Axis Format</label>
+                    <input type="text" class="form-control form-control-sm" placeholder="e.g. #,##0.00" data-bind="value: chartOptions().yAxisFormat, event: { change: updateChart }" />
+                </div>
+                <div class="form-group small mb-1 d-flex gap-2">
+                     <div class="w-50">
+                         <label class="form-label">Y-Axis Min</label>
+                         <input type="number" class="form-control form-control-sm" data-bind="value: chartOptions().yMin, event: { change: updateChart }" />
+                     </div>
+                     <div class="w-50">
+                         <label class="form-label">Y-Axis Max</label>
+                         <input type="number" class="form-control form-control-sm" data-bind="value: chartOptions().yMax, event: { change: updateChart }" />
+                     </div>
+                </div>
             </div>
         </div>
     </div>
