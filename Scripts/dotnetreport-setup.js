@@ -1144,10 +1144,10 @@ var manageViewModel = function (options) {
 	};
 
 
-	self.saveChanges = function () {
+	self.saveChanges = function (customOnly) {
 
 		var tablesToSave = $.map(self.Tables.model(), function (x) {
-			if (x.Selected()) {
+			if (x.Selected() && (customOnly ? x.CustomTable() === true : x.CustomTable() === false)) {
 				return x;
 			}
 		});
@@ -1157,13 +1157,18 @@ var manageViewModel = function (options) {
 			return;
 		}
 
-		bootbox.confirm("Are you sure you would like to continue with saving your changes?<br><b>Note: </b>This will make changes to your account that cannot be undone.", function (r) {
+		bootbox.confirm("Are you sure you would like to continue with saving all Tables?<br><b>Note: </b>This will make changes to your account that cannot be undone.", function (r) {
 			if (r) {
+				var savedNames = [];
 				_.forEach(tablesToSave, function (e) {
-					e.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey);
+					e.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey, null, true);
+					savedNames.push(e.TableName());
 				});
+
+				toastr.success("Saved Tables:<br>" + savedNames.map(n => "- " + n).join("<br>"), "Tables Saved");
 			}
-		})
+		});
+
 	}
 
 	self.download = function (content, fileName, contentType) {
@@ -1245,39 +1250,47 @@ var manageViewModel = function (options) {
 				var reader = new FileReader();
 				reader.onload = function (event) {
 					try {
-						var table = JSON.parse(event.target.result);
-						var tableName = table.TableName;
-						var tableId = table.Id;
-						var tableMatch = _.some(self.Tables.model(), function (table) {
-							return table.TableName() === tableName && table.Id() === tableId;
-						});
-						if (tableMatch) {
-							handleOverwriteConfirmation(tableName, function (action) {
-								if (action === 'overwrite') {
-									self.Tables.model.remove(_.find(self.Tables.model(), function (e) {
-										return e.TableName() === tableName;
-									}));
-									var t = ko.mapping.fromJS(table);
-									self.Tables.model.push(self.Tables.processTable(t));
-									var newTable = self.Tables.model()[self.Tables.model().length - 1];
-									newTable.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey, table);
-								}else {
-									toastr.info('Upload canceled.');
-								}
+						var parsed = JSON.parse(event.target.result);
+						var tables = Array.isArray(parsed) ? parsed : [parsed];
+
+						let handleImport = function (table) {
+							var tableName = table.TableName;
+							var tableId = table.Id;
+
+							var tableMatch = _.some(self.Tables.model(), function (t) {
+								return t.TableName() === tableName && t.Id() === tableId;
 							});
-							$('#uploadTablesFileModal').modal('hide');
-						} else {
-							table.Id = 0;
-							var t = ko.mapping.fromJS(table);
-							self.Tables.model.push(self.Tables.processTable(t));
-							var newTable = self.Tables.model()[self.Tables.model().length - 1];
-							newTable.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey, table);
-							$('#uploadTablesFileModal').modal('hide');
-						}
+
+							if (tableMatch) {
+								handleOverwriteConfirmation(tableName, function (action) {
+									if (action === 'overwrite') {
+										self.Tables.model.remove(_.find(self.Tables.model(), function (e) {
+											return e.TableName() === tableName;
+										}));
+										var mapped = ko.mapping.fromJS(table);
+										self.Tables.model.push(self.Tables.processTable(mapped));
+										var newTable = self.Tables.model()[self.Tables.model().length - 1];
+										newTable.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey, table);
+									} else {
+										toastr.info('Upload canceled for ' + tableName + '.');
+									}
+								});
+							} else {
+								table.Id = 0;
+								var mapped = ko.mapping.fromJS(table);
+								self.Tables.model.push(self.Tables.processTable(mapped));
+								var newTable = self.Tables.model()[self.Tables.model().length - 1];
+								newTable.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey, table);
+							}
+						};
+
+						tables.forEach(handleImport);
+
+						$('#uploadTablesFileModal').modal('hide');
 						self.ManageTablesJsonFile.file(null);
 						self.ManageTablesJsonFile.fileName('');
 					} catch (e) {
-						toastr.error('Invalid JSON file.' + e);
+						toastr.error('Invalid JSON file: ' + e.message);
 					}
 				};
 				reader.onerror = function (event) {
@@ -1816,7 +1829,7 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 			});
 		}
 
-		t.saveTable = function (apiKey, dbKey,jsonTable) {
+		t.saveTable = function (apiKey, dbKey, jsonTable, silent) {
 			var e = ko.mapping.toJS(t, {
 				'ignore': ["saveTable", "JoinTable", "ForeignJoinTable"]
 			});
@@ -1846,8 +1859,8 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 				})
 			}).done(function (x) {
 				if (x.success && x.tableId) {
-					t.Id(x.tableId)
-					toastr.success("Saved table " + e.DisplayName);
+					t.Id(x.tableId);
+					if (silent !== true) toastr.success("Saved table " + e.DisplayName);
 				} else {
 					toastr.error("Error saving table " + e.DisplayName);
                 }
@@ -1871,6 +1884,22 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 
 		self.model(mdl);
 	};
+
+	self.exportTablesJson = function (customOnly) {
+		const selectedTables = self.model().filter(tbl =>
+			tbl.Selected() && (customOnly ? tbl.CustomTable() === true : tbl.CustomTable() === false)
+		);
+
+		const exportList = selectedTables.map(tbl =>
+			ko.mapping.toJS(tbl, {
+				ignore: ["saveTable", "JoinTable", "ForeignJoinTable"]
+			})
+		);
+
+		const exportJson = JSON.stringify(exportList, null, 2);
+		downloadJson(exportJson, customOnly == true ? 'CustomTables.json':'Tables.json', 'application/json');
+	};
+
 
 	self.availableTables = ko.computed(function () {
 		return _.filter(self.model(), function (e) {
