@@ -318,11 +318,23 @@
                     <span class="fa fa-database"></span> Load all Database Tables
                 </button>
                 <button class="btn btn-sm btn-primary" data-bind="click: $root.visualizeJoins">Visualize Joins</button>&nbsp;
-                <button class="btn btn-sm btn-primary" data-bind="hidden: $root.customTableMode()" data-bs-toggle="modal" data-bs-target="#uploadTablesFileModal" aria-haspopup="true" aria-expanded="false">
+                <button class="btn btn-sm btn-primary"
+                        data-bind="click: function() { exportTablesJson(true) }, visible: $root.customTableMode">
+                    <span class="fa fa-download"></span> Export Custom Tables
+                </button>
+                <button class="btn btn-sm btn-primary"
+                        data-bind="click: function() { exportTablesJson(false) }, visible: !$root.customTableMode()">
+                    <span class="fa fa-download"></span> Export Tables/Views
+                </button>
+
+                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadTablesFileModal" aria-haspopup="true" aria-expanded="false">
                     <span class="fa fa-file"></span> Import Tables/Views
                 </button>
                 <button class="btn btn-sm btn-primary" title="Manage Categories" data-bs-toggle="modal" data-bs-target="#category-modal">
                     <span class="fa fa-server"></span> Manage Categories
+                </button>
+                <button class="btn btn-sm btn-primary" data-bind="click: function() { $root.saveChanges($root.customTableMode()) }">
+                    <span class="fa fa-floppy-o"></span> Save All Tables
                 </button>
             </div>
             <div class="clearfix"></div>            
