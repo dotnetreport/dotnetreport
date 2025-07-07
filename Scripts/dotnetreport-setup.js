@@ -11,8 +11,9 @@ var manageViewModel = function (options) {
 	};
 
 	self.previewData = ko.observable();
+	self.activeTable = ko.observable();
 	self.DataConnections = ko.observableArray([]);
-	self.Tables = new tablesViewModel(options, self.keys, self.previewData);
+	self.Tables = new tablesViewModel(options, self.keys, self.previewData, self.activeTable);
 	self.Procedures = new proceduresViewModel(options);
 	self.DbConfig = {};
 	self.UserAndRolesConfig = {};
@@ -21,7 +22,6 @@ var manageViewModel = function (options) {
 	self.pager.totalRecords(self.Tables.model().length);
 	self.onlyApi = ko.observable(options.onlyApi);
 	self.ChartDrillDownData = null;
-	self.activeTable = ko.observable();
 	self.activeProcedure = ko.observable();
 	self.schedules = ko.observableArray([]);
 	self.settings = new settingPageViewModel(options);
@@ -39,12 +39,19 @@ var manageViewModel = function (options) {
 
 	}
 
+	self.refreshAll = function () {
+		var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
+		ajaxcall({ url: options.loadSchemaUrl + '?databaseApiKey=' + (queryParams.databaseApiKey || '') + '&onlyApi=' + (queryParams.onlyApi === 'false' ? false : true) }).done(function (model) {
+			self.Tables.refresh(model);
+		});
+	}
+
 	self.Tables.filteredTables.subscribe(function (x) {		
 		self.pager.totalRecords(x.length);
 		self.pager.currentPage(1);
 	});
 
-	self.customSql = new customSqlModel(options, self.keys, self.Tables);
+	self.customSql = new customSqlModel(options, self.keys, self.Tables, self.activeTable);
 	self.customTableMode = ko.observable(false);
 
 	self.pagedTables = ko.computed(function () {
@@ -1598,7 +1605,7 @@ var manageViewModel = function (options) {
 
 }
 
-var tablesViewModel = function (options, keys, previewData) {
+var tablesViewModel = function (options, keys, previewData, activeTable) {
 	var self = this;
 	self.model = ko.mapping.fromJS(_.sortBy(options.model.Tables, ['TableName']));
 
@@ -1635,7 +1642,6 @@ var tablesViewModel = function (options, keys, previewData) {
 
 			return columns;
 		});
-
 
 		_.forEach(t.Columns(), function (e) {
 			var tableMatch = _.filter(self.model(), function (x) { return x.TableName() == e.ForeignTable(); });
@@ -1766,32 +1772,42 @@ var tablesViewModel = function (options, keys, previewData) {
 			});
 		}
 
+		t.deleteTable = function (apiKey, dbKey) {
+			var e = ko.mapping.toJS(t, {
+				'ignore': ["saveTable", "JoinTable", "ForeignJoinTable"]
+			});
+			bootbox.confirm("Are you sure you would like to delete Table '" + e.DisplayName + "'?", function (r) {
+				if (r) {
+					ajaxcall({
+						url: options.apiUrl,
+						type: 'POST',
+						data: JSON.stringify({
+							method: options.deleteTableUrl,
+							model: JSON.stringify({
+								account: apiKey,
+								dataConnect: dbKey,
+								tableId: e.Id
+							})
+						})
+					}).done(function () {
+						toastr.success("Deleted table " + e.DisplayName);
+						t.Selected(false);
+						activeTable(null);
+						if (e.CustomTable) {
+							self.model.remove(t);							
+						}
+					});
+				}
+			});
+		}
+
 		t.saveTable = function (apiKey, dbKey,jsonTable) {
 			var e = ko.mapping.toJS(t, {
 				'ignore': ["saveTable", "JoinTable", "ForeignJoinTable"]
 			});
 
 			if (!t.Selected()) {
-				bootbox.confirm("Are you sure you would like to delete Table '" + e.DisplayName + "'?", function (r) {
-					if (r) {
-						ajaxcall({
-							url: options.apiUrl,
-							type: 'POST',
-							data: JSON.stringify({
-								method: options.deleteTableUrl,
-								model: JSON.stringify({
-									account: apiKey,
-									dataConnect: dbKey,
-									tableId: e.Id
-								})
-							})
-						}).done(function () {
-							toastr.success("Deleted table " + e.DisplayName);
-						});
-					}
-				});
-
-
+				t.deleteTable(apiKey, dbKey);
 				return;
 			}
 
@@ -1829,6 +1845,17 @@ var tablesViewModel = function (options, keys, previewData) {
 	_.forEach(self.model(), function (t) {
 		self.processTable(t);
 	});
+
+	self.refresh = function (result) {
+		var sortedTables = _.sortBy(result.Tables, ['TableName']);
+		var mdl = ko.mapping.fromJS(sortedTables)();
+		
+		_.forEach(mdl, function (t) {
+			self.processTable(t);
+		});
+
+		self.model(mdl);
+	};
 
 	self.availableTables = ko.computed(function () {
 		return _.filter(self.model(), function (e) {
@@ -1994,8 +2021,7 @@ var validation = function () {
 
 }
 
-
-var customSqlModel = function (options, keys, tables) {
+var customSqlModel = function (options, keys, tables, activeTable) {
 	var self = this;
 	self.customTableName = ko.observable();
 	self.customSql = ko.observable();
@@ -2132,10 +2158,9 @@ var customSqlModel = function (options, keys, tables) {
 				result.DynamicColumns = self.dynamicColumns();
 				result.DynamicColumnTranslation = self.columnTranslation() ? self.columnTranslation() : "{column}";
 				result.DynamicValuesTableId = self.dynamicValuesTableId();
-				var t = ko.mapping.fromJS(result);
-
-				tables.model.push(tables.processTable(t));
-
+				var t = tables.processTable(ko.mapping.fromJS(result));				
+				tables.model.push(t);
+				activeTable(t);
 			} else {
 				var table = _.find(tables.model(), function (x) { return x.Id() == self.selectedTable.Id; });
 				table.TableName(self.customTableName());

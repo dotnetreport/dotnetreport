@@ -73,7 +73,8 @@
                     getSchemaFromSql: '@Url.Action("GetSchemaFromSql", "DotNetReportApi")',
                     apiUrl: '@Url.Action("CallPostReportApi", "DotNetReportApi")',
                     getPreviewFromSqlUrl: "@Url.Action("GetPreviewFromSql", "DotNetReportApi")",
-                    onlyApi: queryParams.onlyApi !== 'false'
+                    onlyApi: queryParams.onlyApi !== 'false',
+                    loadSchemaUrl: '@Url.Action("LoadSetupSchema", "DotNetReportApi")'
                 };
 
                 var vm = new manageViewModel(options);
@@ -95,16 +96,22 @@
     <p>
         You can select and manage display names for the Tables and Columns you would like to allow in Dotnet Report Builder.
     </p>
-    <div class="alert alert-danger">
-        Do not expose this Setup Tool to end users who should not have access to it. Ideally, only Developers should be given access to this utility.
+    <div class="alert alert-danger d-flex justify-content-between align-items-center">
+        <div>
+            Do not expose this Setup Tool to end users who should not have access to it. Ideally, only Developers should be given access to this utility.
+        </div>
+        <button class="btn btn-primary ms-3" data-bind="click: refreshAll" title="Reload all Table and Columns">
+            <i class="fa fa-refresh"></i> Refresh
+        </button>
     </div>
+
     <div data-bind="visible: false;">
         Loading...
     </div>
 
-    <div>
+    <div class="d-flex justify-content-between align-items-center">
         <!-- Nav tabs -->
-        <ul class="nav nav-tabs" role="tablist">
+        <ul class="nav nav-tabs flex-grow-1" role="tablist">
             <li role="presentation" class="nav-item">
                 <a class="nav-link active" href="#tablesfields" aria-controls="home" role="tab" data-bs-toggle="tab" data-bind="click: function() { customTableMode(false); activeTable(null);}">
                     <i class="fa fa-database"></i> Database Tables
@@ -361,6 +368,9 @@
                                 </button>
                                 <button class="btn btn-sm" title="Preview this Table" data-bind="click: function() { previewTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey); }">
                                     <i class="fa fa-table"></i> Preview Data
+                                </button>
+                                <button class="btn btn-sm btn-danger" title="Delete this Table" data-bind="click: function() { deleteTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey); }">
+                                    <i class="fa fa-trash"></i> Remove Table
                                 </button>
                             </div>
                             <div class="card-body">
