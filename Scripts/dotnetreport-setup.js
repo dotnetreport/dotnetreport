@@ -1334,26 +1334,43 @@ var manageViewModel = function (options) {
 				var reader = new FileReader();
 				reader.onload = function (event) {
 					try {
-						var joins = JSON.parse(event.target.result);
+						var joins = JSON.parse(event.target.result);						
 						let hasConflicts = false;
 						let conflictingItems = [];
+
 						joins.forEach(newItem => {
 							var existingItem = self.Joins().find(item =>
-								(item.Id ? item.Id() : item.RelationId()) === newItem.RelationId
+								item.TableId() === newItem.TableId &&
+								item.JoinedTableId() === newItem.JoinedTableId &&
+								item.JoinFieldName() === newItem.JoinFieldName &&
+								item.FieldName() === newItem.FieldName
 							);
 							if (existingItem) {
-								hasConflicts = true;  
-								conflictingItems.push({ existingItem, newItem });  
+								hasConflicts = true;
+								conflictingItems.push({ existingItem, newItem });
 							}
 						});
+
+						const addUniqueJoins = (joinList) => {
+							joinList.forEach(newItem => {
+								const exists = self.Joins().some(item =>
+									item.TableId() === newItem.TableId &&
+									item.JoinedTableId() === newItem.JoinedTableId &&
+									item.JoinFieldName() === newItem.JoinFieldName &&
+									item.FieldName() === newItem.FieldName
+								);
+								if (!exists) {
+									self.Joins.push(self.setupJoin(newItem));
+								}
+							});
+						};
+
 						if (hasConflicts) {
 							var relations = conflictingItems.map(conflict => `- ${conflict.existingItem.FieldName()}`).join('\n');
 							handleOverwriteConfirmation(relations, function (action) {
 								if (action === 'overwrite') {
-									self.Joins().length = 0
-									joins.forEach(newItem => {
-										self.Joins.push(self.setupJoin(newItem));
-									});
+									self.Joins().length = 0;
+									addUniqueJoins(joins);
 									self.SaveJoins();
 									toastr.success('Conflicting items have been overwritten successfully.');
 								} else {
@@ -1362,23 +1379,21 @@ var manageViewModel = function (options) {
 								$('#uploadJoinsFileModal').modal('hide');
 							});
 						} else {
-							joins.forEach(newItem => {
-								self.Joins.push(self.setupJoin(newItem));
-							});
+							addUniqueJoins(joins);
 							self.SaveJoins();
 							$('#uploadJoinsFileModal').modal('hide');
 						}
-						// Reset the file input and file name
 						self.ManageJoinsJsonFile.file(null);
 						self.ManageJoinsJsonFile.fileName('');
+						document.getElementById('joinsFileInputJson').value = '';
 					} catch (e) {
 						toastr.error('Invalid JSON file: ' + e.message);
 					}
 				};
-				reader.onerror = function (event) {
+				reader.onerror = function () {
 					toastr.error('Error reading file.');
 				};
-				reader.readAsText(file); 
+				reader.readAsText(file);
 				function handleOverwriteConfirmation(Join, callback) {
 					bootbox.dialog({
 						title: "Confirm Action",
