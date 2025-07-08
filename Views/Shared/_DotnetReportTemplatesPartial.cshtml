@@ -105,26 +105,51 @@
 </script>
 
 <script type="text/html" id="pager-template">
-    <div class="pager-container d-flex align-items-center gap-2">
-        <a href="" title="First" data-bind="click: first, enable: !isFirstPage()" class="pager-btn btn btn-light"><i class="fa fa-backward"></i></a>
-        <a href="" title="Previous" data-bind="click: previous, enable: !isFirstPage()" class="pager-btn btn btn-light"><i class="fa fa-caret-left"></i></a>
+    <div class="pager-container d-flex align-items-center flex-wrap gap-2">
 
-        <select class="form-control form-control-sm pager-control"
-                data-bind="options: [1,10,30,50,100,150,200,500,1000], value: pageSize">
-        </select>
-
-        <div class="d-flex align-items-center gap-1">
-            <span>Page</span>
-            <input type="number" min="1" pattern="[0-9]*" class="form-control form-control-sm pager-control text-center"
-                   data-bind="value: currentPage, attr: { max: pages() }">
-            <span>of</span>
-            <span data-bind="text: pages"></span>
+        <!-- Rows per page -->
+        <div class="d-flex align-items-center gap-1 ms-1">
+            <span class="text-muted small">Page size:</span>
+            <select class="form-select form-select-sm w-auto"
+                    data-bind="options: [1,10,30,50,100,150,200,500], value: pageSize">
+            </select>
         </div>
 
-        <a href="" title="Next" data-bind="click: next, enable: !isLastPage()" class="pager-btn btn btn-light"><i class="fa fa-caret-right"></i></a>
-        <a href="" title="Last" data-bind="click: last, enable: !isLastPage()" class="pager-btn btn btn-light"><i class="fa fa-forward"></i></a>
+        <!-- Inner border block for page navigation controls -->
+        <div class="d-flex align-items-center gap-2 ms-3">
+            <a href="#" title="First" data-bind="click: first, enable: !isFirstPage()"
+               class="btn btn-outline-secondary btn-sm pager-btn ms-1" aria-label="First Page">
+                <i class="fa fa-angle-double-left"></i>
+            </a>
+
+            <a href="#" title="Previous" data-bind="click: previous, enable: !isFirstPage()"
+               class="btn btn-outline-secondary btn-sm pager-btn" aria-label="Previous Page">
+                <i class="fa fa-angle-left"></i>
+            </a>
+
+            <div class="d-flex align-items-center gap-1">
+                <span class="text-muted small">Page</span>
+                <input type="number" min="1" pattern="[0-9]*"
+                       class="form-control form-control-sm text-center pager-input"
+                       style="width: 60px;"
+                       data-bind="value: currentPage, attr: { max: pages() }">
+                <span class="text-muted small">of</span>
+                <span class="text-muted small" data-bind="text: pages"></span>
+            </div>
+
+            <a href="#" title="Next" data-bind="click: next, enable: !isLastPage()"
+               class="btn btn-outline-secondary btn-sm pager-btn" aria-label="Next Page">
+                <i class="fa fa-angle-right"></i>
+            </a>
+
+            <a href="#" title="Last" data-bind="click: last, enable: !isLastPage()"
+               class="btn btn-outline-secondary btn-sm pager-btn" aria-label="Last Page">
+                <i class="fa fa-angle-double-right"></i>
+            </a>
+        </div>
     </div>
 </script>
+
 
 
 <script type="text/html" id="report-column-header">
