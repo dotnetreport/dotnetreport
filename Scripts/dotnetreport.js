@@ -3591,7 +3591,8 @@ var reportViewModel = function (options) {
 						pivotColumn: '',
 						pivotFunction: '',
 						reportData: '',
-						SubTotalMode: false
+						SubTotalMode: false,
+						useAltPivot: self.appSettings.useAltPivot
 					}),
 					noBlocking: true
 				}).done(function (ddData) {
@@ -5216,7 +5217,7 @@ var reportViewModel = function (options) {
 			self.appSettings.noDefaultFolder = x.noDefaultFolder;
 			self.appSettings.showEmptyFolders = x.showEmptyFolders;
 			self.appSettings.useAltPdf = x.useAltPdf;
-			self.appSettings.useAltPivot = x.useAltPivot;
+			self.appSettings.useAltPivot = x.useAltPivot || false;
 			self.appSettings.dontXmlExport = x.dontXmlExport;
 		});
 	}
@@ -5872,7 +5873,7 @@ var dashboardViewModel = function (options) {
 			self.appSettings.noDefaultFolder = x.noDefaultFolder;
 			self.appSettings.showEmptyFolders = x.showEmptyFolders;
 			self.appSettings.useAltPdf = x.useAltPdf;
-			self.appSettings.useAltPivot = x.useAltPivot;
+			self.appSettings.useAltPivot = x.useAltPivot || false;
 			self.appSettings.dontXmlExport = x.dontXmlExport;
 		});
 	}
