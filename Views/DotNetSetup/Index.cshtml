@@ -73,7 +73,8 @@
                     getSchemaFromSql: '@Url.Action("GetSchemaFromSql", "DotNetReportApi")',
                     apiUrl: '@Url.Action("CallPostReportApi", "DotNetReportApi")',
                     getPreviewFromSqlUrl: "@Url.Action("GetPreviewFromSql", "DotNetReportApi")",
-                    onlyApi: queryParams.onlyApi !== 'false'
+                    onlyApi: queryParams.onlyApi !== 'false',
+                    loadSchemaUrl: '@Url.Action("LoadSetupSchema", "DotNetReportApi")'
                 };
 
                 var vm = new manageViewModel(options);
@@ -95,16 +96,22 @@
     <p>
         You can select and manage display names for the Tables and Columns you would like to allow in Dotnet Report Builder.
     </p>
-    <div class="alert alert-danger">
-        Do not expose this Setup Tool to end users who should not have access to it. Ideally, only Developers should be given access to this utility.
+    <div class="alert alert-danger d-flex justify-content-between align-items-center">
+        <div>
+            Do not expose this Setup Tool to end users who should not have access to it. Ideally, only Developers should be given access to this utility.
+        </div>
+        <button class="btn btn-primary ms-3" data-bind="click: refreshAll" title="Reload all Table and Columns">
+            <i class="fa fa-refresh"></i> Refresh
+        </button>
     </div>
+
     <div data-bind="visible: false;">
         Loading...
     </div>
 
-    <div>
+    <div class="d-flex justify-content-between align-items-center">
         <!-- Nav tabs -->
-        <ul class="nav nav-tabs" role="tablist">
+        <ul class="nav nav-tabs flex-grow-1" role="tablist">
             <li role="presentation" class="nav-item">
                 <a class="nav-link active" href="#tablesfields" aria-controls="home" role="tab" data-bs-toggle="tab" data-bind="click: function() { customTableMode(false); activeTable(null);}">
                     <i class="fa fa-database"></i> Database Tables
@@ -289,11 +296,23 @@
                     <span class="fa fa-database"></span> Load all Database Tables
                 </button>
                 <button class="btn btn-sm btn-primary" data-bind="click: $root.visualizeJoins">Visualize Joins</button>&nbsp;
-                <button class="btn btn-sm btn-primary" data-bind="hidden: $root.customTableMode()" data-bs-toggle="modal" data-bs-target="#uploadTablesFileModal" aria-haspopup="true" aria-expanded="false">
+                <button class="btn btn-sm btn-primary"
+                        data-bind="click: function() { exportTablesJson(true) }, visible: $root.customTableMode">
+                    <span class="fa fa-download"></span> Export Custom Tables
+                </button>
+                <button class="btn btn-sm btn-primary"
+                        data-bind="click: function() { exportTablesJson(false) }, visible: !$root.customTableMode()">
+                    <span class="fa fa-download"></span> Export Tables/Views
+                </button>
+
+                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadTablesFileModal" aria-haspopup="true" aria-expanded="false">
                     <span class="fa fa-file"></span> Import Tables/Views
                 </button>
                 <button class="btn btn-sm btn-primary" title="Manage Categories" data-bs-toggle="modal" data-bs-target="#category-modal">
                     <span class="fa fa-server"></span> Manage Categories
+                </button>
+                <button class="btn btn-sm btn-primary" data-bind="click: function() { $root.saveChanges($root.customTableMode()) }">
+                    <span class="fa fa-floppy-o"></span> Save All Tables
                 </button>
             </div>
             <div class="clearfix"></div>
@@ -366,6 +385,9 @@
                                 </button>
                                 <button class="btn btn-sm" title="Preview this Table" data-bind="click: function() { previewTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey); }">
                                     <i class="fa fa-table"></i> Preview Data
+                                </button>
+                                <button class="btn btn-sm btn-danger" title="Delete this Table" data-bind="click: function() { deleteTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey); }">
+                                    <i class="fa fa-trash"></i> Remove Table
                                 </button>
                             </div>
                             <div class="card-body">

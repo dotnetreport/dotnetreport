@@ -791,6 +791,15 @@ namespace ReportBuilder.Web.Models
                 }
             }
         }
+        public static string UpdateOnlyTop(string expandSqls)
+        {
+            var jsonObj = JObject.Parse(expandSqls);
+            if (jsonObj["OnlyTop"]?.Type != JTokenType.Null)
+            {
+                jsonObj["OnlyTop"] = null;
+            }
+            return jsonObj.ToString();
+        }
         private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool loadHeader = true, string chartData = null,bool isexpanded=false,bool isSubReport=false)
         {
             RemoveColumnsBySubstring(dt, "__prm__");
@@ -2059,6 +2068,7 @@ namespace ReportBuilder.Web.Models
                         {
                             reportData = reportData.Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
                         }
+                        reportData = UpdateOnlyTop(reportData);
                         var drilldownSql = await RunReportApiCall(reportData);
                         if (drilldownSql.StartsWith("{\"sql\""))
                         {
