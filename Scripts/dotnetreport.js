@@ -1197,6 +1197,7 @@ var reportViewModel = function (options) {
 	var token = JSON.parse(localStorage.getItem(tokenKey));
 
 	self.usingAi = ko.observable(true);
+	self.queryPrompt = "";
 	self.textQuery = new textQuery(options);
 
 	self.appSettings = {
@@ -1255,13 +1256,13 @@ var reportViewModel = function (options) {
 			self.SelectedFields(result);
 			filters.forEach(f => self.FilterGroups()[0].AddFilter(f));
 			
-			var queryText = document.getElementById("query-input").innerText;
+			self.queryPrompt = document.getElementById("query-input").innerText;
 			ajaxcall({
 				url: options.apiUrl,
 				data: {
 					method: "/ReportApi/RunQueryAi",
 					model: JSON.stringify({
-						query: queryText,
+						query: self.queryPrompt,
 						fieldIds: fieldIds.join(","),
 						reportJson: JSON.stringify(self.BuildReportData()) // send whatever our parser has built to improve
 					})
@@ -1831,6 +1832,7 @@ var reportViewModel = function (options) {
 		self.DefaultPageSize(30);
 		self.reportRan(false);
 		self.executingReport = false;
+		self.queryPrompt = "";
 	};
 
 	self.SelectedProc.subscribe(function (proc) {
@@ -2886,7 +2888,8 @@ var reportViewModel = function (options) {
 					};
 				}),
 				chartOptions: self.chartOptions(),
-				reportHtml: self.ReportType() == 'Html' ? encodeURIComponent(self.getReportHtml()) : '' 
+				reportHtml: self.ReportType() == 'Html' ? encodeURIComponent(self.getReportHtml()) : '',
+				queryPrompt: self.queryPrompt
 			}),
 			OnlyTop: drilldown.length > 0 ? null : (self.maxRecords() ? self.OnlyTop() : null),
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : self.AggregateReport(),
