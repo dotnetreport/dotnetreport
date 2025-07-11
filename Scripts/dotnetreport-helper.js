@@ -1,8 +1,10 @@
 ﻿/// .Net Report Builder helper methods
 
 // Ajax call wrapper function
+var activeBlockUICount = 0;
+
 function ajaxcall(options) {
-    var noBlocking = options.noBlocking === true ? true : false;
+    var noBlocking = options.noBlocking === true;
     var useProgressBar = options.useProgressBar === true;
     var progressBarMessage = options.progressBarMessage || "Processing...";
     var progressBarId = 'ajaxProgressBarPopup';
@@ -29,23 +31,23 @@ function ajaxcall(options) {
     var currentProgress = 0;
 
     function showProgress() {
-        $progressBarPopup.find('.progress-popup-header span').text(progressBarMessage); // Set message text
+        $progressBarPopup.find('.progress-popup-header span').text(progressBarMessage);
         $progressBarPopup.show();
         currentProgress = 0;
         $progressBar.css('width', currentProgress + '%').attr('aria-valuenow', currentProgress);
 
         progressInterval = setInterval(function () {
-            if (currentProgress < 90) { // Incrementally go up to 90%
+            if (currentProgress < 90) {
                 currentProgress += 10;
                 $progressBar.css('width', currentProgress + '%').attr('aria-valuenow', currentProgress);
             }
         }, 500);
     }
-    
+
     function completeProgress() {
-        clearInterval(progressInterval); 
+        clearInterval(progressInterval);
         $progressBar.css('width', '100%').attr('aria-valuenow', 100);
-        setTimeout(hideProgress, 500); 
+        setTimeout(hideProgress, 500);
     }
 
     function hideProgress() {
@@ -54,9 +56,11 @@ function ajaxcall(options) {
 
     options.hideProgress = hideProgress;
 
-    // Show blocking spinner if not using progress bar
     if ($.blockUI && !noBlocking && !useProgressBar) {
-        $.blockUI({ baseZ: 500 });
+        if (activeBlockUICount === 0) {
+            $.blockUI({ baseZ: 500 });
+        }
+        activeBlockUICount++;
     }
 
     // setup your app auth here optionally
@@ -82,13 +86,13 @@ function ajaxcall(options) {
         if (useProgressBar) {
             xhr.upload.addEventListener("progress", function (evt) {
                 if (evt.lengthComputable) {
-                    var percentComplete = Math.min(90, Math.round((evt.loaded / evt.total) * 90)); // Cap to 90%
+                    var percentComplete = Math.min(90, Math.round((evt.loaded / evt.total) * 90));
                     $progressBar.css('width', percentComplete + '%').attr('aria-valuenow', percentComplete);
                 }
             }, false);
             xhr.addEventListener("progress", function (evt) {
                 if (evt.lengthComputable) {
-                    var percentComplete = Math.min(90, Math.round((evt.loaded / evt.total) * 90)); // Cap to 90%
+                    var percentComplete = Math.min(90, Math.round((evt.loaded / evt.total) * 90));
                     $progressBar.css('width', percentComplete + '%').attr('aria-valuenow', percentComplete);
                 }
             }, false);
@@ -106,7 +110,7 @@ function ajaxcall(options) {
     return $.ajax({
         url: options.url,
         type: options.type || "GET",
-        data: options.data, 
+        data: options.data,
         cache: options.cache || false,
         dataType: options.dataType || "json",
         contentType: options.contentType || "application/json; charset=utf-8",
@@ -115,24 +119,27 @@ function ajaxcall(options) {
         xhr: xhr,
         beforeSend: beforeSend
     }).done(function (data) {
-        if (useProgressBar) {
-            completeProgress(); 
-        }
-        if ($.unblockUI && !noBlocking) {
-            $.unblockUI();
-            setTimeout(function () { $.unblockUI(); }, 1000);
-        }
-        delete options;
-    }).fail(function (jqxhr, status, error) {
-        if (useProgressBar) {
-            hideProgress();
-        }
-        if ($.unblockUI) {
-            $.unblockUI();
-        }
-        delete options;
-        handleAjaxError(jqxhr, status, error);
-    });
+            if (useProgressBar) {
+                completeProgress();
+            }
+            if ($.unblockUI && !noBlocking) {
+                activeBlockUICount = Math.max(0, activeBlockUICount - 1);
+                if (activeBlockUICount === 0) {
+                    $.unblockUI();
+                }
+            }
+            delete options;
+        })
+        .fail(function (jqxhr, status, error) {
+            if (useProgressBar) {
+                hideProgress();
+            }
+            if ($.unblockUI) {
+                $.unblockUI();
+            }
+            delete options;
+            handleAjaxError(jqxhr, status, error);
+        });
 }
 
 function handleAjaxError(jqxhr, status, error) {
