@@ -288,7 +288,7 @@
             </p>
 
             <div data-bind="with: Tables">
-                <input type="text" class="form-control input-sm" placeholder="Filter Tables for..." data-bind="value: tableFilter, valueUpdate: 'afterkeydown'" style="float: left; width: 180px; margin-right: 5px;">
+                <input type="text" class="form-control input-sm" placeholder="Filter Tables..." data-bind="value: tableFilter, valueUpdate: 'afterkeydown'" style="float: left; width: 180px; margin-right: 5px;">
                 <button class="btn btn-sm" data-bind="click: clearTableFilter,  visible: tableFilter()!='' && tableFilter()!=null"><span class="fa fa-remove"></span></button>
                 <button class="btn btn-sm" data-bind="click: toggleShowAll, hidden: $root.customTableMode() || $root.onlyApi(), text: usedOnly() ? 'Show all' : 'Show used only'">Show used only</button>
                 <button class="btn btn-sm btn-primary" data-bind="click: $root.customSql.addNewCustomSqlTable, visible: $root.customTableMode">Add New Custom Table</button>
@@ -310,6 +310,9 @@
                 </button>
                 <button class="btn btn-sm btn-primary" title="Manage Categories" data-bs-toggle="modal" data-bs-target="#category-modal">
                     <span class="fa fa-server"></span> Manage Categories
+                </button>
+                <button class="btn btn-sm btn-primary" data-bind="click: selectAll, visible: !$root.onlyApi()">
+                    <span class="fa fa-check"></span> Select All Tables
                 </button>
                 <button class="btn btn-sm btn-primary" data-bind="click: function() { $root.saveChanges($root.customTableMode()) }">
                     <span class="fa fa-floppy-o"></span> Save All Tables
