@@ -1215,6 +1215,7 @@ var reportViewModel = function (options) {
 		self.SelectedFields([]);
 		self.resetQuery(false);
 		self.usingAi(useAi);
+		self.SaveReport(false);
 
 		var fieldIds = _.filter(self.textQuery.queryItems, { type: 'Field' }).map(function (x) { return x.value });
 		if (fieldIds.length == 0) fieldIds.push(0);
@@ -1253,30 +1254,29 @@ var reportViewModel = function (options) {
 			self.SortByField(fieldIds[0]);
 			self.SelectedFields(result);
 			filters.forEach(f => self.FilterGroups()[0].AddFilter(f));
+			
+			var queryText = document.getElementById("query-input").innerText;
+			ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/RunQueryAi",
+					model: JSON.stringify({
+						query: queryText,
+						fieldIds: fieldIds.join(","),
+						reportJson: JSON.stringify(self.BuildReportData()) // send whatever our parser has built to improve
+					})
+				}
+			}).done(function (result) {
+				if (result.d) result = result.d;
+				if (result.success === false) {
+					toastr.error(result.message || 'Could not process this correctly, please try again');
+					return;
+				}
 
-			if (useAi === true) {
-				var queryText = document.getElementById("query-input").innerText;
-				ajaxcall({
-					url: options.apiUrl,
-					data: {
-						method: "/ReportApi/RunQueryAi",
-						model: JSON.stringify({
-							query: queryText,
-							fieldIds: fieldIds.join(",")
-						})
-					}
-				}).done(function (result) {
-					if (result.d) result = result.d;
-					if (result.success === false) {
-						toastr.error(result.message || 'Could not process this correctly, please try again');
-						return;
-					}
-					self.ExecuteReportQuery(result.sql, result.connectKey);
-				});
-			}
-			else {
-				self.RunReport(false, true);
-			}
+				options.reportSql = result.reportSql;
+				options.reportConnect = result.connectKey;
+				self.PopulateReport(result.report);
+			});
 		});
 	}
 
@@ -3125,7 +3125,8 @@ var reportViewModel = function (options) {
 					userIdForFilter: self.userIdForFilter,
 					SubTotalMode: false,
 					useAltPivot: self.appSettings.useAltPivot
-				})
+				}),
+				noBlocking: dashboardRun === true
 			}).done(function (result) {
 				if (result.d) { result = result.d; }
 				if (result.result) { result = result.result; }
@@ -3912,13 +3913,7 @@ var reportViewModel = function (options) {
 		self.ReportResult().ReportData(null);
 		self.ReportResult().SubTotals([]);
 		if (self.DontExecuteOnRun() && !self.executingReport) return;
-		if (self.ReportMode() != "dashboard") {
-			setTimeout(function () {
-				if ($.blockUI) {
-					$.blockUI({ baseZ: 500 });
-				}
-			}, options.samePageOnRun ? 1000 : 500);
-		}
+		
 		var pivotData = self.preparePivotData();
 		var reportData = pivotData.pivotColumn != null ? self.BuildReportData() : '';
 		if (!isPageSizeClick) self.pager.pageSize(self.DefaultPageSize());
