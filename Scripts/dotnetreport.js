@@ -5133,7 +5133,8 @@ var reportViewModel = function (options) {
 	self.validateReport = function (validateCustomOnly) {
 		if (options.reportWizard == null) return;
 		var curInputs = options.reportWizard.find(validateCustomOnly === true ? ".custom-field-design input, .custom-field-design select" : "input, select"),
-			isValid = true;
+			isValid = true,
+			firstInvalid = null;
 
 		if (!self.isModalOpen()) {
 			curInputs = $("#filter-panel-" + self.ReportID()).find("input, select");
@@ -5146,6 +5147,7 @@ var reportViewModel = function (options) {
 				isValid = false;
 				$(".needs-validation").addClass("was-validated");
 				$(curInputs[i]).addClass("is-invalid");
+				if (!firstInvalid) firstInvalid = curInputs[i];
 			}
 		}
 
@@ -5166,35 +5168,43 @@ var reportViewModel = function (options) {
 			const fromContext = ko.contextFor(fromInput);
 			const toContext = ko.contextFor(toInput);
 			if (fromContext && toContext) {
-				// Determine the date format
-				var defaultFormat = "mm/dd/yyyy"; // Default format
+				var defaultFormat = "mm/dd/yyyy";
 				var fromDateFormat = fromContext.$data.dateFormat() ? fromContext.$root.dateFormatMappings[fromContext.$data.dateFormat()] : defaultFormat;
-				var toDateFormat = fromContext.$data.dateFormat() ? toContext.$root.dateFormatMappings[toContext.$data.dateFormat()] : defaultFormat;
+				var toDateFormat = toContext.$data.dateFormat() ? toContext.$root.dateFormatMappings[toContext.$data.dateFormat()] : defaultFormat;
 				var fromDateValue = fromInput.value;
 				var toDateValue = toInput.value;
 				if (fromDateValue && toDateValue) {
-					var fromDate = parseDate(fromDateValue, fromDateFormat).toISOString();
-					var toDate = parseDate(toDateValue, toDateFormat).toISOString();
-					if (new Date(toDate) < new Date(fromDate)) {
+					var fromDateParsed = parseDate(fromDateValue, fromDateFormat).toISOString();
+					var toDateParsed = parseDate(toDateValue, toDateFormat).toISOString();
+					if (new Date(toDateParsed) < new Date(fromDateParsed)) {
 						isValid = false;
 						toastr.error("The 'To' date cannot be earlier than the 'From' date.");
 						toInput.classList.add("is-invalid");
+						if (!firstInvalid) firstInvalid = toInput;
 					} else {
 						toInput.classList.remove("is-invalid");
 					}
 				}
-			} 
+			}
 		});
 		_.forEach(self.SavedReports(), function (e) {
 			if (e.reportName == self.ReportName() && e.reportId != self.ReportID()) {
 				isValid = false;
 				toastr.error("Report name is already in use, please choose a different name");
-				return false;
 			}
 		});
 
+		// Scroll to first invalid input if any
+		if (!isValid && firstInvalid) {
+			setTimeout(function () {
+				firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+				firstInvalid.focus();
+			}, 100);
+		}
+
 		return isValid;
 	};
+
 
 	self.loadProcs = function () {
 		return ajaxcall({
