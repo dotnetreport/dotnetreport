@@ -322,7 +322,8 @@
             <hr />
 
             <div class="row">
-                <div class="col-3 border-end" style="height: 100vh; overflow-y: auto;">
+                <div class="col-12 col-md-4 col-lg-3 border-end" style="height: 100vh; overflow-y: auto;">
+
                     <div class="row">
                         <div data-bind="ifnot: $root.customTableMode">
                             <div class="alert alert-info">
@@ -361,7 +362,7 @@
 
                 </div>
 
-                <div class="col-9">
+                <div class="col-12 col-md-8 col-lg-9" id="tableDetails">
                     <div data-bind="visible: pagedTables().length === 0">
                         <br />
                         <svg style="width:40px;float:left;transform:rotate(-45deg) translateY(6px);transform-origin:center center;" fill="#000000" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="icon flat-line"><g stroke-width="0"></g><g stroke-linecap="round" stroke-linejoin="round" stroke="#CCCCCC" stroke-width="0.048"></g><g><path d="M18,21A13.17,13.17,0,0,1,9,8.51V3" style="fill:none;stroke:#000000;stroke-linecap:round;stroke-linejoin:round;stroke-width:2;"></path><polyline points="12 6 9 3 6 6" style="fill:none;stroke:#000000;stroke-linecap:round;stroke-linejoin:round;stroke-width:2;"></polyline></g></svg>
@@ -482,106 +483,107 @@
                     You have unsaved changes. Please be sure to click <b>Save Joins</b> to save your changes.
                 </div>
 
-                <table class="table">
-                    <thead data-bind="with: JoinFilters">
-                        <tr>
-                            <th>
-                                Primary Table
-                                <div class="input-group input-group-sm">
-                                    <input type="text" class="form-control input-sm" data-bind="value: primaryTable, valueUpdate: 'afterkeydown'" placeholder="Search...">
-                                    <span class="input-group-addon"><i class="fa fa-filter"></i></span>
-                                    <span class="btn btn-sm" data-bind="click: $root.sortByPrimaryTable">
-                                        <i class="fa" data-bind="css: $root.sortDirection.primaryTable() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
-                                    </span>
-                                </div>
-                            </th>
-                            <th>
-                                Field
-                                <div class="input-group input-group-sm">
-                                    <input type="text" class="form-control input-sm" data-bind="value: primaryField, valueUpdate: 'afterkeydown'" placeholder="Search...">
-                                    <span class="input-group-addon"><i class="fa fa-filter"></i></span>
-                                    <span class="btn btn-sm" data-bind="click: $root.sortByField">
-                                        <i class="fa" data-bind="css: $root.sortDirection.primaryField() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
-                                    </span>
-                                </div>
-                            </th>
-                            <th>
-                                Join Type
-                                <div class="input-group input-group-sm">
-                                    <input type="text" class="form-control input-sm" data-bind="value: joinType, valueUpdate: 'afterkeydown'" placeholder="Search...">
-                                    <span class="input-group-addon"><i class="fa fa-filter"></i></span>
-                                    <span class="btn btn-sm" data-bind="click: $root.sortByJoinType">
-                                        <i class="fa" data-bind="css: $root.sortDirection.joinType() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
-                                    </span>
-                                </div>
-                            </th>
-                            <th>
-                                Join Table
-                                <div class="input-group input-group-sm">
-                                    <input type="text" class="form-control input-sm" data-bind="value: joinTable, valueUpdate: 'afterkeydown'" placeholder="Search...">
-                                    <span class="input-group-addon"><i class="fa fa-filter"></i></span>
-                                    <span class="btn btn-sm" data-bind="click: $root.sortByJoinTable">
-                                        <i class="fa" data-bind="css: $root.sortDirection.joinTable() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
-                                    </span>
-                                </div>
-                            </th>
-                            <th>
-                                Field<div class="input-group input-group-sm">
-                                    <input type="text" class="form-control input-sm" data-bind="value: joinField, valueUpdate: 'afterkeydown'" placeholder="Search...">
-                                    <span class="input-group-addon"><i class="fa fa-filter"></i></span>
-                                    <span class="btn btn-sm" data-bind="click: $root.sortByJoinField">
-                                        <i class="fa" data-bind="css: $root.sortDirection.joinField() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
-                                    </span>
-                                </div>
-                            </th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr class="table-info" data-bind="if: showNewJoinRow">
-                            <td>
-                                <select class="form-select input-medium" data-bind="options: Tables.availableTables, optionsText: 'DisplayName', value: NewJoin().JoinTable, optionsCaption: 'Pick a table...'"></select>
-                            </td>
-                            <td data-bind="with: NewJoin().JoinTable">
-                                <select class="form-select" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsCaption: 'Pick a field...', optionsValue: 'ColumnName', value: $root.NewJoin().FieldName"></select>
-                            </td>
-                            <td>
-                                <select class="form-select input-small" data-bind="options: $root.JoinTypes, value: NewJoin().JoinType"></select>
-                            </td>
-                            <td>
-                                <select class="form-select input-medium" data-bind="options: NewJoin().OtherTables, optionsText: 'DisplayName', value: NewJoin().OtherTable, optionsCaption: 'Pick a table...'"></select>
-                            </td>
-                            <td data-bind="with: NewJoin().OtherTable">
-                                <select class="form-select" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsValue: 'ColumnName', value: $root.NewJoin().JoinFieldName, optionsCaption: 'Pick a field...'"></select>
-                            </td>
-                            <td>
-                                <button class="btn btn-sm btn-success" data-bind="click: ConfirmAddJoin">+ Add Join</button>
-                            </td>
-                        </tr>
-                    </tbody>
-                    <tbody data-bind="foreach: pagedJoins">
-                        <tr>
-                            <td>
-                                <select class="form-select input-medium" data-bind="options: $root.Tables.availableTables, optionsText: 'DisplayName', value: JoinTable"></select>
-                            </td>
-                            <td data-bind="with: JoinTable">
+                <div class="container-fluid">
+                    <div class="row fw-bold bg-light border-bottom py-2" data-bind="with: JoinFilters">
+                        <!-- Repeat for each column header -->
+                        <div class="col-md-2">
+                            Primary Table
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control" data-bind="value: primaryTable, valueUpdate: 'afterkeydown'" placeholder="Search..." />
+                                <span class="input-group-text"><i class="fa fa-filter"></i></span>
+                                <button class="btn btn-sm" data-bind="click: $root.sortByPrimaryTable">
+                                    <i class="fa" data-bind="css: $root.sortDirection.primaryTable() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            Field
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control" data-bind="value: primaryField, valueUpdate: 'afterkeydown'" placeholder="Search..." />
+                                <span class="input-group-text"><i class="fa fa-filter"></i></span>
+                                <button class="btn btn-sm" data-bind="click: $root.sortByField">
+                                    <i class="fa" data-bind="css: $root.sortDirection.primaryField() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            Join Type
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control" data-bind="value: joinType, valueUpdate: 'afterkeydown'" placeholder="Search...">
+                                <span class="input-group-text"><i class="fa fa-filter"></i></span>
+                                <span class="btn btn-sm" data-bind="click: $root.sortByJoinType">
+                                    <i class="fa" data-bind="css: $root.sortDirection.joinType() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            Join Table
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control" data-bind="value: joinTable, valueUpdate: 'afterkeydown'" placeholder="Search...">
+                                <span class="input-group-text"><i class="fa fa-filter"></i></span>
+                                <span class="btn btn-sm" data-bind="click: $root.sortByJoinTable">
+                                    <i class="fa" data-bind="css: $root.sortDirection.joinTable() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            Field<div class="input-group input-group-sm">
+                                <input type="text" class="form-control" data-bind="value: joinField, valueUpdate: 'afterkeydown'" placeholder="Search...">
+                                <span class="input-group-text"><i class="fa fa-filter"></i></span>
+                                <span class="btn btn-sm" data-bind="click: $root.sortByJoinField">
+                                    <i class="fa" data-bind="css: $root.sortDirection.joinField() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- New Join Row -->
+                    <div class="row bg-info bg-opacity-25 p-2" data-bind="visible: showNewJoinRow">
+                        <div class="col-md-2">
+                            <select class="form-select" data-bind="options: Tables.availableTables, optionsText: 'DisplayName', value: NewJoin().JoinTable, optionsCaption: 'Pick a table...'"></select>
+                        </div>
+                        <div class="col-md-2" data-bind="with: NewJoin().JoinTable">
+                            <select class="form-select" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsCaption: 'Pick a field...', optionsValue: 'ColumnName', value: $root.NewJoin().FieldName"></select>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select" data-bind="options: $root.JoinTypes, value: NewJoin().JoinType"></select>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select" data-bind="options: NewJoin().OtherTables, optionsText: 'DisplayName', value: NewJoin().OtherTable, optionsCaption: 'Pick a table...'"></select>
+                        </div>
+                        <div class="col-md-2" data-bind="with: NewJoin().OtherTable">
+                            <select class="form-select" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsValue: 'ColumnName', value: $root.NewJoin().JoinFieldName, optionsCaption: 'Pick a field...'"></select>
+                        </div>
+                        <div class="col-md-2 text-end">
+                            <button class="btn btn-success btn-sm" data-bind="click: ConfirmAddJoin">+ Add Join</button>
+                        </div>
+                    </div>
+
+                    <!-- Existing Join Rows -->
+                    <div data-bind="foreach: pagedJoins">
+                        <div class="row align-items-center border-bottom py-2">
+                            <div class="col-md-2">
+                                <select class="form-select" data-bind="options: $root.Tables.availableTables, optionsText: 'DisplayName', value: JoinTable"></select>
+                            </div>
+                            <div class="col-md-2" data-bind="with: JoinTable">
                                 <select class="form-select" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsValue: 'ColumnName', value: $parent.FieldName"></select>
-                            </td>
-                            <td>
-                                <select class="form-select input-small" data-bind="options: $root.JoinTypes, value: JoinType"></select>
-                            </td>
-                            <td>
-                                <select class="form-select input-medium" data-bind="options: OtherTables, optionsText: 'DisplayName', value: OtherTable"></select>
-                            </td>
-                            <td data-bind="with: OtherTable">
+                            </div>
+                            <div class="col-md-2">
+                                <select class="form-select" data-bind="options: $root.JoinTypes, value: JoinType"></select>
+                            </div>
+                            <div class="col-md-2">
+                                <select class="form-select" data-bind="options: OtherTables, optionsText: 'DisplayName', value: OtherTable"></select>
+                            </div>
+                            <div class="col-md-2" data-bind="with: OtherTable">
                                 <select class="form-select" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsValue: 'ColumnName', value: $parent.JoinFieldName"></select>
-                            </td>
-                            <td>
-                                <button class="btn btn-sm btn-secondary" data-bind="click: DeleteJoin">Delete</button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                            </div>
+                            <div class="col-md-2 text-end">
+                                <button class="btn btn-secondary btn-sm" data-bind="click: DeleteJoin">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="row mt-3">
                     <div class="d-flex flex-row align-items-center col-md-12" data-bind="with: joinsPager">
                         <div data-bind="template: 'pager-template', data: $data"></div>
@@ -608,8 +610,8 @@
             </div>
             <div class="row" data-bind="if: Procedures.savedProcedures().length > 0">
                 <!-- Left Panel for Stored Procedure Names -->
-                <div class="col-3 border-end" style="height: 100vh; overflow-y: auto;">
-                    <div class="menu g-3" data-bind="foreach: Procedures.savedProcedures" style="margin-left: 20px; padding-top: 20px;">
+                <div class="col-12 col-md-4 col-lg-3 border-end" style="height: 100vh; overflow-y: auto;">
+                    <div class="menu g-3" data-bind="foreach: Procedures.savedProcedures"">
                         <div class="menu-category card">
                             <div class="card-header clearfix">
                                 <div class="pull-left">
@@ -633,7 +635,7 @@
                 </div>
 
                 <!-- Right Panel for Stored Procedure Details -->
-                <div class="col-9">
+                <div class="col-12 col-md-8 col-lg-9" id="procDetails">
                     <div data-bind="with: activeProcedure">
                         <div class="card my-3">
                             <div class="card-header">

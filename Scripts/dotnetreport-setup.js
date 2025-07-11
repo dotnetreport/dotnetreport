@@ -48,6 +48,26 @@ var manageViewModel = function (options) {
 		});
 	}
 
+	self.activeTable.subscribe(function (newValue) {
+		if (!newValue) return;
+		setTimeout(function () {
+			const details = document.getElementById('tableDetails');
+			if (details) {
+				details.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			}
+		}, 100);
+	});
+
+	self.activeProcedure.subscribe(function (newValue) {
+		if (!newValue) return;
+		setTimeout(function () {
+			const details = document.getElementById('procDetails');
+			if (details) {
+				details.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			}
+		}, 100);
+	});
+
 	self.Tables.filteredTables.subscribe(function (x) {		
 		self.pager.totalRecords(x.length);
 		self.pager.currentPage(1);
