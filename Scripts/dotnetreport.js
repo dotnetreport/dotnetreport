@@ -507,10 +507,10 @@ function filterGroupViewModel(args) {
 
 		if (e.FieldId) {
 			field(args.parent.FindField(e.FieldId));
-			field().uiId = generateUniqueId();
+			if (field()) field().uiId = generateUniqueId();
 		} else if (e.FilterSettings) {
 			field(args.parent.FindDynamicField(JSON.parse(e.FilterSettings)));
-			field().uiId = generateUniqueId();
+			if (field()) field().uiId = generateUniqueId();
 		}
 
 		filter.compareTo = ko.computed(function () {
@@ -5339,7 +5339,7 @@ var reportViewModel = function (options) {
 			self.appSettings.useAltPdf = x.useAltPdf;
 			self.appSettings.useAltPivot = x.useAltPivot;
 			self.appSettings.dontXmlExport = x.dontXmlExport;
-			self.appSettings.usePromptBuilder(x.usePromptBuilder);
+			self.appSettings.usePromptBuilder(x.usePromptBuilder !== false ? true : false);
 		});
 	}
 

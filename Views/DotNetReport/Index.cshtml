@@ -529,21 +529,34 @@ Its Recommended you use it as is, and only change styling as needed to match you
             </div>
             <div class="card-body">
                 <p>
-                    What would you like to know? Try typing a <b>"Prompt"</b> below to search your data. Be sure to use "Auto Complete" suggestions to help guide your query.
+                    What would you like to know? Type a <b>natural language prompt</b> below to ask questions about your data.<br>
+                    Use <b>Auto Complete</b> suggestions to guide your query — the AI will convert your prompt into a custom report.
                 </p>
+
                 <p id="query-input" class="query-input">
                     Show me&nbsp;
                 </p>
+
                 <p>
-                    <button data-bind="click: function() {runQuery(false);}" class="btn btn-primary btn-sm">Process your Query</button>
-                    <button data-bind="click: function() {resetQuery(true, false);}" class="btn btn-secondary btn-sm">Start over</button>
+                    <button data-bind="click: function() {runQuery(false);}" class="btn btn-primary btn-sm">
+                        <span class="fa fa-magic"></span> Process with AI
+                    </button>
+
+                    <button data-bind="click: function() {resetQuery(true, false);}" class="btn btn-secondary btn-sm">
+                        <span class="fa fa-undo"></span> Start Over
+                    </button>
+
                     <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: adminMode">
-                        View Code
+                        <span class="fa fa-code"></span> View Code
                     </button>
+
                     <button class="btn btn-secondary btn-sm" data-bind="visible: CanSaveReports(), click: SaveWithoutRun">
-                        <span>Save Report</span>
+                        <span class="fa fa-save"></span> Save Report
                     </button>
-                    <button data-bind="click: openDesigner" class="btn btn-secondary btn-sm">Design/Save Report</button>
+
+                    <button data-bind="click: openDesigner" class="btn btn-secondary btn-sm">
+                        <span class="fa fa-pencil"></span> Design/Save Report
+                    </button>
                 </p>
 
                 <div data-bind="if: ReportMode() == 'design'">
