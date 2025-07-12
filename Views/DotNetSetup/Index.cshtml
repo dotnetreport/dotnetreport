@@ -289,13 +289,13 @@
 
             <div data-bind="with: Tables">
                 <input type="text" class="form-control input-sm" placeholder="Filter Tables..." data-bind="value: tableFilter, valueUpdate: 'afterkeydown'" style="float: left; width: 180px; margin-right: 5px;">
-                <button class="btn btn-sm" data-bind="click: clearTableFilter,  visible: tableFilter()!='' && tableFilter()!=null"><span class="fa fa-remove"></span></button>
-                <button class="btn btn-sm" data-bind="click: toggleShowAll, hidden: $root.customTableMode() || $root.onlyApi(), text: usedOnly() ? 'Show all' : 'Show used only'">Show used only</button>
+                <button class="btn btn-outline-secondary btn-sm" data-bind="click: clearTableFilter,  visible: tableFilter()!='' && tableFilter()!=null"><span class="fa fa-remove"></span></button>
+                <button class="btn btn-outline-secondary btn-sm" data-bind="click: toggleShowAll, hidden: $root.customTableMode() || $root.onlyApi(), text: usedOnly() ? 'Show all' : 'Show used only'">Show used only</button>
                 <button class="btn btn-sm btn-primary" data-bind="click: $root.customSql.addNewCustomSqlTable, visible: $root.customTableMode">Add New Custom Table</button>
                 <button class="btn btn-sm btn-primary" data-bind="click: $root.loadFromDatabase, hidden: $root.customTableMode() || !$root.onlyApi()">
                     <span class="fa fa-database"></span> Load all Database Tables
                 </button>
-                <button class="btn btn-sm btn-primary" data-bind="click: $root.visualizeJoins">Visualize Joins</button>&nbsp;
+                <button class="btn btn-sm btn-primary" data-bind="click: $root.visualizeJoins"><span class="fa fa-arrows-h"></span> Visualize Joins</button>&nbsp;
                 <button class="btn btn-sm btn-primary"
                         data-bind="click: function() { exportTablesJson(true) }, visible: $root.customTableMode">
                     <span class="fa fa-download"></span> Export Custom Tables
@@ -467,17 +467,34 @@
             <p>
                 Setup your Database Relations for Dotnet Report to produce dynamic queries
             </p>
-            <button class="btn btn-sm btn-primary" data-bind="click: AddAllRelations">Auto Add Joins</button>
-            <button class="btn btn-sm btn-primary" data-bind="click: AddJoin">Add new Join</button>&nbsp;
-            <button class="btn btn-sm btn-primary" data-bind="click: SaveJoins">Save Joins</button>&nbsp;
-            <button class="btn btn-sm btn-primary" data-bind="click: visualizeJoins">Visualize Joins</button>&nbsp;
-            <button class="btn btn-sm btn-primary" data-bind="click: DeleteVisibleJoins">Delete Joins</button>&nbsp;
-            <button class="btn btn-sm btn-primary" data-bind="click: ExportJoins">Export Joins</button>&nbsp;
-            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadJoinsFileModal" aria-haspopup="true" aria-expanded="false">
-                <span class="fa fa-file"></span> Import Joins
+            <button class="btn btn-sm btn-primary" data-bind="click: AddAllRelations">
+                <span class="fa fa-magic"></span> Auto Add Joins
             </button>
-            <br />
-            <br />
+
+            <button class="btn btn-sm btn-primary" data-bind="click: AddJoin">
+                <span class="fa fa-plus"></span> Add new Join
+            </button>
+
+            <button class="btn btn-sm btn-primary" data-bind="click: SaveJoins">
+                <span class="fa fa-save"></span> Save Joins
+            </button>
+
+            <button class="btn btn-sm btn-primary" data-bind="click: visualizeJoins">
+                <span class="fa fa-arrows-h"></span> Visualize Joins
+            </button>
+
+            <button class="btn btn-sm btn-primary" data-bind="click: DeleteVisibleJoins">
+                <span class="fa fa-trash"></span> Delete Joins
+            </button>
+
+            <button class="btn btn-sm btn-primary" data-bind="click: ExportJoins">
+                <span class="fa fa-download"></span> Export Joins
+            </button>
+
+            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadJoinsFileModal" aria-haspopup="true" aria-expanded="false">
+                <span class="fa fa-upload"></span> Import Joins
+            </button>
+            <hr />
             <div id="form-joins">
                 <div class="alert alert-warning" data-bind="visible: isDirty">
                     You have unsaved changes. Please be sure to click <b>Save Joins</b> to save your changes.
@@ -598,12 +615,11 @@
             <p>
                 Select and manage Stored Procedures to use in Dotnet Report for more complex and coded Reports
             </p>
-            <hr />
-            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#procedure-modal">Add Stored Procs from database</button>
+            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#procedure-modal"><span class="fa fa-plus"></span> Add Stored Procs from database</button>
             <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadStoredProceduresFileModal" aria-haspopup="true" aria-expanded="false">
                 <span class="fa fa-file"></span> Import Stored Procedures
             </button>
-            <br />
+            <hr />
             <div data-bind="if: Procedures.savedProcedures().length == 0">
                 <br />
                 No Stored Procedures have been setup yet.
