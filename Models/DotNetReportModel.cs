@@ -653,11 +653,34 @@ namespace ReportBuilder.Web.Models
         static string ParseJsonValue(JToken json, string columnToExtract, bool asTable = true)
         {
             if (!string.IsNullOrEmpty(columnToExtract))
-                return json.Value<dynamic>(columnToExtract)?.ToString();
+            {
+                if (json.Type == JTokenType.Array)
+                {
+                    var results = new List<string>();
 
+                    foreach (var item in json.Children<JObject>())
+                    {
+                        var value = item[columnToExtract]?.ToString();
+                        if (value != null)
+                            results.Add(value);
+                    }
+
+                    return string.Join(", ", results); // or build table rows if asTable
+                }
+                else if (json.Type == JTokenType.Object)
+                {
+                    return json[columnToExtract]?.ToString();
+                }
+                else
+                {
+                    // For primitive values or unexpected types
+                    return json.ToString();
+                }
+            }
+
+            // full parsing if no columnToExtract
             StringBuilder sb = new StringBuilder();
             ParseJson(json, sb, "", asTable);
-
             return asTable ? $"<table>{sb}</table>" : sb.ToString();
         }
 
@@ -1270,16 +1293,22 @@ namespace ReportBuilder.Web.Models
                 {
                     if (!col.ColumnName.Contains("__prm__"))
                     {
-                        var item = new DotNetReportDataRowItemModel
+                        try
                         {
-                            Column = model.Columns[i],
-                            Value = row[col] != null ? row[col].ToString() : null,
-                            FormattedValue = GetFormattedValue(col, row, model.Columns[i].FormatType, jsonAsTable),
-                            LabelValue = GetLabelValue(col, row)
-                        };
+                            var item = new DotNetReportDataRowItemModel
+                            {
+                                Column = model.Columns[i],
+                                Value = row[col] != null ? row[col].ToString() : null,
+                                FormattedValue = GetFormattedValue(col, row, model.Columns[i].FormatType, jsonAsTable),
+                                LabelValue = GetLabelValue(col, row)
+                            };
 
-                        items.Add(item);
-                    
+                            items.Add(item);
+                        }
+                        catch (Exception ex)
+                        {
+                            //throw ex;
+                        }                    
                     }
                     i += 1;
                 }
