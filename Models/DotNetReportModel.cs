@@ -242,6 +242,14 @@ namespace ReportBuilder.Web.Models
         MySql,
         Postgre_Sql
     }
+    public static class DbTypeExtensions
+    {
+        public static string Name(this DbTypes dbType)
+        {
+            return dbType.ToString().Replace("_", " ");
+        }
+    }
+
 
     public class ColumnViewModel
     {
@@ -500,7 +508,6 @@ namespace ReportBuilder.Web.Models
     {
         private static readonly IConfigurationRoot _configuration;
         private readonly static string _configFileName = "appsettings.dotnetreport.json";
-        public readonly static string dbtype = DbTypes.MS_SQL.ToString().Replace("_", " ");
         public static bool useAltPivot = false;
 
 
@@ -568,6 +575,17 @@ namespace ReportBuilder.Web.Models
                 return DotNetReportHelper.GetConnectionString(content.Replace("\"", ""), addOledbProvider);
             }
 
+        }
+        public static string TranslateSql(string sql, string dbType)
+        {
+            if (dbType == DbTypes.Postgre_Sql.Name())
+            {
+                sql = sql.Replace("[", "\"");
+                sql = sql.Replace("]", "\"");
+                sql = sql.Replace("WITH (READUNCOMMITTED)", "");
+                sql = sql.Replace("ISNULL", "COALESCE");
+            }
+            return sql;
         }
 
         public static bool IsNumericType(Type type)
@@ -1229,7 +1247,7 @@ namespace ReportBuilder.Web.Models
             }
         }
 
-        public static List<string> SplitSqlColumns(string sql)
+        public static List<string> SplitSqlColumns(string sql, string dbType = "")
         {
             if (sql.StartsWith("EXEC")) return new List<string>();
             var fromIndex = FindFromIndex(sql);
@@ -1240,6 +1258,12 @@ namespace ReportBuilder.Web.Models
                 .Select(x => x.StartsWith("TOP ") ? Regex.Replace(x, @"TOP\s+\d+", "") : x)
                 .Where(x => x.Contains(" AS "))
                 .ToList();
+
+            if (dbType != DbTypes.MS_SQL.Name())
+            {
+                sqlFields = sqlFields.Select(x => x.Replace("[", "\""))
+                .Select(x => x.Replace("]", "\"")).ToList();
+            }
 
             return sqlFields;
         }
@@ -1293,7 +1317,7 @@ namespace ReportBuilder.Web.Models
                         };
 
                         items.Add(item);
-                    
+
                     }
                     i += 1;
                 }
@@ -1959,6 +1983,17 @@ namespace ReportBuilder.Web.Models
 
         private static (DataTable dt, SqlQuery qry, List<string> sqlFields) GetDataTable(string reportSql, string connectKey)
         {
+            var connect = DotNetReportHelper.GetConnection();
+            var dbConfig = DotNetReportHelper.GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey);
+            if (dbConfig == null)
+            {
+                throw new Exception("Data Connection settings not found");
+            }
+
+            var dbtype = dbConfig["DatabaseType"].ToString();
+            string connectionString = dbConfig["ConnectionString"].ToString();
+            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+
             var qry = new SqlQuery();
             var sql = Decrypt(reportSql);
             if (sql.StartsWith("{\"sql\""))
@@ -1970,19 +2005,10 @@ namespace ReportBuilder.Web.Models
             {
                 qry.sql = sql;
             }
+            sql = DotNetReportHelper.TranslateSql(sql, dbtype);
             var sqlFields = SplitSqlColumns(sql);
 
-            // Execute sql
-            var connect = DotNetReportHelper.GetConnection();
-            var dbConfig = DotNetReportHelper.GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey);
-            if (dbConfig == null)
-            {
-                throw new Exception("Data Connection settings not found");
-            }
-
-            var dbtype = dbConfig["DatabaseType"].ToString();
-            string connectionString = dbConfig["ConnectionString"].ToString();
-            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+            // Execute sql            
             var dt = databaseConnection.ExecuteQuery(connectionString, sql, qry.parameters);
             
             return (dt, qry, sqlFields);
@@ -2244,8 +2270,15 @@ namespace ReportBuilder.Web.Models
 
         private async static Task<DataTable> BuildExportData(string reportSql, string connectKey, string expandSqls = null, List<ReportHeaderColumn> columns = null, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
         {
+            var connect = DotNetReportHelper.GetConnection();
+            var dbConfig = DotNetReportHelper.GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey);
+            if (dbConfig == null)
+            {
+                throw new Exception("Data Connection settings not found");
+            }
 
-            var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
+            var dbtype = dbConfig["DatabaseType"].ToString();
+            string connectionString = dbConfig["ConnectionString"].ToString();
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
             var data = GetDataTable(reportSql, connectKey);
 
@@ -4136,7 +4169,7 @@ namespace ReportBuilder.Web.Models
                     using (NpgsqlCommand command = new NpgsqlCommand(sqlCount, conn))
                     {
                         if (!sql.StartsWith("EXEC"))
-                            totalRecords = (int)command.ExecuteScalar();
+                            totalRecords = Convert.ToInt32(command.ExecuteScalar());
                     }
 
                     conn.Close();
@@ -4254,7 +4287,8 @@ namespace ReportBuilder.Web.Models
                 conn.Open();
 
                 // Get the Tables
-                var schemaTable = conn.GetSchema(type == "TABLE" ? "Tables" : "Views", new string[] { null, "public", null, "BASE TABLE" });
+                var schemaTable = conn.GetSchema(type == "TABLE" ? "Tables" : "Views", new string[] { null, null, null, "BASE TABLE" });
+
 
                 // Store the table names in the class scoped array list of table names
                 for (int i = 0; i < schemaTable.Rows.Count; i++)

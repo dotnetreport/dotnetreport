@@ -19,7 +19,7 @@ namespace ReportBuilder.Web.Controllers
     {
         private readonly IConfigurationRoot _configuration;
         public readonly static string _configFileName = "appsettings.dotnetreport.json";
-        public readonly static string dbtype = DbTypes.MS_SQL.ToString().Replace("_", " ");
+        
         public DotNetReportApiController()
         {
             var builder = new ConfigurationBuilder()
@@ -239,7 +239,7 @@ namespace ReportBuilder.Web.Controllers
         {
             public string sql { get; set; } = "";
             public List<KeyValuePair<string, string>> parameters { get; set; } = null;
-        }
+        }        
 
         [ValidateAntiForgeryToken]
         [HttpPost]
@@ -275,6 +275,19 @@ namespace ReportBuilder.Web.Controllers
 
                 List<string> fields = new List<string>();
                 List<string> sqlFields = new List<string>();
+                // Execute sql
+                var connect = DotNetReportHelper.GetConnection();
+                var dbConfig = DotNetReportHelper.GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey);
+                if (dbConfig == null)
+                {
+                    throw new Exception("Data Connection settings not found");
+                }
+
+                var dbtype = dbConfig["DatabaseType"].ToString();
+                string connectionString = dbConfig["ConnectionString"].ToString();
+                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+
+                var dtPagedRun = new DataTable();
                 for (int i = 0; i < allSqls.Length; i++)
                 {
                     sql = DotNetReportHelper.Decrypt(HttpUtility.HtmlDecode(allSqls[i]));
@@ -282,11 +295,13 @@ namespace ReportBuilder.Web.Controllers
                     {
                         qry = JsonSerializer.Deserialize<SqlQuery>(sql);
                         sql = qry.sql;
+                        sql = DotNetReportHelper.TranslateSql(sql, dbtype);
                     }
                     if (!sql.StartsWith("EXEC"))
                     {
                         var fromIndex = DotNetReportHelper.FindFromIndex(sql);
-                        sqlFields = DotNetReportHelper.SplitSqlColumns(sql);
+                        sqlFields = DotNetReportHelper.SplitSqlColumns(sql, dbtype);
+                        sql = sql = DotNetReportHelper.TranslateSql(sql, dbtype);
 
                         var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(fromIndex)}".Replace("{FROM}", "FROM");
                         bool hasDistinct = sql.Contains("DISTINCT");
@@ -331,10 +346,23 @@ namespace ReportBuilder.Web.Controllers
                             }
                         }
 
-                        if (!sql.Contains("ORDER BY"))
-                            sql = sql + $" ORDER BY {(hasDistinct ? "1" : "NEWID()")} ";
-                        if (!sql.Contains(" TOP ") && string.IsNullOrEmpty(pivotColumn))
-                            sql = sql + $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
+                        if (dbtype == DbTypes.Postgre_Sql.Name())
+                        {
+                            if (!sql.Contains("ORDER BY", StringComparison.OrdinalIgnoreCase))
+                                sql += $" ORDER BY {(hasDistinct ? "1" : "RANDOM()")}";
+
+                            if (!sql.Contains("LIMIT", StringComparison.OrdinalIgnoreCase) && string.IsNullOrEmpty(pivotColumn))
+                                sql += $" LIMIT {pageSize} OFFSET {(pageNumber - 1) * pageSize}";
+                        }
+                        else
+                        {
+                            if (!sql.Contains("ORDER BY", StringComparison.OrdinalIgnoreCase))
+                                sql += $" ORDER BY {(hasDistinct ? "1" : "NEWID()")}";
+
+                            if (!sql.Contains("TOP", StringComparison.OrdinalIgnoreCase) && string.IsNullOrEmpty(pivotColumn))
+                                sql += $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
+                        }
+
 
                         if (sql.Contains("__jsonc__"))
                             sql = sql.Replace("__jsonc__", "");
@@ -342,23 +370,9 @@ namespace ReportBuilder.Web.Controllers
                         sql = sql.Replace("{FROM}", "FROM");
                     }
 
-                    // Execute sql
-                    var connect = DotNetReportHelper.GetConnection();
-                    var dbConfig = DotNetReportHelper.GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey);
-                    if (dbConfig == null)
-                    {
-                        throw new Exception("Data Connection settings not found");
-                    }
-
-                    var dbtype = dbConfig["DatabaseType"].ToString();
-                    string connectionString = dbConfig["ConnectionString"].ToString();
-                    IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
-
-                    var dtPagedRun = new DataTable();
-
                     if (!string.IsNullOrEmpty(pivotColumn) && !useAltPivot)
                     {
-                        sql = sql.Remove(sql.IndexOf("SELECT "), "SELECT ".Length).Insert(sql.IndexOf("SELECT "), "SELECT TOP 1 ");
+                        sql = dbtype == DbTypes.Postgre_Sql.Name() ? sql += " LIMIT 1" : sql.Remove(sql.IndexOf("SELECT "), "SELECT ".Length).Insert(sql.IndexOf("SELECT "), "SELECT TOP 1 ");
                     }
                     else
                     {
@@ -532,7 +546,7 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("filterValue", filterValue.ToString()),
                     new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
                     new KeyValuePair<string, string>("dataFilters", JsonSerializer.Serialize(settings.DataFilters)),
-                    new KeyValuePair<string, string>("useParameters", "true")
+                    new KeyValuePair<string, string>("useParameters", "false")
                 });
 
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/RunLinkedReport"), content);
@@ -849,9 +863,9 @@ namespace ReportBuilder.Web.Controllers
                     throw new Exception("Data Connection settings not found");
                 }
 
-                var _dbtype = dbConfig["DatabaseType"]?.ToString() ?? dbtype;
+                var _dbtype = dbConfig["DatabaseType"]?.ToString() ?? DbTypes.MS_SQL.Name();
                 string connectionString = dbConfig["ConnectionString"]?.ToString();
-                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(_dbtype);
 
                 var tables = new List<TableViewModel>();
                 var procedures = new List<TableViewModel>();
