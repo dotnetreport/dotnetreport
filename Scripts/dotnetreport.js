@@ -1434,6 +1434,26 @@ var reportViewModel = function (options) {
 		$('#summernote-editor').summernote('pasteHTML', placeholder);
 	});
 
+	self.insertFieldTableTransposed = function () {
+		const rows = self.SelectedFields().map(f =>
+			`<tr><td><b>${f.selectedFieldName}</b></td><td>{{${f.selectedFieldName}}}</td></tr>`
+		);
+		const table = `<table class="table table-bordered table-sm html-report-table">${rows.join('')}</table>`;
+		$('#summernote-editor').summernote('pasteHTML', table);
+	};
+
+	self.insertFieldTableStandard = function () {
+		const headers = self.SelectedFields().map(f => `<th>${f.selectedFieldName}</th>`).join('');
+		const values = self.SelectedFields().map(f => `<td>{{${f.selectedFieldName}}}</td>`).join('');
+		const table = `
+			<table class="table table-bordered table-sm html-report-table">
+				<thead><tr>${headers}</tr></thead>
+				<tbody><tr>${values}</tr></tbody>
+			</table>`;
+		$('#summernote-editor').summernote('pasteHTML', table);
+	};
+
+
 	self.getReportHtml = function () {
 		if ($('#summernote-editor').length) { 
 			self.reportHtml($('#summernote-editor').summernote('code'));
@@ -3642,7 +3662,7 @@ var reportViewModel = function (options) {
 
 						renderedHtml = renderedHtml.replaceAll(`{{${placeholderKey}}}`, val);
 					}
-					else { 
+					else {
 						let tableName = 'Custom';
 						if (col.SqlField && col.SqlField.startsWith('[')) {
 							const match = col.SqlField.match(/^\[([^\]]+)\]\.\[([^\]]+)\]/);

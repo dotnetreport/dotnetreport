@@ -1842,14 +1842,32 @@
                                 </h5>
                                 </div>
                                 <div class="card-body">
-                                    <div class="row align-items-center mb-1">
-                                         <div class="col-md-4">
+                                      <div class="row align-items-center mb-1">
+                                          <div class="col-md-4">
                                             <select class="form-select" data-bind="options: SelectedFields, value: SelectFieldToInsert, optionsCaption: 'Select a field...', optionsText: 'selectedFieldName'"></select>
                                           </div>
-                                          <div class="col-md-4 ms-2">
+                                            <div class="col-auto dropdown">
+                                              <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                <i class="fa fa-table"></i> Insert as Table
+                                              </button>
+                                              <ul class="dropdown-menu">
+                                                <li>
+                                                  <a class="dropdown-item" href="#" data-bind="click: insertFieldTableTransposed">
+                                                    Transposed
+                                                  </a>
+                                                </li>
+                                                <li>
+                                                  <a class="dropdown-item" href="#" data-bind="click: insertFieldTableStandard">
+                                                    Standard
+                                                  </a>
+                                                </li>
+                                              </ul>
+                                            </div>
+
+                                          <div class="col-md-auto ms-2">
                                             <label class="form-check-label">
-                                                <input class="form-check-input me-2" type="checkbox" data-bind="checked: cardView">
-                                                 Card Layout
+                                              <input class="form-check-input me-2" type="checkbox" data-bind="checked: cardView">
+                                              Card Layout
                                             </label>
                                           </div>
                                     </div>
