@@ -1572,3 +1572,9 @@ tfoot tr.sub-total {
 #search-input:focus:empty::before {
     content: attr(data-placeholder);
 }
+
+.card-view {
+    float: left;
+    margin: 10px;
+    padding: 15px;    
+}

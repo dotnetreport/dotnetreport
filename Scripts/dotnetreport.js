@@ -887,6 +887,7 @@ var reportViewModel = function (options) {
 	self.PivotColumnsWidth = ko.observable();
 	self.ReportColumns = ko.observable();
 	self.isModalOpen = ko.observable(false);
+	self.cardView = ko.observable(false);
 
 	$(document).on('shown.bs.modal', '.modal', function () {
 		self.isModalOpen(true);
@@ -1425,6 +1426,7 @@ var reportViewModel = function (options) {
 		self.initHtmlEditor();
 	});
 
+
 	self.SelectFieldToInsert = ko.observable();
 	self.SelectFieldToInsert.subscribe(function (newValue) {
 		if (!newValue) return;
@@ -1831,6 +1833,7 @@ var reportViewModel = function (options) {
 		self.reportHtml('');
 		self.DefaultPageSize(30);
 		self.reportRan(false);
+		self.cardView(false);
 		self.executingReport = false;
 		self.queryPrompt = "";
 	};
@@ -2889,7 +2892,8 @@ var reportViewModel = function (options) {
 				}),
 				chartOptions: self.chartOptions(),
 				reportHtml: self.ReportType() == 'Html' ? encodeURIComponent(self.getReportHtml()) : '',
-				queryPrompt: self.queryPrompt
+				queryPrompt: self.queryPrompt,
+				cardView: self.cardView()
 			}),
 			OnlyTop: drilldown.length > 0 ? null : (self.maxRecords() ? self.OnlyTop() : null),
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : self.AggregateReport(),
@@ -3630,17 +3634,25 @@ var reportViewModel = function (options) {
 
 				if (self.ReportType()=='Html' && columns[i]) {
 					const col = columns[i];
-					let tableName = 'Custom';
-					if (col.SqlField && col.SqlField.startsWith('[')) {
-						const match = col.SqlField.match(/^\[([^\]]+)\]\.\[([^\]]+)\]/);
-						if (match) {
-							tableName = match[1];
-						}
-					}
-					const placeholderKey = `${tableName} > ${col.fieldName}`.trim();
-
+					const selectedField = ko.utils.arrayFirst(self.SelectedFields(), f => f.dbField === col.SqlField);
 					const val = ko.unwrap(r.formattedVal || r.Value || '');
-					renderedHtml = renderedHtml.replaceAll(`{{${placeholderKey}}}`, val);
+
+					if (selectedField) {
+						const placeholderKey = selectedField.selectedFieldName;
+
+						renderedHtml = renderedHtml.replaceAll(`{{${placeholderKey}}}`, val);
+					}
+					else { 
+						let tableName = 'Custom';
+						if (col.SqlField && col.SqlField.startsWith('[')) {
+							const match = col.SqlField.match(/^\[([^\]]+)\]\.\[([^\]]+)\]/);
+							if (match) {
+								tableName = match[1];
+							}
+						}
+						const placeholderKey = `${tableName} > ${col.fieldName}`.trim();
+						renderedHtml = renderedHtml.replaceAll(`{{${placeholderKey}}}`, val);
+					}
 				}
 
 			});
@@ -4744,6 +4756,7 @@ var reportViewModel = function (options) {
 		self.PivotColumns(reportSettings.PivotColumns || null);
 		self.PivotColumnsWidth(reportSettings.PivotColumnsWidth || null);
 		self.reportHtml(decodeURIComponent(reportSettings.reportHtml));
+		self.cardView(reportSettings.cardView === true ? true : false);
 
 		if (self.ReportType() == 'Html' && self.ReportMode() != 'print' && self.ReportMode() != 'dashboard')
 			$('#summernote-editor').summernote('code', self.reportHtml());
