@@ -1209,7 +1209,7 @@ var manageViewModel = function (options) {
 			var importedData = JSON.parse(event.target.result);
 			_.forEach(importedData.tables, function (e) {
 				var tableMatch = _.filter(self.Tables.model(), function (x) {
-					return x.TableName().toLowerCase() == e.TableName.toLowerCase();
+					return x.TableName() && x.TableName().toLowerCase() == e.TableName.toLowerCase();
 				});
 				if (tableMatch.length > 0) {
 					var match = tableMatch[0];
@@ -1217,14 +1217,16 @@ var manageViewModel = function (options) {
 
 				}
 			});
-
 			$('#import-file').val("");
 		};
-
 		reader.readAsText(file);
-
 		self.importingFile(false);
+	}
 
+	function clearFileInput(target) {
+		self.ManageTablesJsonFile.file(null);
+		self.ManageTablesJsonFile.fileName('');
+		document.getElementById(target).value = '';
 	}
 
 	self.ManageTablesJsonFile = {
@@ -1234,104 +1236,100 @@ var manageViewModel = function (options) {
 			$('#tablesFileInputJson').click();
 		},
 		handleTablesFileSelect: function (data, event) {
-			var selectedFile = event.target.files[0];
+			const selectedFile = event.target.files[0];
 			if (selectedFile && (selectedFile.type === "application/json" || selectedFile.name.endsWith('.json'))) {
 				self.ManageTablesJsonFile.file(selectedFile);
 				self.ManageTablesJsonFile.fileName(selectedFile.name);
 			} else {
-				self.ManageTablesJsonFile.file(null);
-				self.ManageTablesJsonFile.fileName('');
 				toastr.error('Only JSON files are allowed.');
+				clearFileInput('tablesFileInputJson');
 			}
 		},
 		uploadTablesFile: function () {
-			var file = self.ManageTablesJsonFile.file();
-			if (file != null) {
-				var reader = new FileReader();
-				reader.onload = function (event) {
-					try {
-						var parsed = JSON.parse(event.target.result);
-						var tables = Array.isArray(parsed) ? parsed : [parsed];
-
-						let handleImport = function (table) {
-							var tableName = table.TableName;
-							var tableId = table.Id;
-							table.Selected = ko.observable(true);
-							var anySelected = _.some(table.Columns, function (c) {
-								return ko.unwrap(c.Selected) === true;
-							});
-							if (!anySelected) {
-								_.forEach(table.Columns, function (c) {
-									c.Selected = ko.observable(true);
-								});
-							}
-							var tableMatch = _.some(self.Tables.model(), function (t) {
-								return t.TableName() === tableName && t.Id() === tableId;
-							});
-
-							if (tableMatch) {
-								handleOverwriteConfirmation(tableName, function (action) {
-									if (action === 'overwrite') {
-										self.Tables.model.remove(_.find(self.Tables.model(), function (e) {
-											return e.TableName() === tableName;
-										}));
-										var mapped = ko.mapping.fromJS(table);
-										self.Tables.model.push(self.Tables.processTable(mapped));
-										var newTable = self.Tables.model()[self.Tables.model().length - 1];
-										newTable.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey, newTable);
-									} else {
-										toastr.info('Upload canceled for ' + tableName + '.');
-									}
-								});
-							} else {
-								table.Id = 0;
-								var mapped = ko.mapping.fromJS(table);
-								self.Tables.model.push(self.Tables.processTable(mapped));
-								var newTable = self.Tables.model()[self.Tables.model().length - 1];
-								newTable.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey, newTable);
-							}
-						};
-
-						tables.forEach(handleImport);
-
-						$('#uploadTablesFileModal').modal('hide');
-						self.ManageTablesJsonFile.file(null);
-						self.ManageTablesJsonFile.fileName('');
-					} catch (e) {
-						toastr.error('Invalid JSON file: ' + e.message);
-					}
-				};
-				reader.onerror = function (event) {
-					toastr.error('Error reading file.');
-				};
-				reader.readAsText(file); // Read the file as text
-				function handleOverwriteConfirmation(tableName, callback) {
-					bootbox.dialog({
-						title: "Confirm Action",
-						message: `A tables/views with the name "${tableName}" already exists. What would you like to do?`,
-						buttons: {
-							cancel: {
-								label: 'Cancel',
-								className: 'btn-secondary',
-								callback: function () {
-									callback('cancel');
-								}
-							},
-							overwrite: {
-								label: 'Overwrite',
-								className: 'btn-primary',
-								callback: function () {
-									callback('overwrite');
-								}
-							}
-						}
-					});
-				}
-			} else {
+			const file = self.ManageTablesJsonFile.file();
+			if (!file) {
 				toastr.error('No JSON file selected for upload.');
+				clearFileInput('tablesFileInputJson');
+				return;
+			}
+
+			const reader = new FileReader();
+			reader.onload = function (event) {
+				try {
+					const parsed = JSON.parse(event.target.result);
+					const tables = Array.isArray(parsed) ? parsed : [parsed];
+
+					const handleImport = function (table) {
+						const tableName = table.TableName;
+						const tableId = table.Id;
+						table.Selected = ko.observable(true);
+
+						const anySelected = _.some(table.Columns, c => ko.unwrap(c.Selected) === true);
+						if (!anySelected) {
+							table.Columns.forEach(c => c.Selected = ko.observable(true));
+						}
+
+						const tableMatch = _.some(self.Tables.model(), t => t.TableName() === tableName && t.Id() === tableId);
+
+						if (tableMatch) {
+							handleOverwriteConfirmation(tableName, function (action) {
+								if (action === 'overwrite') {
+									self.Tables.model.remove(_.find(self.Tables.model(), e => e.TableName() === tableName));
+									const mapped = ko.mapping.fromJS(table);
+									self.Tables.model.push(self.Tables.processTable(mapped));
+									const newTable = self.Tables.model()[self.Tables.model().length - 1];
+									newTable.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey);
+								} else {
+									toastr.info('Upload canceled for ' + tableName + '.');
+								}
+								$('#uploadTablesFileModal').modal('hide');
+								clearFileInput('tablesFileInputJson');
+							});
+						} else {
+							table.Id = 0;
+							const mapped = ko.mapping.fromJS(table);
+							self.Tables.model.push(self.Tables.processTable(mapped));
+							const newTable = self.Tables.model()[self.Tables.model().length - 1];
+							newTable.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey);
+						}
+					};
+
+					tables.forEach(handleImport);
+
+					$('#uploadTablesFileModal').modal('hide');
+					clearFileInput('tablesFileInputJson');
+				} catch (e) {
+					toastr.error('Invalid JSON file: ' + e.message);
+					clearFileInput('tablesFileInputJson');
+				}
+			};
+			reader.onerror = function () {
+				toastr.error('Error reading file.');
+				clearFileInput('tablesFileInputJson');
+			};
+			reader.readAsText(file);
+
+			function handleOverwriteConfirmation(tableName, callback) {
+				bootbox.dialog({
+					title: "Confirm Action",
+					message: `A table/view with the name "${tableName}" already exists. What would you like to do?`,
+					buttons: {
+						cancel: {
+							label: 'Cancel',
+							className: 'btn-secondary',
+							callback: () => callback('cancel')
+						},
+						overwrite: {
+							label: 'Overwrite',
+							className: 'btn-primary',
+							callback: () => callback('overwrite')
+						}
+					}
+				});
 			}
 		}
 	};
+
 	self.ManageJoinsJsonFile = {
 		file: ko.observable(null),
 		fileName: ko.observable(''),
@@ -1339,109 +1337,109 @@ var manageViewModel = function (options) {
 			$('#joinsFileInputJson').click();
 		},
 		handleJoinsFileSelect: function (data, event) {
-			var selectedFile = event.target.files[0];
+			const selectedFile = event.target.files[0];
 			if (selectedFile && (selectedFile.type === "application/json" || selectedFile.name.endsWith('.json'))) {
 				self.ManageJoinsJsonFile.file(selectedFile);
 				self.ManageJoinsJsonFile.fileName(selectedFile.name);
 			} else {
-				self.ManageJoinsJsonFile.file(null);
-				self.ManageJoinsJsonFile.fileName('');
 				toastr.error('Only JSON files are allowed.');
+				clearFileInput('joinsFileInputJson');
 			}
 		},
 		uploadJoinsFile: function () {
-			var file = self.ManageJoinsJsonFile.file();
-			if (file != null) {
-				var reader = new FileReader();
-				reader.onload = function (event) {
-					try {
-						var joins = JSON.parse(event.target.result);						
-						let hasConflicts = false;
-						let conflictingItems = [];
+			const file = self.ManageJoinsJsonFile.file();
+			if (!file) {
+				toastr.error('No JSON file selected for upload.');
+				clearFileInput('joinsFileInputJson');
+				return;
+			}
 
-						joins.forEach(newItem => {
-							var existingItem = self.Joins().find(item =>
+			const reader = new FileReader();
+			reader.onload = function (event) {
+				try {
+					const joins = JSON.parse(event.target.result);
+					let hasConflicts = false;
+					let conflictingItems = [];
+
+					joins.forEach(newItem => {
+						const existingItem = self.Joins().find(item =>
+							item.TableId() === newItem.TableId &&
+							item.JoinedTableId() === newItem.JoinedTableId &&
+							item.JoinFieldName() === newItem.JoinFieldName &&
+							item.FieldName() === newItem.FieldName
+						);
+						if (existingItem) {
+							hasConflicts = true;
+							conflictingItems.push({ existingItem, newItem });
+						}
+					});
+
+					const addUniqueJoins = (joinList) => {
+						joinList.forEach(newItem => {
+							const exists = self.Joins().some(item =>
 								item.TableId() === newItem.TableId &&
 								item.JoinedTableId() === newItem.JoinedTableId &&
 								item.JoinFieldName() === newItem.JoinFieldName &&
 								item.FieldName() === newItem.FieldName
 							);
-							if (existingItem) {
-								hasConflicts = true;
-								conflictingItems.push({ existingItem, newItem });
+							if (!exists) {
+								self.Joins.push(self.setupJoin(newItem));
 							}
 						});
+					};
 
-						const addUniqueJoins = (joinList) => {
-							joinList.forEach(newItem => {
-								const exists = self.Joins().some(item =>
-									item.TableId() === newItem.TableId &&
-									item.JoinedTableId() === newItem.JoinedTableId &&
-									item.JoinFieldName() === newItem.JoinFieldName &&
-									item.FieldName() === newItem.FieldName
-								);
-								if (!exists) {
-									self.Joins.push(self.setupJoin(newItem));
-								}
-							});
-						};
-
-						if (hasConflicts) {
-							var relations = conflictingItems.map(conflict => `- ${conflict.existingItem.FieldName()}`).join('\n');
-							handleOverwriteConfirmation(relations, function (action) {
-								if (action === 'overwrite') {
-									self.Joins().length = 0;
-									addUniqueJoins(joins);
-									self.SaveJoins();
-									toastr.success('Conflicting items have been overwritten successfully.');
-								} else {
-									toastr.info('Upload canceled.');
-								}
-								$('#uploadJoinsFileModal').modal('hide');
-							});
-						} else {
-							addUniqueJoins(joins);
-							self.SaveJoins();
-							$('#uploadJoinsFileModal').modal('hide');
-						}
-						self.ManageJoinsJsonFile.file(null);
-						self.ManageJoinsJsonFile.fileName('');
-						document.getElementById('joinsFileInputJson').value = '';
-					} catch (e) {
-						toastr.error('Invalid JSON file: ' + e.message);
-					}
-				};
-				reader.onerror = function () {
-					toastr.error('Error reading file.');
-				};
-				reader.readAsText(file);
-				function handleOverwriteConfirmation(Join, callback) {
-					bootbox.dialog({
-						title: "Confirm Action",
-						message: `A Joins Json with the name "${Join}" already exists. What would you like to do?`,
-						buttons: {
-							cancel: {
-								label: 'Cancel',
-								className: 'btn-secondary',
-								callback: function () {
-									callback('cancel');
-								}
-							},
-							overwrite: {
-								label: 'Overwrite',
-								className: 'btn-primary',
-								callback: function () {
-									callback('overwrite');
+					const handleOverwriteConfirmation = (relations, callback) => {
+						const relationList = relations.map(conflict => `- ${conflict.existingItem.FieldName()}`).join('\n');
+						bootbox.dialog({
+							title: "Confirm Action",
+							message: `Some joins already exist:\n${relationList}\nWhat would you like to do?`,
+							buttons: {
+								cancel: {
+									label: 'Cancel',
+									className: 'btn-secondary',
+									callback: () => callback('cancel')
+								},
+								overwrite: {
+									label: 'Overwrite',
+									className: 'btn-primary',
+									callback: () => callback('overwrite')
 								}
 							}
-						}
-					});
+						});
+					};
+
+					if (hasConflicts) {
+						handleOverwriteConfirmation(conflictingItems, function (action) {
+							if (action === 'overwrite') {
+								self.Joins().length = 0;
+								addUniqueJoins(joins);
+								self.SaveJoins();
+								toastr.success('Conflicting items have been overwritten successfully.');
+							} else {
+								toastr.info('Upload canceled.');
+							}
+							$('#uploadJoinsFileModal').modal('hide');
+							clearFileInput('joinsFileInputJson');
+						});
+					} else {
+						addUniqueJoins(joins);
+						self.SaveJoins();
+						$('#uploadJoinsFileModal').modal('hide');
+						clearFileInput('joinsFileInputJson');
+					}
+				} catch (e) {
+					toastr.error('Invalid JSON file: ' + e.message);
+					clearFileInput('joinsFileInputJson');
 				}
-			} else {
-				toastr.error('No JSON file selected for upload.');
-			}
+			};
+			reader.onerror = function () {
+				toastr.error('Error reading file.');
+				clearFileInput('joinsFileInputJson');
+			};
+			reader.readAsText(file);
 		}
 	};
+
 	self.ManageStoredProceduresJsonFile = {
 		file: ko.observable(null),
 		fileName: ko.observable(''),
@@ -1924,7 +1922,7 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 		}
 
 		return _.filter(self.model(), function (e) {
-			return e.TableName().toLowerCase().indexOf(filterText.toLowerCase()) >= 0;
+			return e.TableName() && e.TableName().toLowerCase().indexOf(filterText.toLowerCase()) >= 0;
 		})
 	})
 
