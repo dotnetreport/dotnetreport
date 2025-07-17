@@ -1256,7 +1256,15 @@ var manageViewModel = function (options) {
 						let handleImport = function (table) {
 							var tableName = table.TableName;
 							var tableId = table.Id;
-
+							table.Selected = ko.observable(true);
+							var anySelected = _.some(table.Columns, function (c) {
+								return ko.unwrap(c.Selected) === true;
+							});
+							if (!anySelected) {
+								_.forEach(table.Columns, function (c) {
+									c.Selected = ko.observable(true);
+								});
+							}
 							var tableMatch = _.some(self.Tables.model(), function (t) {
 								return t.TableName() === tableName && t.Id() === tableId;
 							});
@@ -1270,7 +1278,7 @@ var manageViewModel = function (options) {
 										var mapped = ko.mapping.fromJS(table);
 										self.Tables.model.push(self.Tables.processTable(mapped));
 										var newTable = self.Tables.model()[self.Tables.model().length - 1];
-										newTable.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey, table);
+										newTable.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey, newTable);
 									} else {
 										toastr.info('Upload canceled for ' + tableName + '.');
 									}
@@ -1280,7 +1288,7 @@ var manageViewModel = function (options) {
 								var mapped = ko.mapping.fromJS(table);
 								self.Tables.model.push(self.Tables.processTable(mapped));
 								var newTable = self.Tables.model()[self.Tables.model().length - 1];
-								newTable.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey, table);
+								newTable.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey, newTable);
 							}
 						};
 
