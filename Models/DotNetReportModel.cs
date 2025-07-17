@@ -2894,6 +2894,8 @@ namespace ReportBuilder.Web.Models
             }
             await page.EvaluateExpressionAsync("$('.report-inner').css('transform','none')");
             await page.PdfAsync(pdfFile, pdfOptions);
+            await page.DisposeAsync();
+            await browser.DisposeAsync();
             return File.ReadAllBytes(pdfFile);
         }
 
