@@ -374,7 +374,12 @@ function filterGroupViewModel(args) {
 		//	filter.Value(null);
 		//	filter.Value2(null);
 		//});
-
+		filter.Value.subscribe(function (value) {
+			filter.fmtValue(value)
+		})
+		filter.Value2.subscribe(function (value) {
+			filter.fmtValue2(value)
+		})
 		function loadLookupList(fieldId, dataFilters) {
 			if (printMode === true) return;
 			ajaxcall({
