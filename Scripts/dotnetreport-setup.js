@@ -1278,7 +1278,7 @@ var manageViewModel = function (options) {
 							table.Columns.forEach(c => c.Selected = ko.observable(true));
 						}
 
-						const tableMatch = _.some(self.Tables.model(), t => t.TableName() === tableName && t.Id() === tableId);
+						const tableMatch = _.some(self.Tables.model(), t => t.TableName() === tableName);
 
 						if (tableMatch) {
 							handleOverwriteConfirmation(tableName, function (action) {
