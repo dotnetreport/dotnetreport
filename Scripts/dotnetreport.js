@@ -1538,7 +1538,22 @@ var reportViewModel = function (options) {
 			});
 		}
 	};
-
+	self.PdfPageSize = {
+		availablePageSizes: ko.observableArray([
+			{ label: "A4", value: "A4" },
+			{ label: "Letter", value: "LETTER" },
+			{ label: "Legal", value: "LEGAL" }
+		]),
+		selectedPageSize: ko.observable("A4"),
+		isDebug:false,
+		download: function () {
+			if (self.appSettings.useAltPdf) {
+				self.downloadPdfAlt(this.selectedPageSize());
+			} else {
+				self.downloadPdf(this.isDebug,this.selectedPageSize());
+			}
+		}
+	};
 	self.ManageJsonFile = {
 		file: ko.observable(null),
 		fileName: ko.observable(''),
@@ -5337,7 +5352,7 @@ var reportViewModel = function (options) {
 		});
 	}
 
-	self.getExportJson = function () {
+	self.getExportJson = function (pageSize) {
 		var reportData = self.BuildReportData();
 		reportData.DrillDownRowUsePlaceholders = true;
 		var pivotData = self.preparePivotData();
@@ -5353,15 +5368,16 @@ var reportViewModel = function (options) {
 			pivot: self.ReportType() == 'Pivot',
 			pivotColumn: pivotData.pivotColumn,
 			pivotFunction: pivotData.pivotFunction,
+			pageSize: pageSize
 		};
 	}
 
-	self.downloadPdfAlt = function () {
-		var data = self.getExportJson();
+	self.downloadPdfAlt = function (pageSize) {
+		var data = self.getExportJson(pageSize);
 		self.downloadExport("DownloadPdfAlt", data, 'pdf');
 	}
 
-	self.downloadPdf = function (debug) {
+	self.downloadPdf = function (debug, pageSize) {
 		var reportData = self.BuildReportData();
 		reportData.DrillDownRowUsePlaceholders = true;
 		var pivotData = self.preparePivotData();
@@ -5379,7 +5395,8 @@ var reportViewModel = function (options) {
 			expandSqls: JSON.stringify(reportData),
 			pivotColumn: pivotData.pivotColumn,
 			pivotFunction: pivotData.pivotFunction,
-			debug: debug === true ? true : false
+			debug: debug === true ? true : false,
+			pageSize: pageSize
 		}, 'pdf');
 	}
 

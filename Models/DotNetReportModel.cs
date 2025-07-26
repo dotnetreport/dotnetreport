@@ -2291,7 +2291,7 @@ namespace ReportBuilder.Web.Models
         }
 
         public async static Task<byte[]> GetPdfFileAlt(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
+            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, string pageSize = "")
         {
 
             var dt = await BuildExportData(reportSql, connectKey, expandSqls, columns, pivot, pivotColumn, pivotFunction);
@@ -2322,6 +2322,19 @@ namespace ReportBuilder.Web.Models
                 void AddNewPageWithHeaders(bool firstPage = false)
                 {
                     page = document.AddPage();
+                    switch (pageSize.ToUpper())
+                    {
+                        case "LETTER":
+                            page.Size = PdfSharp.PageSize.Letter;
+                            break;
+                        case "LEGAL":
+                            page.Size = PdfSharp.PageSize.Legal;
+                            break;
+                        case "A4":
+                        default:
+                            page.Size = PdfSharp.PageSize.A4;
+                            break;
+                    }
                     if (totalWidth > page.Width) page.Width = totalWidth;
                     pageHeight = page.Height.Point - 50;
                     gfx = XGraphics.FromPdfPage(page);
@@ -2747,7 +2760,7 @@ namespace ReportBuilder.Web.Models
         }
         public async static Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
                       string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false, string expandSqls = null,
-                      string pivotColumn = null, string pivotFunction = null, bool imageOnly = false, bool debug = false)
+                      string pivotColumn = null, string pivotFunction = null, bool imageOnly = false, bool debug = false,string pageSize="")
         {
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
             await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
@@ -2879,10 +2892,24 @@ namespace ReportBuilder.Web.Models
                 PreferCSSPageSize = false,
                 MarginOptions = new MarginOptions() { Top = "0.75in", Bottom = "0.75in", Left = "0.1in", Right = "0.1in" }
             };
-
+            var normalizedPageSize = (pageSize ?? "A4").ToUpperInvariant();
+            PaperFormat selectedFormat = PaperFormat.A4;
+            switch (normalizedPageSize)
+            {
+                case "LETTER":
+                    selectedFormat = PaperFormat.Letter;
+                    break;
+                case "LEGAL":
+                    selectedFormat = PaperFormat.Legal;
+                    break;
+                case "A4":
+                default:
+                    selectedFormat = PaperFormat.A4;
+                    break;
+            }
             if (width < 900)
             {
-                pdfOptions.Format = PaperFormat.Letter;
+                pdfOptions.Format = selectedFormat;
                 pdfOptions.Landscape = false;
             }
             else
