@@ -1540,9 +1540,13 @@ var reportViewModel = function (options) {
 	};
 	self.PdfPageSize = {
 		availablePageSizes: ko.observableArray([
-			{ label: 'A4 (8.27 x 11.7 in)', value: 'A4', width: 210, height: 297,bgstyle: '#ffcccc;' },
-			{ label: 'Letter (8.5 x 11 in)', value: 'Letter', width: 216, height: 279, bgstyle: '#ccffcc;' },
-			{ label: 'Legal (8.5 x 14 in)', value: 'Legal', width: 216, height: 356, bgstyle: '#ccccff;' }
+			{ label: 'A4 (8.27 x 11.7 in)', value: 'A4', width: 210, height: 297, bgstyle: '#f9f9f9;' },
+			{ label: 'A1 (23.4 x 33.1 in)', value: 'A1', width: 594, height: 841, bgstyle: '#fff2cc;' },
+			{ label: 'A2 (16.5 x 23.4 in)', value: 'A2', width: 420, height: 594, bgstyle: '#d9ead3;' },
+			{ label: 'A3 (11.7 × 16.5 in)', value: 'A3', width: 297, height: 420, bgstyle: '#d0e0e3;' },
+			{ label: 'Letter (8.5 x 11 in)', value: 'Letter', width: 216, height: 279, bgstyle: '#d9d2e9;' },
+			{ label: 'Legal (8.5 x 14 in)', value: 'Legal', width: 216, height: 356, bgstyle: '#cfe2f3;' },
+			{ label: 'Tabloid (11 × 17 in)', value: 'Tabloid', width: 279, height: 432, bgstyle: '#ead1dc;' }
 		]),
 		selectedPageSize: ko.observable("A4"),
 		selectedPageLabel: ko.pureComputed(function () {

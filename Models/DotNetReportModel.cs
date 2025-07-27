@@ -2330,6 +2330,18 @@ namespace ReportBuilder.Web.Models
                         case "LEGAL":
                             page.Size = PdfSharp.PageSize.Legal;
                             break;
+                        case "A1":
+                            page.Size = PdfSharp.PageSize.A1;
+                            break;
+                        case "A2":
+                            page.Size = PdfSharp.PageSize.A2;
+                            break;
+                        case "A3":
+                            page.Size = PdfSharp.PageSize.A3;
+                            break;
+                        case "TABLOID":
+                            page.Size = PdfSharp.PageSize.Tabloid;
+                            break;
                         case "A4":
                         default:
                             page.Size = PdfSharp.PageSize.A4;
@@ -2902,23 +2914,37 @@ namespace ReportBuilder.Web.Models
                 case "LEGAL":
                     selectedFormat = PaperFormat.Legal;
                     break;
+                case "A1":
+                    selectedFormat = PaperFormat.A1;
+                    break;
+                case "A2":
+                    selectedFormat = PaperFormat.A2;
+                    break;
+                case "A3":
+                    selectedFormat = PaperFormat.A3;
+                    break;
+                case "TABLOID":
+                    selectedFormat = PaperFormat.Tabloid;
+                    break;
                 case "A4":
                 default:
                     selectedFormat = PaperFormat.A4;
                     break;
             }
-            if (width < 900)
-            {
-                pdfOptions.Format = selectedFormat;
-                pdfOptions.Landscape = false;
-            }
-            else
-            {
-                await page.SetViewportAsync(new ViewPortOptions { Width = width });
-                await page.AddStyleTagAsync(new AddTagOptions { Content = "@page {size: landscape }" });
-                pdfOptions.Width = $"{width}px";
-                pdfOptions.MarginOptions.Right = "0.5in";
-            }
+            pdfOptions.Format = selectedFormat;
+            pdfOptions.Landscape = false;
+            //if (width < 900)
+            //{
+            //    pdfOptions.Format = selectedFormat;
+            //    pdfOptions.Landscape = false;
+            //}
+            //else
+            //{
+            //    await page.SetViewportAsync(new ViewPortOptions { Width = width });
+            //    await page.AddStyleTagAsync(new AddTagOptions { Content = "@page {size: landscape }" });
+            //    pdfOptions.Width = $"{width}px";
+            //    pdfOptions.MarginOptions.Right = "0.5in";
+            //}
             await page.EvaluateExpressionAsync("$('.report-inner').css('transform','none')");
             await page.PdfAsync(pdfFile, pdfOptions);
             await page.DisposeAsync();
