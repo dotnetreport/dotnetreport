@@ -1540,9 +1540,9 @@ var reportViewModel = function (options) {
 	};
 	self.PdfPageSize = {
 		availablePageSizes: ko.observableArray([
-			{ label: 'A4 (8.27 x 11.7 in)', value: 'A4', width: 210, height: 297, description: '210 x 297 mm (8.27 x 11.7 inches)', bgstyle: '#ffcccc;' },
-			{ label: 'Letter (8.5 x 11 in)', value: 'Letter', width: 216, height: 279, description: '216 x 279 mm (8.5 x 11 inches)', bgstyle: '#ccffcc;' },
-			{ label: 'Legal (8.5 x 14 in)', value: 'Legal', width: 216, height: 356, description: '216 x 356 mm (8.5 x 14 inches)', bgstyle: '#ccccff;' }
+			{ label: 'A4 (8.27 x 11.7 in)', value: 'A4', width: 210, height: 297,bgstyle: '#ffcccc;' },
+			{ label: 'Letter (8.5 x 11 in)', value: 'Letter', width: 216, height: 279, bgstyle: '#ccffcc;' },
+			{ label: 'Legal (8.5 x 14 in)', value: 'Legal', width: 216, height: 356, bgstyle: '#ccccff;' }
 		]),
 		selectedPageSize: ko.observable("A4"),
 		selectedPageLabel: ko.pureComputed(function () {
@@ -1561,11 +1561,6 @@ var reportViewModel = function (options) {
 			const page = self.PdfPageSize.availablePageSizes().find(p => p.value === self.PdfPageSize.selectedPageSize());
 			return page ? (page.height / 3) + 'px' : '150px'; // scaled down
 		}),
-		selectedPageSizeDescription: ko.pureComputed(function () {
-			const selected = self.PdfPageSize.availablePageSizes()
-				.find(p => p.value === self.PdfPageSize.selectedPageSize());
-			return selected ? selected.description : '';
-		}), 
 		selectedBackgroundStyle: ko.pureComputed(function () {
 			const selected = self.PdfPageSize.availablePageSizes()
 				.find(p => p.value === self.PdfPageSize.selectedPageSize());
