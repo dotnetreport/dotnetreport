@@ -801,16 +801,29 @@ Its Recommended you use it as is, and only change styling as needed to match you
 
 <div class="modal" id="pdfOptionsModal" tabindex="-1" aria-labelledby="pdfOptionsModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content modal-lg modal-dialog-centered" data-bind="with: PdfPageSize">
+        <div class="modal-content" data-bind="with: PdfPageSize">
             <div class="modal-header">
                 <h5 class="modal-title" id="pdfOptionsModalLabel"><i class="fa fa-file-pdf-o me-2"></i> Export to PDF</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body row g-0">
-                <!-- Left Side: Page Preview Image -->
+                <!-- Left Side: Page Preview SVG -->
                 <div class="col-md-5 d-flex justify-content-center align-items-center">
-                    <img id="pagePreviewImage" src="" alt="Page Preview" class="img-thumbnail shadow" style="max-height: 300px;" data-bind="attr: { src: selectedPreviewImage }">
+                    <div id="pagePreviewBox" class="text-center">
+                             <div data-bind="style: {
+                                     width: selectedWidth(),
+                                     height: selectedHeight(),
+                                     backgroundColor: selectedBackgroundStyle(),
+                                     transition: `'all 0.3s ease'`
+                                 }"
+                             class="shadow rounded mx-auto mb-2 border position-relative">
+                            <span class="position-absolute top-50 start-50 translate-middle text-muted small">Preview</span>
+                        </div>
+                        <div data-bind="text: selectedPageLabel" class="fw-bold"></div>
+                        <div data-bind="text: selectedPageDimension" class="text-muted small"></div>
+                    </div>
                 </div>
+
                 <!-- Right Side: Form Options -->
                 <div class="col-md-7">
                     <div class="mb-3">
