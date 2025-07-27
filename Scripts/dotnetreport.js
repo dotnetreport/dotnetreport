@@ -1540,17 +1540,28 @@ var reportViewModel = function (options) {
 	};
 	self.PdfPageSize = {
 		availablePageSizes: ko.observableArray([
-			{ label: "A4", value: "A4" },
-			{ label: "Letter", value: "LETTER" },
-			{ label: "Legal", value: "LEGAL" }
+			{ label: 'A4 (8.27 x 11.7 in)', value: 'A4', image: 'images/a4.png', description: '210 x 297 mm (8.27 x 11.7 inches)' },
+			{ label: 'Letter (8.5 x 11 in)', value: 'Letter', image: 'images/letter.png', description: '216 x 279 mm (8.5 x 11 inches)' },
+			{ label: 'Legal (8.5 x 14 in)', value: 'Legal', image: 'images/legal.png', description: '216 x 356 mm (8.5 x 14 inches)' }
 		]),
 		selectedPageSize: ko.observable("A4"),
-		isDebug:false,
+		selectedPreviewImage: ko.pureComputed(function () {
+			const selected = self.PdfPageSize.availablePageSizes()
+				.find(p => p.value === self.PdfPageSize.selectedPageSize());
+			return selected ? selected.image : '';
+		}),
+		selectedPageSizeDescription: ko.pureComputed(function () {
+			const selected = self.PdfPageSize.availablePageSizes()
+				.find(p => p.value === self.PdfPageSize.selectedPageSize());
+			return selected ? selected.description : '';
+		}),
+		isDebug: false,
 		download: function () {
+			const selectedSize = self.PdfPageSize.selectedPageSize();
 			if (self.appSettings.useAltPdf) {
-				self.downloadPdfAlt(this.selectedPageSize());
+				self.downloadPdfAlt(selectedSize);
 			} else {
-				self.downloadPdf(this.isDebug,this.selectedPageSize());
+				self.downloadPdf(self.PdfPageSize.isDebug, selectedSize);
 			}
 		}
 	};
