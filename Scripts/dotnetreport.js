@@ -137,7 +137,7 @@ function linkFieldViewModel(args, options) {
 	}
 }
 
-function scheduleBuilder(userId, getTimeZonesUrl) {
+function scheduleBuilder(userId, getTimeZonesUrl,appSettings) {
 	var self = this;
 
 	self.options = ['day', 'week', 'month', 'year', 'once', 'hour'];
@@ -176,7 +176,7 @@ function scheduleBuilder(userId, getTimeZonesUrl) {
 	self.scheduleEnd = ko.observable();
 	self.format = ko.observable('');
 	self.format.subscribe(function (val) {
-		if (val === 'PDF') {
+		if (val === 'PDF' && appSettings.showPdfPageSize) {
 			$('#pdfOptionsScheduleModal').modal('show');
 		}
 	});
@@ -1480,7 +1480,7 @@ var reportViewModel = function (options) {
 				item.tableId !== undefined && item.tableId !== null && item.tableId != 0;
 		});
 	});
-	self.scheduleBuilder = new scheduleBuilder(self.userIdForSchedule, options.getTimeZonesUrl);
+	self.scheduleBuilder = new scheduleBuilder(self.userIdForSchedule, options.getTimeZonesUrl, self.appSettings);
 
 	self.ManageFolder = {
 		FolderName: ko.observable(),
@@ -5956,7 +5956,7 @@ var dashboardViewModel = function (options) {
 		Name: ko.observable(currentDash.name),
 		Description: ko.observable(currentDash.description),
 		manageAccess: manageAccess(options),
-		scheduleBuilder: new scheduleBuilder(options.userId, options.getTimeZonesUrl),
+		scheduleBuilder: new scheduleBuilder(options.userId, options.getTimeZonesUrl, self.appSettings),
 		PdfPageSize: new PdfPageSizeViewModel()
 	};
 	self.dateFormatMappings = {
