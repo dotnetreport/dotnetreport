@@ -2280,6 +2280,7 @@ var settingPageViewModel = function (options) {
 	self.useAltPdf = ko.observable(false);
 	self.useAltPivot = ko.observable(false);
 	self.dontXmlExport = ko.observable(false);
+	self.showPdfPageSize = ko.observable(false);
 
 	self.appThemes = ko.observableArray([
 		{ name: 'Default', value: 'default' },
@@ -2354,7 +2355,8 @@ var settingPageViewModel = function (options) {
 							allowUsersToCreateReports: self.allowUsersToCreateReports(),
 							useAltPdf: self.useAltPdf(),
 							useAltPivot: self.useAltPivot(),
-							dontXmlExport: self.dontXmlExport()
+							dontXmlExport: self.dontXmlExport(),
+							showPdfPageSize: self.showPdfPageSize()
 						})
 					})
 				})
@@ -2407,6 +2409,7 @@ var settingPageViewModel = function (options) {
 				self.useAltPdf(settings.useAltPdf);
 				self.useAltPivot(settings.useAltPivot);
 				self.dontXmlExport(settings.dontXmlExport);
+				self.showPdfPageSize(settings.showPdfPageSize);
 ;
 				//// Optionally, you can manually trigger change event for select elements
 				$('#themeSelect').trigger('change');

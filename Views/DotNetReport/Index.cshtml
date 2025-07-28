@@ -542,17 +542,24 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end">
                                     <li data-bind="hidden: appSettings.useAltPdf">
-                                        <a href="#" class="dropdown-item" data-bind="click: function() { PdfPageSize.isDebug = false; $('#pdfOptionsModal').modal('show'); }">
+                                        <a href="#" class="dropdown-item" data-bind="click: appSettings.showPdfPageSize
+                                              ? function() { PdfPageSize.isDebug = false; $('#pdfOptionsModal').modal('show'); }
+                                              : function() { downloadPdf(false); }">
                                             <i class="fa fa-file-pdf-o"></i> Pdf
                                         </a>
                                     </li>
+
                                     <li data-bind="visible: adminMode() && !appSettings.useAltPdf">
-                                        <a href="#" class="dropdown-item" data-bind="click: function() { PdfPageSize.isDebug = true; $('#pdfOptionsModal').modal('show'); }">
+                                        <a href="#" class="dropdown-item" data-bind="click: appSettings.showPdfPageSize
+                                              ? function() { PdfPageSize.isDebug = true; $('#pdfOptionsModal').modal('show'); }
+                                              : function() { downloadPdf(true); }">
                                             <i class="fa fa-file-pdf-o"></i> Pdf (Debug)
                                         </a>
                                     </li>
                                     <li data-bind="visible: appSettings.useAltPdf">
-                                        <a href="#" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#pdfOptionsModal">
+                                        <a href="#" class="dropdown-item" data-bind="click: appSettings.showPdfPageSize
+                                              ? function() { $('#pdfOptionsModal').modal('show'); }
+                                              : function() { downloadPdfAlt(); }">
                                             <i class="fa fa-file-pdf-o"></i> Pdf
                                         </a>
                                     </li>

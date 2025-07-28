@@ -262,6 +262,11 @@
                                     <label class="form-check-label">Hide XML Export option</label>
                                     <small class="text-muted d-block">Remove XML Export option, as it's not common for all users'.</small>
                                 </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: showPdfPageSize">
+                                    <label class="form-check-label">Show Page Size on PDF export</label>
+                                    <small class="text-muted d-block">Display document dimensions in exported PDF.</small>
+                                </div>
                             </div>
                         </div>
                         <button type="button" id="saveAppSettings" class="btn btn-primary" data-bind="click: saveAppSettings">Save</button>

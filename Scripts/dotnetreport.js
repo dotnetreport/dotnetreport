@@ -5275,6 +5275,7 @@ var reportViewModel = function (options) {
 			self.appSettings.useAltPdf = x.useAltPdf;
 			self.appSettings.useAltPivot = x.useAltPivot;
 			self.appSettings.dontXmlExport = x.dontXmlExport;
+			self.appSettings.showPdfPageSize = x.showPdfPageSize;
 		});
 	}
 
