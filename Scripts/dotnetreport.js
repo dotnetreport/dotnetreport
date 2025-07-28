@@ -174,8 +174,14 @@ function scheduleBuilder(userId, getTimeZonesUrl) {
 	self.hasScheduleEnd = ko.observable(false);
 	self.scheduleStart = ko.observable();
 	self.scheduleEnd = ko.observable();
-	self.format = ko.observable('')
+	self.format = ko.observable('');
+	self.format.subscribe(function (val) {
+		if (val === 'PDF') {
+			$('#pdfOptionsScheduleModal').modal('show');
+		}
+	});
 
+	self.PdfPageSize = new PdfPageSizeViewModel();
 	self.selectedOption.subscribe(function (newValue) {
 		self.selectedDays([]);
 		self.selectedMonths([]);
@@ -244,7 +250,10 @@ function scheduleBuilder(userId, getTimeZonesUrl) {
 			ScheduleStart: self.hasScheduleStart() ? self.scheduleStart() : '',
 			ScheduleEnd: self.hasScheduleEnd() ? self.scheduleEnd() : '',
 			Format: self.format(),
-			TimeZone: self.selectedTimezone() 
+			TimeZone: self.selectedTimezone(),
+			SelectedPageSize: ko.contextFor(document.getElementById('pdfOptionsScheduleModal'))?.$data?.dashboard?.PdfPageSize?.selectedPageSize()
+				? ko.contextFor(document.getElementById('pdfOptionsScheduleModal')).$data.dashboard?.PdfPageSize.selectedPageSize()
+				: ko.contextFor(document.getElementById('pdfOptionsScheduleModal')).$data.PdfPageSize.selectedPageSize()
 		} : null;
 	};
 
@@ -285,7 +294,51 @@ function scheduleBuilder(userId, getTimeZonesUrl) {
 		self.fromJs(null);
 	}
 }
-
+function PdfPageSizeViewModel(appSettings, downloadPdf, downloadPdfAlt) {
+	var self = this;
+	self.availablePageSizes = ko.observableArray([
+		{ label: 'A4 (8.27 x 11.7 in)', value: 'A4', width: 210, height: 297, bgstyle: '#f9f9f9;' },
+		{ label: 'A1 (23.4 x 33.1 in)', value: 'A1', width: 594, height: 841, bgstyle: '#fff2cc;' },
+		{ label: 'A2 (16.5 x 23.4 in)', value: 'A2', width: 420, height: 594, bgstyle: '#d9ead3;' },
+		{ label: 'A3 (11.7 × 16.5 in)', value: 'A3', width: 297, height: 420, bgstyle: '#d0e0e3;' },
+		{ label: 'Letter (8.5 x 11 in)', value: 'Letter', width: 216, height: 279, bgstyle: '#d9d2e9;' },
+		{ label: 'Legal (8.5 x 14 in)', value: 'Legal', width: 216, height: 356, bgstyle: '#cfe2f3;' },
+		{ label: 'Tabloid (11 × 17 in)', value: 'Tabloid', width: 279, height: 432, bgstyle: '#ead1dc;' }
+	]);
+	self.selectedPageSize = ko.observable("A4");
+	self.selectedPageLabel = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		return page ? page.label : '';
+	});
+	self.selectedPageDimension = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		return page ? `${page.width}mm x ${page.height}mm` : '';
+	});
+	self.selectedWidth = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		return page ? (page.width / 3) + 'px' : '100px';
+	});
+	self.selectedHeight = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		return page ? (page.height / 3) + 'px' : '150px';
+	});
+	self.selectedBackgroundStyle = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		return page ? page.bgstyle : '#f5f5f5';
+	});
+	self.isDebug = false;
+	self.download = function () {
+		const selectedSize = self.selectedPageSize();
+		if (appSettings?.useAltPdf) {
+			downloadPdfAlt(selectedSize);
+		} else {
+			downloadPdf(self.isDebug, selectedSize);
+		}
+	};
+	self.save = function () {
+		return self.selectedPageSize();
+	}
+}
 function filterGroupViewModel(args) {
 	args = args || {};
 	var self = this;
@@ -1206,7 +1259,8 @@ var reportViewModel = function (options) {
 		showEmptyFolders: false,
 		useAltPdf: false,
 		useAltPivot: false,
-		dontXmlExport: false
+		dontXmlExport: false,
+		showPdfPageSize: false,
 	};
 	self.runQuery = function (useAi) {
 		self.SelectedFields([]);
@@ -1536,48 +1590,6 @@ var reportViewModel = function (options) {
 					});
 				}
 			});
-		}
-	};
-	self.PdfPageSize = {
-		availablePageSizes: ko.observableArray([
-			{ label: 'A4 (8.27 x 11.7 in)', value: 'A4', width: 210, height: 297, bgstyle: '#f9f9f9;' },
-			{ label: 'A1 (23.4 x 33.1 in)', value: 'A1', width: 594, height: 841, bgstyle: '#fff2cc;' },
-			{ label: 'A2 (16.5 x 23.4 in)', value: 'A2', width: 420, height: 594, bgstyle: '#d9ead3;' },
-			{ label: 'A3 (11.7 × 16.5 in)', value: 'A3', width: 297, height: 420, bgstyle: '#d0e0e3;' },
-			{ label: 'Letter (8.5 x 11 in)', value: 'Letter', width: 216, height: 279, bgstyle: '#d9d2e9;' },
-			{ label: 'Legal (8.5 x 14 in)', value: 'Legal', width: 216, height: 356, bgstyle: '#cfe2f3;' },
-			{ label: 'Tabloid (11 × 17 in)', value: 'Tabloid', width: 279, height: 432, bgstyle: '#ead1dc;' }
-		]),
-		selectedPageSize: ko.observable("A4"),
-		selectedPageLabel: ko.pureComputed(function () {
-			const page = self.PdfPageSize.availablePageSizes().find(p => p.value === self.PdfPageSize.selectedPageSize());
-			return page ? page.label : '';
-		}),
-		selectedPageDimension: ko.pureComputed(function () {
-			const page = self.PdfPageSize.availablePageSizes().find(p => p.value === self.PdfPageSize.selectedPageSize());
-			return page ? `${page.width}mm x ${page.height}mm` : '';
-		}),
-		selectedWidth: ko.pureComputed(function () {
-			const page = self.PdfPageSize.availablePageSizes().find(p => p.value === self.PdfPageSize.selectedPageSize());
-			return page ? (page.width / 3) + 'px' : '100px'; // scaled down
-		}),
-		selectedHeight: ko.pureComputed(function () {
-			const page = self.PdfPageSize.availablePageSizes().find(p => p.value === self.PdfPageSize.selectedPageSize());
-			return page ? (page.height / 3) + 'px' : '150px'; // scaled down
-		}),
-		selectedBackgroundStyle: ko.pureComputed(function () {
-			const selected = self.PdfPageSize.availablePageSizes()
-				.find(p => p.value === self.PdfPageSize.selectedPageSize());
-			return selected ? selected.bgstyle : '#f5f5f5';
-		}),
-		isDebug: false,
-		download: function () {
-			const selectedSize = self.PdfPageSize.selectedPageSize();
-			if (self.appSettings.useAltPdf) {
-				self.downloadPdfAlt(selectedSize);
-			} else {
-				self.downloadPdf(self.PdfPageSize.isDebug, selectedSize);
-			}
 		}
 	};
 	self.ManageJsonFile = {
@@ -5426,7 +5438,7 @@ var reportViewModel = function (options) {
 			pageSize: pageSize
 		}, 'pdf');
 	}
-
+	self.PdfPageSize = new PdfPageSizeViewModel(self.appSettings, self.downloadPdf, self.downloadPdfAlt);
 	self.runExcelDownload = function (expand) {
 		var hasOnlyAndGroupInDetail = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Only in Detail' || x.selectedAggregate() == 'Group in Detail'}) != null;
 		var onlyAndGroupInDetailColumnDetails = _.filter(self.SelectedFields(), function (x) { return x.selectedAggregate() === 'Only in Detail' || x.selectedAggregate() == 'Group in Detail'; });
@@ -5909,7 +5921,8 @@ var dashboardViewModel = function (options) {
 		showEmptyFolders: false,
 		useAltPdf: false,
 		useAltPivot: false,
-		dontXmlExport: false
+		dontXmlExport: false,
+		showPdfPageSize:false,
 	};
 	self.loadAppSettings = function () {
 		return ajaxcall({
@@ -5934,6 +5947,7 @@ var dashboardViewModel = function (options) {
 			self.appSettings.useAltPdf = x.useAltPdf;
 			self.appSettings.useAltPivot = x.useAltPivot;
 			self.appSettings.dontXmlExport = x.dontXmlExport;
+			self.appSettings.showPdfPageSize = x.showPdfPageSize;
 		});
 	}
 
@@ -5942,7 +5956,8 @@ var dashboardViewModel = function (options) {
 		Name: ko.observable(currentDash.name),
 		Description: ko.observable(currentDash.description),
 		manageAccess: manageAccess(options),
-		scheduleBuilder: new scheduleBuilder(options.userId, options.getTimeZonesUrl)
+		scheduleBuilder: new scheduleBuilder(options.userId, options.getTimeZonesUrl),
+		PdfPageSize: new PdfPageSizeViewModel()
 	};
 	self.dateFormatMappings = {
 		'United States': 'mm/dd/yy',
