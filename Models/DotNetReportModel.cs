@@ -2904,47 +2904,45 @@ namespace ReportBuilder.Web.Models
                 PreferCSSPageSize = false,
                 MarginOptions = new MarginOptions() { Top = "0.75in", Bottom = "0.75in", Left = "0.1in", Right = "0.1in" }
             };
-            var normalizedPageSize = (pageSize ?? "A4").ToUpperInvariant();
-            PaperFormat selectedFormat = PaperFormat.A4;
-            switch (normalizedPageSize)
+            if (!String.IsNullOrEmpty(pageSize))
             {
-                case "LETTER":
-                    selectedFormat = PaperFormat.Letter;
-                    break;
-                case "LEGAL":
-                    selectedFormat = PaperFormat.Legal;
-                    break;
-                case "A1":
-                    selectedFormat = PaperFormat.A1;
-                    break;
-                case "A2":
-                    selectedFormat = PaperFormat.A2;
-                    break;
-                case "A3":
-                    selectedFormat = PaperFormat.A3;
-                    break;
-                case "TABLOID":
-                    selectedFormat = PaperFormat.Tabloid;
-                    break;
-                case "A4":
-                default:
-                    selectedFormat = PaperFormat.A4;
-                    break;
+                var normalizedPageSize = (pageSize ?? "A4").ToUpperInvariant();
+                PaperFormat selectedFormat = PaperFormat.A4;
+                switch (normalizedPageSize)
+                {
+                    case "LETTER":
+                        selectedFormat = PaperFormat.Letter;
+                        break;
+                    case "LEGAL":
+                        selectedFormat = PaperFormat.Legal;
+                        break;
+                    case "A1":
+                        selectedFormat = PaperFormat.A1;
+                        break;
+                    case "A2":
+                        selectedFormat = PaperFormat.A2;
+                        break;
+                    case "A3":
+                        selectedFormat = PaperFormat.A3;
+                        break;
+                    case "TABLOID":
+                        selectedFormat = PaperFormat.Tabloid;
+                        break;
+                    case "A4":
+                    default:
+                        selectedFormat = PaperFormat.A4;
+                        break;
+                }
+                pdfOptions.Format = selectedFormat;
+                pdfOptions.Landscape = false;
             }
-            pdfOptions.Format = selectedFormat;
-            pdfOptions.Landscape = false;
-            //if (width < 900)
-            //{
-            //    pdfOptions.Format = selectedFormat;
-            //    pdfOptions.Landscape = false;
-            //}
-            //else
-            //{
-            //    await page.SetViewportAsync(new ViewPortOptions { Width = width });
-            //    await page.AddStyleTagAsync(new AddTagOptions { Content = "@page {size: landscape }" });
-            //    pdfOptions.Width = $"{width}px";
-            //    pdfOptions.MarginOptions.Right = "0.5in";
-            //}
+            else
+            {
+                await page.SetViewportAsync(new ViewPortOptions { Width = width });
+                await page.AddStyleTagAsync(new AddTagOptions { Content = "@page {size: landscape }" });
+                pdfOptions.Width = $"{width}px";
+                pdfOptions.MarginOptions.Right = "0.5in";
+            }
             await page.EvaluateExpressionAsync("$('.report-inner').css('transform','none')");
             await page.PdfAsync(pdfFile, pdfOptions);
             await page.DisposeAsync();
