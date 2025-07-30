@@ -2322,30 +2322,33 @@ namespace ReportBuilder.Web.Models
                 void AddNewPageWithHeaders(bool firstPage = false)
                 {
                     page = document.AddPage();
-                    switch (pageSize.ToUpper())
+                    if (!String.IsNullOrEmpty(pageSize))
                     {
-                        case "LETTER":
-                            page.Size = PdfSharp.PageSize.Letter;
-                            break;
-                        case "LEGAL":
-                            page.Size = PdfSharp.PageSize.Legal;
-                            break;
-                        case "A1":
-                            page.Size = PdfSharp.PageSize.A1;
-                            break;
-                        case "A2":
-                            page.Size = PdfSharp.PageSize.A2;
-                            break;
-                        case "A3":
-                            page.Size = PdfSharp.PageSize.A3;
-                            break;
-                        case "TABLOID":
-                            page.Size = PdfSharp.PageSize.Tabloid;
-                            break;
-                        case "A4":
-                        default:
-                            page.Size = PdfSharp.PageSize.A4;
-                            break;
+                        switch (pageSize.ToUpper())
+                        {
+                            case "LETTER":
+                                page.Size = PdfSharp.PageSize.Letter;
+                                break;
+                            case "LEGAL":
+                                page.Size = PdfSharp.PageSize.Legal;
+                                break;
+                            case "A1":
+                                page.Size = PdfSharp.PageSize.A1;
+                                break;
+                            case "A2":
+                                page.Size = PdfSharp.PageSize.A2;
+                                break;
+                            case "A3":
+                                page.Size = PdfSharp.PageSize.A3;
+                                break;
+                            case "TABLOID":
+                                page.Size = PdfSharp.PageSize.Tabloid;
+                                break;
+                            case "A4":
+                            default:
+                                page.Size = PdfSharp.PageSize.A4;
+                                break;
+                        }
                     }
                     if (totalWidth > page.Width) page.Width = totalWidth;
                     pageHeight = page.Height.Point - 50;
