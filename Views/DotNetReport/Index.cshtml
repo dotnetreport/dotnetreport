@@ -531,7 +531,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <i class="fa fa-refresh"></i>
                                 <span>Refresh</span>
                             </button>
-                            <button class="btn btn-light btn-sm" data-bind="visible: CanSaveReports(), click: SaveWithoutRun">
+                            <button class="btn btn-light btn-sm" data-bind="visible: $root.CanEdit(), click: SaveWithoutRun">
                                 <i class="fa fa-save"></i>
                                 <span>Save Report</span>
                             </button>

@@ -2989,10 +2989,9 @@ var reportViewModel = function (options) {
 				pivotFunction: ''
 			})
 		}).done(function () {
-			self.RunReport(false);
+			self.ExecuteReport();
 		});
 
-		self.RunReport(false);
 	}
 
 	self.copySqlToClipboard = function (button) {
