@@ -703,6 +703,7 @@ var manageViewModel = function (options) {
 		}).done(function (x) {
 			if (x.success) {
 				toastr.success("Saved Categories ");
+				self.LoadCategories();
 			} else {
 				toastr.error("Error saving Categories ");
 			}
@@ -763,7 +764,7 @@ var manageViewModel = function (options) {
 			if (result.d) result = result.d;
 			self.Tables.model().forEach(function (t) {
 				t.Categories(_.map(t.Categories(), function (e) {
-					return result.find(r => r.Id === e.Id());
+					return result.find(r => r.Id === (typeof e.Id === 'function' ? e.Id() : e.Id));
 				}).filter(Boolean));
 			});
 			self.Categories(result);
