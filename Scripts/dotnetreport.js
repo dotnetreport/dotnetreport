@@ -175,11 +175,12 @@ function scheduleBuilder(userId, getTimeZonesUrl,appSettings) {
 	self.scheduleStart = ko.observable();
 	self.scheduleEnd = ko.observable();
 	self.format = ko.observable('');
-	self.format.subscribe(function (val) {
-		if (val === 'PDF' && appSettings.showPdfPageSize) {
+	self.onFormatChange = function (data, event) {
+		const selectedValue = event.target.value;
+		if (selectedValue === 'PDF' && appSettings.showPdfPageSize) {
 			$('#pdfOptionsScheduleModal').modal('show');
 		}
-	});
+	};
 
 	self.PdfPageSize = new PdfPageSizeViewModel();
 	self.selectedOption.subscribe(function (newValue) {
@@ -305,7 +306,7 @@ function PdfPageSizeViewModel(appSettings, downloadPdf, downloadPdfAlt) {
 		{ label: 'Legal (8.5 x 14 in)', value: 'Legal', width: 216, height: 356, bgstyle: '#cfe2f3;' },
 		{ label: 'Tabloid (11 × 17 in)', value: 'Tabloid', width: 279, height: 432, bgstyle: '#ead1dc;' }
 	]);
-	self.selectedPageSize = ko.observable("A4");
+	self.selectedPageSize = ko.observable("");
 	self.selectedPageLabel = ko.pureComputed(function () {
 		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
 		return page ? page.label : '';

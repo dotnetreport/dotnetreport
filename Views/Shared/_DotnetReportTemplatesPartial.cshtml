@@ -787,7 +787,7 @@
                     </div>
                     <label class="col-sm-1 col-form-label">Format</label>
                     <div class="col-sm-2">
-                        <select class="form-select" data-bind="value: format">
+                        <select class="form-select" data-bind="value: format,event: { change: onFormatChange }">
                             <option value="EXCEL">Excel</option>
                             @* <option data-bind="visible: $parent.canDrilldown()" value="EXCEL-SUB">Excel (Expanded)</option> *@
                             <option value="CSV">CSV</option>
