@@ -5241,7 +5241,7 @@ var reportViewModel = function (options) {
 			self.appSettings.noDefaultFolder = x.noDefaultFolder;
 			self.appSettings.showEmptyFolders = x.showEmptyFolders;
 			self.appSettings.useAltPdf = x.useAltPdf;
-			self.appSettings.useAltPivot = x.useAltPivot;
+			self.appSettings.useAltPivot = x.useAltPivot === true;
 			self.appSettings.dontXmlExport = x.dontXmlExport;
 		});
 	}
