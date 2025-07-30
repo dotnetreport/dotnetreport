@@ -573,7 +573,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             <i class="fa fa-file-excel-o"></i> Excel (Expanded)
                                         </a>
                                     </li>
-                                    <li>
+                                    <li data-bind="hidden: appSettings.dontWordExport">
                                         <a class="dropdown-item" href="#" data-bind="click: downloadWord">
                                             <span class="fa fa-file-word-o"></span> Word
                                         </a>

@@ -251,9 +251,9 @@ function scheduleBuilder(userId, getTimeZonesUrl,appSettings) {
 			ScheduleEnd: self.hasScheduleEnd() ? self.scheduleEnd() : '',
 			Format: self.format(),
 			TimeZone: self.selectedTimezone(),
-			SelectedPageSize: ko.contextFor(document.getElementById('pdfOptionsScheduleModal'))?.$data?.dashboard?.PdfPageSize?.selectedPageSize()
-				? ko.contextFor(document.getElementById('pdfOptionsScheduleModal')).$data.dashboard?.PdfPageSize.selectedPageSize()
-				: ko.contextFor(document.getElementById('pdfOptionsScheduleModal')).$data.PdfPageSize.selectedPageSize()
+			SelectedPageSize: ko.contextFor(document.getElementById('pdfOptionsScheduleModal'))?.$data?.PdfPageSize?.selectedPageSize()
+				? ko.contextFor(document.getElementById('pdfOptionsScheduleModal'))?.$data?.PdfPageSize?.selectedPageSize()
+				: ko.contextFor(document.getElementById('pdfOptionsScheduleModal'))?.$data?.dashboard?.PdfPageSize?.selectedPageSize()
 		} : null;
 	};
 
@@ -1260,6 +1260,7 @@ var reportViewModel = function (options) {
 		useAltPdf: false,
 		useAltPivot: false,
 		dontXmlExport: false,
+		dontWordExport: false,
 		showPdfPageSize: false,
 	};
 	self.runQuery = function (useAi) {
@@ -5287,6 +5288,7 @@ var reportViewModel = function (options) {
 			self.appSettings.useAltPdf = x.useAltPdf;
 			self.appSettings.useAltPivot = x.useAltPivot;
 			self.appSettings.dontXmlExport = x.dontXmlExport;
+			self.appSettings.dontWordExport = x.dontWordExport;
 			self.appSettings.showPdfPageSize = x.showPdfPageSize;
 		});
 	}
@@ -5922,6 +5924,7 @@ var dashboardViewModel = function (options) {
 		useAltPdf: false,
 		useAltPivot: false,
 		dontXmlExport: false,
+		dontWordExport: false,
 		showPdfPageSize:false,
 	};
 	self.loadAppSettings = function () {
@@ -5947,6 +5950,7 @@ var dashboardViewModel = function (options) {
 			self.appSettings.useAltPdf = x.useAltPdf;
 			self.appSettings.useAltPivot = x.useAltPivot;
 			self.appSettings.dontXmlExport = x.dontXmlExport;
+			self.appSettings.dontWordExport = x.dontWordExport;
 			self.appSettings.showPdfPageSize = x.showPdfPageSize;
 		});
 	}

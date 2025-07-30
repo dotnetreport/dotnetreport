@@ -2280,6 +2280,7 @@ var settingPageViewModel = function (options) {
 	self.useAltPdf = ko.observable(false);
 	self.useAltPivot = ko.observable(false);
 	self.dontXmlExport = ko.observable(false);
+	self.dontWordExport = ko.observable(false);
 	self.showPdfPageSize = ko.observable(false);
 
 	self.appThemes = ko.observableArray([
@@ -2356,6 +2357,7 @@ var settingPageViewModel = function (options) {
 							useAltPdf: self.useAltPdf(),
 							useAltPivot: self.useAltPivot(),
 							dontXmlExport: self.dontXmlExport(),
+							dontWordExport: self.dontWordExport(),
 							showPdfPageSize: self.showPdfPageSize()
 						})
 					})
@@ -2409,6 +2411,7 @@ var settingPageViewModel = function (options) {
 				self.useAltPdf(settings.useAltPdf);
 				self.useAltPivot(settings.useAltPivot);
 				self.dontXmlExport(settings.dontXmlExport);
+				self.dontWordExport(settings.dontWordExport);
 				self.showPdfPageSize(settings.showPdfPageSize);
 ;
 				//// Optionally, you can manually trigger change event for select elements
