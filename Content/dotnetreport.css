@@ -1572,3 +1572,20 @@ tfoot tr.sub-total {
 #search-input:focus:empty::before {
     content: attr(data-placeholder);
 }
+.toggle-icon {
+    background-color: white;
+    color: black;
+    border: 2px solid black;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 12px;
+}
+.toggle-icon:hover {
+    background-color: #f0f0f0;
+}

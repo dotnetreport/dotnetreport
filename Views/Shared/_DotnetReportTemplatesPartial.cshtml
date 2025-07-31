@@ -408,8 +408,8 @@
 
         <div class="row small">
             <div class="col-md-6">
-                <b>Manage by User</b> (allow edit)
-                <div class="row container-fluid">
+                <b>Manage by User</b> (allow edit) <i class="toggle-icon fa" data-bind="click: toggleManageUsers,css: { 'fa-chevron-down': showManageUsers(), 'fa-chevron-right': !showManageUsers() }"></i>
+                <div class="row container-fluid" data-bind="visible: showManageUsers">
                     <!-- ko foreach: users -->
                     <div class="pull-left">
                         <div class="checkbox">
@@ -424,8 +424,8 @@
                     </div>
                 </div>
                 <br />
-                <b>View only by User</b> (no edit/delete)
-                <div class="row container-fluid">
+                <b>View only by User</b> (no edit/delete) <i class="toggle-icon fa" data-bind="click: toggleViewUsers,css: { 'fa-chevron-down': showViewUsers(), 'fa-chevron-right': !showViewUsers() }"></i>
+                <div class="row container-fluid" data-bind="visible: showViewUsers">
                     <!-- ko foreach: viewOnlyUsers -->
                     <div class="pull-left">
                         <div class="checkbox">
@@ -441,8 +441,8 @@
                 </div>
                 <br />
                 <div data-bind="ifnot: isDashboard">
-                    <b>Delete by User</b> (allow delete)
-                    <div class="row container-fluid">
+                    <b>Delete by User</b> (allow delete) <i class="toggle-icon fa" data-bind="click: toggleDeleteUsers,css: { 'fa-chevron-down': showDeleteUsers(), 'fa-chevron-right': !showDeleteUsers() }"></i>
+                    <div class="row container-fluid" data-bind="visible: showDeleteUsers">
                         <!-- ko foreach: deleteOnlyUsers -->
                         <div class="pull-left">
                             <div class="checkbox">
@@ -460,8 +460,8 @@
                 </div>
             </div>
             <div class="col-md-6">
-                <b>Manage by User Role</b> (allow edit)
-                <div class="row container-fluid">
+                <b>Manage by User Role</b> (allow edit) <i class="toggle-icon fa" data-bind="click: toggleManageRoles,css: { 'fa-chevron-down': showManageRoles(), 'fa-chevron-right': !showManageRoles() }"></i>
+                <div class="row container-fluid" data-bind="visible: showManageRoles">
                     <!-- ko foreach: userRoles -->
                     <div class="pull-left">
                         <div class="checkbox">
@@ -476,8 +476,8 @@
                     </div>
                 </div>
                 <br />
-                <b>View only by User Role</b> (no edit/delete)
-                <div class="row container-fluid">
+                <b>View only by User Role</b> (no edit/delete) <i class="toggle-icon fa" data-bind="click: toggleViewRoles,css: { 'fa-chevron-down': showViewRoles(), 'fa-chevron-right': !showViewRoles() }"></i>
+                <div class="row container-fluid" data-bind="visible: showViewRoles">
                     <!-- ko foreach: viewOnlyUserRoles -->
                     <div class="pull-left">
                         <div class="checkbox">
@@ -492,9 +492,8 @@
                     </div>
                 </div>
                 <div data-bind="ifnot: isDashboard">
-                    <br />
-                    <b>Delete by User Role</b> (allow delete)
-                    <div class="row container-fluid">
+                    <b>Delete by User Role</b> (allow delete) <i class="toggle-icon fa" data-bind="click: toggleDeleteRoles,css: { 'fa-chevron-down': showDeleteRoles(), 'fa-chevron-right': !showDeleteRoles() }"></i>
+                    <div class="row container-fluid" data-bind="visible: showDeleteRoles">
                         <!-- ko foreach: deleteOnlyUserRoles -->
                         <div class="pull-left">
                             <div class="checkbox">
