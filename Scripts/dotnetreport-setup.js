@@ -1280,7 +1280,11 @@ var manageViewModel = function (options) {
 									const mapped = ko.mapping.fromJS(table);
 									self.Tables.model.push(self.Tables.processTable(mapped));
 									const newTable = self.Tables.model()[self.Tables.model().length - 1];
-									newTable.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey);
+									newTable.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey).then(function (success) {
+										if (!success) {
+											self.Tables.model.remove(newTable); // remove if save failed
+										}
+									});
 								} else {
 									toastr.info('Upload canceled for ' + tableName + '.');
 								}
@@ -1292,7 +1296,11 @@ var manageViewModel = function (options) {
 							const mapped = ko.mapping.fromJS(table);
 							self.Tables.model.push(self.Tables.processTable(mapped));
 							const newTable = self.Tables.model()[self.Tables.model().length - 1];
-							newTable.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey);
+							newTable.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey).then(function (success) {
+								if (!success) {
+									self.Tables.model.remove(newTable); // remove if save failed
+								}
+							});
 						}
 					};
 
@@ -1841,42 +1849,51 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 		}
 
 		t.saveTable = function (apiKey, dbKey, silent) {
-			var e = ko.mapping.toJS(t, {
-				'ignore': ["saveTable", "JoinTable", "ForeignJoinTable"]
-			});
+			return new Promise(function (resolve, reject) {
+				var e = ko.mapping.toJS(t, {
+					'ignore': ["saveTable", "JoinTable", "ForeignJoinTable"]
+				});
 
-			if (!t.Selected()) {
-				t.deleteTable(apiKey, dbKey);
-				return;
-			}
-
-			if (e.DynamicColumns) {
-				e.Columns = []
-			} else if (_.filter(e.Columns, function (x) { return x.Selected; }).length == 0) {
-				toastr.error("Cannot save table " + e.DisplayName + ", no columns selected");
-				return;
-			}
-
-			ajaxcall({
-				url: options.apiUrl,
-				type: 'POST',
-				data: JSON.stringify({
-					method: options.saveTableUrl,
-					model: JSON.stringify({
-						account: apiKey,
-						dataConnect: dbKey,
-						table: e
-					})
-				})
-			}).done(function (x) {
-				if (x.success && x.tableId) {
-					t.Id(x.tableId);
-					if (silent !== true) toastr.success("Saved table " + e.DisplayName);
-				} else {
-					toastr.error("Error saving table " + e.DisplayName);
+				if (!t.Selected()) {
+					t.deleteTable(apiKey, dbKey);
+					resolve(false); // table deleted
+					return;
 				}
+
+				if (e.DynamicColumns) {
+					e.Columns = [] 
+				} else if (_.filter(e.Columns, function (x) { return x.Selected; }).length == 0) {
+					toastr.error("Cannot save table " + e.DisplayName + ", no columns selected");
+					resolve(false);
+					return;
+				}
+
+				ajaxcall({
+					url: options.apiUrl,
+					type: 'POST',
+					data: JSON.stringify({
+						method: options.saveTableUrl,
+						model: JSON.stringify({
+							account: apiKey,
+							dataConnect: dbKey,
+							table: e
+						})
+					})
+				}).done(function (x) {
+					if (x.success && x.tableId) {
+						t.Id(x.tableId);
+						if (silent !== true) toastr.success("Saved table " + e.DisplayName);
+						resolve(true); 
+					} else {
+						toastr.error("Error saving table " + e.DisplayName);
+						resolve(false); 
+					}
+				}).fail(function () {
+					toastr.error("Error saving table " + e.DisplayName);
+					resolve(false);
+				});
 			});
-		}
+		};
 
 		return t;
     }
