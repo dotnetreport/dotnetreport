@@ -43,6 +43,7 @@ var manageViewModel = function (options) {
 		var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
 		ajaxcall({ url: options.loadSchemaUrl + '?databaseApiKey=' + (queryParams.databaseApiKey || '') + '&onlyApi=' + (queryParams.onlyApi === 'false' ? false : true) }).done(function (model) {
 			self.Tables.refresh(model);
+			self.LoadJoins();
 		});
 	}
 
@@ -894,15 +895,15 @@ var manageViewModel = function (options) {
 
 		item.OtherTable.subscribe(function (subitem) {
 			//subitem.loadFields().done(function () {
-			item.FieldName(item.originalField());
-			item.JoinFieldName(item.originalJoinField());
+			//item.FieldName(item.originalField());
+			//item.JoinFieldName(item.originalJoinField());
 			//}); // Make sure fields are loaded
 		})
 
 		item.JoinTable.subscribe(function (subitem) {
 			//subitem.loadFields().done(function () {
-			item.FieldName(item.originalField());
-			item.JoinFieldName(item.originalJoinField());
+			//item.FieldName(item.originalField());
+			//item.JoinFieldName(item.originalJoinField());
 			//}); // Make sure fields are loaded
 		})
 
@@ -1354,7 +1355,7 @@ var manageViewModel = function (options) {
 				clearFileInput('joinsFileInputJson');
 				return;
 			}
-
+			let addedJoins = []; 
 			const reader = new FileReader();
 			reader.onload = function (event) {
 				try {
@@ -1384,7 +1385,9 @@ var manageViewModel = function (options) {
 								item.FieldName() === newItem.FieldName
 							);
 							if (!exists) {
-								self.Joins.push(self.setupJoin(newItem));
+								const added = self.setupJoin(newItem);
+								self.Joins.push(added);
+								addedJoins.push(added); // Track it for rollback
 							}
 						});
 					};
@@ -1429,6 +1432,7 @@ var manageViewModel = function (options) {
 						clearFileInput('joinsFileInputJson');
 					}
 				} catch (e) {
+					addedJoins.forEach(join => self.Joins.remove(join));
 					toastr.error('Invalid JSON file: ' + e.message);
 					clearFileInput('joinsFileInputJson');
 				}
