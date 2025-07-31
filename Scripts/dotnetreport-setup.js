@@ -1163,7 +1163,7 @@ var manageViewModel = function (options) {
 			if (r) {
 				var savedNames = [];
 				_.forEach(tablesToSave, function (e) {
-					e.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey, null, true);
+					e.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey, true);
 					savedNames.push(e.TableName());
 				});
 
@@ -1840,7 +1840,7 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 			});
 		}
 
-		t.saveTable = function (apiKey, dbKey, jsonTable, silent) {
+		t.saveTable = function (apiKey, dbKey, silent) {
 			var e = ko.mapping.toJS(t, {
 				'ignore': ["saveTable", "JoinTable", "ForeignJoinTable"]
 			});
@@ -1865,7 +1865,7 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 					model: JSON.stringify({
 						account: apiKey,
 						dataConnect: dbKey,
-						table: jsonTable ? jsonTable : e
+						table: e
 					})
 				})
 			}).done(function (x) {
@@ -1874,7 +1874,7 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 					if (silent !== true) toastr.success("Saved table " + e.DisplayName);
 				} else {
 					toastr.error("Error saving table " + e.DisplayName);
-                }
+				}
 			});
 		}
 
