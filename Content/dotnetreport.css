@@ -1575,7 +1575,6 @@ tfoot tr.sub-total {
 .toggle-icon {
     background-color: white;
     color: black;
-    border: 2px solid black;
     border-radius: 50%;
     width: 24px;
     height: 24px;
