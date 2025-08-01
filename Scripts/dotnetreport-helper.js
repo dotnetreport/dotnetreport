@@ -504,6 +504,18 @@ var manageAccess = function (options) {
         viewOnlyUserRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
         deleteOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
         deleteOnlyUserRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
+        showManageUsers: ko.observable(false),
+        showViewUsers: ko.observable(false),
+        showDeleteUsers: ko.observable(false),
+        showManageRoles: ko.observable(false),
+        showViewRoles: ko.observable(false),
+        showDeleteRoles: ko.observable(false),
+        toggleManageUsers: function () { this.showManageUsers(!this.showManageUsers()); },
+        toggleViewUsers: function () { this.showViewUsers(!this.showViewUsers()); },
+        toggleDeleteUsers: function () { this.showDeleteUsers(!this.showDeleteUsers()); },
+        toggleManageRoles: function () { this.showManageRoles(!this.showManageRoles()); },
+        toggleViewRoles: function () { this.showViewRoles(!this.showViewRoles()); },
+        toggleDeleteRoles: function () { this.showDeleteRoles(!this.showDeleteRoles()); },
         getAsList: function (x) {
             var list = '';
             _.forEach(x, function (e) { if (e.selected()) list += (list ? ',' : '') + e.value(); });
