@@ -498,11 +498,14 @@ function pagerViewModel(args) {
 var manageAccess = function (options) {
     var access = {
         clientId: ko.observable(),
-        users: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
+        groupedUsers: ko.observableArray(),
+        groupedViewOnlyUsers: ko.observableArray(),
+        groupedDeleteOnlyUsers: ko.observableArray(),
+        users: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x,category: x.category || null }; }),
         userRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
-        viewOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
+        viewOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x, category: x.category || null }; }),
         viewOnlyUserRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
-        deleteOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
+        deleteOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x,category: x.category || null }; }),
         deleteOnlyUserRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
         showManageUsers: ko.observable(false),
         showViewUsers: ko.observable(false),
@@ -551,7 +554,39 @@ var manageAccess = function (options) {
     }
 
     access.applyDefaultSettings();
-
+    var hasCategory = access.users.some(function (u) { return u.category; });
+    if (hasCategory) {
+        var groupedUsers = _.groupBy(access.users, 'category');
+        access.groupedUsers(
+            Object.keys(groupedUsers).map(function (cat) {
+                return {
+                    category: cat || 'Uncategorized',
+                    show: ko.observable(false),
+                    users: ko.observableArray(groupedUsers[cat])
+                };
+            })
+        );
+        var groupedViewOnlyUsers = _.groupBy(access.viewOnlyUsers, 'category');
+        access.groupedViewOnlyUsers(
+            Object.keys(groupedViewOnlyUsers).map(function (cat) {
+                return {
+                    category: cat || 'Uncategorized',
+                    show: ko.observable(false),
+                    viewOnlyUsers: ko.observableArray(groupedViewOnlyUsers[cat])
+                };
+            })
+        );
+        var groupedDeleteOnlyUsers = _.groupBy(access.deleteOnlyUsers, 'category');
+        access.groupedDeleteOnlyUsers(
+            Object.keys(groupedDeleteOnlyUsers).map(function (cat) {
+                return {
+                    category: cat || 'Uncategorized',
+                    show: ko.observable(false),
+                    deleteOnlyUsers: ko.observableArray(groupedDeleteOnlyUsers[cat])
+                };
+            })
+        );
+    }
     return access;
 };
 
