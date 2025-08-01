@@ -386,7 +386,7 @@ function filterGroupViewModel(args) {
 				url: args.options.apiUrl,
 				data: {
 					method: "/ReportApi/GetLookupList",
-					model: JSON.stringify({ fieldId: fieldId, dataFilters: dataFilters })
+					model: JSON.stringify({ fieldId: fieldId, dataFilters: JSON.stringify(dataFilters) })
 				},
 				noBlocking: args.parent.ReportMode()=='dashboard'
 			}).done(function (result) {
@@ -437,7 +437,7 @@ function filterGroupViewModel(args) {
 							url: args.options.apiUrl,
 							data: {
 								method: "/ReportApi/GetLookupList",
-								model: JSON.stringify({ fieldId: newField.fieldId, dataFilters: args.options.dataFilters, parentLookup: true })
+								model: JSON.stringify({ fieldId: newField.fieldId, dataFilters: JSON.stringify(args.options.dataFilters), parentLookup: true })
 							},
 							noBlocking: args.parent.ReportMode() == 'dashboard'
 						}).done(function (result) {
