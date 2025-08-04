@@ -985,3 +985,40 @@ var textQuery = function (options) {
         }
     }
 }
+window.toastr = (function () {
+    const containerId = 'toast-container-bs5';
+    let container = document.getElementById(containerId);
+
+    if (!container) {
+        container = document.createElement('div');
+        container.id = containerId;
+        container.className = 'position-fixed top-0 end-0 p-3';
+        container.style.zIndex = 1055;
+        document.body.appendChild(container);
+    }
+
+    function show(message, type) {
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} alert-dismissible fade show mb-2`;
+        alert.role = 'alert';
+        alert.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+
+        container.appendChild(alert);
+
+        // Auto-dismiss after 3 seconds
+        setTimeout(() => {
+            alert.classList.remove('show');
+            alert.classList.add('hide');
+            setTimeout(() => alert.remove(), 300); // let fade out finish
+        }, 3000);
+    }
+
+    return {
+        success: (msg) => show(msg, 'success'),
+        error: (msg) => show(msg, 'danger'),
+        info: (msg) => show(msg, 'info')
+    };
+})();
