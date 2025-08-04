@@ -147,6 +147,7 @@ namespace ReportBuilder.Web.Controllers
                         { "clientId", settings.ClientId },
                         { "userId", settings.UserId },
                         { "userIdForSchedule", settings.UserIdForSchedule },
+                        { "userIdForFilter", settings.UserIdForFilter },
                         { "userRole", string.Join(",", settings.CurrentUserRole) },
                         { "useParameters", false }
                     };

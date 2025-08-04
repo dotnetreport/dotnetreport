@@ -1252,29 +1252,37 @@ var reportViewModel = function (options) {
 			self.SelectedFields(result);
 			filters.forEach(f => self.FilterGroups()[0].AddFilter(f));
 
-			if (useAi === true) {
-				var queryText = document.getElementById("query-input").innerText;
-				ajaxcall({
-					url: options.apiUrl,
-					data: {
-						method: "/ReportApi/RunQueryAi",
-						model: JSON.stringify({
-							query: queryText,
-							fieldIds: fieldIds.join(",")
-						})
-					}
-				}).done(function (result) {
-					if (result.d) result = result.d;
-					if (result.success === false) {
-						toastr.error(result.message || 'Could not process this correctly, please try again');
-						return;
-					}
-					self.ExecuteReportQuery(result.sql, result.connectKey);
-				});
+			if ($.blockUI) {
+				$.blockUI();
 			}
-			else {
-				self.RunReport(false, true);
-			}
+
+			self.queryPrompt = document.getElementById("query-input").innerText;
+			ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/RunQueryAi",
+					model: JSON.stringify({
+						query: self.queryPrompt,
+						fieldIds: fieldIds.join(","),
+						reportJson: JSON.stringify(self.BuildReportData()) // send whatever our parser has built to improve
+					})
+				}
+			}).done(function (result) {
+				if ($.unblockUI) {
+					$.unblockUI();
+				}
+
+				if (result.d) result = result.d;
+				if (result.success === false) {
+					toastr.error(result.message || 'Could not process this correctly, please try again');
+					return;
+				}
+
+				options.reportSql = result.reportSql;
+				options.reportConnect = result.connectKey;
+				self.PopulateReport(result.report);
+				self.SaveReport(false);
+			});
 		});
 	}
 
@@ -2981,10 +2989,9 @@ var reportViewModel = function (options) {
 				pivotFunction: ''
 			})
 		}).done(function () {
-			self.RunReport(false);
+			self.ExecuteReport();
 		});
 
-		self.RunReport(false);
 	}
 
 	self.copySqlToClipboard = function (button) {
@@ -4880,6 +4887,7 @@ var reportViewModel = function (options) {
 
 				e.runReport = function () {
 					self.reportRan(false);
+					self.SaveReport(false);
 					self.executingReport = false;
 					e.runMode = true;
 					e.openReport();
@@ -5232,7 +5240,7 @@ var reportViewModel = function (options) {
 			self.appSettings.noDefaultFolder = x.noDefaultFolder;
 			self.appSettings.showEmptyFolders = x.showEmptyFolders;
 			self.appSettings.useAltPdf = x.useAltPdf;
-			self.appSettings.useAltPivot = x.useAltPivot;
+			self.appSettings.useAltPivot = x.useAltPivot === true;
 			self.appSettings.dontXmlExport = x.dontXmlExport;
 		});
 	}

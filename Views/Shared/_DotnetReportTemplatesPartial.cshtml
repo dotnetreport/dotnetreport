@@ -408,8 +408,29 @@
 
         <div class="row small">
             <div class="col-md-6">
-                <b>Manage by User</b> (allow edit)
-                <div class="row container-fluid">
+                <i class="toggle-icon fa" data-bind="click: toggleManageUsers,css: { 'fa-chevron-down': showManageUsers(), 'fa-chevron-right': !showManageUsers() }"></i> <b>Manage by User</b> (allow edit)
+                <div class="row container-fluid" data-bind="visible: showManageUsers">
+                    <!-- ko if: groupedUsers().length > 0 -->
+                    <!-- ko foreach: groupedUsers -->
+                    <div class="col-md-12">
+                      <div class="category-header" style="cursor: pointer;" data-bind="click: function() { show(!show()); }">
+                        <i class="fa toggle-icon" data-bind="css: { 'fa-chevron-down': show(), 'fa-chevron-right': !show() }"></i>
+                        <strong data-bind="text: category"></strong>
+                      </div>
+                      <div class="row container-fluid" data-bind="visible: show">
+                        <!-- ko foreach: users -->
+                        <div class="pull-left">
+                          <div class="checkbox">
+                            <label class="label label-info">
+                              <input type="checkbox" data-bind="checked: selected"> &nbsp; <span data-bind="text: text"></span>&nbsp; </label>
+                          </div>
+                        </div>
+                        <!-- /ko -->
+                      </div>
+                    </div>
+                    <!-- /ko -->
+                    <!-- /ko -->
+                    <!-- ko if: groupedUsers().length == 0 && users.length > 0 -->
                     <!-- ko foreach: users -->
                     <div class="pull-left">
                         <div class="checkbox">
@@ -419,13 +440,35 @@
                         </div>
                     </div>
                     <!-- /ko -->
-                    <div data-bind="if: users.length == 0">
+                    <!-- /ko -->
+                    <div data-bind="if: groupedUsers().length == 0 && users.length == 0">
                         Users list not populated or not applicable
                     </div>
                 </div>
                 <br />
-                <b>View only by User</b> (no edit/delete)
-                <div class="row container-fluid">
+                <i class="toggle-icon fa" data-bind="click: toggleViewUsers,css: { 'fa-chevron-down': showViewUsers(), 'fa-chevron-right': !showViewUsers() }"></i> <b>View only by User</b> (no edit/delete)
+                <div class="row container-fluid" data-bind="visible: showViewUsers">
+                    <!-- ko if: groupedViewOnlyUsers().length > 0 -->
+                    <!-- ko foreach: groupedViewOnlyUsers -->
+                    <div class="col-md-12">
+                      <div class="category-header" style="cursor: pointer;" data-bind="click: function() { show(!show()); }">
+                        <i class="fa toggle-icon" data-bind="css: { 'fa-chevron-down': show(), 'fa-chevron-right': !show() }"></i>
+                        <strong data-bind="text: category"></strong>
+                      </div>
+                      <div class="row container-fluid" data-bind="visible: show">
+                        <!-- ko foreach: viewOnlyUsers -->
+                        <div class="pull-left">
+                          <div class="checkbox">
+                            <label class="label label-info">
+                              <input type="checkbox" data-bind="checked: selected"> &nbsp; <span data-bind="text: text"></span>&nbsp; </label>
+                          </div>
+                        </div>
+                        <!-- /ko -->
+                      </div>
+                    </div>
+                    <!-- /ko -->
+                    <!-- /ko -->
+                    <!-- ko if: groupedViewOnlyUsers().length == 0 && viewOnlyUsers.length > 0 -->
                     <!-- ko foreach: viewOnlyUsers -->
                     <div class="pull-left">
                         <div class="checkbox">
@@ -435,15 +478,37 @@
                         </div>
                     </div>
                     <!-- /ko -->
-                    <div data-bind="if: users.length == 0">
+                    <!-- /ko -->
+                    <div data-bind="if: groupedViewOnlyUsers().length == 0 && users.length == 0">
                         Users list not populated or not applicable
                     </div>
                 </div>
                 <br />
                 <div data-bind="ifnot: isDashboard">
-                    <b>Delete by User</b> (allow delete)
-                    <div class="row container-fluid">
+                    <i class="toggle-icon fa" data-bind="click: toggleDeleteUsers,css: { 'fa-chevron-down': showDeleteUsers(), 'fa-chevron-right': !showDeleteUsers() }"></i><b>Delete by User</b> (allow delete)
+                    <div class="row container-fluid" data-bind="visible: showDeleteUsers">
+                    <!-- ko if: groupedDeleteOnlyUsers().length > 0 -->
+                    <!-- ko foreach: groupedDeleteOnlyUsers -->
+                    <div class="col-md-12">
+                      <div class="category-header" style="cursor: pointer;" data-bind="click: function() { show(!show()); }">
+                        <i class="fa toggle-icon" data-bind="css: { 'fa-chevron-down': show(), 'fa-chevron-right': !show() }"></i>
+                        <strong data-bind="text: category"></strong>
+                      </div>
+                      <div class="row container-fluid" data-bind="visible: show">
                         <!-- ko foreach: deleteOnlyUsers -->
+                        <div class="pull-left">
+                          <div class="checkbox">
+                            <label class="label label-info">
+                              <input type="checkbox" data-bind="checked: selected"> &nbsp; <span data-bind="text: text"></span>&nbsp; </label>
+                          </div>
+                        </div>
+                        <!-- /ko -->
+                      </div>
+                    </div>
+                    <!-- /ko -->
+                    <!-- /ko -->
+                    <!-- ko if: groupedDeleteOnlyUsers().length == 0 && deleteOnlyUsers.length > 0 -->
+                    <!-- ko foreach: deleteOnlyUsers -->
                         <div class="pull-left">
                             <div class="checkbox">
                                 <label class="label label-info">
@@ -452,7 +517,8 @@
                             </div>
                         </div>
                         <!-- /ko -->
-                        <div data-bind="if: users.length == 0">
+                        <!-- /ko -->
+                        <div data-bind="if: groupedDeleteOnlyUsers().length == 0 &&  users.length == 0">
                             Users list not populated or not applicable
                         </div>
                     </div>
@@ -460,8 +526,8 @@
                 </div>
             </div>
             <div class="col-md-6">
-                <b>Manage by User Role</b> (allow edit)
-                <div class="row container-fluid">
+                <i class="toggle-icon fa" data-bind="click: toggleManageRoles,css: { 'fa-chevron-down': showManageRoles(), 'fa-chevron-right': !showManageRoles() }"></i><b>Manage by User Role</b> (allow edit)
+                <div class="row container-fluid" data-bind="visible: showManageRoles">
                     <!-- ko foreach: userRoles -->
                     <div class="pull-left">
                         <div class="checkbox">
@@ -476,8 +542,8 @@
                     </div>
                 </div>
                 <br />
-                <b>View only by User Role</b> (no edit/delete)
-                <div class="row container-fluid">
+                <i class="toggle-icon fa" data-bind="click: toggleViewRoles,css: { 'fa-chevron-down': showViewRoles(), 'fa-chevron-right': !showViewRoles() }"></i><b>View only by User Role</b> (no edit/delete)
+                <div class="row container-fluid" data-bind="visible: showViewRoles">
                     <!-- ko foreach: viewOnlyUserRoles -->
                     <div class="pull-left">
                         <div class="checkbox">
@@ -492,9 +558,8 @@
                     </div>
                 </div>
                 <div data-bind="ifnot: isDashboard">
-                    <br />
-                    <b>Delete by User Role</b> (allow delete)
-                    <div class="row container-fluid">
+                    <i class="toggle-icon fa" data-bind="click: toggleDeleteRoles,css: { 'fa-chevron-down': showDeleteRoles(), 'fa-chevron-right': !showDeleteRoles() }"></i><b>Delete by User Role</b> (allow delete)
+                    <div class="row container-fluid" data-bind="visible: showDeleteRoles">
                         <!-- ko foreach: deleteOnlyUserRoles -->
                         <div class="pull-left">
                             <div class="checkbox">
