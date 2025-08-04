@@ -1422,7 +1422,6 @@ var reportViewModel = function (options) {
 			.off('change.inputDirtyCheck') // prevent duplicate handlers
 			.on('change.inputDirtyCheck input.inputDirtyCheck', function () {
 				self.isDirty(true);
-				console.log("click", this);
 			});
 	};
 	self.onModalCloseClicked = function () {
@@ -5887,7 +5886,7 @@ var dashboardViewModel = function (options) {
 		ReportSql: ko.observable()		
 	});
 	self.isModalOpen = ko.observable(false);
-
+	self.isDirty = ko.observable(false);
 	$(document).on('shown.bs.modal', '.modal', function () {
 		self.isModalOpen(true);
 	});
@@ -5896,7 +5895,14 @@ var dashboardViewModel = function (options) {
 		const anyOpen = $('.modal.show').length > 0;
 		self.isModalOpen(anyOpen);
 	});
-
+	self.setupDirtyCheckForDashboard = function () {
+		const $modal = $('#add-dashboard-modal');
+		$modal.find('#add-dash-name, textarea, input[type="checkbox"]')
+			.off('change.inputDirtyCheck input.inputDirtyCheck')
+			.on('change.inputDirtyCheck input.inputDirtyCheck', function () {
+				self.isDirty(true);
+			});
+	};
 	var currentDash = options.dashboardId > 0
 		? (_.find(self.dashboards(), { id: options.dashboardId }) || { name: '', description: '' })
 		: (self.dashboards().length > 0 ? self.dashboards()[0] : { name: '', description: '' });
@@ -6025,6 +6031,7 @@ var dashboardViewModel = function (options) {
 				r.selected(false);
 			});
 		});
+		self.setupDirtyCheckForDashboard();
 	};
 
 	self.editDashboard = function () {
@@ -6046,6 +6053,7 @@ var dashboardViewModel = function (options) {
 				r.selected(selectedReports.indexOf(r.reportId.toString()) >= 0);
 			});
 		});
+		self.setupDirtyCheckForDashboard();
 	};
 
 	self.removeReportFromDashboard = function (reportId) {
@@ -6072,7 +6080,19 @@ var dashboardViewModel = function (options) {
 			}
 		});
 	}
-
+	self.onModalCloseClicked = function () {
+		const $modal = $('#add-dashboard-modal');
+		if ($modal == null) return;
+		if (self.isDirty()) {
+			bootbox.confirm("You have unsaved changes. Do you want to discard them?", function (result) {
+				if (result) {
+					self.isDirty(false);
+				} else {
+					$modal.modal('show');
+				}
+			});
+		}
+	};
 	self.saveDashboard = function () {
 		$("#add-dash-name").removeClass("is-invalid");
 
