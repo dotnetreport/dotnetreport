@@ -854,7 +854,7 @@
                     <div class="col-sm-2">
                         <select class="form-select" data-bind="value: format">
                             <option value="EXCEL">Excel</option>
-                            <option data-bind="visible: $parent.canDrilldown()" value="EXCEL-SUB">Excel (Expanded)</option>
+                            @* <option data-bind="visible: $parent.canDrilldown()" value="EXCEL-SUB">Excel (Expanded)</option> *@
                             <option value="CSV">CSV</option>
                             <option value="PDF">PDF</option>
                             <option value="WORD">Word</option>
@@ -2153,6 +2153,48 @@
                     <label class="form-check-label">Gridlines</label>
                 </div>
             </div>
+        </div>
+    </div>
+
+</script>
+<script type="text/html" id="table-settings">
+        <div class="chart-container pull-right">
+        <button class="btn btn-sm btn-secondary" data-bind="click: toggleTableSettings" title="Table settings">
+            <i class="fa fa-cog"></i>
+        </button>
+        <div class="chart-settings-panel border p-2 shadow-sm bg-light" data-bind="visible: showTableSettings">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0">Table Settings</h6>
+                <button class="btn btn-sm btn-close" data-bind="click: toggleTableSettings"></button>
+            </div>
+             <div class="form-group row">
+            <div class="mb-2 col-6">
+                <label class="form-label small">Header Back Color</label>
+                <div class="d-flex align-items-center flex-wrap">
+                    <input type="color" class="color-picker" data-bind="value: tableheaderBackColor,attr: { placeholder: 'Select' }, event: { change: updateTable }" />
+                </div>
+            </div>
+            <div class="mb-2 col-6">
+                <label class="form-label small">Header Font Color</label>
+                <div class="d-flex align-items-center flex-wrap">
+                    <input type="color" class="color-picker" data-bind="value: tableheaderFontColor,attr: { placeholder: 'Select' }, event: { change: updateTable }" />
+                </div>
+            </div>
+             </div>
+             <div class="form-group row">
+            <div class="mb-2 col-6">
+                <label class="form-label small">Row Back Color</label>
+                <div class="d-flex align-items-center flex-wrap">
+                    <input type="color" class="color-picker" data-bind="value: tableRowBackColor,attr: { placeholder: 'Select' }, event: { change: updateTable }" />
+                </div>
+            </div>
+            <div class="mb-2 col-6">
+                <label class="form-label small">Row Font Color</label>
+                <div class="d-flex align-items-center flex-wrap">
+                    <input type="color" class="color-picker" data-bind="value: tableRowFontColor,attr: { placeholder: 'Select' }, event: { change: updateTable }" />
+                </div>
+            </div>
+             </div>
         </div>
     </div>
 

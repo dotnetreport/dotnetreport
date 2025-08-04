@@ -1816,6 +1816,7 @@ var reportViewModel = function (options) {
 		self.reportRan(false);
 		self.executingReport = false;
 		self.isDirty(false);
+		self.clearTableSetting();
 	};
 
 	self.SelectedProc.subscribe(function (proc) {
@@ -3120,6 +3121,7 @@ var reportViewModel = function (options) {
 				if (previewOnly !== true && (self.SaveReport() || saveOnly)) {
 					if (saveOnly && !saveAlertFlag) {
 						saveAlertFlag = true;
+						self.isDirty(false);
 						toastr.success("Report Saved");
 						self.allSqlQueries("");
 						self.LoadAllSavedReports(true);
@@ -3990,11 +3992,32 @@ var reportViewModel = function (options) {
 	});
 
 	self.showSettings = ko.observable(false);
-
+	self.showTableSettings = ko.observable(false);
+	self.tableheaderBackColor = ko.observable();
+	self.tableheaderFontColor = ko.observable();
+	self.tableRowBackColor = ko.observable();
+	self.tableRowFontColor = ko.observable();
+	self.clearTableSetting = function () {
+		self.tableheaderBackColor = ko.observable();
+		self.tableheaderFontColor = ko.observable();
+		self.tableRowBackColor = ko.observable();
+		self.tableRowFontColor = ko.observable();
+	}
 
 	self.toggleChartSettings = function () {
 		self.showSettings(!self.showSettings());
+	}; 
+	self.toggleTableSettings = function () {
+		self.showTableSettings(!self.showTableSettings());
 	};
+	self.updateTable = function () {
+		_.forEach(self.SelectedFields(), function (f) {
+			if (self.tableheaderBackColor()) f.headerBackColor(self.tableheaderBackColor());
+			if (self.tableheaderFontColor()) f.headerFontColor(self.tableheaderFontColor());
+			if (self.tableRowBackColor()) f.backColor(self.tableRowBackColor());
+			if (self.tableRowFontColor()) f.fontColor(self.tableRowFontColor());
+		});
+	}
 	self.addSeriesColor = function () {
 		var colors = self.chartOptions().seriesColors;
 		var randomColor = "#" + Math.floor(Math.random() * 16777215).toString(16); // Generate random color
@@ -4814,6 +4837,7 @@ var reportViewModel = function (options) {
 			},
 			noBlocking: dontBlock === true
 		}).done(function (report) {
+			self.clearTableSetting();
 			if (report.d) { report = report.d; }
 			if (report.result) { report = report.result; }
 			self.useStoredProc(report.UseStoredProc);
