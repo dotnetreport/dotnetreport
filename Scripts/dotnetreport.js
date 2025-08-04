@@ -886,6 +886,7 @@ var reportViewModel = function (options) {
 	self.PivotColumnsWidth = ko.observable();
 	self.ReportColumns = ko.observable();
 	self.isModalOpen = ko.observable(false);
+	self.isDirty = ko.observable(false);
 
 	$(document).on('shown.bs.modal', '.modal', function () {
 		self.isModalOpen(true);
@@ -1381,6 +1382,7 @@ var reportViewModel = function (options) {
 	self.createNewReport = function () {
 		self.clearReport();
 		self.ReportMode("generate");
+		self.setupDirtyCheck();
 	};
 
 	self.ReportType.subscribe(function (newvalue) {
@@ -1397,6 +1399,7 @@ var reportViewModel = function (options) {
 	
 	self.setReportType = function (reportType) {
 		self.ReportType(reportType);
+		self.isDirty(true);
 	};
 
 	self.cancelCreateReport = function () {
@@ -1413,7 +1416,34 @@ var reportViewModel = function (options) {
 			}
 		});
 	};
-
+	self.setupDirtyCheck = function () {
+		if (options.reportWizard == null) return;
+		options.reportWizard.find('input, select, textarea,.form-select, .form-control, .custom-control, .control, .dropdown-option, .btn-group, .btn, .list-group-item')
+			.off('change.inputDirtyCheck') // prevent duplicate handlers
+			.on('change.inputDirtyCheck input.inputDirtyCheck', function () {
+				self.isDirty(true);
+				console.log("click", this);
+			});
+	};
+	self.onModalCloseClicked = function () {
+		if (options.reportWizard == null) return;
+		if (self.ReportMode() != 'dashboard') {
+			if (self.isDirty()) {
+				bootbox.confirm("You have unsaved changes. Do you want to discard them?", function (result) {
+					if (result) {
+						self.isDirty(false);
+						if (self.ReportMode() == 'dashboard') {
+							return;
+						}
+						self.ReportMode("start");
+						self.clearReport();
+					} else {
+						options.reportWizard.modal('show');
+					}
+				});
+			}
+		}
+	};
 	self.FlyFilters = ko.observableArray([]); 
 
 	self.setFlyFilters = function () {
@@ -1786,6 +1816,7 @@ var reportViewModel = function (options) {
 		self.selectedStyle('default');
 		self.reportRan(false);
 		self.executingReport = false;
+		self.isDirty(false);
 	};
 
 	self.SelectedProc.subscribe(function (proc) {
@@ -1902,6 +1933,7 @@ var reportViewModel = function (options) {
 	self.lastPickedField = ko.observable();
 	self.joinIds = ko.observable();
 	self.SelectedFields.subscribe(function (fields) {
+		self.isDirty(true);
 		setTimeout(function () {
 			self.RemoveInvalidFilters(self.FilterGroups());
 
@@ -2061,6 +2093,7 @@ var reportViewModel = function (options) {
 	}
 
 	self.SelectedTable.subscribe(function (table) {
+		self.isDirty(true);
 		self.SelectedProc(null);
 		self.lastPickedField(null);
 		self.jsonFields([]);
@@ -4847,6 +4880,10 @@ var reportViewModel = function (options) {
 			_.forEach(reports, function (e) {
 				e.runMode = false;
 				e.openReport = function () {
+					if (self.ReportMode() != 'dashboard') {
+						self.isDirty(false);
+						self.setupDirtyCheck();
+					}
 					var saveReportFlag = self.SaveReport();
 					// Load report
 					return self.LoadReport(e.reportId).done(function () {
