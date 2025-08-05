@@ -2124,7 +2124,7 @@
             <div class="d-flex justify-content-between mb-1">
                 <div>
                     <label class="form-label small">Legend Position</label>
-                    <select class="form-select form-select-sm" data-bind="value: chartOptions().legendPosition, event: { change: updateChart }">
+                    <select class="form-select form-select-sm" data-bind="value: chartOptions().legendPosition, notifyChange: updateLegend">
                         <option value="right">Right</option>
                         <option value="left">Left</option>
                         <option value="top">Top</option>

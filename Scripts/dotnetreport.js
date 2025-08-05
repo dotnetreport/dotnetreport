@@ -4044,7 +4044,10 @@ var reportViewModel = function (options) {
 	self.updateChart = function () {
 		self.DrawChart(); 
 	};
-
+	self.updateLegend = function (selectedValue) {
+		self.chartOptions().legendPosition = selectedValue;
+		self.DrawChart();
+	};
 	self.skipDraw = options.skipDraw === true ? true : false;
 	self.DrawChart = function () {
 		if (!self.isChart() || self.skipDraw === true) return;
@@ -4365,7 +4368,11 @@ var reportViewModel = function (options) {
 		if (!chartOptions.showGridlines) { chartOptions.hAxis.gridlines = { color: 'none' }; chartOptions.vAxis.gridlines = { color: 'none' }; }
 		if (!chartOptions.showXAxisLabel) { chartOptions.hAxis.textPosition = 'none'; }
 		if (!chartOptions.showYAxisLabel) { chartOptions.vAxis.textPosition = 'none'; }
-		if (self.chartOptions().yAxisFormat) { chartOptions.vAxis.format = self.chartOptions().yAxisFormat;}
+		if (self.chartOptions().yAxisFormat === '%') {
+			chartOptions.vAxis.format = "#'%'";
+		} else {
+			chartOptions.vAxis.format = self.chartOptions().yAxisFormat;;
+		}
 		if (self.chartOptions().yMin !== null && self.chartOptions().yMin !== "") {
 			chartOptions.vAxis.viewWindow = chartOptions.vAxis.viewWindow || {};
 			chartOptions.vAxis.viewWindow.min = Number(self.chartOptions().yMin);
