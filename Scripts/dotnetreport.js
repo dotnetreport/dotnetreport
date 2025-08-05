@@ -886,6 +886,7 @@ var reportViewModel = function (options) {
 	self.PivotColumnsWidth = ko.observable();
 	self.ReportColumns = ko.observable();
 	self.isModalOpen = ko.observable(false);
+	self.isDirty = ko.observable(false);
 
 	$(document).on('shown.bs.modal', '.modal', function () {
 		self.isModalOpen(true);
@@ -1381,6 +1382,7 @@ var reportViewModel = function (options) {
 	self.createNewReport = function () {
 		self.clearReport();
 		self.ReportMode("generate");
+		self.setupDirtyCheck();
 	};
 
 	self.ReportType.subscribe(function (newvalue) {
@@ -1397,6 +1399,7 @@ var reportViewModel = function (options) {
 	
 	self.setReportType = function (reportType) {
 		self.ReportType(reportType);
+		self.isDirty(true);
 	};
 
 	self.cancelCreateReport = function () {
@@ -1413,7 +1416,33 @@ var reportViewModel = function (options) {
 			}
 		});
 	};
-
+	self.setupDirtyCheck = function () {
+		if (options.reportWizard == null) return;
+		options.reportWizard.find('input, select, textarea,.form-select, .form-control, .custom-control, .control, .dropdown-option, .btn-group, .btn, .list-group-item')
+			.off('change.inputDirtyCheck') // prevent duplicate handlers
+			.on('change.inputDirtyCheck input.inputDirtyCheck', function () {
+				self.isDirty(true);
+			});
+	};
+	self.onModalCloseClicked = function () {
+		if (options.reportWizard == null) return;
+		if (self.ReportMode() != 'dashboard') {
+			if (self.isDirty()) {
+				bootbox.confirm("You have unsaved changes. Do you want to discard them?", function (result) {
+					if (result) {
+						self.isDirty(false);
+						if (self.ReportMode() == 'dashboard') {
+							return;
+						}
+						self.ReportMode("start");
+						self.clearReport();
+					} else {
+						options.reportWizard.modal('show');
+					}
+				});
+			}
+		}
+	};
 	self.FlyFilters = ko.observableArray([]); 
 
 	self.setFlyFilters = function () {
@@ -1786,6 +1815,8 @@ var reportViewModel = function (options) {
 		self.selectedStyle('default');
 		self.reportRan(false);
 		self.executingReport = false;
+		self.isDirty(false);
+		self.clearTableSetting();
 	};
 
 	self.SelectedProc.subscribe(function (proc) {
@@ -1902,6 +1933,7 @@ var reportViewModel = function (options) {
 	self.lastPickedField = ko.observable();
 	self.joinIds = ko.observable();
 	self.SelectedFields.subscribe(function (fields) {
+		self.isDirty(true);
 		setTimeout(function () {
 			self.RemoveInvalidFilters(self.FilterGroups());
 
@@ -2061,6 +2093,7 @@ var reportViewModel = function (options) {
 	}
 
 	self.SelectedTable.subscribe(function (table) {
+		self.isDirty(true);
 		self.SelectedProc(null);
 		self.lastPickedField(null);
 		self.jsonFields([]);
@@ -3088,6 +3121,7 @@ var reportViewModel = function (options) {
 				if (previewOnly !== true && (self.SaveReport() || saveOnly)) {
 					if (saveOnly && !saveAlertFlag) {
 						saveAlertFlag = true;
+						self.isDirty(false);
 						toastr.success("Report Saved");
 						self.allSqlQueries("");
 						self.LoadAllSavedReports(true);
@@ -3961,11 +3995,32 @@ var reportViewModel = function (options) {
 	});
 
 	self.showSettings = ko.observable(false);
-
+	self.showTableSettings = ko.observable(false);
+	self.tableheaderBackColor = ko.observable();
+	self.tableheaderFontColor = ko.observable();
+	self.tableRowBackColor = ko.observable();
+	self.tableRowFontColor = ko.observable();
+	self.clearTableSetting = function () {
+		self.tableheaderBackColor = ko.observable();
+		self.tableheaderFontColor = ko.observable();
+		self.tableRowBackColor = ko.observable();
+		self.tableRowFontColor = ko.observable();
+	}
 
 	self.toggleChartSettings = function () {
 		self.showSettings(!self.showSettings());
+	}; 
+	self.toggleTableSettings = function () {
+		self.showTableSettings(!self.showTableSettings());
 	};
+	self.updateTable = function () {
+		_.forEach(self.SelectedFields(), function (f) {
+			if (self.tableheaderBackColor()) f.headerBackColor(self.tableheaderBackColor());
+			if (self.tableheaderFontColor()) f.headerFontColor(self.tableheaderFontColor());
+			if (self.tableRowBackColor()) f.backColor(self.tableRowBackColor());
+			if (self.tableRowFontColor()) f.fontColor(self.tableRowFontColor());
+		});
+	}
 	self.addSeriesColor = function () {
 		var colors = self.chartOptions().seriesColors;
 		var randomColor = "#" + Math.floor(Math.random() * 16777215).toString(16); // Generate random color
@@ -4793,6 +4848,7 @@ var reportViewModel = function (options) {
 			},
 			noBlocking: dontBlock === true
 		}).done(function (report) {
+			self.clearTableSetting();
 			if (report.d) { report = report.d; }
 			if (report.result) { report = report.result; }
 			self.useStoredProc(report.UseStoredProc);
@@ -4858,6 +4914,10 @@ var reportViewModel = function (options) {
 			_.forEach(reports, function (e) {
 				e.runMode = false;
 				e.openReport = function () {
+					if (self.ReportMode() != 'dashboard') {
+						self.isDirty(false);
+						self.setupDirtyCheck();
+					}
 					var saveReportFlag = self.SaveReport();
 					// Load report
 					return self.LoadReport(e.reportId).done(function () {
@@ -5861,7 +5921,7 @@ var dashboardViewModel = function (options) {
 		ReportSql: ko.observable()		
 	});
 	self.isModalOpen = ko.observable(false);
-
+	self.isDirty = ko.observable(false);
 	$(document).on('shown.bs.modal', '.modal', function () {
 		self.isModalOpen(true);
 	});
@@ -5870,7 +5930,14 @@ var dashboardViewModel = function (options) {
 		const anyOpen = $('.modal.show').length > 0;
 		self.isModalOpen(anyOpen);
 	});
-
+	self.setupDirtyCheckForDashboard = function () {
+		const $modal = $('#add-dashboard-modal');
+		$modal.find('#add-dash-name, textarea, input[type="checkbox"]')
+			.off('change.inputDirtyCheck input.inputDirtyCheck')
+			.on('change.inputDirtyCheck input.inputDirtyCheck', function () {
+				self.isDirty(true);
+			});
+	};
 	var currentDash = options.dashboardId > 0
 		? (_.find(self.dashboards(), { id: options.dashboardId }) || { name: '', description: '' })
 		: (self.dashboards().length > 0 ? self.dashboards()[0] : { name: '', description: '' });
@@ -5999,6 +6066,7 @@ var dashboardViewModel = function (options) {
 				r.selected(false);
 			});
 		});
+		self.setupDirtyCheckForDashboard();
 	};
 
 	self.editDashboard = function () {
@@ -6020,6 +6088,7 @@ var dashboardViewModel = function (options) {
 				r.selected(selectedReports.indexOf(r.reportId.toString()) >= 0);
 			});
 		});
+		self.setupDirtyCheckForDashboard();
 	};
 
 	self.removeReportFromDashboard = function (reportId) {
@@ -6046,7 +6115,19 @@ var dashboardViewModel = function (options) {
 			}
 		});
 	}
-
+	self.onModalCloseClicked = function () {
+		const $modal = $('#add-dashboard-modal');
+		if ($modal == null) return;
+		if (self.isDirty()) {
+			bootbox.confirm("You have unsaved changes. Do you want to discard them?", function (result) {
+				if (result) {
+					self.isDirty(false);
+				} else {
+					$modal.modal('show');
+				}
+			});
+		}
+	};
 	self.saveDashboard = function () {
 		$("#add-dash-name").removeClass("is-invalid");
 
