@@ -4161,7 +4161,7 @@ var reportViewModel = function (options) {
 				fractionDigits: 2 // optional: 2 decimal points
 			});
 			percentFormatter.format(data, 1);
-			chartOptions.vAxis = { format: '#%' };
+			chartOptions.vAxis = { format: "#'%'" };
 		}
 		if (self.colorScheme() != null && self.colorScheme().length > 0) {
 			chartOptions.colors = self.colorScheme().slice(1);
@@ -4368,10 +4368,21 @@ var reportViewModel = function (options) {
 		if (!chartOptions.showGridlines) { chartOptions.hAxis.gridlines = { color: 'none' }; chartOptions.vAxis.gridlines = { color: 'none' }; }
 		if (!chartOptions.showXAxisLabel) { chartOptions.hAxis.textPosition = 'none'; }
 		if (!chartOptions.showYAxisLabel) { chartOptions.vAxis.textPosition = 'none'; }
-		if (self.chartOptions().yAxisFormat === '%') {
-			chartOptions.vAxis.format = "#'%'";
+		const yAxisFormat = self.chartOptions()?.yAxisFormat;
+		if (yAxisFormat && yAxisFormat.includes('%')) {
+			switch (yAxisFormat) {
+				case '%':
+				case '#%':
+					chartOptions.vAxis.format = "#'%'";
+					break;
+				case '%#':
+					chartOptions.vAxis.format = "'%'#";
+					break;
+				default:
+					chartOptions.vAxis.format = yAxisFormat;
+			}
 		} else {
-			chartOptions.vAxis.format = self.chartOptions().yAxisFormat;;
+			chartOptions.vAxis.format = yAxisFormat;
 		}
 		if (self.chartOptions().yMin !== null && self.chartOptions().yMin !== "") {
 			chartOptions.vAxis.viewWindow = chartOptions.vAxis.viewWindow || {};
