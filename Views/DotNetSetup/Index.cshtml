@@ -24,6 +24,14 @@
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
+        .table-name-label {
+            display: inline-block;
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            vertical-align: middle;
+        }
     </style>
 }
 @section scripts{
@@ -338,7 +346,7 @@
                                 <div class="checkbox pull-left">
                                     <label>
                                         <input type="checkbox" data-bind="checked: Selected" title="Check to use in Dotnet Report, uncheck to Remove">
-                                        <span data-bind="text: TableName, click: function() { $root.activeTable($data); }" style="cursor: pointer"></span>
+                                        <span data-bind="text: TableName,attr: { title: TableName }, click: function() { $root.activeTable($data); }" class="table-name-label" style="cursor: pointer"></span>
                                         <span data-bind="visible: IsView" class="label-sm">(view)</span>
                                     </label>
                                     <button class="btn btn-sm" title="Save this Table" data-bind="click: function() { saveTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey); }">

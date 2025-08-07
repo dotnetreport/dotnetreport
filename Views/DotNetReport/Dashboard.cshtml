@@ -240,7 +240,7 @@
         <div class="modal-content" data-bind="with: dashboard">
             <div class="modal-header">
                 <h4 class="modal-title" id="add-dashboard-modal-label"><span data-bind="text: Id() ? 'Edit' : 'Add'"></span> Dashboard</h4>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" data-bind="click: $root.onModalCloseClicked" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-4 card card-body">

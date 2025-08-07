@@ -336,7 +336,14 @@ ko.bindingHandlers.select2Text = {
         $(element).val(value).trigger('change');
     }
 };
-
+ko.bindingHandlers.notifyChange = {
+    init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+        const callback = valueAccessor(); // function to call
+        element.addEventListener('change', function () {
+            callback(element.value); // Pass selected value
+        });
+    }
+};
 
 ko.bindingHandlers.highlightedText = {
     update: function (element, valueAccessor) {
@@ -505,12 +512,27 @@ function pagerViewModel(args) {
 var manageAccess = function (options) {
     var access = {
         clientId: ko.observable(),
-        users: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
+        groupedUsers: ko.observableArray(),
+        groupedViewOnlyUsers: ko.observableArray(),
+        groupedDeleteOnlyUsers: ko.observableArray(),
+        users: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x,category: x.category || null }; }),
         userRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
-        viewOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
+        viewOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x, category: x.category || null }; }),
         viewOnlyUserRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
-        deleteOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
+        deleteOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x,category: x.category || null }; }),
         deleteOnlyUserRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
+        showManageUsers: ko.observable(false),
+        showViewUsers: ko.observable(false),
+        showDeleteUsers: ko.observable(false),
+        showManageRoles: ko.observable(false),
+        showViewRoles: ko.observable(false),
+        showDeleteRoles: ko.observable(false),
+        toggleManageUsers: function () { this.showManageUsers(!this.showManageUsers()); },
+        toggleViewUsers: function () { this.showViewUsers(!this.showViewUsers()); },
+        toggleDeleteUsers: function () { this.showDeleteUsers(!this.showDeleteUsers()); },
+        toggleManageRoles: function () { this.showManageRoles(!this.showManageRoles()); },
+        toggleViewRoles: function () { this.showViewRoles(!this.showViewRoles()); },
+        toggleDeleteRoles: function () { this.showDeleteRoles(!this.showDeleteRoles()); },
         getAsList: function (x) {
             var list = '';
             _.forEach(x, function (e) { if (e.selected()) list += (list ? ',' : '') + e.value(); });
@@ -546,7 +568,39 @@ var manageAccess = function (options) {
     }
 
     access.applyDefaultSettings();
-
+    var hasCategory = access.users.some(function (u) { return u.category; });
+    if (hasCategory) {
+        var groupedUsers = _.groupBy(access.users, 'category');
+        access.groupedUsers(
+            Object.keys(groupedUsers).map(function (cat) {
+                return {
+                    category: cat || 'Uncategorized',
+                    show: ko.observable(false),
+                    users: ko.observableArray(groupedUsers[cat])
+                };
+            })
+        );
+        var groupedViewOnlyUsers = _.groupBy(access.viewOnlyUsers, 'category');
+        access.groupedViewOnlyUsers(
+            Object.keys(groupedViewOnlyUsers).map(function (cat) {
+                return {
+                    category: cat || 'Uncategorized',
+                    show: ko.observable(false),
+                    viewOnlyUsers: ko.observableArray(groupedViewOnlyUsers[cat])
+                };
+            })
+        );
+        var groupedDeleteOnlyUsers = _.groupBy(access.deleteOnlyUsers, 'category');
+        access.groupedDeleteOnlyUsers(
+            Object.keys(groupedDeleteOnlyUsers).map(function (cat) {
+                return {
+                    category: cat || 'Uncategorized',
+                    show: ko.observable(false),
+                    deleteOnlyUsers: ko.observableArray(groupedDeleteOnlyUsers[cat])
+                };
+            })
+        );
+    }
     return access;
 };
 
@@ -945,3 +999,40 @@ var textQuery = function (options) {
         }
     }
 }
+window.toastr = (function () {
+    const containerId = 'toast-container-bs5';
+    let container = document.getElementById(containerId);
+
+    if (!container) {
+        container = document.createElement('div');
+        container.id = containerId;
+        container.className = 'position-fixed top-0 end-0 p-3';
+        container.style.zIndex = 1055;
+        document.body.appendChild(container);
+    }
+
+    function show(message, type) {
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} alert-dismissible fade show mb-2`;
+        alert.role = 'alert';
+        alert.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+
+        container.appendChild(alert);
+
+        // Auto-dismiss after 3 seconds
+        setTimeout(() => {
+            alert.classList.remove('show');
+            alert.classList.add('hide');
+            setTimeout(() => alert.remove(), 300); // let fade out finish
+        }, 3000);
+    }
+
+    return {
+        success: (msg) => show(msg, 'success'),
+        error: (msg) => show(msg, 'danger'),
+        info: (msg) => show(msg, 'info')
+    };
+})();
