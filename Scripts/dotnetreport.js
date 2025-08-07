@@ -3986,6 +3986,7 @@ var reportViewModel = function (options) {
 		fontFamily: "",
 		showXAxisLabel: true,
 		showYAxisLabel: true,
+		showSmallValuesOnLabel: false,
 		showLegend: true,
 		legendPosition: "right",
 		showGridlines: true,
@@ -4080,7 +4081,9 @@ var reportViewModel = function (options) {
 				}
 			});
 		}
-
+		if (self.chartOptions().showSmallValuesOnLabel) {
+			data.addColumn({ type: 'string', role: 'annotation' });
+		}
 		var rowArray = [];
 		var dataColumns = [];
 
@@ -4090,7 +4093,7 @@ var reportViewModel = function (options) {
 			_.forEach(e.Items, function (r, n) {
 				var column = reportData.Columns[n];
 				var isNumeric = r.Column.IsNumeric;
-
+				var isLastColumn = (n === e.Items.length - 1);
 				var value = (function () {
 					if (isNumeric && typeof r.FormattedValue === 'string' && r.FormattedValue.trim().endsWith('%')) {
 						var num = parseFloat(r.FormattedValue.replace('%', '').trim());
@@ -4126,6 +4129,9 @@ var reportViewModel = function (options) {
 					}
 				} else if ((isNumeric || self.ReportType() === 'Treemap') && !column.groupInGraph()) {
 					itemArray.push(value);
+				}
+				if (self.chartOptions().showSmallValuesOnLabel && isLastColumn) {
+					itemArray.push(value.toString());
 				}
 			});
 
@@ -4368,6 +4374,16 @@ var reportViewModel = function (options) {
 		if (!chartOptions.showGridlines) { chartOptions.hAxis.gridlines = { color: 'none' }; chartOptions.vAxis.gridlines = { color: 'none' }; }
 		if (!chartOptions.showXAxisLabel) { chartOptions.hAxis.textPosition = 'none'; }
 		if (!chartOptions.showYAxisLabel) { chartOptions.vAxis.textPosition = 'none'; }
+		if (!chartOptions.showSmallValuesOnLabel) {
+			chartOptions.annotations = {
+				alwaysOutside: true,
+				textStyle: {
+					fontSize: 12,
+					auraColor: 'none',
+					color: '#555'
+				}
+			}
+		}
 		const yAxisFormat = self.chartOptions()?.yAxisFormat;
 		if (yAxisFormat && yAxisFormat.includes('%')) {
 			switch (yAxisFormat) {
