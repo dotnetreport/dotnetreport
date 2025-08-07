@@ -4385,20 +4385,29 @@ var reportViewModel = function (options) {
 			}
 		}
 		const yAxisFormat = self.chartOptions()?.yAxisFormat;
-		if (yAxisFormat && yAxisFormat.includes('%')) {
-			switch (yAxisFormat) {
-				case '%':
-				case '#%':
-					chartOptions.vAxis.format = "#'%'";
-					break;
-				case '%#':
-					chartOptions.vAxis.format = "'%'#";
-					break;
-				default:
-					chartOptions.vAxis.format = yAxisFormat;
+		const isHorizontal = self.barChartHorizontal(); // Ensure it's callable
+		if (yAxisFormat) {
+			let formatValue;
+			if (yAxisFormat.includes('%')) {
+				switch (yAxisFormat) {
+					case '%':
+					case '#%':
+						formatValue = "#'%'";
+						break;
+					case '%#':
+						formatValue = "'%'#";
+						break;
+					default:
+						formatValue = yAxisFormat;
+				}
+			} else {
+				formatValue = yAxisFormat;
 			}
-		} else {
-			chartOptions.vAxis.format = yAxisFormat;
+			if (isHorizontal) {
+				chartOptions.hAxis.format = formatValue;
+			} else {
+				chartOptions.vAxis.format = formatValue;
+			}
 		}
 		if (self.chartOptions().yMin !== null && self.chartOptions().yMin !== "") {
 			chartOptions.vAxis.viewWindow = chartOptions.vAxis.viewWindow || {};
