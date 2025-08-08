@@ -6039,12 +6039,17 @@ var dashboardViewModel = function (options) {
 	};
 	self.currentDashboard = ko.observable(currentDash);
 	self.selectDashboard = ko.observable(currentDash.id);
+	self.isOverlap = ko.observable(false);
 	self.loadDashboard = function (dashboardId) {
 		ajaxcall({
 			url: options.loadSavedDashbordUrl,
 			data: { id: dashboardId, adminMode: self.adminMode(), applyClientInAdmin: self.appSettings.useClientIdInAdmin },
 			noBlocking: true
 		}).done(function (reportsData) {
+			let resultGrid = self.checkOverlaps(reportsData);
+			if (resultGrid.length > 0) {
+				self.isOverlap(true);
+			}
 			if (reportsData.d) reportsData = reportsData.d;
 			var reports = [];
 			_.forEach(reportsData, function (r) {
@@ -6070,6 +6075,24 @@ var dashboardViewModel = function (options) {
 			self.loadDashboardReports(reports);
 		});
 	}
+	self.checkOverlaps =function (widgets) {
+		let overlaps = [];
+		for (let i = 0; i < widgets.length; i++) {
+			for (let j = i + 1; j < widgets.length; j++) {
+				let a = widgets[i];
+				let b = widgets[j];
+				let overlapX = a.X < b.X + b.Width && a.X + a.Width > b.X;
+				let overlapY = a.Y < b.Y + b.Height && a.Y + a.Height > b.Y;
+				if (overlapX && overlapY) {
+					overlaps.push({
+						box1: `Box ${i + 1} (x:${a.X}, y:${a.Y}, w:${a.Width}, h:${a.Height})`,
+						box2: `Box ${j + 1} (x:${b.X}, y:${b.Y}, w:${b.Width}, h:${b.Height})`
+					});
+				}
+			}
+		}
+		return overlaps;
+	}
 
 	self.selectDashboard.subscribe(function (newValue) {
 		if (newValue != self.currentDashboard().id) {
@@ -6081,10 +6104,10 @@ var dashboardViewModel = function (options) {
 		var filteredReports = [];
 		self.reportsAndFolders().forEach(function (folder) {
 			var filterReports = folder.reports.filter(function (report) {
-				var reportNameLower = report.reportName.toLowerCase();
-				var reportDescriptionLower = report.reportDescription.toLowerCase();
+				var reportNameLower = report.reportName?.toLowerCase();
+				var reportDescriptionLower = report.reportDescription?.toLowerCase();
 				var searchReportsLower = searchReports.toLowerCase();
-				return reportNameLower.includes(searchReportsLower) || reportDescriptionLower.includes(searchReportsLower);
+				return reportNameLower.includes(searchReportsLower) || reportDescriptionLower?.includes(searchReportsLower);
 			});
 			filteredReports = filteredReports.concat(filterReports);
 		});
