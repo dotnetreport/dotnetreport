@@ -91,7 +91,7 @@ namespace ReportBuilder.Web.Controllers
             }
 
             // Uncomment if you want to restrict max records returned
-            sql = sql.Replace("SELECT ", "SELECT TOP 500 ");
+            sql = sql.Substring(0, 0) + "SELECT DISTINCT TOP 500 " + sql.Substring(0 + "SELECT ".Length);
 
             var json = new StringBuilder();
             var dt = new DataTable();
@@ -184,6 +184,7 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("clientId", settings.ClientId),
                     new KeyValuePair<string, string>("userId", settings.UserId),
                     new KeyValuePair<string, string>("userIdForSchedule", settings.UserIdForSchedule),
+                    new KeyValuePair<string, string>("userIdForFilter", settings.UserIdForFilter),
                     new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
                     new KeyValuePair<string, string>("useParameters", "false")
             };

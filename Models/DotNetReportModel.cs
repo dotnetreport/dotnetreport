@@ -661,11 +661,34 @@ namespace ReportBuilder.Web.Models
         static string ParseJsonValue(JToken json, string columnToExtract, bool asTable = true)
         {
             if (!string.IsNullOrEmpty(columnToExtract))
-                return json.Value<dynamic>(columnToExtract)?.ToString();
+            {
+                if (json.Type == JTokenType.Array)
+                {
+                    var results = new List<string>();
 
+                    foreach (var item in json.Children<JObject>())
+                    {
+                        var value = item[columnToExtract]?.ToString();
+                        if (value != null)
+                            results.Add(value);
+                    }
+
+                    return string.Join(", ", results); // or build table rows if asTable
+                }
+                else if (json.Type == JTokenType.Object)
+                {
+                    return json[columnToExtract]?.ToString();
+                }
+                else
+                {
+                    // For primitive values or unexpected types
+                    return json.ToString();
+                }
+            }
+
+            // full parsing if no columnToExtract
             StringBuilder sb = new StringBuilder();
             ParseJson(json, sb, "", asTable);
-
             return asTable ? $"<table>{sb}</table>" : sb.ToString();
         }
 
@@ -798,6 +821,15 @@ namespace ReportBuilder.Web.Models
                     dt.Columns.RemoveAt(i); // Remove the column
                 }
             }
+        }
+        public static string UpdateOnlyTop(string expandSqls)
+        {
+            var jsonObj = JObject.Parse(expandSqls);
+            if (jsonObj["OnlyTop"]?.Type != JTokenType.Null)
+            {
+                jsonObj["OnlyTop"] = null;
+            }
+            return jsonObj.ToString();
         }
         private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool loadHeader = true, string chartData = null,bool isexpanded=false,bool isSubReport=false)
         {
@@ -1284,16 +1316,22 @@ namespace ReportBuilder.Web.Models
                 {
                     if (!col.ColumnName.Contains("__prm__"))
                     {
-                        var item = new DotNetReportDataRowItemModel
+                        try
                         {
-                            Column = model.Columns[i],
-                            Value = row[col] != null ? row[col].ToString() : null,
-                            FormattedValue = GetFormattedValue(col, row, model.Columns[i].FormatType, jsonAsTable),
-                            LabelValue = GetLabelValue(col, row)
-                        };
+                            var item = new DotNetReportDataRowItemModel
+                            {
+                                Column = model.Columns[i],
+                                Value = row[col] != null ? row[col].ToString() : null,
+                                FormattedValue = GetFormattedValue(col, row, model.Columns[i].FormatType, jsonAsTable),
+                                LabelValue = GetLabelValue(col, row)
+                            };
 
-                        items.Add(item);
-                    
+                            items.Add(item);
+                        }
+                        catch (Exception ex)
+                        {
+                            //throw ex;
+                        }                    
                     }
                     i += 1;
                 }
@@ -2044,37 +2082,35 @@ namespace ReportBuilder.Web.Models
                 int rowend = rowstart;
                 int colend = dt.Columns.Count;
 
-                if (dt.Rows.Count > 0)
+                ws.Cells[rowstart, colstart, rowend, colend].Merge = true;
+                ws.Cells[rowstart, colstart, rowend, colend].Value = reportName;
+                ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Bold = true;
+                ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Size = 14;
+
+                rowstart += 2;
+                rowend = rowstart + dt.Rows.Count;
+
+                FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeSubtotal, true, chartData, isSubReport: isSubReport);
+
+                if (allExpanded && dt.Rows.Count > 0)
                 {
-                    ws.Cells[rowstart, colstart, rowend, colend].Merge = true;
-                    ws.Cells[rowstart, colstart, rowend, colend].Value = reportName;
-                    ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Bold = true;
-                    ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Size = 14;
-
-                    rowstart += 2;
-                    rowend = rowstart + dt.Rows.Count;
-
-                    FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeSubtotal, true, chartData,isSubReport:isSubReport);
-
-                    if (allExpanded)
+                    if (onlyAndGroupInDetailColumns.Any())
                     {
-                        if (onlyAndGroupInDetailColumns.Any())
-                        {
-                            columns.AddRange(onlyAndGroupInDetailColumns);
-                            var columnOrderList = GetGroupFunctionList(expandSqls);
-                            columns = columns.OrderBy(c => columnOrderList.FindIndex(g => g.CustomLabel == c.fieldName)).ToList();
-                        }
-                        var insertRowIndex = 3;
+                        columns.AddRange(onlyAndGroupInDetailColumns);
+                        var columnOrderList = GetGroupFunctionList(expandSqls);
+                        columns = columns.OrderBy(c => columnOrderList.FindIndex(g => g.CustomLabel == c.fieldName)).ToList();
+                    }
+                    var insertRowIndex = 3;
 
-                        var drilldownRow = new List<string>();
-                        var dr = dt.Rows[0];
+                    var drilldownRow = new List<string>();
+                    var dr = dt.Rows[0];
 
-                        int i = 0;
-                        foreach (DataColumn dc in dt.Columns)
-                        {
-                            if (i >= sqlFields.Count) break;
-                            var col = sqlFields[i++]; //columns.FirstOrDefault(x => x.fieldName == dc.ColumnName) ?? new ReportHeaderColumn();
-                            drilldownRow.Add($@"
+                    int i = 0;
+                    foreach (DataColumn dc in dt.Columns)
+                    {
+                        if (i >= sqlFields.Count) break;
+                        var col = sqlFields[i++]; //columns.FirstOrDefault(x => x.fieldName == dc.ColumnName) ?? new ReportHeaderColumn();
+                        drilldownRow.Add($@"
                                     {{
                                         ""Value"":""{dr[dc]}"",
                                         ""FormattedValue"":""{dr[dc]}"",
@@ -2089,51 +2125,52 @@ namespace ReportBuilder.Web.Models
                                         }}
                                      }}
                                 ");
-                        }
-                        bool isGroupInDetailExist = ContainsGroupInDetail(expandSqls);
-                        var drillDownRowValue = $"\"DrillDownRow\": [{string.Join(',', drilldownRow)}]";
-                        var reportData = expandSqls.Replace("\"DrillDownRow\":[]", drillDownRowValue);
-                        // If Group in Detail does not exist, set IsAggregateReport to false
-                        if (!isGroupInDetailExist)
-                        {
-                            reportData = reportData.Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
-                        }
-                        var drilldownSql = await RunReportApiCall(reportData);
-                        if (drilldownSql.StartsWith("{\"sql\""))
-                        {
-                            qry = JsonConvert.DeserializeObject<SqlQuery>(drilldownSql);
-                            drilldownSql = qry.sql;
-                        }
+                    }
+                    bool isGroupInDetailExist = ContainsGroupInDetail(expandSqls);
+                    var drillDownRowValue = $"\"DrillDownRow\": [{string.Join(',', drilldownRow)}]";
+                    var reportData = expandSqls.Replace("\"DrillDownRow\":[]", drillDownRowValue);
+                    // If Group in Detail does not exist, set IsAggregateReport to false
+                    if (!isGroupInDetailExist)
+                    {
+                        reportData = reportData.Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
+                    }
+                    reportData = UpdateOnlyTop(reportData);
+                    var drilldownSql = await RunReportApiCall(reportData);
+                    if (drilldownSql.StartsWith("{\"sql\""))
+                    {
+                        qry = JsonConvert.DeserializeObject<SqlQuery>(drilldownSql);
+                        drilldownSql = qry.sql;
+                    }
 
-                        var combinedSqls = "";
-                        if (!string.IsNullOrEmpty(drilldownSql))
+                    var combinedSqls = "";
+                    if (!string.IsNullOrEmpty(drilldownSql))
+                    {
+                        foreach (DataRow ddr in dt.Rows)
                         {
-                            foreach (DataRow ddr in dt.Rows)
+                            i = 0;
+                            var filteredSql = drilldownSql;
+                            foreach (DataColumn dc in dt.Columns)
                             {
-                                i = 0;
-                                var filteredSql = drilldownSql;
-                                foreach (DataColumn dc in dt.Columns)
-                                {
-                                    var value = ddr[dc].ToString().Replace("'", "''");
-                                    filteredSql = filteredSql.Replace($"<{dc.ColumnName}>", value);
-                                }
-
-                                combinedSqls += filteredSql += ";\n";
+                                var value = ddr[dc].ToString().Replace("'", "''");
+                                filteredSql = filteredSql.Replace($"<{dc.ColumnName}>", value);
                             }
 
-                            var dts = databaseConnection.ExecuteDataSetQuery(connectionString, combinedSqls, qry.parameters);
+                            combinedSqls += filteredSql += ";\n";
+                        }
 
-                            foreach (DataTable ddt in dts.Tables)
-                            {
-                                ws.InsertRow(insertRowIndex + 2, ddt.Rows.Count);
+                        var dts = databaseConnection.ExecuteDataSetQuery(connectionString, combinedSqls, qry.parameters);
 
-                                FormatExcelSheet(ddt, ws, insertRowIndex == 3 ? 3 : (insertRowIndex + 1), dt.Columns.Count + 2, columns, false, insertRowIndex == 3,isexpanded:true);
+                        foreach (DataTable ddt in dts.Tables)
+                        {
+                            ws.InsertRow(insertRowIndex + 2, ddt.Rows.Count);
 
-                                insertRowIndex += ddt.Rows.Count + 1;
-                            }
+                            FormatExcelSheet(ddt, ws, insertRowIndex == 3 ? 3 : (insertRowIndex + 1), dt.Columns.Count + 2, columns, false, insertRowIndex == 3, isexpanded: true);
+
+                            insertRowIndex += ddt.Rows.Count + 1;
                         }
                     }
                 }
+
                 ws.View.FreezePanes(4, 1);
                 return xp.GetAsByteArray();
             }
@@ -2902,6 +2939,8 @@ namespace ReportBuilder.Web.Models
             }
             await page.EvaluateExpressionAsync("$('.report-inner').css('transform','none')");
             await page.PdfAsync(pdfFile, pdfOptions);
+            await page.DisposeAsync();
+            await browser.DisposeAsync();
             return File.ReadAllBytes(pdfFile);
         }
 

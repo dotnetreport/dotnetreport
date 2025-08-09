@@ -239,7 +239,7 @@
         <div class="modal-content" data-bind="with: dashboard">
             <div class="modal-header">
                 <h4 class="modal-title" id="add-dashboard-modal-label"><span data-bind="text: Id() ? 'Edit' : 'Add'"></span> Dashboard</h4>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" data-bind="click: $root.onModalCloseClicked" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-4 card card-body">
@@ -335,7 +335,7 @@
 
 
 <div class="grid-stack" data-bind="visible: reports().length>0, foreach: reports" style="display: none;">
-    <div class="grid-stack-item" data-bind="attr: {'data-gs-x': x, 'data-gs-y': y, 'data-gs-width': width, 'data-gs-height': height, 'data-gs-auto-position': true, 'data-gs-id': ReportID}">
+    <div class="grid-stack-item" data-bind="attr:$parent.isOverlap()? {'data-gs-width': width, 'data-gs-height': height, 'data-gs-auto-position': true, 'data-gs-id': ReportID}:{'data-gs-x': x, 'data-gs-y': y, 'data-gs-width': width, 'data-gs-height': height, 'data-gs-auto-position': true, 'data-gs-id': ReportID}">
 
         <div class="card" data-bind="attr: {class: 'card ' + panelStyle + ' grid-stack-item-content'}, css: { expanded: isExpanded }, style: { border: noDashboardBorders() ? 'none' : '', 'box-shadow': noDashboardBorders() ? 'none' : '' }" " style="overflow-y: hidden;">
             <div class="padded-div" style="padding-bottom: 0; margin-bottom: 0;">
