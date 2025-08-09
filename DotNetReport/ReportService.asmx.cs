@@ -60,7 +60,7 @@ namespace ReportBuilder.WebForms.DotNetReport
             }
 
             // Uncomment if you want to restrict max records returned
-            sql = sql.Replace("SELECT ", "SELECT TOP 500 ");
+            sql = sql.Substring(0, 0) + "SELECT DISTINCT TOP 500 " + sql.Substring(0 + "SELECT ".Length);
 
             var json = new StringBuilder();
             var dt = new DataTable();
@@ -134,6 +134,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                     { "clientId", settings.ClientId },
                     { "userId", settings.UserId },
                     { "userIdForSchedule", settings.UserIdForSchedule },
+                    { "userIdForFilter", settings.UserIdForFilter },
                     { "userRole", string.Join(",", settings.CurrentUserRole) }
                 };
 

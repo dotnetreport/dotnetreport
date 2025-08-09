@@ -12,7 +12,6 @@
     <link href="../Content/bootstrap-mvc-validation.css" rel="stylesheet" />
     <link href="../Content/themes/base/datepicker.css" rel="stylesheet" />
     <link href="../Content/themes/base/theme.css" rel="stylesheet" />
-    <link href="../Content/toastr.min.css" rel="stylesheet" />
     <link href="../Content/font-awesome.min.css" rel="stylesheet" />
     <link href="../Content/css/select2.min.css" rel="stylesheet" />
     <link href="../Content/dotnetreport.css?v=4.2.0" rel="stylesheet" />
@@ -2279,14 +2278,13 @@
     <script src="../Scripts/knockout-3.5.1.js"></script>
     <script src="../Scripts/jquery.blockUI.js"></script>
     <script src="../Scripts/bootbox.min.js"></script>
-    <script src="../Scripts/toastr.min.js"></script>
     <script src="../Scripts/knockout-sortable.min.js"></script>
     <script src="../Scripts/select2.min.js"></script>
     <script src="../Scripts/dotnetreport-helper.js"></script>
     <script src="../Scripts/lodash.min.js"></script>
     <script src="../Scripts/fabric.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tributejs/5.1.3/tribute.min.js"></script>
-    <script src="../Scripts/dotnetreport.js?v=5.0.0"></script>
+    <script src="../Scripts/dotnetreport.js?v=6.0.0"></script>
     <asp:ContentPlaceHolder ID="scripts" runat="server">
     </asp:ContentPlaceHolder>
 </body>

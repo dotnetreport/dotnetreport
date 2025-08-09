@@ -702,6 +702,7 @@ var manageViewModel = function (options) {
 				})
 			})
 		}).done(function (x) {
+			if (x.d) x = d;
 			if (x.success) {
 				toastr.success("Saved Categories ");
 				self.LoadCategories();
@@ -823,7 +824,8 @@ var manageViewModel = function (options) {
 					connectName: self.newDataConnection.Name()
 				})
 			})
-		}).done(function (result) {			
+		}).done(function (result) {		
+			if (result.d) result = d;
 			var dc = self.DataConnections().find(x => self.currentConnectionKey() == x.DataConnectGuid);
 			dc.DataConnectName = self.newDataConnection.Name();
 			dc.ConnectionKey = self.newDataConnection.ConnectionKey();
@@ -1894,6 +1896,7 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 						})
 					})
 				}).done(function (x) {
+					if (x.d) x = x.d;
 					if (x.success && x.tableId) {
 						t.Id(x.tableId);
 						if (silent !== true) toastr.success("Saved table " + e.DisplayName);
