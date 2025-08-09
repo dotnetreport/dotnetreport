@@ -854,7 +854,7 @@
                     <div class="col-sm-2">
                         <select class="form-select" data-bind="value: format">
                             <option value="EXCEL">Excel</option>
-                            <option data-bind="visible: $parent.canDrilldown()" value="EXCEL-SUB">Excel (Expanded)</option>
+                            @* <option data-bind="visible: $parent.canDrilldown()" value="EXCEL-SUB">Excel (Expanded)</option> *@
                             <option value="CSV">CSV</option>
                             <option value="PDF">PDF</option>
                             <option value="WORD">Word</option>
@@ -1225,7 +1225,7 @@
                 <h5 class="modal-title" id="myModalLabel">
                     <a title="Need help setting up a report?" target="_blank" href="https://dotnetreport.com/blogs/docs/designing-reports"><span class="fa fa-question-circle"></span></a> Design your Report
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" data-bind="click: onModalCloseClicked" aria-label="Close"></button>
             </div>
             <div class="modal-body needs-validation" style="overflow-y: auto; flex-grow: 1;">
                 <div class="row">
@@ -2124,9 +2124,9 @@
             <div class="d-flex justify-content-between mb-1">
                 <div>
                     <label class="form-label small">Legend Position</label>
-                    <select class="form-select form-select-sm" data-bind="value: chartOptions().legendPosition, event: { change: updateChart }">
+                    <select class="form-select form-select-sm" data-bind="value: chartOptions().legendPosition, notifyChange: updateLegend">
                         <option value="right">Right</option>
-                        <option value="left">Left</option>
+                        @* <option value="left">Left</option> *@
                         <option value="top">Top</option>
                         <option value="bottom">Bottom</option>
                         <option value="none">None</option>
@@ -2152,7 +2152,67 @@
                     <input class="form-check-input" type="checkbox" data-bind="checked: chartOptions().showGridlines, event: { change: updateChart }">
                     <label class="form-check-label">Gridlines</label>
                 </div>
+                <div class="form-check form-switch small mb-1">
+                    <input class="form-check-input" type="checkbox" data-bind="checked: chartOptions().showSmallValuesOnLabel, event: { change: updateChart }">
+                    <label class="form-check-label">Show Small Values On Label</label>
+                </div>
+                <div class="form-group small mb-1">
+                    <label class="form-label">Y-Axis Format</label>
+                    <input type="text" class="form-control form-control-sm" placeholder="e.g. #,##0.00" data-bind="value: chartOptions().yAxisFormat, event: { change: updateChart }" />
+                </div>
+                <div class="form-group small mb-1 d-flex gap-2">
+                     <div class="w-50">
+                         <label class="form-label">Y-Axis Min</label>
+                         <input type="number" class="form-control form-control-sm" data-bind="value: chartOptions().yMin, event: { change: updateChart }" />
+                     </div>
+                     <div class="w-50">
+                         <label class="form-label">Y-Axis Max</label>
+                         <input type="number" class="form-control form-control-sm" data-bind="value: chartOptions().yMax, event: { change: updateChart }" />
+                     </div>
+                </div>
             </div>
+        </div>
+    </div>
+
+</script>
+<script type="text/html" id="table-settings">
+        <div class="chart-container pull-right">
+        <button class="btn btn-sm btn-secondary" data-bind="click: toggleTableSettings" title="Table settings">
+            <i class="fa fa-cog"></i>
+        </button>
+        <div class="chart-settings-panel border p-2 shadow-sm bg-light" data-bind="visible: showTableSettings">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0">Table Settings</h6>
+                <button class="btn btn-sm btn-close" data-bind="click: toggleTableSettings"></button>
+            </div>
+             <div class="form-group row">
+            <div class="mb-2 col-6">
+                <label class="form-label small">Header Back Color</label>
+                <div class="d-flex align-items-center flex-wrap">
+                    <input type="color" class="color-picker" data-bind="value: tableheaderBackColor,attr: { placeholder: 'Select' }, event: { change: updateTable }" />
+                </div>
+            </div>
+            <div class="mb-2 col-6">
+                <label class="form-label small">Header Font Color</label>
+                <div class="d-flex align-items-center flex-wrap">
+                    <input type="color" class="color-picker" data-bind="value: tableheaderFontColor,attr: { placeholder: 'Select' }, event: { change: updateTable }" />
+                </div>
+            </div>
+             </div>
+             <div class="form-group row">
+            <div class="mb-2 col-6">
+                <label class="form-label small">Row Back Color</label>
+                <div class="d-flex align-items-center flex-wrap">
+                    <input type="color" class="color-picker" data-bind="value: tableRowBackColor,attr: { placeholder: 'Select' }, event: { change: updateTable }" />
+                </div>
+            </div>
+            <div class="mb-2 col-6">
+                <label class="form-label small">Row Font Color</label>
+                <div class="d-flex align-items-center flex-wrap">
+                    <input type="color" class="color-picker" data-bind="value: tableRowFontColor,attr: { placeholder: 'Select' }, event: { change: updateTable }" />
+                </div>
+            </div>
+             </div>
         </div>
     </div>
 
