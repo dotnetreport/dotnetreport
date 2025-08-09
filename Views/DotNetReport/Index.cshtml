@@ -661,6 +661,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                         <!-- /ko -->
                                                     </div>
                                                 </div>
+                                                <div data-bind="with: $parent" class="pull-left">
+                                                    <div  data-bind="template: 'table-settings', data: $data"></div>
+                                                </div>
                                             </div>
                                         </div>
                                         <div class="form-inline pull-right">
