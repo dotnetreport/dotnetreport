@@ -851,7 +851,7 @@ namespace ReportBuilder.Web.Controllers
 
                 var _dbtype = dbConfig["DatabaseType"]?.ToString() ?? dbtype;
                 string connectionString = dbConfig["ConnectionString"]?.ToString();
-                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(_dbtype);
 
                 var tables = new List<TableViewModel>();
                 var procedures = new List<TableViewModel>();
