@@ -408,8 +408,29 @@
 
         <div class="row small">
             <div class="col-md-6">
-                <b>Manage by User</b> (allow edit)
-                <div class="row container-fluid">
+                <i class="toggle-icon fa" data-bind="click: toggleManageUsers,css: { 'fa-chevron-down': showManageUsers(), 'fa-chevron-right': !showManageUsers() }"></i> <b>Manage by User</b> (allow edit)
+                <div class="row container-fluid" data-bind="visible: showManageUsers">
+                    <!-- ko if: groupedUsers().length > 0 -->
+                    <!-- ko foreach: groupedUsers -->
+                    <div class="col-md-12">
+                      <div class="category-header" style="cursor: pointer;" data-bind="click: function() { show(!show()); }">
+                        <i class="fa toggle-icon" data-bind="css: { 'fa-chevron-down': show(), 'fa-chevron-right': !show() }"></i>
+                        <strong data-bind="text: category"></strong>
+                      </div>
+                      <div class="row container-fluid" data-bind="visible: show">
+                        <!-- ko foreach: users -->
+                        <div class="pull-left">
+                          <div class="checkbox">
+                            <label class="label label-info">
+                              <input type="checkbox" data-bind="checked: selected"> &nbsp; <span data-bind="text: text"></span>&nbsp; </label>
+                          </div>
+                        </div>
+                        <!-- /ko -->
+                      </div>
+                    </div>
+                    <!-- /ko -->
+                    <!-- /ko -->
+                    <!-- ko if: groupedUsers().length == 0 && users.length > 0 -->
                     <!-- ko foreach: users -->
                     <div class="pull-left">
                         <div class="checkbox">
@@ -419,13 +440,35 @@
                         </div>
                     </div>
                     <!-- /ko -->
-                    <div data-bind="if: users.length == 0">
+                    <!-- /ko -->
+                    <div data-bind="if: groupedUsers().length == 0 && users.length == 0">
                         Users list not populated or not applicable
                     </div>
                 </div>
                 <br />
-                <b>View only by User</b> (no edit/delete)
-                <div class="row container-fluid">
+                <i class="toggle-icon fa" data-bind="click: toggleViewUsers,css: { 'fa-chevron-down': showViewUsers(), 'fa-chevron-right': !showViewUsers() }"></i> <b>View only by User</b> (no edit/delete)
+                <div class="row container-fluid" data-bind="visible: showViewUsers">
+                    <!-- ko if: groupedViewOnlyUsers().length > 0 -->
+                    <!-- ko foreach: groupedViewOnlyUsers -->
+                    <div class="col-md-12">
+                      <div class="category-header" style="cursor: pointer;" data-bind="click: function() { show(!show()); }">
+                        <i class="fa toggle-icon" data-bind="css: { 'fa-chevron-down': show(), 'fa-chevron-right': !show() }"></i>
+                        <strong data-bind="text: category"></strong>
+                      </div>
+                      <div class="row container-fluid" data-bind="visible: show">
+                        <!-- ko foreach: viewOnlyUsers -->
+                        <div class="pull-left">
+                          <div class="checkbox">
+                            <label class="label label-info">
+                              <input type="checkbox" data-bind="checked: selected"> &nbsp; <span data-bind="text: text"></span>&nbsp; </label>
+                          </div>
+                        </div>
+                        <!-- /ko -->
+                      </div>
+                    </div>
+                    <!-- /ko -->
+                    <!-- /ko -->
+                    <!-- ko if: groupedViewOnlyUsers().length == 0 && viewOnlyUsers.length > 0 -->
                     <!-- ko foreach: viewOnlyUsers -->
                     <div class="pull-left">
                         <div class="checkbox">
@@ -435,15 +478,37 @@
                         </div>
                     </div>
                     <!-- /ko -->
-                    <div data-bind="if: users.length == 0">
+                    <!-- /ko -->
+                    <div data-bind="if: groupedViewOnlyUsers().length == 0 && users.length == 0">
                         Users list not populated or not applicable
                     </div>
                 </div>
                 <br />
                 <div data-bind="ifnot: isDashboard">
-                    <b>Delete by User</b> (allow delete)
-                    <div class="row container-fluid">
+                    <i class="toggle-icon fa" data-bind="click: toggleDeleteUsers,css: { 'fa-chevron-down': showDeleteUsers(), 'fa-chevron-right': !showDeleteUsers() }"></i><b>Delete by User</b> (allow delete)
+                    <div class="row container-fluid" data-bind="visible: showDeleteUsers">
+                    <!-- ko if: groupedDeleteOnlyUsers().length > 0 -->
+                    <!-- ko foreach: groupedDeleteOnlyUsers -->
+                    <div class="col-md-12">
+                      <div class="category-header" style="cursor: pointer;" data-bind="click: function() { show(!show()); }">
+                        <i class="fa toggle-icon" data-bind="css: { 'fa-chevron-down': show(), 'fa-chevron-right': !show() }"></i>
+                        <strong data-bind="text: category"></strong>
+                      </div>
+                      <div class="row container-fluid" data-bind="visible: show">
                         <!-- ko foreach: deleteOnlyUsers -->
+                        <div class="pull-left">
+                          <div class="checkbox">
+                            <label class="label label-info">
+                              <input type="checkbox" data-bind="checked: selected"> &nbsp; <span data-bind="text: text"></span>&nbsp; </label>
+                          </div>
+                        </div>
+                        <!-- /ko -->
+                      </div>
+                    </div>
+                    <!-- /ko -->
+                    <!-- /ko -->
+                    <!-- ko if: groupedDeleteOnlyUsers().length == 0 && deleteOnlyUsers.length > 0 -->
+                    <!-- ko foreach: deleteOnlyUsers -->
                         <div class="pull-left">
                             <div class="checkbox">
                                 <label class="label label-info">
@@ -452,7 +517,8 @@
                             </div>
                         </div>
                         <!-- /ko -->
-                        <div data-bind="if: users.length == 0">
+                        <!-- /ko -->
+                        <div data-bind="if: groupedDeleteOnlyUsers().length == 0 &&  users.length == 0">
                             Users list not populated or not applicable
                         </div>
                     </div>
@@ -460,8 +526,8 @@
                 </div>
             </div>
             <div class="col-md-6">
-                <b>Manage by User Role</b> (allow edit)
-                <div class="row container-fluid">
+                <i class="toggle-icon fa" data-bind="click: toggleManageRoles,css: { 'fa-chevron-down': showManageRoles(), 'fa-chevron-right': !showManageRoles() }"></i><b>Manage by User Role</b> (allow edit)
+                <div class="row container-fluid" data-bind="visible: showManageRoles">
                     <!-- ko foreach: userRoles -->
                     <div class="pull-left">
                         <div class="checkbox">
@@ -476,8 +542,8 @@
                     </div>
                 </div>
                 <br />
-                <b>View only by User Role</b> (no edit/delete)
-                <div class="row container-fluid">
+                <i class="toggle-icon fa" data-bind="click: toggleViewRoles,css: { 'fa-chevron-down': showViewRoles(), 'fa-chevron-right': !showViewRoles() }"></i><b>View only by User Role</b> (no edit/delete)
+                <div class="row container-fluid" data-bind="visible: showViewRoles">
                     <!-- ko foreach: viewOnlyUserRoles -->
                     <div class="pull-left">
                         <div class="checkbox">
@@ -492,9 +558,8 @@
                     </div>
                 </div>
                 <div data-bind="ifnot: isDashboard">
-                    <br />
-                    <b>Delete by User Role</b> (allow delete)
-                    <div class="row container-fluid">
+                    <i class="toggle-icon fa" data-bind="click: toggleDeleteRoles,css: { 'fa-chevron-down': showDeleteRoles(), 'fa-chevron-right': !showDeleteRoles() }"></i><b>Delete by User Role</b> (allow delete)
+                    <div class="row container-fluid" data-bind="visible: showDeleteRoles">
                         <!-- ko foreach: deleteOnlyUserRoles -->
                         <div class="pull-left">
                             <div class="checkbox">
@@ -789,7 +854,7 @@
                     <div class="col-sm-2">
                         <select class="form-select" data-bind="value: format">
                             <option value="EXCEL">Excel</option>
-                            <option data-bind="visible: $parent.canDrilldown()" value="EXCEL-SUB">Excel (Expanded)</option>
+                            @* <option data-bind="visible: $parent.canDrilldown()" value="EXCEL-SUB">Excel (Expanded)</option> *@
                             <option value="CSV">CSV</option>
                             <option value="PDF">PDF</option>
                             <option value="WORD">Word</option>
@@ -1160,7 +1225,7 @@
                 <h5 class="modal-title" id="myModalLabel">
                     <a title="Need help setting up a report?" target="_blank" href="https://dotnetreport.com/blogs/docs/designing-reports"><span class="fa fa-question-circle"></span></a> Design your Report
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" data-bind="click: onModalCloseClicked" aria-label="Close"></button>
             </div>
             <div class="modal-body needs-validation" style="overflow-y: auto; flex-grow: 1;">
                 <div class="row">
@@ -1378,7 +1443,7 @@
                                 </div>
                             </div>
 
-                            <div data-bind="if: isFormulaField" class="custom-field-design">
+                            <div id="customFieldSection" data-bind="if: isFormulaField" class="custom-field-design">
                                 <br />
                                 <br />
                                 <div class="card">
@@ -2059,9 +2124,9 @@
             <div class="d-flex justify-content-between mb-1">
                 <div>
                     <label class="form-label small">Legend Position</label>
-                    <select class="form-select form-select-sm" data-bind="value: chartOptions().legendPosition, event: { change: updateChart }">
+                    <select class="form-select form-select-sm" data-bind="value: chartOptions().legendPosition, notifyChange: updateLegend">
                         <option value="right">Right</option>
-                        <option value="left">Left</option>
+                        @* <option value="left">Left</option> *@
                         <option value="top">Top</option>
                         <option value="bottom">Bottom</option>
                         <option value="none">None</option>
@@ -2087,7 +2152,67 @@
                     <input class="form-check-input" type="checkbox" data-bind="checked: chartOptions().showGridlines, event: { change: updateChart }">
                     <label class="form-check-label">Gridlines</label>
                 </div>
+                <div class="form-check form-switch small mb-1">
+                    <input class="form-check-input" type="checkbox" data-bind="checked: chartOptions().showSmallValuesOnLabel, event: { change: updateChart }">
+                    <label class="form-check-label">Show Small Values On Label</label>
+                </div>
+                <div class="form-group small mb-1">
+                    <label class="form-label">Y-Axis Format</label>
+                    <input type="text" class="form-control form-control-sm" placeholder="e.g. #,##0.00" data-bind="value: chartOptions().yAxisFormat, event: { change: updateChart }" />
+                </div>
+                <div class="form-group small mb-1 d-flex gap-2">
+                     <div class="w-50">
+                         <label class="form-label">Y-Axis Min</label>
+                         <input type="number" class="form-control form-control-sm" data-bind="value: chartOptions().yMin, event: { change: updateChart }" />
+                     </div>
+                     <div class="w-50">
+                         <label class="form-label">Y-Axis Max</label>
+                         <input type="number" class="form-control form-control-sm" data-bind="value: chartOptions().yMax, event: { change: updateChart }" />
+                     </div>
+                </div>
             </div>
+        </div>
+    </div>
+
+</script>
+<script type="text/html" id="table-settings">
+        <div class="chart-container pull-right">
+        <button class="btn btn-sm btn-secondary" data-bind="click: toggleTableSettings" title="Table settings">
+            <i class="fa fa-cog"></i>
+        </button>
+        <div class="chart-settings-panel border p-2 shadow-sm bg-light" data-bind="visible: showTableSettings">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0">Table Settings</h6>
+                <button class="btn btn-sm btn-close" data-bind="click: toggleTableSettings"></button>
+            </div>
+             <div class="form-group row">
+            <div class="mb-2 col-6">
+                <label class="form-label small">Header Back Color</label>
+                <div class="d-flex align-items-center flex-wrap">
+                    <input type="color" class="color-picker" data-bind="value: tableheaderBackColor,attr: { placeholder: 'Select' }, event: { change: updateTable }" />
+                </div>
+            </div>
+            <div class="mb-2 col-6">
+                <label class="form-label small">Header Font Color</label>
+                <div class="d-flex align-items-center flex-wrap">
+                    <input type="color" class="color-picker" data-bind="value: tableheaderFontColor,attr: { placeholder: 'Select' }, event: { change: updateTable }" />
+                </div>
+            </div>
+             </div>
+             <div class="form-group row">
+            <div class="mb-2 col-6">
+                <label class="form-label small">Row Back Color</label>
+                <div class="d-flex align-items-center flex-wrap">
+                    <input type="color" class="color-picker" data-bind="value: tableRowBackColor,attr: { placeholder: 'Select' }, event: { change: updateTable }" />
+                </div>
+            </div>
+            <div class="mb-2 col-6">
+                <label class="form-label small">Row Font Color</label>
+                <div class="d-flex align-items-center flex-wrap">
+                    <input type="color" class="color-picker" data-bind="value: tableRowFontColor,attr: { placeholder: 'Select' }, event: { change: updateTable }" />
+                </div>
+            </div>
+             </div>
         </div>
     </div>
 

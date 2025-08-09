@@ -891,6 +891,7 @@ var reportViewModel = function (options) {
 	self.PivotColumnsWidth = ko.observable();
 	self.ReportColumns = ko.observable();
 	self.isModalOpen = ko.observable(false);
+	self.isDirty = ko.observable(false);
 
 	$(document).on('shown.bs.modal', '.modal', function () {
 		self.isModalOpen(true);
@@ -1257,29 +1258,37 @@ var reportViewModel = function (options) {
 			self.SelectedFields(result);
 			filters.forEach(f => self.FilterGroups()[0].AddFilter(f));
 
-			if (useAi === true) {
-				var queryText = document.getElementById("query-input").innerText;
-				ajaxcall({
-					url: options.apiUrl,
-					data: {
-						method: "/ReportApi/RunQueryAi",
-						model: JSON.stringify({
-							query: queryText,
-							fieldIds: fieldIds.join(",")
-						})
-					}
-				}).done(function (result) {
-					if (result.d) result = result.d;
-					if (result.success === false) {
-						toastr.error(result.message || 'Could not process this correctly, please try again');
-						return;
-					}
-					self.ExecuteReportQuery(result.sql, result.connectKey);
-				});
+			if ($.blockUI) {
+				$.blockUI();
 			}
-			else {
-				self.RunReport(false, true);
-			}
+
+			self.queryPrompt = document.getElementById("query-input").innerText;
+			ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/RunQueryAi",
+					model: JSON.stringify({
+						query: self.queryPrompt,
+						fieldIds: fieldIds.join(","),
+						reportJson: JSON.stringify(self.BuildReportData()) // send whatever our parser has built to improve
+					})
+				}
+			}).done(function (result) {
+				if ($.unblockUI) {
+					$.unblockUI();
+				}
+
+				if (result.d) result = result.d;
+				if (result.success === false) {
+					toastr.error(result.message || 'Could not process this correctly, please try again');
+					return;
+				}
+
+				options.reportSql = result.reportSql;
+				options.reportConnect = result.connectKey;
+				self.PopulateReport(result.report);
+				self.SaveReport(false);
+			});
 		});
 	}
 
@@ -1378,6 +1387,7 @@ var reportViewModel = function (options) {
 	self.createNewReport = function () {
 		self.clearReport();
 		self.ReportMode("generate");
+		self.setupDirtyCheck();
 	};
 
 	self.ReportType.subscribe(function (newvalue) {
@@ -1394,6 +1404,7 @@ var reportViewModel = function (options) {
 	
 	self.setReportType = function (reportType) {
 		self.ReportType(reportType);
+		self.isDirty(true);
 	};
 
 	self.cancelCreateReport = function () {
@@ -1410,7 +1421,33 @@ var reportViewModel = function (options) {
 			}
 		});
 	};
-
+	self.setupDirtyCheck = function () {
+		if (options.reportWizard == null) return;
+		options.reportWizard.find('input, select, textarea,.form-select, .form-control, .custom-control, .control, .dropdown-option, .btn-group, .btn, .list-group-item')
+			.off('change.inputDirtyCheck') // prevent duplicate handlers
+			.on('change.inputDirtyCheck input.inputDirtyCheck', function () {
+				self.isDirty(true);
+			});
+	};
+	self.onModalCloseClicked = function () {
+		if (options.reportWizard == null) return;
+		if (self.ReportMode() != 'dashboard') {
+			if (self.isDirty()) {
+				bootbox.confirm("You have unsaved changes. Do you want to discard them?", function (result) {
+					if (result) {
+						self.isDirty(false);
+						if (self.ReportMode() == 'dashboard') {
+							return;
+						}
+						self.ReportMode("start");
+						self.clearReport();
+					} else {
+						options.reportWizard.modal('show');
+					}
+				});
+			}
+		}
+	};
 	self.FlyFilters = ko.observableArray([]); 
 
 	self.setFlyFilters = function () {
@@ -1783,6 +1820,8 @@ var reportViewModel = function (options) {
 		self.selectedStyle('default');
 		self.reportRan(false);
 		self.executingReport = false;
+		self.isDirty(false);
+		self.clearTableSetting();
 	};
 
 	self.SelectedProc.subscribe(function (proc) {
@@ -1899,6 +1938,7 @@ var reportViewModel = function (options) {
 	self.lastPickedField = ko.observable();
 	self.joinIds = ko.observable();
 	self.SelectedFields.subscribe(function (fields) {
+		self.isDirty(true);
 		setTimeout(function () {
 			self.RemoveInvalidFilters(self.FilterGroups());
 
@@ -2058,6 +2098,7 @@ var reportViewModel = function (options) {
 	}
 
 	self.SelectedTable.subscribe(function (table) {
+		self.isDirty(true);
 		self.SelectedProc(null);
 		self.lastPickedField(null);
 		self.jsonFields([]);
@@ -2251,6 +2292,14 @@ var reportViewModel = function (options) {
 			self.currentFormulaField(null);
 		}
 		self.isFormulaField(!self.isFormulaField());
+		if (self.isFormulaField()) {
+			setTimeout(function () {
+				var target = document.getElementById("customFieldSection");
+				if (target) {
+					target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				}
+			}, 300); // delay ensures DOM is updated
+		}
 	};
 	self.removeField = function (field) {
 		bootbox.confirm("Are you sure you would like to remove this field?", function (r) {
@@ -2345,6 +2394,14 @@ var reportViewModel = function (options) {
 
 		self.currentFormulaField(field)
 		self.SelectedFields.remove(field);
+		if (self.isFormulaField()) {
+			setTimeout(function () {
+				var target = document.getElementById("customFieldSection");
+				if (target) {
+					target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				}
+			}, 300); // delay ensures DOM is updated
+		}
 	}
 
 	self.saveFormulaField = function () {
@@ -2970,10 +3027,9 @@ var reportViewModel = function (options) {
 				pivotFunction: ''
 			})
 		}).done(function () {
-			self.RunReport(false);
+			self.ExecuteReport();
 		});
 
-		self.RunReport(false);
 	}
 
 	self.copySqlToClipboard = function (button) {
@@ -3070,6 +3126,7 @@ var reportViewModel = function (options) {
 				if (previewOnly !== true && (self.SaveReport() || saveOnly)) {
 					if (saveOnly && !saveAlertFlag) {
 						saveAlertFlag = true;
+						self.isDirty(false);
 						toastr.success("Report Saved");
 						self.allSqlQueries("");
 						self.LoadAllSavedReports(true);
@@ -3935,17 +3992,42 @@ var reportViewModel = function (options) {
 		fontFamily: "",
 		showXAxisLabel: true,
 		showYAxisLabel: true,
+		showSmallValuesOnLabel: false,
 		showLegend: true,
 		legendPosition: "right",
-		showGridlines: true
+		showGridlines: true,
+		yAxisFormat: "",
+		yMin: null,
+		yMax: null
 	});
 
 	self.showSettings = ko.observable(false);
-
+	self.showTableSettings = ko.observable(false);
+	self.tableheaderBackColor = ko.observable();
+	self.tableheaderFontColor = ko.observable();
+	self.tableRowBackColor = ko.observable();
+	self.tableRowFontColor = ko.observable();
+	self.clearTableSetting = function () {
+		self.tableheaderBackColor = ko.observable();
+		self.tableheaderFontColor = ko.observable();
+		self.tableRowBackColor = ko.observable();
+		self.tableRowFontColor = ko.observable();
+	}
 
 	self.toggleChartSettings = function () {
 		self.showSettings(!self.showSettings());
+	}; 
+	self.toggleTableSettings = function () {
+		self.showTableSettings(!self.showTableSettings());
 	};
+	self.updateTable = function () {
+		_.forEach(self.SelectedFields(), function (f) {
+			if (self.tableheaderBackColor()) f.headerBackColor(self.tableheaderBackColor());
+			if (self.tableheaderFontColor()) f.headerFontColor(self.tableheaderFontColor());
+			if (self.tableRowBackColor()) f.backColor(self.tableRowBackColor());
+			if (self.tableRowFontColor()) f.fontColor(self.tableRowFontColor());
+		});
+	}
 	self.addSeriesColor = function () {
 		var colors = self.chartOptions().seriesColors;
 		var randomColor = "#" + Math.floor(Math.random() * 16777215).toString(16); // Generate random color
@@ -3969,7 +4051,10 @@ var reportViewModel = function (options) {
 	self.updateChart = function () {
 		self.DrawChart(); 
 	};
-
+	self.updateLegend = function (selectedValue) {
+		self.chartOptions().legendPosition = selectedValue;
+		self.DrawChart();
+	};
 	self.skipDraw = options.skipDraw === true ? true : false;
 	self.DrawChart = function () {
 		if (!self.isChart() || self.skipDraw === true) return;
@@ -4002,7 +4087,9 @@ var reportViewModel = function (options) {
 				}
 			});
 		}
-
+		if (self.chartOptions().showSmallValuesOnLabel) {
+			data.addColumn({ type: 'string', role: 'annotation' });
+		}
 		var rowArray = [];
 		var dataColumns = [];
 
@@ -4012,7 +4099,7 @@ var reportViewModel = function (options) {
 			_.forEach(e.Items, function (r, n) {
 				var column = reportData.Columns[n];
 				var isNumeric = r.Column.IsNumeric;
-
+				var isLastColumn = (n === e.Items.length - 1);
 				var value = (function () {
 					if (isNumeric && typeof r.FormattedValue === 'string' && r.FormattedValue.trim().endsWith('%')) {
 						var num = parseFloat(r.FormattedValue.replace('%', '').trim());
@@ -4049,6 +4136,9 @@ var reportViewModel = function (options) {
 				} else if ((isNumeric || self.ReportType() === 'Treemap') && !column.groupInGraph()) {
 					itemArray.push(value);
 				}
+				if (self.chartOptions().showSmallValuesOnLabel && isLastColumn) {
+					itemArray.push(value.toString());
+				}
 			});
 
 			rowArray.push(itemArray);
@@ -4083,7 +4173,7 @@ var reportViewModel = function (options) {
 				fractionDigits: 2 // optional: 2 decimal points
 			});
 			percentFormatter.format(data, 1);
-			chartOptions.vAxis = { format: '#%' };
+			chartOptions.vAxis = { format: "#'%'" };
 		}
 		if (self.colorScheme() != null && self.colorScheme().length > 0) {
 			chartOptions.colors = self.colorScheme().slice(1);
@@ -4290,7 +4380,49 @@ var reportViewModel = function (options) {
 		if (!chartOptions.showGridlines) { chartOptions.hAxis.gridlines = { color: 'none' }; chartOptions.vAxis.gridlines = { color: 'none' }; }
 		if (!chartOptions.showXAxisLabel) { chartOptions.hAxis.textPosition = 'none'; }
 		if (!chartOptions.showYAxisLabel) { chartOptions.vAxis.textPosition = 'none'; }
-
+		if (!chartOptions.showSmallValuesOnLabel) {
+			chartOptions.annotations = {
+				alwaysOutside: true,
+				textStyle: {
+					fontSize: 12,
+					auraColor: 'none',
+					color: '#555'
+				}
+			}
+		}
+		const yAxisFormat = self.chartOptions()?.yAxisFormat;
+		const isHorizontal = self.barChartHorizontal(); // Ensure it's callable
+		if (yAxisFormat) {
+			let formatValue;
+			if (yAxisFormat.includes('%')) {
+				switch (yAxisFormat) {
+					case '%':
+					case '#%':
+						formatValue = "#'%'";
+						break;
+					case '%#':
+						formatValue = "'%'#";
+						break;
+					default:
+						formatValue = yAxisFormat;
+				}
+			} else {
+				formatValue = yAxisFormat;
+			}
+			if (isHorizontal) {
+				chartOptions.hAxis.format = formatValue;
+			} else {
+				chartOptions.vAxis.format = formatValue;
+			}
+		}
+		if (self.chartOptions().yMin !== null && self.chartOptions().yMin !== "") {
+			chartOptions.vAxis.viewWindow = chartOptions.vAxis.viewWindow || {};
+			chartOptions.vAxis.viewWindow.min = Number(self.chartOptions().yMin);
+		}
+		if (self.chartOptions().yMax !== null && self.chartOptions().yMax !== "") {
+			chartOptions.vAxis.viewWindow = chartOptions.vAxis.viewWindow || {};
+			chartOptions.vAxis.viewWindow.max = Number(self.chartOptions().yMax);
+		}
 		if (chartOptions.seriesColors && chartOptions.seriesColors.length > 0) chartOptions.colors = chartOptions.seriesColors;
 		chartOptions.legend = { position: self.chartOptions().legendPosition }
 		chart.draw(data, chartOptions);
@@ -4765,6 +4897,7 @@ var reportViewModel = function (options) {
 			},
 			noBlocking: dontBlock === true
 		}).done(function (report) {
+			self.clearTableSetting();
 			if (report.d) { report = report.d; }
 			if (report.Result) { report = report.Result; }
 			self.useStoredProc(report.UseStoredProc);
@@ -4830,6 +4963,10 @@ var reportViewModel = function (options) {
 			_.forEach(reports, function (e) {
 				e.runMode = false;
 				e.openReport = function () {
+					if (self.ReportMode() != 'dashboard') {
+						self.isDirty(false);
+						self.setupDirtyCheck();
+					}
 					var saveReportFlag = self.SaveReport();
 					// Load report
 					return self.LoadReport(e.reportId).done(function () {
@@ -4870,6 +5007,7 @@ var reportViewModel = function (options) {
 
 				e.runReport = function () {
 					self.reportRan(false);
+					self.SaveReport(false);
 					self.executingReport = false;
 					e.runMode = true;
 					e.openReport();
@@ -5222,7 +5360,7 @@ var reportViewModel = function (options) {
 			self.appSettings.noDefaultFolder = x.noDefaultFolder;
 			self.appSettings.showEmptyFolders = x.showEmptyFolders;
 			self.appSettings.useAltPdf = x.useAltPdf;
-			self.appSettings.useAltPivot = x.useAltPivot || false;
+			self.appSettings.useAltPivot = x.useAltPivot === true;
 			self.appSettings.dontXmlExport = x.dontXmlExport;
 		});
 	}
@@ -5832,7 +5970,7 @@ var dashboardViewModel = function (options) {
 		ReportSql: ko.observable()		
 	});
 	self.isModalOpen = ko.observable(false);
-
+	self.isDirty = ko.observable(false);
 	$(document).on('shown.bs.modal', '.modal', function () {
 		self.isModalOpen(true);
 	});
@@ -5841,7 +5979,14 @@ var dashboardViewModel = function (options) {
 		const anyOpen = $('.modal.show').length > 0;
 		self.isModalOpen(anyOpen);
 	});
-
+	self.setupDirtyCheckForDashboard = function () {
+		const $modal = $('#add-dashboard-modal');
+		$modal.find('#add-dash-name, textarea, input[type="checkbox"]')
+			.off('change.inputDirtyCheck input.inputDirtyCheck')
+			.on('change.inputDirtyCheck input.inputDirtyCheck', function () {
+				self.isDirty(true);
+			});
+	};
 	var currentDash = options.dashboardId > 0
 		? (_.find(self.dashboards(), { id: options.dashboardId }) || { name: '', description: '' })
 		: (self.dashboards().length > 0 ? self.dashboards()[0] : { name: '', description: '' });
@@ -5900,12 +6045,17 @@ var dashboardViewModel = function (options) {
 	};
 	self.currentDashboard = ko.observable(currentDash);
 	self.selectDashboard = ko.observable(currentDash.id);
+	self.isOverlap = ko.observable(false);
 	self.loadDashboard = function (dashboardId) {
 		ajaxcall({
 			url: options.loadSavedDashbordUrl,
 			data: { id: dashboardId, adminMode: self.adminMode(), applyClientInAdmin: self.appSettings.useClientIdInAdmin },
 			noBlocking: true
 		}).done(function (reportsData) {
+			let resultGrid = self.checkOverlaps(reportsData);
+			if (resultGrid.length > 0) {
+				self.isOverlap(true);
+			}
 			if (reportsData.d) reportsData = reportsData.d;
 			var reports = [];
 			_.forEach(reportsData, function (r) {
@@ -5931,6 +6081,24 @@ var dashboardViewModel = function (options) {
 			self.loadDashboardReports(reports);
 		});
 	}
+	self.checkOverlaps =function (widgets) {
+		let overlaps = [];
+		for (let i = 0; i < widgets.length; i++) {
+			for (let j = i + 1; j < widgets.length; j++) {
+				let a = widgets[i];
+				let b = widgets[j];
+				let overlapX = a.X < b.X + b.Width && a.X + a.Width > b.X;
+				let overlapY = a.Y < b.Y + b.Height && a.Y + a.Height > b.Y;
+				if (overlapX && overlapY) {
+					overlaps.push({
+						box1: `Box ${i + 1} (x:${a.X}, y:${a.Y}, w:${a.Width}, h:${a.Height})`,
+						box2: `Box ${j + 1} (x:${b.X}, y:${b.Y}, w:${b.Width}, h:${b.Height})`
+					});
+				}
+			}
+		}
+		return overlaps;
+	}
 
 	self.selectDashboard.subscribe(function (newValue) {
 		if (newValue != self.currentDashboard().id) {
@@ -5942,10 +6110,10 @@ var dashboardViewModel = function (options) {
 		var filteredReports = [];
 		self.reportsAndFolders().forEach(function (folder) {
 			var filterReports = folder.reports.filter(function (report) {
-				var reportNameLower = report.reportName.toLowerCase();
-				var reportDescriptionLower = report.reportDescription.toLowerCase();
+				var reportNameLower = report.reportName?.toLowerCase();
+				var reportDescriptionLower = report.reportDescription?.toLowerCase();
 				var searchReportsLower = searchReports.toLowerCase();
-				return reportNameLower.includes(searchReportsLower) || reportDescriptionLower.includes(searchReportsLower);
+				return reportNameLower.includes(searchReportsLower) || reportDescriptionLower?.includes(searchReportsLower);
 			});
 			filteredReports = filteredReports.concat(filterReports);
 		});
@@ -5970,6 +6138,7 @@ var dashboardViewModel = function (options) {
 				r.selected(false);
 			});
 		});
+		self.setupDirtyCheckForDashboard();
 	};
 
 	self.editDashboard = function () {
@@ -5991,6 +6160,7 @@ var dashboardViewModel = function (options) {
 				r.selected(selectedReports.indexOf(r.reportId.toString()) >= 0);
 			});
 		});
+		self.setupDirtyCheckForDashboard();
 	};
 
 	self.removeReportFromDashboard = function (reportId) {
@@ -6017,7 +6187,19 @@ var dashboardViewModel = function (options) {
 			}
 		});
 	}
-
+	self.onModalCloseClicked = function () {
+		const $modal = $('#add-dashboard-modal');
+		if ($modal == null) return;
+		if (self.isDirty()) {
+			bootbox.confirm("You have unsaved changes. Do you want to discard them?", function (result) {
+				if (result) {
+					self.isDirty(false);
+				} else {
+					$modal.modal('show');
+				}
+			});
+		}
+	};
 	self.saveDashboard = function () {
 		$("#add-dash-name").removeClass("is-invalid");
 
