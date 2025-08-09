@@ -2069,7 +2069,7 @@ namespace ReportBuilder.Web.Models
                                 ");
                     }
                     bool isGroupInDetailExist = ContainsGroupInDetail(expandSqls);
-                    var drillDownRowValue = $"\"DrillDownRow\": [{string.Join(',', drilldownRow)}]";
+                    var drillDownRowValue = $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]";
                     var reportData = expandSqls.Replace("\"DrillDownRow\":[]", drillDownRowValue);
                     // If Group in Detail does not exist, set IsAggregateReport to false
                     if (!isGroupInDetailExist)
