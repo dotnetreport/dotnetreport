@@ -588,6 +588,7 @@ var headerDesigner = function (options) {
 	self.UseReportHeader = ko.observable(options.useReportHeader === true ? true : false);
 
 	self.headerHtml = ko.observable('');
+	self.clientId = ko.observable();
 	self.init = function () {
 		$('#report-header-editor').summernote({
 			height: 150,
@@ -620,6 +621,7 @@ var headerDesigner = function (options) {
 			data: JSON.stringify({
 				method: "/ReportApi/SaveReportHeader",
 				headerJson: data,
+                clientId: self.clientId(),
 				useReportHeader: self.UseReportHeader()
 			})
 		}).done(function (result) {

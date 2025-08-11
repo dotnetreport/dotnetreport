@@ -126,6 +126,17 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         <p class="alert alert-info">
                             You can design the common report header below that will be applied to all reports where report headers are turned on.
                         </p>
+                        <div class="form-group row m-1">
+                            <div class="col-md-3 col-sm-3">
+                                <label class="control-label">Client Id to Restrict Access</label>
+                            </div>
+                            <div class="col-md-3 col-sm-3">
+                                <input class="form-control text-box single-line" type="text" data-bind="value: clientId">
+                            </div>
+                            <div class="col-md-1 col-sm-1">
+                                <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Leave blank to give all clients access (Global Report Header)"></span>
+                            </div>
+                        </div>
                         <textarea id="report-header-editor"></textarea>
                         <button class="btn btn-primary btn-sm mt-2" data-bind="click: saveHtmlHeader">
                             Save Changes
