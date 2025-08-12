@@ -1639,7 +1639,14 @@ var manageViewModel = function (options) {
 							if (d.d) d = d.d;
 							toastr.success('Changes Saved Successfully');							
 							r.changeAccess(false);
-							self.loadReportsAndFolder();
+							r.userId = self.manageAccess.getAsList(self.manageAccess.users);
+							r.viewOnlyUserId = self.manageAccess.getAsList(self.manageAccess.viewOnlyUsers);
+							r.deleteOnlyUserId = self.manageAccess.getAsList(self.manageAccess.deleteOnlyUsers);
+							r.userRole = self.manageAccess.getAsList(self.manageAccess.userRoles);
+							r.viewOnlyUserRole = self.manageAccess.getAsList(self.manageAccess.viewOnlyUserRoles);
+							r.deleteOnlyUserRole = self.manageAccess.getAsList(self.manageAccess.deleteOnlyUserRoles);
+							r.clientId = self.manageAccess.clientId();
+							//self.loadReportsAndFolder();
 						});
 
 					}
@@ -1690,8 +1697,15 @@ var manageViewModel = function (options) {
 					}).done(function (d) {
 						if (d.d) d = d.d;
 						toastr.success('Changes Saved Successfully');
+						r.UserId = self.manageAccess.getAsList(self.manageAccess.users);
+						r.ViewOnlyUserId = self.manageAccess.getAsList(self.manageAccess.viewOnlyUsers),
+						r.DeleteOnlyUserId = self.manageAccess.getAsList(self.manageAccess.deleteOnlyUsers),
+						r.UserRoles = self.manageAccess.getAsList(self.manageAccess.userRoles),
+						r.ViewOnlyUserRoles = self.manageAccess.getAsList(self.manageAccess.viewOnlyUserRoles),
+						r.DeleteOnlyUserRoles = self.manageAccess.getAsList(self.manageAccess.deleteOnlyUserRoles),
+						r.ClientId = self.manageAccess.clientId(),
 						r.changeFolderAccess(false);
-						self.loadReportsAndFolder();
+						//self.loadReportsAndFolder();
 					});
 
 				}
