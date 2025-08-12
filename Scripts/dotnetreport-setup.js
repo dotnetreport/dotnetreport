@@ -1595,7 +1595,6 @@ var manageViewModel = function (options) {
 
 		return $.when(getReports(), getFolders()).done(function (allReports, allFolders) {
 			var setup = [];
-			var foldersetup = [];
 			if (allFolders[0].d) { allFolders[0] = allFolders[0].d; }
 			if (allReports[0].d) { allReports[0] = allReports[0].d; }
 
@@ -1696,11 +1695,6 @@ var manageViewModel = function (options) {
 					});
 
 				}
-				foldersetup.push({
-					folderId: r.Id,
-					folder: r.FolderName,
-					foldersAccess: folders
-				});
 			});
 			self.Folders(folders);
 		});
