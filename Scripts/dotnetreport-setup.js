@@ -1548,6 +1548,7 @@ var manageViewModel = function (options) {
 
 	self.manageAccess = {};
 	self.reportsAndFolders = ko.observableArray([]);
+	self.Folders = ko.observableArray([]);
 
 	self.setupManageAccess = function () {
 
@@ -1594,6 +1595,7 @@ var manageViewModel = function (options) {
 
 		return $.when(getReports(), getFolders()).done(function (allReports, allFolders) {
 			var setup = [];
+			var foldersetup = [];
 			if (allFolders[0].d) { allFolders[0] = allFolders[0].d; }
 			if (allReports[0].d) { allReports[0] = allReports[0].d; }
 
@@ -1652,6 +1654,55 @@ var manageViewModel = function (options) {
 			});
 
 			self.reportsAndFolders(setup);
+			var folders = allFolders[0];
+			_.forEach(folders, function (r) {
+				r.changeFolderAccess = ko.observable(false);
+				r.changeFolderAccess.subscribe(function (x) {
+					if (x) {
+						self.manageAccess.clientId(r.ClientId);
+						self.manageAccess.setupList(self.manageAccess.users, r.UserId || '');
+						self.manageAccess.setupList(self.manageAccess.userRoles, r.UserRoles || '');
+						self.manageAccess.setupList(self.manageAccess.viewOnlyUserRoles, r.ViewOnlyUserRoles || '');
+						self.manageAccess.setupList(self.manageAccess.viewOnlyUsers, r.ViewOnlyUserId || '');
+						self.manageAccess.setupList(self.manageAccess.deleteOnlyUserRoles, r.DeleteOnlyUserRoles || '');
+						self.manageAccess.setupList(self.manageAccess.deleteOnlyUsers, r.DeleteOnlyUserId || '');
+					}
+				});
+				r.saveFolderAccessChanges = function () {
+					return ajaxcall({
+						url: options.reportsApiUrl,
+						data: {
+							method: "/ReportApi/SaveFolderData",
+							model: JSON.stringify({
+								folderData: JSON.stringify({
+									Id: r.Id,
+									FolderName: r.FolderName,
+									UserId: self.manageAccess.getAsList(self.manageAccess.users),
+									ViewOnlyUserId: self.manageAccess.getAsList(self.manageAccess.viewOnlyUsers),
+									DeleteOnlyUserId: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUsers),
+									UserRoles: self.manageAccess.getAsList(self.manageAccess.userRoles),
+									ViewOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.viewOnlyUserRoles),
+									DeleteOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUserRoles),
+									ClientId: self.manageAccess.clientId(),
+								}),
+								adminMode: true
+							})
+						}
+					}).done(function (d) {
+						if (d.d) d = d.d;
+						toastr.success('Changes Saved Successfully');
+						r.changeFolderAccess(false);
+						self.loadReportsAndFolder();
+					});
+
+				}
+				foldersetup.push({
+					folderId: r.Id,
+					folder: r.FolderName,
+					foldersAccess: folders
+				});
+			});
+			self.Folders(folders);
 		});
 	}
 
