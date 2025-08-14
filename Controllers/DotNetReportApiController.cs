@@ -158,6 +158,7 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("userIdForSchedule", settings.UserIdForSchedule),
                     new KeyValuePair<string, string>("userIdForFilter", settings.UserIdForFilter),
                     new KeyValuePair<string, string>("userRole", string.Join(",", settings.CurrentUserRole)),
+                    new KeyValuePair<string, string>("dataFilters", JsonSerializer.Serialize(settings.DataFilters)),
                     new KeyValuePair<string, string>("useParameters", "false")
                 };
 
@@ -597,7 +598,7 @@ namespace ReportBuilder.Web.Controllers
                 allowAdminMode = settings.CanUseAdminMode,
                 userIdForSchedule = settings.UserIdForSchedule,
                 userIdForFilter = settings.UserIdForFilter,
-                dataFilters = settings.DataFilters,
+                dataFilters = new { }, // don't expose to front end
                 clientId = settings.ClientId,
 
                 newReportClientId,
@@ -886,18 +887,17 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string connectKey,
             [FromForm] string reportName,
             [FromForm] bool expandAll,
-            [FromForm] string clientId = null,
-            [FromForm] string userId = null,
-            [FromForm] string userRoles = null,
-            [FromForm] string dataFilters = "",
             [FromForm] string expandSqls = null,
             [FromForm] string pivotColumn = null,
             [FromForm] string pivotFunction = null,
             [FromForm] bool debug = false)
         {
+
+            var settings = GetSettings();
+            
             reportSql = HttpUtility.HtmlDecode(reportSql);
             var pdf = await DotNetReportHelper.GetPdfFile(HttpUtility.UrlDecode(printUrl), reportId, reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName),
-                                userId, clientId, userRoles, dataFilters, expandAll, expandSqls, pivotColumn, pivotFunction, false, debug);
+                                settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), JsonConvert.SerializeObject(settings.DataFilters), expandAll, expandSqls, pivotColumn, pivotFunction, false, debug);
 
             return File(pdf, "application/pdf", reportName + ".pdf");
         }
@@ -995,11 +995,12 @@ namespace ReportBuilder.Web.Controllers
         public async Task<IActionResult> DownloadAllPdf([FromForm] string reportdata)
         {
             var pdfBytesList = new List<byte[]>();
-            var ListofReports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
-            foreach (var report in ListofReports)
+            var settings = GetSettings();
+            var reports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
+            foreach (var report in reports)
             {
-                var pdf = await DotNetReportHelper.GetPdfFile(report.printUrl, report.reportId, HttpUtility.HtmlDecode(report.reportSql), HttpUtility.UrlDecode(report.connectKey), HttpUtility.UrlDecode(report.reportName), report.userId,
-                    report.clientId, report.userRoles, report.dataFilters, report.expandAll, report.expandSqls, report.pivotColumn, report.pivotFunction);
+                var pdf = await DotNetReportHelper.GetPdfFile(report.printUrl, report.reportId, HttpUtility.HtmlDecode(report.reportSql), HttpUtility.UrlDecode(report.connectKey), HttpUtility.UrlDecode(report.reportName), settings.UserId,
+                    settings.ClientId, string.Join(",", settings.CurrentUserRole), JsonConvert.SerializeObject(settings.DataFilters), report.expandAll, report.expandSqls, report.pivotColumn, report.pivotFunction);
                 pdfBytesList.Add(pdf);
             }
             var combinedPdf = DotNetReportHelper.GetCombinePdfFile(pdfBytesList);
@@ -1010,9 +1011,9 @@ namespace ReportBuilder.Web.Controllers
         public async Task<IActionResult> DownloadAllPdfAlt([FromForm] string reportdata)
         {
             var pdfBytesList = new List<byte[]>();
-            var ListofReports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
+            var reports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
 
-            foreach (var report in ListofReports)
+            foreach (var report in reports)
             {
                 report.reportSql = HttpUtility.HtmlDecode(report.reportSql);
                 report.chartData = HttpUtility.UrlDecode(report.chartData)?.Replace(" ", " +");
@@ -1029,8 +1030,8 @@ namespace ReportBuilder.Web.Controllers
         public async Task<IActionResult> DownloadAllExcel([FromForm] string reportdata)
         {
             var excelbyteList = new List<byte[]>();
-            var ListofReports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
-            foreach (var report in ListofReports)
+            var reports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
+            foreach (var report in reports)
             {
                 report.reportSql = HttpUtility.HtmlDecode(report.reportSql);
                 report.chartData = HttpUtility.UrlDecode(report.chartData)?.Replace(" ", " +");
@@ -1040,7 +1041,7 @@ namespace ReportBuilder.Web.Controllers
                 excelbyteList.Add(excelreport);
             }
             // Combine all Excel files into one workbook
-            var combinedExcel = DotNetReportHelper.GetCombineExcelFile(excelbyteList, ListofReports.Select(r => r.reportName).ToList());
+            var combinedExcel = DotNetReportHelper.GetCombineExcelFile(excelbyteList, reports.Select(r => r.reportName).ToList());
             Response.Headers.Add("content-disposition", "attachment; filename=CombinedReports.xlsx");
             Response.ContentType = "application/vnd.ms-excel";
             return File(combinedExcel, "application/vnd.ms-excel", "CombinedReports.xlsx");
