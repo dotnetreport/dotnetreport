@@ -1563,7 +1563,8 @@ var reportViewModel = function (options) {
 						data: {
 							method: "/ReportApi/DeleteFolder",
 							model: JSON.stringify({
-								folderId: self.SelectedFolder().Id
+								folderId: self.SelectedFolder().Id,
+								adminMode: self.adminMode()
 							})
 						},
 					}).done(function () {
