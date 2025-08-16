@@ -36,6 +36,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 reportId: queryParams.reportId || 0,
                 userSettings: data,
                 dataFilters: data.dataFilters,
+                runExportUrl: "/DotnetReportApi/",
                 printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, this.Request.Url.Scheme)",
                 getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
                 samePageOnRun: true
@@ -65,7 +66,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
     -->
     <!-- Folders/Report List -->
     <div id="report-start" data-bind="if: ReportMode() == 'start' || ReportMode() == 'generate'">
-        <div class="card folder-panel">
+        <div class="card folder-panel" data-bind="visible: true" style="display: none;">
             <div class="card-header">
                 <nav class="navbar navbar-expand-lg navbar-light bg-light">
                     <a class="navbar-brand" href="#" data-bind="click: function() {SelectedFolder(null); designingHeader(false); searchReports(''); $('#search-report').val([]).trigger('change'); }">Manage Reports</a>
@@ -506,7 +507,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
     </div>
 
     <div data-bind="if: ReportMode() == 'execute' || ReportMode() == 'Linked'">
-        <div class="card">
+        <div class="card" data-bind="visible: true;" style="display: none;">
             <div class="card-header">
                 <nav class="navbar navbar-expand-lg navbar-light bg-light">
                     <a class="navbar-brand" href="#">Viewing Report</a>

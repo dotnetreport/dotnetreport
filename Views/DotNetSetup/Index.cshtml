@@ -1096,7 +1096,7 @@
                                 <div class="form-group row">
                                     <label class="col-md-3 col-sm-3 control-label" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null, placeholder: 'Ex tblEmployees'}" placeholder="Ex tblEmployees" style="display: none;">Foreign Table</label>
                                     <div class="col-md-6 col-sm-6">
-                                        <select class="form-select" data-bind="value: JoinTable, visible:ForeignKey(), options: $root.Tables.model, optionsText: 'TableName'" placeholder="Ex tblEmployees" style="display: none;"></select>
+                                        <select class="form-select" data-bind="value: JoinTable, visible:ForeignKey(), options: $root.Tables.availableTables, optionsText: 'TableName'" placeholder="Ex tblEmployees" style="display: none;"></select>
 
                                     </div>
                                     <div class="col-md-3 col-sm-3">

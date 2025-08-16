@@ -1563,7 +1563,8 @@ var reportViewModel = function (options) {
 						data: {
 							method: "/ReportApi/DeleteFolder",
 							model: JSON.stringify({
-								folderId: self.SelectedFolder().Id
+								folderId: self.SelectedFolder().Id,
+								adminMode: self.adminMode()
 							})
 						},
 					}).done(function () {
@@ -3987,6 +3988,24 @@ var reportViewModel = function (options) {
 		showXAxisLabel: true,
 		showYAxisLabel: true,
 		showSmallValuesOnLabel: false,
+		annotations : {
+			alwaysOutside: true,
+			textStyle: {
+				fontSize: 12,
+				auraColor: 'none',
+				color: '#555'
+			},
+			boxStyle: {
+				stroke: '#ccc',
+				strokeWidth: 1,
+				gradient: {
+					color1: '#f3e5f5',
+					color2: '#f3e5f5',
+					x1: '0%', y1: '0%',
+					x2: '100%', y2: '100%'
+				}
+			}
+		},
 		showLegend: true,
 		legendPosition: "right",
 		showGridlines: true,
@@ -4078,12 +4097,13 @@ var reportViewModel = function (options) {
 			_.forEach(reportData.Columns, function (e, i) {
 				if (i > 0 && e.IsNumeric && !e.groupInGraph()) {
 					data.addColumn(e.IsNumeric ? 'number' : 'string', e.fieldLabel() || e.ColumnName);
+					if (self.chartOptions().showSmallValuesOnLabel) {
+						data.addColumn({ type: 'string', role: 'annotation' });
+					}
 				}
 			});
 		}
-		if (self.chartOptions().showSmallValuesOnLabel) {
-			data.addColumn({ type: 'string', role: 'annotation' });
-		}
+
 		var rowArray = [];
 		var dataColumns = [];
 
@@ -4093,7 +4113,6 @@ var reportViewModel = function (options) {
 			_.forEach(e.Items, function (r, n) {
 				var column = reportData.Columns[n];
 				var isNumeric = r.Column.IsNumeric;
-				var isLastColumn = (n === e.Items.length - 1);
 				var value = (function () {
 					if (isNumeric && typeof r.FormattedValue === 'string' && r.FormattedValue.trim().endsWith('%')) {
 						var num = parseFloat(r.FormattedValue.replace('%', '').trim());
@@ -4129,9 +4148,9 @@ var reportViewModel = function (options) {
 					}
 				} else if ((isNumeric || self.ReportType() === 'Treemap') && !column.groupInGraph()) {
 					itemArray.push(value);
-				}
-				if (self.chartOptions().showSmallValuesOnLabel && isLastColumn) {
-					itemArray.push(value.toString());
+					if (self.chartOptions().showSmallValuesOnLabel) {
+						itemArray.push(value.toString());
+					}
 				}
 			});
 
@@ -4381,6 +4400,16 @@ var reportViewModel = function (options) {
 					fontSize: 12,
 					auraColor: 'none',
 					color: '#555'
+				},
+				boxStyle: {
+					stroke: '#ccc',
+					strokeWidth: 1,
+					gradient: {
+						color1: '#f3e5f5',
+						color2: '#f3e5f5',
+						x1: '0%', y1: '0%',
+						x2: '100%', y2: '100%'
+					}
 				}
 			}
 		}

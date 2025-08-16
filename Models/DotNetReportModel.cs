@@ -1977,7 +1977,7 @@ namespace ReportBuilder.Web.Models
         }
 
         public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, List<ReportHeaderColumn> onlyAndGroupInDetailColumns = null,bool isSubReport=false)
+                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, List<ReportHeaderColumn> onlyAndGroupInDetailColumns = null, bool isSubReport = false)
         {
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
@@ -1996,7 +1996,7 @@ namespace ReportBuilder.Web.Models
                     if (dt.Columns.Contains(col.fieldName) && col.hideStoredProcColumn)
                     {
                         dt.Columns.Remove(col.fieldName);
-                    }                    
+                    }
                 }
             }
             if (!string.IsNullOrEmpty(pivotColumn))
@@ -2047,11 +2047,14 @@ namespace ReportBuilder.Web.Models
                     var drilldownRow = new List<string>();
                     var dr = dt.Rows[0];
 
+                    // Batch size - adjust as needed for performance
+                    int batchSize = 100;
+
                     int i = 0;
                     foreach (DataColumn dc in dt.Columns)
                     {
                         if (i >= sqlFields.Count) break;
-                        var col = sqlFields[i++]; //columns.FirstOrDefault(x => x.fieldName == dc.ColumnName) ?? new ReportHeaderColumn();
+                        var col = sqlFields[i++];
                         drilldownRow.Add($@"
                                     {{
                                         ""Value"":""{dr[dc]}"",
@@ -2065,7 +2068,7 @@ namespace ReportBuilder.Web.Models
                                             ""IsNumeric"":{(dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal" ? "true" : "false")},
                                             ""FormatType"":""""
                                         }}
-                                     }}
+                                    }}
                                 ");
                     }
                     bool isGroupInDetailExist = ContainsGroupInDetail(expandSqls);
@@ -2077,38 +2080,48 @@ namespace ReportBuilder.Web.Models
                         reportData = reportData.Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
                     }
                     reportData = UpdateOnlyTop(reportData);
-                    var drilldownSql = await RunReportApiCall(reportData);
-                    if (drilldownSql.StartsWith("{\"sql\""))
-                    {
-                        qry = JsonConvert.DeserializeObject<SqlQuery>(drilldownSql);
-                        drilldownSql = qry.sql;
-                    }
 
-                    var combinedSqls = "";
+                    var drilldownSqlStr = await RunReportApiCall(reportData);
+                    SqlQuery query = null;
+                    if (drilldownSqlStr.StartsWith("{\"sql\""))
+                    {
+                        query = JsonConvert.DeserializeObject<SqlQuery>(drilldownSqlStr);
+                    }
+                    string drilldownSql = query?.sql ?? drilldownSqlStr;
+
                     if (!string.IsNullOrEmpty(drilldownSql))
                     {
-                        foreach (DataRow ddr in dt.Rows)
+                        // Process in batches (synchronous)
+                        for (int startIndex = 0; startIndex < dt.Rows.Count; startIndex += batchSize)
                         {
-                            i = 0;
-                            var filteredSql = drilldownSql;
-                            foreach (DataColumn dc in dt.Columns)
+                            var combinedSqls = new StringBuilder();
+
+                            int endIndex = Math.Min(startIndex + batchSize, dt.Rows.Count);
+                            for (int rowIndex = startIndex; rowIndex < endIndex; rowIndex++)
                             {
-                                var value = ddr[dc].ToString().Replace("'", "''");
-                                filteredSql = filteredSql.Replace($"<{dc.ColumnName}>", value);
+                                var ddr = dt.Rows[rowIndex];
+                                string filteredSql = drilldownSql;
+
+                                foreach (DataColumn dc in dt.Columns)
+                                {
+                                    var value = ddr[dc].ToString().Replace("'", "''");
+                                    filteredSql = filteredSql.Replace($"<{dc.ColumnName}>", value);
+                                }
+
+                                combinedSqls.AppendLine(filteredSql + ";");
                             }
 
-                            combinedSqls += filteredSql += ";\n";
-                        }
+                            // Execute one batch at a time
+                            var dts = databaseConnection.ExecuteDataSetQuery(connectionString, combinedSqls.ToString(), qry?.parameters);
 
-                        var dts = databaseConnection.ExecuteDataSetQuery(connectionString, combinedSqls, qry.parameters);
+                            foreach (DataTable ddt in dts.Tables)
+                            {
+                                ws.InsertRow(insertRowIndex + 2, ddt.Rows.Count);
 
-                        foreach (DataTable ddt in dts.Tables)
-                        {
-                            ws.InsertRow(insertRowIndex + 2, ddt.Rows.Count);
+                                FormatExcelSheet(ddt, ws, insertRowIndex == 3 ? 3 : (insertRowIndex + 1), dt.Columns.Count + 2, columns, false, insertRowIndex == 3, isexpanded: true);
 
-                            FormatExcelSheet(ddt, ws, insertRowIndex == 3 ? 3 : (insertRowIndex + 1), dt.Columns.Count + 2, columns, false, insertRowIndex == 3, isexpanded: true);
-
-                            insertRowIndex += ddt.Rows.Count + 1;
+                                insertRowIndex += ddt.Rows.Count + 1;
+                            }
                         }
                     }
                 }
@@ -2117,7 +2130,7 @@ namespace ReportBuilder.Web.Models
                 return xp.GetAsByteArray();
             }
         }
-
+        
         public static ReportHeaderColumn GetColumnFormatting(DataColumn dc, List<ReportHeaderColumn> columns, ref string value)
         {
             var isCurrency = false;
