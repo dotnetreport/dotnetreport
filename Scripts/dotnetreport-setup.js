@@ -1480,7 +1480,7 @@ var manageViewModel = function (options) {
 						var procName = Procedure.TableName;
 						var procId = Procedure.Id;
 						var procMatch = _.some(self.Procedures.savedProcedures(), function (e) {
-							return e.TableName() === procName && e.Id() === procId;
+							return e.TableName() === procName || e.Id() === procId;
 						});
 						if (procMatch) {
 							handleOverwriteConfirmation(procName, function (action) {
@@ -1494,6 +1494,12 @@ var manageViewModel = function (options) {
 						}
 						else {
 							Procedure.Id = 0;
+							if (Array.isArray(Procedure.Columns)) {
+								_.forEach(Procedure.Columns, function (col) { col.Id = 0; })
+							}
+							if (Array.isArray(Procedure.Parameters)) {
+								_.forEach(Procedure.Parameters, function (param) { param.Id = 0; })
+							}
 							self.saveProcedure(procName, true, Procedure)
 							$('#uploadStoredProceduresFileModal').modal('hide');
 						}
