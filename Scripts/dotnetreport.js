@@ -322,11 +322,20 @@ function PdfPageSizeViewModel(appSettings, downloadPdf, downloadPdfAlt) {
 	});
 	self.selectedWidth = ko.pureComputed(function () {
 		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
-		return page ? (page.width / 3) + 'px' : '100px';
+		if (!page) return '100px';
+		if (self.selectedPageOrientation() === "LANDSCAPE") {
+			return (page.height / 3) + 'px';
+		}
+		return (page.width / 3) + 'px';
 	});
 	self.selectedHeight = ko.pureComputed(function () {
 		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
-		return page ? (page.height / 3) + 'px' : '150px';
+		if (!page) return '150px';
+
+		if (self.selectedPageOrientation() === "LANDSCAPE") {
+			return (page.width / 3) + 'px';
+		}
+		return (page.height / 3) + 'px';
 	});
 	self.selectedBackgroundStyle = ko.pureComputed(function () {
 		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
