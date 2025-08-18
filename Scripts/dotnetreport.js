@@ -355,6 +355,60 @@ function PdfPageSizeViewModel(appSettings, downloadPdf, downloadPdfAlt) {
 		return self.selectedPageSize();
 	}
 }
+function WordPageSizeViewModel(downloadWord) {
+	var self = this;
+	self.availablePageSizes = ko.observableArray([
+		{ label: 'A4 (8.27 x 11.7 in)', value: 'A4', width: 210, height: 297, bgstyle: '#f9f9f9;' },
+		{ label: 'A3 (11.7 × 16.5 in)', value: 'A3', width: 297, height: 420, bgstyle: '#d0e0e3;' },
+		{ label: 'Letter (8.5 x 11 in)', value: 'Letter', width: 216, height: 279, bgstyle: '#d9d2e9;' },
+		{ label: 'Legal (8.5 x 14 in)', value: 'Legal', width: 216, height: 356, bgstyle: '#cfe2f3;' },
+		{ label: 'Tabloid (11 × 17 in)', value: 'Tabloid', width: 279, height: 432, bgstyle: '#ead1dc;' }
+	]);
+	self.availablePageOrientation = ko.observableArray([
+		{ label: 'Portrait', value: 'PORTRAIT' },
+		{ label: 'Landscape', value: 'LANDSCAPE' }
+	]);
+	self.selectedPageSize = ko.observable("");
+	self.selectedPageOrientation = ko.observable("PORTRAIT");
+	self.selectedPageLabel = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		return page ? page.label : '';
+	});
+	self.selectedPageDimension = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		return page ? `${page.width}mm x ${page.height}mm` : '';
+	});
+	self.selectedWidth = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		if (!page) return '100px';
+		if (self.selectedPageOrientation() === "LANDSCAPE") {
+			return (page.height / 3) + 'px';
+		}
+		return (page.width / 3) + 'px';
+	});
+	self.selectedHeight = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		if (!page) return '150px';
+
+		if (self.selectedPageOrientation() === "LANDSCAPE") {
+			return (page.width / 3) + 'px';
+		}
+		return (page.height / 3) + 'px';
+	});
+	self.selectedBackgroundStyle = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		return page ? page.bgstyle : '#f5f5f5';
+	});
+	self.download = function () {
+		const selectedSize = self.selectedPageSize();
+		const selectedOrientation = self.selectedPageOrientation();
+		downloadWord(selectedSize, selectedOrientation);
+	};
+	self.save = function () {
+		return self.selectedPageSize();
+	}
+}
+
 function filterGroupViewModel(args) {
 	args = args || {};
 	var self = this;
@@ -5502,10 +5556,11 @@ var reportViewModel = function (options) {
 		var data = self.getExportJson();
 		self.downloadExport("DownloadXml", data, 'xml');
 	}
-	self.downloadWord = function () {
-		var data = self.getExportJson();		
+	self.downloadWord = function (pageSize, pageOrientation) {
+		var data = self.getExportJson(pageSize, pageOrientation);		
 		self.downloadExport("DownloadWord", data, 'docx');
 	}
+	self.WordPageSize = new WordPageSizeViewModel(self.downloadWord);
 	self.preparePivotData = function () {
 		var pivotColumn = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot'; });
 		var pivotFunction = '';

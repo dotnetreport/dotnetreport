@@ -2526,7 +2526,7 @@ namespace ReportBuilder.Web.Models
         }
 
         public static async Task<byte[]> GetWordFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
+            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, string pageSize = "", string pageOrientation = "")
         {
             var dt = await BuildExportData(reportSql, connectKey, expandSqls, columns, pivot, pivotColumn, pivotFunction);           
             var subTotals = new decimal[dt.Columns.Count];
@@ -2601,32 +2601,86 @@ namespace ReportBuilder.Web.Models
                             headerRow.AppendChild(cell);
                         }
                         table.AppendChild(headerRow);
+                        // WORD Export page size setup
+                        if (!String.IsNullOrEmpty(pageSize))
+                        {
+                            UInt32Value widthTwips;
+                            UInt32Value heightTwips;
+                            switch (pageSize.ToUpper())
+                            {
+                                case "LETTER": // 8.5 × 11 in
+                                    widthTwips = (UInt32Value)(8.5 * 1440);
+                                    heightTwips = (UInt32Value)(11 * 1440);
+                                    break;
 
-                        // Normalize column widths to fit the available width
-                        int totalWidth = 0;
-                        foreach (int width in maxColumnWidths)
-                        {
-                            totalWidth += width;
-                        }
-                        if (totalWidth > 13900)
-                        {
-                            // Set landscape orientation
+                                case "LEGAL": // 8.5 × 14 in
+                                    widthTwips = (UInt32Value)(8.5 * 1440);
+                                    heightTwips = (UInt32Value)(14 * 1440);
+                                    break;
+
+                                case "A3": // 297 × 420 mm
+                                    widthTwips = (UInt32Value)(297 * 56.7);
+                                    heightTwips = (UInt32Value)(420 * 56.7);
+                                    break;
+
+                                case "TABLOID": // 11 × 17 in
+                                    widthTwips = (UInt32Value)(11 * 1440);
+                                    heightTwips = (UInt32Value)(17 * 1440);
+                                    break;
+
+                                case "A4":
+                                default: // 210 × 297 mm
+                                    widthTwips = (UInt32Value)(210 * 56.7);
+                                    heightTwips = (UInt32Value)(297 * 56.7);
+                                    break;
+                            }
+                            string safeOrientation = string.IsNullOrEmpty(pageOrientation)? "PORTRAIT": pageOrientation.ToUpper();
+                            // WORD Section Properties with Orientation
+                            var wordPageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize()
+                            {
+                                Width = widthTwips,
+                                Height = heightTwips,
+                                Orient = (safeOrientation == "LANDSCAPE")? PageOrientationValues.Landscape: PageOrientationValues.Portrait
+                            };
+                            // Landscape → swap width/height
+                            if (safeOrientation == "LANDSCAPE")
+                            {
+                                var temp = widthTwips;
+                                wordPageSize.Width = heightTwips;
+                                wordPageSize.Height = temp;
+                            }
                             SectionProperties sectionProperties = new SectionProperties();
-                            DocumentFormat.OpenXml.Wordprocessing.PageSize pageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize() { Width = Convert.ToUInt32(totalWidth + (1440 * 2)), Orient = PageOrientationValues.Landscape };
-                            sectionProperties.Append(pageSize);
+                            sectionProperties.Append(wordPageSize);
                             body.Append(sectionProperties);
                         }
                         else
                         {
-                            // Set page orientation to landscape
-                            SectionProperties sectionProps = new SectionProperties();
-                            DocumentFormat.OpenXml.Wordprocessing.PageSize defaultpageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize()
+                            // Normalize column widths to fit the available width
+                            int totalWidth = 0;
+                            foreach (int width in maxColumnWidths)
                             {
-                                Orient = PageOrientationValues.Landscape,
-                                Width = 16838,  // 11.69 inch in Twips (297 mm)
-                            };
-                            sectionProps.Append(defaultpageSize);
-                            body.Append(sectionProps);
+                                totalWidth += width;
+                            }
+                            if (totalWidth > 13900)
+                            {
+                                // Set landscape orientation
+                                SectionProperties sectionProperties = new SectionProperties();
+                                DocumentFormat.OpenXml.Wordprocessing.PageSize wordPageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize() { Width = Convert.ToUInt32(totalWidth + (1440 * 2)), Orient = PageOrientationValues.Landscape };
+                                sectionProperties.Append(wordPageSize);
+                                body.Append(sectionProperties);
+                            }
+                            else
+                            {
+                                // Set page orientation to landscape
+                                SectionProperties sectionProps = new SectionProperties();
+                                DocumentFormat.OpenXml.Wordprocessing.PageSize defaultpageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize()
+                                {
+                                    Orient = PageOrientationValues.Landscape,
+                                    Width = 16838,  // 11.69 inch in Twips (297 mm)
+                                };
+                                sectionProps.Append(defaultpageSize);
+                                body.Append(sectionProps);
+                            }
                         }
                         // Add data rows
                         foreach (DataRow row in dt.Rows)
