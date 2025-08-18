@@ -2788,7 +2788,7 @@ namespace ReportBuilder.Web.Models
         }
         public async static Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
                       string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false, string expandSqls = null,
-                      string pivotColumn = null, string pivotFunction = null, bool imageOnly = false, bool debug = false,string pageSize="")
+                      string pivotColumn = null, string pivotFunction = null, bool imageOnly = false, bool debug = false,string pageSize="",string pageOrientation="")
         {
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
             await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
@@ -2920,6 +2920,24 @@ namespace ReportBuilder.Web.Models
                 PreferCSSPageSize = false,
                 MarginOptions = new MarginOptions() { Top = "0.75in", Bottom = "0.75in", Left = "0.1in", Right = "0.1in" }
             };
+            if (!String.IsNullOrEmpty(pageOrientation))
+            {
+                var Oreintation = (pageOrientation ?? "PORTRAIT").ToUpperInvariant();
+                switch (Oreintation)
+                {
+                    case "LANDSCAPE":
+                        pdfOptions.Landscape = true;
+                        break;
+                    case "PORTRAIT":
+                    default:
+                        pdfOptions.Landscape = false;
+                        break;
+                }
+            }
+            else
+            {
+                pdfOptions.Landscape = false;
+            }
             if (!String.IsNullOrEmpty(pageSize))
             {
                 var normalizedPageSize = (pageSize ?? "A4").ToUpperInvariant();
@@ -2950,7 +2968,6 @@ namespace ReportBuilder.Web.Models
                         break;
                 }
                 pdfOptions.Format = selectedFormat;
-                pdfOptions.Landscape = false;
             }
             else
             {
