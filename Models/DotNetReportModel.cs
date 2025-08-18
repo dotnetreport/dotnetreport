@@ -2291,7 +2291,7 @@ namespace ReportBuilder.Web.Models
         }
 
         public async static Task<byte[]> GetPdfFileAlt(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, string pageSize = "")
+            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, string pageSize = "",string pageOrientation="")
         {
 
             var dt = await BuildExportData(reportSql, connectKey, expandSqls, columns, pivot, pivotColumn, pivotFunction);
@@ -2347,6 +2347,19 @@ namespace ReportBuilder.Web.Models
                             case "A4":
                             default:
                                 page.Size = PdfSharp.PageSize.A4;
+                                break;
+                        }
+                    }
+                    if (!String.IsNullOrEmpty(pageOrientation))
+                    {
+                        switch (pageOrientation.ToUpper())
+                        {
+                            case "LANDSCAPE":
+                                page.Orientation = PdfSharp.PageOrientation.Landscape;
+                                break;
+                            case "PORTRIAT":
+                            default:
+                                page.Orientation = PdfSharp.PageOrientation.Portrait;
                                 break;
                         }
                     }

@@ -306,7 +306,12 @@ function PdfPageSizeViewModel(appSettings, downloadPdf, downloadPdfAlt) {
 		{ label: 'Legal (8.5 x 14 in)', value: 'Legal', width: 216, height: 356, bgstyle: '#cfe2f3;' },
 		{ label: 'Tabloid (11 × 17 in)', value: 'Tabloid', width: 279, height: 432, bgstyle: '#ead1dc;' }
 	]);
+	self.availablePageOrientation = ko.observableArray([
+		{ label: 'Portrait', value: 'PORTRAIT'},
+		{ label: 'Landscape', value: 'LANDSCAPE'}
+	]);
 	self.selectedPageSize = ko.observable("");
+	self.selectedPageOrientation = ko.observable("PORTRAIT");
 	self.selectedPageLabel = ko.pureComputed(function () {
 		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
 		return page ? page.label : '';
@@ -330,10 +335,11 @@ function PdfPageSizeViewModel(appSettings, downloadPdf, downloadPdfAlt) {
 	self.isDebug = false;
 	self.download = function () {
 		const selectedSize = self.selectedPageSize();
+		const selectedOrientation = self.selectedPageOrientation();
 		if (appSettings?.useAltPdf) {
-			downloadPdfAlt(selectedSize);
+			downloadPdfAlt(selectedSize, selectedOrientation);
 		} else {
-			downloadPdf(self.isDebug, selectedSize);
+			downloadPdf(self.isDebug, selectedSize, selectedOrientation);
 		}
 	};
 	self.save = function () {
@@ -5394,7 +5400,7 @@ var reportViewModel = function (options) {
 		});
 	}
 
-	self.getExportJson = function (pageSize) {
+	self.getExportJson = function (pageSize,pageOrientation) {
 		var reportData = self.BuildReportData();
 		reportData.DrillDownRowUsePlaceholders = true;
 		var pivotData = self.preparePivotData();
@@ -5410,16 +5416,17 @@ var reportViewModel = function (options) {
 			pivot: self.ReportType() == 'Pivot',
 			pivotColumn: pivotData.pivotColumn,
 			pivotFunction: pivotData.pivotFunction,
-			pageSize: pageSize
+			pageSize: pageSize,
+			pageOrientation: pageOrientation
 		};
 	}
 
-	self.downloadPdfAlt = function (pageSize) {
-		var data = self.getExportJson(pageSize);
+	self.downloadPdfAlt = function (pageSize,pageOrientation) {
+		var data = self.getExportJson(pageSize, pageOrientation);
 		self.downloadExport("DownloadPdfAlt", data, 'pdf');
 	}
 
-	self.downloadPdf = function (debug, pageSize) {
+	self.downloadPdf = function (debug, pageSize, pageOrientation) {
 		var reportData = self.BuildReportData();
 		reportData.DrillDownRowUsePlaceholders = true;
 		var pivotData = self.preparePivotData();
@@ -5438,7 +5445,8 @@ var reportViewModel = function (options) {
 			pivotColumn: pivotData.pivotColumn,
 			pivotFunction: pivotData.pivotFunction,
 			debug: debug === true ? true : false,
-			pageSize: pageSize
+			pageSize: pageSize,
+			pageOrientation: pageOrientation
 		}, 'pdf');
 	}
 	self.PdfPageSize = new PdfPageSizeViewModel(self.appSettings, self.downloadPdf, self.downloadPdfAlt);
