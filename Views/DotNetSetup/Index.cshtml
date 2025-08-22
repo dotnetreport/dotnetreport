@@ -695,12 +695,21 @@
             <p>
                 You can setup access to invidiual Reports here
             </p>
+            <button class="btn btn-sm btn-primary"
+                    data-bind="click: function() { exportFoldersReportJson() }">
+                <span class="fa fa-download"></span> Export Reports Access
+            </button>
             <hr />
             <div data-bind="foreach: reportsAndFolders" class="list-group">
                 <div class="list-group-item">
-                    <a data-bs-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }">
-                        <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: folder"></span>
-                    </a>
+                    <div class="d-flex justify-content-between">
+                        <a data-bs-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }">
+                            <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: folder"></span>
+                        </a>
+                        <button class="btn btn-sm" title="Export this Folders Include All Reports Manage Access" data-bind="click: function() { $root.exportFolderReportsManageAccessJson($data.folderId); }">
+                            <i class="fa fa-file"></i>
+                        </button>
+                    </div>
                     <div class="collapse" data-bind="attr: {id: 'folder-' + folderId }">
                         <div data-bind="if: reports.length == 0">
                             No Reports found in this folder
@@ -770,12 +779,21 @@
             <p>
                 You can setup access to invidiual Folders here
             </p>
+            <button class="btn btn-sm btn-primary"
+                    data-bind="click: function() { exportFoldersJson() }">
+                <span class="fa fa-download"></span> Export Folders Access
+            </button>
             <hr />
             <div data-bind="foreach: Folders" class="list-group">
                 <div class="list-group-item">
-                    <a data-bs-toggle="collapse" data-bind="attr: {href: '#folderAccess-' + Id }">
-                        <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: FolderName"></span>
-                    </a>
+                    <div class="d-flex justify-content-between">
+                        <a data-bs-toggle="collapse" data-bind="attr: {href: '#folderAccess-' + Id }">
+                            <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: FolderName"></span>
+                        </a>
+                        <button class="btn btn-sm" title="Export this Folders Manage Access" data-bind="click: function() { $root.exportFolderManageAccessJson($data.Id); }">
+                            <i class="fa fa-file"></i>
+                        </button>
+                    </div>
                     <div class="collapse" data-bind="attr: {id: 'folderAccess-' + Id }">
                         <div class="row">
                             <div class="col-md-3 border-end">
