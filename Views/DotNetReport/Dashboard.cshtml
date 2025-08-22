@@ -370,12 +370,12 @@
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="#" class="dropdown-item" data-bind="click: function() { $parent.appSettings.useAltPdf ? downloadPdfAlt() : downloadPdf() }">
+                                    <a href="#" class="dropdown-item" data-bind="click: function() { $parent.appSettings.useAltPdf ? downloadPdfAlt('','') : downloadPdf('','') }">
                                         <span class="fa fa-file-pdf-o"></span> PDF
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="#" class="dropdown-item" data-bind="click: downloadWord">
+                                    <a href="#" class="dropdown-item" data-bind="click:function() { downloadWord('','')}">
                                         <span class="fa fa-file-word-o"></span> Word
                                     </a>
                                 </li>
