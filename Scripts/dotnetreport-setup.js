@@ -1714,7 +1714,24 @@ var manageViewModel = function (options) {
 		});
 	}
 
-
+	self.exportFolderReportsManageAccessJson = function (folderId) {
+		const FolderReportsJson = self.reportsAndFolders().filter(filter => filter.folderId === folderId)   
+		const exportJson = JSON.stringify(FolderReportsJson, null, 2);
+		downloadJson(exportJson, `FolderReportsManageAccess_${FolderReportsJson[0].folder}.json` , 'application/json');
+	};
+	self.exportFolderManageAccessJson = function (folderId) {
+		const FolderJson = self.Folders().filter(filter => filter.Id === folderId)
+		const exportJson = JSON.stringify(FolderJson, null, 2);
+		downloadJson(exportJson, `FolderManageAccess_${FolderJson[0].FolderName}.json`, 'application/json');
+	};
+	self.exportFoldersReportJson = function () {
+		const exportJson = JSON.stringify(self.reportsAndFolders(), null, 2);
+		downloadJson(exportJson, `FolderReportsManageAccess.json`, 'application/json');
+	};
+	self.exportFoldersJson = function () {
+		const exportJson = JSON.stringify(self.Folders(), null, 2);
+		downloadJson(exportJson, `FolderManageAccess.json`, 'application/json');
+	};
 }
 
 var tablesViewModel = function (options, keys, previewData, activeTable) {
