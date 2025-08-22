@@ -282,7 +282,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                         <button class="btn btn-sm btn-outline-secondary" data-bind="click: openReport, visible: canEdit" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
                                                             <span class="fa fa-edit" aria-hidden="true"></span> Edit
                                                         </button>
-                                                        <button class="btn btn-sm btn-outline-secondary" data-bind="click: copyReport" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
+                                                        <button class="btn btn-sm btn-outline-secondary" data-bind="click: copyReport, visible: canEdit" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
                                                             <span class="fa fa-copy" aria-hidden="true"></span> Copy
                                                         </button>
                                                     </span>
@@ -321,7 +321,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                         <button class="btn btn-sm btn-outline-secondary" title="Edit Report" data-bind="click: openReport, visible: canEdit" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
                                                             <span class="fa fa-edit" aria-hidden="true"></span>
                                                         </button>
-                                                        <button class="btn btn-sm btn-light" data-bind="click: copyReport" title="Copy Report" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
+                                                        <button class="btn btn-sm btn-light" data-bind="click: copyReport, visible: canEdit" title="Copy Report" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
                                                             <span class="fa fa-copy" aria-hidden="true"></span>
                                                         </button>
                                                     </span>
@@ -437,7 +437,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                                 </a>
                                                             </li>
                                                             <li>
-                                                                <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder" data-bind="click: copyReport">
+                                                                <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder" data-bind="click: copyReport, visible: canEdit">
                                                                     <span class="fa fa-copy"></span> Copy
                                                                 </a>
                                                             </li>
