@@ -6410,6 +6410,10 @@ var dashboardViewModel = function (options) {
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
 			if (result.result) { result = result.result; }
+			var currentdashboard = _.find(self.dashboards(), { id: self.dashboard.Id() });
+			if (currentdashboard) {
+				currentdashboard.selectedReports = list;
+			};
 			toastr.success("Dashboard saved successfully");
 			$('#add-dashboard-modal').modal('hide');
 			setTimeout(function () {
