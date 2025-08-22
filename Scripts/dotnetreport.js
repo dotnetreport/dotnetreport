@@ -5110,6 +5110,11 @@ var reportViewModel = function (options) {
 			_.forEach(reports, function (e) {
 				e.runMode = false;
 				e.openReport = function () {
+					if (!e.canEdit && !e.runMode) {
+						options.reportWizard.modal('hide');
+						toastr.error('No access to edit report');
+						return;
+					}
 					if (self.ReportMode() != 'dashboard') {
 						self.isDirty(false);
 						self.setupDirtyCheck();
@@ -5130,6 +5135,11 @@ var reportViewModel = function (options) {
 				};
 
 				e.copyReport = function () {
+					if (!e.canEdit) {
+						options.reportWizard.modal('hide');
+						toastr.error('No access to copy report');
+						return;
+					}
 					e.openReport().done(function () {
 						self.ReportID(0);
 						self.ReportName('Copy of ' + self.ReportName());
