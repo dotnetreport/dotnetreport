@@ -2323,8 +2323,8 @@
     </div>
 </div>
 <script type="text/html" id="pdf-options-template">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content" data-bind="with: PdfPageSize">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content" data-bind="with: PdfPage">
                 <div class="modal-header">
                     <h5 class="modal-title" id="pdfOptionsScheduleModalLabel">
                         <i class="fa fa-file-pdf-o me-2"></i> Set PDF Page Size
@@ -2375,9 +2375,68 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-success" data-bs-dismiss="modal" data-bind="click: save">
-                        <i class="fa fa-download me-1"></i> Save
+                         Save
                     </button>
                 </div>
             </div>
         </div>
+</script>
+<script type="text/html" id="word-options-template">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" data-bind="with: WordPage">
+            <div class="modal-header">
+                <h5 class="modal-title" id="pdfOptionsScheduleModalLabel">
+                    <i class="fa fa-file-pdf-o me-2"></i> Set WORD Page Size
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body row g-0">
+                <div class="col-md-5 d-flex justify-content-center align-items-center">
+                    <div id="pagePreviewBox" class="text-center">
+                        <div data-bind="style: {
+                                     width: selectedWidth(),
+                                     height: selectedHeight(),
+                                     backgroundColor: selectedBackgroundStyle(),
+                                     transition: 'all 0.3s ease'
+                                 }"
+                             class="shadow rounded mx-auto mb-2 border position-relative">
+                            <span class="position-absolute top-50 start-50 translate-middle text-muted small">Preview</span>
+                        </div>
+                        <div data-bind="text: selectedPageLabel" class="fw-bold"></div>
+                        <div data-bind="text: selectedPageDimension" class="text-muted small"></div>
+                    </div>
+                </div>
+                <div class="col-md-7">
+                    <div class="mb-3">
+                        <label for="pageSizeSelect" class="form-label fw-bold">Page Size:</label>
+                        <select class="form-select" id="pageSizeSelect"
+                                data-bind="options: availablePageSizes,
+                                           optionsText: 'label',
+                                           optionsValue: 'value',
+                                           value: selectedPageSize">
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="pageOrientationSelect" class="form-label fw-bold">Page Orientation:</label>
+                        <select class="form-select" id="pageOrientationSelect"
+                                data-bind="options: availablePageOrientation,
+                                           optionsText: 'label',
+                                           optionsValue: 'value',
+                                           value: selectedPageOrientation">
+                        </select>
+                    </div>
+                    <div class="alert alert-info p-2 small mt-2">
+                        This WORD will be exported using the selected page size. Ensure your content fits well.
+                        If the content width exceeds the selected size, it will default to A4.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal" data-bind="click: save">
+                     Save
+                </button>
+            </div>
+        </div>
+    </div>
 </script>

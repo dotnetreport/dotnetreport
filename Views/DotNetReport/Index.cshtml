@@ -543,22 +543,22 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end">
                                     <li data-bind="hidden: appSettings.useAltPdf">
-                                        <a href="#" class="dropdown-item" data-bind="click: appSettings.showPdfPageSize
-                                              ? function() { PdfPageSize.isDebug = false; $('#pdfOptionsModal').modal('show'); }
+                                        <a href="#" class="dropdown-item" data-bind="click: appSettings.showPageSize
+                                              ? function() { PdfPage.isDebug = false; $('#pdfOptionsModal').modal('show'); }
                                               : function() { downloadPdf(false); }">
                                             <i class="fa fa-file-pdf-o"></i> Pdf
                                         </a>
                                     </li>
 
                                     <li data-bind="visible: adminMode() && !appSettings.useAltPdf">
-                                        <a href="#" class="dropdown-item" data-bind="click: appSettings.showPdfPageSize
-                                              ? function() { PdfPageSize.isDebug = true; $('#pdfOptionsModal').modal('show'); }
+                                        <a href="#" class="dropdown-item" data-bind="click: appSettings.showPageSize
+                                              ? function() { PdfPage.isDebug = true; $('#pdfOptionsModal').modal('show'); }
                                               : function() { downloadPdf(true); }">
                                             <i class="fa fa-file-pdf-o"></i> Pdf (Debug)
                                         </a>
                                     </li>
                                     <li data-bind="visible: appSettings.useAltPdf">
-                                        <a href="#" class="dropdown-item" data-bind="click: appSettings.showPdfPageSize
+                                        <a href="#" class="dropdown-item" data-bind="click: appSettings.showPageSize
                                               ? function() { $('#pdfOptionsModal').modal('show'); }
                                               : function() { downloadPdfAlt(); }">
                                             <i class="fa fa-file-pdf-o"></i> Pdf
@@ -575,7 +575,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         </a>
                                     </li>
                                     <li data-bind="hidden: appSettings.dontWordExport">
-                                        <a class="dropdown-item" data-bind="click: appSettings.showPdfPageSize
+                                        <a class="dropdown-item" data-bind="click: appSettings.showPageSize
                                             ? function() { $('#wordOptionsModal').modal('show'); }
                                             : function() { downloadWord(); }">
                                             <span class="fa fa-file-word-o"></span> Word
@@ -814,7 +814,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
 
 <div class="modal" id="pdfOptionsModal" tabindex="-1" aria-labelledby="pdfOptionsModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content" data-bind="with: PdfPageSize">
+        <div class="modal-content" data-bind="with: PdfPage">
             <div class="modal-header">
                 <h5 class="modal-title" id="pdfOptionsModalLabel"><i class="fa fa-file-pdf-o me-2"></i> Export to PDF</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -874,7 +874,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
 </div>
 <div class="modal" id="wordOptionsModal" tabindex="-1" aria-labelledby="wordOptionsModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content" data-bind="with: WordPageSize">
+        <div class="modal-content" data-bind="with: WordPage">
             <div class="modal-header">
                 <h5 class="modal-title" id="wordOptionsModalLabel"><i class="fa fa-file-pdf-o me-2"></i> Export to WORD</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -936,4 +936,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
 <!-- This renders the template -->
 <div class="modal" id="pdfOptionsScheduleModal" tabindex="-1" aria-labelledby="pdfOptionsScheduleModalLabel" aria-hidden="true">
     <div data-bind="template: { name: 'pdf-options-template', data: $data }"></div>
+</div>
+<!-- This renders the template -->
+<div class="modal" id="wordOptionsScheduleModal" tabindex="-1" aria-labelledby="wordOptionsScheduleModalLabel" aria-hidden="true">
+    <div data-bind="template: { name: 'word-options-template', data: $data }"></div>
 </div>

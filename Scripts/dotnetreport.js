@@ -177,12 +177,18 @@ function scheduleBuilder(userId, getTimeZonesUrl,appSettings) {
 	self.format = ko.observable('');
 	self.onFormatChange = function (data, event) {
 		const selectedValue = event.target.value;
-		if (selectedValue === 'PDF' && appSettings.showPdfPageSize) {
-			$('#pdfOptionsScheduleModal').modal('show');
+		if (appSettings.showPageSize) {
+			if (selectedValue === 'PDF') {
+				$('#pdfOptionsScheduleModal').modal('show');
+			}
+			else if (selectedValue === 'WORD') {
+				$('#wordOptionsScheduleModal').modal('show');
+			}
 		}
 	};
 
-	self.PdfPageSize = new PdfPageSizeViewModel();
+	self.PdfPage = new PdfPageViewModel();
+	self.WordPage = new WordPageViewModel();
 	self.selectedOption.subscribe(function (newValue) {
 		self.selectedDays([]);
 		self.selectedMonths([]);
@@ -236,7 +242,28 @@ function scheduleBuilder(userId, getTimeZonesUrl,appSettings) {
 	};
 
 	self.getTimezones();
-
+	self.getPageOption = function (format) {
+		let context = null;
+		switch (format) {
+			case "PDF":
+				context = ko.contextFor(document.getElementById('pdfOptionsScheduleModal'))?.$data?.PdfPage
+					|| ko.contextFor(document.getElementById('pdfOptionsScheduleModal'))?.$data?.dashboard?.PdfPage;
+				break;
+			case "WORD":
+				context = ko.contextFor(document.getElementById('wordOptionsScheduleModal'))?.$data?.WordPage
+					|| ko.contextFor(document.getElementById('wordOptionsScheduleModal'))?.$data?.dashboard?.WordPage;
+				break;
+			default:
+				return null;
+		}
+		if (context) {
+			return {
+				size: context.selectedPageSize() || null,
+				orientation: context.selectedPageOrientation()|| null
+			};
+		}
+		return null;
+	};
 	self.toJs = function () {
 		return self.hasSchedule() ? {
 			SelectedOption: self.selectedOption(),
@@ -252,9 +279,8 @@ function scheduleBuilder(userId, getTimeZonesUrl,appSettings) {
 			ScheduleEnd: self.hasScheduleEnd() ? self.scheduleEnd() : '',
 			Format: self.format(),
 			TimeZone: self.selectedTimezone(),
-			SelectedPageSize: ko.contextFor(document.getElementById('pdfOptionsScheduleModal'))?.$data?.PdfPageSize?.selectedPageSize()
-				? ko.contextFor(document.getElementById('pdfOptionsScheduleModal'))?.$data?.PdfPageSize?.selectedPageSize()
-				: ko.contextFor(document.getElementById('pdfOptionsScheduleModal'))?.$data?.dashboard?.PdfPageSize?.selectedPageSize()
+			SelectedPageSize: self.getPageOption(self.format())?.size || null,
+			SelectedPageOrientation: self.getPageOption(self.format())?.orientation || null,
 		} : null;
 	};
 
@@ -295,7 +321,7 @@ function scheduleBuilder(userId, getTimeZonesUrl,appSettings) {
 		self.fromJs(null);
 	}
 }
-function PdfPageSizeViewModel(appSettings, downloadPdf, downloadPdfAlt) {
+function PdfPageViewModel(appSettings, downloadPdf, downloadPdfAlt) {
 	var self = this;
 	self.availablePageSizes = ko.observableArray([
 		{ label: 'A4 (8.27 x 11.7 in)', value: 'A4', width: 210, height: 297, bgstyle: '#f9f9f9;' },
@@ -352,10 +378,13 @@ function PdfPageSizeViewModel(appSettings, downloadPdf, downloadPdfAlt) {
 		}
 	};
 	self.save = function () {
-		return self.selectedPageSize();
-	}
+		return {
+			size: self.selectedPageSize(),
+			orientation: self.selectedPageOrientation()
+		};
+	};
 }
-function WordPageSizeViewModel(downloadWord) {
+function WordPageViewModel(downloadWord) {
 	var self = this;
 	self.availablePageSizes = ko.observableArray([
 		{ label: 'A4 (8.27 x 11.7 in)', value: 'A4', width: 210, height: 297, bgstyle: '#f9f9f9;' },
@@ -405,7 +434,10 @@ function WordPageSizeViewModel(downloadWord) {
 		downloadWord(selectedSize, selectedOrientation);
 	};
 	self.save = function () {
-		return self.selectedPageSize();
+		return {
+			size: self.selectedPageSize(),
+			orientation: self.selectedPageOrientation()
+		};
 	}
 }
 
@@ -1332,7 +1364,7 @@ var reportViewModel = function (options) {
 		useAltPivot: false,
 		dontXmlExport: false,
 		dontWordExport: false,
-		showPdfPageSize: false,
+		showPageSize: false,
 	};
 	self.runQuery = function (useAi) {
 		self.SelectedFields([]);
@@ -5520,7 +5552,7 @@ var reportViewModel = function (options) {
 			self.appSettings.useAltPivot = x.useAltPivot === true;
 			self.appSettings.dontXmlExport = x.dontXmlExport;
 			self.appSettings.dontWordExport = x.dontWordExport;
-			self.appSettings.showPdfPageSize = x.showPdfPageSize;
+			self.appSettings.showPageSize = x.showPageSize;
 		});
 	}
 
@@ -5673,7 +5705,7 @@ var reportViewModel = function (options) {
 			pageOrientation: pageOrientation
 		}, 'pdf');
 	}
-	self.PdfPageSize = new PdfPageSizeViewModel(self.appSettings, self.downloadPdf, self.downloadPdfAlt);
+	self.PdfPage = new PdfPageViewModel(self.appSettings, self.downloadPdf, self.downloadPdfAlt);
 	self.runExcelDownload = function (expand) {
 		var hasOnlyAndGroupInDetail = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Only in Detail' || x.selectedAggregate() == 'Group in Detail'}) != null;
 		var onlyAndGroupInDetailColumnDetails = _.filter(self.SelectedFields(), function (x) { return x.selectedAggregate() === 'Only in Detail' || x.selectedAggregate() == 'Group in Detail'; });
@@ -5721,7 +5753,7 @@ var reportViewModel = function (options) {
 		var data = self.getExportJson(pageSize, pageOrientation);		
 		self.downloadExport("DownloadWord", data, 'docx');
 	}
-	self.WordPageSize = new WordPageSizeViewModel(self.downloadWord);
+	self.WordPage = new WordPageViewModel(self.downloadWord);
 	self.preparePivotData = function () {
 		var pivotColumn = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot'; });
 		var pivotFunction = '';
@@ -6166,7 +6198,7 @@ var dashboardViewModel = function (options) {
 		useAltPivot: false,
 		dontXmlExport: false,
 		dontWordExport: false,
-		showPdfPageSize:false,
+		showPageSize:false,
 	};
 	self.loadAppSettings = function () {
 		return ajaxcall({
@@ -6192,7 +6224,7 @@ var dashboardViewModel = function (options) {
 			self.appSettings.useAltPivot = x.useAltPivot;
 			self.appSettings.dontXmlExport = x.dontXmlExport;
 			self.appSettings.dontWordExport = x.dontWordExport;
-			self.appSettings.showPdfPageSize = x.showPdfPageSize;
+			self.appSettings.showPageSize = x.showPageSize;
 		});
 	}
 
@@ -6202,7 +6234,8 @@ var dashboardViewModel = function (options) {
 		Description: ko.observable(currentDash.description),
 		manageAccess: manageAccess(options),
 		scheduleBuilder: new scheduleBuilder(options.userId, options.getTimeZonesUrl, self.appSettings),
-		PdfPageSize: new PdfPageSizeViewModel()
+		PdfPage: new PdfPageViewModel(),
+		WordPage: new WordPageViewModel()
 	};
 	self.dateFormatMappings = {
 		'United States': 'mm/dd/yy',
