@@ -6233,9 +6233,7 @@ var dashboardViewModel = function (options) {
 		Name: ko.observable(currentDash.name),
 		Description: ko.observable(currentDash.description),
 		manageAccess: manageAccess(options),
-		scheduleBuilder: new scheduleBuilder(options.userId, options.getTimeZonesUrl, self.appSettings),
-		PdfPage: new PdfPageViewModel(),
-		WordPage: new WordPageViewModel()
+		scheduleBuilder: new scheduleBuilder(options.userId, options.getTimeZonesUrl, self.appSettings)
 	};
 	self.dateFormatMappings = {
 		'United States': 'mm/dd/yy',
@@ -6583,6 +6581,8 @@ var dashboardViewModel = function (options) {
 		});
 
 		self.reports(allreports);
+		self.dashboard.WordPage = new WordPageViewModel(allreports[0].downloadWord);
+		self.dashboard.PdfPage = new PdfPageViewModel(self.appSettings, allreports[0].downloadPdf, allreports[0].downloadPdfAlt);
 		$.when(promises).done(function () {
 			setTimeout(function () {
 				self.FlyFilters([]);
