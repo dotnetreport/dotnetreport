@@ -196,6 +196,7 @@
         </div>
 
     </script>
+    <input type="hidden" id="exportId" value="@ViewBag.ExportId" />
 
     <script src="~/Scripts/jquery-3.7.1.min.js"></script>
     <script src="~/Scripts/bootstrap.bundle.min.js"></script>
@@ -208,6 +209,7 @@
     <script src="~/Scripts/select2.min.js"></script>
     <script src="~/Scripts/lodash.min.js"></script>
     <script src="~/Scripts/fabric.min.js"></script>
+    <script src="~/Scripts/tribute.min.js"></script>
     <script src="~/Scripts/dotnetreport-helper.js"></script>
     <script src="~/Scripts/dotnetreport.js?v=4.0.0"></script>
 
@@ -251,7 +253,7 @@
             ReportSeries : "@Model.ReportSeries",
             reportHeader: 'report-header',
             userSettings: data,
-            dataFilters: JSON.parse(data.dataFilters || '{}'),
+            dataFilters: JSON.parse(decodeHTMLEntities(data.dataFilters) || '{}'),
             reportData: JSON.parse(decodeHTMLEntities('@Model.ReportData')),
             getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
             chartSize: { width: 1000, height: 450 }
