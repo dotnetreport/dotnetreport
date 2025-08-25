@@ -390,7 +390,7 @@ function filterGroupViewModel(args) {
 				ajaxcall({
 					type: 'POST',
 					url: args.options.lookupListUrl,
-					data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey }),
+					data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey, token: '' }),
 					noBlocking: args.parent.ReportMode() == 'dashboard'
 				}).done(function (list) {
 					if (list.d) { list = list.d; }
@@ -441,7 +441,7 @@ function filterGroupViewModel(args) {
 							ajaxcall({
 								type: 'POST',
 								url: args.options.lookupListUrl,
-								data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey }),
+								data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey, token: '' }),
 								noBlocking: args.parent.ReportMode() == 'dashboard'
 							}).done(function (list) {
 								if (list.d) { list = list.d; }
@@ -473,6 +473,13 @@ function filterGroupViewModel(args) {
 				else
 					loadLookupList(newField.fieldId, args.options.dataFilters);
 
+			}
+
+			if (newField && !newField.hasForeignKey && newField.fieldType == 'Varchar') {
+				setTimeout(function () {
+					var txtqry = new textQuery(args.options);
+					txtqry.setupLookup(newField, filter);
+				}, 500);				
 			}
 
 			if (newField && newField.restrictedDateRange && newField.fieldType == 'DateTime') {
@@ -1192,7 +1199,7 @@ var reportViewModel = function (options) {
 	self.y = ko.observable(0);
 	self.width = ko.observable(3);
 	self.height = ko.observable(2);
-	var tokenKey = '';
+	var tokenKey = 'token-key';
 	var token = JSON.parse(localStorage.getItem(tokenKey));
 
 	self.usingAi = ko.observable(true);
@@ -1683,7 +1690,7 @@ var reportViewModel = function (options) {
 			.value();
 	});
 
-	var tokenKey = '';
+	var tokenKey = 'token-key';
 	var token = JSON.parse(localStorage.getItem(tokenKey));
 	self.searchFieldsInReport = {
 		language: {
@@ -1896,7 +1903,7 @@ var reportViewModel = function (options) {
 					ajaxcall({
 						type: 'POST',
 						url: options.lookupListUrl,
-						data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey })
+						data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey, token: '' })
 					}).done(function (list) {
 						if (list.d) { list = list.d; }
 						if (list.result) { list = list.result; }

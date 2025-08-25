@@ -87,7 +87,7 @@
         </select>
         <!-- /ko -->
         <!-- ko if: ['Int','Money','Float','Double','Date','DateTime','Boolean'].indexOf(fieldType) == -1 && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
-        <input class="form-control" type="text" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default'" required />
+        <input class="form-control" type="text" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default',attr: {id: 'ctl-'+uiId }" required />
         <!-- /ko -->
         <!-- /ko -->
         <!-- ko if: hasForeignKey && $parent.Operator() != 'all' -->

@@ -53,6 +53,7 @@ namespace ReportBuilder.Web.Controllers
         {
             public string lookupSql { get; set; }
             public string connectKey { get; set; }
+            public string token { get; set; } = "";
         }
 
         [ValidateAntiForgeryToken]
@@ -71,6 +72,10 @@ namespace ReportBuilder.Web.Controllers
 
             // Uncomment if you want to restrict max records returned
             sql = sql.Substring(0, 0) + "SELECT DISTINCT TOP 500 " + sql.Substring(0 + "SELECT ".Length);
+            if (sql.Contains("{{token}}"))
+            {
+                sql = sql.Replace("{{token}}", $"'%{model.token}%'");
+            }
 
             var json = new StringBuilder();
             var dt = new DataTable();
