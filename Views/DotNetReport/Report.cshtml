@@ -142,7 +142,7 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
                                         <i class="fa fa-file-excel-o"></i> Excel (Expanded)
                                     </a>
                                 </li>
-                                <li>
+                                <li data-bind="hidden: appSettings.dontWordExport">
                                     <a class="dropdown-item" href="#" data-bind="click: downloadWord">
                                         <span class="fa fa-file-word-o"></span> Word
                                     </a>

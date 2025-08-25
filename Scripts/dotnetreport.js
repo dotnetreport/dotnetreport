@@ -137,7 +137,7 @@ function linkFieldViewModel(args, options) {
 	}
 }
 
-function scheduleBuilder(userId, getTimeZonesUrl) {
+function scheduleBuilder(userId, getTimeZonesUrl,appSettings) {
 	var self = this;
 
 	self.options = ['day', 'week', 'month', 'year', 'once', 'hour'];
@@ -174,8 +174,15 @@ function scheduleBuilder(userId, getTimeZonesUrl) {
 	self.hasScheduleEnd = ko.observable(false);
 	self.scheduleStart = ko.observable();
 	self.scheduleEnd = ko.observable();
-	self.format = ko.observable('')
+	self.format = ko.observable('');
+	self.onFormatChange = function (data, event) {
+		const selectedValue = event.target.value;
+		if (selectedValue === 'PDF' && appSettings.showPdfPageSize) {
+			$('#pdfOptionsScheduleModal').modal('show');
+		}
+	};
 
+	self.PdfPageSize = new PdfPageSizeViewModel();
 	self.selectedOption.subscribe(function (newValue) {
 		self.selectedDays([]);
 		self.selectedMonths([]);
@@ -244,7 +251,10 @@ function scheduleBuilder(userId, getTimeZonesUrl) {
 			ScheduleStart: self.hasScheduleStart() ? self.scheduleStart() : '',
 			ScheduleEnd: self.hasScheduleEnd() ? self.scheduleEnd() : '',
 			Format: self.format(),
-			TimeZone: self.selectedTimezone() 
+			TimeZone: self.selectedTimezone(),
+			SelectedPageSize: ko.contextFor(document.getElementById('pdfOptionsScheduleModal'))?.$data?.PdfPageSize?.selectedPageSize()
+				? ko.contextFor(document.getElementById('pdfOptionsScheduleModal'))?.$data?.PdfPageSize?.selectedPageSize()
+				: ko.contextFor(document.getElementById('pdfOptionsScheduleModal'))?.$data?.dashboard?.PdfPageSize?.selectedPageSize()
 		} : null;
 	};
 
@@ -283,6 +293,119 @@ function scheduleBuilder(userId, getTimeZonesUrl) {
 
 	self.clear = function () {
 		self.fromJs(null);
+	}
+}
+function PdfPageSizeViewModel(appSettings, downloadPdf, downloadPdfAlt) {
+	var self = this;
+	self.availablePageSizes = ko.observableArray([
+		{ label: 'A4 (8.27 x 11.7 in)', value: 'A4', width: 210, height: 297, bgstyle: '#f9f9f9;' },
+		{ label: 'A1 (23.4 x 33.1 in)', value: 'A1', width: 594, height: 841, bgstyle: '#fff2cc;' },
+		{ label: 'A2 (16.5 x 23.4 in)', value: 'A2', width: 420, height: 594, bgstyle: '#d9ead3;' },
+		{ label: 'A3 (11.7 × 16.5 in)', value: 'A3', width: 297, height: 420, bgstyle: '#d0e0e3;' },
+		{ label: 'Letter (8.5 x 11 in)', value: 'Letter', width: 216, height: 279, bgstyle: '#d9d2e9;' },
+		{ label: 'Legal (8.5 x 14 in)', value: 'Legal', width: 216, height: 356, bgstyle: '#cfe2f3;' },
+		{ label: 'Tabloid (11 × 17 in)', value: 'Tabloid', width: 279, height: 432, bgstyle: '#ead1dc;' }
+	]);
+	self.availablePageOrientation = ko.observableArray([
+		{ label: 'Portrait', value: 'PORTRAIT'},
+		{ label: 'Landscape', value: 'LANDSCAPE'}
+	]);
+	self.selectedPageSize = ko.observable("");
+	self.selectedPageOrientation = ko.observable("PORTRAIT");
+	self.selectedPageLabel = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		return page ? page.label : '';
+	});
+	self.selectedPageDimension = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		return page ? `${page.width}mm x ${page.height}mm` : '';
+	});
+	self.selectedWidth = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		if (!page) return '100px';
+		if (self.selectedPageOrientation() === "LANDSCAPE") {
+			return (page.height / 3) + 'px';
+		}
+		return (page.width / 3) + 'px';
+	});
+	self.selectedHeight = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		if (!page) return '150px';
+
+		if (self.selectedPageOrientation() === "LANDSCAPE") {
+			return (page.width / 3) + 'px';
+		}
+		return (page.height / 3) + 'px';
+	});
+	self.selectedBackgroundStyle = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		return page ? page.bgstyle : '#f5f5f5';
+	});
+	self.isDebug = false;
+	self.download = function () {
+		const selectedSize = self.selectedPageSize();
+		const selectedOrientation = self.selectedPageOrientation();
+		if (appSettings?.useAltPdf) {
+			downloadPdfAlt(selectedSize, selectedOrientation);
+		} else {
+			downloadPdf(self.isDebug, selectedSize, selectedOrientation);
+		}
+	};
+	self.save = function () {
+		return self.selectedPageSize();
+	}
+}
+function WordPageSizeViewModel(downloadWord) {
+	var self = this;
+	self.availablePageSizes = ko.observableArray([
+		{ label: 'A4 (8.27 x 11.7 in)', value: 'A4', width: 210, height: 297, bgstyle: '#f9f9f9;' },
+		{ label: 'A3 (11.7 × 16.5 in)', value: 'A3', width: 297, height: 420, bgstyle: '#d0e0e3;' },
+		{ label: 'Letter (8.5 x 11 in)', value: 'Letter', width: 216, height: 279, bgstyle: '#d9d2e9;' },
+		{ label: 'Legal (8.5 x 14 in)', value: 'Legal', width: 216, height: 356, bgstyle: '#cfe2f3;' },
+		{ label: 'Tabloid (11 × 17 in)', value: 'Tabloid', width: 279, height: 432, bgstyle: '#ead1dc;' }
+	]);
+	self.availablePageOrientation = ko.observableArray([
+		{ label: 'Portrait', value: 'PORTRAIT' },
+		{ label: 'Landscape', value: 'LANDSCAPE' }
+	]);
+	self.selectedPageSize = ko.observable("");
+	self.selectedPageOrientation = ko.observable("PORTRAIT");
+	self.selectedPageLabel = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		return page ? page.label : '';
+	});
+	self.selectedPageDimension = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		return page ? `${page.width}mm x ${page.height}mm` : '';
+	});
+	self.selectedWidth = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		if (!page) return '100px';
+		if (self.selectedPageOrientation() === "LANDSCAPE") {
+			return (page.height / 3) + 'px';
+		}
+		return (page.width / 3) + 'px';
+	});
+	self.selectedHeight = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		if (!page) return '150px';
+
+		if (self.selectedPageOrientation() === "LANDSCAPE") {
+			return (page.width / 3) + 'px';
+		}
+		return (page.height / 3) + 'px';
+	});
+	self.selectedBackgroundStyle = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		return page ? page.bgstyle : '#f5f5f5';
+	});
+	self.download = function () {
+		const selectedSize = self.selectedPageSize();
+		const selectedOrientation = self.selectedPageOrientation();
+		downloadWord(selectedSize, selectedOrientation);
+	};
+	self.save = function () {
+		return self.selectedPageSize();
 	}
 }
 
@@ -1214,7 +1337,9 @@ var reportViewModel = function (options) {
 		showEmptyFolders: false,
 		useAltPdf: false,
 		useAltPivot: false,
-		dontXmlExport: false
+		dontXmlExport: false,
+		dontWordExport: false,
+		showPdfPageSize: false,
 	};
 	self.runQuery = function (useAi) {
 		self.SelectedFields([]);
@@ -1470,7 +1595,7 @@ var reportViewModel = function (options) {
 				item.tableId !== undefined && item.tableId !== null && item.tableId != 0;
 		});
 	});
-	self.scheduleBuilder = new scheduleBuilder(self.userIdForSchedule, options.getTimeZonesUrl);
+	self.scheduleBuilder = new scheduleBuilder(self.userIdForSchedule, options.getTimeZonesUrl, self.appSettings);
 
 	self.ManageFolder = {
 		FolderName: ko.observable(),
@@ -1583,7 +1708,6 @@ var reportViewModel = function (options) {
 			});
 		}
 	};
-
 	self.ManageJsonFile = {
 		file: ko.observable(null),
 		fileName: ko.observable(''),
@@ -5402,6 +5526,8 @@ var reportViewModel = function (options) {
 			self.appSettings.useAltPdf = x.useAltPdf;
 			self.appSettings.useAltPivot = x.useAltPivot === true;
 			self.appSettings.dontXmlExport = x.dontXmlExport;
+			self.appSettings.dontWordExport = x.dontWordExport;
+			self.appSettings.showPdfPageSize = x.showPdfPageSize;
 		});
 	}
 
@@ -5505,7 +5631,7 @@ var reportViewModel = function (options) {
 		});
 	}
 
-	self.getExportJson = function () {
+	self.getExportJson = function (pageSize,pageOrientation) {
 		var reportData = self.BuildReportData();
 		reportData.DrillDownRowUsePlaceholders = true;
 		var pivotData = self.preparePivotData();
@@ -5521,15 +5647,17 @@ var reportViewModel = function (options) {
 			pivot: self.ReportType() == 'Pivot',
 			pivotColumn: pivotData.pivotColumn,
 			pivotFunction: pivotData.pivotFunction,
+			pageSize: pageSize,
+			pageOrientation: pageOrientation
 		};
 	}
 
-	self.downloadPdfAlt = function () {
-		var data = self.getExportJson();
+	self.downloadPdfAlt = function (pageSize,pageOrientation) {
+		var data = self.getExportJson(pageSize, pageOrientation);
 		self.downloadExport("DownloadPdfAlt", data, 'pdf');
 	}
 
-	self.downloadPdf = function (debug) {
+	self.downloadPdf = function (debug, pageSize, pageOrientation) {
 		var reportData = self.BuildReportData();
 		reportData.DrillDownRowUsePlaceholders = true;
 		var pivotData = self.preparePivotData();
@@ -5547,10 +5675,12 @@ var reportViewModel = function (options) {
 			expandSqls: JSON.stringify(reportData),
 			pivotColumn: pivotData.pivotColumn,
 			pivotFunction: pivotData.pivotFunction,
-			debug: debug === true ? true : false
+			debug: debug === true ? true : false,
+			pageSize: pageSize,
+			pageOrientation: pageOrientation
 		}, 'pdf');
 	}
-
+	self.PdfPageSize = new PdfPageSizeViewModel(self.appSettings, self.downloadPdf, self.downloadPdfAlt);
 	self.runExcelDownload = function (expand) {
 		var hasOnlyAndGroupInDetail = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Only in Detail' || x.selectedAggregate() == 'Group in Detail'}) != null;
 		var onlyAndGroupInDetailColumnDetails = _.filter(self.SelectedFields(), function (x) { return x.selectedAggregate() === 'Only in Detail' || x.selectedAggregate() == 'Group in Detail'; });
@@ -5594,10 +5724,11 @@ var reportViewModel = function (options) {
 		var data = self.getExportJson();
 		self.downloadExport("DownloadXml", data, 'xml');
 	}
-	self.downloadWord = function () {
-		var data = self.getExportJson();		
+	self.downloadWord = function (pageSize, pageOrientation) {
+		var data = self.getExportJson(pageSize, pageOrientation);		
 		self.downloadExport("DownloadWord", data, 'docx');
 	}
+	self.WordPageSize = new WordPageSizeViewModel(self.downloadWord);
 	self.preparePivotData = function () {
 		var pivotColumn = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot'; });
 		var pivotFunction = '';
@@ -6040,7 +6171,9 @@ var dashboardViewModel = function (options) {
 		showEmptyFolders: false,
 		useAltPdf: false,
 		useAltPivot: false,
-		dontXmlExport: false
+		dontXmlExport: false,
+		dontWordExport: false,
+		showPdfPageSize:false,
 	};
 	self.loadAppSettings = function () {
 		return ajaxcall({
@@ -6065,6 +6198,8 @@ var dashboardViewModel = function (options) {
 			self.appSettings.useAltPdf = x.useAltPdf;
 			self.appSettings.useAltPivot = x.useAltPivot;
 			self.appSettings.dontXmlExport = x.dontXmlExport;
+			self.appSettings.dontWordExport = x.dontWordExport;
+			self.appSettings.showPdfPageSize = x.showPdfPageSize;
 		});
 	}
 
@@ -6073,7 +6208,8 @@ var dashboardViewModel = function (options) {
 		Name: ko.observable(currentDash.name),
 		Description: ko.observable(currentDash.description),
 		manageAccess: manageAccess(options),
-		scheduleBuilder: new scheduleBuilder(options.userId, options.getTimeZonesUrl)
+		scheduleBuilder: new scheduleBuilder(options.userId, options.getTimeZonesUrl, self.appSettings),
+		PdfPageSize: new PdfPageSizeViewModel()
 	};
 	self.dateFormatMappings = {
 		'United States': 'mm/dd/yy',
@@ -6281,6 +6417,10 @@ var dashboardViewModel = function (options) {
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
 			if (result.result) { result = result.result; }
+			var currentdashboard = _.find(self.dashboards(), { id: self.dashboard.Id() });
+			if (currentdashboard) {
+				currentdashboard.selectedReports = list;
+			};
 			toastr.success("Dashboard saved successfully");
 			$('#add-dashboard-modal').modal('hide');
 			setTimeout(function () {

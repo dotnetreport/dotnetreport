@@ -895,14 +895,16 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string expandSqls = null,
             [FromForm] string pivotColumn = null,
             [FromForm] string pivotFunction = null,
-            [FromForm] bool debug = false)
+            [FromForm] bool debug = false,
+            [FromForm] string pageSize = "",
+            [FromForm] string pageOrientation = "")
         {
 
             var settings = GetSettings();
             
             reportSql = HttpUtility.HtmlDecode(reportSql);
             var pdf = await DotNetReportHelper.GetPdfFile(HttpUtility.UrlDecode(printUrl), reportId, reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName),
-                                settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), JsonConvert.SerializeObject(settings.DataFilters), expandAll, expandSqls, pivotColumn, pivotFunction, false, debug);
+                                settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), JsonConvert.SerializeObject(settings.DataFilters), expandAll, expandSqls, pivotColumn, pivotFunction, false, debug, pageSize, pageOrientation);
 
             return File(pdf, "application/pdf", reportName + ".pdf");
         }
@@ -919,7 +921,9 @@ namespace ReportBuilder.Web.Controllers
            [FromForm] bool includeSubtotal = false,
            [FromForm] bool pivot = false,
            [FromForm] string pivotColumn = null,
-           [FromForm] string pivotFunction = null)
+           [FromForm] string pivotFunction = null,
+           [FromForm] string pageSize = "",
+           [FromForm] string pageOrientation = "")
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
             chartData = HttpUtility.UrlDecode(chartData);
@@ -927,7 +931,7 @@ namespace ReportBuilder.Web.Controllers
             reportName = HttpUtility.UrlDecode(reportName);
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
 
-            var pdf = await DotNetReportHelper.GetPdfFileAlt(reportSql, connectKey, reportName, chartData, allExpanded, expandSqls, columns, includeSubtotal, pivot, pivotColumn, pivotFunction);
+            var pdf = await DotNetReportHelper.GetPdfFileAlt(reportSql, connectKey, reportName, chartData, allExpanded, expandSqls, columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation);
 
             return File(pdf, "application/pdf", reportName + ".pdf");
         }
@@ -944,13 +948,15 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] bool includeSubtotal = false,
             [FromForm] bool pivot = false,
             [FromForm] string pivotColumn = null,
-            [FromForm] string pivotFunction = null)
+            [FromForm] string pivotFunction = null,
+            [FromForm] string pageSize = "", 
+            [FromForm] string pageOrientation = "")
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
-            var word = await DotNetReportHelper.GetWordFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction);
+            var word = await DotNetReportHelper.GetWordFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation);
             Response.Headers.Add("content-disposition", "attachment; filename=" + reportName + ".docx");
             Response.ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
             return File(word, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", reportName + ".docx");

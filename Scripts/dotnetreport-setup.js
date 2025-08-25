@@ -1601,16 +1601,23 @@ var manageViewModel = function (options) {
 			_.forEach(allFolders[0], function (x) {
 				var folderReports = _.filter(allReports[0], { folderId: x.Id });
 				_.forEach(folderReports, function (r) {
+					r.userId = ko.observable(r.userId);
+					r.viewOnlyUserId = ko.observable(r.viewOnlyUserId);
+					r.deleteOnlyUserId = ko.observable(r.deleteOnlyUserId);
+					r.userRole = ko.observable(r.userRole);
+					r.viewOnlyUserRole = ko.observable(r.viewOnlyUserRole);
+					r.deleteOnlyUserRole = ko.observable(r.deleteOnlyUserRole);
+					r.clientId = ko.observable(r.clientId);
 					r.changeAccess = ko.observable(false);
 					r.changeAccess.subscribe(function (x) {
 						if (x) {
-							self.manageAccess.clientId(r.clientId);
-							self.manageAccess.setupList(self.manageAccess.users, r.userId || '');
-							self.manageAccess.setupList(self.manageAccess.userRoles, r.userRole || '');
-							self.manageAccess.setupList(self.manageAccess.viewOnlyUserRoles, r.viewOnlyUserRole || '');
-							self.manageAccess.setupList(self.manageAccess.viewOnlyUsers, r.viewOnlyUserId || '');
-							self.manageAccess.setupList(self.manageAccess.deleteOnlyUserRoles, r.deleteOnlyUserRole || '');
-							self.manageAccess.setupList(self.manageAccess.deleteOnlyUsers, r.deleteOnlyUserId || '');
+							self.manageAccess.clientId(r.clientId());
+							self.manageAccess.setupList(self.manageAccess.users, r.userId() || '');
+							self.manageAccess.setupList(self.manageAccess.userRoles, r.userRole() || '');
+							self.manageAccess.setupList(self.manageAccess.viewOnlyUserRoles, r.viewOnlyUserRole() || '');
+							self.manageAccess.setupList(self.manageAccess.viewOnlyUsers, r.viewOnlyUserId() || '');
+							self.manageAccess.setupList(self.manageAccess.deleteOnlyUserRoles, r.deleteOnlyUserRole() || '');
+							self.manageAccess.setupList(self.manageAccess.deleteOnlyUsers, r.deleteOnlyUserId() || '');
 						}
 					});
 
@@ -1639,13 +1646,13 @@ var manageViewModel = function (options) {
 							if (d.d) d = d.d;
 							toastr.success('Changes Saved Successfully');							
 							r.changeAccess(false);
-							r.userId = self.manageAccess.getAsList(self.manageAccess.users);
-							r.viewOnlyUserId = self.manageAccess.getAsList(self.manageAccess.viewOnlyUsers);
-							r.deleteOnlyUserId = self.manageAccess.getAsList(self.manageAccess.deleteOnlyUsers);
-							r.userRole = self.manageAccess.getAsList(self.manageAccess.userRoles);
-							r.viewOnlyUserRole = self.manageAccess.getAsList(self.manageAccess.viewOnlyUserRoles);
-							r.deleteOnlyUserRole = self.manageAccess.getAsList(self.manageAccess.deleteOnlyUserRoles);
-							r.clientId = self.manageAccess.clientId();
+							r.userId(self.manageAccess.getAsList(self.manageAccess.users));
+							r.viewOnlyUserId(self.manageAccess.getAsList(self.manageAccess.viewOnlyUsers));
+							r.deleteOnlyUserId(self.manageAccess.getAsList(self.manageAccess.deleteOnlyUsers));
+							r.userRole(self.manageAccess.getAsList(self.manageAccess.userRoles));
+							r.viewOnlyUserRole(self.manageAccess.getAsList(self.manageAccess.viewOnlyUserRoles));
+							r.deleteOnlyUserRole(self.manageAccess.getAsList(self.manageAccess.deleteOnlyUserRoles));
+							r.clientId(self.manageAccess.clientId());
 							//self.loadReportsAndFolder();
 						});
 
@@ -1662,16 +1669,23 @@ var manageViewModel = function (options) {
 			self.reportsAndFolders(setup);
 			var folders = allFolders[0];
 			_.forEach(folders, function (r) {
+				r.UserId = ko.observable(r.UserId);
+				r.ViewOnlyUserId = ko.observable(r.ViewOnlyUserId);
+				r.DeleteOnlyUserId = ko.observable(r.DeleteOnlyUserId);
+				r.UserRoles = ko.observable(r.UserRoles);
+				r.ViewOnlyUserRoles = ko.observable(r.ViewOnlyUserRoles);
+				r.DeleteOnlyUserRoles = ko.observable(r.DeleteOnlyUserRoles);
+				r.ClientId = ko.observable(r.ClientId);
 				r.changeFolderAccess = ko.observable(false);
 				r.changeFolderAccess.subscribe(function (x) {
 					if (x) {
-						self.manageAccess.clientId(r.ClientId);
-						self.manageAccess.setupList(self.manageAccess.users, r.UserId || '');
-						self.manageAccess.setupList(self.manageAccess.userRoles, r.UserRoles || '');
-						self.manageAccess.setupList(self.manageAccess.viewOnlyUserRoles, r.ViewOnlyUserRoles || '');
-						self.manageAccess.setupList(self.manageAccess.viewOnlyUsers, r.ViewOnlyUserId || '');
-						self.manageAccess.setupList(self.manageAccess.deleteOnlyUserRoles, r.DeleteOnlyUserRoles || '');
-						self.manageAccess.setupList(self.manageAccess.deleteOnlyUsers, r.DeleteOnlyUserId || '');
+						self.manageAccess.clientId(r.ClientId());
+						self.manageAccess.setupList(self.manageAccess.users, r.UserId() || '');
+						self.manageAccess.setupList(self.manageAccess.userRoles, r.UserRoles() || '');
+						self.manageAccess.setupList(self.manageAccess.viewOnlyUserRoles, r.ViewOnlyUserRoles() || '');
+						self.manageAccess.setupList(self.manageAccess.viewOnlyUsers, r.ViewOnlyUserId() || '');
+						self.manageAccess.setupList(self.manageAccess.deleteOnlyUserRoles, r.DeleteOnlyUserRoles() || '');
+						self.manageAccess.setupList(self.manageAccess.deleteOnlyUsers, r.DeleteOnlyUserId() || '');
 					}
 				});
 				r.saveFolderAccessChanges = function () {
@@ -1697,13 +1711,13 @@ var manageViewModel = function (options) {
 					}).done(function (d) {
 						if (d.d) d = d.d;
 						toastr.success('Changes Saved Successfully');
-						r.UserId = self.manageAccess.getAsList(self.manageAccess.users);
-						r.ViewOnlyUserId = self.manageAccess.getAsList(self.manageAccess.viewOnlyUsers),
-						r.DeleteOnlyUserId = self.manageAccess.getAsList(self.manageAccess.deleteOnlyUsers),
-						r.UserRoles = self.manageAccess.getAsList(self.manageAccess.userRoles),
-						r.ViewOnlyUserRoles = self.manageAccess.getAsList(self.manageAccess.viewOnlyUserRoles),
-						r.DeleteOnlyUserRoles = self.manageAccess.getAsList(self.manageAccess.deleteOnlyUserRoles),
-						r.ClientId = self.manageAccess.clientId(),
+						r.UserId(self.manageAccess.getAsList(self.manageAccess.users));
+						r.ViewOnlyUserId(self.manageAccess.getAsList(self.manageAccess.viewOnlyUsers));
+						r.DeleteOnlyUserId(self.manageAccess.getAsList(self.manageAccess.deleteOnlyUsers));
+						r.UserRoles(self.manageAccess.getAsList(self.manageAccess.userRoles));
+						r.ViewOnlyUserRoles(self.manageAccess.getAsList(self.manageAccess.viewOnlyUserRoles));
+						r.DeleteOnlyUserRoles(self.manageAccess.getAsList(self.manageAccess.deleteOnlyUserRoles));
+						r.ClientId(self.manageAccess.clientId());
 						r.changeFolderAccess(false);
 						//self.loadReportsAndFolder();
 					});
@@ -2384,6 +2398,8 @@ var settingPageViewModel = function (options) {
 	self.useAltPdf = ko.observable(false);
 	self.useAltPivot = ko.observable(false);
 	self.dontXmlExport = ko.observable(false);
+	self.dontWordExport = ko.observable(false);
+	self.showPdfPageSize = ko.observable(false);
 
 	self.appThemes = ko.observableArray([
 		{ name: 'Default', value: 'default' },
@@ -2458,7 +2474,9 @@ var settingPageViewModel = function (options) {
 							allowUsersToCreateReports: self.allowUsersToCreateReports(),
 							useAltPdf: self.useAltPdf(),
 							useAltPivot: self.useAltPivot(),
-							dontXmlExport: self.dontXmlExport()
+							dontXmlExport: self.dontXmlExport(),
+							dontWordExport: self.dontWordExport(),
+							showPdfPageSize: self.showPdfPageSize()
 						})
 					})
 				})
@@ -2511,6 +2529,8 @@ var settingPageViewModel = function (options) {
 				self.useAltPdf(settings.useAltPdf);
 				self.useAltPivot(settings.useAltPivot);
 				self.dontXmlExport(settings.dontXmlExport);
+				self.dontWordExport(settings.dontWordExport);
+				self.showPdfPageSize(settings.showPdfPageSize);
 ;
 				//// Optionally, you can manually trigger change event for select elements
 				$('#themeSelect').trigger('change');
