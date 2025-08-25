@@ -243,24 +243,27 @@ function scheduleBuilder(userId, getTimeZonesUrl,appSettings) {
 
 	self.getTimezones();
 	self.getPageOption = function (format) {
-		let context = null;
-		switch (format) {
-			case "PDF":
-				context = ko.contextFor(document.getElementById('pdfOptionsScheduleModal'))?.$data?.PdfPage
-					|| ko.contextFor(document.getElementById('pdfOptionsScheduleModal'))?.$data?.dashboard?.PdfPage;
-				break;
-			case "WORD":
-				context = ko.contextFor(document.getElementById('wordOptionsScheduleModal'))?.$data?.WordPage
-					|| ko.contextFor(document.getElementById('wordOptionsScheduleModal'))?.$data?.dashboard?.WordPage;
-				break;
-			default:
-				return null;
-		}
-		if (context) {
-			return {
-				size: context.selectedPageSize() || null,
-				orientation: context.selectedPageOrientation()|| null
-			};
+		if (appSettings.showPageSize) {
+			let context = null;
+			switch (format) {
+				case "PDF":
+					context = ko.contextFor(document.getElementById('pdfOptionsScheduleModal'))?.$data?.PdfPage
+						|| ko.contextFor(document.getElementById('pdfOptionsScheduleModal'))?.$data?.dashboard?.PdfPage;
+					break;
+				case "WORD":
+					context = ko.contextFor(document.getElementById('wordOptionsScheduleModal'))?.$data?.WordPage
+						|| ko.contextFor(document.getElementById('wordOptionsScheduleModal'))?.$data?.dashboard?.WordPage;
+					break;
+				default:
+					return null;
+			}
+			if (context) {
+				return {
+					size: context.selectedPageSize() || null,
+					orientation: context.selectedPageOrientation() || null
+				};
+			}
+			return null;
 		}
 		return null;
 	};
