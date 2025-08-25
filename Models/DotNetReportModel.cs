@@ -1278,11 +1278,18 @@ namespace ReportBuilder.Web.Models
                     DataType = col.DataType.ToString(),
                     IsNumeric = IsNumericType(col.DataType),
                     FormatType = sqlField.Contains("__jsonc__") ? "Json" : (sqlField.Contains(" FROM ") ? "Csv" : ""),
-                    IsPivotField= sqlField.Contains("__ AS") ? true : false 
+                    IsPivotField = sqlField.Contains("__ AS") ? true : false
                 });
 
                 col.ColumnName = col.ColumnName.Replace("__jsonc__", "");
             }
+
+            var sanitizer = new Ganss.Xss.HtmlSanitizer
+            {
+                AllowedSchemes = { "data" }, // allow base64 images
+                AllowedTags = { "b", "i", "u", "p", "span", "div", "img", "table", "tr", "td" },
+                AllowedAttributes = { "style", "class", "src", "alt", "width", "height" }
+            };
 
             foreach (DataRow row in dt.Rows)
             {
@@ -1298,9 +1305,9 @@ namespace ReportBuilder.Web.Models
                             var item = new DotNetReportDataRowItemModel
                             {
                                 Column = model.Columns[i],
-                                Value = row[col] != null ? row[col].ToString() : null,
-                                FormattedValue = GetFormattedValue(col, row, model.Columns[i].FormatType, jsonAsTable),
-                                LabelValue = GetLabelValue(col, row)
+                                Value = sanitizer.Sanitize(row[col] != null ? row[col].ToString() : null),
+                                FormattedValue = sanitizer.Sanitize(GetFormattedValue(col, row, model.Columns[i].FormatType, jsonAsTable)),
+                                LabelValue = sanitizer.Sanitize(GetLabelValue(col, row))
                             };
 
                             items.Add(item);
@@ -1308,7 +1315,7 @@ namespace ReportBuilder.Web.Models
                         catch (Exception ex)
                         {
                             //throw ex;
-                        }                    
+                        }
                     }
                     i += 1;
                 }
