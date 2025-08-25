@@ -186,7 +186,8 @@ function scheduleBuilder(userId, getTimeZonesUrl,appSettings) {
 			}
 		}
 	};
-
+	self.selectedPageSize = ko.observable();
+	self.selectedPageOrientation = ko.observable();
 	self.PdfPage = new PdfPageViewModel();
 	self.WordPage = new WordPageViewModel();
 	self.selectedOption.subscribe(function (newValue) {
@@ -259,8 +260,8 @@ function scheduleBuilder(userId, getTimeZonesUrl,appSettings) {
 			}
 			if (context) {
 				return {
-					size: context.selectedPageSize() || null,
-					orientation: context.selectedPageOrientation() || null
+					size: context.isSaved() ? (context.selectedPageSize() || null) : self.selectedPageSize() ,
+					orientation: context.isSaved() ? (context.selectedPageOrientation() || null) : self.selectedPageOrientation()
 				};
 			}
 			return null;
@@ -318,6 +319,9 @@ function scheduleBuilder(userId, getTimeZonesUrl,appSettings) {
 		self.hasScheduleEnd(data.ScheduleEnd ? true : false);
 		self.selectedTimezone(data.Timezone);
 		self.format(data.Format);
+		self.selectedPageSize(data.SelectedPageSize);
+		self.selectedPageOrientation(data.SelectedPageOrientation);
+		self.format(data.Format);
 	}
 
 	self.clear = function () {
@@ -326,6 +330,7 @@ function scheduleBuilder(userId, getTimeZonesUrl,appSettings) {
 }
 function PdfPageViewModel(appSettings, downloadPdf, downloadPdfAlt) {
 	var self = this;
+	self.isSaved = ko.observable(false);
 	self.availablePageSizes = ko.observableArray([
 		{ label: 'A4 (8.27 x 11.7 in)', value: 'A4', width: 210, height: 297, bgstyle: '#f9f9f9;' },
 		{ label: 'A1 (23.4 x 33.1 in)', value: 'A1', width: 594, height: 841, bgstyle: '#fff2cc;' },
@@ -381,6 +386,7 @@ function PdfPageViewModel(appSettings, downloadPdf, downloadPdfAlt) {
 		}
 	};
 	self.save = function () {
+        self.isSaved(true);
 		return {
 			size: self.selectedPageSize(),
 			orientation: self.selectedPageOrientation()
@@ -389,6 +395,7 @@ function PdfPageViewModel(appSettings, downloadPdf, downloadPdfAlt) {
 }
 function WordPageViewModel(downloadWord) {
 	var self = this;
+	self.isSaved = ko.observable(false);
 	self.availablePageSizes = ko.observableArray([
 		{ label: 'A4 (8.27 x 11.7 in)', value: 'A4', width: 210, height: 297, bgstyle: '#f9f9f9;' },
 		{ label: 'A3 (11.7 × 16.5 in)', value: 'A3', width: 297, height: 420, bgstyle: '#d0e0e3;' },
@@ -437,6 +444,7 @@ function WordPageViewModel(downloadWord) {
 		downloadWord(selectedSize, selectedOrientation);
 	};
 	self.save = function () {
+		self.isSaved(true);
 		return {
 			size: self.selectedPageSize(),
 			orientation: self.selectedPageOrientation()
