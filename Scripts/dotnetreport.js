@@ -281,10 +281,12 @@ function scheduleBuilder(userId, getTimeZonesUrl,appSettings) {
 			UserId: userId,
 			ScheduleStart: self.hasScheduleStart() ? self.scheduleStart() : '',
 			ScheduleEnd: self.hasScheduleEnd() ? self.scheduleEnd() : '',
-			Format: self.format(),
-			TimeZone: self.selectedTimezone(),
-			SelectedPageSize: self.getPageOption(self.format())?.size || null,
-			SelectedPageOrientation: self.getPageOption(self.format())?.orientation || null,
+			Format: JSON.stringify({
+				exportFormat: self.format(),
+				size: self.getPageOption(self.format())?.size || null,
+				orientation: self.getPageOption(self.format())?.orientation || null
+			}),
+			TimeZone: self.selectedTimezone()
 		} : null;
 	};
 
@@ -318,10 +320,18 @@ function scheduleBuilder(userId, getTimeZonesUrl,appSettings) {
 		self.hasScheduleStart(data.ScheduleStart ? true : false);
 		self.hasScheduleEnd(data.ScheduleEnd ? true : false);
 		self.selectedTimezone(data.Timezone);
-		self.format(data.Format);
-		self.selectedPageSize(data.SelectedPageSize);
-		self.selectedPageOrientation(data.SelectedPageOrientation);
-		self.format(data.Format);
+		try {
+			let formatData = typeof data.Format === "string" ? JSON.parse(data.Format) : data.Format;
+			if (typeof formatData === "object") {
+				self.format(formatData.exportFormat || "");
+				self.selectedPageSize(formatData.size || null);
+				self.selectedPageOrientation(formatData.orientation || null);
+			} else {
+				self.format(data.Format);
+			}
+		} catch (e) {
+			self.format(data.Format);
+		}
 	}
 
 	self.clear = function () {
