@@ -1,5 +1,4 @@
-﻿using Newtonsoft.Json;
-using ReportBuilder.Web.Models;
+﻿using ReportBuilder.Web.Models;
 using System;
 using System.Collections.Generic;
 using System.Configuration;

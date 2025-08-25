@@ -1,14 +1,8 @@
-﻿using Newtonsoft.Json;
-using ReportBuilder.Web.Models;
-using System;
-using System.Collections.Generic;
-using System.IO;
+﻿using ReportBuilder.Web.Models;
 using System.Linq;
-using System.Net.Http;
 using System.Threading.Tasks;
 using System.Web;
 using System.Web.Mvc;
-using System.Web.Script.Serialization;
 
 namespace ReportBuilder.Web.Controllers
 {
