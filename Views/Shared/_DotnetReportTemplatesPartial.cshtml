@@ -798,7 +798,7 @@
                     <select class="form-select" required data-bind="options: options, value: selectedOption" style="min-width: 80px;"></select>
                 </div>
                 <div data-bind="if: selectedOption() == 'once'" class="me-3 d-flex align-items-center">
-                    &nbsp;on&nbsp;<input data-bind="datepicker: selectedDate" class="form-control" required />
+                    &nbsp;on&nbsp;<input data-bind="datepicker: selectedDate,datepickerOptions: {value: selectedDate}" class="form-control" required />
                 </div>
                 <div class="d-flex align-items-center">
                     <div data-bind="if: showDays" class="d-flex align-items-center">
@@ -887,7 +887,7 @@
                         </div>
                     </div>
                     <div class="col-sm-4" data-bind="if: hasScheduleStart">
-                        <input type="text" class="form-control" data-bind="datepicker: scheduleStart" title="Scheduled Report will not be sent before this date" required />
+                        <input type="text" class="form-control" data-bind="datepicker: scheduleStart,datepickerOptions: {value: scheduleStart}" title="Scheduled Report will not be sent before this date" required />
                     </div>
                 </div>
             </div>
@@ -902,7 +902,7 @@
                         </div>
                     </div>
                     <div class="col-sm-4" data-bind="if: hasScheduleEnd">
-                        <input type="text" class="form-control" data-bind="datepicker: scheduleEnd" title="Scheduled Report will not be sent after this date" required />
+                        <input type="text" class="form-control" data-bind="datepicker: scheduleEnd,datepickerOptions: {value: scheduleEnd}" title="Scheduled Report will not be sent after this date" required />
                     </div>
                 </div>
             </div>
