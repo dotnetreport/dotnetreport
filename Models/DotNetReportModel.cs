@@ -1265,6 +1265,13 @@ namespace ReportBuilder.Web.Models
                 col.ColumnName = col.ColumnName.Replace("__jsonc__", "");
             }
 
+            var sanitizer = new Ganss.Xss.HtmlSanitizer
+            {
+                AllowedSchemes = { "data" }, // allow base64 images
+                AllowedTags = { "b", "i", "u", "p", "span", "div", "img", "table", "tr", "td" },
+                AllowedAttributes = { "style", "class", "src", "alt", "width", "height" }
+            };
+
             foreach (DataRow row in dt.Rows)
             {
                 i = 0;
@@ -1279,9 +1286,9 @@ namespace ReportBuilder.Web.Models
                             var item = new DotNetReportDataRowItemModel
                             {
                                 Column = model.Columns[i],
-                                Value = row[col] != null ? row[col].ToString() : null,
-                                FormattedValue = GetFormattedValue(col, row, model.Columns[i].FormatType, jsonAsTable),
-                                LabelValue = GetLabelValue(col, row)
+                                Value = sanitizer.Sanitize(row[col] != null ? row[col].ToString() : null),
+                                FormattedValue = sanitizer.Sanitize(GetFormattedValue(col, row, model.Columns[i].FormatType, jsonAsTable)),
+                                LabelValue = sanitizer.Sanitize(GetLabelValue(col, row))
                             };
 
                             items.Add(item);
@@ -1289,7 +1296,7 @@ namespace ReportBuilder.Web.Models
                         catch (Exception ex)
                         {
                             //throw ex;
-                        }                    
+                        }
                     }
                     i += 1;
                 }
@@ -2283,7 +2290,7 @@ namespace ReportBuilder.Web.Models
         }
 
         public async static Task<byte[]> GetPdfFileAlt(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
+            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, string pageSize = "",string pageOrientation="")
         {
 
             var dt = await BuildExportData(reportSql, connectKey, expandSqls, columns, pivot, pivotColumn, pivotFunction);
@@ -2314,6 +2321,47 @@ namespace ReportBuilder.Web.Models
                 void AddNewPageWithHeaders(bool firstPage = false)
                 {
                     page = document.AddPage();
+                    if (!String.IsNullOrEmpty(pageSize))
+                    {
+                        switch (pageSize.ToUpper())
+                        {
+                            case "LETTER":
+                                page.Size = PdfSharp.PageSize.Letter;
+                                break;
+                            case "LEGAL":
+                                page.Size = PdfSharp.PageSize.Legal;
+                                break;
+                            case "A1":
+                                page.Size = PdfSharp.PageSize.A1;
+                                break;
+                            case "A2":
+                                page.Size = PdfSharp.PageSize.A2;
+                                break;
+                            case "A3":
+                                page.Size = PdfSharp.PageSize.A3;
+                                break;
+                            case "TABLOID":
+                                page.Size = PdfSharp.PageSize.Tabloid;
+                                break;
+                            case "A4":
+                            default:
+                                page.Size = PdfSharp.PageSize.A4;
+                                break;
+                        }
+                    }
+                    if (!String.IsNullOrEmpty(pageOrientation))
+                    {
+                        switch (pageOrientation.ToUpper())
+                        {
+                            case "LANDSCAPE":
+                                page.Orientation = PdfSharp.PageOrientation.Landscape;
+                                break;
+                            case "PORTRIAT":
+                            default:
+                                page.Orientation = PdfSharp.PageOrientation.Portrait;
+                                break;
+                        }
+                    }
                     if (totalWidth > page.Width) page.Width = totalWidth;
                     pageHeight = page.Height.Point - 50;
                     gfx = XGraphics.FromPdfPage(page);
@@ -2477,7 +2525,7 @@ namespace ReportBuilder.Web.Models
         }
 
         public static async Task<byte[]> GetWordFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
+            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, string pageSize = "", string pageOrientation = "")
         {
             var dt = await BuildExportData(reportSql, connectKey, expandSqls, columns, pivot, pivotColumn, pivotFunction);           
             var subTotals = new decimal[dt.Columns.Count];
@@ -2552,32 +2600,86 @@ namespace ReportBuilder.Web.Models
                             headerRow.AppendChild(cell);
                         }
                         table.AppendChild(headerRow);
+                        // WORD Export page size setup
+                        if (!String.IsNullOrEmpty(pageSize))
+                        {
+                            UInt32Value widthTwips;
+                            UInt32Value heightTwips;
+                            switch (pageSize.ToUpper())
+                            {
+                                case "LETTER": // 8.5 × 11 in
+                                    widthTwips = (UInt32Value)(8.5 * 1440);
+                                    heightTwips = (UInt32Value)(11 * 1440);
+                                    break;
 
-                        // Normalize column widths to fit the available width
-                        int totalWidth = 0;
-                        foreach (int width in maxColumnWidths)
-                        {
-                            totalWidth += width;
-                        }
-                        if (totalWidth > 13900)
-                        {
-                            // Set landscape orientation
+                                case "LEGAL": // 8.5 × 14 in
+                                    widthTwips = (UInt32Value)(8.5 * 1440);
+                                    heightTwips = (UInt32Value)(14 * 1440);
+                                    break;
+
+                                case "A3": // 297 × 420 mm
+                                    widthTwips = (UInt32Value)(297 * 56.7);
+                                    heightTwips = (UInt32Value)(420 * 56.7);
+                                    break;
+
+                                case "TABLOID": // 11 × 17 in
+                                    widthTwips = (UInt32Value)(11 * 1440);
+                                    heightTwips = (UInt32Value)(17 * 1440);
+                                    break;
+
+                                case "A4":
+                                default: // 210 × 297 mm
+                                    widthTwips = (UInt32Value)(210 * 56.7);
+                                    heightTwips = (UInt32Value)(297 * 56.7);
+                                    break;
+                            }
+                            string safeOrientation = string.IsNullOrEmpty(pageOrientation)? "PORTRAIT": pageOrientation.ToUpper();
+                            // WORD Section Properties with Orientation
+                            var wordPageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize()
+                            {
+                                Width = widthTwips,
+                                Height = heightTwips,
+                                Orient = (safeOrientation == "LANDSCAPE")? PageOrientationValues.Landscape: PageOrientationValues.Portrait
+                            };
+                            // Landscape → swap width/height
+                            if (safeOrientation == "LANDSCAPE")
+                            {
+                                var temp = widthTwips;
+                                wordPageSize.Width = heightTwips;
+                                wordPageSize.Height = temp;
+                            }
                             SectionProperties sectionProperties = new SectionProperties();
-                            DocumentFormat.OpenXml.Wordprocessing.PageSize pageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize() { Width = Convert.ToUInt32(totalWidth + (1440 * 2)), Orient = PageOrientationValues.Landscape };
-                            sectionProperties.Append(pageSize);
+                            sectionProperties.Append(wordPageSize);
                             body.Append(sectionProperties);
                         }
                         else
                         {
-                            // Set page orientation to landscape
-                            SectionProperties sectionProps = new SectionProperties();
-                            DocumentFormat.OpenXml.Wordprocessing.PageSize defaultpageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize()
+                            // Normalize column widths to fit the available width
+                            int totalWidth = 0;
+                            foreach (int width in maxColumnWidths)
                             {
-                                Orient = PageOrientationValues.Landscape,
-                                Width = 16838,  // 11.69 inch in Twips (297 mm)
-                            };
-                            sectionProps.Append(defaultpageSize);
-                            body.Append(sectionProps);
+                                totalWidth += width;
+                            }
+                            if (totalWidth > 13900)
+                            {
+                                // Set landscape orientation
+                                SectionProperties sectionProperties = new SectionProperties();
+                                DocumentFormat.OpenXml.Wordprocessing.PageSize wordPageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize() { Width = Convert.ToUInt32(totalWidth + (1440 * 2)), Orient = PageOrientationValues.Landscape };
+                                sectionProperties.Append(wordPageSize);
+                                body.Append(sectionProperties);
+                            }
+                            else
+                            {
+                                // Set page orientation to landscape
+                                SectionProperties sectionProps = new SectionProperties();
+                                DocumentFormat.OpenXml.Wordprocessing.PageSize defaultpageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize()
+                                {
+                                    Orient = PageOrientationValues.Landscape,
+                                    Width = 16838,  // 11.69 inch in Twips (297 mm)
+                                };
+                                sectionProps.Append(defaultpageSize);
+                                body.Append(sectionProps);
+                            }
                         }
                         // Add data rows
                         foreach (DataRow row in dt.Rows)
@@ -2739,7 +2841,7 @@ namespace ReportBuilder.Web.Models
         }
         public async static Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
                       string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false, string expandSqls = null,
-                      string pivotColumn = null, string pivotFunction = null, bool imageOnly = false, bool debug = false)
+                      string pivotColumn = null, string pivotFunction = null, bool imageOnly = false, bool debug = false,string pageSize="",string pageOrientation="")
         {
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
             await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
@@ -2810,7 +2912,7 @@ namespace ReportBuilder.Web.Models
             formData.AppendLine($"<input name=\"clientId\" value=\"{clientId}\" />");
             formData.AppendLine($"<input name=\"currentUserRole\" value=\"{currentUserRole}\" />");
             formData.AppendLine($"<input name=\"expandAll\" value=\"{expandAll}\" />");
-            formData.AppendLine($"<input name=\"dataFilters\" value=\"{HttpUtility.HtmlEncode(string.IsNullOrEmpty(dataFilters) ? "{}" : "")}\" />");
+            formData.AppendLine($"<input name=\"dataFilters\" value=\"{HttpUtility.HtmlEncode(string.IsNullOrEmpty(dataFilters) ? "{}" : dataFilters)}\" />");
             formData.AppendLine($"<input name=\"reportData\" value=\"{HttpUtility.HtmlEncode(JsonConvert.SerializeObject(model))}\" />");
             formData.AppendLine($"</form>");
             formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");
@@ -2871,18 +2973,65 @@ namespace ReportBuilder.Web.Models
                 PreferCSSPageSize = false,
                 MarginOptions = new MarginOptions() { Top = "0.75in", Bottom = "0.75in", Left = "0.1in", Right = "0.1in" }
             };
-
-            if (width < 900)
+            if (!String.IsNullOrEmpty(pageOrientation))
             {
-                pdfOptions.Format = PaperFormat.Letter;
-                pdfOptions.Landscape = false;
+                var Oreintation = (pageOrientation ?? "PORTRAIT").ToUpperInvariant();
+                switch (Oreintation)
+                {
+                    case "LANDSCAPE":
+                        pdfOptions.Landscape = true;
+                        break;
+                    case "PORTRAIT":
+                    default:
+                        pdfOptions.Landscape = false;
+                        break;
+                }
+            }
+            if (!String.IsNullOrEmpty(pageSize))
+            {
+                var normalizedPageSize = (pageSize ?? "Letter").ToUpperInvariant();
+                PaperFormat selectedFormat = PaperFormat.A4;
+                switch (normalizedPageSize)
+                {
+                    case "LETTER":
+                        selectedFormat = PaperFormat.Letter;
+                        break;
+                    case "LEGAL":
+                        selectedFormat = PaperFormat.Legal;
+                        break;
+                    case "A1":
+                        selectedFormat = PaperFormat.A1;
+                        break;
+                    case "A2":
+                        selectedFormat = PaperFormat.A2;
+                        break;
+                    case "A3":
+                        selectedFormat = PaperFormat.A3;
+                        break;
+                    case "TABLOID":
+                        selectedFormat = PaperFormat.Tabloid;
+                        break;
+                    case "A4":
+                    default:
+                        selectedFormat = PaperFormat.A4;
+                        break;
+                }
+                pdfOptions.Format = selectedFormat;
             }
             else
             {
-                await page.SetViewportAsync(new ViewPortOptions { Width = width });
-                await page.AddStyleTagAsync(new AddTagOptions { Content = "@page {size: landscape }" });
-                pdfOptions.Width = $"{width}px";
-                pdfOptions.MarginOptions.Right = "0.5in";
+                if (width < 900)
+                {
+                    pdfOptions.Format = PaperFormat.Letter;
+                    pdfOptions.Landscape = false;
+                }
+                else
+                {
+                    await page.SetViewportAsync(new ViewPortOptions { Width = width });
+                    await page.AddStyleTagAsync(new AddTagOptions { Content = "@page {size: landscape }" });
+                    pdfOptions.Width = $"{width}px";
+                    pdfOptions.MarginOptions.Right = "0.5in";
+                }
             }
             await page.EvaluateExpressionAsync("$('.report-inner').css('transform','none')");
             await page.PdfAsync(pdfFile, pdfOptions);
@@ -4353,6 +4502,31 @@ namespace ReportBuilder.Web.Models
                 conn.Dispose();
             }
             return tables;
+        }
+    }
+    public static class ExportSessionStore
+    {
+        private static readonly ConcurrentDictionary<string, DotNetReportSettings> _sessions = new ConcurrentDictionary<string, DotNetReportSettings>();
+
+        public static string Save(DotNetReportSettings settings)
+        {
+            var id = Guid.NewGuid().ToString("N");
+            _sessions[id] = settings;
+
+            // Auto-expire after 10 minutes
+            Task.Run(async () =>
+            {
+                await Task.Delay(TimeSpan.FromMinutes(10));
+                _sessions.TryRemove(id, out _);
+            });
+
+            return id;
+        }
+
+        public static DotNetReportSettings Get(string id)
+        {
+            _sessions.TryGetValue(id, out var settings);
+            return settings;
         }
     }
 

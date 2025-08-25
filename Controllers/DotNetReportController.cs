@@ -48,6 +48,21 @@ namespace ReportBuilder.Web.Controllers
             string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "",
             string reportSeries = "", bool expandAll = false, string reportData = "")
         {
+            var settings = new DotNetReportSettings
+            {
+                ClientId = clientId,
+                UserId = userId,
+                CurrentUserRole = (currentUserRole ?? "")
+                    .Split(',')
+                    .ToList(),
+                DataFilters = string.IsNullOrEmpty(dataFilters) ? 
+                                    new { } : 
+                                    Newtonsoft.Json.JsonConvert.DeserializeObject<object>(dataFilters)
+            };
+
+            var exportId = ExportSessionStore.Save(settings);
+            ViewBag.ExportId = exportId;
+
             var model = new DotNetReportPrintModel
             {
                 ReportId = reportId,

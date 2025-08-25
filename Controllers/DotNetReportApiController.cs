@@ -44,7 +44,7 @@ namespace ReportBuilder.Web.Controllers
 
         [ValidateAntiForgeryToken]
         [HttpPost]
-        public JsonResult GetLookupList(string lookupSql, string connectKey)
+        public JsonResult GetLookupList(string lookupSql, string connectKey, string token = "")
         {
             var qry = new SqlQuery();
             var sql = DotNetReportHelper.Decrypt(lookupSql);
@@ -56,6 +56,10 @@ namespace ReportBuilder.Web.Controllers
 
             // Uncomment if you want to restrict max records returned
             sql = sql.Substring(0, 0) + "SELECT DISTINCT TOP 500 " + sql.Substring(0 + "SELECT ".Length);
+            if (sql.Contains("{{token}}"))
+            {
+                sql = sql.Replace("{{token}}", $"'%{token}%'");
+            }
 
             var json = new StringBuilder();
             var dt = new DataTable();
@@ -82,14 +86,14 @@ namespace ReportBuilder.Web.Controllers
 
         }
         [AllowAnonymous]
-        public async Task<JsonResult> CallReportApiUnAuth(string method, string model)
+        public async Task<JsonResult> CallReportApiUnAuth(string method, string model, string exportId)
         {
-            var settings = new DotNetReportSettings
-            {
-                ApiUrl = ConfigurationManager.AppSettings["dotNetReport.apiUrl"],
-                AccountApiToken = ConfigurationManager.AppSettings["dotNetReport.accountApiToken"], // Your Account Api Token from your http://dotnetreport.com Account
-                DataConnectApiToken = ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"] // Your Data Connect Api Token from your http://dotnetreport.com Account
-            };
+            var settings = ExportSessionStore.Get(exportId);
+            if (settings == null)
+                throw new Exception("Unauthorized");
+            settings.ApiUrl = ConfigurationManager.AppSettings["dotNetReport.apiUrl"];
+            settings.AccountApiToken = ConfigurationManager.AppSettings["dotNetReport.accountApiToken"];
+            settings.DataConnectApiToken = ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"];            
 
             return await ExecuteCallReportApi(method, model, settings);
         }
@@ -867,14 +871,16 @@ namespace ReportBuilder.Web.Controllers
             string expandSqls = null,
             string pivotColumn = null,
             string pivotFunction = null,
-            bool debug = false)
+            bool debug = false,
+            string pageSize = "",
+            string pageOrientation = "")
         {
 
             var settings = GetSettings();
             
             reportSql = HttpUtility.HtmlDecode(reportSql);
             var pdf = await DotNetReportHelper.GetPdfFile(HttpUtility.UrlDecode(printUrl), reportId, reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName),
-                                settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), JsonConvert.SerializeObject(settings.DataFilters), expandAll, expandSqls, pivotColumn, pivotFunction, false, debug);
+                                settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), JsonConvert.SerializeObject(settings.DataFilters), expandAll, expandSqls, pivotColumn, pivotFunction, false, debug, pageSize, pageOrientation);
 
             return File(pdf, "application/pdf", reportName + ".pdf");
         }
@@ -891,7 +897,9 @@ namespace ReportBuilder.Web.Controllers
            bool includeSubtotal = false,
            bool pivot = false,
            string pivotColumn = null,
-           string pivotFunction = null)
+           string pivotFunction = null,
+           string pageSize = "",
+           string pageOrientation = "")
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
             chartData = HttpUtility.UrlDecode(chartData);
@@ -899,7 +907,7 @@ namespace ReportBuilder.Web.Controllers
             reportName = HttpUtility.UrlDecode(reportName);
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
 
-            var pdf = await DotNetReportHelper.GetPdfFileAlt(reportSql, connectKey, reportName, chartData, allExpanded, expandSqls, columns, includeSubtotal, pivot, pivotColumn, pivotFunction);
+            var pdf = await DotNetReportHelper.GetPdfFileAlt(reportSql, connectKey, reportName, chartData, allExpanded, expandSqls, columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation);
 
             return File(pdf, "application/pdf", reportName + ".pdf");
         }
@@ -916,15 +924,16 @@ namespace ReportBuilder.Web.Controllers
             bool includeSubtotal = false,
             bool pivot = false,
             string pivotColumn = null,
-            string pivotFunction = null)
+            string pivotFunction = null,
+            string pageSize = "",
+            string pageOrientation = "")
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
             var word = await DotNetReportHelper.GetWordFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction);
-            
-            Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".docx");
+            Response.Headers.Add("content-disposition", "attachment; filename=" + reportName + ".docx");
             Response.ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
             Response.BinaryWrite(word);
             Response.End();
