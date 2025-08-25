@@ -3006,13 +3006,9 @@ namespace ReportBuilder.Web.Models
                         break;
                 }
             }
-            else
-            {
-                pdfOptions.Landscape = false;
-            }
             if (!String.IsNullOrEmpty(pageSize))
             {
-                var normalizedPageSize = (pageSize ?? "A4").ToUpperInvariant();
+                var normalizedPageSize = (pageSize ?? "Letter").ToUpperInvariant();
                 PaperFormat selectedFormat = PaperFormat.A4;
                 switch (normalizedPageSize)
                 {
@@ -3043,10 +3039,18 @@ namespace ReportBuilder.Web.Models
             }
             else
             {
-                await page.SetViewportAsync(new ViewPortOptions { Width = width });
-                await page.AddStyleTagAsync(new AddTagOptions { Content = "@page {size: landscape }" });
-                pdfOptions.Width = $"{width}px";
-                pdfOptions.MarginOptions.Right = "0.5in";
+                if (width < 900)
+                {
+                    pdfOptions.Format = PaperFormat.Letter;
+                    pdfOptions.Landscape = false;
+                }
+                else
+                {
+                    await page.SetViewportAsync(new ViewPortOptions { Width = width });
+                    await page.AddStyleTagAsync(new AddTagOptions { Content = "@page {size: landscape }" });
+                    pdfOptions.Width = $"{width}px";
+                    pdfOptions.MarginOptions.Right = "0.5in";
+                }
             }
             await page.EvaluateExpressionAsync("$('.report-inner').css('transform','none')");
             await page.PdfAsync(pdfFile, pdfOptions);
