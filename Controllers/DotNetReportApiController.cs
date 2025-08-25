@@ -109,14 +109,15 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [AllowAnonymous]
-        public async Task<IActionResult> CallReportApiUnAuth(string method, string model)
+        public async Task<IActionResult> CallReportApiUnAuth(string method, string model, string exportId)
         {
-            var settings = new DotNetReportSettings
-            {
-                ApiUrl = _configuration.GetValue<string>("dotNetReport:apiUrl"),
-                AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken"), // Your Account Api Token from your http://dotnetreport.com Account
-                DataConnectApiToken = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken") // Your Data Connect Api Token from your http://dotnetreport.com Account            };
-            };
+            var settings = ExportSessionStore.Get(exportId);
+            if (settings == null)
+                return Unauthorized();
+
+            settings.ApiUrl = _configuration.GetValue<string>("dotNetReport:apiUrl");
+            settings.AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken");
+            settings.DataConnectApiToken = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken");
 
             return await ExecuteCallReportApi(method, model, settings);
         }

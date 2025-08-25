@@ -2931,7 +2931,7 @@ namespace ReportBuilder.Web.Models
             formData.AppendLine($"<input name=\"clientId\" value=\"{clientId}\" />");
             formData.AppendLine($"<input name=\"currentUserRole\" value=\"{currentUserRole}\" />");
             formData.AppendLine($"<input name=\"expandAll\" value=\"{expandAll}\" />");
-            formData.AppendLine($"<input name=\"dataFilters\" value=\"{HttpUtility.HtmlEncode(string.IsNullOrEmpty(dataFilters) ? "{}" : "")}\" />");
+            formData.AppendLine($"<input name=\"dataFilters\" value=\"{HttpUtility.HtmlEncode(string.IsNullOrEmpty(dataFilters) ? "{}" : dataFilters)}\" />");
             formData.AppendLine($"<input name=\"reportData\" value=\"{HttpUtility.HtmlEncode(JsonConvert.SerializeObject(model))}\" />");
             formData.AppendLine($"</form>");
             formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");
@@ -4888,5 +4888,29 @@ namespace ReportBuilder.Web.Models
 
     }
 
+    public static class ExportSessionStore
+    {
+        private static readonly ConcurrentDictionary<string, DotNetReportSettings> _sessions = new();
 
+        public static string Save(DotNetReportSettings settings)
+        {
+            var id = Guid.NewGuid().ToString("N");
+            _sessions[id] = settings;
+
+            // Auto-expire after 10 minutes
+            Task.Run(async () =>
+            {
+                await Task.Delay(TimeSpan.FromMinutes(10));
+                _sessions.TryRemove(id, out _);
+            });
+
+            return id;
+        }
+
+        public static DotNetReportSettings Get(string id)
+        {
+            _sessions.TryGetValue(id, out var settings);
+            return settings;
+        }
+    }
 }

@@ -96,6 +96,22 @@ function ajaxcall(options) {
         return xhr;
     }
 
+    var exportId = $("#exportId").val();
+    if (exportId) {
+        if (options.type && options.type.toUpperCase() === "POST") {
+            options.data = options.data || {};
+            if (typeof options.data === "string") {
+                var obj = JSON.parse(options.data || "{}");
+                obj.exportId = exportId;
+                options.data = JSON.stringify(obj);
+            } else {
+                options.data.exportId = exportId;
+            }
+        } else {
+            options.url += (options.url.indexOf("?") === -1 ? "?" : "&") + "exportId=" + encodeURIComponent(exportId);
+        }
+    }
+
     if (options.success) {
         options.beforeSend = beforeSend;
         options.xhr = xhr;
