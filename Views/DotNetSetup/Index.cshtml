@@ -213,6 +213,7 @@
                     <div data-bind="with: settings">
                         <div class="row">
                             <div class="col-md-6">
+                                <h6 class="mt-2 mb-2">Admin Options</h6>
                                 <div class="form-check">
                                     <input type="checkbox" class="form-check-input" id="useClientIdInAdmin" data-bind="checked: useClientIdInAdmin">
                                     <label class="form-check-label" for="useClientIdInAdmin">Use Client ID in Admin</label>
@@ -223,6 +224,7 @@
                                     <label class="form-check-label" for="useSqlBuilderInAdminMode">Use SQL Builder in Admin Mode</label>
                                     <small class="text-muted d-block">Allows SQL query builder access in admin mode.</small>
                                 </div>
+                                <h6 class="mt-3 mb-2">Customization</h6>
                                 <div class="form-check">
                                     <input type="checkbox" class="form-check-input" id="useSqlCustomField" data-bind="checked: useSqlCustomField">
                                     <label class="form-check-label" for="useSqlCustomField">Use SQL in Custom Field</label>
@@ -231,10 +233,17 @@
                                 <div class="form-check">
                                     <input type="checkbox" class="form-check-input" data-bind="checked: useAltPivot">
                                     <label class="form-check-label">Pivot with Drilldown</label>
-                                    <small class="text-muted d-block">Use alternate Pivot method that doesn't use SQL's PIVOT function.<br>It allows drilldown, but it might be slower than using PIVOT</small>
+                                    <small class="text-muted d-block">Use alternate Pivot method that doesn’t use SQL’s PIVOT.<br>Allows drilldown, but may be slower.</small>
+                                </div>
+                                <h6 class="mt-3 mb-2">Report Options</h6>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="allowUsersToCreateReports" data-bind="checked: allowUsersToCreateReports">
+                                    <label class="form-check-label" for="allowUsersToCreateReports">Allow All Users to Create Reports</label>
+                                    <small class="text-muted d-block">Permits users to generate and customize reports.</small>
                                 </div>
                             </div>
                             <div class="col-md-6">
+                                <h6 class="mt-2 mb-2">Folder Options</h6>
                                 <div class="form-check" data-bind="visible: false">
                                     <input type="checkbox" class="form-check-input" id="noFolders" data-bind="checked: noFolders">
                                     <label class="form-check-label" for="noFolders">No Folders</label>
@@ -253,17 +262,13 @@
                                 <div class="form-check">
                                     <input type="checkbox" class="form-check-input" id="allowUsersToManageFolders" data-bind="checked: allowUsersToManageFolders">
                                     <label class="form-check-label" for="allowUsersToManageFolders">Allow All Users to Manage Folders</label>
-                                    <small class="text-muted d-block">Grants users permission to organize and manage folders even when not in Admin Mode.</small>
+                                    <small class="text-muted d-block">Grants permission to organize and manage folders.</small>
                                 </div>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" id="allowUsersToCreateReports" data-bind="checked: allowUsersToCreateReports">
-                                    <label class="form-check-label" for="allowUsersToCreateReports">Allow All Users to Create Reports</label>
-                                    <small class="text-muted d-block">Permits users to generate and customize reports even when not in Admin Mode.</small>
-                                </div>
+                                <h6 class="mt-3 mb-2">Export Options</h6>
                                 <div class="form-check">
                                     <input type="checkbox" class="form-check-input" data-bind="checked: useAltPdf">
                                     <label class="form-check-label">PDF Export without Chromium</label>
-                                    <small class="text-muted d-block">Use alternate PDF export method that doesn't rely on Chromium.</small>
+                                    <small class="text-muted d-block">Use alternate PDF export method that doesn’t rely on Chromium.</small>
                                 </div>
                                 <div class="form-check">
                                     <input type="checkbox" class="form-check-input" data-bind="checked: dontXmlExport">
@@ -282,11 +287,12 @@
                                 </div>
                             </div>
                         </div>
-                        <button type="button" id="saveAppSettings" class="btn btn-primary" data-bind="click: saveAppSettings">Save</button>
+                        <div class="mt-3">
+                            <button type="button" id="saveAppSettings" class="btn btn-primary" data-bind="click: saveAppSettings">Save</button>
+                        </div>
                     </div>
                 </div>
             </div>
-
         </div>
 
         <div role="tabpanel" class="tab-pane active" id="tablesfields">
@@ -701,154 +707,139 @@
 
         </div>
         <div id="manageaccess" class="tab-pane">
-            <b>Reports Access</b>
-            <p>
-                You can setup access to invidiual Reports here
-            </p>
-            <button class="btn btn-sm btn-primary"
-                    data-bind="click: function() { exportFoldersReportJson() }">
-                <span class="fa fa-download"></span> Export Reports Access
-            </button>
-            <hr />
-            <div data-bind="foreach: reportsAndFolders" class="list-group">
-                <div class="list-group-item">
-                    <div class="d-flex justify-content-between">
-                        <a data-bs-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }">
-                            <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: folder"></span>
-                        </a>
-                        <button class="btn btn-sm" title="Export this Folders Include All Reports Manage Access" data-bind="click: function() { $root.exportFolderReportsManageAccessJson($data.folderId); }">
-                            <i class="fa fa-file"></i>
-                        </button>
-                    </div>
-                    <div class="collapse" data-bind="attr: {id: 'folder-' + folderId }">
-                        <div data-bind="if: reports.length == 0">
-                            No Reports found in this folder
+            <ul class="nav nav-tabs" id="accessTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="reports-tab" data-bs-toggle="tab" data-bs-target="#reportsAccess" type="button" role="tab">Reports Access</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="folders-tab" data-bs-toggle="tab" data-bs-target="#foldersAccess" type="button" role="tab">Folders Access</button>
+                </li>
+            </ul>
+            <div class="tab-content mt-3">
+                <div class="tab-pane fade show active" id="reportsAccess" role="tabpanel" aria-labelledby="reports-tab">
+                    <b>Reports Access</b>
+                    <p>You can setup access to individual Reports here</p>
+                    <button class="btn btn-sm btn-primary" data-bind="click: function() { exportFoldersReportJson() }">
+                        <span class="fa fa-download"></span> Export Reports Access
+                    </button>
+                    <hr />
+                    <div data-bind="foreach: reportsAndFolders" class="list-group">
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <a data-bs-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }">
+                                    <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: folder"></span>
+                                </a>
+                                <button class="btn btn-sm" title="Export this Folders Include All Reports Manage Access" data-bind="click: function() { $root.exportFolderReportsManageAccessJson($data.folderId); }">
+                                    <i class="fa fa-file"></i>
+                                </button>
+                            </div>
+                            <div class="collapse" data-bind="attr: {id: 'folder-' + folderId }">
+                                <div data-bind="if: reports.length == 0">
+                                    No Reports found in this folder
+                                </div>
+                                <ul class="list-group" data-bind="foreach: reports">
+                                    <li class="list-group-item">
+                                        <div class="row">
+                                            <div class="col-md-3 border-end">
+                                                <div>
+                                                    <label class="list-group-item-heading">
+                                                        <span class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map'}" style="font-size: 14pt; color: #808080"></span>
+                                                        <span data-bind="text: reportName"></span>
+                                                    </label>
+                                                </div>
+                                                <p class="list-group-item-text small" data-bind="text: reportDescription"></p>
+                                                <div class="small" style="padding-top: 10px;">
+                                                    <b>Current Report Access</b><br />
+                                                    Manage by User <span class="badge text-bg-info text-white" data-bind="text: userId() ? userId() : 'Any User'"></span><br />
+                                                    View only by User <span class="badge text-bg-info text-white" data-bind="text: (viewOnlyUserId() ? viewOnlyUserId() : (userId() ? userId() : 'Any User'))"></span><br />
+                                                    <div data-bind="if: deleteOnlyUserId()">
+                                                        Delete only by User <span class="badge text-bg-info text-white" data-bind="text: deleteOnlyUserId()"></span><br />
+                                                    </div>
+                                                    <div data-bind="if: userRole()">
+                                                        Manage by Role <span class="badge text-bg-info text-white" data-bind="text: userRole() ? userRole() : 'Any Role'"></span><br />
+                                                    </div>
+                                                    <div data-bind="if: viewOnlyUserRole()">
+                                                        View only by Role <span class="badge text-bg-info text-white" data-bind="text: viewOnlyUserRole() ? viewOnlyUserRole() : 'Any Role'"></span><br />
+                                                    </div>
+                                                    <div data-bind="if: deleteOnlyUserRole()">
+                                                        Delete only by Role <span class="badge text-bg-info text-white" data-bind="text: deleteOnlyUserRole() ? deleteOnlyUserRole() : 'Same as Manage'"></span><br />
+                                                    </div>
+                                                    <div>
+                                                        For Client <span class="badge text-bg-info text-white" data-bind="text: clientId() ? clientId() : 'All Clients'"></span><br />
+                                                    </div>
+                                                </div>
+                                                <br /><br />
+                                                <button class="btn btn-sm btn-primary" data-bind="click: function() { changeAccess(!changeAccess())}, text: !changeAccess() ? 'Change Access': 'Cancel Changing Access', hidden: changeAccess">Change Access</button>
+                                            </div>
+                                            <div data-bind="if: changeAccess" class="col-md-9">
+                                                <div style="padding-left: 10px;">
+                                                    <div data-bind="template: {name: 'manage-access-template', data: $root.manageAccess }"></div>
+                                                    <br /><br />
+                                                    <button class="btn btn-sm btn-primary" data-bind="click: saveAccessChanges">Save Access Changes</button>
+                                                    <button class="btn btn-sm btn-primary" data-bind="click: function() { changeAccess(!changeAccess())}, text: !changeAccess() ? 'Change Access': 'Cancel Changing Access'">Change Access</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
-                        <ul class="list-group" data-bind="foreach: reports">
-                            <li class="list-group-item">
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="foldersAccess" role="tabpanel" aria-labelledby="folders-tab">
+                    <b>Folders Access</b>
+                    <p>You can setup access to individual Folders here</p>
+                    <button class="btn btn-sm btn-primary" data-bind="click: function() { exportFoldersJson() }">
+                        <span class="fa fa-download"></span> Export Folders Access
+                    </button>
+                    <hr />
+                    <div data-bind="foreach: Folders" class="list-group">
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <a data-bs-toggle="collapse" data-bind="attr: {href: '#folderAccess-' + Id }">
+                                    <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: FolderName"></span>
+                                </a>
+                                <button class="btn btn-sm" title="Export this Folders Manage Access" data-bind="click: function() { $root.exportFolderManageAccessJson($data.Id); }">
+                                    <i class="fa fa-file"></i>
+                                </button>
+                            </div>
+                            <div class="collapse" data-bind="attr: {id: 'folderAccess-' + Id }">
                                 <div class="row">
                                     <div class="col-md-3 border-end">
-                                        <div>
-                                            <label class="list-group-item-heading">
-                                                <span class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map'}" style="font-size: 14pt; color: #808080"></span>
-                                                <span data-bind="text: reportName"></span>
-                                            </label>
-                                        </div>
-                                        <p class="list-group-item-text small" data-bind="text: reportDescription"></p>
-
                                         <div class="small" style="padding-top: 10px;">
-                                            <b>Current Report Access</b><br />
-                                            Manage by User <span class="badge text-bg-info text-white" data-bind="text: userId() ? userId() : 'Any User'"></span>
-                                            <br />
-                                            View only by User <span class="badge text-bg-info text-white" data-bind="text: (viewOnlyUserId() ? viewOnlyUserId() : (userId() ? userId() : 'Any User'))"></span>
-                                            <br />
-                                            <div data-bind="if: deleteOnlyUserId()">
-                                                Delete only by User <span class="badge text-bg-info text-white" data-bind="text: deleteOnlyUserId()"></span>
-                                                <br />
+                                            <b>Current Folder Access</b><br />
+                                            Manage by User <span class="badge text-bg-info text-white" data-bind="text: UserId()? UserId() : 'Any User'"></span><br />
+                                            View only by User <span class="badge text-bg-info text-white" data-bind="text: (ViewOnlyUserId() ? ViewOnlyUserId() : (UserId() ? UserId() : 'Any User'))"></span><br />
+                                            <div data-bind="if: DeleteOnlyUserId()">
+                                                Delete only by User <span class="badge text-bg-info text-white" data-bind="text: DeleteOnlyUserId()"></span><br />
                                             </div>
-                                            <div data-bind="if: userRole()">
-                                                Manage by Role <span class="badge text-bg-info text-white" data-bind="text: userRole() ? userRole() : 'Any Role'"></span>
-                                                <br />
+                                            <div data-bind="if: UserRoles()">
+                                                Manage by Role <span class="badge text-bg-info text-white" data-bind="text: UserRoles() ? UserRoles() : 'Any Role'"></span><br />
                                             </div>
-                                            <div data-bind="if: viewOnlyUserRole()">
-                                                View only by Role <span class="badge text-bg-info text-white" data-bind="text: viewOnlyUserRole() ? viewOnlyUserRole() : 'Any Role'"></span>
-                                                <br />
+                                            <div data-bind="if: ViewOnlyUserRoles()">
+                                                View only by Role <span class="badge text-bg-info text-white" data-bind="text: ViewOnlyUserRoles() ? ViewOnlyUserRoles() : 'Any Role'"></span><br />
                                             </div>
-                                            <div data-bind="if: deleteOnlyUserRole()">
-                                                Delete only by Role <span class="badge text-bg-info text-white" data-bind="text: deleteOnlyUserRole() ? deleteOnlyUserRole() : 'Same as Manage'"></span>
-                                                <br />
+                                            <div data-bind="if: DeleteOnlyUserRoles()">
+                                                Delete only by Role <span class="badge text-bg-info text-white" data-bind="text: DeleteOnlyUserRoles() ? DeleteOnlyUserRoles() : 'Same as Manage'"></span><br />
                                             </div>
                                             <div>
-                                                For Client <span class="badge text-bg-info text-white" data-bind="text: clientId() ? clientId() : 'All Clients'"></span>
-                                                <br />
+                                                For Client <span class="badge text-bg-info text-white" data-bind="text: ClientId() ? ClientId() : 'All Clients'"></span><br />
                                             </div>
                                         </div>
-                                        <br />
-                                        <br />
-                                        <button class="btn btn-sm btn-primary" data-bind="click: function() { changeAccess(!changeAccess())}, text: !changeAccess() ? 'Change Access': 'Cancel Changing Access', hidden: changeAccess">Change Access</button>
+                                        <br /><br />
+                                        <button class="btn btn-sm btn-primary" data-bind="click: function() { changeFolderAccess(!changeFolderAccess())}, text: !changeFolderAccess() ? 'Change Access': 'Cancel Changing Access', hidden: changeFolderAccess">Change Access</button>
                                     </div>
-
-                                    <div data-bind="if: changeAccess" class="col-md-9">
+                                    <div data-bind="if: changeFolderAccess" class="col-md-9">
                                         <div style="padding-left: 10px;">
                                             <div data-bind="template: {name: 'manage-access-template', data: $root.manageAccess }"></div>
-                                            <br />
-                                            <br />
-                                            <button class="btn btn-sm btn-primary" data-bind="click: saveAccessChanges">Save Access Changes</button>
-                                            <button class="btn btn-sm btn-primary" data-bind="click: function() { changeAccess(!changeAccess())}, text: !changeAccess() ? 'Change Access': 'Cancel Changing Access'">Change Access</button>
-
+                                            <br /><br />
+                                            <button class="btn btn-sm btn-primary" data-bind="click: saveFolderAccessChanges">Save Access Changes</button>
+                                            <button class="btn btn-sm btn-primary" data-bind="click: function() { changeFolderAccess(!changeFolderAccess())}, text: !changeFolderAccess() ? 'Change Access': 'Cancel Changing Access'">Change Access</button>
                                         </div>
                                     </div>
                                 </div>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-            <br/>
-            <b>Folders Access</b>
-            <p>
-                You can setup access to invidiual Folders here
-            </p>
-            <button class="btn btn-sm btn-primary"
-                    data-bind="click: function() { exportFoldersJson() }">
-                <span class="fa fa-download"></span> Export Folders Access
-            </button>
-            <hr />
-            <div data-bind="foreach: Folders" class="list-group">
-                <div class="list-group-item">
-                    <div class="d-flex justify-content-between">
-                        <a data-bs-toggle="collapse" data-bind="attr: {href: '#folderAccess-' + Id }">
-                            <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: FolderName"></span>
-                        </a>
-                        <button class="btn btn-sm" title="Export this Folders Manage Access" data-bind="click: function() { $root.exportFolderManageAccessJson($data.Id); }">
-                            <i class="fa fa-file"></i>
-                        </button>
-                    </div>
-                    <div class="collapse" data-bind="attr: {id: 'folderAccess-' + Id }">
-                        <div class="row">
-                            <div class="col-md-3 border-end">
-                                <div class="small" style="padding-top: 10px;">
-                                            <b>Current Folder Access</b><br />
-                                            Manage by User <span class="badge text-bg-info text-white" data-bind="text: UserId()? UserId() : 'Any User'"></span>
-                                            <br />
-                                            View only by User <span class="badge text-bg-info text-white" data-bind="text: (ViewOnlyUserId() ? ViewOnlyUserId() : (UserId() ? UserId() : 'Any User'))"></span>
-                                            <br />
-                                            <div data-bind="if: DeleteOnlyUserId()">
-                                            Delete only by User <span class="badge text-bg-info text-white" data-bind="text: DeleteOnlyUserId()"></span>
-                                                <br />
-                                            </div>
-                                            <div data-bind="if: UserRoles()">
-                                                Manage by Role <span class="badge text-bg-info text-white" data-bind="text: UserRoles() ? UserRoles() : 'Any Role'"></span>
-                                                <br />
-                                            </div>
-                                            <div data-bind="if: ViewOnlyUserRoles()">
-                                                View only by Role <span class="badge text-bg-info text-white" data-bind="text: ViewOnlyUserRoles() ? ViewOnlyUserRoles() : 'Any Role'"></span>
-                                                <br />
-                                            </div>
-                                            <div data-bind="if: DeleteOnlyUserRoles()">
-                                                Delete only by Role <span class="badge text-bg-info text-white" data-bind="text: DeleteOnlyUserRoles() ? DeleteOnlyUserRoles() : 'Same as Manage'"></span>
-                                                <br />
-                                            </div>
-                                            <div>
-                                                For Client <span class="badge text-bg-info text-white" data-bind="text: ClientId() ? ClientId() : 'All Clients'"></span>
-                                                <br />
-                                            </div>
-                                        </div>
-                                <br />
-                                <br />
-                                <button class="btn btn-sm btn-primary" data-bind="click: function() { changeFolderAccess(!changeFolderAccess())}, text: !changeFolderAccess() ? 'Change Access': 'Cancel Changing Access', hidden: changeFolderAccess">Change Access</button>
                             </div>
-                            <div data-bind="if: changeFolderAccess" class="col-md-9">
-                                        <div style="padding-left: 10px;">
-                                            <div data-bind="template: {name: 'manage-access-template', data: $root.manageAccess }"></div>
-                                            <br />
-                                            <br />
-                                            <button class="btn btn-sm btn-primary" data-bind="click: saveFolderAccessChanges">Save Access Changes</button>
-                                            <button class="btn btn-sm btn-primary" data-bind="click: function() { changeFolderAccess(!changeFolderAccess())}, text: !changeFolderAccess() ? 'Change Access': 'Cancel Changing Access'">Change Access</button>
-
-                                        </div>
-                                    </div>
-                         </div>
+                        </div>
                     </div>
                 </div>
             </div>
