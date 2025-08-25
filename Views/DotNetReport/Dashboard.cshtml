@@ -370,12 +370,12 @@
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="#" class="dropdown-item" data-bind="click: $parent.appSettings.showPageSize ? function() {$('#pdfOptionsModal').modal('show'); } : function() { $parent.appSettings.useAltPdf ? downloadPdfAlt('','') : downloadPdf('','') }">
+                                    <a href="#" class="dropdown-item" data-bind="click: $parent.appSettings.showPageSize ? function() { loadPdfModel() } : function() { $parent.appSettings.useAltPdf ? downloadPdfAlt('','') : downloadPdf('','') }">
                                         <span class="fa fa-file-pdf-o"></span> PDF
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="#" class="dropdown-item" data-bind="click: $parent.appSettings.showPageSize ? function() { $('#wordOptionsModal').modal('show'); } : function() { downloadWord('',''); }">
+                                    <a href="#" class="dropdown-item" data-bind="click: $parent.appSettings.showPageSize ? function() { loadWordModel()} : function() { downloadWord('',''); }">
                                         <span class="fa fa-file-word-o"></span> Word
                                     </a>
                                 </li>
@@ -453,17 +453,17 @@
 </div>
 
 <!-- This renders the template -->
-<div class="modal" id="pdfOptionsScheduleModal" tabindex="-1" aria-labelledby="pdfOptionsScheduleModalLabel" aria-hidden="true" data-bind="with: dashboard">
-    <div data-bind="template: { name: 'pdf-options-template', data: $data }"></div>
+<div class="modal" id="pdfOptionsScheduleModal" tabindex="-1" aria-labelledby="pdfOptionsScheduleModalLabel" aria-hidden="true" data-bind="with: scheduleBuilder">
+    <div data-bind="template: { name: 'pdf-options-template', data: PdfPage }"></div>
 </div>
 <!-- This renders the template -->
-<div class="modal" id="wordOptionsScheduleModal" tabindex="-1" aria-labelledby="wordOptionsScheduleModalLabel" aria-hidden="true" data-bind="with: dashboard">
-    <div data-bind="template: { name: 'word-options-template', data: $data }"></div>
+<div class="modal" id="wordOptionsScheduleModal" tabindex="-1" aria-labelledby="wordOptionsScheduleModalLabel" aria-hidden="true" data-bind="with: scheduleBuilder">
+    <div data-bind="template: { name: 'word-options-template', data: WordPage }"></div>
 </div>
 
-<div class="modal" id="wordOptionsModal" tabindex="-1" aria-labelledby="wordOptionsModalLabel" aria-hidden="true">
+<div class="modal" id="wordOptionsModal" tabindex="-1" aria-labelledby="wordOptionsModalLabel" aria-hidden="true" data-bind="with: selectedReport">
     <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content" data-bind="with: dashboard.WordPage">
+        <div class="modal-content" data-bind="with:WordPage">
             <div class="modal-header">
                 <h5 class="modal-title" id="wordOptionsModalLabel"><i class="fa fa-file-pdf-o me-2"></i> Export to WORD</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -521,9 +521,9 @@
         </div>
     </div>
 </div>
-<div class="modal" id="pdfOptionsModal" tabindex="-1" aria-labelledby="pdfOptionsModalLabel" aria-hidden="true">
+<div class="modal" id="pdfOptionsModal" tabindex="-1" aria-labelledby="pdfOptionsModalLabel" aria-hidden="true" data-bind="with: selectedReport">
     <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content" data-bind="with: dashboard.PdfPage">
+        <div class="modal-content" data-bind="with: PdfPage">
             <div class="modal-header">
                 <h5 class="modal-title" id="pdfOptionsModalLabel"><i class="fa fa-file-pdf-o me-2"></i> Export to PDF</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>

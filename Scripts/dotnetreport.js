@@ -249,11 +249,11 @@ function scheduleBuilder(userId, getTimeZonesUrl,appSettings) {
 			switch (format) {
 				case "PDF":
 					context = ko.contextFor(document.getElementById('pdfOptionsScheduleModal'))?.$data?.PdfPage
-						|| ko.contextFor(document.getElementById('pdfOptionsScheduleModal'))?.$data?.dashboard?.PdfPage;
+						|| ko.contextFor(document.getElementById('pdfOptionsScheduleModal'))?.$data?.dashboard?.scheduleBuilder?.PdfPage;
 					break;
 				case "WORD":
 					context = ko.contextFor(document.getElementById('wordOptionsScheduleModal'))?.$data?.WordPage
-						|| ko.contextFor(document.getElementById('wordOptionsScheduleModal'))?.$data?.dashboard?.WordPage;
+						|| ko.contextFor(document.getElementById('wordOptionsScheduleModal'))?.$data?.dashboard?.scheduleBuilder?.WordPage;
 					break;
 				default:
 					return null;
@@ -6578,7 +6578,14 @@ var dashboardViewModel = function (options) {
 					}, 1000);
 				});
 			};
-			
+			report.loadPdfModel = function () {
+				self.selectedReport(report);
+				$('#pdfOptionsModal').modal('show'); 
+			}
+			report.loadWordModel = function () {
+				self.selectedReport(report);
+				$('#wordOptionsModal').modal('show');
+			}
 			report.RefreshReport = function (reportId) {
 				report.LoadReport(reportId, true, '');
 			};
@@ -6592,8 +6599,6 @@ var dashboardViewModel = function (options) {
 		});
 
 		self.reports(allreports);
-		self.dashboard.WordPage = new WordPageViewModel(allreports[0].downloadWord);
-		self.dashboard.PdfPage = new PdfPageViewModel(self.appSettings, allreports[0].downloadPdf, allreports[0].downloadPdfAlt);
 		$.when(promises).done(function () {
 			setTimeout(function () {
 				self.FlyFilters([]);
