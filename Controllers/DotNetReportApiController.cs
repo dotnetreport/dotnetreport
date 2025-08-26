@@ -214,12 +214,6 @@ namespace ReportBuilder.Web.Controllers
             public bool useAltPivot { get; set; }
         }
 
-        public class SqlQuery
-        {
-            public string sql { get; set; } = "";
-            public List<KeyValuePair<string, string>> parameters { get; set; } = null;
-        }
-
         [ValidateAntiForgeryToken]
         [HttpPost]
         public async Task<IActionResult> RunReport(RunReportParameters data)

@@ -30,7 +30,6 @@ using System.Collections.Concurrent;
 using A = DocumentFormat.OpenXml.Drawing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
-using static ReportBuilder.Web.Controllers.DotNetReportApiController;
 using PdfSharp.Pdf.IO;
 
 namespace ReportBuilder.Web.Models
@@ -122,6 +121,12 @@ namespace ReportBuilder.Web.Models
     {
         public List<DotNetReportDataRowModel> Rows { get; set; }
         public List<DotNetReportDataColumnModel> Columns { get; set; }
+    }
+
+    public class SqlQuery
+    {
+        public string sql { get; set; } = "";
+        public List<KeyValuePair<string, string>> parameters { get; set; } = null;
     }
 
     public class TableViewModel
