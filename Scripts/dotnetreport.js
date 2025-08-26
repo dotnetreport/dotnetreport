@@ -585,111 +585,43 @@ function filterGroupViewModel(args) {
 
 var headerDesigner = function (options) {
 	var self = this;
-	self.canvas = null;
-	self.initiated = false;
-	self.selectedObject = ko.observable();
-	self.UseReportHeader = ko.observable(options.useReportHeader === true ? true : false)
+	self.UseReportHeader = ko.observable(options.useReportHeader === true ? true : false);
 
-	self.init = function (displayOnly) {
-		if (self.initiated && !displayOnly) return;
-		self.initiated = true;
-		self.canvas = new fabric.Canvas(options.canvasId);
-		if (displayOnly === true) return;
-
-		var canvas = self.canvas;
-		var grid = 20;
-
-		self.objectProperties = {
-			fontFamily: ko.observable(),
-			fontSize: ko.observable(),
-			fontColor: ko.observable(),
-			fontBackcolor: ko.observable(),
-			textAlign: ko.observable(),
-			fontBold: ko.observable(),
-			fontItalic: ko.observable(),
-			fontUnderline: ko.observable()
-		}
-
-		canvas.on('object:moving', function (options) {
-			// keep in bounds
-			var obj = options.target;
-			// if object is too big ignore
-			if (obj.currentHeight > obj.canvas.height || obj.currentWidth > obj.canvas.width) {
-				return;
-			}
-			obj.setCoords();
-			// top-left  corner
-			if (obj.getBoundingRect().top < 0 || obj.getBoundingRect().left < 0) {
-				obj.top = Math.max(obj.top, obj.top - obj.getBoundingRect().top);
-				obj.left = Math.max(obj.left, obj.left - obj.getBoundingRect().left);
-			}
-			// bot-right corner
-			if (obj.getBoundingRect().top + obj.getBoundingRect().height > obj.canvas.height || obj.getBoundingRect().left + obj.getBoundingRect().width > obj.canvas.width) {
-				obj.top = Math.min(obj.top, obj.canvas.height - obj.getBoundingRect().height + obj.top - obj.getBoundingRect().top);
-				obj.left = Math.min(obj.left, obj.canvas.width - obj.getBoundingRect().width + obj.left - obj.getBoundingRect().left);
-			}
+	self.headerHtml = ko.observable('');
+	self.clientId = ko.observable();
+	self.init = function () {
+		$('#report-header-editor').summernote({
+			height: 150,
+			popover: {
+				image: [],
+				link: [],
+				air: []
+			},
+			toolbar: [
+				['style', ['style']],
+				['font', ['bold', 'italic', 'underline', 'clear']],
+				['color', ['color']],
+				['para', ['ul', 'ol', 'paragraph']],
+				['table', ['table']],
+				['insert', ['link', 'picture']],
+				['view', ['codeview']]
+			],
+			popoverContainer: 'body',
+			dialogsInBody: true
 		});
+		self.loadHtmlHeader();
+	};
 
-		// handle selection
-		canvas.on('selection:created', function (obj) {
-			self.selectedObject(obj);
-			self.objectProperties.fontFamily(self.getFontFamily());
-			self.objectProperties.fontBold(self.getFontBold());
-			self.objectProperties.fontItalic(self.getFontItalic());
-			self.objectProperties.fontColor(self.getFontColor());
-			self.objectProperties.fontUnderline(self.getFontUnderline());
-			self.objectProperties.textAlign(self.getTextAlign());
-		});
-
-		canvas.on('selection:cleared', function (obj) {
-			self.selectedObject(null);
-		});
-	}
-
-	self.resizeCanvas = function (width) {
-		if (options.isExpanded() && $('.report-expanded-scroll').offset()) {
-			document.body.scrollTop = document.documentElement.scrollTop = 0;
-			var windowHeight = $(window).height();
-			var scrollContainerHeight = windowHeight - $('.report-expanded-scroll').offset().top;
-			$('.report-expanded-scroll').css('height', scrollContainerHeight + 'px');
-		}
-
-		var canvas = self.canvas;
-		if (canvas == null) return;
-		width = isNaN(width) ? $("#" + options.canvasId).parent().parent().width() : width;
-		if (width > 100) canvas.setWidth(width);
-		canvas.renderAll();
-	}
-
-	self.dispose = function () {
-		if (self.canvas) {
-			self.canvas.dispose();
-			self.initiated = false;
-		}
-	}
-
-	function getActiveProp(name) {
-		var object = self.canvas.getActiveObject();
-		if (!object) return '';
-
-		return object[name] || '';
-	}
-
-	function setActiveProp(name, value) {
-		var object = self.canvas.getActiveObject();
-		if (!object) return;
-		object.set(name, value).setCoords();
-		self.canvas.renderAll();
-	}
-
-	self.saveCanvas = function () {
-		var data = JSON.stringify(self.canvas.toJSON());
+	self.saveHtmlHeader = function () {
+		var htmlContent = $('#report-header-editor').summernote('code');
+		var data = encodeURIComponent(htmlContent);
 		return ajaxcall({
 			url: options.apiUrl.replace('CallReportApi', 'PostReportApi'),
 			type: "POST",
 			data: JSON.stringify({
 				method: "/ReportApi/SaveReportHeader",
 				headerJson: data,
+                clientId: self.clientId(),
 				useReportHeader: self.UseReportHeader()
 			})
 		}).done(function (result) {
@@ -698,9 +630,7 @@ var headerDesigner = function (options) {
 			toastr.success('Report Header changes saved')
 		});
 	}
-
-	self.loadCanvas = function (displayOnly) {
-		var canvas = self.canvas;
+	self.loadHtmlHeader = function () {
 		return ajaxcall({
 			url: options.apiUrl,
 			data: {
@@ -711,108 +641,12 @@ var headerDesigner = function (options) {
 			if (result.d) { result = result.d; }
 			if (result.result) { result = result.result; }
 			self.UseReportHeader(result.useReportHeader);
-			canvas.loadFromJSON(result.headerJson, canvas.renderAll.bind(canvas), function (o, obj) {
-				if (displayOnly === true)
-					obj.set('selectable', false);
-			});
-
+			self.headerHtml(decodeURIComponent(result.headerJson));
+			$('#report-header-editor').summernote('code', decodeURIComponent(result.headerJson) || '');
 		});
+
 	}
-
-	self.addText = function () {
-		self.canvas.add(new fabric.Textbox("Enter Text", {
-			left: 50,
-			top: 50,
-			fontFamily: 'arial',
-			fontWeight: '',
-			originX: 'left',
-			hasRotatingPoint: true,
-			centerTransform: true,
-			width: 300
-		}));
-	}
-
-	self.addLine = function () {
-		self.canvas.add(new fabric.Line([50, 100, 300, 100], {
-			left: 20,
-			top: 20,
-			stroke: '#000000'
-		}));
-	}
-
-	self.uploadImage = function (imgfile) {
-		if (imgfile.size > 1024000) {
-			toastr.error("Max file size is 1MB. Please choose a smaller image file. ");
-			return false;
-		}
-
-		var reader = new FileReader();
-		reader.onload = function (e) {
-			var img = new Image();
-			img.src = e.target.result;
-			img.onload = function () {
-				var image = new fabric.Image(img);
-				image.set({
-					angle: 0,
-				});
-				self.canvas.centerObject(image);
-				self.canvas.add(image);
-				self.canvas.renderAll();
-			}
-		}
-		reader.readAsDataURL(imgfile);
-	}
-
-	self.remove = function () {
-		var canvas = self.canvas;
-		canvas.remove(canvas.getActiveObject());
-	}
-
-	self.getText = function () {
-		return getActiveProp('text');
-	};
-	self.setText = function (value) {
-		setActiveProp('text', value);
-	};
-	self.getFontFamily = function () {
-		return getActiveProp('fontFamily').toLowerCase();
-	};
-	self.setFontFamily = function (value, e) {
-		setActiveProp('fontFamily', e.currentTarget.value);
-	};
-	self.getFontBold = function () {
-		return getActiveProp('fontWeight').toLowerCase();
-	};
-	self.setFontBold = function (value, e) {
-		setActiveProp('fontWeight', getActiveProp('fontWeight') == 'bold' ? '' : 'bold');
-	};
-	self.getFontItalic = function () {
-		return getActiveProp('fontStyle').toLowerCase();
-	};
-	self.setFontItalic = function (value, e) {
-		setActiveProp('fontStyle', getActiveProp('fontStyle') == 'italic' ? '' : 'italic');
-	};
-	self.getFontColor = function () {
-		return getActiveProp('stroke');
-	};
-	self.setFontColor = function (value, e) {
-		setActiveProp('stroke', e.currentTarget.value);
-		setActiveProp('fill', e.currentTarget.value);
-	};
-	self.getFontUnderline = function () {
-		return getActiveProp('underline').toLowerCase();
-	};
-	self.setFontUnderline = function (value, e) {
-		setActiveProp('underline', getActiveProp('underline') ? '' : 'underline');
-	};
-	self.getTextAlign = function () {
-		return getActiveProp('textAlign');
-	};
-	self.setTextAlign = function (value, e) {
-		setActiveProp('textAlign', e.currentTarget.value.toLowerCase());
-	};
 }
-
 var reportViewModel = function (options) {
 	var self = this;
 
@@ -1048,7 +882,6 @@ var reportViewModel = function (options) {
 		self.isExpanded(!self.isExpanded());
 
 		if (self.isExpanded()) {
-			self.headerDesigner.resizeCanvas();
 			self.removeZoomDashboard();
 		} else {
 			self.applyZoomDashboard();
@@ -1082,7 +915,6 @@ var reportViewModel = function (options) {
 	self.fieldAlignments = ['Auto', 'Left', 'Right', 'Center'];
 	self.designingHeader = ko.observable(false);
 	self.headerDesigner = new headerDesigner({
-		canvasId: options.reportHeader,
 		apiUrl: options.apiUrl,
 		isExpanded: self.isExpanded
 	});
@@ -1097,7 +929,6 @@ var reportViewModel = function (options) {
 
 	self.initHeaderDesigner = function () {
 		self.headerDesigner.init();
-		self.headerDesigner.loadCanvas(false);
 		self.designingHeader(true);
 	}
 
@@ -3260,7 +3091,6 @@ var reportViewModel = function (options) {
 
 							if (self.useReportHeader()) {
 								self.headerDesigner.init(true);
-								self.headerDesigner.loadCanvas(true);
 							}
 						}
 						else {
@@ -4880,10 +4710,7 @@ var reportViewModel = function (options) {
 		if (self.ReportMode() == "execute") {
 			if (self.useReportHeader()) {
 				self.headerDesigner.init(true);
-				self.headerDesigner.loadCanvas(true);
-			} else {
-				self.headerDesigner.dispose();
-			}
+			} 
 		}
 
 		var filterFieldsOnFly = [];
@@ -6163,12 +5990,17 @@ var dashboardViewModel = function (options) {
 	};
 	self.currentDashboard = ko.observable(currentDash);
 	self.selectDashboard = ko.observable(currentDash.id);
+	self.isOverlap = ko.observable(false);
 	self.loadDashboard = function (dashboardId) {
 		ajaxcall({
 			url: options.loadSavedDashbordUrl,
 			data: { id: dashboardId, adminMode: self.adminMode(), applyClientInAdmin: self.appSettings.useClientIdInAdmin },
 			noBlocking: true
 		}).done(function (reportsData) {
+			let resultGrid = self.checkOverlaps(reportsData);
+			if (resultGrid.length > 0) {
+				self.isOverlap(true);
+			}
 			if (reportsData.d) reportsData = reportsData.d;
 			var reports = [];
 			_.forEach(reportsData, function (r) {
@@ -6194,6 +6026,24 @@ var dashboardViewModel = function (options) {
 			self.loadDashboardReports(reports);
 		});
 	}
+	self.checkOverlaps =function (widgets) {
+		let overlaps = [];
+		for (let i = 0; i < widgets.length; i++) {
+			for (let j = i + 1; j < widgets.length; j++) {
+				let a = widgets[i];
+				let b = widgets[j];
+				let overlapX = a.X < b.X + b.Width && a.X + a.Width > b.X;
+				let overlapY = a.Y < b.Y + b.Height && a.Y + a.Height > b.Y;
+				if (overlapX && overlapY) {
+					overlaps.push({
+						box1: `Box ${i + 1} (x:${a.X}, y:${a.Y}, w:${a.Width}, h:${a.Height})`,
+						box2: `Box ${j + 1} (x:${b.X}, y:${b.Y}, w:${b.Width}, h:${b.Height})`
+					});
+				}
+			}
+		}
+		return overlaps;
+	}
 
 	self.selectDashboard.subscribe(function (newValue) {
 		if (newValue != self.currentDashboard().id) {
@@ -6205,10 +6055,10 @@ var dashboardViewModel = function (options) {
 		var filteredReports = [];
 		self.reportsAndFolders().forEach(function (folder) {
 			var filterReports = folder.reports.filter(function (report) {
-				var reportNameLower = report.reportName.toLowerCase();
-				var reportDescriptionLower = report.reportDescription.toLowerCase();
+				var reportNameLower = report.reportName?.toLowerCase();
+				var reportDescriptionLower = report.reportDescription?.toLowerCase();
 				var searchReportsLower = searchReports.toLowerCase();
-				return reportNameLower.includes(searchReportsLower) || reportDescriptionLower.includes(searchReportsLower);
+				return reportNameLower.includes(searchReportsLower) || reportDescriptionLower?.includes(searchReportsLower);
 			});
 			filteredReports = filteredReports.concat(filterReports);
 		});

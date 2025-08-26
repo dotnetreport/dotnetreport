@@ -47,7 +47,6 @@ Its Recommended you use it as is, and only change styling as needed to match you
 
             $(window).resize(function() {
                 vm.DrawChart();
-                vm.headerDesigner.resizeCanvas();
             });
             
             vm.textQuery.setupQuery();
@@ -136,58 +135,21 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         <p class="alert alert-info">
                             You can design the common report header below that will be applied to all reports where report headers are turned on.
                         </p>
-                        <div class="d-flex align-items-center report-menubar">
-                            <div class="btn-group me-2">
-                                <button class="btn btn-sm btn-outline-secondary" title="Add Text" data-bind="click: addText">
-                                    <span class="fa fa-font"></span>
-                                </button>
-                                <label class="btn btn-sm btn-outline-secondary" title="Add Image">
-                                    <span class="fa fa-image"></span>
-                                    <input type="file" accept="image/*" hidden data-bind="event: { change: function() { uploadImage($element.files[0]) } }" />
-                                </label>
-                                <button class="btn btn-sm btn-outline-secondary" title="Add Line" data-bind="click: addLine">
-                                    <span class="fa fa-arrows-h"></span>
-                                </button>
+                        <div class="form-group row m-1">
+                            <div class="col-md-3 col-sm-3">
+                                <label class="control-label">Client Id to Restrict Access</label>
                             </div>
-                            <div data-bind="if: selectedObject()" class="d-flex align-items-center me-2">
-                                <span class="mx-2">|</span>
-                                <button class="btn btn-sm btn-outline-danger me-2" data-bind="click: remove" title="Delete">
-                                    <span class="fa fa-trash"></span>
-                                </button>
-                                <div data-bind="if: getText()" class="d-flex align-items-center">
-                                    <select class="form-select form-select-sm me-2" title="Font Family" data-bind="event: {change: setFontFamily }, value: objectProperties.fontFamily">
-                                        <option value="arial" selected>Arial</option>
-                                        <option value="helvetica">Helvetica</option>
-                                        <option value="myriad pro">Myriad Pro</option>
-                                        <option value="delicious">Delicious</option>
-                                        <option value="verdana">Verdana</option>
-                                        <option value="georgia">Georgia</option>
-                                        <option value="courier">Courier</option>
-                                        <option value="comic sans ms">Comic Sans MS</option>
-                                    </select>
-                                    <select class="form-select form-select-sm me-2" title="Text Align" data-bind="event: {change: setTextAlign }, value: objectProperties.textAlign">
-                                        <option>Left</option>
-                                        <option>Center</option>
-                                        <option>Right</option>
-                                        <option>Justify</option>
-                                    </select>
-                                    <input type="color" class="form-control form-control-color me-2" style="width: 100px; height: 30px;" title="Font Color" data-bind="event: {change: setFontColor }, value: objectProperties.fontColor" style="min-width: 20px;">
-                                    <button class="btn btn-sm btn-outline-secondary me-2" title="Bold" data-bind="event: {click: setFontBold }, value: objectProperties.fontBold">
-                                        <span class="fa fa-bold"></span>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-secondary me-2" title="Italic" data-bind="event: {click: setFontItalic }, value: objectProperties.fontItalic">
-                                        <span class="fa fa-italic"></span>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-secondary me-2" title="Underline" data-bind="event: {click: setFontUnderline }, value: objectProperties.fontUnderline">
-                                        <span class="fa fa-underline"></span>
-                                    </button>
-                                </div>
+                            <div class="col-md-3 col-sm-3">
+                                <input class="form-control text-box single-line" type="text" data-bind="value: clientId">
                             </div>
-                            <button class="btn btn-primary btn-sm ms-auto" data-bind="click: saveCanvas">Save Changes</button>
+                            <div class="col-md-1 col-sm-1">
+                                <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Leave blank to give all clients access (Global Report Header)"></span>
+                            </div>
                         </div>
-
-                        <canvas id="report-header" width="900" height="120" style="border: solid 1px #ccc"></canvas>
-
+                        <textarea id="report-header-editor"></textarea>
+                        <button class="btn btn-primary btn-sm mt-2" data-bind="click: saveHtmlHeader">
+                            Save Changes
+                        </button>
                     </div>
                 </div>
                 <div data-bind="ifnot: designingHeader">
@@ -775,8 +737,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <div class="report-container">
                                         <div class="report-inner">
                                             <div data-bind="template: 'chart-settings', data: $data"></div>
-                                            <div class="canvas-container">
-                                                <canvas id="report-header" width="900" height="120" data-bind="visible: useReportHeader"></canvas>
+                                            <div data-bind="visible: headerDesigner.UseReportHeader">
+                                                <div id="report-header" width="900" height="120" data-bind="html: headerDesigner.headerHtml"></div>
                                             </div>
                                             <h2 data-bind="text: ReportName"></h2>
                                             <p data-bind="html: ReportDescription">
