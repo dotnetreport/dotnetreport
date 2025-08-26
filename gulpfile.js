@@ -50,9 +50,6 @@ var deps = {
 	"lodash": {
 		"lodash.min.js": ""
 	},
-	"toastr": {
-		"build/*": ""
-	},
 	"bootstrap-datepicker": {
 		"dist/**/*": ""
 	},
@@ -83,9 +80,6 @@ var deps = {
 	},
 	"knockout-x-editable": {
 		"knockout.x-editable.min.js": ""
-	},
-	"fabric": {
-		"dist/fabric.min.js": ""
 	},
 	"tributejs": {
 		"dist/tribute.min.js": "",
