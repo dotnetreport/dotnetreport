@@ -670,9 +670,6 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                         <!-- /ko -->
                                                     </div>
                                                 </div>
-                                                <div data-bind="with: $parent" class="pull-left">
-                                                    <div  data-bind="template: 'table-settings', data: $data"></div>
-                                                </div>
                                             </div>
                                         </div>
                                         <div class="form-inline pull-right">
@@ -697,7 +694,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <div class="report-canvas" data-bind="hidden: DontExecuteOnRun() && !reportRan()">
                                     <div class="report-container">
                                         <div class="report-inner">
-                                            <div data-bind="template: 'chart-settings', data: $data"></div>
+                                            <div data-bind="template: 'chart-settings', data: $data, visible: $root.CanEdit()"></div>
                                             <div class="canvas-container">
                                                 <canvas id="report-header" width="900" height="120" data-bind="visible: useReportHeader"></canvas>
                                             </div>

@@ -411,7 +411,9 @@
                 </div>
             </div>
             <div class="card-body list-overflow-auto" style="padding-top: 0; margin-top: 0;">
-                <div data-bind="template: 'chart-settings', data: $data"></div>
+                <div data-bind="if: ReportType()!='Single' && CanEdit()">
+                    <div data-bind="template: 'chart-settings', data: $data"></div>
+                </div>
                 <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
                 <div data-bind="template: {name: 'fly-filter-template'}, visible: showFlyFilters"></div>
                 <div data-bind="with: ReportResult" class="small">

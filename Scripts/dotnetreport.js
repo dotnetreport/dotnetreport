@@ -2002,7 +2002,7 @@ var reportViewModel = function (options) {
 		self.reportRan(false);
 		self.executingReport = false;
 		self.isDirty(false);
-		self.clearTableSetting();
+		self.clearTableSettings();
 	};
 
 	self.SelectedProc.subscribe(function (proc) {
@@ -4205,11 +4205,20 @@ var reportViewModel = function (options) {
 	self.tableheaderFontColor = ko.observable();
 	self.tableRowBackColor = ko.observable();
 	self.tableRowFontColor = ko.observable();
-	self.clearTableSetting = function () {
-		self.tableheaderBackColor = ko.observable();
-		self.tableheaderFontColor = ko.observable();
-		self.tableRowBackColor = ko.observable();
-		self.tableRowFontColor = ko.observable();
+	self.tableAltRowBackColor = ko.observable();
+	self.tableAltRowFontColor = ko.observable();
+	self.tableBorder = ko.observable();
+	self.tableBorderColor = ko.observable();
+	self.clearTableSettings = function () {
+		self.tableheaderBackColor(null);
+		self.tableheaderFontColor(null);
+		self.tableRowBackColor(null);
+		self.tableRowFontColor(null);
+		self.tableAltRowBackColor(null);
+		self.tableAltRowFontColor(null);
+		self.tableBorder(null);
+		self.tableBorderColor(null);
+		self.updateTable(true);
 	}
 
 	self.toggleChartSettings = function () {
@@ -4218,12 +4227,12 @@ var reportViewModel = function (options) {
 	self.toggleTableSettings = function () {
 		self.showTableSettings(!self.showTableSettings());
 	};
-	self.updateTable = function () {
+	self.updateTable = function (clear) {
 		_.forEach(self.SelectedFields(), function (f) {
-			if (self.tableheaderBackColor()) f.headerBackColor(self.tableheaderBackColor());
-			if (self.tableheaderFontColor()) f.headerFontColor(self.tableheaderFontColor());
-			if (self.tableRowBackColor()) f.backColor(self.tableRowBackColor());
-			if (self.tableRowFontColor()) f.fontColor(self.tableRowFontColor());
+			if (self.tableheaderBackColor() || clear === true) f.headerBackColor(self.tableheaderBackColor());
+			if (self.tableheaderFontColor() || clear === true) f.headerFontColor(self.tableheaderFontColor());
+			if (self.tableRowBackColor() || clear === true) f.backColor(self.tableRowBackColor());
+			if (self.tableRowFontColor() || clear === true) f.fontColor(self.tableRowFontColor());
 		});
 	}
 	self.addSeriesColor = function () {
@@ -5105,7 +5114,7 @@ var reportViewModel = function (options) {
 			},
 			noBlocking: dontBlock === true
 		}).done(function (report) {
-			self.clearTableSetting();
+			self.clearTableSettings();
 			if (report.d) { report = report.d; }
 			if (report.result) { report = report.result; }
 			self.useStoredProc(report.UseStoredProc);
