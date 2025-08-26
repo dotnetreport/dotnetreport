@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
   <metadata>
     <id>dotnetreport.mvc</id>
-    <version>6.0.7-beta.3</version>
+    <version>6.0.7-beta.4</version>
     <authors>Dotnet Report Builder</authors>
     <owners>Dotnet Report Builder</owners>
     <projectUrl>https://dotnetreport.com/</projectUrl>
@@ -17,6 +17,7 @@
       <dependency id="DocumentFormat.OpenXml" version="3.1.0" />
       <dependency id="EPPlus" version="4.5.1" />
       <dependency id="FontAwesome" version="4.7.0" />
+      <dependency id="HtmlSanitizer" version="9.0.886" />
       <dependency id="PDFsharp" version="1.50.5147" />
       <dependency id="jQuery" version="3.7.1" />
       <dependency id="jQuery.BlockUI" version="2.70.0" />
