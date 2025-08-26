@@ -488,12 +488,17 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             <span>Back to Reports</span>
                         </button>
                     </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="alert alert-info d-inline-block" title="This feature is still in Beta release. You can turn it off from settings" style="font-size: 10pt; padding: 5px; max-width: 350px; white-space: normal; margin-bottom: 0;">
+                            <i class="fa fa-info-circle"></i> Beta Feature
+                        </div>
+                    </div>
                 </nav>
             </div>
             <div class="card-body">
                 <p>
                     What would you like to know? Type a <b>natural language prompt</b> below to ask questions about your data.<br>
-                    Use <b>Auto Complete</b> suggestions to guide your query — the AI will convert your prompt into a custom report.
+                    Use <b>Auto Complete</b> suggestions to guide your query — the AI will convert your prompt into a Dotnet Report that you can then preview, design, save and reuse.
                 </p>
 
                 <p id="query-input" class="query-input">
@@ -719,9 +724,6 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                         <!-- /ko -->
                                                     </div>
                                                 </div>
-                                                <div data-bind="with: $parent" class="pull-left">
-                                                    <div  data-bind="template: 'table-settings', data: $data"></div>
-                                                </div>
                                             </div>
                                         </div>
                                         <div class="form-inline pull-right">
@@ -746,7 +748,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <div class="report-canvas" data-bind="hidden: DontExecuteOnRun() && !reportRan()">
                                     <div class="report-container">
                                         <div class="report-inner">
-                                            <div data-bind="template: 'chart-settings', data: $data"></div>
+                                            <div data-bind="template: 'chart-settings', data: $data, visible: $root.CanEdit()"></div>
                                             <div data-bind="visible: headerDesigner.UseReportHeader">
                                                 <div id="report-header" width="900" height="120" data-bind="html: headerDesigner.headerHtml"></div>
                                             </div>
