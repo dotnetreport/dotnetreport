@@ -6624,7 +6624,7 @@ var dashboardViewModel = function (options) {
 		self.RunReport();
 	}
 	self.RefreshAllReports = function () {
-		self.loadDashboardReports(options.reports, true);
+		self.loadDashboardReports(options.reports, false);
 	}
 	self.ExportAllPdfReports = function () {
 		const reports = self.reports();
