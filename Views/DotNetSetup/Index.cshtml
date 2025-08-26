@@ -993,7 +993,7 @@
                                 <tr>
                                     <td data-bind="text: ScheduleDisplay"></td>
                                     <td data-bind="text: EmailTo"></td>
-                                    <td data-bind="text: Format"></td>
+                                    <td data-bind="text: $root.getDisplayFormat(Format)"></td>
                                     <td data-bind="text: LastRun"></td>
                                     <td data-bind="text: UserId ? UserId : 'N/A'"></td>
                                     <td data-bind="text: Timezone ? Timezone : 'N/A'"></td>
