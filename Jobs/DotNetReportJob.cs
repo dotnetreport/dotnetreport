@@ -21,6 +21,26 @@ namespace ReportBuilder.Web.Jobs
         public string SelectedPageOrientation { get; set; }
         public DateTime? ScheduleStart { get; set; }
         public DateTime? ScheduleEnd { get; set; }
+        public void NormalizeFormat()
+        {
+            if (!string.IsNullOrEmpty(Format) && Format.Trim().StartsWith("{"))
+            {
+                try
+                {
+                    var formatObj = JsonConvert.DeserializeObject<FormatJson>(Format);
+                    if (formatObj != null)
+                    {
+                        Format = formatObj.exportFormat;
+                        SelectedPageSize = formatObj.size;
+                        SelectedPageOrientation = formatObj.orientation;
+                    }
+                }
+                catch
+                {
+                    // ignore if invalid json
+                }
+            }
+        }
     }
     public class ReportWithSchedule
     {
@@ -34,7 +54,12 @@ namespace ReportBuilder.Web.Jobs
         public List<ReportSchedule> Schedules { get; set; }
 
     }
-
+    public class FormatJson
+    {
+        public string exportFormat { get; set; }
+        public string size { get; set; }
+        public string orientation { get; set; }
+    }
     public class JobScheduler
     {
         public static string WebAppRootUrl = "";
@@ -103,6 +128,7 @@ namespace ReportBuilder.Web.Jobs
                     {
                         try
                         {
+                            schedule.NormalizeFormat();
                             var chron = new CronExpression(schedule.Schedule);
                             var lastRun = !String.IsNullOrEmpty(schedule.LastRun) ? Convert.ToDateTime(schedule.LastRun) : DateTimeOffset.UtcNow.AddMinutes(-10);
                             var nextRun = chron.GetTimeAfter(lastRun);
