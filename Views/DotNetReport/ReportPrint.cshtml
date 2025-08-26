@@ -13,7 +13,6 @@
     <meta name="keywords" content="ad-hoc reporting, reporting, asp .net reporting, asp .net report, report builder, ad hoc report builder, ad-hoc report builder, adhoc report, ad hoc reports, .net report viewer, reportviewer, sql reportviewer, report builder mvc, report mvc, report builder web forms, query builder, sql report builder,visual report builder,custom query,query maker" />
     <meta name="description" content="Ad hoc Reporting software that allows programmers to easily add Reporting functionality to their ASP .NET Web Software Solution" />
     <link href="~/lib/bootstrap-datepicker/css/bootstrap-datepicker.min.css" rel="stylesheet" />
-    <link href="~/lib/toastr/toastr.min.css" rel="stylesheet" />
     <link href="~/lib/font-awesome/css/font-awesome.min.css" rel="stylesheet" />
     <link href="~/lib/select2/css/select2.min.css" rel="stylesheet" />
     <link href="~/css/dotnetreport.css?v=6.0.0" rel="stylesheet" />
@@ -315,6 +314,7 @@
             </table>
         </div>
     </script>
+    <input type="hidden" id="exportId" value="@ViewBag.ExportId" />
 
     <script src="~/lib/jquery/jquery.min.js"></script>
     <script src="~/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
@@ -322,13 +322,13 @@
     <script src="~/lib/knockout/knockout-latest.js"></script>
     <script src="~/lib/jquery-blockui/jquery.blockUI.js"></script>
     <script src="~/lib/bootbox/bootbox.min.js"></script>
-    <script src="~/lib/toastr/toastr.min.js"></script>
     <script src="~/lib/bootstrap-datepicker/js/bootstrap-datepicker.js"></script>
     <script src="~/lib/jquery-ui-dist/jquery-ui.min.js"></script>
     <script src="~/lib/knockout-sortable/knockout-sortable.min.js"></script>
     <script src="~/lib/select2/js/select2.min.js"></script>
     <script src="~/lib/lodash/lodash.min.js"></script>
     <script src="~/lib/fabric/fabric.min.js"></script>
+    <script src="~/lib/tributejs/tribute.min.js"></script>
     <script src="~/js/dotnetreport-helper.js"></script>
     <script src="~/js/dotnetreport.js?v=6.0.0"></script>
 
@@ -372,7 +372,7 @@
             ReportSeries : "@Model.ReportSeries",
             reportHeader: 'report-header',
             userSettings: data,
-            dataFilters: JSON.parse(data.dataFilters || '{}'),
+            dataFilters: JSON.parse(decodeHTMLEntities(data.dataFilters) || '{}'),
             reportData: JSON.parse(decodeHTMLEntities('@Model.ReportData')),
             getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
             chartSize: { width: 1000, height: 450 }

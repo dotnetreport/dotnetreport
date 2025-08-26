@@ -43,7 +43,7 @@
                 }
 
                 _.forEach(dashboardData, function (d) {
-                    dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, schedule: d.schedule, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles });
+                    dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, schedule: d.Schedule, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles });
                 });
 
                 var dashboardId = parseInt(queryParams.id || 0);
@@ -74,7 +74,7 @@
                             allowAdmin: data.allowAdminMode,
                             dataFilters: data.dataFilters,
                             dashboardId: dashboardId,
-                            runExportUrl: "",
+                            runExportUrl: "/api/DotnetReportApi/",
                             printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, Context.Request.Scheme)",
                             loadSavedDashbordUrl: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")',
                             getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")'
@@ -371,12 +371,12 @@
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="#" class="dropdown-item" data-bind="click: function() { $parent.appSettings.useAltPdf ? downloadPdfAlt() : downloadPdf() }">
+                                    <a href="#" class="dropdown-item" data-bind="click: function() { $parent.appSettings.useAltPdf ? downloadPdfAlt('','') : downloadPdf('','') }">
                                         <span class="fa fa-file-pdf-o"></span> PDF
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="#" class="dropdown-item" data-bind="click: downloadWord">
+                                    <a href="#" class="dropdown-item" data-bind="click:function() { downloadWord('','')}">
                                         <span class="fa fa-file-word-o"></span> Word
                                     </a>
                                 </li>
@@ -451,4 +451,9 @@
 <!-- Link Edit Modal -->
 <div class="modal" id="linkModal" tabindex="-1" role="dialog" aria-hidden="true" data-bind="with: selectedReport">
     <div data-bind="template: {name: 'report-link-edit', data: $data}"></div>
+</div>
+
+<!-- This renders the template -->
+<div class="modal" id="pdfOptionsScheduleModal" tabindex="-1" aria-labelledby="pdfOptionsScheduleModalLabel" aria-hidden="true" data-bind="with: dashboard">
+    <div data-bind="template: { name: 'pdf-options-template', data: $data }"></div>
 </div>
