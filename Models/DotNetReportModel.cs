@@ -444,6 +444,8 @@ namespace ReportBuilder.Web.Models
         public string expandSqls { get; set; }
         public string pivotColumn { get; set; }
         public string pivotFunction { get; set; }
+        public string pageSize { get; set; }
+        public string pageOrientation { get; set; }
         public string chartData { get; set; }
         public string columnDetails { get; set; }
         public string onlyAndGroupInColumnDetail { get; set; }

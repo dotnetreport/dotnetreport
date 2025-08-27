@@ -191,11 +191,11 @@
                 <span>Export</span>
             </button>
             <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="#" data-bind="click: ExportAllPdfReports, hidden: appSettings.useAltPdf"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
-                <li><a class="dropdown-item" href="#" data-bind="click: ExportAllPdfAltReports, visible: appSettings.useAltPdf"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
+                <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllPdfReportsWithPageOption() : ExportAllPdfReports('',''); }, hidden: appSettings.useAltPdf"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
+                <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllPdfAltReportsWithPageOption() : ExportAllPdfAltReports('',''); }, visible: appSettings.useAltPdf"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
                 <li><a class="dropdown-item" href="#" data-bind="click: ExportAllExcelReports"><i class="fa fa-file-excel-o"></i> Excel</a></li>
                 <li data-bind="visible: canDrilldown"><a class="dropdown-item" href="#" data-bind="click: ExportAllExcelExpandedReports"><i class="fa fa-file-excel-o"></i> Excel (Expanded)</a></li>
-                <li><a class="dropdown-item" href="#" data-bind="click: ExportAllWordReports"><i class="fa fa-file-word-o"></i> Word</a></li>
+                <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllWordReportsWithPageOption() : ExportAllWordReports('','');}"><i class="fa fa-file-word-o"></i> Word</a></li>
             </ul>
         </div>
         <div class="btn btn-light btn-sm d-flex align-items-center gap-2">
@@ -465,5 +465,11 @@
     <div data-bind="template: { name: 'word-options-template', data: $data  }"></div>
 </div>
 <div class="modal" id="pdfOptionsModal" tabindex="-1" aria-labelledby="pdfOptionsModalLabel" aria-hidden="true" data-bind="with: selectedReport">
+    <div data-bind="template: { name: 'pdf-options-template', data: $data  }"></div>
+</div>
+<div class="modal" id="exportAllWordOptionsModal" tabindex="-1" aria-labelledby="exportAllWordOptionsModalLabel" aria-hidden="true" data-bind="with: dashboard">
+    <div data-bind="template: { name: 'word-options-template', data: $data  }"></div>
+</div>
+<div class="modal" id="exportAllPdfOptionsModal" tabindex="-1" aria-labelledby="exportAllPdfOptionsModalLabel" aria-hidden="true" data-bind="with: dashboard">
     <div data-bind="template: { name: 'pdf-options-template', data: $data  }"></div>
 </div>
