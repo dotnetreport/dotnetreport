@@ -602,7 +602,7 @@ function filterGroupViewModel(args) {
 				setTimeout(function () {
 					var txtqry = new textQuery(args.options);
 					txtqry.setupLookup(newField, filter);
-				}, 500);				
+				}, 1000);				
 			}
 
 			if (newField && newField.restrictedDateRange && newField.fieldType == 'DateTime') {
@@ -1455,7 +1455,7 @@ var reportViewModel = function (options) {
 	};
 	self.onModalCloseClicked = function () {
 		if (options.reportWizard == null) return;
-		if (self.ReportMode() != 'dashboard') {
+		if (self.ReportMode() != 'dashboard' && self.ReportMode() != 'execute') {
 			if (self.isDirty()) {
 				bootbox.confirm("You have unsaved changes. Do you want to discard them?", function (result) {
 					if (result) {
