@@ -748,7 +748,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <div class="report-canvas" data-bind="hidden: DontExecuteOnRun() && !reportRan()">
                                     <div class="report-container">
                                         <div class="report-inner">
-                                            <div data-bind="template: 'chart-settings', data: $data, visible: $root.CanEdit()"></div>
+                                            <div data-bind="if: $root.CanEdit() && ReportType()!='Html'">
+                                                <div data-bind="template: 'chart-settings', data: $data"></div>
+                                            </div>
                                             <div data-bind="visible: headerDesigner.UseReportHeader">
                                                 <div id="report-header" width="900" height="120" data-bind="html: headerDesigner.headerHtml"></div>
                                             </div>

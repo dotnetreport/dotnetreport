@@ -3670,7 +3670,7 @@ var reportViewModel = function (options) {
 				}
 
 			});
-
+			renderedHtml = renderedHtml.replace(/\{\{[^}]+>[^}]+\}\}/g, "");
 			return renderedHtml;			
 		}
 		self.ReportColumns(result.ReportData.Columns);
