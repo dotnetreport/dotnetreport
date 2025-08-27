@@ -2642,7 +2642,7 @@ namespace ReportBuilder.Web.Models
                                     break;
 
                                 case "LETTER": // 8.5 × 11 in
-                                default
+                                default:
                                     widthTwips = (UInt32Value)(8.5 * 1440);
                                     heightTwips = (UInt32Value)(11 * 1440);
                                     break;
