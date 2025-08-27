@@ -1387,6 +1387,7 @@ var reportViewModel = function (options) {
 		dontWordExport: false,
 		showPageSize: false,
 	};
+	self.appSettings = options && options.appSettings ? options.appSettings : self.appSettings;
 	self.runQuery = function (useAi) {
 		self.SelectedFields([]);
 		self.resetQuery(false);
@@ -6538,7 +6539,8 @@ var dashboardViewModel = function (options) {
 				printReportUrl: options.printReportUrl,
 				dataFilters: options.dataFilters,
 				getTimeZonesUrl: options.getTimeZonesUrl,
-				arrangeDashboard: self.arrangeDashboard
+				arrangeDashboard: self.arrangeDashboard,
+				appSettings: self.appSettings
 			});
 
 			report.x = ko.observable(x.x);
