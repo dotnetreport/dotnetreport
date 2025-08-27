@@ -1053,33 +1053,48 @@ var textQuery = function (options) {
     self.setupLookup = function (field, filter) {
         var tributeAttributes = self.getTributeAttributes({ searchLookupFilter: true });
         var tribute = new Tribute(tributeAttributes);
-        var filterInput = document.getElementById('ctl-' + field.uiId); 
+        var prefixes = ['C', 'F', 'M', 'P'];
+        var filterInputs = [];
+        prefixes.forEach(function (p) {
+            var el = document.getElementById('ctl-' + p + '-' + field.uiId);
+            if (el) filterInputs.push(el);
+        });
 
-        if (filterInput) {
-            tribute.attach(filterInput);
-            self.initLookupQuery(field)
+        if (filterInputs.length > 0) {
+            tribute.attach(filterInputs);
 
-            filterInput.addEventListener("tribute-replaced", function (e) {
-                self.addQueryItem(e.detail.item.original);
+            filterInputs.forEach(function (filterInput) {
+                self.initLookupQuery(field);
+
+                filterInput.addEventListener("tribute-replaced", function (e) {
+                    self.addQueryItem(e.detail.item.original);
+                });
+
+                filterInput.addEventListener("menuItemRemoved", function (e) {
+                    self.queryItems.remove(e.detail.item.original);
+                });
+
+                filterInput.addEventListener('blur', function () {
+                    if (self.queryItems.length > 0) {
+                        filter.Value(self.queryItems.map(x => x.text).join(','));
+                    }
+                });
+
+                filterInput.addEventListener("input", function () {
+                    if (!filterInput.value.trim()) {
+                        self.queryItems = [];
+                        filter.Value("");
+                        return;
+                    }
+                });
+
+                filterInput.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        filterInput.blur();
+                    }
+                });
             });
-
-            filterInput.addEventListener("menuItemRemoved", function (e) {
-                self.queryItems.remove(e.detail.item.original); 
-            });
-
-            filterInput.addEventListener('blur', function () {
-                if (self.queryItems.length > 0) {
-                    filter.Value(self.queryItems.map(x => x.text).join(','));
-                }
-            });
-
-            filterInput.addEventListener('keydown', function (e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    filterInput.blur();
-                }
-            });
-
         }
     }
 }
