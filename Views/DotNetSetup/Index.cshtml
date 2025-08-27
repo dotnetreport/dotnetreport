@@ -286,9 +286,9 @@
                                     <small class="text-muted d-block">Remove Word Export option.</small>
                                 </div>
                                 <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" data-bind="checked: showPdfPageSize">
-                                    <label class="form-check-label">Show Page Size on PDF export</label>
-                                    <small class="text-muted d-block">Display document dimensions in exported PDF.</small>
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: showPageSize">
+                                    <label class="form-check-label">Show Page Size on PDF & Word export</label>
+                                    <small class="text-muted d-block">Display document dimensions in exported PDF & Word.</small>
                                 </div>
                             </div>
                         </div>
@@ -988,44 +988,39 @@
                         <i class="fa fa-exclamation-circle"></i> No scheduled Reports or Dashboards available.
                     </div>
                     <div class="table-responsive" data-bind="if: schedules().length > 0">
-                        <table class="table table-condensed table-striped table-hover">                            
+                        <table class="table table-condensed table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th style="border-top: none;"><i class="fa fa-clock-o"></i> Schedule</th>
+                                    <th style="border-top: none;"><i class="fa fa-envelope"></i> Email To</th>
+                                    <th style="border-top: none;"><i class="fa fa-file"></i> Format</th>
+                                    <th style="border-top: none;"><i class="fa fa-history"></i> Last Run</th>
+                                    <th style="border-top: none;"><i class="fa fa-user"></i> User ID</th>
+                                    <th style="border-top: none;"><i class="fa fa-globe"></i> Time Zone</th>
+                                    <th style="border-top: none;"><i class="fa fa-cogs"></i> Actions</th>
+                                </tr>
+                            </thead>
                             <tbody data-bind="foreach: schedules">
                                 <tr>
-                                    <td colspan="7" style="padding: 0;">
-                                        <div class="p-2 bg-light">
-                                            For <span class="text-muted" data-bind="text: DashboardId === 0 ? 'Report' : 'Dashboard'"></span>
-                                            <b><span data-bind="text: Name"></span></b>
-                                        </div>
-                                        <table class="table mb-0">
-                                            <thead>
-                                                <tr>
-                                                    <th style="border-top: none;"><i class="fa fa-clock-o"></i> Schedule</th>
-                                                    <th style="border-top: none;"><i class="fa fa-envelope"></i> Email To</th>
-                                                    <th style="border-top: none;"><i class="fa fa-file"></i> Format</th>
-                                                    <th style="border-top: none;"><i class="fa fa-history"></i> Last Run</th>
-                                                    <th style="border-top: none;"><i class="fa fa-user"></i> User ID</th>
-                                                    <th style="border-top: none;"><i class="fa fa-globe"></i> Time Zone</th>
-                                                    <th style="border-top: none;"><i class="fa fa-cogs"></i> Actions</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody data-bind="foreach: Schedules">
-                                                <tr>
-                                                    <td data-bind="text: ScheduleDisplay"></td>
-                                                    <td data-bind="text: EmailTo"></td>
-                                                    <td data-bind="text: Format"></td>
-                                                    <td data-bind="text: LastRun"></td>
-                                                    <td data-bind="text: UserId ? UserId : 'N/A'"></td>
-                                                    <td data-bind="text: Timezone ? Timezone : 'N/A'"></td>
-                                                    <td>
-                                                        <button class="btn btn-sm btn-danger" data-bind="click: $root.deleteSchedule">
-                                                            <i class="fa fa-trash"></i> Delete
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
+                                    <td colspan="7">
+                                        For <span class="text-muted" data-bind="text: DashboardId === 0 ? 'Report' : 'Dashboard'"></span> <b><span data-bind="text: Name"></span></b>
                                     </td>
                                 </tr>
+                                <!-- ko foreach: Schedules -->
+                                <tr>
+                                    <td data-bind="text: ScheduleDisplay"></td>
+                                    <td data-bind="text: EmailTo"></td>
+                                    <td data-bind="text: $root.getDisplayFormat(Format)"></td>
+                                    <td data-bind="text: LastRun"></td>
+                                    <td data-bind="text: UserId ? UserId : 'N/A'"></td>
+                                    <td data-bind="text: Timezone ? Timezone : 'N/A'"></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-danger" data-bind="click: $root.deleteSchedule">
+                                            <i class="fa fa-trash"></i> Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                                <!-- /ko -->
                             </tbody>
                         </table>
                     </div>

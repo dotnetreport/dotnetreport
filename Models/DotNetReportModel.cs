@@ -449,6 +449,8 @@ namespace ReportBuilder.Web.Models
         public string expandSqls { get; set; }
         public string pivotColumn { get; set; }
         public string pivotFunction { get; set; }
+        public string pageSize { get; set; }
+        public string pageOrientation { get; set; }
         public string chartData { get; set; }
         public string columnDetails { get; set; }
         public string onlyAndGroupInColumnDetail { get; set; }
@@ -2349,8 +2351,8 @@ namespace ReportBuilder.Web.Models
                     {
                         switch (pageSize.ToUpper())
                         {
-                            case "LETTER":
-                                page.Size = PdfSharp.PageSize.Letter;
+                            case "A4":
+                                page.Size = PdfSharp.PageSize.A4;
                                 break;
                             case "LEGAL":
                                 page.Size = PdfSharp.PageSize.Legal;
@@ -2367,9 +2369,9 @@ namespace ReportBuilder.Web.Models
                             case "TABLOID":
                                 page.Size = PdfSharp.PageSize.Tabloid;
                                 break;
-                            case "A4":
+                            case "LETTER":
                             default:
-                                page.Size = PdfSharp.PageSize.A4;
+                                page.Size = PdfSharp.PageSize.Letter;
                                 break;
                         }
                     }
@@ -2631,9 +2633,9 @@ namespace ReportBuilder.Web.Models
                             UInt32Value heightTwips;
                             switch (pageSize.ToUpper())
                             {
-                                case "LETTER": // 8.5 × 11 in
-                                    widthTwips = (UInt32Value)(8.5 * 1440);
-                                    heightTwips = (UInt32Value)(11 * 1440);
+                                case "A4": // 210 × 297 mm
+                                    widthTwips = (UInt32Value)(210 * 56.7);
+                                    heightTwips = (UInt32Value)(297 * 56.7);
                                     break;
 
                                 case "LEGAL": // 8.5 × 14 in
@@ -2651,10 +2653,10 @@ namespace ReportBuilder.Web.Models
                                     heightTwips = (UInt32Value)(17 * 1440);
                                     break;
 
-                                case "A4":
-                                default: // 210 × 297 mm
-                                    widthTwips = (UInt32Value)(210 * 56.7);
-                                    heightTwips = (UInt32Value)(297 * 56.7);
+                                case "LETTER": // 8.5 × 11 in
+                                default:
+                                    widthTwips = (UInt32Value)(8.5 * 1440);
+                                    heightTwips = (UInt32Value)(11 * 1440);
                                     break;
                             }
                             string safeOrientation = string.IsNullOrEmpty(pageOrientation)? "PORTRAIT": pageOrientation.ToUpper();
@@ -3017,8 +3019,8 @@ namespace ReportBuilder.Web.Models
                 PaperFormat selectedFormat = PaperFormat.A4;
                 switch (normalizedPageSize)
                 {
-                    case "LETTER":
-                        selectedFormat = PaperFormat.Letter;
+                    case "A4":
+                        selectedFormat = PaperFormat.A4;
                         break;
                     case "LEGAL":
                         selectedFormat = PaperFormat.Legal;
@@ -3035,9 +3037,9 @@ namespace ReportBuilder.Web.Models
                     case "TABLOID":
                         selectedFormat = PaperFormat.Tabloid;
                         break;
-                    case "A4":
+                    case "LETTER":
                     default:
-                        selectedFormat = PaperFormat.A4;
+                        selectedFormat = PaperFormat.Letter;
                         break;
                 }
                 pdfOptions.Format = selectedFormat;

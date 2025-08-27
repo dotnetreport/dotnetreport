@@ -184,11 +184,11 @@
                     <span>Export</span>
                 </button>
                 <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#" data-bind="click: ExportAllPdfReports, hidden: appSettings.useAltPdf"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
-                    <li><a class="dropdown-item" href="#" data-bind="click: ExportAllPdfAltReports, visible: appSettings.useAltPdf"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
+                    <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllPdfReportsWithPageOption() : ExportAllPdfReports('',''); }, hidden: appSettings.useAltPdf"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
+                    <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllPdfAltReportsWithPageOption() : ExportAllPdfAltReports('',''); }, visible: appSettings.useAltPdf"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
                     <li><a class="dropdown-item" href="#" data-bind="click: ExportAllExcelReports"><i class="fa fa-file-excel-o"></i> Excel</a></li>
                     <li data-bind="visible: canDrilldown"><a class="dropdown-item" href="#" data-bind="click: ExportAllExcelExpandedReports"><i class="fa fa-file-excel-o"></i> Excel (Expanded)</a></li>
-                    <li><a class="dropdown-item" href="#" data-bind="click: ExportAllWordReports"><i class="fa fa-file-word-o"></i> Word</a></li>
+                    <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllWordReportsWithPageOption() : ExportAllWordReports('','');}"><i class="fa fa-file-word-o"></i> Word</a></li>
                 </ul>
             </div>
             <div class="btn btn-light btn-sm d-flex align-items-center gap-2">
@@ -371,12 +371,12 @@
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="#" class="dropdown-item" data-bind="click: function() { $parent.appSettings.useAltPdf ? downloadPdfAlt('','') : downloadPdf('','') }">
+                                    <a href="#" class="dropdown-item" data-bind="click: $parent.appSettings.showPageSize ? function() { loadPdfModel() } : function() { $parent.appSettings.useAltPdf ? downloadPdfAlt('','') : downloadPdf('','') }">
                                         <span class="fa fa-file-pdf-o"></span> PDF
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="#" class="dropdown-item" data-bind="click:function() { downloadWord('','')}">
+                                    <a href="#" class="dropdown-item" data-bind="click: $parent.appSettings.showPageSize ? function() { loadWordModel()} : function() { downloadWord('',''); }">
                                         <span class="fa fa-file-word-o"></span> Word
                                     </a>
                                 </li>
@@ -456,6 +456,23 @@
 </div>
 
 <!-- This renders the template -->
-<div class="modal" id="pdfOptionsScheduleModal" tabindex="-1" aria-labelledby="pdfOptionsScheduleModalLabel" aria-hidden="true" data-bind="with: dashboard">
-    <div data-bind="template: { name: 'pdf-options-template', data: $data }"></div>
+<div class="modal" id="pdfOptionsScheduleModal" tabindex="-1" aria-labelledby="pdfOptionsScheduleModalLabel" aria-hidden="true" data-bind="with: scheduleBuilder">
+    <div data-bind="template: { name: 'pdf-options-schedule-template', data: $data  }"></div>
+</div>
+<!-- This renders the template -->
+<div class="modal" id="wordOptionsScheduleModal" tabindex="-1" aria-labelledby="wordOptionsScheduleModalLabel" aria-hidden="true" data-bind="with: scheduleBuilder">
+    <div data-bind="template: { name: 'word-options-schedule-template', data: $data }"></div>
+</div>
+
+<div class="modal" id="wordOptionsModal" tabindex="-1" aria-labelledby="wordOptionsModalLabel" aria-hidden="true" data-bind="with: selectedReport">
+    <div data-bind="template: { name: 'word-options-template', data: $data  }"></div>
+</div>
+<div class="modal" id="pdfOptionsModal" tabindex="-1" aria-labelledby="pdfOptionsModalLabel" aria-hidden="true" data-bind="with: selectedReport">
+    <div data-bind="template: { name: 'pdf-options-template', data: $data  }"></div>
+</div>
+<div class="modal" id="exportAllWordOptionsModal" tabindex="-1" aria-labelledby="exportAllWordOptionsModalLabel" aria-hidden="true" data-bind="with: dashboard">
+    <div data-bind="template: { name: 'word-options-template', data: $data  }"></div>
+</div>
+<div class="modal" id="exportAllPdfOptionsModal" tabindex="-1" aria-labelledby="exportAllPdfOptionsModalLabel" aria-hidden="true" data-bind="with: dashboard">
+    <div data-bind="template: { name: 'pdf-options-template', data: $data  }"></div>
 </div>
