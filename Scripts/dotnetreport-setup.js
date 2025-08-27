@@ -1636,7 +1636,7 @@ var manageViewModel = function (options) {
 							url: options.apiUrl,
 							type: "POST",
 							data: JSON.stringify({
-								method: "/ReportApi/UpdateReportAccess",
+								method: "/ReportApi/SaveReportAccess",
 								model: JSON.stringify({
 									account: self.keys.AccountApiKey,
 									dataConnect: self.keys.DatabaseApiKey,
