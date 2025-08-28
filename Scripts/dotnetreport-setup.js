@@ -1663,6 +1663,7 @@ var manageViewModel = function (options) {
 					folderId: x.Id,
 					folder: x.FolderName,
 					reports: folderReports,
+					allReportsSelected: ko.observable(),
 					selectAllReports: function () {
 						_.forEach(folderReports, function (rep) {
 							rep.isSelected(true);
@@ -1674,6 +1675,13 @@ var manageViewModel = function (options) {
 						});
 					}
 				};
+				folderVm.allReportsSelected.subscribe(function (value) {
+					if (value) {
+						folderVm.selectAllReports();
+					} else {
+						folderVm.deselectAllReports();
+					}
+				});
 				setup.push(folderVm);
 			});
 
@@ -1758,7 +1766,8 @@ var manageViewModel = function (options) {
 				folderId: folder.folderId,
 				folder: folder.folder,
 				reports: filteredReports,
-				hasMatch: filteredReports.length > 0
+				hasMatch: filteredReports.length > 0,
+				allReportsSelected: folder.allReportsSelected
 			};
 		});
 	});

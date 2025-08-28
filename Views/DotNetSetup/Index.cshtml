@@ -722,37 +722,28 @@
                     <div class="mb-2 d-flex gap-2">
                         <div class="mb-2">
                             <button class="btn btn-sm btn-primary" data-bind="click: function() { exportFoldersReportJson() }">
-                                <span class="fa fa-download"></span> Export Reports Access
+                                <span class="fa fa-download"></span> Export Selected Reports Access
                             </button>
-                        </div>
+                        </div>                      
                         <div class="mb-2">
-                            <button class="btn btn-link text-secondary p-0" data-bind="click: selectAllFolderReports">
-                                Select All
-                            </button>
-                            |
-                            <button class="btn btn-link text-secondary p-0" data-bind="click: deselectAllFolderReports">
-                                Deselect All
+                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#searchModal">
+                                <span class="fa fa-tasks"></span> Bulk Actions
                             </button>
                         </div>
-                        <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#searchModal">
-                            Search & Export 
-                        </button>
                     </div>
                     <hr />
                     <div data-bind="foreach: reportsAndFolders" class="list-group">
                         <div class="list-group-item">
                             <div class="d-flex justify-content-between">
                                 <div>
-                                <a data-bs-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }">
-                                    <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: folder"></span>
-                                </a>
-                                    <!-- Folder level select/deselect -->
-                                    <a href="#" class="btn btn-link text-secondary p-0" data-bind="click: selectAllReports">Select All</a> |
-                                    <a href="#" class="btn btn-link text-secondary p-0" data-bind="click: deselectAllReports">Deselect All</a>
+                                    <input type="checkbox" class="form-check-input"
+                                           data-bind="checked: allReportsSelected">
+                                    <label>
+                                        <a data-bs-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }">
+                                            <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: folder"></span>
+                                        </a>
+                                    </label>
                                 </div>
-                                <button class="btn btn-sm" title="Export this Folders Include All Reports Manage Access" data-bind="click: function() { $root.exportFolderReportsManageAccessJson($data.folderId); }">
-                                    <i class="fa fa-file"></i>
-                                </button>
                             </div>
                             <div class="collapse" data-bind="attr: {id: 'folder-' + folderId }">
                                 <div data-bind="if: reports.length == 0">
@@ -810,20 +801,11 @@
                 </div>
                 <div class="tab-pane fade" id="foldersAccess" role="tabpanel" aria-labelledby="folders-tab">
                     <b>Folders Access</b>
-                    <p>You can setup access to individual Folders here</p>
+                    <p>You can setup access to individual Folders here</p>                    
                     <div class="mb-2 d-flex gap-2">
                         <div class="mb-2">
                             <button class="btn btn-sm btn-primary" data-bind="click: function() { exportFoldersJson() }">
-                                <span class="fa fa-download"></span> Export Folders Access
-                            </button>
-                        </div>
-                        <div class="mb-2">
-                            <button class="btn btn-link text-secondary p-0" data-bind="click: selectAllFolders">
-                                Select All
-                            </button>
-                            |
-                            <button class="btn btn-link text-secondary p-0" data-bind="click: deselectAllFolders">
-                                Deselect All
+                                <span class="fa fa-download"></span> Export Selected Folders Access
                             </button>
                         </div>
                     </div>
@@ -832,14 +814,11 @@
                         <div class="list-group-item">
                             <div class="d-flex justify-content-between">
                                 <div>
-                                    <input type="checkbox" data-bind="checked: isSelected" />
+                                    <input type="checkbox" data-bind="checked: isSelected" />                                    
                                     <a data-bs-toggle="collapse" data-bind="attr: {href: '#folderAccess-' + Id }">
                                         <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: FolderName"></span>
                                     </a>
                                 </div>
-                                <button class="btn btn-sm" title="Export this Folders Manage Access" data-bind="click: function() { $root.exportFolderManageAccessJson($data.Id); }">
-                                    <i class="fa fa-file"></i>
-                                </button>
                             </div>
                             <div class="collapse" data-bind="attr: {id: 'folderAccess-' + Id }">
                                 <div class="row">
@@ -1769,24 +1748,18 @@
                 <div style="overflow-x: auto; max-height: 500px; overflow-y: auto;">
                     <table class="table table-striped table-hover table-condensed">
                         <thead style="position: sticky; top: -1px; z-index: 2; background-color: #f8f9fa;">
-                            <tr>
-                                <!-- ko foreach: Columns -->
+                            <tr data-bind="foreach: Columns">
                                 <th>
                                     <span data-bind="text: ColumnName, attr: { title: DataType.replace('System.', '') }"></span>
-                                </th>
-                                <!-- /ko -->
+                                </th>                                
                             </tr>
                         </thead>
-                        <tbody>
-                            <!-- ko foreach: Rows  -->
+                        <tbody data-bind="foreach: Rows">
                             <tr>
-                                <!-- ko foreach: Items -->
-                                <td>
+                                <td data-bind="foreach: Items">
                                     <span data-bind="html: FormattedValue"></span>
-                                </td>
-                                <!-- /ko-->
+                                </td>                                
                             </tr>
-                            <!-- /ko -->
                         </tbody>
                     </table>
                 </div>
@@ -1923,38 +1896,40 @@
     </div>
 </div>
 <div class="modal" id="searchModal" tabindex="-1" aria-hidden="true" data-bind="with: $root">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Search Reports & Folders</h5>
+                <h5 class="modal-title">Bulk Manage Reports Access and Export</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <!-- Search & Select controls -->
-                <div class="d-flex gap-2 mb-3">
-                    <input type="text" class="form-control" placeholder="Search reports for exporting"
+                <div class="d-flex gap-2 mb-4 align-items-center">
+                    <input type="text" class="form-control" placeholder="Search Reports"
                            data-bind="value: searchQuery, valueUpdate: 'input'">
-                    <button class="btn btn-sm btn-outline-primary" data-bind="click: selectAllFiltered">Select All</button>
-                    <button class="btn btn-sm btn-outline-secondary" data-bind="click: deselectAllFiltered">Deselect All</button>
+                    <button class="btn btn-sm btn-outline-primary flex-shrink-0" title="Select all Filtered"
+                            data-bind="click: selectAllFiltered">Select All
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary flex-shrink-0" title="Deselect all Filtered"
+                            data-bind="click: deselectAllFiltered">Deselect All
+                    </button>
                 </div>
-                <!-- Filtered Results -->
-                <!-- ko foreach: filteredReportsAndFolders -->
-                <div class="card mb-3">
-                    <div class="card-header d-flex align-items-center gap-2">
-                        <strong data-bind="text: folder"></strong>
-                    </div>
-                    <ul class="list-group list-group-flush" data-bind="foreach: reports">
-                        <li class="list-group-item d-flex align-items-center gap-2">
-                            <input type="checkbox" data-bind="checked: isSelected">
-                            <span data-bind="text: reportName"></span>
-                        </li>
-                    </ul>
-                    <!-- agar reports empty hain to message dikhao -->
-                    <div class="p-2 text-muted" data-bind="visible: reports.length === 0">
-                        No matching reports found
+                <div data-bind="foreach: filteredReportsAndFolders">
+                    <div class="card mb-3">
+                        <div class="card-header d-flex align-items-center gap-2">
+                            <input type="checkbox" data-bind="checked: allReportsSelected">
+                            <strong data-bind="text: folder"></strong>
+                        </div>
+                        <ul class="list-group list-group-flush" data-bind="foreach: reports">
+                            <li class="list-group-item d-flex align-items-center gap-2">
+                                <input type="checkbox" data-bind="checked: isSelected">
+                                <span data-bind="text: reportName"></span>
+                            </li>
+                        </ul>
+                        <div class="p-2 text-muted" data-bind="visible: reports.length === 0">
+                            No matching reports found
+                        </div>
                     </div>
                 </div>
-                <!-- /ko -->
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
