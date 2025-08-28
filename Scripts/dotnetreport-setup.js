@@ -1657,13 +1657,24 @@ var manageViewModel = function (options) {
 						});
 
 					}
+					r.isSelected = ko.observable(false);
 				});
-
-				setup.push({
+				var folderVm = {
 					folderId: x.Id,
 					folder: x.FolderName,
-					reports: folderReports
-				});
+					reports: folderReports,
+					selectAllReports: function () {
+						_.forEach(folderReports, function (rep) {
+							rep.isSelected(true);
+						});
+					},
+					deselectAllReports: function () {
+						_.forEach(folderReports, function (rep) {
+							rep.isSelected(false);
+						});
+					}
+				};
+				setup.push(folderVm);
 			});
 
 			self.reportsAndFolders(setup);
@@ -1730,17 +1741,43 @@ var manageViewModel = function (options) {
 	}
 
 	self.exportFolderReportsManageAccessJson = function (folderId) {
-		const FolderReportsJson = self.reportsAndFolders().filter(filter => filter.folderId === folderId)   
-		const exportJson = JSON.stringify(FolderReportsJson, null, 2);
+		const FolderReportsJson = self.reportsAndFolders().filter(filter => filter.folderId === folderId) 
+		const plainJson = ko.mapping.toJS(FolderReportsJson, {
+			ignore: ["changeAccess", "isSelected"]
+		})
+		const exportJson = JSON.stringify(plainJson, null, 2);
 		downloadJson(exportJson, `FolderReportsManageAccess_${FolderReportsJson[0].folder}.json` , 'application/json');
 	};
 	self.exportFolderManageAccessJson = function (folderId) {
 		const FolderJson = self.Folders().filter(filter => filter.Id === folderId)
-		const exportJson = JSON.stringify(FolderJson, null, 2);
+		const plainJson = ko.mapping.toJS(FolderJson, {
+			ignore: ["changeAccess", "isSelected"]
+		})
+		const exportJson = JSON.stringify(plainJson, null, 2);
 		downloadJson(exportJson, `FolderManageAccess_${FolderJson[0].FolderName}.json`, 'application/json');
 	};
 	self.exportFoldersReportJson = function () {
-		const exportJson = JSON.stringify(self.reportsAndFolders(), null, 2);
+		const selectedFolders = [];
+		_.forEach(self.reportsAndFolders(), function (folder) {
+			const selectedReports = _.filter(folder.reports, function (r) {
+				return r.isSelected && r.isSelected(); // only selected reports
+			});
+			if (selectedReports.length > 0) {
+				selectedFolders.push({
+					folderId: folder.folderId,
+					folder: folder.folder,
+					reports: selectedReports
+				});
+			}
+		});
+		if (selectedFolders.length === 0) {
+			toastr.error("No Reports selected!");
+			return;
+		}
+		const plainJson = ko.mapping.toJS(selectedFolders, {
+			ignore: ["changeAccess", "isSelected"]  
+		});
+		const exportJson = JSON.stringify(plainJson, null, 2);
 		downloadJson(exportJson, `FolderReportsManageAccess.json`, 'application/json');
 	};
 	self.exportFoldersJson = function () {
@@ -1763,6 +1800,20 @@ var manageViewModel = function (options) {
 	self.deselectAllFolders = function () {
 		_.forEach(self.Folders(), function (f) {
 			f.isSelected(false);
+		});
+	};
+	self.selectAllFolderReports = function () {
+		_.forEach(self.reportsAndFolders(), function (folder) {
+			_.forEach(folder.reports, function (rep) {
+				rep.isSelected(true);
+			});
+		});
+	};
+	self.deselectAllFolderReports = function () {
+		_.forEach(self.reportsAndFolders(), function (folder) {
+			_.forEach(folder.reports, function (rep) {
+				rep.isSelected(false);
+			});
 		});
 	};
 }
