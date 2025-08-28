@@ -1739,7 +1739,39 @@ var manageViewModel = function (options) {
 			self.Folders(folders);
 		});
 	}
-
+	self.searchQuery = ko.observable("");
+	self.filteredReportsAndFolders = ko.computed(function () {
+		const query = (self.searchQuery() || "").toLowerCase();
+		return ko.utils.arrayMap(self.reportsAndFolders(), function (folder) {
+			let filteredReports = ko.utils.arrayFilter(folder.reports, function (r) {
+				const reportName = (r.reportName || "").toLowerCase();
+				const reportDescription = (r.reportDescription || "").toLowerCase();
+				return (
+					reportName.includes(query) ||
+					reportDescription.includes(query)
+				);
+			});
+			if (!query) {
+				filteredReports = folder.reports;
+			}
+			return {
+				folderId: folder.folderId,
+				folder: folder.folder,
+				reports: filteredReports,
+				hasMatch: filteredReports.length > 0
+			};
+		});
+	});
+	self.selectAllFiltered = function () {
+		self.filteredReportsAndFolders().forEach(folder => {
+			folder.reports.forEach(r => r.isSelected(true));
+		});
+	};
+	self.deselectAllFiltered = function () {
+		self.filteredReportsAndFolders().forEach(folder => {
+			folder.reports.forEach(r => r.isSelected(false));
+		});
+	};
 	self.exportFolderReportsManageAccessJson = function (folderId) {
 		const FolderReportsJson = self.reportsAndFolders().filter(filter => filter.folderId === folderId) 
 		const plainJson = ko.mapping.toJS(FolderReportsJson, {

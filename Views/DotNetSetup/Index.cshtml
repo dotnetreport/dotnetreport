@@ -734,6 +734,9 @@
                                 Deselect All
                             </button>
                         </div>
+                        <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#searchModal">
+                            Search & Export 
+                        </button>
                     </div>
                     <hr />
                     <div data-bind="foreach: reportsAndFolders" class="list-group">
@@ -1915,6 +1918,47 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 <button type="button" class="btn btn-primary" data-bind="click: uploadStoredProceduresFile">Upload</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal" id="searchModal" tabindex="-1" aria-hidden="true" data-bind="with: $root">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Search Reports & Folders</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Search & Select controls -->
+                <div class="d-flex gap-2 mb-3">
+                    <input type="text" class="form-control" placeholder="Search reports for exporting"
+                           data-bind="value: searchQuery, valueUpdate: 'input'">
+                    <button class="btn btn-sm btn-outline-primary" data-bind="click: selectAllFiltered">Select All</button>
+                    <button class="btn btn-sm btn-outline-secondary" data-bind="click: deselectAllFiltered">Deselect All</button>
+                </div>
+                <!-- Filtered Results -->
+                <!-- ko foreach: filteredReportsAndFolders -->
+                <div class="card mb-3">
+                    <div class="card-header d-flex align-items-center gap-2">
+                        <strong data-bind="text: folder"></strong>
+                    </div>
+                    <ul class="list-group list-group-flush" data-bind="foreach: reports">
+                        <li class="list-group-item d-flex align-items-center gap-2">
+                            <input type="checkbox" data-bind="checked: isSelected">
+                            <span data-bind="text: reportName"></span>
+                        </li>
+                    </ul>
+                    <!-- agar reports empty hain to message dikhao -->
+                    <div class="p-2 text-muted" data-bind="visible: reports.length === 0">
+                        No matching reports found
+                    </div>
+                </div>
+                <!-- /ko -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button class="btn btn-success" data-bind="click: exportFoldersReportJson">Export Selected</button>
             </div>
         </div>
     </div>
