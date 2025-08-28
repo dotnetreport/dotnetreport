@@ -1723,6 +1723,7 @@ var manageViewModel = function (options) {
 					});
 
 				}
+				r.isSelected = ko.observable(false);
 			});
 			self.Folders(folders);
 		});
@@ -1743,8 +1744,26 @@ var manageViewModel = function (options) {
 		downloadJson(exportJson, `FolderReportsManageAccess.json`, 'application/json');
 	};
 	self.exportFoldersJson = function () {
-		const exportJson = JSON.stringify(self.Folders(), null, 2);
+		const selected = self.Folders().filter(f => f.isSelected());
+		if (selected.length === 0) {
+			toastr.error("No folders selected!");
+			return;
+		}
+		const plainJson = ko.mapping.toJS(selected, {
+			ignore: ["changeFolderAccess", "isSelected"]
+		})
+		const exportJson = JSON.stringify(plainJson, null, 2);
 		downloadJson(exportJson, `FolderManageAccess.json`, 'application/json');
+	};
+	self.selectAllFolders = function () {
+		_.forEach(self.Folders(), function (f) {
+			f.isSelected(true);
+		});
+	};
+	self.deselectAllFolders = function () {
+		_.forEach(self.Folders(), function (f) {
+			f.isSelected(false);
+		});
 	};
 }
 
