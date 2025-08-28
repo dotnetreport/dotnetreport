@@ -46,6 +46,7 @@ var manageViewModel = function (options) {
 		ajaxcall({ url: options.loadSchemaUrl + '?databaseApiKey=' + (queryParams.databaseApiKey || '') + '&onlyApi=' + self.onlyApi() }).done(function (model) {
 			self.Tables.refresh(model);
 			self.LoadJoins();
+			self.LoadCategories();
 		});
 	}
 
