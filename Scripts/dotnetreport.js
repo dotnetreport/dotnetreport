@@ -4969,7 +4969,7 @@ var reportViewModel = function (options) {
 		self.pager.sortColumn('');
 		self.pager.sortDescending(report.SortDesc);
 		var match = _.find(self.SavedReports(), { reportId: report.ReportID }) || { canEdit: false };
-		self.CanEdit(report.canEdit || match.canEdit || self.adminMode());
+		self.CanEdit(report.canEdit || self.adminMode());
 		self.FilterGroups([]);
 		self.AdditionalSeries([]);
 		self.SortFields([]);
@@ -5179,7 +5179,7 @@ var reportViewModel = function (options) {
 			if (reports.result) { reports = reports.result; }
 			_.forEach(reports, function (e) {
 				e.runMode = false;
-				e.openReport = function () {
+				e.openReport = function () {			
 					if (!e.canEdit && !e.runMode) {
 						options.reportWizard.modal('hide');
 						toastr.error('No access to edit report');
@@ -5192,6 +5192,11 @@ var reportViewModel = function (options) {
 					var saveReportFlag = self.SaveReport();
 					// Load report
 					return self.LoadReport(e.reportId).done(function () {
+						if (!self.CanEdit() && !e.runMode) {
+							options.reportWizard.modal('hide');
+							toastr.error('No access to edit report');
+							return;
+						}
 						if (!e.runMode) {
 							self.SaveReport(true);
 							self.ReportMode("generate");
@@ -5211,6 +5216,11 @@ var reportViewModel = function (options) {
 						return;
 					}
 					e.openReport().done(function () {
+						if (!self.CanEdit()) {
+							options.reportWizard.modal('hide');
+							toastr.error('No access to copy report');
+							return;
+						}
 						self.ReportID(0);
 						self.ReportName('Copy of ' + self.ReportName());
 						self.CanEdit(true);
