@@ -1934,6 +1934,24 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 <button class="btn btn-success" data-bind="click: exportFoldersReportJson">Export Selected</button>
+                <button class="btn btn-warning" data-bind="click: $root.openApplySecurityModal, enable: $root.anyReportSelected">Apply Security to All Selected</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal" id="applySecurityModal" tabindex="-1" aria-hidden="true" >
+    <div class="modal-dialog modal-lg" data-bind="if: $root.anyReportSelected">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Apply Security to All Selected</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div data-bind="template: { name: 'manage-access-template', data: $root.manageAccess }"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button class="btn btn-primary" data-bind="click: $root.applySecurityToAll">Apply to All</button>
             </div>
         </div>
     </div>
