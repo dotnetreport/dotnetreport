@@ -1632,6 +1632,11 @@ var manageViewModel = function (options) {
 					r.changeAccess = ko.observable(false);
 					r.changeAccess.subscribe(function (x) {
 						if (x) {
+							_.forEach(folderReports, function (f) {
+								if (f !== r) {
+									f.changeAccess(false);
+								}
+							});
 							self.manageAccess.clientId(r.clientId());
 							self.manageAccess.setupList(self.manageAccess.users, r.userId() || '');
 							self.manageAccess.setupList(self.manageAccess.userRoles, r.userRole() || '');
@@ -1700,6 +1705,11 @@ var manageViewModel = function (options) {
 				r.changeFolderAccess = ko.observable(false);
 				r.changeFolderAccess.subscribe(function (x) {
 					if (x) {
+						_.forEach(folders, function (f) {
+							if (f !== r) {
+								f.changeFolderAccess(false);
+							}
+						});
 						self.manageAccess.clientId(r.ClientId());
 						self.manageAccess.setupList(self.manageAccess.users, r.UserId() || '');
 						self.manageAccess.setupList(self.manageAccess.userRoles, r.UserRoles() || '');
