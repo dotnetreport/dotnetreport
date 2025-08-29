@@ -1816,6 +1816,7 @@ var manageViewModel = function (options) {
 			r.viewOnlyUserRole(self.manageAccess.getAsList(self.manageAccess.viewOnlyUserRoles));
 			r.deleteOnlyUserRole(self.manageAccess.getAsList(self.manageAccess.deleteOnlyUserRoles));
 			r.clientId(self.manageAccess.clientId());
+			r.saveAccessChanges();
 		});
 		toastr.success("Security applied to all selected items!");
 	};
