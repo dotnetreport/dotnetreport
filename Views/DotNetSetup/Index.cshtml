@@ -978,42 +978,49 @@
                     <div data-bind="visible: schedules().length === 0">
                         <i class="fa fa-exclamation-circle"></i> No scheduled Reports or Dashboards available.
                     </div>
-                    <div class="table-responsive" data-bind="if: schedules().length > 0">
-                        <table class="table table-condensed table-striped table-hover">
-                            <thead>
-                                <tr>
-                                    <th style="border-top: none;"><i class="fa fa-clock-o"></i> Schedule</th>
-                                    <th style="border-top: none;"><i class="fa fa-envelope"></i> Email To</th>
-                                    <th style="border-top: none;"><i class="fa fa-file"></i> Format</th>
-                                    <th style="border-top: none;"><i class="fa fa-history"></i> Last Run</th>
-                                    <th style="border-top: none;"><i class="fa fa-user"></i> User ID</th>
-                                    <th style="border-top: none;"><i class="fa fa-globe"></i> Time Zone</th>
-                                    <th style="border-top: none;"><i class="fa fa-cogs"></i> Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody data-bind="foreach: schedules">
-                                <tr>
-                                    <td colspan="7">
-                                        For <span class="text-muted" data-bind="text: DashboardId === 0 ? 'Report' : 'Dashboard'"></span> <b><span data-bind="text: Name"></span></b>
-                                    </td>
-                                </tr>
-                                <!-- ko foreach: Schedules -->
-                                <tr>
-                                    <td data-bind="text: ScheduleDisplay"></td>
-                                    <td data-bind="text: EmailTo"></td>
-                                    <td data-bind="text: $root.getDisplayFormat(Format)"></td>
-                                    <td data-bind="text: LastRun"></td>
-                                    <td data-bind="text: UserId ? UserId : 'N/A'"></td>
-                                    <td data-bind="text: Timezone ? Timezone : 'N/A'"></td>
-                                    <td>
+                    <div class="container-fluid" data-bind="if: schedules().length > 0">
+                        <div data-bind="foreach: schedules">
+                            <div class="row border-bottom py-2">
+                                <div class="col-12">
+                                    For <span class="text-muted" data-bind="text: DashboardId === 0 ? 'Report' : 'Dashboard'"></span>
+                                    <b><span data-bind="text: Name"></span></b>
+                                </div>
+                            </div>
+
+                            <!-- Inner schedule items -->
+                            <div class="row fw-bold bg-light py-2 d-none d-md-flex">
+                                <div class="col-md"><i class="fa fa-clock-o"></i> Schedule</div>
+                                <div class="col-md"><i class="fa fa-envelope"></i> Email To</div>
+                                <div class="col-md"><i class="fa fa-file"></i> Format</div>
+                                <div class="col-md"><i class="fa fa-history"></i> Last Run</div>
+                                <div class="col-md"><i class="fa fa-user"></i> User ID</div>
+                                <div class="col-md"><i class="fa fa-globe"></i> Time Zone</div>
+                                <div class="col-md"><i class="fa fa-cogs"></i> Actions</div>
+                            </div>
+
+                            <div data-bind="foreach: { data: Schedules, as: 'item' }">
+                                <div class="row border-bottom py-2 align-items-center">
+                                    <div class="col-md" data-bind="text: item.ScheduleDisplay"></div>
+                                    <div class="col-md" data-bind="text: item.EmailTo"></div>
+                                    <div class="col-md"
+                                         data-bind="if: item.Format && item.Format.trim().substring(0,1) === '{'">
+                                        <div data-bind="html: item.Format.slice(1,-1).split(',').join('<br>')"></div>
+                                    </div>
+                                    <div class="col-md"
+                                         data-bind="if: !item.Format || item.Format.trim().substring(0,1) !== '{'">
+                                        <div data-bind="text: item.Format"></div>
+                                    </div>
+                                    <div class="col-md" data-bind="text: item.LastRun"></div>
+                                    <div class="col-md" data-bind="text: item.UserId ? item.UserId : 'N/A'"></div>
+                                    <div class="col-md" data-bind="text: item.Timezone ? item.Timezone : 'N/A'"></div>
+                                    <div class="col-md">
                                         <button class="btn btn-sm btn-danger" data-bind="click: $root.deleteSchedule">
                                             <i class="fa fa-trash"></i> Delete
                                         </button>
-                                    </td>
-                                </tr>
-                                <!-- /ko -->
-                            </tbody>
-                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
