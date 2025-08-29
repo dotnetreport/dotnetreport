@@ -1612,7 +1612,7 @@ var manageViewModel = function (options) {
 					r.changeAccess = ko.observable(false);
 					r.changeAccess.subscribe(function (x) {
 						if (x) {
-							_.forEach(folderReports, function (f) {
+							_.forEach(allReports[0], function (f) {
 								if (f !== r) {
 									f.changeAccess(false);
 								}
