@@ -1949,14 +1949,39 @@
                 </div>
                 <div data-bind="foreach: filteredReportsAndFolders">
                     <div class="card mb-3">
-                        <div class="card-header d-flex align-items-center gap-2">
-                            <input type="checkbox" data-bind="checked: allReportsSelected">
-                            <strong data-bind="text: folder"></strong>
+                        <div class="card-header">
+                            <div class="d-flex fw-bold">
+                                <div class="w-50 flex-grow-1">
+                                    <input type="checkbox" data-bind="checked: allReportsSelected">
+                                    <span data-bind="text: folder"></span>
+                                </div>
+                                <div class="w-25">View</div>
+                                <div class="w-25">Manage</div>
+                                <div class="w-25">Delete</div>
+                                <div class="w-25">Client ID</div>
+                            </div>
                         </div>
+                        <!-- Reports List -->
                         <ul class="list-group list-group-flush" data-bind="foreach: reports">
-                            <li class="list-group-item d-flex align-items-center gap-2">
-                                <input type="checkbox" data-bind="checked: isSelected">
-                                <span data-bind="text: reportName"></span>
+                            <li class="list-group-item">
+                                <div class="d-flex align-items-center">
+                                    <div class="w-50 flex-grow-1">
+                                        <input type="checkbox" data-bind="checked: isSelected">
+                                        <span data-bind="text: reportName"></span>
+                                    </div>
+                                    <div class="w-25">
+                                        <span class="badge text-bg-info text-white" data-bind="text: viewOnlyUserRole ? viewOnlyUserRole: 'Any User'"></span>
+                                    </div>
+                                    <div class="w-25">
+                                        <span class="badge text-bg-info text-white" data-bind="text: userRole ? userRole : 'Any User'"></span>
+                                    </div>
+                                    <div class="w-25">
+                                        <span class="badge text-bg-info text-white" data-bind="text: deleteOnlyUserRole ? deleteOnlyUserRole : 'Any User'"></span>
+                                    </div>
+                                    <div class="w-25">
+                                        <span class="badge text-bg-info text-white" data-bind="text: clientId ? clientId : 'Any User'"></span>
+                                    </div>
+                                </div>
                             </li>
                         </ul>
                         <div class="p-2 text-muted" data-bind="visible: reports.length === 0">
@@ -1968,6 +1993,24 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 <button class="btn btn-success" data-bind="click: exportFoldersReportJson">Export Selected</button>
+                <button class="btn btn-primary" data-bind="click: $root.openApplySecurityModal, enable: $root.anyReportSelected">Apply Security to All Selected</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal" id="applySecurityModal" tabindex="-1" aria-hidden="true" >
+    <div class="modal-dialog modal-lg" data-bind="if: $root.anyReportSelected">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Apply Security to All Selected</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div data-bind="template: { name: 'manage-access-template', data: $root.manageAccess }"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button class="btn btn-primary" data-bind="click: $root.applySecurityToAll">Apply to All</button>
             </div>
         </div>
     </div>

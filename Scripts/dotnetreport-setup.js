@@ -720,17 +720,6 @@ var manageViewModel = function (options) {
 			}
 		});
 	};
-	self.getDisplayFormat=function(value) {
-		if (value && value.trim().startsWith("{")) {
-			try {
-				var obj = JSON.parse(value);
-				return obj.exportFormat || value;
-			} catch (e) {
-				return value;
-			}
-		}
-		return value;
-	}
 	self.deleteSchedule = function (e) {
 		bootbox.confirm("Are you sure you would like to delete this Schedule? This cannot be undone.", function (r) {
 			if (r) {
@@ -1632,7 +1621,7 @@ var manageViewModel = function (options) {
 					r.changeAccess = ko.observable(false);
 					r.changeAccess.subscribe(function (x) {
 						if (x) {
-							_.forEach(folderReports, function (f) {
+							_.forEach(allReports[0], function (f) {
 								if (f !== r) {
 									f.changeAccess(false);
 								}
@@ -1802,6 +1791,55 @@ var manageViewModel = function (options) {
 			};
 		});
 	});
+	self.anyReportSelected = ko.computed(function () {
+		var folders = ko.unwrap(self.reportsAndFolders);
+		for (var i = 0; i < folders.length; i++) {
+			var reports = ko.unwrap(folders[i].reports);
+			for (var j = 0; j < reports.length; j++) {
+				if (ko.unwrap(reports[j].isSelected)) {
+					return true;
+				}
+			}
+		}
+		return false;
+	});
+	self.openApplySecurityModal = function () {
+		const selected = [];
+		self.reportsAndFolders().forEach(folder => {
+			if (folder.isSelected && folder.isSelected()) {
+				selected.push(folder);
+			}
+			folder.reports.forEach(r => {
+				if (r.isSelected && r.isSelected()) {
+					selected.push(r);
+				}
+			});
+		});
+		if (selected.length === 0) {
+			toastr.error("No reports or folders selected!");
+			return;
+		}
+		self.selectedForSecurity = selected;
+		const modal = new bootstrap.Modal(document.getElementById("applySecurityModal"));
+		modal.show();
+	};
+	self.applySecurityToAll = function () {
+		if (!self.selectedForSecurity || self.selectedForSecurity.length === 0) {
+			toastr.error("No items selected to apply security!");
+			return;
+		}
+		self.selectedForSecurity.forEach(r => {
+			r.userId(self.manageAccess.getAsList(self.manageAccess.users));
+			r.viewOnlyUserId(self.manageAccess.getAsList(self.manageAccess.viewOnlyUsers));
+			r.deleteOnlyUserId(self.manageAccess.getAsList(self.manageAccess.deleteOnlyUsers));
+			r.userRole(self.manageAccess.getAsList(self.manageAccess.userRoles));
+			r.viewOnlyUserRole(self.manageAccess.getAsList(self.manageAccess.viewOnlyUserRoles));
+			r.deleteOnlyUserRole(self.manageAccess.getAsList(self.manageAccess.deleteOnlyUserRoles));
+			r.clientId(self.manageAccess.clientId());
+			r.saveAccessChanges();
+		});
+		toastr.success("Security applied to all selected items!");
+	};
 	self.selectAllFiltered = function () {
 		self.filteredReportsAndFolders().forEach(folder => {
 			folder.reports.forEach(r => r.isSelected(true));
