@@ -281,9 +281,9 @@
                                     <small class="text-muted d-block">Remove Word Export option.</small>
                                 </div>
                                 <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" data-bind="checked: showPdfPageSize">
-                                    <label class="form-check-label">Show Page Size on PDF export</label>
-                                    <small class="text-muted d-block">Display document dimensions in exported PDF.</small>
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: showPageSize">
+                                    <label class="form-check-label">Show Page Size on PDF & Word export</label>
+                                    <small class="text-muted d-block">Display document dimensions in exported PDF & Word.</small>
                                 </div>
                             </div>
                         </div>
@@ -1001,7 +1001,7 @@
                                 <tr>
                                     <td data-bind="text: ScheduleDisplay"></td>
                                     <td data-bind="text: EmailTo"></td>
-                                    <td data-bind="text: Format"></td>
+                                    <td data-bind="text: $root.getDisplayFormat(Format)"></td>
                                     <td data-bind="text: LastRun"></td>
                                     <td data-bind="text: UserId ? UserId : 'N/A'"></td>
                                     <td data-bind="text: Timezone ? Timezone : 'N/A'"></td>

@@ -18,8 +18,29 @@ namespace ReportBuilder.Web.Jobs
         public string DataFilters { get; set; }
         public string TimeZone { get; set; }
         public string SelectedPageSize { get; set; }
+        public string SelectedPageOrientation { get; set; }
         public DateTime? ScheduleStart { get; set; }
         public DateTime? ScheduleEnd { get; set; }
+        public void NormalizeFormat()
+        {
+            if (!string.IsNullOrEmpty(Format) && Format.Trim().StartsWith("{"))
+            {
+                try
+                {
+                    var formatObj = JsonConvert.DeserializeObject<FormatJson>(Format);
+                    if (formatObj != null)
+                    {
+                        Format = formatObj.exportFormat;
+                        SelectedPageSize = formatObj.size;
+                        SelectedPageOrientation = formatObj.orientation;
+                    }
+                }
+                catch
+                {
+                    // ignore if invalid json
+                }
+            }
+        }
     }
     public class ReportWithSchedule
     {
@@ -33,7 +54,12 @@ namespace ReportBuilder.Web.Jobs
         public List<ReportSchedule> Schedules { get; set; }
 
     }
-
+    public class FormatJson
+    {
+        public string exportFormat { get; set; }
+        public string size { get; set; }
+        public string orientation { get; set; }
+    }
     public class JobScheduler
     {
         public static string WebAppRootUrl = "";
@@ -102,6 +128,7 @@ namespace ReportBuilder.Web.Jobs
                     {
                         try
                         {
+                            schedule.NormalizeFormat();
                             var chron = new CronExpression(schedule.Schedule);
                             var lastRun = !String.IsNullOrEmpty(schedule.LastRun) ? Convert.ToDateTime(schedule.LastRun) : DateTimeOffset.UtcNow.AddMinutes(-10);
                             var nextRun = chron.GetTimeAfter(lastRun);
@@ -157,7 +184,7 @@ namespace ReportBuilder.Web.Jobs
                                             foreach (var r in reportsToRun)
                                             {
                                                 pivotInfo = PreparePivotData(r.Columns);
-                                                fileData = await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", r.ReportId, r.ReportSql, r.ConnectKey, r.ReportName, schedule.UserId, clientId, JsonConvert.SerializeObject(schedule.DataFilters), expandSqls: r.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction,pageSize:schedule.SelectedPageSize);
+                                                fileData = await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", r.ReportId, r.ReportSql, r.ConnectKey, r.ReportName, schedule.UserId, clientId, JsonConvert.SerializeObject(schedule.DataFilters), expandSqls: r.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction,pageSize:schedule.SelectedPageSize,pageOrientation:schedule.SelectedPageOrientation);
                                                 files.Add(fileData);
                                             }
 
@@ -166,7 +193,7 @@ namespace ReportBuilder.Web.Jobs
                                         else
                                         {
                                             pivotInfo = PreparePivotData(reportToRun.Columns);
-                                            fileData = await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", reportToRun.ReportId, reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, schedule.UserId, clientId, JsonConvert.SerializeObject(schedule.DataFilters), expandSqls: reportToRun.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, pageSize: schedule.SelectedPageSize);
+                                            fileData = await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", reportToRun.ReportId, reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, schedule.UserId, clientId, JsonConvert.SerializeObject(schedule.DataFilters), expandSqls: reportToRun.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, pageSize: schedule.SelectedPageSize, pageOrientation: schedule.SelectedPageOrientation);
                                         }
                                         fileExt = ".pdf"; 
                                         break;
@@ -185,7 +212,7 @@ namespace ReportBuilder.Web.Jobs
                                                 pivotInfo = PreparePivotData(r.Columns);
                                                 imageData = Convert.ToBase64String(await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", r.ReportId, r.ReportSql, r.ConnectKey, r.ReportName, schedule.UserId, clientId, JsonConvert.SerializeObject(schedule.DataFilters), expandSqls: r.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, imageOnly: true));
 
-                                                fileData = await DotNetReportHelper.GetWordFile(r.ReportSql, r.ConnectKey, r.ReportName, columns: r.Columns, includeSubtotal: r.IncludeSubTotals, pivot: r.ReportType == "Pivot", chartData: imageData, expandSqls: r.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction);
+                                                fileData = await DotNetReportHelper.GetWordFile(r.ReportSql, r.ConnectKey, r.ReportName, columns: r.Columns, includeSubtotal: r.IncludeSubTotals, pivot: r.ReportType == "Pivot", chartData: imageData, expandSqls: r.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, pageSize: schedule.SelectedPageSize, pageOrientation: schedule.SelectedPageOrientation);
                                                 files.Add(fileData);
                                             }
 
@@ -196,7 +223,7 @@ namespace ReportBuilder.Web.Jobs
                                             pivotInfo = PreparePivotData(reportToRun.Columns);
                                             fileExt = ".docx";
                                             imageData = Convert.ToBase64String(await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", reportToRun.ReportId, reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, schedule.UserId, clientId, JsonConvert.SerializeObject(schedule.DataFilters), expandSqls: reportToRun.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, imageOnly: true));
-                                            fileData = await DotNetReportHelper.GetWordFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: reportToRun.Columns, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot", chartData: imageData, expandSqls: reportToRun.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction);
+                                            fileData = await DotNetReportHelper.GetWordFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: reportToRun.Columns, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot", chartData: imageData, expandSqls: reportToRun.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, pageSize: schedule.SelectedPageSize, pageOrientation: schedule.SelectedPageOrientation);
                                         }
                                         break;
 

@@ -711,7 +711,17 @@ var manageViewModel = function (options) {
 			}
 		});
 	};
-
+	self.getDisplayFormat=function(value) {
+		if (value && value.trim().startsWith("{")) {
+			try {
+				var obj = JSON.parse(value);
+				return obj.exportFormat || value;
+			} catch (e) {
+				return value;
+			}
+		}
+		return value;
+	}
 	self.deleteSchedule = function (e) {
 		bootbox.confirm("Are you sure you would like to delete this Schedule? This cannot be undone.", function (r) {
 			if (r) {
@@ -2570,7 +2580,7 @@ var settingPageViewModel = function (options) {
 	self.useAltPivot = ko.observable(false);
 	self.dontXmlExport = ko.observable(false);
 	self.dontWordExport = ko.observable(false);
-	self.showPdfPageSize = ko.observable(false);
+	self.showPageSize = ko.observable(false);
 
 	self.appThemes = ko.observableArray([
 		{ name: 'Default', value: 'default' },
@@ -2647,7 +2657,7 @@ var settingPageViewModel = function (options) {
 							useAltPivot: self.useAltPivot(),
 							dontXmlExport: self.dontXmlExport(),
 							dontWordExport: self.dontWordExport(),
-							showPdfPageSize: self.showPdfPageSize()
+							showPageSize: self.showPageSize()
 						})
 					})
 				})
@@ -2701,7 +2711,7 @@ var settingPageViewModel = function (options) {
 				self.useAltPivot(settings.useAltPivot);
 				self.dontXmlExport(settings.dontXmlExport);
 				self.dontWordExport(settings.dontWordExport);
-				self.showPdfPageSize(settings.showPdfPageSize);
+				self.showPageSize(settings.showPageSize);
 ;
 				//// Optionally, you can manually trigger change event for select elements
 				$('#themeSelect').trigger('change');
