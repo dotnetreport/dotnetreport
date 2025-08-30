@@ -127,6 +127,7 @@ gulp.task("scripts", function (done) {
 	tasks.push(function (cb) { pump(gulp.src("Scripts/dotnetreport-helper.js"), gulp.dest("wwwroot/js/"), cb); });
 	tasks.push(function (cb) { pump(gulp.src("Scripts/dotnetreport-setup.js"),gulp.dest("wwwroot/js/"),cb);})
 	tasks.push(function (cb) { pump(gulp.src("Content/dotnetreport.css"), gulp.dest("wwwroot/css/"), cb); });
+	tasks.push(function (cb) { pump(gulp.src("Scripts/summernote-ext.js"), gulp.dest("wwwroot/lib/summernote/"), cb); })
 
 	tasks.push(function (cb) {
 		pump(

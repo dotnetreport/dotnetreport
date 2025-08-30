@@ -1411,10 +1411,15 @@ var reportViewModel = function (options) {
 			$('#summernote-editor').summernote({
 				height: 300,
 				popover: {
+					table: [
+						['add', ['addRowDown', 'addRowUp', 'addColLeft', 'addColRight', 'toggle']],
+						['delete', ['deleteRow', 'deleteCol', 'deleteTable']],
+						['style', ['rowBg', 'rowText', 'colBg', 'colText', 'cellBorder']]
+					],
 					image: [],
 					link: [],
 					air: []
-				},
+				},		
 				toolbar: [
 					['style', ['style']],
 					['font', ['bold', 'italic', 'underline', 'clear']],
@@ -1423,7 +1428,7 @@ var reportViewModel = function (options) {
 					['table', ['table']],
 					['insert', ['link', 'picture']],
 					['view', ['codeview']]
-				],
+				],				
 				popoverContainer: 'body',
 				dialogsInBody: true
 			});
