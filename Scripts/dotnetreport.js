@@ -230,7 +230,7 @@ function scheduleBuilder(userId, getTimeZonesUrl,appSettings) {
 
 	self.getTimezones = function () {
 		ajaxcall({
-			url: getTimeZonesUrl || '/api/DotNetReportApi/GetAllTimezones',
+			url: getTimeZonesUrl || '/DotNetReportApi/GetAllTimezones',
 			noBlocking: true,
 			type: 'GET'
 		}).done(function (timezonesData) {
