@@ -711,17 +711,6 @@ var manageViewModel = function (options) {
 			}
 		});
 	};
-	self.getDisplayFormat=function(value) {
-		if (value && value.trim().startsWith("{")) {
-			try {
-				var obj = JSON.parse(value);
-				return obj.exportFormat || value;
-			} catch (e) {
-				return value;
-			}
-		}
-		return value;
-	}
 	self.deleteSchedule = function (e) {
 		bootbox.confirm("Are you sure you would like to delete this Schedule? This cannot be undone.", function (r) {
 			if (r) {
