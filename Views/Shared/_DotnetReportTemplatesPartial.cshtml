@@ -87,7 +87,7 @@
         </select>
         <!-- /ko -->
         <!-- ko if: ['Int','Money','Float','Double','Date','DateTime','Boolean'].indexOf(fieldType) == -1 && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
-        <input class="form-control" type="text" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default',attr: {id: 'ctl-'+uiId }" required />
+        <input class="form-control" type="text" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default',attr: {id: 'ctl-' + $element.closest('[data-parentprefix]').getAttribute('data-parentprefix') + '-' + uiId}" required />
         <!-- /ko -->
         <!-- /ko -->
         <!-- ko if: hasForeignKey && $parent.Operator() != 'all' -->
@@ -635,7 +635,7 @@
                         </div>
                     </div>
                     <div data-bind="with: Field" class="col-sm-5 col-xs-5">
-                        <div data-bind="if: $parent.Apply">
+                        <div data-bind="if: $parent.Apply" data-parentprefix="F" >
                             <div data-bind="template: 'report-filter', data: $data"></div>
                         </div>
                     </div>
@@ -692,7 +692,7 @@
                                 </div>
                             </div>
                             <div class="col-md-5">
-                                <div data-bind="with: Field">
+                                <div data-bind="with: Field" data-parentprefix="M">
                                     <div data-bind="template: 'report-filter', data: $data"></div>
                                 </div>
                                 <!-- ko if: Field() && Field().fieldType == 'DateTime' && Operator() == 'range' && $index()==0 -->
@@ -772,7 +772,7 @@
                             <select class="form-select" style="width: 100%;" data-bind="options: operators, value: Operator" required></select>
                         </div>
                     </td>
-                    <td data-bind="with: Field">
+                    <td data-bind="with: Field" data-parentprefix="P">
                         <div data-bind="template: 'report-filter', data: $data"></div>
                     </td>
                     <td></td>
@@ -798,7 +798,7 @@
                     <select class="form-select" required data-bind="options: options, value: selectedOption" style="min-width: 80px;"></select>
                 </div>
                 <div data-bind="if: selectedOption() == 'once'" class="me-3 d-flex align-items-center">
-                    &nbsp;on&nbsp;<input data-bind="datepicker: selectedDate" class="form-control" required />
+                    &nbsp;on&nbsp;<input data-bind="datepicker: selectedDate,datepickerOptions: {value: selectedDate}" class="form-control" required />
                 </div>
                 <div class="d-flex align-items-center">
                     <div data-bind="if: showDays" class="d-flex align-items-center">
@@ -887,7 +887,7 @@
                         </div>
                     </div>
                     <div class="col-sm-4" data-bind="if: hasScheduleStart">
-                        <input type="text" class="form-control" data-bind="datepicker: scheduleStart" title="Scheduled Report will not be sent before this date" required />
+                        <input type="text" class="form-control" data-bind="datepicker: scheduleStart,datepickerOptions: {value: scheduleStart}" title="Scheduled Report will not be sent before this date" required />
                     </div>
                 </div>
             </div>
@@ -902,7 +902,7 @@
                         </div>
                     </div>
                     <div class="col-sm-4" data-bind="if: hasScheduleEnd">
-                        <input type="text" class="form-control" data-bind="datepicker: scheduleEnd" title="Scheduled Report will not be sent after this date" required />
+                        <input type="text" class="form-control" data-bind="datepicker: scheduleEnd,datepickerOptions: {value: scheduleEnd}" title="Scheduled Report will not be sent after this date" required />
                     </div>
                 </div>
             </div>
@@ -1127,7 +1127,7 @@
                                 </div>
                             </div>
                             <div class="col-md-4">
-                                <div data-bind="with: Field">
+                                <div data-bind="with: Field" data-parentprefix="C">
                                     <div data-bind="template: 'report-filter', data: $data"></div>
                                 </div>
                             </div>
@@ -2035,187 +2035,211 @@
 </script>
 
 <script type="text/html" id="chart-settings">
-        <div class="chart-container pull-right" data-bind="if: ReportType() === 'Bar' || ReportType() === 'Pie' || ReportType() === 'Line'">
-        <button class="btn btn-light btn-sm d-flex align-items-center mt-2 chart-settings-btn" data-bind="click: toggleChartSettings" title="Chart settings">
+    <div class="chart-container pull-right">
+        <button class="btn btn-light btn-sm d-flex align-items-center mt-2 chart-settings-btn"
+                data-bind="click: toggleChartSettings" title="Report settings">
             <i class="fa fa-cog"></i>
         </button>
 
         <div class="chart-settings-panel border p-2 shadow-sm bg-light" data-bind="visible: showSettings">
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <h6 class="mb-0">Chart Settings</h6>
+                <h6 class="mb-0">Report Settings</h6>
                 <button class="btn btn-sm btn-close" data-bind="click: toggleChartSettings"></button>
             </div>
-            <div class="mb-2">
-                <div class="btn-group" role="group" data-bind="visible: ReportType() === 'Bar' || ReportType() === 'Pie' || ReportType() === 'Line'">
-                    <button type="button" class="btn btn-light" data-bs-toggle="tooltip" title="Bar Chart"
-                            data-bind="css: { 'active': ReportType() === 'Bar' }, click: function() { ReportType('Bar'); }">
-                        <span class="fa fa-bar-chart"></span>
-                    </button>
-                    <button type="button" class="btn btn-light" data-bs-toggle="tooltip" title="Pie Chart"
-                            data-bind="css: { 'active': ReportType() === 'Pie' }, click: function() { ReportType('Pie'); }">
-                        <span class="fa fa-pie-chart"></span>
-                    </button>
-                    <button type="button" class="btn btn-light" data-bs-toggle="tooltip" title="Line Chart"
-                            data-bind="css: { 'active': ReportType() === 'Line' }, click: function() { ReportType('Line'); }">
-                        <span class="fa fa-line-chart"></span>
-                    </button>
-                </div>
-            </div>
-            <div data-bind="visible: ReportType()=='Bar'">
-                <div class="form-group row">
-                    <div class="checkbox col-6">
-                        <label>
-                            <input type="checkbox" data-bind="checked: barChartHorizontal" />
-                            Horizontal
-                        </label>
+             <ul class="nav nav-tabs nav-sm mb-2 small" data-bind="visible: ReportType() === 'Bar' || ReportType() === 'Pie' || ReportType() === 'Line'">
+                <li class="nav-item">
+                    <a class="nav-link"
+                       data-bs-toggle="tab"
+                       data-bind="attr: { href: '#chartTab-' + ReportID() }, css: { active: ReportType() === 'Bar' || ReportType() === 'Pie' || ReportType() === 'Line' }">
+                        Chart
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link"
+                       data-bs-toggle="tab"
+                       data-bind="attr: { href: '#tableTab-' + ReportID() }, css: { active: !(ReportType() === 'Bar' || ReportType() === 'Pie' || ReportType() === 'Line') }">
+                        Table
+                    </a>
+                </li>
+            </ul>
+            <div class="tab-content small">
+                <div class="tab-pane fade" 
+                     data-bind="attr: { id: 'chartTab-' + ReportID() }, css: { 'show active': ReportType() === 'Bar' || ReportType() === 'Pie' || ReportType() === 'Line' }">
+                    <div class="mb-2">
+                        <div class="btn-group" role="group" data-bind="visible: ReportType() === 'Bar' || ReportType() === 'Pie' || ReportType() === 'Line'">
+                            <button type="button" class="btn btn-light" data-bs-toggle="tooltip" title="Bar Chart"
+                                    data-bind="css: { 'active': ReportType() === 'Bar' }, click: function() { ReportType('Bar'); }">
+                                <span class="fa fa-bar-chart"></span>
+                            </button>
+                            <button type="button" class="btn btn-light" data-bs-toggle="tooltip" title="Pie Chart"
+                                    data-bind="css: { 'active': ReportType() === 'Pie' }, click: function() { ReportType('Pie'); }">
+                                <span class="fa fa-pie-chart"></span>
+                            </button>
+                            <button type="button" class="btn btn-light" data-bs-toggle="tooltip" title="Line Chart"
+                                    data-bind="css: { 'active': ReportType() === 'Line' }, click: function() { ReportType('Line'); }">
+                                <span class="fa fa-line-chart"></span>
+                            </button>
+                        </div>
                     </div>
-                    <div class="checkbox col-6">
-                        <label>
-                            <input type="checkbox" data-bind="checked: barChartStacked" />
-                            Stacked
-                        </label>
+                    <div data-bind="visible: ReportType()=='Bar'">
+                        <div class="form-group row">
+                            <div class="checkbox col-6">
+                                <label><input type="checkbox" data-bind="checked: barChartHorizontal" /> Horizontal</label>
+                            </div>
+                            <div class="checkbox col-6">
+                                <label><input type="checkbox" data-bind="checked: barChartStacked" /> Stacked</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div data-bind="visible: ReportType()=='Pie'">
+                        <div class="form-group row">
+                            <div class="checkbox col-6">
+                                <label><input type="checkbox" data-bind="checked: pieChartDonut" /> Donut</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div data-bind="visible: ReportType()=='Line'">
+                        <div class="form-group row">
+                            <div class="checkbox col-6">
+                                <label><input type="checkbox" data-bind="checked: lineChartArea" /> Area</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Background Color</label>
+                        <div class="d-flex align-items-center flex-wrap">
+                            <input type="color" class="color-picker" data-bind="value: chartOptions().backgroundColor, attr: { placeholder: 'Select' }, event: { change: updateChart }">
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Series Colors</label>
+                        <div class="d-flex flex-wrap" data-bind="foreach: chartOptions().seriesColors">
+                            <div class="color-box me-2">
+                                <input type="color" class="color-picker"
+                                       data-bind="value: $data, event: { input: function(data, event) { $parent.updateSeriesColor($index(), event.target.value); } }">
+                                <button class="btn btn-sm btn-danger remove-color" data-bind="click: $parent.removeSeriesColor">&times;</button>
+                            </div>
+                        </div>
+                        <button class="color-box btn btn-sm btn-secondary" data-bind="click: addSeriesColor" title="Add Series Color" style="margin-top: -7px;">
+                            <i class="fa fa-plus"></i>
+                        </button>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <div>
+                            <label class="form-label small">Legend Position</label>
+                            <select class="form-select form-select-sm" data-bind="value: chartOptions().legendPosition, event: { change: updateChart }">
+                                <option value="right">Right</option>
+                                <option value="top">Top</option>
+                                <option value="bottom">Bottom</option>
+                                <option value="none">None</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label small">Font Size</label>
+                            <input type="number" class="form-control form-control-sm font-size-input" data-bind="value: chartOptions().fontSize, event: { change: updateChart }">
+                        </div>
+                    </div>
+                    <div data-bind="visible: ReportType()!='Pie'">
+                        <div class="form-check form-switch small mb-1">
+                            <input class="form-check-input" type="checkbox" data-bind="checked: chartOptions().showXAxisLabel, event: { change: updateChart }">
+                            <label class="form-check-label">X-Axis Label</label>
+                        </div>
+                        <div class="form-check form-switch small mb-1">
+                            <input class="form-check-input" type="checkbox" data-bind="checked: chartOptions().showYAxisLabel, event: { change: updateChart }">
+                            <label class="form-check-label">Y-Axis Label</label>
+                        </div>
+                        <div class="form-check form-switch small mb-1" data-bind="visible: ReportType() !== 'Pie'">
+                            <input class="form-check-input" type="checkbox" data-bind="checked: chartOptions().showGridlines, event: { change: updateChart }">
+                            <label class="form-check-label">Gridlines</label>
+                        </div>
+                        <div class="form-check form-switch small mb-1">
+                            <input class="form-check-input" type="checkbox" data-bind="checked: chartOptions().showSmallValuesOnLabel, event: { change: updateChart }">
+                            <label class="form-check-label">Show Small Values On Label</label>
+                        </div>
+                        <div class="form-group small mb-1">
+                            <label class="form-label">Y-Axis Format</label>
+                            <input type="text" class="form-control form-control-sm" placeholder="#,##0.00" data-bind="value: chartOptions().yAxisFormat, event: { change: updateChart }" />
+                        </div>
+                        <div class="form-group small mb-1 d-flex gap-2">
+                            <div class="w-50">
+                                <label class="form-label">Y-Axis Min</label>
+                                <input type="number" class="form-control form-control-sm" data-bind="value: chartOptions().yMin, event: { change: updateChart }" />
+                            </div>
+                            <div class="w-50">
+                                <label class="form-label">Y-Axis Max</label>
+                                <input type="number" class="form-control form-control-sm" data-bind="value: chartOptions().yMax, event: { change: updateChart }" />
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div data-bind="visible: ReportType()=='Pie'">
-                <div class="form-group row">
-                    <div class="checkbox col-6">
-                        <label>
-                            <input type="checkbox" data-bind="checked: pieChartDonut" />
-                            Donut
-                        </label>
-                    </div>
-                </div>
-            </div>
-                <div data-bind="visible: ReportType()=='Line'">
+
+                <div class="tab-pane fade"
+                     data-bind="attr: { id: 'tableTab-' + ReportID() }, css: { 'show active': !(ReportType() === 'Bar' || ReportType() === 'Pie' || ReportType() === 'Line') }">                   
                     <div class="form-group row">
-                        <div class="checkbox col-6">
-                            <label>
-                                <input type="checkbox" data-bind="checked: lineChartArea" />
-                                Area
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-            <div class="mb-2">
-                <label class="form-label small">Background Color</label>
-                <div class="d-flex align-items-center flex-wrap">
-                    <input type="color" class="color-picker" data-bind="value: chartOptions().backgroundColor, attr: { placeholder: 'Select' }, event: { change: updateChart }">
-                </div>
-            </div>
-
-            <div class="mb-2">
-                <label class="form-label small">Series Colors</label>
-                <div class="d-flex align-items-center flex-wrap">
-                    <div class="d-flex flex-wrap" data-bind="foreach: chartOptions().seriesColors">
-                        <div class="color-box me-2">
+                        <div class="mb-2 col-6">
+                            <label class="form-label small">Header Back Color</label>
                             <input type="color" class="color-picker"
-                                    data-bind="value: $data, event: { input: function(data, event) { $parent.updateSeriesColor($index(), event.target.value); } }">
-                            <button class="btn btn-sm btn-danger remove-color" data-bind="click: $parent.removeSeriesColor">&times;</button>
+                                   data-bind="value: tableheaderBackColor, event: { change: updateTable }"/>
+                        </div>
+                        <div class="mb-2 col-6">
+                            <label class="form-label small">Header Font Color</label>
+                            <input type="color" class="color-picker"
+                                   data-bind="value: tableheaderFontColor, event: { change: updateTable }"/>
                         </div>
                     </div>
-                    <button class="color-box btn btn-sm btn-secondary" data-bind="click: addSeriesColor" title="Add Series Color" style="margin-top: -7px;">
-                        <i class="fa fa-plus"></i>
-                    </button>
-                </div>
-            </div>
-
-            <div class="d-flex justify-content-between mb-1">
-                <div>
-                    <label class="form-label small">Legend Position</label>
-                    <select class="form-select form-select-sm" data-bind="value: chartOptions().legendPosition, notifyChange: updateLegend">
-                        <option value="right">Right</option>
-                        @* <option value="left">Left</option> *@
-                        <option value="top">Top</option>
-                        <option value="bottom">Bottom</option>
-                        <option value="none">None</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="form-label small">Font Size</label>
-                    <input type="number" class="form-control form-control-sm font-size-input" data-bind="value: chartOptions().fontSize, event: { change: updateChart }">
-                </div>
-            </div>
-
-            <div data-bind="visible: ReportType()!='Pie'">
-                <div class="form-check form-switch small mb-1">
-                    <input class="form-check-input" type="checkbox" data-bind="checked: chartOptions().showXAxisLabel, event: { change: updateChart }">
-                    <label class="form-check-label">X-Axis Label</label>
-                </div>
-
-                <div class="form-check form-switch small mb-1">
-                    <input class="form-check-input" type="checkbox" data-bind="checked: chartOptions().showYAxisLabel, event: { change: updateChart }">
-                    <label class="form-check-label">Y-Axis Label</label>
-                </div>
-                <div class="form-check form-switch small mb-1" data-bind="visible: ReportType() !== 'Pie'">
-                    <input class="form-check-input" type="checkbox" data-bind="checked: chartOptions().showGridlines, event: { change: updateChart }">
-                    <label class="form-check-label">Gridlines</label>
-                </div>
-                <div class="form-check form-switch small mb-1">
-                    <input class="form-check-input" type="checkbox" data-bind="checked: chartOptions().showSmallValuesOnLabel, event: { change: updateChart }">
-                    <label class="form-check-label">Show Small Values On Label</label>
-                </div>
-                <div class="form-group small mb-1">
-                    <label class="form-label">Y-Axis Format</label>
-                    <input type="text" class="form-control form-control-sm" placeholder="e.g. #,##0.00" data-bind="value: chartOptions().yAxisFormat, event: { change: updateChart }" />
-                </div>
-                <div class="form-group small mb-1 d-flex gap-2">
-                     <div class="w-50">
-                         <label class="form-label">Y-Axis Min</label>
-                         <input type="number" class="form-control form-control-sm" data-bind="value: chartOptions().yMin, event: { change: updateChart }" />
-                     </div>
-                     <div class="w-50">
-                         <label class="form-label">Y-Axis Max</label>
-                         <input type="number" class="form-control form-control-sm" data-bind="value: chartOptions().yMax, event: { change: updateChart }" />
-                     </div>
+                    <div class="form-group row">
+                        <div class="mb-2 col-6">
+                            <label class="form-label small">Row Back Color</label>
+                            <input type="color" class="color-picker"
+                                   data-bind="value: tableRowBackColor, event: { change: updateTable }"/>
+                        </div>
+                        <div class="mb-2 col-6">
+                            <label class="form-label small">Row Font Color</label>
+                            <input type="color" class="color-picker"
+                                   data-bind="value: tableRowFontColor, event: { change: updateTable }"/>
+                        </div>
+                    </div>
+                    <div class="form-group row" style="display: none;">
+                        <div class="mb-2 col-6">
+                            <label class="form-label small">Alt Row Back Color</label>
+                            <input type="color" class="color-picker"
+                                   data-bind="value: tableAltRowBackColor, event: { change: updateTable }"/>
+                        </div>
+                        <div class="mb-2 col-6">
+                            <label class="form-label small">Alt Row Font Color</label>
+                            <input type="color" class="color-picker"
+                                   data-bind="value: tableAltRowFontColor, event: { change: updateTable }"/>
+                        </div>
+                    </div>
+                    <div class="form-group mb-2" style="display: none;">
+                        <label class="form-label small">Borders</label>
+                        <div class="btn-group d-flex flex-wrap">
+                            <button type="button" class="btn btn-light btn-sm flex-fill"
+                                    data-bind="click: function(){ tableBorder('none'); updateTable(); }, css: { active: tableBorder() === 'none' }">None</button>
+                            <button type="button" class="btn btn-light btn-sm flex-fill"
+                                    data-bind="click: function(){ tableBorder('all'); updateTable(); }, css: { active: tableBorder() === 'all' }">All</button>
+                            <button type="button" class="btn btn-light btn-sm flex-fill"
+                                    data-bind="click: function(){ tableBorder('outer'); updateTable(); }, css: { active: tableBorder() === 'outer' }">Outside</button>
+                            <button type="button" class="btn btn-light btn-sm flex-fill"
+                                    data-bind="click: function(){ tableBorder('inner'); updateTable(); }, css: { active: tableBorder() === 'inner' }">Inside</button>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="mb-2 col-6" style="display: none;">
+                            <label class="form-label small">Border Color</label>
+                            <input type="color" class="color-picker"
+                               data-bind="value: tableBorderColor, event: { change: updateTable }"/>
+                        </div>
+                        <div class="mb-2 col-6 d-flex align-items-end">
+                             <button class="btn btn-sm small btn-outline-secondary" data-bind="click: clearTableSettings">
+                                Clear
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-
-</script>
-<script type="text/html" id="table-settings">
-        <div class="chart-container pull-right">
-        <button class="btn btn-sm btn-secondary" data-bind="click: toggleTableSettings" title="Table settings">
-            <i class="fa fa-cog"></i>
-        </button>
-        <div class="chart-settings-panel border p-2 shadow-sm bg-light" data-bind="visible: showTableSettings">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <h6 class="mb-0">Table Settings</h6>
-                <button class="btn btn-sm btn-close" data-bind="click: toggleTableSettings"></button>
-            </div>
-             <div class="form-group row">
-            <div class="mb-2 col-6">
-                <label class="form-label small">Header Back Color</label>
-                <div class="d-flex align-items-center flex-wrap">
-                    <input type="color" class="color-picker" data-bind="value: tableheaderBackColor,attr: { placeholder: 'Select' }, event: { change: updateTable }" />
-                </div>
-            </div>
-            <div class="mb-2 col-6">
-                <label class="form-label small">Header Font Color</label>
-                <div class="d-flex align-items-center flex-wrap">
-                    <input type="color" class="color-picker" data-bind="value: tableheaderFontColor,attr: { placeholder: 'Select' }, event: { change: updateTable }" />
-                </div>
-            </div>
-             </div>
-             <div class="form-group row">
-            <div class="mb-2 col-6">
-                <label class="form-label small">Row Back Color</label>
-                <div class="d-flex align-items-center flex-wrap">
-                    <input type="color" class="color-picker" data-bind="value: tableRowBackColor,attr: { placeholder: 'Select' }, event: { change: updateTable }" />
-                </div>
-            </div>
-            <div class="mb-2 col-6">
-                <label class="form-label small">Row Font Color</label>
-                <div class="d-flex align-items-center flex-wrap">
-                    <input type="color" class="color-picker" data-bind="value: tableRowFontColor,attr: { placeholder: 'Select' }, event: { change: updateTable }" />
-                </div>
-            </div>
-             </div>
-        </div>
-    </div>
-
 </script>
 
 <div class="modal" id="drilldownModal" tabindex="-1" role="dialog" aria-hidden="true">
@@ -2322,9 +2346,9 @@
         </div>
     </div>
 </div>
-<script type="text/html" id="pdf-options-template">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content" data-bind="with: PdfPageSize">
+<script type="text/html" id="pdf-options-schedule-template">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content" data-bind="with: PdfPage">
                 <div class="modal-header">
                     <h5 class="modal-title" id="pdfOptionsScheduleModalLabel">
                         <i class="fa fa-file-pdf-o me-2"></i> Set PDF Page Size
@@ -2368,16 +2392,195 @@
                         </div>
                         <div class="alert alert-info p-2 small mt-2">
                             This PDF will be exported using the selected page size. Ensure your content fits well.
-                            If the content width exceeds the selected size, it will default to A4.
+                            If the content width exceeds the selected size, it will default to Letter.
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-success" data-bs-dismiss="modal" data-bind="click: save">
-                        <i class="fa fa-download me-1"></i> Save
+                         Save
                     </button>
                 </div>
             </div>
         </div>
+</script>
+<script type="text/html" id="word-options-schedule-template">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" data-bind="with: WordPage">
+            <div class="modal-header">
+                <h5 class="modal-title" id="pdfOptionsScheduleModalLabel">
+                    <i class="fa fa-file-pdf-o me-2"></i> Set WORD Page Size
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body row g-0">
+                <div class="col-md-5 d-flex justify-content-center align-items-center">
+                    <div id="pagePreviewBox" class="text-center">
+                        <div data-bind="style: {
+                                     width: selectedWidth(),
+                                     height: selectedHeight(),
+                                     backgroundColor: selectedBackgroundStyle(),
+                                     transition: 'all 0.3s ease'
+                                 }"
+                             class="shadow rounded mx-auto mb-2 border position-relative">
+                            <span class="position-absolute top-50 start-50 translate-middle text-muted small">Preview</span>
+                        </div>
+                        <div data-bind="text: selectedPageLabel" class="fw-bold"></div>
+                        <div data-bind="text: selectedPageDimension" class="text-muted small"></div>
+                    </div>
+                </div>
+                <div class="col-md-7">
+                    <div class="mb-3">
+                        <label for="pageSizeSelect" class="form-label fw-bold">Page Size:</label>
+                        <select class="form-select" id="pageSizeSelect"
+                                data-bind="options: availablePageSizes,
+                                           optionsText: 'label',
+                                           optionsValue: 'value',
+                                           value: selectedPageSize">
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="pageOrientationSelect" class="form-label fw-bold">Page Orientation:</label>
+                        <select class="form-select" id="pageOrientationSelect"
+                                data-bind="options: availablePageOrientation,
+                                           optionsText: 'label',
+                                           optionsValue: 'value',
+                                           value: selectedPageOrientation">
+                        </select>
+                    </div>
+                    <div class="alert alert-info p-2 small mt-2">
+                        This WORD will be exported using the selected page size. Ensure your content fits well.
+                        If the content width exceeds the selected size, it will default to Letter.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal" data-bind="click: save">
+                     Save
+                </button>
+            </div>
+        </div>
+    </div>
+</script>
+<script type="text/html" id="word-options-template">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" data-bind="with: WordPage">
+            <div class="modal-header">
+                <h5 class="modal-title" id="wordOptionsModalLabel"><i class="fa fa-file-pdf-o me-2"></i> Export to WORD</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body row g-0">
+                <!-- Left Side: Page Preview SVG -->
+                <div class="col-md-5 d-flex justify-content-center align-items-center">
+                    <div id="pagePreviewBox" class="text-center">
+                        <div data-bind="style: {
+                                     width: selectedWidth(),
+                                     height: selectedHeight(),
+                                     backgroundColor: selectedBackgroundStyle(),
+                                     transition: `'all 0.3s ease'`
+                                 }"
+                             class="shadow rounded mx-auto mb-2 border position-relative">
+                            <span class="position-absolute top-50 start-50 translate-middle text-muted small">Preview</span>
+                        </div>
+                        <div data-bind="text: selectedPageLabel" class="fw-bold"></div>
+                        <div data-bind="text: selectedPageDimension" class="text-muted small"></div>
+                    </div>
+                </div>
+
+                <!-- Right Side: Form Options -->
+                <div class="col-md-7">
+                    <div class="mb-3">
+                        <label for="pageSizeSelect" class="form-label fw-bold">Page Size:</label>
+                        <select class="form-select" id="pageSizeSelect"
+                                data-bind="options: availablePageSizes,
+                                           optionsText: 'label',
+                                           optionsValue: 'value',
+                                           value: selectedPageSize">
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="pageOrientationSelect" class="form-label fw-bold">Page Orientation:</label>
+                        <select class="form-select" id="pageOrientationSelect"
+                                data-bind="options: availablePageOrientation,
+                                           optionsText: 'label',
+                                           optionsValue: 'value',
+                                           value: selectedPageOrientation">
+                        </select>
+                    </div>
+                    <div class="alert alert-info p-2 small mt-2">
+                        This Word will be exported using the selected page size. Ensure your content fits well.
+                        If the content width exceeds the selected size, it will default to Letter.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal" data-bind="click: download">
+                    <i class="fa fa-download me-1"></i> Download WORD
+                </button>
+            </div>
+        </div>
+    </div>
+</script>
+<script type="text/html" id="pdf-options-template">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" data-bind="with: PdfPage">
+            <div class="modal-header">
+                <h5 class="modal-title" id="pdfOptionsModalLabel"><i class="fa fa-file-pdf-o me-2"></i> Export to PDF</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body row g-0">
+                <!-- Left Side: Page Preview SVG -->
+                <div class="col-md-5 d-flex justify-content-center align-items-center">
+                    <div id="pagePreviewBox" class="text-center">
+                        <div data-bind="style: {
+                                     width: selectedWidth(),
+                                     height: selectedHeight(),
+                                     backgroundColor: selectedBackgroundStyle(),
+                                     transition: `'all 0.3s ease'`
+                                 }"
+                             class="shadow rounded mx-auto mb-2 border position-relative">
+                            <span class="position-absolute top-50 start-50 translate-middle text-muted small">Preview</span>
+                        </div>
+                        <div data-bind="text: selectedPageLabel" class="fw-bold"></div>
+                        <div data-bind="text: selectedPageDimension" class="text-muted small"></div>
+                    </div>
+                </div>
+
+                <!-- Right Side: Form Options -->
+                <div class="col-md-7">
+                    <div class="mb-3">
+                        <label for="pageSizeSelect" class="form-label fw-bold">Page Size:</label>
+                        <select class="form-select" id="pageSizeSelect"
+                                data-bind="options: availablePageSizes,
+                                           optionsText: 'label',
+                                           optionsValue: 'value',
+                                           value: selectedPageSize">
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="pageOrientationSelect" class="form-label fw-bold">Page Orientation:</label>
+                        <select class="form-select" id="pageOrientationSelect"
+                                data-bind="options: availablePageOrientation,
+                                           optionsText: 'label',
+                                           optionsValue: 'value',
+                                           value: selectedPageOrientation">
+                        </select>
+                    </div>
+                    <div class="alert alert-info p-2 small mt-2">
+                        This PDF will be exported using the selected page size. Ensure your content fits well.
+                        If the content width exceeds the selected size, it will default to Letter.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal" data-bind="click: download">
+                    <i class="fa fa-download me-1"></i> Download PDF
+                </button>
+            </div>
+        </div>
+    </div>
 </script>
