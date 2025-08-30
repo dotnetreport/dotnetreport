@@ -87,13 +87,13 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <span class="fa fa-folder-o"></span> Add Folder
                                 </a>
                             </li>
-                            <li class="nav-item dropdown" data-bind="visible: (CanManageFolders() || adminMode()) && SelectedFolder()!=null">
+                            <li class="nav-item dropdown" data-bind="visible: (CanManageFolders() || adminMode()) && SelectedFolder()!=null && (SelectedFolder().canEdit || SelectedFolder().canDelete)">
                                 <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                     <span class="fa fa-folder"></span> Folder Options
                                 </a>
                                 <div class="dropdown-menu">
-                                    <a class="dropdown-item" href="#" data-bind="click: ManageFolder.editFolder">Edit Selected Folder</a>
-                                    <a class="dropdown-item" href="#" data-bind="click: ManageFolder.deleteFolder">Delete Selected Folder</a>
+                                    <a class="dropdown-item" href="#" data-bind="click: ManageFolder.editFolder, visible: SelectedFolder() && SelectedFolder().canEdit">Edit Selected Folder</a>
+                                    <a class="dropdown-item" href="#" data-bind="click: ManageFolder.deleteFolder, visible: SelectedFolder() && SelectedFolder().canDelete">Delete Selected Folder</a>
                                 </div>
                             </li>
                             <li class="nav-item active" data-bind="visible: adminMode() && SelectedFolder() ==null">
