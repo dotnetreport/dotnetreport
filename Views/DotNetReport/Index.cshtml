@@ -36,6 +36,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 reportId: queryParams.reportId || 0,
                 userSettings: data,
                 dataFilters: data.dataFilters,
+                runExportUrl: "/DotnetReportApi/",
                 printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, this.Request.Url.Scheme)",
                 getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
                 samePageOnRun: true
@@ -65,7 +66,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
     -->
     <!-- Folders/Report List -->
     <div id="report-start" data-bind="if: ReportMode() == 'start' || ReportMode() == 'generate'">
-        <div class="card folder-panel">
+        <div class="card folder-panel" data-bind="visible: true" style="display: none;">
             <div class="card-header">
                 <nav class="navbar navbar-expand-lg navbar-light bg-light">
                     <a class="navbar-brand" href="#" data-bind="click: function() {SelectedFolder(null); designingHeader(false); searchReports(''); $('#search-report').val([]).trigger('change'); }">Manage Reports</a>
@@ -87,13 +88,13 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <span class="fa fa-folder-o"></span> Add Folder
                                 </a>
                             </li>
-                            <li class="nav-item dropdown" data-bind="visible: (CanManageFolders() || adminMode()) && SelectedFolder()!=null">
+                            <li class="nav-item dropdown" data-bind="visible: (CanManageFolders() || adminMode()) && SelectedFolder()!=null && (SelectedFolder().canEdit || SelectedFolder().canDelete)">
                                 <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                     <span class="fa fa-folder"></span> Folder Options
                                 </a>
                                 <div class="dropdown-menu">
-                                    <a class="dropdown-item" href="#" data-bind="click: ManageFolder.editFolder">Edit Selected Folder</a>
-                                    <a class="dropdown-item" href="#" data-bind="click: ManageFolder.deleteFolder">Delete Selected Folder</a>
+                                    <a class="dropdown-item" href="#" data-bind="click: ManageFolder.editFolder, visible: SelectedFolder() && SelectedFolder().canEdit">Edit Selected Folder</a>
+                                    <a class="dropdown-item" href="#" data-bind="click: ManageFolder.deleteFolder, visible: SelectedFolder() && SelectedFolder().canDelete">Delete Selected Folder</a>
                                 </div>
                             </li>
                             <li class="nav-item active" data-bind="visible: adminMode() && SelectedFolder() ==null">
@@ -281,7 +282,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                         <button class="btn btn-sm btn-outline-secondary" data-bind="click: openReport, visible: canEdit" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
                                                             <span class="fa fa-edit" aria-hidden="true"></span> Edit
                                                         </button>
-                                                        <button class="btn btn-sm btn-outline-secondary" data-bind="click: copyReport" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
+                                                        <button class="btn btn-sm btn-outline-secondary" data-bind="click: copyReport, visible: canEdit" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
                                                             <span class="fa fa-copy" aria-hidden="true"></span> Copy
                                                         </button>
                                                     </span>
@@ -320,7 +321,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                         <button class="btn btn-sm btn-outline-secondary" title="Edit Report" data-bind="click: openReport, visible: canEdit" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
                                                             <span class="fa fa-edit" aria-hidden="true"></span>
                                                         </button>
-                                                        <button class="btn btn-sm btn-light" data-bind="click: copyReport" title="Copy Report" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
+                                                        <button class="btn btn-sm btn-light" data-bind="click: copyReport, visible: canEdit" title="Copy Report" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
                                                             <span class="fa fa-copy" aria-hidden="true"></span>
                                                         </button>
                                                     </span>
@@ -436,7 +437,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                                 </a>
                                                             </li>
                                                             <li>
-                                                                <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder" data-bind="click: copyReport">
+                                                                <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder" data-bind="click: copyReport, visible: canEdit">
                                                                     <span class="fa fa-copy"></span> Copy
                                                                 </a>
                                                             </li>
@@ -506,7 +507,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
     </div>
 
     <div data-bind="if: ReportMode() == 'execute' || ReportMode() == 'Linked'">
-        <div class="card">
+        <div class="card" data-bind="visible: true;" style="display: none;">
             <div class="card-header">
                 <nav class="navbar navbar-expand-lg navbar-light bg-light">
                     <a class="navbar-brand" href="#">Viewing Report</a>
@@ -543,17 +544,24 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end">
                                     <li data-bind="hidden: appSettings.useAltPdf">
-                                        <a href="#" class="dropdown-item" data-bind="click: function() {downloadPdf(false);}">
+                                        <a href="#" class="dropdown-item" data-bind="click: appSettings.showPageSize
+                                              ? function() { PdfPage.isDebug = false; $('#pdfOptionsModal').modal('show'); }
+                                              : function() { downloadPdf(false); }">
                                             <i class="fa fa-file-pdf-o"></i> Pdf
                                         </a>
                                     </li>
+
                                     <li data-bind="visible: adminMode() && !appSettings.useAltPdf">
-                                        <a href="#" class="dropdown-item" data-bind="click: function() {downloadPdf(true);}">
+                                        <a href="#" class="dropdown-item" data-bind="click: appSettings.showPageSize
+                                              ? function() { PdfPage.isDebug = true; $('#pdfOptionsModal').modal('show'); }
+                                              : function() { downloadPdf(true); }">
                                             <i class="fa fa-file-pdf-o"></i> Pdf (Debug)
                                         </a>
                                     </li>
                                     <li data-bind="visible: appSettings.useAltPdf">
-                                        <a href="#" class="dropdown-item" data-bind="click: function() {downloadPdfAlt();}">
+                                        <a href="#" class="dropdown-item" data-bind="click: appSettings.showPageSize
+                                              ? function() { $('#pdfOptionsModal').modal('show'); }
+                                              : function() { downloadPdfAlt(); }">
                                             <i class="fa fa-file-pdf-o"></i> Pdf
                                         </a>
                                     </li>
@@ -567,8 +575,10 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             <i class="fa fa-file-excel-o"></i> Excel (Expanded)
                                         </a>
                                     </li>
-                                    <li>
-                                        <a class="dropdown-item" href="#" data-bind="click: downloadWord">
+                                    <li data-bind="hidden: appSettings.dontWordExport">
+                                        <a class="dropdown-item" data-bind="click: appSettings.showPageSize
+                                            ? function() { $('#wordOptionsModal').modal('show'); }
+                                            : function() { downloadWord(); }">
                                             <span class="fa fa-file-word-o"></span> Word
                                         </a>
                                     </li>
@@ -661,9 +671,6 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                         <!-- /ko -->
                                                     </div>
                                                 </div>
-                                                <div data-bind="with: $parent" class="pull-left">
-                                                    <div  data-bind="template: 'table-settings', data: $data"></div>
-                                                </div>
                                             </div>
                                         </div>
                                         <div class="form-inline pull-right">
@@ -688,7 +695,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <div class="report-canvas" data-bind="hidden: DontExecuteOnRun() && !reportRan()">
                                     <div class="report-container">
                                         <div class="report-inner">
-                                            <div data-bind="template: 'chart-settings', data: $data"></div>
+                                            <div data-bind="template: 'chart-settings', data: $data, visible: $root.CanEdit()"></div>
                                             <div class="canvas-container">
                                                 <canvas id="report-header" width="900" height="120" data-bind="visible: useReportHeader"></canvas>
                                             </div>
@@ -801,4 +808,21 @@ Its Recommended you use it as is, and only change styling as needed to match you
             </div>
         </div>
     </div>
+</div>
+
+
+<div class="modal" id="wordOptionsModal" tabindex="-1" aria-labelledby="wordOptionsModalLabel" aria-hidden="true">
+    <div data-bind="template: { name: 'word-options-template', data: $data }"></div>
+</div>
+<div class="modal" id="pdfOptionsModal" tabindex="-1" aria-labelledby="pdfOptionsModalLabel" aria-hidden="true">
+    <div data-bind="template: { name: 'pdf-options-template', data: $data }"></div>
+</div>
+
+<!-- This renders the template -->
+<div class="modal" id="pdfOptionsScheduleModal" tabindex="-1" aria-labelledby="pdfOptionsScheduleModalLabel" aria-hidden="true">
+    <div data-bind="template: { name: 'pdf-options-schedule-template', data: $data }"></div>
+</div>
+<!-- This renders the template -->
+<div class="modal" id="wordOptionsScheduleModal" tabindex="-1" aria-labelledby="wordOptionsScheduleModalLabel" aria-hidden="true">
+    <div data-bind="template: { name: 'word-options-schedule-template', data: $data }"></div>
 </div>

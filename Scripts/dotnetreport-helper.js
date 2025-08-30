@@ -107,6 +107,22 @@ function ajaxcall(options) {
         return xhr;
     }
 
+    var exportId = $("#exportId").val();
+    if (exportId) {
+        if (options.type && options.type.toUpperCase() === "POST") {
+            options.data = options.data || {};
+            if (typeof options.data === "string") {
+                var obj = JSON.parse(options.data || "{}");
+                obj.exportId = exportId;
+                options.data = JSON.stringify(obj);
+            } else {
+                options.data.exportId = exportId;
+            }
+        } else {
+            options.url += (options.url.indexOf("?") === -1 ? "?" : "&") + "exportId=" + encodeURIComponent(exportId);
+        }
+    }
+
     if (options.success) {
         options.beforeSend = beforeSend;
         options.xhr = xhr;
@@ -759,7 +775,7 @@ var textQuery = function (options) {
         
     }
 
-    var tokenKey = '';
+    var tokenKey = 'token-key';
     var token = JSON.parse(localStorage.getItem(tokenKey));
 
     self.searchFields = {
@@ -898,6 +914,18 @@ var textQuery = function (options) {
                 }
             },
             values: function (token, callback) {
+                if (options.searchLookupFilter === true) {
+                    self.SearchLookup(token, "").done(function (results) {
+                        if (results.d) results = results.d;
+                        var items = _.map(results, function (x) {
+                            return { value: x.id, key: x.text, text: x.text };
+                        });
+
+                        callback(items);
+                    });
+                    return;
+                }
+
                 if (token == "=" || token == ">" || token == "<") return;                
                 self.ParseQuery(token, "").done(function (results) {
                     if (results.d) results = results.d;
@@ -995,8 +1023,6 @@ var textQuery = function (options) {
                     self.queryItems.remove(e.detail.item.original);
                 });
 
-
-
             searchInput.addEventListener('blur', function () {
                 const vm = ko.dataFor(searchInput);
                 if (vm && typeof vm.searchForReports === 'function') {
@@ -1013,7 +1039,88 @@ var textQuery = function (options) {
 
         }
     }
+
+    self.lookupSqlPrms = {};
+    self.searchValues = [];
+    self.initLookupQuery = function (field) {
+        return ajaxcall({
+            url: options.apiUrl,
+            data: {
+                method: "/ReportApi/GetLookupList",
+                model: JSON.stringify({ fieldId: field.fieldId, addToken: true })
+            }
+        }).done(function (result) {
+            if (result.d) { result = result.d; }
+            if (result.result) { result = result.result; }
+            self.lookupSqlPrms = {
+                lookupSql: result.sql,
+                connectKey: result.connectKey
+            };
+        });
+    }
+
+    self.SearchLookup = function (token, text) {
+        return ajaxcall({
+            type: 'POST',
+            noBlocking: true,
+            url: options.lookupListUrl,
+            data: JSON.stringify({
+                lookupSql: self.lookupSqlPrms.lookupSql,
+                connectKey: self.lookupSqlPrms.connectKey,
+                token: encodeURIComponent(token),
+            })
+        });
+    }
+
+    self.setupLookup = function (field, filter) {
+        var tributeAttributes = self.getTributeAttributes({ searchLookupFilter: true });
+        var tribute = new Tribute(tributeAttributes);
+        var prefixes = ['C', 'F', 'M', 'P'];
+        var filterInputs = [];
+        prefixes.forEach(function (p) {
+            var el = document.getElementById('ctl-' + p + '-' + field.uiId);
+            if (el) filterInputs.push(el);
+        });
+
+        if (filterInputs.length > 0) {
+            tribute.attach(filterInputs);
+
+            filterInputs.forEach(function (filterInput) {
+                self.initLookupQuery(field);
+
+                filterInput.addEventListener("tribute-replaced", function (e) {
+                    self.addQueryItem(e.detail.item.original);
+                });
+
+                filterInput.addEventListener("menuItemRemoved", function (e) {
+                    self.queryItems.remove(e.detail.item.original);
+                });
+
+                filterInput.addEventListener('blur', function () {
+                    if (self.queryItems.length > 0) {
+                        filter.Value(self.queryItems.map(x => x.text).join(','));
+                    }
+                });
+
+                filterInput.addEventListener("input", function () {
+                    if (!filterInput.value.trim()) {
+                        self.queryItems = [];
+                        filter.Value("");
+                        return;
+                    }
+                });
+
+                filterInput.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        filterInput.blur();
+                    }
+                });
+            });
+        }
+    }
 }
+
 window.toastr = (function () {
     const containerId = 'toast-container-bs5';
     let container = document.getElementById(containerId);
