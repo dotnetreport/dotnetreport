@@ -6810,6 +6810,8 @@ var dashboardViewModel = function (options) {
 				reportName: report.ReportName(),
 				expandAll: report.allExpanded(),
 				printUrl: options.printReportUrl,
+				chartData: report.ChartData() || '',
+				columnDetails: report.getColumnDetails(),
 				clientId: report.clientid || '',
 				userId: report.currentUserId || '',
 				userRoles: report.currentUserRole || '',
