@@ -6313,7 +6313,11 @@ var dashboardViewModel = function (options) {
 				: (self.dashboards().length > 0 ? self.dashboards()[0] : null);
 
 			if (currentDash == null) {
-				currentDash = { id: dashboardId, name: self.dashboard.Name(), description: self.dashboard.Description() };
+				var list = '';
+				_.forEach(reports, function (r) {
+					list += (list ? ',' : '') + r.reportId;
+				});
+				currentDash = { id: dashboardId, name: self.dashboard.Name(), description: self.dashboard.Description(),selectedReports:list };
 				if (dashboardId > 0) {
 					self.dashboards.push(currentDash);
 				}
