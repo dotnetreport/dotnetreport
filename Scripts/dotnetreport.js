@@ -5099,10 +5099,6 @@ var reportViewModel = function (options) {
 		self.LoadReport(self.ReportID(), true, '');
 	};
 
-	self.RefreshReport = function () {
-		self.LoadReport(self.ReportID(), true, '');
-	};
-
 	self.LoadReport = function (reportId, filterOnFly, reportSeries, dontBlock, buildSql) {
 		self.SelectedTable(null);
 		self.isFormulaField(false);
@@ -6323,7 +6319,11 @@ var dashboardViewModel = function (options) {
 				: (self.dashboards().length > 0 ? self.dashboards()[0] : null);
 
 			if (currentDash == null) {
-				currentDash = { id: dashboardId, name: self.dashboard.Name(), description: self.dashboard.Description() };
+				var list = '';
+				_.forEach(reports, function (r) {
+					list += (list ? ',' : '') + r.reportId;
+				});
+				currentDash = { id: dashboardId, name: self.dashboard.Name(), description: self.dashboard.Description(),selectedReports:list };
 				if (dashboardId > 0) {
 					self.dashboards.push(currentDash);
 				}
@@ -6753,7 +6753,7 @@ var dashboardViewModel = function (options) {
 		self.RunReport();
 	}
 	self.RefreshAllReports = function () {
-		self.loadDashboardReports(options.reports, true);
+		self.reports().forEach(x => x.RunReport(false, true, true));
 	}
 	self.ExportAllPdfReportsWithPageOption = function () {
 		if (self.dashboard.PdfPage) {
