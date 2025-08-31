@@ -5093,10 +5093,6 @@ var reportViewModel = function (options) {
 		self.LoadReport(self.ReportID(), true, '');
 	};
 
-	self.RefreshReport = function () {
-		self.LoadReport(self.ReportID(), true, '');
-	};
-
 	self.LoadReport = function (reportId, filterOnFly, reportSeries, dontBlock, buildSql) {
 		self.SelectedTable(null);
 		self.isFormulaField(false);
@@ -6747,7 +6743,7 @@ var dashboardViewModel = function (options) {
 		self.RunReport();
 	}
 	self.RefreshAllReports = function () {
-		self.loadDashboardReports(options.reports, true);
+		self.reports().forEach(x => x.RunReport(false, true, true));
 	}
 	self.ExportAllPdfReportsWithPageOption = function () {
 		if (self.dashboard.PdfPage) {
