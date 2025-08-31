@@ -44,7 +44,7 @@
                 }
 
                 _.forEach(dashboardData, function (d) {
-                    dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, schedule: d.schedule, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles });
+                    dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, schedule: d.Schedule, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles });
                 });
 
                 var dashboardId = parseInt(queryParams.id || 0);
@@ -75,7 +75,7 @@
                             allowAdmin: data.allowAdminMode,
                             dataFilters: data.dataFilters,
                             dashboardId: dashboardId,
-                            runExportUrl: "",
+                            runExportUrl: "/api/DotnetReportApi/",
                             printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, Context.Request.Scheme)",
                             loadSavedDashbordUrl: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")',
                             getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")'
@@ -130,7 +130,7 @@
 <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
 
 <div class="row" style="display: none" data-bind="visible: currentDashboard">
-    <div class="col-12">
+    <div class="col-8">
         <ul class="nav nav-tabs" data-bind="foreach: dashboards">
             <li class="nav-item">
                 <h2 style="font-size: 14pt !important">
@@ -139,83 +139,84 @@
             </li>
         </ul>
     </div>
+    <div class="col-4 d-flex align-items-end justify-content-end border-bottom">
+        <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-light btn-sm" data-bind="click: RefreshAllReports">
+                <i class="fa fa-refresh"></i>
+                <span>Refresh</span>
+            </button>
+            <div class="dropdown">
+                <button class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fa fa-pencil-square"></i>
+                    <span>Manage</span>
+                </button>
+                <ul class="dropdown-menu">
+                    <!--<li>
+                        <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard">
+                            <i class="fa fa-plus"></i>
+                            <span>Add New Report</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: editDashboard">
+                            <i class="fa fa-plus"></i>
+                            <span>Add Existing Report</span>
+                        </button>
+                    </li>-->
+                    <li>
+                        <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard">
+                            <i class="fa fa-plus"></i>
+                            <span>Add New Dashboard</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: editDashboard">
+                            <i class="fa fa-pencil"></i>
+                            <span>Edit this Dashboard</span>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <div class="dropdown">
+                <button class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fa fa-download"></i>
+                    <span>Export</span>
+                </button>                
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllPdfReportsWithPageOption() : ExportAllPdfReports('',''); }, hidden: appSettings.useAltPdf"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
+                    <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllPdfAltReportsWithPageOption() : ExportAllPdfAltReports('',''); }, visible: appSettings.useAltPdf"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
+                    <li><a class="dropdown-item" href="#" data-bind="click: ExportAllExcelReports"><i class="fa fa-file-excel-o"></i> Excel</a></li>
+                    <li data-bind="visible: canDrilldown"><a class="dropdown-item" href="#" data-bind="click: ExportAllExcelExpandedReports"><i class="fa fa-file-excel-o"></i> Excel (Expanded)</a></li>
+                    <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllWordReportsWithPageOption() : ExportAllWordReports('','');}"><i class="fa fa-file-word-o"></i> Word</a></li>
+                </ul>
+            </div>
+            <div class="btn btn-light btn-sm d-flex align-items-center gap-2">
+                <div class="form-check form-switch m-0">
+                    <input class="form-check-input" id="arrange-mode" type="checkbox" data-bind="checked: arrangeDashboard">
+                </div>
+                <span>Arrange</span>
+            </div>
+            <div class="btn-group btn-group-sm" role="group">
+                <button class="btn btn-light" data-bind="click: zoomOutDashboard" data-bs-toggle="tooltip" title="Zoom Out">
+                    <i class="fa fa-search-minus"></i>
+                </button>
+
+                <button class="btn btn-light" data-bind="click: resetZoomDashboard" data-bs-toggle="tooltip" title="Reset Zoom">
+                    <i class="fa fa-compress"></i>
+                </button>
+
+                <button class="btn btn-light" data-bind="click: zoomInDashboard" data-bs-toggle="tooltip" title="Zoom In">
+                    <i class="fa fa-search-plus"></i>
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
-<div class="d-flex justify-content-between align-items-center bg-light border-bottom p-2 top-menu-toolbar">
+<div class="d-flex justify-content-between">
     <div class="row" style="display: none" data-bind="visible: currentDashboard">
         <div data-bind="with: currentDashboard">
             <p data-bind="text: description"></p>
-        </div>
-    </div>
-    <div class="clearfix"></div>
-    <div class="d-flex align-items-center gap-2">
-        <button class="btn btn-light btn-sm" data-bind="click: RefreshAllReports">
-            <i class="fa fa-refresh"></i>
-            <span>Refresh</span>
-        </button>
-        <div class="dropdown">
-            <button class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="fa fa-pencil-square"></i>
-                <span>Manage</span>
-            </button>
-            <ul class="dropdown-menu">
-                <!--<li>
-                    <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard">
-                        <i class="fa fa-plus"></i>
-                        <span>Add New Report</span>
-                    </button>
-                </li>
-                <li>
-                    <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: editDashboard">
-                        <i class="fa fa-plus"></i>
-                        <span>Add Existing Report</span>
-                    </button>
-                </li>-->
-                <li>
-                    <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard">
-                        <i class="fa fa-plus"></i>
-                        <span>Add New Dashboard</span>
-                    </button>
-                </li>
-                <li>
-                    <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: editDashboard">
-                        <i class="fa fa-pencil"></i>
-                        <span>Edit this Dashboard</span>
-                    </button>
-                </li>
-            </ul>
-        </div>       
-        <div class="dropdown">
-            <button class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="fa fa-download"></i>
-                <span>Export</span>
-            </button>
-            <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="#" data-bind="click: ExportAllPdfReports, hidden: appSettings.useAltPdf"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
-                <li><a class="dropdown-item" href="#" data-bind="click: ExportAllPdfAltReports, visible: appSettings.useAltPdf"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
-                <li><a class="dropdown-item" href="#" data-bind="click: ExportAllExcelReports"><i class="fa fa-file-excel-o"></i> Excel</a></li>
-                <li data-bind="visible: canDrilldown"><a class="dropdown-item" href="#" data-bind="click: ExportAllExcelExpandedReports"><i class="fa fa-file-excel-o"></i> Excel (Expanded)</a></li>
-                <li><a class="dropdown-item" href="#" data-bind="click: ExportAllWordReports"><i class="fa fa-file-word-o"></i> Word</a></li>
-            </ul>
-        </div>
-        <div class="btn btn-light btn-sm d-flex align-items-center gap-2">
-            <div class="form-check form-switch m-0">
-                <input class="form-check-input" id="arrange-mode" type="checkbox" data-bind="checked: arrangeDashboard">
-            </div>
-            <span>Arrange</span>
-        </div>
-        <div class="btn-group btn-group-sm" role="group">
-            <button class="btn btn-light" data-bind="click: zoomOutDashboard" data-bs-toggle="tooltip" title="Zoom Out">
-                <i class="fa fa-search-minus"></i>
-            </button>
-
-            <button class="btn btn-light" data-bind="click: resetZoomDashboard" data-bs-toggle="tooltip" title="Reset Zoom">
-                <i class="fa fa-compress"></i>
-            </button>
-
-            <button class="btn btn-light" data-bind="click: zoomInDashboard" data-bs-toggle="tooltip" title="Zoom In">
-                <i class="fa fa-search-plus"></i>
-            </button>
         </div>
     </div>
 </div>
@@ -370,12 +371,12 @@
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="#" class="dropdown-item" data-bind="click: function() { $parent.appSettings.useAltPdf ? downloadPdfAlt() : downloadPdf() }">
+                                    <a href="#" class="dropdown-item" data-bind="click: $parent.appSettings.showPageSize ? function() { loadPdfModel() } : function() { $parent.appSettings.useAltPdf ? downloadPdfAlt('','') : downloadPdf('','') }">
                                         <span class="fa fa-file-pdf-o"></span> PDF
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="#" class="dropdown-item" data-bind="click: downloadWord">
+                                    <a href="#" class="dropdown-item" data-bind="click: $parent.appSettings.showPageSize ? function() { loadWordModel()} : function() { downloadWord('',''); }">
                                         <span class="fa fa-file-word-o"></span> Word
                                     </a>
                                 </li>
@@ -411,7 +412,9 @@
                 </div>
             </div>
             <div class="card-body list-overflow-auto" style="padding-top: 0; margin-top: 0;">
-                <div data-bind="template: 'chart-settings', data: $data"></div>
+                <div data-bind="if: ReportType()!='Single' && CanEdit()">
+                    <div data-bind="template: 'chart-settings', data: $data"></div>
+                </div>
                 <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
                 <div data-bind="template: {name: 'fly-filter-template'}, visible: showFlyFilters"></div>
                 <div data-bind="with: ReportResult" class="small">
@@ -450,4 +453,26 @@
 <!-- Link Edit Modal -->
 <div class="modal" id="linkModal" tabindex="-1" role="dialog" aria-hidden="true" data-bind="with: selectedReport">
     <div data-bind="template: {name: 'report-link-edit', data: $data}"></div>
+</div>
+
+<!-- This renders the template -->
+<div class="modal" id="pdfOptionsScheduleModal" tabindex="-1" aria-labelledby="pdfOptionsScheduleModalLabel" aria-hidden="true" data-bind="with: scheduleBuilder">
+    <div data-bind="template: { name: 'pdf-options-schedule-template', data: $data  }"></div>
+</div>
+<!-- This renders the template -->
+<div class="modal" id="wordOptionsScheduleModal" tabindex="-1" aria-labelledby="wordOptionsScheduleModalLabel" aria-hidden="true" data-bind="with: scheduleBuilder">
+    <div data-bind="template: { name: 'word-options-schedule-template', data: $data }"></div>
+</div>
+
+<div class="modal" id="wordOptionsModal" tabindex="-1" aria-labelledby="wordOptionsModalLabel" aria-hidden="true" data-bind="with: selectedReport">
+    <div data-bind="template: { name: 'word-options-template', data: $data  }"></div>
+</div>
+<div class="modal" id="pdfOptionsModal" tabindex="-1" aria-labelledby="pdfOptionsModalLabel" aria-hidden="true" data-bind="with: selectedReport">
+    <div data-bind="template: { name: 'pdf-options-template', data: $data  }"></div>
+</div>
+<div class="modal" id="exportAllWordOptionsModal" tabindex="-1" aria-labelledby="exportAllWordOptionsModalLabel" aria-hidden="true" data-bind="with: dashboard">
+    <div data-bind="template: { name: 'word-options-template', data: $data  }"></div>
+</div>
+<div class="modal" id="exportAllPdfOptionsModal" tabindex="-1" aria-labelledby="exportAllPdfOptionsModalLabel" aria-hidden="true" data-bind="with: dashboard">
+    <div data-bind="template: { name: 'pdf-options-template', data: $data  }"></div>
 </div>

@@ -137,7 +137,7 @@ function linkFieldViewModel(args, options) {
 	}
 }
 
-function scheduleBuilder(userId, getTimeZonesUrl) {
+function scheduleBuilder(userId, getTimeZonesUrl,appSettings) {
 	var self = this;
 
 	self.options = ['day', 'week', 'month', 'year', 'once', 'hour'];
@@ -174,8 +174,22 @@ function scheduleBuilder(userId, getTimeZonesUrl) {
 	self.hasScheduleEnd = ko.observable(false);
 	self.scheduleStart = ko.observable();
 	self.scheduleEnd = ko.observable();
-	self.format = ko.observable('')
-
+	self.format = ko.observable('');
+	self.onFormatChange = function (data, event) {
+		const selectedValue = event.target.value;
+		if (appSettings.showPageSize) {
+			if (selectedValue === 'PDF') {
+				$('#pdfOptionsScheduleModal').modal('show');
+			}
+			else if (selectedValue === 'WORD') {
+				$('#wordOptionsScheduleModal').modal('show');
+			}
+		}
+	};
+	self.selectedPageSize = ko.observable();
+	self.selectedPageOrientation = ko.observable();
+	self.PdfPage = new PdfPageViewModel();
+	self.WordPage = new WordPageViewModel();
 	self.selectedOption.subscribe(function (newValue) {
 		self.selectedDays([]);
 		self.selectedMonths([]);
@@ -229,7 +243,31 @@ function scheduleBuilder(userId, getTimeZonesUrl) {
 	};
 
 	self.getTimezones();
-
+	self.getPageOption = function (format) {
+		if (appSettings.showPageSize) {
+			let context = null;
+			switch (format) {
+				case "PDF":
+					context = ko.contextFor(document.getElementById('pdfOptionsScheduleModal'))?.$data?.PdfPage
+						|| ko.contextFor(document.getElementById('pdfOptionsScheduleModal'))?.$data?.dashboard?.scheduleBuilder?.PdfPage;
+					break;
+				case "WORD":
+					context = ko.contextFor(document.getElementById('wordOptionsScheduleModal'))?.$data?.WordPage
+						|| ko.contextFor(document.getElementById('wordOptionsScheduleModal'))?.$data?.dashboard?.scheduleBuilder?.WordPage;
+					break;
+				default:
+					return null;
+			}
+			if (context) {
+				return {
+					size: context.isSaved() ? (context.selectedPageSize() || null) : self.selectedPageSize() ,
+					orientation: context.isSaved() ? (context.selectedPageOrientation() || null) : self.selectedPageOrientation()
+				};
+			}
+			return null;
+		}
+		return null;
+	};
 	self.toJs = function () {
 		return self.hasSchedule() ? {
 			SelectedOption: self.selectedOption(),
@@ -243,8 +281,12 @@ function scheduleBuilder(userId, getTimeZonesUrl) {
 			UserId: userId,
 			ScheduleStart: self.hasScheduleStart() ? self.scheduleStart() : '',
 			ScheduleEnd: self.hasScheduleEnd() ? self.scheduleEnd() : '',
-			Format: self.format(),
-			TimeZone: self.selectedTimezone() 
+			Format: JSON.stringify({
+				exportFormat: self.format(),
+				size: self.getPageOption(self.format())?.size || null,
+				orientation: self.getPageOption(self.format())?.orientation || null
+			}),
+			TimeZone: self.selectedTimezone()
 		} : null;
 	};
 
@@ -278,11 +320,145 @@ function scheduleBuilder(userId, getTimeZonesUrl) {
 		self.hasScheduleStart(data.ScheduleStart ? true : false);
 		self.hasScheduleEnd(data.ScheduleEnd ? true : false);
 		self.selectedTimezone(data.Timezone);
-		self.format(data.Format);
+		try {
+			let formatData = typeof data.Format === "string" ? JSON.parse(data.Format) : data.Format;
+			if (typeof formatData === "object") {
+				self.format(formatData.exportFormat || "");
+				self.selectedPageSize(formatData.size || null);
+				self.selectedPageOrientation(formatData.orientation || null);
+			} else {
+				self.format(data.Format);
+			}
+		} catch (e) {
+			self.format(data.Format);
+		}
 	}
 
 	self.clear = function () {
 		self.fromJs(null);
+	}
+}
+function PdfPageViewModel(appSettings, downloadPdf, downloadPdfAlt) {
+	var self = this;
+	self.isSaved = ko.observable(false);
+	self.availablePageSizes = ko.observableArray([
+		{ label: 'Letter (8.5 x 11 in)', value: 'Letter', width: 216, height: 279, bgstyle: '#d9d2e9;' },
+		{ label: 'Legal (8.5 x 14 in)', value: 'Legal', width: 216, height: 356, bgstyle: '#cfe2f3;' },
+		{ label: 'A4 (8.27 x 11.7 in)', value: 'A4', width: 210, height: 297, bgstyle: '#f9f9f9;' },
+		{ label: 'A1 (23.4 x 33.1 in)', value: 'A1', width: 594, height: 841, bgstyle: '#fff2cc;' },
+		{ label: 'A2 (16.5 x 23.4 in)', value: 'A2', width: 420, height: 594, bgstyle: '#d9ead3;' },
+		{ label: 'A3 (11.7 × 16.5 in)', value: 'A3', width: 297, height: 420, bgstyle: '#d0e0e3;' },
+		{ label: 'Tabloid (11 × 17 in)', value: 'Tabloid', width: 279, height: 432, bgstyle: '#ead1dc;' }
+	]);
+	self.availablePageOrientation = ko.observableArray([
+		{ label: 'Portrait', value: 'PORTRAIT'},
+		{ label: 'Landscape', value: 'LANDSCAPE'}
+	]);
+	self.selectedPageSize = ko.observable("");
+	self.selectedPageOrientation = ko.observable("PORTRAIT");
+	self.selectedPageLabel = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		return page ? page.label : '';
+	});
+	self.selectedPageDimension = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		return page ? `${page.width}mm x ${page.height}mm` : '';
+	});
+	self.selectedWidth = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		if (!page) return '100px';
+		if (self.selectedPageOrientation() === "LANDSCAPE") {
+			return (page.height / 3) + 'px';
+		}
+		return (page.width / 3) + 'px';
+	});
+	self.selectedHeight = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		if (!page) return '150px';
+
+		if (self.selectedPageOrientation() === "LANDSCAPE") {
+			return (page.width / 3) + 'px';
+		}
+		return (page.height / 3) + 'px';
+	});
+	self.selectedBackgroundStyle = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		return page ? page.bgstyle : '#f5f5f5';
+	});
+	self.isDebug = false;
+	self.download = function () {
+		const selectedSize = self.selectedPageSize();
+		const selectedOrientation = self.selectedPageOrientation();
+		if (appSettings?.useAltPdf) {
+			downloadPdfAlt(selectedSize, selectedOrientation);
+		} else {
+			downloadPdf(self.isDebug, selectedSize, selectedOrientation);
+		}
+	};
+	self.save = function () {
+        self.isSaved(true);
+		return {
+			size: self.selectedPageSize(),
+			orientation: self.selectedPageOrientation()
+		};
+	};
+}
+function WordPageViewModel(downloadWord) {
+	var self = this;
+	self.isSaved = ko.observable(false);
+	self.availablePageSizes = ko.observableArray([
+		{ label: 'Letter (8.5 x 11 in)', value: 'Letter', width: 216, height: 279, bgstyle: '#d9d2e9;' },
+		{ label: 'A4 (8.27 x 11.7 in)', value: 'A4', width: 210, height: 297, bgstyle: '#f9f9f9;' },
+		{ label: 'A3 (11.7 × 16.5 in)', value: 'A3', width: 297, height: 420, bgstyle: '#d0e0e3;' },
+		{ label: 'Legal (8.5 x 14 in)', value: 'Legal', width: 216, height: 356, bgstyle: '#cfe2f3;' },
+		{ label: 'Tabloid (11 × 17 in)', value: 'Tabloid', width: 279, height: 432, bgstyle: '#ead1dc;' }
+	]);
+	self.availablePageOrientation = ko.observableArray([
+		{ label: 'Portrait', value: 'PORTRAIT' },
+		{ label: 'Landscape', value: 'LANDSCAPE' }
+	]);
+	self.selectedPageSize = ko.observable("");
+	self.selectedPageOrientation = ko.observable("PORTRAIT");
+	self.selectedPageLabel = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		return page ? page.label : '';
+	});
+	self.selectedPageDimension = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		return page ? `${page.width}mm x ${page.height}mm` : '';
+	});
+	self.selectedWidth = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		if (!page) return '100px';
+		if (self.selectedPageOrientation() === "LANDSCAPE") {
+			return (page.height / 3) + 'px';
+		}
+		return (page.width / 3) + 'px';
+	});
+	self.selectedHeight = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		if (!page) return '150px';
+
+		if (self.selectedPageOrientation() === "LANDSCAPE") {
+			return (page.width / 3) + 'px';
+		}
+		return (page.height / 3) + 'px';
+	});
+	self.selectedBackgroundStyle = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		return page ? page.bgstyle : '#f5f5f5';
+	});
+	self.download = function () {
+		const selectedSize = self.selectedPageSize();
+		const selectedOrientation = self.selectedPageOrientation();
+		downloadWord(selectedSize, selectedOrientation);
+	};
+	self.save = function () {
+		self.isSaved(true);
+		return {
+			size: self.selectedPageSize(),
+			orientation: self.selectedPageOrientation()
+		};
 	}
 }
 
@@ -390,7 +566,7 @@ function filterGroupViewModel(args) {
 				ajaxcall({
 					type: 'POST',
 					url: args.options.lookupListUrl,
-					data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey }),
+					data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey, token: '' }),
 					noBlocking: args.parent.ReportMode() == 'dashboard'
 				}).done(function (list) {
 					if (list.d) { list = list.d; }
@@ -441,7 +617,7 @@ function filterGroupViewModel(args) {
 							ajaxcall({
 								type: 'POST',
 								url: args.options.lookupListUrl,
-								data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey }),
+								data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey, token: '' }),
 								noBlocking: args.parent.ReportMode() == 'dashboard'
 							}).done(function (list) {
 								if (list.d) { list = list.d; }
@@ -473,6 +649,13 @@ function filterGroupViewModel(args) {
 				else
 					loadLookupList(newField.fieldId, args.options.dataFilters);
 
+			}
+
+			if (newField && !newField.hasForeignKey && newField.fieldType == 'Varchar') {
+				setTimeout(function () {
+					var txtqry = new textQuery(args.options);
+					txtqry.setupLookup(newField, filter);
+				}, 1000);				
 			}
 
 			if (newField && newField.restrictedDateRange && newField.fieldType == 'DateTime') {
@@ -1192,7 +1375,7 @@ var reportViewModel = function (options) {
 	self.y = ko.observable(0);
 	self.width = ko.observable(3);
 	self.height = ko.observable(2);
-	var tokenKey = '';
+	var tokenKey = 'token-key';
 	var token = JSON.parse(localStorage.getItem(tokenKey));
 
 	self.usingAi = ko.observable(true);
@@ -1207,8 +1390,11 @@ var reportViewModel = function (options) {
 		showEmptyFolders: false,
 		useAltPdf: false,
 		useAltPivot: false,
-		dontXmlExport: false
+		dontXmlExport: false,
+		dontWordExport: false,
+		showPageSize: false,
 	};
+	self.appSettings = options && options.appSettings ? options.appSettings : self.appSettings;
 	self.runQuery = function (useAi) {
 		self.SelectedFields([]);
 		self.resetQuery(false);
@@ -1426,7 +1612,7 @@ var reportViewModel = function (options) {
 	};
 	self.onModalCloseClicked = function () {
 		if (options.reportWizard == null) return;
-		if (self.ReportMode() != 'dashboard') {
+		if (self.ReportMode() != 'dashboard' && self.ReportMode() != 'execute') {
 			if (self.isDirty()) {
 				bootbox.confirm("You have unsaved changes. Do you want to discard them?", function (result) {
 					if (result) {
@@ -1463,7 +1649,7 @@ var reportViewModel = function (options) {
 				item.tableId !== undefined && item.tableId !== null && item.tableId != 0;
 		});
 	});
-	self.scheduleBuilder = new scheduleBuilder(self.userIdForSchedule, options.getTimeZonesUrl);
+	self.scheduleBuilder = new scheduleBuilder(self.userIdForSchedule, options.getTimeZonesUrl, self.appSettings);
 
 	self.ManageFolder = {
 		FolderName: ko.observable(),
@@ -1563,7 +1749,8 @@ var reportViewModel = function (options) {
 						data: {
 							method: "/ReportApi/DeleteFolder",
 							model: JSON.stringify({
-								folderId: self.SelectedFolder().Id
+								folderId: self.SelectedFolder().Id,
+								adminMode: self.adminMode()
 							})
 						},
 					}).done(function () {
@@ -1575,7 +1762,6 @@ var reportViewModel = function (options) {
 			});
 		}
 	};
-
 	self.ManageJsonFile = {
 		file: ko.observable(null),
 		fileName: ko.observable(''),
@@ -1682,7 +1868,7 @@ var reportViewModel = function (options) {
 			.value();
 	});
 
-	var tokenKey = '';
+	var tokenKey = 'token-key';
 	var token = JSON.parse(localStorage.getItem(tokenKey));
 	self.searchFieldsInReport = {
 		language: {
@@ -1816,7 +2002,7 @@ var reportViewModel = function (options) {
 		self.reportRan(false);
 		self.executingReport = false;
 		self.isDirty(false);
-		self.clearTableSetting();
+		self.clearTableSettings();
 	};
 
 	self.SelectedProc.subscribe(function (proc) {
@@ -1895,7 +2081,7 @@ var reportViewModel = function (options) {
 					ajaxcall({
 						type: 'POST',
 						url: options.lookupListUrl,
-						data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey })
+						data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey, token: '' })
 					}).done(function (list) {
 						if (list.d) { list = list.d; }
 						if (list.result) { list = list.result; }
@@ -3987,6 +4173,24 @@ var reportViewModel = function (options) {
 		showXAxisLabel: true,
 		showYAxisLabel: true,
 		showSmallValuesOnLabel: false,
+		annotations : {
+			alwaysOutside: true,
+			textStyle: {
+				fontSize: 12,
+				auraColor: 'none',
+				color: '#555'
+			},
+			boxStyle: {
+				stroke: '#ccc',
+				strokeWidth: 1,
+				gradient: {
+					color1: '#f3e5f5',
+					color2: '#f3e5f5',
+					x1: '0%', y1: '0%',
+					x2: '100%', y2: '100%'
+				}
+			}
+		},
 		showLegend: true,
 		legendPosition: "right",
 		showGridlines: true,
@@ -4001,11 +4205,20 @@ var reportViewModel = function (options) {
 	self.tableheaderFontColor = ko.observable();
 	self.tableRowBackColor = ko.observable();
 	self.tableRowFontColor = ko.observable();
-	self.clearTableSetting = function () {
-		self.tableheaderBackColor = ko.observable();
-		self.tableheaderFontColor = ko.observable();
-		self.tableRowBackColor = ko.observable();
-		self.tableRowFontColor = ko.observable();
+	self.tableAltRowBackColor = ko.observable();
+	self.tableAltRowFontColor = ko.observable();
+	self.tableBorder = ko.observable();
+	self.tableBorderColor = ko.observable();
+	self.clearTableSettings = function () {
+		self.tableheaderBackColor(null);
+		self.tableheaderFontColor(null);
+		self.tableRowBackColor(null);
+		self.tableRowFontColor(null);
+		self.tableAltRowBackColor(null);
+		self.tableAltRowFontColor(null);
+		self.tableBorder(null);
+		self.tableBorderColor(null);
+		self.updateTable(true);
 	}
 
 	self.toggleChartSettings = function () {
@@ -4014,12 +4227,12 @@ var reportViewModel = function (options) {
 	self.toggleTableSettings = function () {
 		self.showTableSettings(!self.showTableSettings());
 	};
-	self.updateTable = function () {
+	self.updateTable = function (clear) {
 		_.forEach(self.SelectedFields(), function (f) {
-			if (self.tableheaderBackColor()) f.headerBackColor(self.tableheaderBackColor());
-			if (self.tableheaderFontColor()) f.headerFontColor(self.tableheaderFontColor());
-			if (self.tableRowBackColor()) f.backColor(self.tableRowBackColor());
-			if (self.tableRowFontColor()) f.fontColor(self.tableRowFontColor());
+			if (self.tableheaderBackColor() || clear === true) f.headerBackColor(self.tableheaderBackColor());
+			if (self.tableheaderFontColor() || clear === true) f.headerFontColor(self.tableheaderFontColor());
+			if (self.tableRowBackColor() || clear === true) f.backColor(self.tableRowBackColor());
+			if (self.tableRowFontColor() || clear === true) f.fontColor(self.tableRowFontColor());
 		});
 	}
 	self.addSeriesColor = function () {
@@ -4078,12 +4291,13 @@ var reportViewModel = function (options) {
 			_.forEach(reportData.Columns, function (e, i) {
 				if (i > 0 && e.IsNumeric && !e.groupInGraph()) {
 					data.addColumn(e.IsNumeric ? 'number' : 'string', e.fieldLabel() || e.ColumnName);
+					if (self.chartOptions().showSmallValuesOnLabel) {
+						data.addColumn({ type: 'string', role: 'annotation' });
+					}
 				}
 			});
 		}
-		if (self.chartOptions().showSmallValuesOnLabel) {
-			data.addColumn({ type: 'string', role: 'annotation' });
-		}
+
 		var rowArray = [];
 		var dataColumns = [];
 
@@ -4093,7 +4307,6 @@ var reportViewModel = function (options) {
 			_.forEach(e.Items, function (r, n) {
 				var column = reportData.Columns[n];
 				var isNumeric = r.Column.IsNumeric;
-				var isLastColumn = (n === e.Items.length - 1);
 				var value = (function () {
 					if (isNumeric && typeof r.FormattedValue === 'string' && r.FormattedValue.trim().endsWith('%')) {
 						var num = parseFloat(r.FormattedValue.replace('%', '').trim());
@@ -4129,9 +4342,9 @@ var reportViewModel = function (options) {
 					}
 				} else if ((isNumeric || self.ReportType() === 'Treemap') && !column.groupInGraph()) {
 					itemArray.push(value);
-				}
-				if (self.chartOptions().showSmallValuesOnLabel && isLastColumn) {
-					itemArray.push(value.toString());
+					if (self.chartOptions().showSmallValuesOnLabel) {
+						itemArray.push(value.toString());
+					}
 				}
 			});
 
@@ -4381,6 +4594,16 @@ var reportViewModel = function (options) {
 					fontSize: 12,
 					auraColor: 'none',
 					color: '#555'
+				},
+				boxStyle: {
+					stroke: '#ccc',
+					strokeWidth: 1,
+					gradient: {
+						color1: '#f3e5f5',
+						color2: '#f3e5f5',
+						x1: '0%', y1: '0%',
+						x2: '100%', y2: '100%'
+					}
 				}
 			}
 		}
@@ -4746,7 +4969,7 @@ var reportViewModel = function (options) {
 		self.pager.sortColumn('');
 		self.pager.sortDescending(report.SortDesc);
 		var match = _.find(self.SavedReports(), { reportId: report.ReportID }) || { canEdit: false };
-		self.CanEdit(report.canEdit || match.canEdit || self.adminMode());
+		self.CanEdit(report.canEdit || self.adminMode());
 		self.FilterGroups([]);
 		self.AdditionalSeries([]);
 		self.SortFields([]);
@@ -4870,10 +5093,6 @@ var reportViewModel = function (options) {
 		self.LoadReport(self.ReportID(), true, '');
 	};
 
-	self.RefreshReport = function () {
-		self.LoadReport(self.ReportID(), true, '');
-	};
-
 	self.LoadReport = function (reportId, filterOnFly, reportSeries, dontBlock, buildSql) {
 		self.SelectedTable(null);
 		self.isFormulaField(false);
@@ -4891,7 +5110,7 @@ var reportViewModel = function (options) {
 			},
 			noBlocking: dontBlock === true
 		}).done(function (report) {
-			self.clearTableSetting();
+			self.clearTableSettings();
 			if (report.d) { report = report.d; }
 			if (report.result) { report = report.result; }
 			self.useStoredProc(report.UseStoredProc);
@@ -4956,7 +5175,12 @@ var reportViewModel = function (options) {
 			if (reports.result) { reports = reports.result; }
 			_.forEach(reports, function (e) {
 				e.runMode = false;
-				e.openReport = function () {
+				e.openReport = function () {			
+					if (!e.canEdit && !e.runMode) {
+						options.reportWizard.modal('hide');
+						toastr.error('No access to edit report');
+						return;
+					}
 					if (self.ReportMode() != 'dashboard') {
 						self.isDirty(false);
 						self.setupDirtyCheck();
@@ -4964,6 +5188,11 @@ var reportViewModel = function (options) {
 					var saveReportFlag = self.SaveReport();
 					// Load report
 					return self.LoadReport(e.reportId).done(function () {
+						if (!self.CanEdit() && !e.runMode) {
+							options.reportWizard.modal('hide');
+							toastr.error('No access to edit report');
+							return;
+						}
 						if (!e.runMode) {
 							self.SaveReport(true);
 							self.ReportMode("generate");
@@ -4977,7 +5206,17 @@ var reportViewModel = function (options) {
 				};
 
 				e.copyReport = function () {
+					if (!e.canEdit) {
+						options.reportWizard.modal('hide');
+						toastr.error('No access to copy report');
+						return;
+					}
 					e.openReport().done(function () {
+						if (!self.CanEdit()) {
+							options.reportWizard.modal('hide');
+							toastr.error('No access to copy report');
+							return;
+						}
 						self.ReportID(0);
 						self.ReportName('Copy of ' + self.ReportName());
 						self.CanEdit(true);
@@ -5356,6 +5595,8 @@ var reportViewModel = function (options) {
 			self.appSettings.useAltPdf = x.useAltPdf;
 			self.appSettings.useAltPivot = x.useAltPivot === true;
 			self.appSettings.dontXmlExport = x.dontXmlExport;
+			self.appSettings.dontWordExport = x.dontWordExport;
+			self.appSettings.showPageSize = x.showPageSize;
 		});
 	}
 
@@ -5459,7 +5700,7 @@ var reportViewModel = function (options) {
 		});
 	}
 
-	self.getExportJson = function () {
+	self.getExportJson = function (pageSize,pageOrientation) {
 		var reportData = self.BuildReportData();
 		reportData.DrillDownRowUsePlaceholders = true;
 		var pivotData = self.preparePivotData();
@@ -5475,15 +5716,17 @@ var reportViewModel = function (options) {
 			pivot: self.ReportType() == 'Pivot',
 			pivotColumn: pivotData.pivotColumn,
 			pivotFunction: pivotData.pivotFunction,
+			pageSize: pageSize,
+			pageOrientation: pageOrientation
 		};
 	}
 
-	self.downloadPdfAlt = function () {
-		var data = self.getExportJson();
+	self.downloadPdfAlt = function (pageSize,pageOrientation) {
+		var data = self.getExportJson(pageSize, pageOrientation);
 		self.downloadExport("DownloadPdfAlt", data, 'pdf');
 	}
 
-	self.downloadPdf = function (debug) {
+	self.downloadPdf = function (debug, pageSize, pageOrientation) {
 		var reportData = self.BuildReportData();
 		reportData.DrillDownRowUsePlaceholders = true;
 		var pivotData = self.preparePivotData();
@@ -5501,10 +5744,12 @@ var reportViewModel = function (options) {
 			expandSqls: JSON.stringify(reportData),
 			pivotColumn: pivotData.pivotColumn,
 			pivotFunction: pivotData.pivotFunction,
-			debug: debug === true ? true : false
+			debug: debug === true ? true : false,
+			pageSize: pageSize,
+			pageOrientation: pageOrientation
 		}, 'pdf');
 	}
-
+	self.PdfPage = new PdfPageViewModel(self.appSettings, self.downloadPdf, self.downloadPdfAlt);
 	self.runExcelDownload = function (expand) {
 		var hasOnlyAndGroupInDetail = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Only in Detail' || x.selectedAggregate() == 'Group in Detail'}) != null;
 		var onlyAndGroupInDetailColumnDetails = _.filter(self.SelectedFields(), function (x) { return x.selectedAggregate() === 'Only in Detail' || x.selectedAggregate() == 'Group in Detail'; });
@@ -5548,10 +5793,11 @@ var reportViewModel = function (options) {
 		var data = self.getExportJson();
 		self.downloadExport("DownloadXml", data, 'xml');
 	}
-	self.downloadWord = function () {
-		var data = self.getExportJson();		
+	self.downloadWord = function (pageSize, pageOrientation) {
+		var data = self.getExportJson(pageSize, pageOrientation);		
 		self.downloadExport("DownloadWord", data, 'docx');
 	}
+	self.WordPage = new WordPageViewModel(self.downloadWord);
 	self.preparePivotData = function () {
 		var pivotColumn = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot'; });
 		var pivotFunction = '';
@@ -5994,7 +6240,9 @@ var dashboardViewModel = function (options) {
 		showEmptyFolders: false,
 		useAltPdf: false,
 		useAltPivot: false,
-		dontXmlExport: false
+		dontXmlExport: false,
+		dontWordExport: false,
+		showPageSize:false,
 	};
 	self.loadAppSettings = function () {
 		return ajaxcall({
@@ -6019,6 +6267,8 @@ var dashboardViewModel = function (options) {
 			self.appSettings.useAltPdf = x.useAltPdf;
 			self.appSettings.useAltPivot = x.useAltPivot;
 			self.appSettings.dontXmlExport = x.dontXmlExport;
+			self.appSettings.dontWordExport = x.dontWordExport;
+			self.appSettings.showPageSize = x.showPageSize;
 		});
 	}
 
@@ -6027,7 +6277,9 @@ var dashboardViewModel = function (options) {
 		Name: ko.observable(currentDash.name),
 		Description: ko.observable(currentDash.description),
 		manageAccess: manageAccess(options),
-		scheduleBuilder: new scheduleBuilder(options.userId, options.getTimeZonesUrl)
+		scheduleBuilder: new scheduleBuilder(options.userId, options.getTimeZonesUrl, self.appSettings),
+		PdfPage: new PdfPageViewModel(),
+		WordPage: new WordPageViewModel()
 	};
 	self.dateFormatMappings = {
 		'United States': 'mm/dd/yy',
@@ -6061,7 +6313,11 @@ var dashboardViewModel = function (options) {
 				: (self.dashboards().length > 0 ? self.dashboards()[0] : null);
 
 			if (currentDash == null) {
-				currentDash = { id: dashboardId, name: self.dashboard.Name(), description: self.dashboard.Description() };
+				var list = '';
+				_.forEach(reports, function (r) {
+					list += (list ? ',' : '') + r.reportId;
+				});
+				currentDash = { id: dashboardId, name: self.dashboard.Name(), description: self.dashboard.Description(),selectedReports:list };
 				if (dashboardId > 0) {
 					self.dashboards.push(currentDash);
 				}
@@ -6235,6 +6491,10 @@ var dashboardViewModel = function (options) {
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
 			if (result.result) { result = result.result; }
+			var currentdashboard = _.find(self.dashboards(), { id: self.dashboard.Id() });
+			if (currentdashboard) {
+				currentdashboard.selectedReports = list;
+			};
 			toastr.success("Dashboard saved successfully");
 			$('#add-dashboard-modal').modal('hide');
 			setTimeout(function () {
@@ -6307,7 +6567,8 @@ var dashboardViewModel = function (options) {
 				printReportUrl: options.printReportUrl,
 				dataFilters: options.dataFilters,
 				getTimeZonesUrl: options.getTimeZonesUrl,
-				arrangeDashboard: self.arrangeDashboard
+				arrangeDashboard: self.arrangeDashboard,
+				appSettings: self.appSettings
 			});
 
 			report.x = ko.observable(x.x);
@@ -6357,7 +6618,14 @@ var dashboardViewModel = function (options) {
 					}, 1000);
 				});
 			};
-			
+			report.loadPdfModel = function () {
+				self.selectedReport(report);
+				$('#pdfOptionsModal').modal('show'); 
+			}
+			report.loadWordModel = function () {
+				self.selectedReport(report);
+				$('#wordOptionsModal').modal('show');
+			}
 			report.RefreshReport = function (reportId) {
 				report.LoadReport(reportId, true, '');
 			};
@@ -6479,9 +6747,19 @@ var dashboardViewModel = function (options) {
 		self.RunReport();
 	}
 	self.RefreshAllReports = function () {
-		self.loadDashboardReports(options.reports, true);
+		self.reports().forEach(x => x.RunReport(false, true, true));
 	}
-	self.ExportAllPdfReports = function () {
+	self.ExportAllPdfReportsWithPageOption = function () {
+		if (self.dashboard.PdfPage) {
+			self.dashboard.PdfPage.download = function () {
+				var pageSize = self.dashboard.PdfPage.selectedPageSize();
+				var orientation = self.dashboard.PdfPage.selectedPageOrientation();
+				self.ExportAllPdfReports(pageSize, orientation);
+			}
+		}
+		$('#exportAllPdfOptionsModal').modal('show');
+	}
+	self.ExportAllPdfReports = function (pageSize, pageOrientation) {
 		const reports = self.reports();
 		const allreports = [];
 		_.forEach(reports, function (report) {
@@ -6501,13 +6779,25 @@ var dashboardViewModel = function (options) {
 				expandSqls: JSON.stringify(reportData),
 				pivotColumn: pivotData.pivotColumn,
 				pivotFunction: pivotData.pivotFunction,
+				pageSize: pageSize,
+				pageOrientation: pageOrientation
 			});
 		});
 		reports[0]?.downloadExport("DownloadAllPdf", {
 			reportdata: JSON.stringify(allreports)
 		}, 'pdf','CombinedReport');
 	}
-	self.ExportAllPdfAltReports = function () {
+	self.ExportAllPdfAltReportsWithPageOption = function () {
+		if (self.dashboard.PdfPage) {
+			self.dashboard.PdfPage.download = function () {
+				var pageSize = self.dashboard.PdfPage.selectedPageSize();
+				var orientation = self.dashboard.PdfPage.selectedPageOrientation();
+				self.ExportAllPdfAltReports(pageSize, orientation);
+			}
+		}
+		$('#exportAllPdfOptionsModal').modal('show');
+	}
+	self.ExportAllPdfAltReports = function (pageSize, pageOrientation) {
 		const reports = self.reports();
 		const allreports = [];
 		_.forEach(reports, function (report) {
@@ -6527,6 +6817,8 @@ var dashboardViewModel = function (options) {
 				expandSqls: JSON.stringify(reportData),
 				pivotColumn: pivotData.pivotColumn,
 				pivotFunction: pivotData.pivotFunction,
+				pageSize: pageSize,
+				pageOrientation: pageOrientation
 			});
 		});
 		reports[0]?.downloadExport("DownloadAllPdfAlt", {
@@ -6589,7 +6881,17 @@ var dashboardViewModel = function (options) {
 	self.canDrilldown = ko.computed(function () {
 		return _.find(self.reports(), function (x) { return x.canDrilldown() == true }) != null;
 	});
-	self.ExportAllWordReports = function () {
+	self.ExportAllWordReportsWithPageOption = function () {
+		if (self.dashboard.WordPage) {
+			self.dashboard.WordPage.download = function () {
+				var pageSize = self.dashboard.WordPage.selectedPageSize();
+				var orientation = self.dashboard.WordPage.selectedPageOrientation();
+				self.ExportAllWordReports(pageSize, orientation);
+			}
+		}
+		$('#exportAllWordOptionsModal').modal('show');
+	}
+	self.ExportAllWordReports = function (pageSize , pageOrientation) {
 		const reports = self.reports();
 		const allreports = [];
 		_.forEach(reports, function (report) {
@@ -6607,6 +6909,8 @@ var dashboardViewModel = function (options) {
 				pivot: report.ReportType() == 'Pivot',
 				pivotColumn: pivotData.pivotColumn,
 				pivotFunction: pivotData.pivotFunction,
+				pageSize: pageSize,
+				pageOrientation: pageOrientation
 			});
 		});
 		reports[0]?.downloadExport("DownloadAllWord", {
