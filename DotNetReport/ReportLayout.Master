@@ -28,15 +28,15 @@
             <img src="/content/img/report-logo.png" alt=".Net Report Builder" style="width: 140px;" />
         </a>
         <div class="collapse navbar-collapse justify-content-end" id="navbarNavDropdown">
-            <ul class="navbar-nav ml-auto">
+           <ul class="navbar-nav ml-auto">
                 <li class="nav-item">
-                    <a class="nav-link" href="/DotnetReport/Dashboard.aspx">Dashboards</a>
+                    <a class="nav-link" href="/DotnetReport/Dashboard"><i class="fa fa-dashboard"></i> Dashboards</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="/DotnetReport/index.aspx">Reports</a>
+                    <a class="nav-link" href="/DotnetReport"><i class="fa fa-bar-chart"></i> Reports</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="/DotnetReport/Query.aspx">Smart <small style="color: red">(Beta)</small> </a>
+                    <a class="nav-link" href="/DotnetSetup"><i class="fa fa-gear"></i> Setup</a>
                 </li>
             </ul>
         </div>

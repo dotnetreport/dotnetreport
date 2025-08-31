@@ -5724,10 +5724,10 @@ var reportViewModel = function (options) {
 			columnDetails: self.getColumnDetails(),
 			includeSubTotal: self.IncludeSubTotal(),
 			pivot: self.ReportType() == 'Pivot',
-			pivotColumn: pivotData.pivotColumn,
-			pivotFunction: pivotData.pivotFunction,
-			pageSize: pageSize,
-			pageOrientation: pageOrientation
+			pivotColumn: pivotData.pivotColumn || '',
+			pivotFunction: pivotData.pivotFunction || '',
+			pageSize: pageSize || '',
+			pageOrientation: pageOrientation || ''
 		};
 	}
 
@@ -5752,11 +5752,11 @@ var reportViewModel = function (options) {
 			userRoles: self.currentUserRole || '',
 			dataFilters: JSON.stringify(options.dataFilters),
 			expandSqls: JSON.stringify(reportData),
-			pivotColumn: pivotData.pivotColumn,
-			pivotFunction: pivotData.pivotFunction,
+			pivotColumn: pivotData.pivotColumn || '',
+			pivotFunction: pivotData.pivotFunction || '',
 			debug: debug === true ? true : false,
-			pageSize: pageSize,
-			pageOrientation: pageOrientation
+			pageSize: pageSize || '',
+			pageOrientation: pageOrientation || ''
 		}, 'pdf');
 	}
 	self.PdfPage = new PdfPageViewModel(self.appSettings, self.downloadPdf, self.downloadPdfAlt);

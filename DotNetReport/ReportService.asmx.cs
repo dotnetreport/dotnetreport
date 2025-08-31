@@ -114,7 +114,7 @@ namespace ReportBuilder.WebForms.DotNetReport
 
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
-        public object RunReportApi(string method, bool SaveReport, string ReportJson, bool adminMode, bool SubTotalMode = false)
+        public object RunReportApi(string method, bool SaveReport, string ReportJson, bool adminMode, bool subtotalMode = false)
         {
             return CallReportApi(method, (new JavaScriptSerializer()).Serialize(new DotNetReportApiCall
             {
@@ -122,7 +122,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                 ReportJson = ReportJson,
                 SaveReport = SaveReport,
                 adminMode = adminMode,
-                SubTotalMode = SubTotalMode
+                subtotalMode = subtotalMode
             }));
         }
 
