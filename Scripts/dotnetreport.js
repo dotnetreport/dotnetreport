@@ -3207,7 +3207,7 @@ var reportViewModel = function (options) {
 				ReportJson: JSON.stringify(self.BuildReportData()),
 				adminMode: self.adminMode(),
 				userIdForFilter: self.userIdForFilter,
-				SubTotalMode: false,
+				subtotalMode: false,
 				reportData: '',
 				pivotColumn: '',
 				pivotFunction: ''
@@ -3299,7 +3299,7 @@ var reportViewModel = function (options) {
 					ReportJson: importJson ? JSON.stringify(importJson) : JSON.stringify(self.BuildReportData([], isComparison, i - 1)),
 					adminMode: self.adminMode(),
 					userIdForFilter: self.userIdForFilter,
-					SubTotalMode: false,
+					subtotalMode: false,
 					useAltPivot: self.appSettings.useAltPivot
 				})
 			}).done(function (result) {
@@ -3839,7 +3839,7 @@ var reportViewModel = function (options) {
 						pivotColumn: '',
 						pivotFunction: '',
 						reportData: '',
-						SubTotalMode: false,
+						subtotalMode: false,
 						useAltPivot: self.appSettings.useAltPivot
 					}),
 					noBlocking: true
@@ -3887,7 +3887,7 @@ var reportViewModel = function (options) {
 							SaveReport: false,
 							ReportJson: JSON.stringify(self.BuildReportData(e.Items,isComparison, i - 1)),
 							adminMode: self.adminMode(),
-							SubTotalMode: false
+							subtotalMode: false
 						}),
 						noBlocking: true
 					}).done(function (ddResult) {
@@ -4000,7 +4000,7 @@ var reportViewModel = function (options) {
 					SaveReport: self.CanSaveReports() ? self.SaveReport() : false,
 					ReportJson: JSON.stringify(self.BuildReportData()),
 					adminMode: self.adminMode(),
-					SubTotalMode: true,
+					subtotalMode: true,
 					reportData: '',
 					pivotColumn: '',
 					pivotFunction: '',
@@ -4025,7 +4025,7 @@ var reportViewModel = function (options) {
 						desc: false,
 						reportSeries: '',
 						reportData: pivotData.pivotColumn ? JSON.stringify(reportData) : '',
-						SubTotalMode: pivotData.pivotColumn ? true : false,
+						subtotalMode: pivotData.pivotColumn ? true : false,
 						pivotColumn: pivotData.pivotColumn,
 						pivotFunction: pivotData.pivotFunction,
 						useAltPivot: self.appSettings.useAltPivot
@@ -4090,7 +4090,7 @@ var reportViewModel = function (options) {
 				pivotColumn: pivotData.pivotColumn,
 				pivotFunction: pivotData.pivotFunction,
 				reportData: pivotData.pivotColumn ? JSON.stringify(reportData) : '',
-				SubTotalMode: false,
+				subtotalMode: false,
 				useAltPivot: self.appSettings.useAltPivot
 			}),
 			noBlocking: self.ReportMode() == 'dashboard'
