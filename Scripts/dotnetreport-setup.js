@@ -1818,7 +1818,7 @@ var manageViewModel = function (options) {
 			toastr.error("No items selected to apply security!");
 			return;
 		}
-		bootbox.confirm("Are you sure you this will update in bulk before final apply?", function (result) {
+		bootbox.confirm("Warning: This will update access for ALL selected reports. Are you sure you want to continue?", function (result) {
 			if (result) {
 				self.selectedForSecurity.forEach(r => {
 					r.userId(self.manageAccess.getAsList(self.manageAccess.users));
