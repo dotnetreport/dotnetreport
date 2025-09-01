@@ -776,13 +776,30 @@ var headerDesigner = function (options) {
 		$('#report-header-editor').summernote({
 			height: 150,
 			popover: {
-				image: [],
-				link: [],
-				air: []
+				image: [
+					['image', ['resizeFull', 'resizeHalf', 'resizeQuarter', 'resizeNone']],
+					['float', ['floatLeft', 'floatRight', 'floatNone']],
+					['remove', ['removeMedia']]
+				],
+				link: [
+					['link', ['linkDialogShow', 'unlink']]
+				],
+				table: [
+					['add', ['addRowDown', 'addRowUp', 'addColLeft', 'addColRight']],
+					['delete', ['deleteRow', 'deleteCol', 'deleteTable']],
+				],
+				air: [
+					['color', ['color']],
+					['font', ['bold', 'underline', 'clear']],
+					['para', ['ul', 'paragraph']],
+					['table', ['table']],
+					['insert', ['link', 'picture']]
+				]
 			},
 			toolbar: [
 				['style', ['style']],
 				['font', ['bold', 'italic', 'underline', 'clear']],
+				['fontname', ['fontname', 'fontsize']],
 				['color', ['color']],
 				['para', ['ul', 'ol', 'paragraph']],
 				['table', ['table']],
@@ -1411,18 +1428,35 @@ var reportViewModel = function (options) {
 			$('#summernote-editor').summernote({
 				height: 300,
 				popover: {
-					image: [],
-					link: [],
-					air: []
+					image: [
+						['image', ['resizeFull', 'resizeHalf', 'resizeQuarter', 'resizeNone']],
+						['float', ['floatLeft', 'floatRight', 'floatNone']],
+						['remove', ['removeMedia']]
+					],
+					link: [
+						['link', ['linkDialogShow', 'unlink']]
+					],
+					table: [
+						['add', ['addRowDown', 'addRowUp', 'addColLeft', 'addColRight']],
+						['delete', ['deleteRow', 'deleteCol', 'deleteTable']]
+					],
+					air: [
+						['color', ['color']],
+						['font', ['fontname', 'fontsize', 'bold', 'underline', 'clear']],
+						['para', ['ul', 'paragraph']],
+						['table', ['table']],
+						['insert', ['link', 'picture']]
+					]
 				},
 				toolbar: [
 					['style', ['style']],
 					['font', ['bold', 'italic', 'underline', 'clear']],
+					['fontname', ['fontname', 'fontsize']],
 					['color', ['color']],
 					['para', ['ul', 'ol', 'paragraph']],
 					['table', ['table']],
 					['insert', ['link', 'picture']],
-					['view', ['codeview']]
+					['view', ['fullscreen','codeview']]
 				],
 				popoverContainer: 'body',
 				dialogsInBody: true
