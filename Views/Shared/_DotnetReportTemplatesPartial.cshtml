@@ -1907,34 +1907,51 @@
                                 </h5>
                                 </div>
                                 <div class="card-body">
-                                      <div class="row align-items-center mb-1">
-                                          <div class="col-md-4">
-                                            <select class="form-select" data-bind="options: SelectedFields, value: SelectFieldToInsert, optionsCaption: 'Select a field...', optionsText: 'selectedFieldName'"></select>
-                                          </div>
-                                            <div class="col-auto dropdown">
-                                              <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                                <i class="fa fa-table"></i> Insert as Table
-                                              </button>
-                                              <ul class="dropdown-menu">
-                                                <li>
-                                                  <a class="dropdown-item" href="#" data-bind="click: insertFieldTableTransposed">
-                                                    Transposed
-                                                  </a>
-                                                </li>
-                                                <li>
-                                                  <a class="dropdown-item" href="#" data-bind="click: insertFieldTableStandard">
-                                                    Standard
-                                                  </a>
-                                                </li>
-                                              </ul>
-                                            </div>
+                                    <div class="row align-items-center mb-1">
+                                        <div class="col-md-4">
+                                        <select class="form-select" data-bind="options: SelectedFields, value: SelectFieldToInsert, optionsCaption: 'Select a field...', optionsText: 'selectedFieldName'"></select>
+                                        </div>
+                                        <div class="col-auto dropdown">
+                                            <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                            <i class="fa fa-table"></i> Insert as Table
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                            <li>
+                                                <a class="dropdown-item" href="#" data-bind="click: insertFieldTableTransposed">
+                                                Transposed
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="#" data-bind="click: insertFieldTableStandard">
+                                                Standard
+                                                </a>
+                                            </li>
+                                            </ul>
+                                        </div>
 
-                                          <div class="col-md-auto ms-2">
-                                            <label class="form-check-label">
-                                              <input class="form-check-input me-2" type="checkbox" data-bind="checked: cardView">
-                                              Card Layout
-                                            </label>
-                                          </div>
+                                        <div class="col-md-auto ms-2">
+                                        <label class="form-check-label">
+                                            <input class="form-check-input me-2" type="checkbox" data-bind="checked: cardView">
+                                            Card Layout
+                                        </label>
+                                        </div>
+                                        <div class="col-md-auto ms-2" data-bind="visible: linkedReportFields().length > 0">
+                                            <div class="input-group input-group-sm">
+                                                <select class="form-select"
+                                                        data-bind="options: linkedReportFields,
+                                                                   optionsText: 'name',
+                                                                   optionsValue: 'id',
+                                                                   value: selectedLinkedField,
+                                                                   optionsCaption: 'Select linked report field...'">
+                                                </select>
+                                                <button class="btn btn-outline-primary"
+                                                        type="button"
+                                                        data-bind="click: insertLinkedFieldPlaceholder,
+                                                                   enable: selectedLinkedField">
+                                                    <i class="fa fa-link"></i> Add
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div class="mb-3">
                                         <textarea id="summernote-editor"></textarea>

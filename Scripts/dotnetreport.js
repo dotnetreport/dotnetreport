@@ -1506,6 +1506,33 @@ var reportViewModel = function (options) {
 		$('#summernote-editor').summernote('pasteHTML', table);
 	};
 
+	self.linkedReportFields = ko.computed(function () {
+		return ko.utils.arrayMap(
+			ko.utils.arrayFilter(self.SelectedFields(), function (field) {
+				return field.linkField
+					&& field.linkFieldItem
+					&& field.linkFieldItem.LinksToReport
+					&& ko.unwrap(field.linkFieldItem.LinksToReport);
+			}),
+			function (field) {
+				return {
+					id: field.fieldId,
+					name: field.fieldName || ("Field " + field.fieldId),
+					uiId: field.uiId
+				};
+			}
+		);
+	});
+
+	self.selectedLinkedField = ko.observable();
+
+	self.insertLinkedFieldPlaceholder = function () {
+		var field = self.selectedLinkedField();
+		if (field) {
+			var placeholder = `{{LinkedReport:${field}}}`;
+			$('#summernote-editor').summernote('insertText', placeholder);
+		}
+	};
 
 	self.getReportHtml = function () {
 		if ($('#summernote-editor').length) { 
@@ -3743,6 +3770,50 @@ var reportViewModel = function (options) {
 						const placeholderKey = selectedField.selectedFieldName;
 
 						renderedHtml = renderedHtml.replaceAll(`{{${placeholderKey}}}`, val);
+
+						var linkedPlaceHolderKey = `{{LinkedReport:${selectedField.fieldId}}}`;
+						if (renderedHtml.indexOf(linkedPlaceHolderKey) >= 0 && r.LinkTo) {
+							var linkItem = col.linkItem;
+
+							if (linkItem && linkItem.LinksToReport) {
+								const iframe = document.createElement("iframe");
+								iframe.style.display = "none";
+								iframe.src = r.LinkTo + "&subreport=true";
+								document.body.appendChild(iframe);
+								var fid = generateUniqueId();
+								iframe.onload = function () {
+									var checkInterval = setInterval(function () {
+										try {
+											const inner = iframe.contentDocument.querySelector(".report-inner");
+											const spinner = iframe.contentDocument.querySelector(".report-spinner");
+											const spinnerHidden = !spinner || spinner.style.display === "none";
+											// only replace when .report-inner exists AND spinner is hidden/removed
+											if (inner && spinnerHidden) {
+												clearInterval(checkInterval);
+
+												const container = document.querySelector(`[data-placeholder-id="${fid}"]`);
+												if (container) {
+													container.innerHTML = inner.outerHTML;
+												}
+
+												document.body.removeChild(iframe);
+											}
+										} catch (e) {
+											clearInterval(checkInterval);
+											console.error("Error checking iframe:", e);
+											document.body.removeChild(iframe);
+										}
+									}, 1000); 
+								};
+
+								// Instead of actual HTML, put a container in place
+								renderedHtml = renderedHtml.replace(
+									linkedPlaceHolderKey,
+									`<div data-placeholder-id="${fid}"><div class="loading">Loading subreport...</div></div>`
+								);
+							}
+						}
+
 					}
 					else {
 						let tableName = 'Custom';
@@ -3755,6 +3826,7 @@ var reportViewModel = function (options) {
 						const placeholderKey = `${tableName} > ${col.fieldName}`.trim();
 						renderedHtml = renderedHtml.replaceAll(`{{${placeholderKey}}}`, val);
 					}
+
 				}
 
 			});

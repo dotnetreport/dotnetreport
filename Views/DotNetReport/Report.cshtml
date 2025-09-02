@@ -266,9 +266,7 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
                                         </p>
 
                                         <div data-bind="with: ReportResult" class="report-expanded-scroll">
-                                            <div data-bind="visible: !ReportData()">
-                                                <div class="report-spinner"></div>
-                                            </div>
+                                            <div class="report-spinner" data-bind="visible: !ReportData()"></div>
                                             <div data-bind="template: 'report-template', data: $data"></div>
                                         </div>
                                     </div>
