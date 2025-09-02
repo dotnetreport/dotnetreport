@@ -1558,7 +1558,7 @@ var reportViewModel = function (options) {
 	self.manageFolderAccess = manageAccess(options);
 
 	self.pager.currentPage.subscribe(function () {
-		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey(), self.ReportSeries);
+		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey(), self.ReportSeries, true);
 	});
 
 	self.pager.pageSize.subscribe(function () {
