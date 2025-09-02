@@ -60,6 +60,225 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
     </script>
 }
 
+@if(Model.Subreport)
+{
+
+    <script type="text/html" id="report-render">
+        <div data-bind="with: ReportData">
+            <div data-bind="foreach: Rows">
+                <div data-bind="html: renderedHtml"></div>
+            </div>
+        </div>
+    </script>
+
+    <script type="text/html" id="report-template">
+        <div class="report-chart" data-bind="attr: {id: 'chart_div_' + $parent.ReportID()}, visible: $parent.isChart"></div>
+        <!-- ko if: $parent.ReportType() == 'Pivot' -->
+        <div data-bind="template: {name: 'report-pivot', data: $data }"></div>
+        <!-- /ko -->
+
+        <!-- ko if: $parent.ReportType() == 'Html' -->
+        <div data-bind="template: {name: 'report-render', data: $data }"></div>
+        <!-- /ko -->
+
+        <!-- ko if: $parent.ReportType() != 'Pivot' && $parent.ReportType() != 'Html' && (!$parent.isChart() || $parent.ShowDataWithGraph()) -->
+        <div class="pull-right" data-bind="if: $parent.OuterGroupColumns().length > 0">
+            <a href="#" data-bs-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
+                Manage Groups <span class="fa fa-ellipsis-v"></span>
+            </a>
+            <ul class="dropdown-menu" style="z-index: 1001;" data-bind="foreach: $parent.OuterGroupColumns">
+                <li class="dropdown-item small">
+                    <a href="#" data-bind="click: remove" title="Remove from Group">
+                        <span class="fa fa-close"></span> <span data-bind="text: fieldName"></span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+        <div class="clear-fix"></div>
+
+        <div data-bind="foreach: outerGroupData">
+            <!-- ko if: rows.length > 0 || ($parent.outerGroupData && $parent.outerGroupData().length == 1) -->
+            <h6 data-bind="html: display"></h6>
+            <div class="" style="padding-top: 5px;"></div>
+
+            <!-- ko if: $parents[1].ReportType() != 'Single'-->
+            <div data-bind="template: {name: 'report-table', data: $parent.ReportData }"></div>
+            <!-- /ko -->
+            <!-- ko if: $parents[1].ReportType() == 'Single'-->
+            <div data-bind="template: {name: 'report-widget', data: $parent.ReportData }"></div>
+            <!-- /ko -->
+            <!-- /ko -->
+        </div>
+        <!-- /ko -->
+    </script>
+
+
+    <script type="text/html" id="report-column-header">
+        <!-- ko foreach: Columns -->
+        <th data-bind="attr: { id: !IsPivotField ? fieldId : 'pivot--' + fieldName }, style: {'text-align': fieldAlign() ? fieldAlign() : (IsNumeric ? 'right' : 'left'), 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
+            <div data-bind="style: {'width': fieldWidth}">
+                <!-- ko if: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false) -->
+                <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
+                <!-- /ko -->
+                <!-- ko ifnot: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false)  -->
+                <span data-bind="click: function(){ if (!IsPivotField) { $parents[pagerIndex($parents)].changeSort(SqlField); } }, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}">
+                    <span data-bind="text: $parent.IsDrillDown() && fieldLabel2() ? fieldLabel2() : (fieldLabel() ? fieldLabel() : fieldName)"></span>
+                </span>
+                <!-- /ko -->
+            </div>
+        </th>
+        <!-- /ko -->
+    </script>
+
+    <script type="text/html" id="report-widget">
+        <div style="text-align: center; width: 100%;font-size: 48px">
+            <span data-bind="visible: Rows.length < 1" title="No data found">/</span>
+
+            <div data-bind="if: Rows.length > 0">
+                <div data-bind="with: $parent.rows[0].Items[0]">
+                    <span data-bind="html: formattedVal"></span>
+
+                    <!-- ko if: $parent.Rows.length > 1 && $parents[$parents.length-2].showPriorInKpi() -->
+                    <span data-bind="style: {'color': $parent.calculateRate() > 0 ? 'green' : 'red', 'font-size': '24px'}">
+                        <span data-bind="html: $parent.calculateRate() + '%'"></span>
+                    </span>
+
+                    <div data-bind="style: {'font-size': '24px', 'color': 'gray'}, css: {'text-muted': true}">
+                        Prior Period: <span data-bind="html: $parent.Rows[1].Items[0].formattedVal"></span>
+                    </div>
+                    <!-- /ko -->
+
+                </div>
+            </div>
+        </div>
+
+    </script>
+
+    <script type="text/html" id="report-column">
+        <!-- ko foreach: Items -->
+        <td data-bind="hidden: outerGroup, style: {'background-color': _backColor ?? backColor(), 'color': _fontColor ?? fontColor(), 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': fieldAlign() ? fieldAlign() : (Column.IsNumeric ? 'right' : 'left')}">
+            <div data-bind="style: {'width': fieldWidth }">
+                <!-- ko if: LinkTo-->
+                <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: formattedVal"></span></a>
+                <!-- /ko-->
+                <!-- ko ifnot: LinkTo-->
+                <span data-bind="html: formattedVal"></span>
+                <!-- /ko-->
+            </div>
+        </td>
+    </script>
+
+    <script type="text/html" id="report-pivot">
+        <div class="table-responsive" data-bind="with: ReportData">
+            <table class="table table-striped table-hover table-condensed">
+                <thead style="position: sticky; top: -1px; z-index: 2;">
+                    <tr>
+                        <th></th>
+                        <!-- ko foreach: Rows -->
+                        <th>
+                            <span data-bind="text: Items[0].FormattedValue"></span>
+                        </th>
+                        <!-- /ko -->
+                    </tr>
+                </thead>
+                <tbody data-bind="foreach: Columns">
+                    <tr>
+                        <!-- ko if: $index() > 0 -->
+                        <td>
+                            <span data-bind="text: fieldLabel || ColumnName"></span>
+                        </td>
+                        <!-- ko foreach: $parent.Rows -->
+                        <td data-bind="style: {'background-color': $parent.backColor, 'color': $parent.fontColor, 'font-weight': $parent.fontBold() ? 'bold' : 'normal', 'text-align': $parent.fieldAlign ? $parent.fieldAlign : ($parent.IsNumeric ? 'right' : 'left') }">
+                            <span data-bind="text: Items[$parentContext.$index()].FormattedValue"></span>
+                        </td>
+                        <!-- /ko -->
+                        <!-- /ko -->
+                    </tr>
+                </tbody>
+            </table>
+
+        </div>
+
+    </script>
+
+    <script type="text/html" id="report-table">
+        <div class="table-responsive">
+            <table class="table table-hover table-condensed" data-bind="attr: {class: 'table table-striped table-hover table-condensed ' + $parents[2].selectedStyle()}">
+                <thead style="position: sticky; top: -1px; z-index: 2;" data-bind="if: !$parents[2].noHeaderRow()">
+                    <tr class="no-highlight" data-bind="sortableColumns: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight',selectedFields: $parents[2].SelectedFields }">
+
+                        <!-- ko template: 'report-column-header', data: $data -->
+                        <!-- /ko-->
+                    </tr>
+                </thead>
+                <tbody data-bind="attr: {id: 'report-table-body' + $parents[2].ReportID()}">
+                    <tr style="display: none;" data-bind="visible: Rows.length < 1">
+                        <td data-bind="attr:{colspan: Columns.length + 1}">
+                            No records found
+                        </td>
+                    </tr>
+
+                    <!-- ko if: !$parents[2].hasPivotColumn() && (!$parents[2].ShowExpandOption() || $parents[2].ReportType() == 'List') -->
+                    <!-- ko foreach: $parent.rows  -->
+                    <tr>
+                        <!-- ko template: 'report-column', data: $data -->
+                        <!-- /ko-->
+                    </tr>
+                    <!-- ko if: isExpanded -->
+                    <tr>
+                        <td style="width: 30px;"></td>
+                        <td data-bind="attr:{colspan: $parent.Columns.length }" style="padding-left: 0px;">
+                            <div data-bind="visible: !DrillDownData()">
+                                <div class="report-spinner"></div>
+                            </div>
+                            <!-- ko if: DrillDownData -->
+                            <table class="table table-striped table-hover table-condensed" data-bind="with: DrillDownData">
+                                <thead>
+                                    <tr class="no-highlight">
+                                        <!-- ko template: 'report-column-header', data: $data -->
+                                        <!-- /ko-->
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="display: none;" data-bind="visible: Rows && Rows.length < 1">
+                                        <td data-bind="attr: {colspan: Columns.length}">
+                                            No records found
+                                        </td>
+                                    </tr>
+                                    <!-- ko foreach: Rows  -->
+                                    <tr>
+                                        <!-- ko template: 'report-column', data: $data -->
+                                        <!-- /ko-->
+                                    </tr>
+                                    <!-- /ko -->
+                                </tbody>
+                            </table>
+                            <!-- /ko -->
+                        </td>
+                    </tr>
+                    <!-- /ko -->
+                    <!-- /ko -->
+                    <!-- /ko-->
+                </tbody>
+                <!-- ko if: $parentContext.$parent.SubTotals().length == 1 && $parentContext.$parentContext.$parent.OuterGroupColumns().length == 0 -->
+                <tfoot data-bind="foreach: $parentContext.$parent.SubTotals">
+                    <tr class="sub-total">
+                        <!-- ko foreach: Items -->
+                        <!-- ko if: Value != 'NA' && Value != 'NaN' && !outerGroup() -->
+                        <td data-bind="style: {'background-color': _backColor ?? backColor(), 'color': _fontColor ?? fontColor(), 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': fieldAlign() ? fieldAlign() : 'right'}">
+                            <div data-bind="style: {'width': fieldWidth }">
+                            <span data-bind="html: formattedVal"></span>
+                            </div>
+                        </td>
+                        <!-- /ko -->
+                        <!-- /ko -->
+                    </tr>
+                </tfoot>
+                <!-- /ko -->
+            </table>
+        </div>
+    </script>
+}
 
 <!-- Report Builder -->
 <div class="modal modal-fullscreen" id="modal-reportbuilder" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="padding-right: 0px !important;">

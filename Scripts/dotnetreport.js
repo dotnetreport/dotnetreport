@@ -3793,7 +3793,10 @@ var reportViewModel = function (options) {
 
 												const container = document.querySelector(`[data-placeholder-id="${fid}"]`);
 												if (container) {
-													container.innerHTML = inner.outerHTML;
+													const tempDiv = document.createElement("div");
+													tempDiv.innerHTML = inner.outerHTML;
+													tempDiv.querySelectorAll(".chart-container.pull-right").forEach(el => el.remove());
+													container.innerHTML = tempDiv.innerHTML;
 												}
 
 												document.body.removeChild(iframe);
@@ -3806,7 +3809,6 @@ var reportViewModel = function (options) {
 									}, 1000); 
 								};
 
-								// Instead of actual HTML, put a container in place
 								renderedHtml = renderedHtml.replace(
 									linkedPlaceHolderKey,
 									`<div data-placeholder-id="${fid}"><div class="loading">Loading subreport...</div></div>`
