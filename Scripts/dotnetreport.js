@@ -1402,7 +1402,7 @@ var reportViewModel = function (options) {
 	self.manageFolderAccess = manageAccess(options);
 
 	self.pager.currentPage.subscribe(function () {
-		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey(), self.ReportSeries);
+		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey(), self.ReportSeries, true);
 	});
 
 	self.pager.pageSize.subscribe(function () {
@@ -3110,7 +3110,7 @@ var reportViewModel = function (options) {
 					UseDefault: x.Operator() == 'is default',
 					ParameterId: x.Id,
 					ParameterName: x.ParameterName,
-					Value: x.Operator() == 'in' ? x.ValueIn.join(",") : x.Value(),
+					Value: x.Operator() == 'in' ? (Array.isArray(x.ValueIn) ? x.ValueIn: [x.Value()]).join(",") : x.Value(),
 					Operator: x.Operator()
 				}
 			}) : []

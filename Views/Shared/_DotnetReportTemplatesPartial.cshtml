@@ -79,6 +79,12 @@
              <!-- ko if: ['in', 'not in'].indexOf($parent.Operator()) != -1 -->
             <input class="form-control" type="text" data-bind="value: $parent.Value" required />
             <!-- /ko -->
+            <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
+            From
+            <input class="form-control" type="number" data-bind="value: $parent.Value" required />
+            To
+            <input class="form-control" type="number" data-bind="value: $parent.Value2" required />
+        <!-- /ko -->
         <!-- /ko -->
         <!-- ko if: fieldType=='Boolean' && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
         <select required class="form-select" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default'">
