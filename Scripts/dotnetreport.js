@@ -249,11 +249,11 @@ function scheduleBuilder(userId, getTimeZonesUrl,appSettings) {
 			switch (format) {
 				case "PDF":
 					context = ko.contextFor(document.getElementById('pdfOptionsScheduleModal'))?.$data?.PdfPage
-						|| ko.contextFor(document.getElementById('pdfOptionsScheduleModal'))?.$data?.dashboard?.scheduleBuilder?.PdfPage;
+						|| ko.contextFor(document.getElementById('pdfOptionsScheduleModal'))?.$data?.dashboard?.PdfPage;
 					break;
 				case "WORD":
 					context = ko.contextFor(document.getElementById('wordOptionsScheduleModal'))?.$data?.WordPage
-						|| ko.contextFor(document.getElementById('wordOptionsScheduleModal'))?.$data?.dashboard?.scheduleBuilder?.WordPage;
+						|| ko.contextFor(document.getElementById('wordOptionsScheduleModal'))?.$data?.dashboard?.WordPage;
 					break;
 				default:
 					return null;
