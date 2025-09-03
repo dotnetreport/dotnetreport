@@ -787,6 +787,7 @@ var headerDesigner = function (options) {
 				table: [
 					['add', ['addRowDown', 'addRowUp', 'addColLeft', 'addColRight']],
 					['delete', ['deleteRow', 'deleteCol', 'deleteTable']],
+					['color', ['bgcolor']]
 				],
 				air: [
 					['color', ['color']],
@@ -803,11 +804,12 @@ var headerDesigner = function (options) {
 				['color', ['color']],
 				['para', ['ul', 'ol', 'paragraph']],
 				['table', ['table']],
-				['insert', ['link', 'picture']],
-				['view', ['codeview']]
+				['insert', ['link', 'picture', 'hr']],
+				['view', ['fullscreen', 'codeview']]
 			],
-			popoverContainer: 'body',
-			dialogsInBody: true
+			popoverContainer: 'modal',
+			dialogsInBody: false,
+			tableresize: true
 		});
 		self.loadHtmlHeader();
 	};
@@ -1438,7 +1440,8 @@ var reportViewModel = function (options) {
 					],
 					table: [
 						['add', ['addRowDown', 'addRowUp', 'addColLeft', 'addColRight']],
-						['delete', ['deleteRow', 'deleteCol', 'deleteTable']]
+						['delete', ['deleteRow', 'deleteCol', 'deleteTable']],
+						['color', ['bgcolor']]
 					],
 					air: [
 						['color', ['color']],
@@ -1455,11 +1458,12 @@ var reportViewModel = function (options) {
 					['color', ['color']],
 					['para', ['ul', 'ol', 'paragraph']],
 					['table', ['table']],
-					['insert', ['link', 'picture']],
+					['insert', ['link', 'picture', 'hr']],
 					['view', ['fullscreen','codeview']]
 				],
-				popoverContainer: 'body',
-				dialogsInBody: true
+				popoverContainer: 'modal',
+				dialogsInBody: false,
+				tableresize: true
 			});
 
 			$('#summernote-editor').summernote('code', decodeURIComponent(self.reportHtml()));
