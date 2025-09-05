@@ -1533,9 +1533,11 @@ var reportViewModel = function (options) {
 		if (list.length > 0) {
 			self.DefaultPageSize(1);
 			self.changePageSize(true);
+			self.pager.pageSizeOptions([1]);
 		} else {
 			self.DefaultPageSize(30);
 			self.changePageSize(false);
+			self.pager.pageSizeOptions([1, 10, 30, 50, 100, 150, 200, 500]);
 		}
 	});
 

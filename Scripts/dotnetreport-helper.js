@@ -460,6 +460,7 @@ function pagerViewModel(args) {
     self.pauseNavigation = ko.observable(false);
     self.totalRecords = ko.observable(0);
     self.autoPage = ko.observable(args.autoPage === true ? true : false);
+    self.pageSizeOptions = ko.observableArray([1, 10, 30, 50, 100, 150, 200, 500]);
 
     self.sortColumn = ko.observable();
     self.sortDescending = ko.observable();
