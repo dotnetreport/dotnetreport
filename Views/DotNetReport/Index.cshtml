@@ -21,7 +21,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
     $(document).ready(function() {
         ajaxcall({ url: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")' }).done(function(data) {
             var vm = new reportViewModel({
-                runReportUrl: '@Url.Action("Report")',
+                runReportUrl: '@Url.Action("Index")',
                 reportWizard: $("#modal-reportbuilder"),
                 execReportUrl: "@Url.Action("RunReport", "DotNetReportApi")",
                 runLinkReportUrl: "@Url.Action("RunReportLink", "DotNetReportApi")",
@@ -42,7 +42,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 samePageOnRun: true
             });
 
-            vm.init(queryParams.folderid || 0, data.noAccount);
+            vm.init(queryParams.folderid || 0, data.noAccount, queryParams.reportId || 0);
             ko.applyBindings(vm);
             vm.textQuery.setupSearch();
 
@@ -239,8 +239,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                             <br />
                                                         </div>
                                                         <div>
-                                                            Direct Link to Run Report: <a data-bind="attr: {href: '/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + reportId }" target="_blank"><span class="fa fa-link"></span></a>
-                                                            &nbsp;<a href="#" data-bind="click: navigator.clipboard.writeText(window.location.href + '/Report?linkedreport=true&noparent=true&reportId=' + reportId )"><span class="fa fa-copy" title="Click to Copy Link"></span></a>
+                                                            Direct Link to Run Report: <a data-bind="attr: {href: '/DotNetReport/?linkedreport=true&noparent=true&reportId=' + reportId }" target="_blank"><span class="fa fa-link"></span></a>
+                                                            &nbsp;<a href="#" data-bind="click: navigator.clipboard.writeText(window.location.href + '?linkedreport=true&noparent=true&reportId=' + reportId )"><span class="fa fa-copy" title="Click to Copy Link"></span></a>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -459,9 +459,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                     <div class="badge bg-info text-white" data-bind="text: userRole ? userRole : 'No Role'"></div>
                                                 </div>
                                                 <div class="col-md-1" data-bind="visible: $parent.adminMode">
-                                                    <a data-bind="attr: {href: '/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + reportId }" target="_blank"><span class="fa fa-link"></span></a>
+                                                    <a data-bind="attr: {href: '/DotNetReport?linkedreport=true&noparent=true&reportId=' + reportId }" target="_blank"><span class="fa fa-link"></span></a>
                                                     &nbsp;
-                                                    <a href="#" data-bind="click: function() { navigator && navigator.clipboard && navigator.clipboard.writeText('/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + reportId) }">
+                                                    <a href="#" data-bind="click: function() { navigator && navigator.clipboard && navigator.clipboard.writeText('/DotNetReport?linkedreport=true&noparent=true&reportId=' + reportId) }">
                                                         <span class="fa fa-copy" title="Copy Link"></span>
                                                     </a>
                                                 </div>
@@ -559,7 +559,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
         
     </div>
 
-    <div data-bind="if: ReportMode() == 'execute' || ReportMode() == 'Linked'">
+    <div data-bind="if: ReportMode() == 'execute' || ReportMode() == 'linked'">
         <div class="card" data-bind="visible: true;" style="display: none;">
             <div class="card-header">
                 <nav class="navbar navbar-expand-lg navbar-light bg-light">

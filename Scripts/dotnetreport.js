@@ -1384,7 +1384,7 @@ var reportViewModel = function (options) {
 
 	self.adminMode.subscribe(function (newValue) {
 
-		if (self.ReportMode() != "dashboard" && self.ReportMode() != "subreport") {
+		if (self.ReportMode() != "dashboard" && self.ReportMode() != "subreport" && !self.inInit) {
 			self.loadFolders().done(function () {
 				self.LoadAllSavedReports();
 			});
@@ -1540,35 +1540,39 @@ var reportViewModel = function (options) {
 	});
 
 	self.linkedReportFields = ko.computed(function () {
-		return ko.utils.arrayMap(
-			ko.utils.arrayFilter(self.SelectedFields(), function (field) {
-				return field.linkField
-					&& field.linkFieldItem
-					&& field.linkFieldItem.LinksToReport
-					&& ko.unwrap(field.linkFieldItem.LinksToReport);
-			}),
-			function (field) {
-				var reportId = field.linkFieldItem.LinkedToReportId();
-				var report = self.SavedReports().find(r => r.reportId == reportId);
+		return self.SelectedFields()
+			.filter(field =>
+				field.linkField &&
+				field.linkField() &&
+				field.linkFieldItem &&
+				field.linkFieldItem.LinksToReport &&
+				field.linkFieldItem.LinksToReport()
+			)
+			.map(field => {
+				const reportId = field.linkFieldItem.LinkedToReportId();
+				const report = self.SavedReports().find(r => r.reportId === reportId);
+
 				return {
 					fieldId: field.fieldId,
-					reportId: reportId, 
-					name: field.fieldName + ' > ' + (report ? report.reportName : ''),
+					reportId: reportId,
+					name: `${field.fieldName} > ${report ? report.reportName : ''}`,
 					uiId: field.uiId
 				};
-			}
-		);
+			});
 	});
 
-	self.selectedLinkedField = ko.observable();
+	self.linkedReportFields.subscribe(function (newList) {
+		const validFieldIds = newList.map(r => r.fieldId);
+		self.subReports.remove(r => !validFieldIds.includes(r.fieldId));
+	});
 
-	self.insertLinkedFieldPlaceholder = function () {
-		var field = self.selectedLinkedField();
-		if (field) {
-			var placeholder = `{{LinkedReport:${field}}}`;
-			$('#summernote-editor').summernote('insertText', placeholder);
-		}
-	};
+	self.linkedReportFields.subscribe(function (newList) {
+		const validFieldIds = newList.map(f => f.fieldId);
+		self.subReports.remove(sr => !validFieldIds.includes(sr.fieldId));
+	});
+
+
+	self.selectedLinkedField = ko.observable();
 
 	self.getReportHtml = function () {
 		if ($('#summernote-editor').length) { 
@@ -3692,7 +3696,7 @@ var reportViewModel = function (options) {
 								reportConnect: linkedReport.ConnectKey,
 								users: options.users,
 								userRoles: options.userRoles,
-								skipDraw: true,
+								skipDraw: false,
 								printReportUrl: options.printReportUrl,
 								dataFilters: options.dataFilters,
 								getTimeZonesUrl: options.getTimeZonesUrl,
@@ -5638,12 +5642,14 @@ var reportViewModel = function (options) {
 		});
 	};
 
-	self.init = function (folderId, noAccount) {
+	self.inInit = false;
+	self.init = function (folderId, noAccount, reportId) {
 		if (noAccount) {
 			$("#noaccountModal").modal('show');
 			return;
 		}
 
+		self.inInit = true;
 		var adminMode = false;
 		if (localStorage) adminMode = localStorage.getItem('reportAdminMode');
 
@@ -5656,10 +5662,18 @@ var reportViewModel = function (options) {
 		self.loadAppSettings().done(function () {
 			if (self.ReportMode() != "dashboard") {
 				self.loadFolders().done(function () {
-					self.LoadAllSavedReports();
+					self.LoadAllSavedReports(reportId > 0);
+					if (reportId > 0) {
+						self.ReportMode('linked');
+						self.LoadReport(reportId, true);
+						self.inIinit = false;
+					}
 				});
+			} else {
+				self.inIinit = false;
 			}
 		});
+		
 	};
 
 	self.loadAppSettings = function () {
