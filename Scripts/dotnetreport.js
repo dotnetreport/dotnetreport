@@ -5807,6 +5807,38 @@ var reportViewModel = function (options) {
 		});
 	}
 
+	self.printReportPage = function () {
+		var reportTitle = self.ReportName ? self.ReportName() : "Dotnet Report";
+
+		var iframe = document.createElement('iframe');
+		iframe.style.position = "fixed";
+		iframe.style.right = "0";
+		iframe.style.bottom = "0";
+		iframe.style.width = "0";
+		iframe.style.height = "0";
+		iframe.style.border = "0";
+		document.body.appendChild(iframe);
+
+		var doc = iframe.contentWindow.document;
+		doc.open();
+		doc.write(
+			'<html><head>' +
+			'<title>' + reportTitle + '</title>' +
+			'<link href="/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet" />' +
+			'<style>a[href]:after {content: none !important;}</style>' +
+			'</head><body>' +
+			document.querySelector('.report-inner').innerHTML +
+			'</body></html>'
+		);
+		doc.close();
+
+		setTimeout(function () {
+			iframe.contentWindow.focus();
+			iframe.contentWindow.print();
+			document.body.removeChild(iframe); // clean up
+		}, 250);
+	};
+
 	self.getExportJson = function (pageSize,pageOrientation) {
 		var reportData = self.BuildReportData();
 		reportData.DrillDownRowUsePlaceholders = true;
@@ -6869,6 +6901,12 @@ var dashboardViewModel = function (options) {
 	self.RefreshAllReports = function () {
 		self.reports().forEach(x => x.RunReport(false, true, true));
 	}
+
+	self.PrintDashboard = function () {
+		window.print();
+	};
+
+
 	self.ExportAllPdfReportsWithPageOption = function () {
 		if (self.dashboard.PdfPage) {
 			self.dashboard.PdfPage.download = function () {

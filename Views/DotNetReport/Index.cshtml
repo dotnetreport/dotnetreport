@@ -595,7 +595,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <i class="fa fa-download"></i>
                                     <span>Export</span>
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
+                                <ul class="dropdown-menu dropdown-menu-end">                                    
                                     <li data-bind="hidden: appSettings.useAltPdf">
                                         <a href="#" class="dropdown-item" data-bind="click: appSettings.showPageSize
                                               ? function() { PdfPage.isDebug = false; $('#pdfOptionsModal').modal('show'); }
@@ -603,7 +603,6 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             <i class="fa fa-file-pdf-o"></i> Pdf
                                         </a>
                                     </li>
-
                                     <li data-bind="visible: adminMode() && !appSettings.useAltPdf">
                                         <a href="#" class="dropdown-item" data-bind="click: appSettings.showPageSize
                                               ? function() { PdfPage.isDebug = true; $('#pdfOptionsModal').modal('show'); }
@@ -643,6 +642,11 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <li data-bind="hidden: appSettings.dontXmlExport">
                                         <a href="#" class="dropdown-item" data-bind="click: downloadXml">
                                             <i class="fa fa-file-code-o"></i> Xml
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="#" class="dropdown-item" data-bind="click: printReportPage">
+                                            <i class="fa fa-print"></i> Print
                                         </a>
                                     </li>
                                 </ul>
