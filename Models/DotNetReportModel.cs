@@ -56,7 +56,6 @@ namespace ReportBuilder.Web.Models
         public string ReportSeries { get; set; }
         public bool ExpandAll { get; set; }
         public string ReportData { get; set; }
-        public bool Subreport { get; set; }
     }
 
     public class DotNetReportScheduleModel : DotNetReportModel

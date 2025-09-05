@@ -15,7 +15,7 @@ namespace ReportBuilder.Web.Controllers
         }
 
         public IActionResult Report(int reportId, string reportName, string reportDescription, bool includeSubTotal = false, bool showUniqueRecords = false,
-            bool aggregateReport = false, bool showDataWithGraph = false, string reportSql = "", string connectKey = "", string reportFilter = "", string reportType = "", int selectedFolder = 0, string reportSeries = "", bool subreport=false)
+            bool aggregateReport = false, bool showDataWithGraph = false, string reportSql = "", string connectKey = "", string reportFilter = "", string reportType = "", int selectedFolder = 0, string reportSeries = "")
         {            
             var model = new DotNetReportModel
             {
@@ -30,8 +30,7 @@ namespace ReportBuilder.Web.Controllers
                 ShowDataWithGraph = showDataWithGraph,
                 SelectedFolder = selectedFolder,
                 ReportSeries = !string.IsNullOrEmpty(reportSeries) ? reportSeries.Replace("%20", " ") : string.Empty,
-                ReportFilter = reportFilter, // json data to setup filter correctly again                
-                Subreport = subreport
+                ReportFilter = reportFilter // json data to setup filter correctly again
             };
 
             return View(model);

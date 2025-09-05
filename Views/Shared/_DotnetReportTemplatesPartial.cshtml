@@ -341,6 +341,42 @@
                     </td>
                 </tr>
                 <!-- /ko -->
+                <!-- ko if: subReportsRan().length > 0 -->
+                <tr>                    
+                    <td data-bind="attr:{colspan: $parent.Columns.length }" style="padding-left: 0px;">
+                        <div data-bind="foreach: subReportsRan">
+                            <div class="">
+                                <div class="" style="padding-bottom: 20px;" >
+                                    <h2 class="pull-left" data-bind="text: ReportName"></h2>
+
+                                    <div class="clearfix"></div>
+                                    <div class="list-overflow-auto" style="padding-top: 0; margin-top: 0;">                                       
+                                        <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
+
+                                        <div data-bind="with: ReportResult" class="small">
+                                            <div data-bind="visible: !ReportData()">
+                                                <div class="report-spinner"></div>
+                                            </div>
+                                            <div data-bind="template: 'report-template', data: $data"></div>
+                                        </div>
+                                    </div>
+                                    <div class="form-inline">
+                                        <div class="small" data-bind="with: pager">
+                                            <div class="form-group pull-left total-records" data-bind="if: totalRecords()>1 && $parent.ReportType() != 'Single'">
+                                                <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
+                                            </div>
+                                            <div class="form-group pull-right" data-bind="if: pages()>1 && $parent.ReportType() != 'Single'">
+                                                <div data-bind="template: 'pager-template', data: $data"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                <!-- /ko -->
                 <!-- /ko -->
                 <!-- /ko-->
             </tbody>
@@ -370,6 +406,37 @@
     <div data-bind="with: ReportData">
       <div data-bind="foreach: Rows">
         <div data-bind="html: renderedHtml, css: { 'card-view': $parents[$parents.length-1].cardView }"></div>
+
+        <div data-bind="foreach: subReportsRan">
+            <div class="">
+                <div class="" style="padding-bottom: 20px;" >
+                    <h2 class="pull-left" data-bind="text: ReportName"></h2>
+
+                    <div class="clearfix"></div>
+                    <div class="list-overflow-auto" style="padding-top: 0; margin-top: 0;">
+                        <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
+
+                        <div data-bind="with: ReportResult" class="small">
+                            <div data-bind="visible: !ReportData()">
+                                <div class="report-spinner"></div>
+                            </div>
+                            <div data-bind="template: 'report-template', data: $data"></div>
+                        </div>
+                    </div>
+                    <div class="form-inline">
+                        <div class="small" data-bind="with: pager">
+                            <div class="form-group pull-left total-records" data-bind="if: totalRecords()>1 && $parent.ReportType() != 'Single'">
+                                <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
+                            </div>
+                            <div class="form-group pull-right" data-bind="if: pages()>1 && $parent.ReportType() != 'Single'">
+                                <div data-bind="template: 'pager-template', data: $data"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
       </div>
     </div>
     <div class="clearfix"></div>
@@ -1904,6 +1971,48 @@
                                 </ul>
                             </div>
                         </div>
+                        <div data-bind="if: linkedReportFields().length > 0">
+                            <br />
+                             <div class="card mb-4">
+                                <div class="card-header bg-light">
+                                <h5 class="mb-0">
+                                    <i class="fa fa-bookmark"></i> Include Sub Reports
+                                </h5>
+                                </div>
+                                <div class="card-body">
+                                    <p class="text-muted mb-3">
+                                        Linked reports are available to add as sub reports.
+                                        Selecting sub reports will restrict the report to <strong>one record per page</strong>.
+                                    </p>
+
+                                    <div class="mb-3">
+                                        <select class="form-select"
+                                                data-bind="options: linkedReportFields,
+                                                           optionsText: 'name',
+                                                           value: selectedSubReport,
+                                                           optionsCaption: 'Select a linked report...'">
+                                        </select>
+                                    </div>
+                                    <ul class="list-group"
+                                        data-bind="sortable: {
+                                                       data: subReports,
+                                                       options: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight' }
+                                                   }">
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            <span>
+                                                <i class="fa fa-bars sortable me-2" style="cursor:move;"></i>
+                                                <span data-bind="text: name"></span>
+                                            </span>
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                    data-bind="click: $parent.removeSubReport">
+                                                Delete
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
                         <div data-bind="visible: ReportType()=='Html'">
                             <br />
                             <div class="card mb-4">
@@ -1940,23 +2049,6 @@
                                             <input class="form-check-input me-2" type="checkbox" data-bind="checked: cardView">
                                             Card Layout
                                         </label>
-                                        </div>
-                                        <div class="col-md-auto ms-2" data-bind="visible: linkedReportFields().length > 0">
-                                            <div class="input-group input-group-sm">
-                                                <select class="form-select"
-                                                        data-bind="options: linkedReportFields,
-                                                                   optionsText: 'name',
-                                                                   optionsValue: 'id',
-                                                                   value: selectedLinkedField,
-                                                                   optionsCaption: 'Select linked report field...'">
-                                                </select>
-                                                <button class="btn btn-outline-primary"
-                                                        type="button"
-                                                        data-bind="click: insertLinkedFieldPlaceholder,
-                                                                   enable: selectedLinkedField">
-                                                    <i class="fa fa-link"></i> Add
-                                                </button>
-                                            </div>
                                         </div>
                                     </div>
                                     <div class="mb-3">
@@ -2078,15 +2170,25 @@
                                             </div>
                                         </div>
                                         <div class="form-group row">
-                                            <div class="checkbox col-md-5">
-                                                <label>
-                                                    <input type="checkbox" data-bind="checked: changePageSize" />
-                                                    Change Page Size
-                                                </label>
-                                            </div>
-                                            <div class="col-md-5" data-bind="visible: changePageSize">
-                                                <select style="width: 150px;" class="form-select" data-bind="options: [1,10,30,50,100,150,200,500,1000], value: DefaultPageSize"></select>
-                                            </div>
+                                          <div class="checkbox col-md-5">
+                                            <label>
+                                              <input type="checkbox" data-bind="checked: changePageSize, disable: subReports().length > 0" />
+                                              Change Page Size
+                                            </label>
+                                          </div>
+                                          <div class="col-md-5"
+                                               data-bind="visible: changePageSize,
+                                                          css: { 'text-muted': subReports().length > 0 }">
+                                            <select style="width: 150px;" class="form-select"
+                                                    data-bind="options: [1,10,30,50,100,150,200,500,1000],
+                                                               value: DefaultPageSize,
+                                                               disable: subReports().length > 0">
+                                            </select>
+                                            <!-- Force default to 1 if sub reports selected -->
+                                            <small class="text-danger" data-bind="visible: subReports().length > 0">
+                                              Page size is restricted to 1 when sub reports are selected.
+                                            </small>
+                                          </div>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
@@ -2175,7 +2277,7 @@
                 </li>
             </ul>
             <div class="tab-content small">
-                <div class="tab-pane fade" 
+                <div class="tab-pane fade"
                      data-bind="attr: { id: 'chartTab-' + ReportID() }, css: { 'show active': ReportType() === 'Bar' || ReportType() === 'Pie' || ReportType() === 'Line' }">
                     <div class="mb-2">
                         <div class="btn-group" role="group" data-bind="visible: ReportType() === 'Bar' || ReportType() === 'Pie' || ReportType() === 'Line'">
@@ -2286,7 +2388,7 @@
                 </div>
 
                 <div class="tab-pane fade"
-                     data-bind="attr: { id: 'tableTab-' + ReportID() }, css: { 'show active': !(ReportType() === 'Bar' || ReportType() === 'Pie' || ReportType() === 'Line') }">                   
+                     data-bind="attr: { id: 'tableTab-' + ReportID() }, css: { 'show active': !(ReportType() === 'Bar' || ReportType() === 'Pie' || ReportType() === 'Line') }">
                     <div class="form-group row">
                         <div class="mb-2 col-6">
                             <label class="form-label small">Header Back Color</label>
@@ -2459,63 +2561,63 @@
     </div>
 </div>
 <script type="text/html" id="pdf-options-schedule-template">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content" data-bind="with: PdfPage">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="pdfOptionsScheduleModalLabel">
-                        <i class="fa fa-file-pdf-o me-2"></i> Set PDF Page Size
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body row g-0">
-                    <div class="col-md-5 d-flex justify-content-center align-items-center">
-                        <div id="pagePreviewBox" class="text-center">
-                            <div data-bind="style: {
-                                         width: selectedWidth(),
-                                         height: selectedHeight(),
-                                         backgroundColor: selectedBackgroundStyle(),
-                                         transition: 'all 0.3s ease'
-                                     }"
-                                 class="shadow rounded mx-auto mb-2 border position-relative">
-                                <span class="position-absolute top-50 start-50 translate-middle text-muted small">Preview</span>
-                            </div>
-                            <div data-bind="text: selectedPageLabel" class="fw-bold"></div>
-                            <div data-bind="text: selectedPageDimension" class="text-muted small"></div>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" data-bind="with: PdfPage">
+            <div class="modal-header">
+                <h5 class="modal-title" id="pdfOptionsScheduleModalLabel">
+                    <i class="fa fa-file-pdf-o me-2"></i> Set PDF Page Size
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body row g-0">
+                <div class="col-md-5 d-flex justify-content-center align-items-center">
+                    <div id="pagePreviewBox" class="text-center">
+                        <div data-bind="style: {
+                                     width: selectedWidth(),
+                                     height: selectedHeight(),
+                                     backgroundColor: selectedBackgroundStyle(),
+                                     transition: 'all 0.3s ease'
+                                 }"
+                             class="shadow rounded mx-auto mb-2 border position-relative">
+                            <span class="position-absolute top-50 start-50 translate-middle text-muted small">Preview</span>
                         </div>
-                    </div>
-                    <div class="col-md-7">
-                        <div class="mb-3">
-                            <label for="pageSizeSelect" class="form-label fw-bold">Page Size:</label>
-                            <select class="form-select" id="pageSizeSelect"
-                                    data-bind="options: availablePageSizes,
-                                               optionsText: 'label',
-                                               optionsValue: 'value',
-                                               value: selectedPageSize">
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="pageOrientationSelect" class="form-label fw-bold">Page Orientation:</label>
-                            <select class="form-select" id="pageOrientationSelect"
-                                    data-bind="options: availablePageOrientation,
-                                               optionsText: 'label',
-                                               optionsValue: 'value',
-                                               value: selectedPageOrientation">
-                            </select>
-                        </div>
-                        <div class="alert alert-info p-2 small mt-2">
-                            This PDF will be exported using the selected page size. Ensure your content fits well.
-                            If the content width exceeds the selected size, it will default to Letter.
-                        </div>
+                        <div data-bind="text: selectedPageLabel" class="fw-bold"></div>
+                        <div data-bind="text: selectedPageDimension" class="text-muted small"></div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-success" data-bs-dismiss="modal" data-bind="click: save">
-                         Save
-                    </button>
+                <div class="col-md-7">
+                    <div class="mb-3">
+                        <label for="pageSizeSelect" class="form-label fw-bold">Page Size:</label>
+                        <select class="form-select" id="pageSizeSelect"
+                                data-bind="options: availablePageSizes,
+                                           optionsText: 'label',
+                                           optionsValue: 'value',
+                                           value: selectedPageSize">
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="pageOrientationSelect" class="form-label fw-bold">Page Orientation:</label>
+                        <select class="form-select" id="pageOrientationSelect"
+                                data-bind="options: availablePageOrientation,
+                                           optionsText: 'label',
+                                           optionsValue: 'value',
+                                           value: selectedPageOrientation">
+                        </select>
+                    </div>
+                    <div class="alert alert-info p-2 small mt-2">
+                        This PDF will be exported using the selected page size. Ensure your content fits well.
+                        If the content width exceeds the selected size, it will default to Letter.
+                    </div>
                 </div>
             </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal" data-bind="click: save">
+                     Save
+                </button>
+            </div>
         </div>
+    </div>
 </script>
 <script type="text/html" id="word-options-schedule-template">
     <div class="modal-dialog modal-dialog-centered">
