@@ -773,6 +773,8 @@ var headerDesigner = function (options) {
 
 	self.headerHtml = ko.observable('');
 	self.clientId = ko.observable();
+	self.clientListIds = ko.observableArray([]);
+	self.selectedHeaderClientId = ko.observable('');
 	self.init = function () {
 		$('#report-header-editor').summernote({
 			height: 150,
@@ -825,7 +827,8 @@ var headerDesigner = function (options) {
 				method: "/ReportApi/SaveReportHeader",
 				headerJson: data,
                 clientId: self.clientId(),
-				useReportHeader: self.UseReportHeader()
+				useReportHeader: self.UseReportHeader(),
+				headerClientId: self.UseReportHeader() ? self.selectedHeaderClientId(): ''
 			})
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
@@ -838,13 +841,14 @@ var headerDesigner = function (options) {
 			url: options.apiUrl,
 			data: {
 				method: "/ReportApi/GetReportHeader",
-				model: JSON.stringify({})
+				model: JSON.stringify({ headerClientId: self.selectedHeaderClientId()})
 			}
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
 			if (result.result) { result = result.result; }
 			self.UseReportHeader(result.useReportHeader);
 			self.headerHtml(decodeURIComponent(result.headerJson));
+			self.clientListIds(result.clientIds);
 			$('#report-header-editor').summernote('code', decodeURIComponent(result.headerJson) || '');
 		});
 
