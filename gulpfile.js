@@ -50,9 +50,6 @@ var deps = {
 	"lodash": {
 		"lodash.min.js": ""
 	},
-	"toastr": {
-		"build/*": ""
-	},
 	"bootstrap-datepicker": {
 		"dist/**/*": ""
 	},

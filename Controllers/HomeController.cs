@@ -105,58 +105,68 @@ namespace ReportBuilder.Web.Controllers
             {
                 ApiUrl = _configuration.GetValue<string>("dotNetReport:accountapiurl"),
             };
-            using (var client = new HttpClient())
+            try
             {
-                // try to login with dotnet report account first
-                var content = new FormUrlEncodedContent(new[]
+                using (var client = new HttpClient())
                 {
+                    // try to login with dotnet report account first
+                    var content = new FormUrlEncodedContent(new[]
+                    {
                          new KeyValuePair<string, string>("Email", model.Email),
                          new KeyValuePair<string, string>("Password", model.Password)
                 });
-                var response = await client.PostAsync(new Uri(settings.ApiUrl + "/account/login"), content);
-                var stringContent = await response.Content.ReadAsStringAsync();
-                var loginResult = JsonConvert.DeserializeObject<LoginResult>(stringContent) ?? new LoginResult
-                {
-                    Success = false,
-                    Message = "Could not Login, please try again."
-                };
+                    var response = await client.PostAsync(new Uri(settings.ApiUrl + "/account/login"), content);
+                    response.EnsureSuccessStatusCode();
+                    var stringContent = await response.Content.ReadAsStringAsync();
+                    var loginResult = JsonConvert.DeserializeObject<LoginResult>(stringContent) ?? new LoginResult
+                    {
+                        Success = false,
+                        Message = "Could not Login, please try again."
+                    };
 
-                if (loginResult.Success)
-                {
-                    SessionHelper.SetUserRoles(HttpContext, loginResult.User.AllRoles);
-                    SessionHelper.SetCurrentUserRoles(HttpContext, loginResult.User.Roles);
-                    await LoginUser(model.Email, loginResult.PrimaryContact, true, loginResult.User.Claims, loginResult.User.Roles);
-                    var usersResult = await _userApiController.LoadUsers();
-                    if (usersResult.Result is OkObjectResult okResult)
+                    if (loginResult.Success)
                     {
-                        var apiResult = okResult.Value as ApiResult<List<UserViewModel>>;
-                        if (apiResult != null && apiResult.Success)
+                        SessionHelper.SetUserRoles(HttpContext, loginResult.User.AllRoles);
+                        SessionHelper.SetCurrentUserRoles(HttpContext, loginResult.User.Roles);
+                        await LoginUser(model.Email, loginResult.PrimaryContact, true, loginResult.User.Claims, loginResult.User.Roles);
+                        var usersResult = await _userApiController.LoadUsers();
+                        if (usersResult.Result is OkObjectResult okResult)
                         {
-                            SessionHelper.SetUsers(HttpContext, apiResult.data);
+                            var apiResult = okResult.Value as ApiResult<List<UserViewModel>>;
+                            if (apiResult != null && apiResult.Success)
+                            {
+                                SessionHelper.SetUsers(HttpContext, apiResult.data);
+                            }
                         }
-                    }
-                    DotNetReportHelper.UpdateConfigurationFile(loginResult.AccountKey, loginResult.PrivateKey, loginResult.DataConnect, true);
-                    if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
-                    {
-                        return Redirect(returnUrl);
+                        DotNetReportHelper.UpdateConfigurationFile(loginResult.AccountKey, loginResult.PrivateKey, loginResult.DataConnect, true);
+                        if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+                        {
+                            return Redirect(returnUrl);
+                        }
+                        else
+                        {
+                            return RedirectToAction("Index", "Home");
+                        }
                     }
                     else
                     {
-                        return RedirectToAction("Index", "Home");
+                        // check if we can login with local account
+                        var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, isPersistent: false, lockoutOnFailure: false);
+                        if (result.Succeeded)
+                        {
+                            // Redirect or return success response
+                            return RedirectToAction("Index", "Home");
+                        }
                     }
-                } 
-                else
-                {
-                    // check if we can login with local account
-                    var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, isPersistent: false, lockoutOnFailure: false);
-                    if (result.Succeeded)
-                    {
-                        // Redirect or return success response
-                        return RedirectToAction("Index", "Home");
-                    }
+                    ModelState.AddModelError(string.Empty, loginResult.Message);
+                    return View(model);
                 }
-                ModelState.AddModelError(string.Empty, loginResult.Message);
+            }
+            catch (Exception ex)
+            {
+                ModelState.AddModelError("Error", ex.Message);
                 return View(model);
+
             }
         }
 
