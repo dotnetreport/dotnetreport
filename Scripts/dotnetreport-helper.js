@@ -108,6 +108,22 @@ function ajaxcall(options) {
         return xhr;
     }
 
+    var exportId = $("#exportId").val();
+    if (exportId) {
+        if (options.type && options.type.toUpperCase() === "POST") {
+            options.data = options.data || {};
+            if (typeof options.data === "string") {
+                var obj = JSON.parse(options.data || "{}");
+                obj.exportId = exportId;
+                options.data = JSON.stringify(obj);
+            } else {
+                options.data.exportId = exportId;
+            }
+        } else {
+            options.url += (options.url.indexOf("?") === -1 ? "?" : "&") + "exportId=" + encodeURIComponent(exportId);
+        }
+    }
+
     if (options.success) {
         options.beforeSend = beforeSend;
         options.xhr = xhr;
@@ -324,13 +340,16 @@ ko.bindingHandlers.select2Value = {
 ko.bindingHandlers.select2Text = {
     init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
         var options = allBindings.get('select2') || {};
-
+        var idObservable = allBindings.get('select2TableId');
         $(element).select2(options);
 
         $(element).on('select2:select', function (event) {
             var selectedText = event.params.data.text;
             var value = valueAccessor();
             value(selectedText);  // Set the observable to the selected text instead of the id
+            if (ko.isObservable(idObservable)) {
+                idObservable(event.params.data.tableId); // adjust based on object
+            }
         });
     },
     update: function (element, valueAccessor, allBindings) {
@@ -338,7 +357,14 @@ ko.bindingHandlers.select2Text = {
         $(element).val(value).trigger('change');
     }
 };
-
+ko.bindingHandlers.notifyChange = {
+    init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+        const callback = valueAccessor(); // function to call
+        element.addEventListener('change', function () {
+            callback(element.value); // Pass selected value
+        });
+    }
+};
 
 ko.bindingHandlers.highlightedText = {
     update: function (element, valueAccessor) {
@@ -507,12 +533,27 @@ function pagerViewModel(args) {
 var manageAccess = function (options) {
     var access = {
         clientId: ko.observable(),
-        users: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
+        groupedUsers: ko.observableArray(),
+        groupedViewOnlyUsers: ko.observableArray(),
+        groupedDeleteOnlyUsers: ko.observableArray(),
+        users: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x,category: x.category || null }; }),
         userRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
-        viewOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
+        viewOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x, category: x.category || null }; }),
         viewOnlyUserRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
-        deleteOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
+        deleteOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x,category: x.category || null }; }),
         deleteOnlyUserRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
+        showManageUsers: ko.observable(false),
+        showViewUsers: ko.observable(false),
+        showDeleteUsers: ko.observable(false),
+        showManageRoles: ko.observable(false),
+        showViewRoles: ko.observable(false),
+        showDeleteRoles: ko.observable(false),
+        toggleManageUsers: function () { this.showManageUsers(!this.showManageUsers()); },
+        toggleViewUsers: function () { this.showViewUsers(!this.showViewUsers()); },
+        toggleDeleteUsers: function () { this.showDeleteUsers(!this.showDeleteUsers()); },
+        toggleManageRoles: function () { this.showManageRoles(!this.showManageRoles()); },
+        toggleViewRoles: function () { this.showViewRoles(!this.showViewRoles()); },
+        toggleDeleteRoles: function () { this.showDeleteRoles(!this.showDeleteRoles()); },
         getAsList: function (x) {
             var list = '';
             _.forEach(x, function (e) { if (e.selected()) list += (list ? ',' : '') + e.value(); });
@@ -548,7 +589,39 @@ var manageAccess = function (options) {
     }
 
     access.applyDefaultSettings();
-
+    var hasCategory = access.users.some(function (u) { return u.category; });
+    if (hasCategory) {
+        var groupedUsers = _.groupBy(access.users, 'category');
+        access.groupedUsers(
+            Object.keys(groupedUsers).map(function (cat) {
+                return {
+                    category: cat || 'Uncategorized',
+                    show: ko.observable(false),
+                    users: ko.observableArray(groupedUsers[cat])
+                };
+            })
+        );
+        var groupedViewOnlyUsers = _.groupBy(access.viewOnlyUsers, 'category');
+        access.groupedViewOnlyUsers(
+            Object.keys(groupedViewOnlyUsers).map(function (cat) {
+                return {
+                    category: cat || 'Uncategorized',
+                    show: ko.observable(false),
+                    viewOnlyUsers: ko.observableArray(groupedViewOnlyUsers[cat])
+                };
+            })
+        );
+        var groupedDeleteOnlyUsers = _.groupBy(access.deleteOnlyUsers, 'category');
+        access.groupedDeleteOnlyUsers(
+            Object.keys(groupedDeleteOnlyUsers).map(function (cat) {
+                return {
+                    category: cat || 'Uncategorized',
+                    show: ko.observable(false),
+                    deleteOnlyUsers: ko.observableArray(groupedDeleteOnlyUsers[cat])
+                };
+            })
+        );
+    }
     return access;
 };
 
@@ -692,13 +765,18 @@ var textQuery = function (options) {
         return (_.find(self.queryItems, { type: 'Function' })) ? 'Summary' : 'List';
     }
 
-    self.resetQuery = function () {
+    self.resetQuery = function (searchReportFlag) {
         self.queryItems = [];
         self.filterItems = [];
-        document.getElementById("query-input").innerHTML = "Show me&nbsp;";
+        if (searchReportFlag) {
+            document.getElementById("search-input").innerHTML = '';
+        } else {
+            document.getElementById("query-input").innerHTML = "Show me&nbsp;";
+        }
+        
     }
 
-    var tokenKey = '';
+    var tokenKey = 'token-key';
     var token = JSON.parse(localStorage.getItem(tokenKey));
 
     self.searchFields = {
@@ -717,7 +795,7 @@ var textQuery = function (options) {
         processResults: function (data) {
             if (data.d) results = data.d;
             var items = _.map(data, function (x) {
-                return { id: x.fieldId, text: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey };
+                return { id: x.fieldId, text: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey, tableId: x.tableId };
             });
 
             return {
@@ -817,7 +895,7 @@ var textQuery = function (options) {
 
         var tributeAttributes = {
             allowSpaces: true,
-            autocompleteMode: true,
+            autocompleteMode: options.searchReportFlag == true ? false : true,
             noMatchTemplate: "",
             searchOpts: {
                 skip: true, // Disable the default matching
@@ -826,6 +904,18 @@ var textQuery = function (options) {
                 }
             },
             values: function (token, callback) {
+                if (options.searchLookupFilter === true) {
+                    self.SearchLookup(token, "").done(function (results) {
+                        if (results.d) results = results.d;
+                        var items = _.map(results, function (x) {
+                            return { value: x.id, key: x.text, text: x.text };
+                        });
+
+                        callback(items);
+                    });
+                    return;
+                }
+
                 if (token == "=" || token == ">" || token == "<") return;                
                 self.ParseQuery(token, "").done(function (results) {
                     if (results.d) results = results.d;
@@ -847,7 +937,7 @@ var textQuery = function (options) {
                             items = items.concat(self.QueryMethods);
                             items = items.concat(self.FilterMethods);
                         }
-                    }
+                    }                   
                     callback(items);
                 });
             },
@@ -904,5 +994,157 @@ var textQuery = function (options) {
             .addEventListener("menuItemRemoved", function (e) {
                 self.queryItems.remove(e.detail.item.original);
             });
+
+    }
+
+    self.setupSearch = function () {
+        var tributeAttributes = self.getTributeAttributes({ searchReportFlag: true });
+        var tribute = new Tribute(tributeAttributes);
+        var searchInput = document.getElementById('search-input');
+
+        if (searchInput) {
+            tribute.attach(searchInput);
+
+            searchInput.addEventListener("tribute-replaced", function (e) {
+                    self.addQueryItem(e.detail.item.original);
+                });
+
+            searchInput.addEventListener("menuItemRemoved", function (e) {
+                    self.queryItems.remove(e.detail.item.original);
+                });
+
+            searchInput.addEventListener('blur', function () {
+                const vm = ko.dataFor(searchInput);
+                if (vm && typeof vm.searchForReports === 'function') {
+                    vm.searchForReports();
+                }
+            });
+
+            searchInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault(); 
+                    searchInput.blur();
+                }
+            });
+
+        }
+    }
+
+    self.lookupSqlPrms = {};
+    self.searchValues = [];
+    self.initLookupQuery = function (field) {
+        return ajaxcall({
+            url: options.apiUrl,
+            data: {
+                method: "/ReportApi/GetLookupList",
+                model: JSON.stringify({ fieldId: field.fieldId, addToken: true })
+            }
+        }).done(function (result) {
+            if (result.d) { result = result.d; }
+            if (result.result) { result = result.result; }
+            self.lookupSqlPrms = {
+                lookupSql: result.sql,
+                connectKey: result.connectKey
+            };
+        });
+    }
+
+    self.SearchLookup = function (token, text) {
+        return ajaxcall({
+            type: 'POST',
+            noBlocking: true,
+            url: options.lookupListUrl,
+            data: JSON.stringify({
+                lookupSql: self.lookupSqlPrms.lookupSql,
+                connectKey: self.lookupSqlPrms.connectKey,
+                token: encodeURIComponent(token),
+            })
+        });
+    }
+
+    self.setupLookup = function (field, filter) {
+        var tributeAttributes = self.getTributeAttributes({ searchLookupFilter: true });
+        var tribute = new Tribute(tributeAttributes);
+        var prefixes = ['C', 'F', 'M', 'P'];
+        var filterInputs = [];
+        prefixes.forEach(function (p) {
+            var el = document.getElementById('ctl-' + p + '-' + field.uiId);
+            if (el) filterInputs.push(el);
+        });
+
+        if (filterInputs.length > 0) {
+            tribute.attach(filterInputs);
+
+            filterInputs.forEach(function (filterInput) {
+                self.initLookupQuery(field);
+
+                filterInput.addEventListener("tribute-replaced", function (e) {
+                    self.addQueryItem(e.detail.item.original);
+                });
+
+                filterInput.addEventListener("menuItemRemoved", function (e) {
+                    self.queryItems.remove(e.detail.item.original);
+                });
+
+                filterInput.addEventListener('blur', function () {
+                    if (self.queryItems.length > 0) {
+                        filter.Value(self.queryItems.map(x => x.text).join(','));
+                    }
+                });
+
+                filterInput.addEventListener("input", function () {
+                    if (!filterInput.value.trim()) {
+                        self.queryItems = [];
+                        filter.Value("");
+                        return;
+                    }
+                });
+
+                filterInput.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        filterInput.blur();
+                    }
+                });
+            });
+        }
     }
 }
+
+window.toastr = (function () {
+    const containerId = 'toast-container-bs5';
+    let container = document.getElementById(containerId);
+
+    if (!container) {
+        container = document.createElement('div');
+        container.id = containerId;
+        container.className = 'position-fixed top-0 end-0 p-3';
+        container.style.zIndex = 1055;
+        document.body.appendChild(container);
+    }
+
+    function show(message, type) {
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} alert-dismissible fade show mb-2`;
+        alert.role = 'alert';
+        alert.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+
+        container.appendChild(alert);
+
+        // Auto-dismiss after 3 seconds
+        setTimeout(() => {
+            alert.classList.remove('show');
+            alert.classList.add('hide');
+            setTimeout(() => alert.remove(), 300); // let fade out finish
+        }, 3000);
+    }
+
+    return {
+        success: (msg) => show(msg, 'success'),
+        error: (msg) => show(msg, 'danger'),
+        info: (msg) => show(msg, 'info')
+    };
+})();

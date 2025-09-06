@@ -1,6 +1,6 @@
-﻿/// dotnet Report Builder view model v6.0.1
+﻿/// dotnet Report Builder view model v6.1.1
 /// License must be purchased for commercial use
-/// 2024 (c) www.dotnetreport.com
+/// 2025 (c) www.dotnetreport.com
 
 function formulaFieldViewModel(args) {
 	args = args || {};
@@ -137,7 +137,7 @@ function linkFieldViewModel(args, options) {
 	}
 }
 
-function scheduleBuilder(userId, getTimeZonesUrl) {
+function scheduleBuilder(userId, getTimeZonesUrl,appSettings) {
 	var self = this;
 
 	self.options = ['day', 'week', 'month', 'year', 'once', 'hour'];
@@ -174,8 +174,22 @@ function scheduleBuilder(userId, getTimeZonesUrl) {
 	self.hasScheduleEnd = ko.observable(false);
 	self.scheduleStart = ko.observable();
 	self.scheduleEnd = ko.observable();
-	self.format = ko.observable('')
-
+	self.format = ko.observable('');
+	self.onFormatChange = function (data, event) {
+		const selectedValue = event.target.value;
+		if (appSettings.showPageSize) {
+			if (selectedValue === 'PDF') {
+				$('#pdfOptionsScheduleModal').modal('show');
+			}
+			else if (selectedValue === 'WORD') {
+				$('#wordOptionsScheduleModal').modal('show');
+			}
+		}
+	};
+	self.selectedPageSize = ko.observable();
+	self.selectedPageOrientation = ko.observable();
+	self.PdfPage = new PdfPageViewModel();
+	self.WordPage = new WordPageViewModel();
 	self.selectedOption.subscribe(function (newValue) {
 		self.selectedDays([]);
 		self.selectedMonths([]);
@@ -216,7 +230,7 @@ function scheduleBuilder(userId, getTimeZonesUrl) {
 
 	self.getTimezones = function () {
 		ajaxcall({
-			url: getTimeZonesUrl || '/api/DotNetReportApi/GetAllTimezones',
+			url: getTimeZonesUrl || '/DotNetReportApi/GetAllTimezones',
 			noBlocking: true,
 			type: 'GET'
 		}).done(function (timezonesData) {
@@ -229,7 +243,31 @@ function scheduleBuilder(userId, getTimeZonesUrl) {
 	};
 
 	self.getTimezones();
-
+	self.getPageOption = function (format) {
+		if (appSettings.showPageSize) {
+			let context = null;
+			switch (format) {
+				case "PDF":
+					context = ko.contextFor(document.getElementById('pdfOptionsScheduleModal'))?.$data?.PdfPage
+						|| ko.contextFor(document.getElementById('pdfOptionsScheduleModal'))?.$data?.dashboard?.scheduleBuilder?.PdfPage;
+					break;
+				case "WORD":
+					context = ko.contextFor(document.getElementById('wordOptionsScheduleModal'))?.$data?.WordPage
+						|| ko.contextFor(document.getElementById('wordOptionsScheduleModal'))?.$data?.dashboard?.scheduleBuilder?.WordPage;
+					break;
+				default:
+					return null;
+			}
+			if (context) {
+				return {
+					size: context.isSaved() ? (context.selectedPageSize() || null) : self.selectedPageSize() ,
+					orientation: context.isSaved() ? (context.selectedPageOrientation() || null) : self.selectedPageOrientation()
+				};
+			}
+			return null;
+		}
+		return null;
+	};
 	self.toJs = function () {
 		return self.hasSchedule() ? {
 			SelectedOption: self.selectedOption(),
@@ -243,8 +281,12 @@ function scheduleBuilder(userId, getTimeZonesUrl) {
 			UserId: userId,
 			ScheduleStart: self.hasScheduleStart() ? self.scheduleStart() : '',
 			ScheduleEnd: self.hasScheduleEnd() ? self.scheduleEnd() : '',
-			Format: self.format(),
-			TimeZone: self.selectedTimezone() 
+			Format: JSON.stringify({
+				exportFormat: self.format(),
+				size: self.getPageOption(self.format())?.size || null,
+				orientation: self.getPageOption(self.format())?.orientation || null
+			}),
+			TimeZone: self.selectedTimezone()
 		} : null;
 	};
 
@@ -278,11 +320,145 @@ function scheduleBuilder(userId, getTimeZonesUrl) {
 		self.hasScheduleStart(data.ScheduleStart ? true : false);
 		self.hasScheduleEnd(data.ScheduleEnd ? true : false);
 		self.selectedTimezone(data.Timezone);
-		self.format(data.Format);
+		try {
+			let formatData = typeof data.Format === "string" ? JSON.parse(data.Format) : data.Format;
+			if (typeof formatData === "object") {
+				self.format(formatData.exportFormat || "");
+				self.selectedPageSize(formatData.size || null);
+				self.selectedPageOrientation(formatData.orientation || null);
+			} else {
+				self.format(data.Format);
+			}
+		} catch (e) {
+			self.format(data.Format);
+		}
 	}
 
 	self.clear = function () {
 		self.fromJs(null);
+	}
+}
+function PdfPageViewModel(appSettings, downloadPdf, downloadPdfAlt) {
+	var self = this;
+	self.isSaved = ko.observable(false);
+	self.availablePageSizes = ko.observableArray([
+		{ label: 'Letter (8.5 x 11 in)', value: 'Letter', width: 216, height: 279, bgstyle: '#d9d2e9;' },
+		{ label: 'Legal (8.5 x 14 in)', value: 'Legal', width: 216, height: 356, bgstyle: '#cfe2f3;' },
+		{ label: 'A4 (8.27 x 11.7 in)', value: 'A4', width: 210, height: 297, bgstyle: '#f9f9f9;' },
+		{ label: 'A1 (23.4 x 33.1 in)', value: 'A1', width: 594, height: 841, bgstyle: '#fff2cc;' },
+		{ label: 'A2 (16.5 x 23.4 in)', value: 'A2', width: 420, height: 594, bgstyle: '#d9ead3;' },
+		{ label: 'A3 (11.7 × 16.5 in)', value: 'A3', width: 297, height: 420, bgstyle: '#d0e0e3;' },
+		{ label: 'Tabloid (11 × 17 in)', value: 'Tabloid', width: 279, height: 432, bgstyle: '#ead1dc;' }
+	]);
+	self.availablePageOrientation = ko.observableArray([
+		{ label: 'Portrait', value: 'PORTRAIT'},
+		{ label: 'Landscape', value: 'LANDSCAPE'}
+	]);
+	self.selectedPageSize = ko.observable("");
+	self.selectedPageOrientation = ko.observable("PORTRAIT");
+	self.selectedPageLabel = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		return page ? page.label : '';
+	});
+	self.selectedPageDimension = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		return page ? `${page.width}mm x ${page.height}mm` : '';
+	});
+	self.selectedWidth = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		if (!page) return '100px';
+		if (self.selectedPageOrientation() === "LANDSCAPE") {
+			return (page.height / 3) + 'px';
+		}
+		return (page.width / 3) + 'px';
+	});
+	self.selectedHeight = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		if (!page) return '150px';
+
+		if (self.selectedPageOrientation() === "LANDSCAPE") {
+			return (page.width / 3) + 'px';
+		}
+		return (page.height / 3) + 'px';
+	});
+	self.selectedBackgroundStyle = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		return page ? page.bgstyle : '#f5f5f5';
+	});
+	self.isDebug = false;
+	self.download = function () {
+		const selectedSize = self.selectedPageSize();
+		const selectedOrientation = self.selectedPageOrientation();
+		if (appSettings?.useAltPdf) {
+			downloadPdfAlt(selectedSize, selectedOrientation);
+		} else {
+			downloadPdf(self.isDebug, selectedSize, selectedOrientation);
+		}
+	};
+	self.save = function () {
+        self.isSaved(true);
+		return {
+			size: self.selectedPageSize(),
+			orientation: self.selectedPageOrientation()
+		};
+	};
+}
+function WordPageViewModel(downloadWord) {
+	var self = this;
+	self.isSaved = ko.observable(false);
+	self.availablePageSizes = ko.observableArray([
+		{ label: 'Letter (8.5 x 11 in)', value: 'Letter', width: 216, height: 279, bgstyle: '#d9d2e9;' },
+		{ label: 'A4 (8.27 x 11.7 in)', value: 'A4', width: 210, height: 297, bgstyle: '#f9f9f9;' },
+		{ label: 'A3 (11.7 × 16.5 in)', value: 'A3', width: 297, height: 420, bgstyle: '#d0e0e3;' },
+		{ label: 'Legal (8.5 x 14 in)', value: 'Legal', width: 216, height: 356, bgstyle: '#cfe2f3;' },
+		{ label: 'Tabloid (11 × 17 in)', value: 'Tabloid', width: 279, height: 432, bgstyle: '#ead1dc;' }
+	]);
+	self.availablePageOrientation = ko.observableArray([
+		{ label: 'Portrait', value: 'PORTRAIT' },
+		{ label: 'Landscape', value: 'LANDSCAPE' }
+	]);
+	self.selectedPageSize = ko.observable("");
+	self.selectedPageOrientation = ko.observable("PORTRAIT");
+	self.selectedPageLabel = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		return page ? page.label : '';
+	});
+	self.selectedPageDimension = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		return page ? `${page.width}mm x ${page.height}mm` : '';
+	});
+	self.selectedWidth = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		if (!page) return '100px';
+		if (self.selectedPageOrientation() === "LANDSCAPE") {
+			return (page.height / 3) + 'px';
+		}
+		return (page.width / 3) + 'px';
+	});
+	self.selectedHeight = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		if (!page) return '150px';
+
+		if (self.selectedPageOrientation() === "LANDSCAPE") {
+			return (page.width / 3) + 'px';
+		}
+		return (page.height / 3) + 'px';
+	});
+	self.selectedBackgroundStyle = ko.pureComputed(function () {
+		const page = self.availablePageSizes().find(p => p.value === self.selectedPageSize());
+		return page ? page.bgstyle : '#f5f5f5';
+	});
+	self.download = function () {
+		const selectedSize = self.selectedPageSize();
+		const selectedOrientation = self.selectedPageOrientation();
+		downloadWord(selectedSize, selectedOrientation);
+	};
+	self.save = function () {
+		self.isSaved(true);
+		return {
+			size: self.selectedPageSize(),
+			orientation: self.selectedPageOrientation()
+		};
 	}
 }
 
@@ -390,7 +566,7 @@ function filterGroupViewModel(args) {
 				ajaxcall({
 					type: 'POST',
 					url: args.options.lookupListUrl,
-					data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey }),
+					data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey, token: '' }),
 					noBlocking: args.parent.ReportMode() == 'dashboard'
 				}).done(function (list) {
 					if (list.d) { list = list.d; }
@@ -441,7 +617,7 @@ function filterGroupViewModel(args) {
 							ajaxcall({
 								type: 'POST',
 								url: args.options.lookupListUrl,
-								data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey }),
+								data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey, token: '' }),
 								noBlocking: args.parent.ReportMode() == 'dashboard'
 							}).done(function (list) {
 								if (list.d) { list = list.d; }
@@ -473,6 +649,13 @@ function filterGroupViewModel(args) {
 				else
 					loadLookupList(newField.fieldId, args.options.dataFilters);
 
+			}
+
+			if (newField && !newField.hasForeignKey && newField.fieldType == 'Varchar') {
+				setTimeout(function () {
+					var txtqry = new textQuery(args.options);
+					txtqry.setupLookup(newField, filter);
+				}, 1000);				
 			}
 
 			if (newField && newField.restrictedDateRange && newField.fieldType == 'DateTime') {
@@ -507,8 +690,10 @@ function filterGroupViewModel(args) {
 
 		if (e.FieldId) {
 			field(args.parent.FindField(e.FieldId));
+			field().uiId = generateUniqueId();
 		} else if (e.FilterSettings) {
 			field(args.parent.FindDynamicField(JSON.parse(e.FilterSettings)));
+			field().uiId = generateUniqueId();
 		}
 
 		filter.compareTo = ko.computed(function () {
@@ -883,7 +1068,18 @@ var reportViewModel = function (options) {
 	self.PivotColumns = ko.observable();
 	self.PivotColumnsWidth = ko.observable();
 	self.ReportColumns = ko.observable();
-	self.useAltPivot = true;
+	self.isModalOpen = ko.observable(false);
+	self.isDirty = ko.observable(false);
+
+	$(document).on('shown.bs.modal', '.modal', function () {
+		self.isModalOpen(true);
+	});
+
+	$(document).on('hidden.bs.modal', '.modal', function () {
+		const anyOpen = $('.modal.show').length > 0;
+		self.isModalOpen(anyOpen);
+	});
+
 	self.FilterGroups.subscribe(function (newArray) {
 		if (newArray && newArray.length == 0) {
 			self.FilterGroups.push(new filterGroupViewModel({ isRoot: true, parent: self, options: options }));
@@ -1179,7 +1375,7 @@ var reportViewModel = function (options) {
 	self.y = ko.observable(0);
 	self.width = ko.observable(3);
 	self.height = ko.observable(2);
-	var tokenKey = '';
+	var tokenKey = 'token-key';
 	var token = JSON.parse(localStorage.getItem(tokenKey));
 
 	self.usingAi = ko.observable(true);
@@ -1193,8 +1389,12 @@ var reportViewModel = function (options) {
 		noDefaultFolder: false,
 		showEmptyFolders: false,
 		useAltPdf: false,
-		dontXmlExport: false
+		useAltPivot: false,
+		dontXmlExport: false,
+		dontWordExport: false,
+		showPageSize: false,
 	};
+	self.appSettings = options && options.appSettings ? options.appSettings : self.appSettings;
 	self.runQuery = function (useAi) {
 		self.SelectedFields([]);
 		self.resetQuery(false);
@@ -1239,37 +1439,50 @@ var reportViewModel = function (options) {
 			self.SelectedFields(result);
 			filters.forEach(f => self.FilterGroups()[0].AddFilter(f));
 
-			self.SaveReport(false);
+			if ($.blockUI) {
+				$.blockUI();
+			}
 
-			if (useAi === true) {
-				var queryText = document.getElementById("query-input").innerText;
-				ajaxcall({
-					url: options.apiUrl,
-					data: {
-						method: "/ReportApi/RunQueryAi",
-						model: JSON.stringify({
-							query: queryText,
-							fieldIds: fieldIds.join(",")
-						})
-					}
-				}).done(function (result) {
-					if (result.d) result = result.d;
-					if (result.success === false) {
-						toastr.error(result.message || 'Could not process this correctly, please try again');
-						return;
-					}
-					self.ExecuteReportQuery(result.sql, result.connectKey);
-				});
-			}
-			else {
-				self.RunReport(false, true);
-			}
+			self.queryPrompt = document.getElementById("query-input").innerText;
+			ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/RunQueryAi",
+					model: JSON.stringify({
+						query: self.queryPrompt,
+						fieldIds: fieldIds.join(","),
+						reportJson: JSON.stringify(self.BuildReportData()) // send whatever our parser has built to improve
+					})
+				}
+			}).done(function (result) {
+				if ($.unblockUI) {
+					$.unblockUI();
+				}
+
+				if (result.d) result = result.d;
+				if (result.success === false) {
+					toastr.error(result.message || 'Could not process this correctly, please try again');
+					return;
+				}
+
+				options.reportSql = result.reportSql;
+				options.reportConnect = result.connectKey;
+				self.PopulateReport(result.report);
+				self.SaveReport(false);
+			});
 		});
 	}
 
-	self.resetQuery = function (resetText = true) {
+	self.resetSearch = function () {
+		self.SelectedFolder(null);
+		self.designingHeader(false);
+		self.searchReports('');
+	}
+
+	self.resetQuery = function (resetText = true, searchReportFlag = false) {
 		if (resetText !== false) {
-			self.textQuery.resetQuery();
+			if (searchReportFlag === true) self.resetSearch();
+			self.textQuery.resetQuery(searchReportFlag);
 		}
 		self.ReportResult().ReportData(null);
 		self.ReportResult().HasError(false);
@@ -1295,6 +1508,13 @@ var reportViewModel = function (options) {
 					}
 				}).done(function (result) {
 					if (result.d) result = result.d;
+					const tableId = result[0].tableId;
+					const joinIds = self.joinIds(); 
+					const isJoinRequiredButMissing =  joinIds && joinIds.size > 0 ? !joinIds.has(tableId) && tableId: false;
+					if (isJoinRequiredButMissing) {
+						toastr.error(`Cannot use table as joins do not exist ${result[0].tableName} > ${result[0].fieldName}`);
+						return;
+					}
 					self.SelectedFields.push(self.setupField(result[0]));
 					self.textQuery.searchFields.selectedOption(null);
 				});
@@ -1348,6 +1568,7 @@ var reportViewModel = function (options) {
 	self.createNewReport = function () {
 		self.clearReport();
 		self.ReportMode("generate");
+		self.setupDirtyCheck();
 	};
 
 	self.ReportType.subscribe(function (newvalue) {
@@ -1364,6 +1585,7 @@ var reportViewModel = function (options) {
 	
 	self.setReportType = function (reportType) {
 		self.ReportType(reportType);
+		self.isDirty(true);
 	};
 
 	self.cancelCreateReport = function () {
@@ -1380,7 +1602,33 @@ var reportViewModel = function (options) {
 			}
 		});
 	};
-
+	self.setupDirtyCheck = function () {
+		if (options.reportWizard == null) return;
+		options.reportWizard.find('input, select, textarea,.form-select, .form-control, .custom-control, .control, .dropdown-option, .btn-group, .btn, .list-group-item')
+			.off('change.inputDirtyCheck') // prevent duplicate handlers
+			.on('change.inputDirtyCheck input.inputDirtyCheck', function () {
+				self.isDirty(true);
+			});
+	};
+	self.onModalCloseClicked = function () {
+		if (options.reportWizard == null) return;
+		if (self.ReportMode() != 'dashboard' && self.ReportMode() != 'execute') {
+			if (self.isDirty()) {
+				bootbox.confirm("You have unsaved changes. Do you want to discard them?", function (result) {
+					if (result) {
+						self.isDirty(false);
+						if (self.ReportMode() == 'dashboard') {
+							return;
+						}
+						self.ReportMode("start");
+						self.clearReport();
+					} else {
+						options.reportWizard.modal('show');
+					}
+				});
+			}
+		}
+	};
 	self.FlyFilters = ko.observableArray([]); 
 
 	self.setFlyFilters = function () {
@@ -1401,7 +1649,7 @@ var reportViewModel = function (options) {
 				item.tableId !== undefined && item.tableId !== null && item.tableId != 0;
 		});
 	});
-	self.scheduleBuilder = new scheduleBuilder(self.userIdForSchedule, options.getTimeZonesUrl);
+	self.scheduleBuilder = new scheduleBuilder(self.userIdForSchedule, options.getTimeZonesUrl, self.appSettings);
 
 	self.ManageFolder = {
 		FolderName: ko.observable(),
@@ -1501,7 +1749,8 @@ var reportViewModel = function (options) {
 						data: {
 							method: "/ReportApi/DeleteFolder",
 							model: JSON.stringify({
-								folderId: self.SelectedFolder().Id
+								folderId: self.SelectedFolder().Id,
+								adminMode: self.adminMode()
 							})
 						},
 					}).done(function () {
@@ -1513,7 +1762,6 @@ var reportViewModel = function (options) {
 			});
 		}
 	};
-
 	self.ManageJsonFile = {
 		file: ko.observable(null),
 		fileName: ko.observable(''),
@@ -1620,7 +1868,7 @@ var reportViewModel = function (options) {
 			.value();
 	});
 
-	var tokenKey = '';
+	var tokenKey = 'token-key';
 	var token = JSON.parse(localStorage.getItem(tokenKey));
 	self.searchFieldsInReport = {
 		language: {
@@ -1648,12 +1896,12 @@ var reportViewModel = function (options) {
 					text: '',
 					onlyInReports: true
 				})
-			} : null;
+			} : {};
 		},
 		processResults: function (data) {
 			if (data.d) data = data.d;
 			var items = _.map(data, function (x) {
-				return { id: x.fieldId, text: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey };
+				return { id: x.fieldId, text: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey, tableId: x.tableId };
 			});
 
 			return {
@@ -1670,6 +1918,10 @@ var reportViewModel = function (options) {
 
 	self.reportsInSearch = ko.observableArray([]);
 
+	self.searchForReports = function () {
+		self.searchReports($('#search-input').text());
+	}
+
 	self.searchReports.subscribe(function (x) {
 		if (x) {
 			ajaxcall({
@@ -1682,9 +1934,9 @@ var reportViewModel = function (options) {
 					})
 				}
 			}).done(function (reports) {
+				self.reportsInSearch([]);
 				if (reports.d) { reports = reports.d; }
 				if (reports.length > 0) {
-					var foundReportIds = _.map(reports, function (x) { return x.reportId });
 					self.reportsInSearch(_.filter(self.SavedReports(), function (x) {
 						var match = _.find(reports, function (y) {
 							return x.reportId == y.reportId;
@@ -1747,6 +1999,10 @@ var reportViewModel = function (options) {
 		self.barChartStacked(false);
 		self.comboChartType('bars');
 		self.selectedStyle('default');
+		self.reportRan(false);
+		self.executingReport = false;
+		self.isDirty(false);
+		self.clearTableSettings();
 	};
 
 	self.SelectedProc.subscribe(function (proc) {
@@ -1825,7 +2081,7 @@ var reportViewModel = function (options) {
 					ajaxcall({
 						type: 'POST',
 						url: options.lookupListUrl,
-						data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey })
+						data: JSON.stringify({ lookupSql: result.sql, connectKey: result.connectKey, token: '' })
 					}).done(function (list) {
 						if (list.d) { list = list.d; }
 						if (list.result) { list = list.result; }
@@ -1861,17 +2117,19 @@ var reportViewModel = function (options) {
 	}
 
 	self.lastPickedField = ko.observable();
+	self.joinIds = ko.observable();
 	self.SelectedFields.subscribe(function (fields) {
+		self.isDirty(true);
 		setTimeout(function () {
 			self.RemoveInvalidFilters(self.FilterGroups());
 
 			const joinTableIds = fields.length > 0
 				? new Set(fields.map(field => field.joinTableIds).flat().filter(id => id))
 				: null;
-
+			self.joinIds(joinTableIds);
 			self.CategorizedTables().forEach(category => {
 				category.tables.forEach(table => {
-					table.isEnabled(joinTableIds && joinTableIds.size > 0 ? joinTableIds.has(table.tableId) || !table.tableId || table.dynamicColumns : true);
+					table.isEnabled(joinTableIds && joinTableIds.size > 0 ? joinTableIds.has(table.tableId) || !table.tableId : true);
 				});
 			});
 		}, 500);
@@ -2021,6 +2279,7 @@ var reportViewModel = function (options) {
 	}
 
 	self.SelectedTable.subscribe(function (table) {
+		self.isDirty(true);
 		self.SelectedProc(null);
 		self.lastPickedField(null);
 		self.jsonFields([]);
@@ -2107,7 +2366,7 @@ var reportViewModel = function (options) {
 
 		var result = true;
 		_.forEach(allFields, function (x) {
-			if (!x.setupFormula.isParenthesesStart() && !x.setupFormula.isParenthesesEnd() && !x.setupFormula.isConstantValue() && x.fieldType && x.fieldType.indexOf("Date") < 0) {
+			if (x.fieldType == 'Custom' || (!x.setupFormula.isParenthesesStart() && !x.setupFormula.isParenthesesEnd() && !x.setupFormula.isConstantValue() && x.fieldType && x.fieldType.indexOf("Date") < 0)) {
 				result = false;
 				return false;
 			}
@@ -2162,6 +2421,7 @@ var reportViewModel = function (options) {
 
 	self.getEmptyFormulaField = function () {
 		return {
+			tableId:0,
 			tableName: 'Custom',
 			fieldName: self.formulaFieldLabel() || 'Custom',
 			fieldFormat: self.formulaDataFormat() || 'String',
@@ -2190,7 +2450,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.selectedFieldsCanFilter = ko.computed(function () {
-		return _.filter(self.SelectedFields(), function (x) { return !x.isFormulaField() });
+		return self.SelectedFields();
 	});
 
 	self.clearFormulaField = function () {
@@ -2200,17 +2460,26 @@ var reportViewModel = function (options) {
 		self.formulaDecimalPlaces(null);
 		self.customSqlField.clear();
 		self.formulaType('build');
+		self.currentFormulaField(null);
 	};
 
 	self.isFormulaField.subscribe(function () {
 		self.clearFormulaField();
 	});
 	self.cancelFormulaField = function () {
-		self.isFormulaField(!self.isFormulaField());
 		if (self.currentFormulaField() != null) {
 			self.SelectedFields.push(self.currentFormulaField());
 			self.customSqlField.clear();
 			self.currentFormulaField(null);
+		}
+		self.isFormulaField(!self.isFormulaField());
+		if (self.isFormulaField()) {
+			setTimeout(function () {
+				var target = document.getElementById("customFieldSection");
+				if (target) {
+					target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				}
+			}, 300); // delay ensures DOM is updated
 		}
 	};
 	self.removeField = function (field) {
@@ -2306,6 +2575,14 @@ var reportViewModel = function (options) {
 
 		self.currentFormulaField(field)
 		self.SelectedFields.remove(field);
+		if (self.isFormulaField()) {
+			setTimeout(function () {
+				var target = document.getElementById("customFieldSection");
+				if (target) {
+					target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				}
+			}, 300); // delay ensures DOM is updated
+		}
 	}
 
 	self.saveFormulaField = function () {
@@ -2335,12 +2612,25 @@ var reportViewModel = function (options) {
 			toastr.error("Please correct validation issues");
 			return;
 		}
+		if (self.joinIds() != null) {
+			const joinIds = self.joinIds();
+			const isJoinRequiredButMissing = joinIds && joinIds.size > 0 ? !joinIds.has(ko.unwrap(self.customSqlField.selectedFieldTableId)) && ko.unwrap(self.customSqlField.selectedFieldTableId) : false;
+			if (isJoinRequiredButMissing) {
+				toastr.error(`Cannot use table as joins do not exist ${self.customSqlField.selectedField()}`);
+				return;
+			}
+		}
 		_.forEach(self.formulaFields(), function (e) {
 			e.tableId = e.tableId;
 		});
 
 		var field = self.getEmptyFormulaField();
-
+		if (field.fieldFormat == 'Integer' || field.fieldFormat == 'Decimal' || field.fieldFormat == 'Currency') {
+			field.fieldType = "Int";
+			field.fieldFilter = ['=', '>', '<', '>=', '<=', 'not equal','is blank', 'is not blank'];
+		} else {
+			field.fieldFilter = ['=', 'in', 'not in', 'like', 'not like', 'not equal', 'is blank', 'is not blank'];
+		}
 		self.SelectedFields.push(self.setupField(field));
 		self.clearFormulaField();
 		self.isFormulaField(false);
@@ -2394,18 +2684,24 @@ var reportViewModel = function (options) {
 	};
 
 	self.isFieldValidForYAxis = function (i, fieldType, aggregate) {
-		if (self.ReportType() == 'Treemap'
-			|| ["Int", "Integer", "Double", "Decimal", "Money"].indexOf(fieldType) < 0
-			|| ["Only in Detail", "Pivot"].indexOf(aggregate) > 0
-			|| i == 0) return false;
-		if (i > 0) {
-			if (self.ReportType() == "Bar" && ["Int", "Integer", "Double", "Decimal", "Money"].indexOf(fieldType) < 0 && aggregate != "Count") {
-				return false;
-			}
-		}
-		return true;
+		return !(i > 0 && (self.ReportType() == 'Treemap'
+			|| (["Int", "Integer", "Double", "Decimal", "Money"].indexOf(fieldType) < 0 && aggregate != 'Count' && aggregate != 'Count Distinct')
+			|| ["Only in Detail", "Pivot"].indexOf(aggregate) > 0))
 	};
-
+	self.IsPivotFieldLastColumn = function (i, aggregate) {
+		return i === self.SelectedFields().length - 1 && aggregate === 'Pivot';
+	};
+	self.IsDynamicFieldFirstColumn = function (i) {
+		const selectedFields = self.SelectedFields();
+		if (!selectedFields || selectedFields.length === 0) return false;
+		const field = selectedFields[0];
+		return i === 0 && field?.fieldId === 0 && field?.dynamicTableId != null;
+	};
+	self.IsAllDynamicFieldSelected = function () {
+		const selectedFields = self.SelectedFields();
+		if (!Array.isArray(selectedFields) || selectedFields.length === 0) return false;
+		return selectedFields.every(field => field?.fieldId === 0 && field?.dynamicTableId != null);
+	};
 	self.chartTypes = ["List", "Summary", "Single", "Pivot", "Html"];
 	self.isChart = ko.computed(function () {
 		return self.chartTypes.indexOf(self.ReportType()) < 0;
@@ -2420,9 +2716,17 @@ var reportViewModel = function (options) {
 		return true;
 	};
 
-	self.canDrilldown = ko.computed(function () {
-		return ["List", "Pivot", "Treemap"].indexOf(self.ReportType()) < 0;
+	self.hasPivotColumn = ko.computed(function () {
+		return _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' }) != null;
 	});
+
+	self.canDrilldown = ko.computed(function () {
+		return ["List", "Pivot", "Treemap"].indexOf(self.ReportType()) < 0 && !self.useStoredProc();
+	});
+
+	self.useRenderTable = ko.computed(function () {
+		return self.ReportType() == 'List' || self.ShowExpandOption() || (self.hasPivotColumn() && !self.appSettings.useAltPivot);
+	})
 
 	self.dateFields = ko.computed(function () {
 		return _.filter(self.SelectedFields(), function (x) { return x.fieldType == "DateTime"; });
@@ -2554,7 +2858,10 @@ var reportViewModel = function (options) {
 		return _.filter(self.SelectedFields(), function (x) { return x.fieldId == fieldId; })[0];
 	};
 	self.FindDynamicField = function (fieldSettings) {
-		return _.filter(self.SelectedFields(), function (x) { return x.dynamicTableId == fieldSettings.DynamicTableId && x.fieldName == fieldSettings.DynamicFieldName; })[0];
+		return _.filter(self.SelectedFields(), function (x) {
+			return (x.dynamicTableId == fieldSettings.DynamicTableId && x.fieldName == fieldSettings.DynamicFieldName)
+					||	(x.tableName == 'Custom' && fieldSettings.IsCustomField && x.fieldName == fieldSettings.CustomFieldName);
+		})[0];
 	};
 
 	self.SaveWithoutRun = function () {
@@ -2605,15 +2912,24 @@ var reportViewModel = function (options) {
 										  : (e.Operator() == "in" || e.Operator() == "not in" ? (e.ValueIn().length > 0 ? e.ValueIn().join(",") : e.Value()) : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' ? "blank" : e.Value())), 
 					Value2: hasTimeInDate ? (e.Value2() ? e.Value2() + " " + e.Valuetime2() : e.Value2()) : e.Value2(), 
 					ParentIn: e.ParentIn().join(","),
-					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
+					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : [],
+					FilterSettings: ''
 				} : null;
 
-				if (f && !f.FieldId && e.Field().dynamicTableId) {
+				if (f && !f.FieldId) {
 					f.FieldId = null;
-					f.FilterSettings = JSON.stringify({
-						DynamicFieldName: e.Field().fieldName,
-						DynamicTableId: e.Field().dynamicTableId
-					})
+					if (e.Field().dynamicTableId) {
+						f.FilterSettings = JSON.stringify({
+							DynamicFieldName: e.Field().fieldName,
+							DynamicTableId: e.Field().dynamicTableId
+						});
+					} else if (e.Field().tableName == 'Custom') {
+						f.FilterSettings = JSON.stringify({
+							CustomFieldName: e.Field().fieldName,
+							CustomFieldFormat: e.Field().fieldFormat(),
+							IsCustomField: true
+						});
+					}
 				}
 
 				if (f != null && !f.Value1 && !f.Value2) {
@@ -2621,6 +2937,11 @@ var reportViewModel = function (options) {
 				}
 				if (f) filters.push(f);
 			});
+
+			if (g.Filters().length == 0 && g.FilterGroups().length > 0) {
+				// empty group
+				filters = self.BuildFilterData(g.FilterGroups());
+			}
 
 			groups.push({
 				SavedReportId: self.ReportID(),
@@ -2740,7 +3061,7 @@ var reportViewModel = function (options) {
 				}),
 				chartOptions: self.chartOptions()
 			}),
-			OnlyTop: self.maxRecords() ? self.OnlyTop() : null,
+			OnlyTop: drilldown.length > 0 ? null : (self.maxRecords() ? self.OnlyTop() : null),
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : self.AggregateReport(),
 			ShowDataWithGraph: self.ShowDataWithGraph(),
 			ShowOnDashboard: self.ShowOnDashboard(),
@@ -2818,6 +3139,7 @@ var reportViewModel = function (options) {
 			DeleteOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUserRoles),
 			ClientId: self.manageAccess.clientId(),
 			DataFilters: options.dataFilters,
+			DrillDownRowUsePlaceholders: false,
 			SelectedParameters: self.useStoredProc() ? _.map(self.Parameters(), function (x) {
 				return {
 					UseDefault: x.Operator() == 'is default',
@@ -2852,6 +3174,7 @@ var reportViewModel = function (options) {
 				})
 			}
 		}).done(function (result) {
+			if (result.d) result = result.d;
 			if (result.valid) {
 				deferred.resolve(true);
 			} else {
@@ -2885,10 +3208,9 @@ var reportViewModel = function (options) {
 				pivotFunction: ''
 			})
 		}).done(function () {
-			self.RunReport(false);
+			self.ExecuteReport();
 		});
 
-		self.RunReport(false);
 	}
 
 	self.copySqlToClipboard = function (button) {
@@ -2924,143 +3246,156 @@ var reportViewModel = function (options) {
 				return;
 			}
 		}
+		if (self.SelectedFields().length === 0) {
+			toastr.error("Please select at least one field to save or run the report.");
+			return;
+		}
 
 		if (_.filter(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' }).length > 1) {
 			toastr.error("Select only one field for Pivot.");
 			return;
 		}
-
+		if (self.SelectedFields().slice(-1)[0]?.selectedAggregate() === 'Pivot') {
+			toastr.error("Pivot field cannot be the last column.");
+			return;
+		}
+		if (self.IsDynamicFieldFirstColumn(0) || self.IsAllDynamicFieldSelected()) {
+			toastr.error("Dynamic cannot be first column.\n Cannot be only dynamic without a parent field.");
+			return;
+		}
 		if (!skipValidation && !self.validateReport()) {
 			toastr.error("Please correct validation issues");
 			return;
 		}
+		let field = self.FilterGroups()[0]?.FilterGroups()[0]?.Filters()[0]?.Field();
+		if (field && field.fieldId === 0 && field.dynamicTableId != null) {
+			toastr.error("You can not use dynamic field is first in filter group");
+			return;
+		}
 
-		self.ValidateTableJoins().done(function (isValid) {
-			if (isValid) {
+		var i = 0;
+		var isComparison = false;
+		var isExecuteReportQuery = false;
+		var _result = null;
+		var seriesCount = self.AdditionalSeries().length;
+		self.allSqlQueries('');
+		var promises = [];
+		do {
+			if (i > 0) {
+				isComparison = true;
+			}
 
-				var i = 0;
-				var isComparison = false;
-				var isExecuteReportQuery = false;
-				var _result = null;
-				var seriesCount = self.AdditionalSeries().length;
-				self.allSqlQueries('');
-				var promises = [];
-				do {
-					if (i > 0) {
-						isComparison = true;
-					}
+			promises.push(ajaxcall({
+				url: options.runReportApiUrl,
+				type: "POST",
+				data: JSON.stringify({
+					method: "/ReportApi/RunReport",
+					SaveReport: self.CanSaveReports() && !isComparison && previewOnly !== true ? (saveOnly || self.SaveReport()) : false,
+					ReportJson: importJson ? JSON.stringify(importJson) : JSON.stringify(self.BuildReportData([], isComparison, i - 1)),
+					adminMode: self.adminMode(),
+					userIdForFilter: self.userIdForFilter,
+					SubTotalMode: false,
+					useAltPivot: self.appSettings.useAltPivot
+				})
+			}).done(function (result) {
+				if (result.d) { result = result.d; }
+				if (result.result) { result = result.result; }
+				_result = result;						
+				self.allSqlQueries(self.allSqlQueries() + (self.allSqlQueries() ? ',' : '') + result.sql);
 
-					promises.push(ajaxcall({
-						url: options.runReportApiUrl,
-						type: "POST",
-						data: JSON.stringify({
-							method: "/ReportApi/RunReport",
-							SaveReport: self.CanSaveReports() && !isComparison && previewOnly !== true ? (saveOnly || self.SaveReport()) : false,
-							ReportJson: importJson ? JSON.stringify(importJson) : JSON.stringify(self.BuildReportData([], isComparison, i - 1)),
-							adminMode: self.adminMode(),
-							userIdForFilter: self.userIdForFilter,
-							SubTotalMode: false
-						}),
-						async: false
-					}).done(function (result) {
-						if (result.d) { result = result.d; }
-						if (result.result) { result = result.result; }
-						_result = result;						
-						self.allSqlQueries(self.allSqlQueries() + (self.allSqlQueries() ? ',' : '') + result.sql);
-
-						self.ReportID(result.reportId);
-						if (previewOnly !== true && (self.SaveReport() || saveOnly)) {
-							if (saveOnly && !saveAlertFlag) {
-								saveAlertFlag = true;
-								toastr.success("Report Saved");
-								self.allSqlQueries("");
-								self.LoadAllSavedReports(true);
-							}
-						}
-
-						if (!saveOnly) {
-							if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard" || previewOnly === true) {
-
-								isExecuteReportQuery = true;
-								self.ExecuteReportQuery(result.sql, result.connectKey, self.ReportSeries, previewOnly);
-							}
-						}
-					}));
-					i++;
-				}
-				while (i < seriesCount + 1);
-				$.when.apply($, promises).done(function () {
-					if (previewOnly === true) {
-						$("#sqlModal").modal('show');
-						return;
-					}
-					options.reportWizard.modal('hide');
-
-					if (isExecuteReportQuery === false) {
-						if (saveOnly) {
-							return;
-						}
-						if (self.ReportMode().indexOf('export-') == 0) {
-
-							self.ReportID(_result.reportId);
-							self.currentSql(_result.sql);
-							self.currentConnectKey(_result.connectKey);
-							switch (self.ReportMode()) {
-								case 'export-pdf':
-									self.downloadPdf(); break;
-								case 'export-pdf-debug':
-									self.downloadPdf(true); break;
-								case 'export-pdfalt':
-									self.downloadPdfAlt(); break;
-								case 'export-excel':
-									self.downloadExcel(); break;
-								case 'export-excel-sub':
-									self.downloadExcelWithDrilldown(); break;
-								case 'export-csv':
-									self.downloadCsv(); break;
-								case 'export-json':
-									self.downloadReportJson(); break;
-							}
-
-							self.ReportMode('start');
-							return;
-						}
+				self.ReportID(result.reportId);
+				if (previewOnly !== true && (self.SaveReport() || saveOnly)) {
+					if (saveOnly && !saveAlertFlag) {
+						saveAlertFlag = true;
+						self.isDirty(false);
+						toastr.success("Report Saved");
+						self.allSqlQueries("");
 						self.LoadAllSavedReports(true);
-						if (options.samePageOnRun || dashboardRun) {
-							self.ReportID(_result.reportId);
-							self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, _.map(self.AdditionalSeries(), function (e, i) {
-								return e.Value();
-							}).join(','));
-							self.ReportMode("execute");
-
-							if (self.useReportHeader()) {
-								self.headerDesigner.init(true);
-								self.headerDesigner.loadCanvas(true);
-							}
-						}
-						else {
-							redirectToReport(options.runReportUrl, {
-								reportId: _result.reportId,
-								reportName: self.ReportName(),
-								reportDescription: self.ReportDescription(),
-								includeSubTotal: self.IncludeSubTotal(),
-								showUniqueRecords: self.ShowUniqueRecords(),
-								aggregateReport: self.AggregateReport(),
-								showDataWithGraph: self.ShowDataWithGraph(),
-								reportSql: self.allSqlQueries(),
-								connectKey: _result.connectKey,
-								reportFilter: JSON.stringify(_.map(self.FlyFilters(), function (x) { return ko.toJS(x); })),
-								reportType: self.ReportType(),
-								selectedFolder: self.SelectedFolder() != null ? self.SelectedFolder().Id : 0,
-								reportSeries: _.map(self.AdditionalSeries(), function (e, i) {
-									return e.Value();
-								})
-							});
-						}
 					}
-				});
+				}
+
+				if (!saveOnly) {
+					if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard" || previewOnly === true) {
+
+						isExecuteReportQuery = true;
+						self.ExecuteReportQuery(result.sql, result.connectKey, self.ReportSeries, previewOnly);
+					}
+				}
+			}));
+			i++;
+		}
+		while (i < seriesCount + 1);
+		$.when.apply($, promises).done(function () {
+			if (previewOnly === true) {
+				$("#sqlModal").modal('show');
+				return;
+			}
+			options.reportWizard.modal('hide');
+
+			if (isExecuteReportQuery === false) {
+				if (saveOnly) {
+					return;
+				}
+				if (self.ReportMode().indexOf('export-') == 0) {
+
+					self.ReportID(_result.reportId);
+					self.currentSql(_result.sql);
+					self.currentConnectKey(_result.connectKey);
+					switch (self.ReportMode()) {
+						case 'export-pdf':
+							self.downloadPdf(); break;
+						case 'export-pdf-debug':
+							self.downloadPdf(true); break;
+						case 'export-pdfalt':
+							self.downloadPdfAlt(); break;
+						case 'export-excel':
+							self.downloadExcel(); break;
+						case 'export-excel-sub':
+							self.downloadExcelWithDrilldown(); break;
+						case 'export-csv':
+							self.downloadCsv(); break;
+						case 'export-json':
+							self.downloadReportJson(); break;
+					}
+
+					self.ReportMode('start');
+					return;
+				}
+				self.LoadAllSavedReports(true);
+				if (options.samePageOnRun || dashboardRun) {
+					self.ReportID(_result.reportId);
+					self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, _.map(self.AdditionalSeries(), function (e, i) {
+						return e.Value();
+					}).join(','));
+					self.ReportMode("execute");
+
+					if (self.useReportHeader()) {
+						self.headerDesigner.init(true);
+						self.headerDesigner.loadCanvas(true);
+					}
+				}
+				else {
+					redirectToReport(options.runReportUrl, {
+						reportId: _result.reportId,
+						reportName: self.ReportName(),
+						reportDescription: self.ReportDescription(),
+						includeSubTotal: self.IncludeSubTotal(),
+						showUniqueRecords: self.ShowUniqueRecords(),
+						aggregateReport: self.AggregateReport(),
+						showDataWithGraph: self.ShowDataWithGraph(),
+						reportSql: self.allSqlQueries(),
+						connectKey: _result.connectKey,
+						reportFilter: JSON.stringify(_.map(self.FlyFilters(), function (x) { return ko.toJS(x); })),
+						reportType: self.ReportType(),
+						selectedFolder: self.SelectedFolder() != null ? self.SelectedFolder().Id : 0,
+						reportSeries: _.map(self.AdditionalSeries(), function (e, i) {
+							return e.Value();
+						})
+					});
+				}
 			}
 		});
+			
 		
 	};
 
@@ -3079,14 +3414,16 @@ var reportViewModel = function (options) {
 		self.ReportSeries = reportSeries;
 		self.OuterGroupColumns([]);
 		if (result.HasError || previewOnly === true) return;
-
+		function isContained(src, dst) {
+			return typeof src === 'string' && typeof dst === 'string' && dst.includes(src);
+		}
 		function matchColumnName(src, dst, dbSrc, dbDst, agg) {
 			if (src == dst) return true;
 			if (dbSrc && dbDst && dbSrc == dbDst) return true;
 
 			if (agg && dbSrc && dbDst && agg + '(' + dbSrc + ')' == dbDst) return true;
 			if (agg == 'Count Distinct' && dbSrc && dbDst && 'Count(Distinct ' + dbSrc + ')' == dbDst) return true;
-
+			if ((agg == '% over Count' || agg == '% over Sum') && src && dst && isContained(src, dst)) return true;
 			if (dst.indexOf('(Last ') > -1 || dst.indexOf('Months ago)') > -1 || dst.indexOf('Years ago)') > -1) {
 				const match = dst.match(/\((Last Year|Last Month|\d+ Years? ago|\d+ Months? ago)\)$/);
 				dst = match ? dst.replace(match[0], '').trim() : dst;
@@ -3141,7 +3478,7 @@ var reportViewModel = function (options) {
 				col.decimalPlacesDigit = col.decimalPlaces ? col.decimalPlaces() : null;
 				col.fieldFormating = col.fieldFormat ? col.fieldFormat() : null;
 				col.IsPivotField = e.IsPivotField ;
-				if (skipColDetails !== true) self.columnDetails.push(col);
+				if (skipColDetails !== true) self.columnDetails.push(ko.toJS(col));
 
 				e.decimalPlaces = col.decimalPlaces || ko.observable();
 				e.currencyFormat = col.currencyFormat || ko.observable();
@@ -3585,7 +3922,8 @@ var reportViewModel = function (options) {
 					allExpanded: false,
 					expandSqls: '',
 					columnDetails: self.getColumnDetails(),
-					includeSubTotals: false
+					includeSubTotals: false,
+					isSubReport:true
 				}, 'xlsx');
 			}
 
@@ -3594,44 +3932,42 @@ var reportViewModel = function (options) {
 			}
 			processRow(e.Items, result.ReportData.Columns);
 		});
-		function renderTable(data) {
+		function renderTable(data, colspan) {
 			const tableBody = document.getElementById('report-table-body' + self.ReportID());
 			if (tableBody) {
 				let rowsHTML = '';
 
-				data.forEach(row => {
-					rowsHTML += '<tr>';
-					row.Items.forEach(item => {
-						let tdStyle = `style="background-color: ${item._backColor ?? item.backColor()};
-                            color: ${item._fontColor ?? item.fontColor()}; 
-                            font-weight: ${(item.fontBold() || item._fontBold) ? 'bold' : 'normal'}; 
-                            text-align: ${item.fieldAlign() ? item.fieldAlign() : (item.Column.IsNumeric ? 'right' : 'left')}"`;
+					data.forEach(row => {
+						rowsHTML += '<tr>';
+						row.Items.forEach(item => {
+							let tdStyle = `style="background-color: ${item._backColor ?? item.backColor()};
+						color: ${item._fontColor ?? item.fontColor()}; 
+						font-weight: ${(item.fontBold() || item._fontBold) ? 'bold' : 'normal'}; 
+						text-align: ${item.fieldAlign() ? item.fieldAlign() : (item.Column.IsNumeric ? 'right' : 'left')}"`;
 
-						if (item.LinkTo) {
-							rowsHTML +=
-								`<td ${tdStyle}>
-									<a href="${item.LinkTo}" target="_blank"><span>${item.FormattedValue}</span></a>  
-								</td>`;
-						}
-						else {
-							rowsHTML +=
-								`<td ${tdStyle}>
+							if (item.LinkTo) {
+								rowsHTML +=
+									`<td ${tdStyle}>
+								<a href="${item.LinkTo}" target="_blank"><span>${item.FormattedValue}</span></a>  
+							</td>`;
+							}
+							else {
+								rowsHTML +=
+									`<td ${tdStyle}>
 								${item.FormattedValue}
 							</td>`;
-						}
+							}
+						});
+						rowsHTML += '</tr>';
 					});
-					rowsHTML += '</tr>';
-				});
-
-				// Replace the table body content in one go
-				tableBody.innerHTML = rowsHTML ? rowsHTML : '<tr><td>No records found</td></tr>';
+				tableBody.innerHTML = rowsHTML ? rowsHTML : '<tr><td colspan="'+colspan+'">No records found</td></tr>';
 			}
 		}
 
 		reportResult.ReportData(result.ReportData);
 
-		if (self.ReportType() == 'List' || self.ShowExpandOption() || self.hasPivotColumn()) {
-			renderTable(result.ReportData.Rows);
+		if (self.useRenderTable()) {
+			renderTable(result.ReportData.Rows, result.ReportData.Columns.length);
 		}
 
 		self.pager.totalRecords(result.Pager.TotalRecords);
@@ -3661,7 +3997,8 @@ var reportViewModel = function (options) {
 					SubTotalMode: true,
 					reportData: '',
 					pivotColumn: '',
-					pivotFunction: ''
+					pivotFunction: '',
+					useAltPivot: self.appSettings.useAltPivot
 				}),
 				noBlocking: self.ReportMode()=='dashboard'
 			}).done(function (subtotalsqlResult) {
@@ -3685,6 +4022,7 @@ var reportViewModel = function (options) {
 						SubTotalMode: pivotData.pivotColumn ? true : false,
 						pivotColumn: pivotData.pivotColumn,
 						pivotFunction: pivotData.pivotFunction,
+						useAltPivot: self.appSettings.useAltPivot
 					}),
 					noBlocking: self.ReportMode() == 'dashboard'
 				}).done(function (subtotalResult) {
@@ -3705,19 +4043,17 @@ var reportViewModel = function (options) {
 		}, 2000);
 	}
 
-	self.hasPivotColumn = ko.computed(function () {
-		return !self.useAltPivot && _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' }) != null;
-	});
-
+	self.reportRan = ko.observable(false);
 	self.executingReport = false;
 	self.ExecuteReport = function () {
 		self.executingReport = true;
 		self.SaveReport(false);
+		self.reportRan(true);
 		self.RunReport();
 	}
 	self.ChartDrillDownData = ko.observable();
 
-	self.ExecuteReportQuery = function (reportSql, connectKey, reportSeries,isPageSizeClick=false, previewOnly=false) {
+	self.ExecuteReportQuery = function (reportSql, connectKey, reportSeries, isPageSizeClick=false, previewOnly=false) {
 		if (!reportSql || !connectKey) return;
 		self.ChartData('');
 		self.ReportResult().ReportData(null);
@@ -3748,7 +4084,8 @@ var reportViewModel = function (options) {
 				pivotColumn: pivotData.pivotColumn,
 				pivotFunction: pivotData.pivotFunction,
 				reportData: pivotData.pivotColumn ? JSON.stringify(reportData) : '',
-				SubTotalMode: false
+				SubTotalMode: false,
+				useAltPivot: self.appSettings.useAltPivot
 			}),
 			noBlocking: self.ReportMode() == 'dashboard'
 		}).done(function (result) {
@@ -3835,17 +4172,69 @@ var reportViewModel = function (options) {
 		fontFamily: "",
 		showXAxisLabel: true,
 		showYAxisLabel: true,
+		showSmallValuesOnLabel: false,
+		annotations : {
+			alwaysOutside: true,
+			textStyle: {
+				fontSize: 12,
+				auraColor: 'none',
+				color: '#555'
+			},
+			boxStyle: {
+				stroke: '#ccc',
+				strokeWidth: 1,
+				gradient: {
+					color1: '#f3e5f5',
+					color2: '#f3e5f5',
+					x1: '0%', y1: '0%',
+					x2: '100%', y2: '100%'
+				}
+			}
+		},
 		showLegend: true,
 		legendPosition: "right",
-		showGridlines: true
+		showGridlines: true,
+		yAxisFormat: "",
+		yMin: null,
+		yMax: null
 	});
 
 	self.showSettings = ko.observable(false);
-
+	self.showTableSettings = ko.observable(false);
+	self.tableheaderBackColor = ko.observable();
+	self.tableheaderFontColor = ko.observable();
+	self.tableRowBackColor = ko.observable();
+	self.tableRowFontColor = ko.observable();
+	self.tableAltRowBackColor = ko.observable();
+	self.tableAltRowFontColor = ko.observable();
+	self.tableBorder = ko.observable();
+	self.tableBorderColor = ko.observable();
+	self.clearTableSettings = function () {
+		self.tableheaderBackColor(null);
+		self.tableheaderFontColor(null);
+		self.tableRowBackColor(null);
+		self.tableRowFontColor(null);
+		self.tableAltRowBackColor(null);
+		self.tableAltRowFontColor(null);
+		self.tableBorder(null);
+		self.tableBorderColor(null);
+		self.updateTable(true);
+	}
 
 	self.toggleChartSettings = function () {
 		self.showSettings(!self.showSettings());
+	}; 
+	self.toggleTableSettings = function () {
+		self.showTableSettings(!self.showTableSettings());
 	};
+	self.updateTable = function (clear) {
+		_.forEach(self.SelectedFields(), function (f) {
+			if (self.tableheaderBackColor() || clear === true) f.headerBackColor(self.tableheaderBackColor());
+			if (self.tableheaderFontColor() || clear === true) f.headerFontColor(self.tableheaderFontColor());
+			if (self.tableRowBackColor() || clear === true) f.backColor(self.tableRowBackColor());
+			if (self.tableRowFontColor() || clear === true) f.fontColor(self.tableRowFontColor());
+		});
+	}
 	self.addSeriesColor = function () {
 		var colors = self.chartOptions().seriesColors;
 		var randomColor = "#" + Math.floor(Math.random() * 16777215).toString(16); // Generate random color
@@ -3869,7 +4258,10 @@ var reportViewModel = function (options) {
 	self.updateChart = function () {
 		self.DrawChart(); 
 	};
-
+	self.updateLegend = function (selectedValue) {
+		self.chartOptions().legendPosition = selectedValue;
+		self.DrawChart();
+	};
 	self.skipDraw = options.skipDraw === true ? true : false;
 	self.DrawChart = function () {
 		if (!self.isChart() || self.skipDraw === true) return;
@@ -3899,6 +4291,9 @@ var reportViewModel = function (options) {
 			_.forEach(reportData.Columns, function (e, i) {
 				if (i > 0 && e.IsNumeric && !e.groupInGraph()) {
 					data.addColumn(e.IsNumeric ? 'number' : 'string', e.fieldLabel() || e.ColumnName);
+					if (self.chartOptions().showSmallValuesOnLabel) {
+						data.addColumn({ type: 'string', role: 'annotation' });
+					}
 				}
 			});
 		}
@@ -3911,36 +4306,45 @@ var reportViewModel = function (options) {
 
 			_.forEach(e.Items, function (r, n) {
 				var column = reportData.Columns[n];
+				var isNumeric = r.Column.IsNumeric;
+				var value = (function () {
+					if (isNumeric && typeof r.FormattedValue === 'string' && r.FormattedValue.trim().endsWith('%')) {
+						var num = parseFloat(r.FormattedValue.replace('%', '').trim());
+						//return isNaN(num) ? 0 : Math.round((num / 100) * 100) / 100; // Round to 2 decimal places
+						return num;
+					}
+					return isNumeric ? parseFloat(r.Value) : r.FormattedValue || (isNumeric ? 0 : '');
+				})();
 
 				if (n == 0) {
 					if (subGroups.length > 0) {
-						itemArray = _.filter(rowArray, function (x) { return x[0] == r.Value; });
-						if (itemArray.length > 0) {
-							rowArray = rowArray.filter(function (x) { return x[0] != r.Value; });
-							itemArray = itemArray[0];
+						var match = _.find(rowArray, x => x[0] == r.Value);
+						if (match) {
+							rowArray = rowArray.filter(x => x[0] != r.Value);
+							itemArray = match;
 						} else {
-							itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.FormattedValue) || (r.Column.IsNumeric ? 0 : ''));
+							itemArray.push(value);
 						}
 					} else {
 						itemArray.push(r.FormattedValue || '');
 					}
 				} else if (subGroups.length > 0) {
-					var subgroup = _.filter(subGroups, function (x) { return x.index == n; });
-					if (subgroup.length == 1) {
-						if (_.filter(dataColumns, function (x) { return x == r.Value; }).length == 0) {
+					var isSubGroup = _.some(subGroups, x => x.index == n);
+					if (isSubGroup) {
+						if (!_.includes(dataColumns, r.Value)) {
 							dataColumns.push(r.Value || '');
-
-							_.forEach(valColumns, function (j) {
-								data.addColumn('number', r.Value + (j == 0 ? '' : '-' + j));
+							_.forEach(valColumns, function (j, idx) {
+								data.addColumn('number', r.Value + (idx === 0 ? '' : '-' + idx));
 							});
 						}
-					} else if (r.Column.IsNumeric) {
-						itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.FormattedValue) || (r.Column.IsNumeric ? 0 : ''));
+					} else if (isNumeric) {
+						itemArray.push(value);
 					}
-				} else if (r.Column.IsNumeric && !column.groupInGraph()) {
-					itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.FormattedValue) || (r.Column.IsNumeric ? 0 : ''));
-				} else if (!column.groupInGraph() && self.ReportType() == 'Treemap') {
-					itemArray.push((r.Column.IsNumeric ? parseInt(r.Value) : r.FormattedValue) || (r.Column.IsNumeric ? 0 : ''));
+				} else if ((isNumeric || self.ReportType() === 'Treemap') && !column.groupInGraph()) {
+					itemArray.push(value);
+					if (self.chartOptions().showSmallValuesOnLabel) {
+						itemArray.push(value.toString());
+					}
 				}
 			});
 
@@ -3959,7 +4363,7 @@ var reportViewModel = function (options) {
 
 		// Set chart options
 		var chartOptions = self.chartOptions();
-		if (reportData?.Columns[1]?.fieldFormat() === 'Currency') {
+		if (!reportData?.Columns[1].groupInGraph() && reportData?.Columns[1]?.fieldFormat() === 'Currency') {
 			var prefixFormat = reportData?.Columns[1]?.currencyFormat ? reportData?.Columns[1]?.currencyFormat() : null;
 			if (prefixFormat != null && prefixFormat != "") {
 				var formatter = new google.visualization.NumberFormat({
@@ -3969,6 +4373,21 @@ var reportViewModel = function (options) {
 				chartOptions.vAxis = { format: `${prefixFormat}#` }
 			}
 		}
+		if (!reportData?.Columns[1].groupInGraph() && (reportData?.Rows?.[0]?.Items?.[1]?.FormattedValue || '').trim().endsWith('%'))
+		{
+			var percentFormatter = new google.visualization.NumberFormat({
+				suffix: '%',
+				fractionDigits: 2 // optional: 2 decimal points
+			});
+			percentFormatter.format(data, 1);
+			chartOptions.vAxis = { format: "#'%'" };
+		}
+		if (self.colorScheme() != null && self.colorScheme().length > 0) {
+			chartOptions.colors = self.colorScheme().slice(1);
+			chartOptions.backgroundColor = self.colorScheme()[0], // Set the background color here
+				chartOptions.chartArea = { backgroundColor: self.colorScheme()[0] }
+		}
+
 		if (options.chartSize) {
 			chartOptions.width = options.chartSize.width;
 			chartOptions.height = options.chartSize.height;
@@ -4005,7 +4424,9 @@ var reportViewModel = function (options) {
 			chartOptions.seriesType = self.comboChartType();			
 			chartOptions.series = series;
 		}
-
+		if (self.ReportType() != 'Combo') {
+			delete chartOptions.seriesType;
+		}
 		if (self.ReportType() == "Map") {
 			chart = new google.visualization.GeoChart(chartDiv);
 			// Refer to for full list of regions https://developers.google.com/chart/interactive/docs/gallery/geochart#Continent_Hierarchy
@@ -4166,8 +4587,60 @@ var reportViewModel = function (options) {
 		if (!chartOptions.showGridlines) { chartOptions.hAxis.gridlines = { color: 'none' }; chartOptions.vAxis.gridlines = { color: 'none' }; }
 		if (!chartOptions.showXAxisLabel) { chartOptions.hAxis.textPosition = 'none'; }
 		if (!chartOptions.showYAxisLabel) { chartOptions.vAxis.textPosition = 'none'; }
-
-		if (chartOptions.seriesColors.length > 0) chartOptions.colors = chartOptions.seriesColors;
+		if (!chartOptions.showSmallValuesOnLabel) {
+			chartOptions.annotations = {
+				alwaysOutside: true,
+				textStyle: {
+					fontSize: 12,
+					auraColor: 'none',
+					color: '#555'
+				},
+				boxStyle: {
+					stroke: '#ccc',
+					strokeWidth: 1,
+					gradient: {
+						color1: '#f3e5f5',
+						color2: '#f3e5f5',
+						x1: '0%', y1: '0%',
+						x2: '100%', y2: '100%'
+					}
+				}
+			}
+		}
+		const yAxisFormat = self.chartOptions()?.yAxisFormat;
+		const isHorizontal = self.barChartHorizontal(); // Ensure it's callable
+		if (yAxisFormat) {
+			let formatValue;
+			if (yAxisFormat.includes('%')) {
+				switch (yAxisFormat) {
+					case '%':
+					case '#%':
+						formatValue = "#'%'";
+						break;
+					case '%#':
+						formatValue = "'%'#";
+						break;
+					default:
+						formatValue = yAxisFormat;
+				}
+			} else {
+				formatValue = yAxisFormat;
+			}
+			if (isHorizontal) {
+				chartOptions.hAxis.format = formatValue;
+			} else {
+				chartOptions.vAxis.format = formatValue;
+			}
+		}
+		if (self.chartOptions().yMin !== null && self.chartOptions().yMin !== "") {
+			chartOptions.vAxis.viewWindow = chartOptions.vAxis.viewWindow || {};
+			chartOptions.vAxis.viewWindow.min = Number(self.chartOptions().yMin);
+		}
+		if (self.chartOptions().yMax !== null && self.chartOptions().yMax !== "") {
+			chartOptions.vAxis.viewWindow = chartOptions.vAxis.viewWindow || {};
+			chartOptions.vAxis.viewWindow.max = Number(self.chartOptions().yMax);
+		}
+		if (chartOptions.seriesColors && chartOptions.seriesColors.length > 0) chartOptions.colors = chartOptions.seriesColors;
 		chartOptions.legend = { position: self.chartOptions().legendPosition }
 		chart.draw(data, chartOptions);
 
@@ -4405,6 +4878,7 @@ var reportViewModel = function (options) {
 				if (e.applyAllFontColor()) f.fontColor(e.fontColor());
 				if (e.applyAllBackColor()) f.backColor(e.backColor());
 				if (e.applyAllBold()) f.fontBold(e.fontBold());
+				if (e.applyAllHeaderBold()) f.headerFontBold(e.headerFontBold());
 			});
 
 			e.fieldConditionVal = [];
@@ -4495,7 +4969,7 @@ var reportViewModel = function (options) {
 		self.pager.sortColumn('');
 		self.pager.sortDescending(report.SortDesc);
 		var match = _.find(self.SavedReports(), { reportId: report.ReportID }) || { canEdit: false };
-		self.CanEdit(report.canEdit || match.canEdit || self.adminMode());
+		self.CanEdit(report.canEdit || self.adminMode());
 		self.FilterGroups([]);
 		self.AdditionalSeries([]);
 		self.SortFields([]);
@@ -4615,7 +5089,6 @@ var reportViewModel = function (options) {
 			}
 		}
 	}
-
 	self.RefreshReport = function () {
 		self.LoadReport(self.ReportID(), true, '');
 	};
@@ -4637,6 +5110,7 @@ var reportViewModel = function (options) {
 			},
 			noBlocking: dontBlock === true
 		}).done(function (report) {
+			self.clearTableSettings();
 			if (report.d) { report = report.d; }
 			if (report.result) { report = report.result; }
 			self.useStoredProc(report.UseStoredProc);
@@ -4666,6 +5140,20 @@ var reportViewModel = function (options) {
 					e = self.setupField(e);
 				});
 
+				_.forEach(report.SelectedFields,function (field) {
+					if (
+						field.fieldId === 0 &&
+						field.tableName === "Custom" &&
+						field.dynamicTableId === null
+					) {
+						if (field.fieldFormat() === 'Integer' || field.fieldFormat() === 'Decimal' || field.fieldFormat() === 'Currency') {
+							field.fieldType = "Int";
+							field.fieldFilter = ['=', '>', '<', '>=', '<=', 'not equal', 'is blank', 'is not blank'];
+						} else {
+							field.fieldFilter = ['=', 'in', 'not in', 'like', 'not like', 'not equal', 'is blank', 'is not blank'];
+						}
+					}
+				});
 				self.SelectedFields(report.SelectedFields);
 				self.lastPickedField(null);
 				return self.PopulateReport(report, filterOnFly, reportSeries);
@@ -4687,10 +5175,24 @@ var reportViewModel = function (options) {
 			if (reports.result) { reports = reports.result; }
 			_.forEach(reports, function (e) {
 				e.runMode = false;
-				e.openReport = function () {
+				e.openReport = function () {			
+					if (!e.canEdit && !e.runMode) {
+						options.reportWizard.modal('hide');
+						toastr.error('No access to edit report');
+						return;
+					}
+					if (self.ReportMode() != 'dashboard') {
+						self.isDirty(false);
+						self.setupDirtyCheck();
+					}
 					var saveReportFlag = self.SaveReport();
 					// Load report
 					return self.LoadReport(e.reportId).done(function () {
+						if (!self.CanEdit() && !e.runMode) {
+							options.reportWizard.modal('hide');
+							toastr.error('No access to edit report');
+							return;
+						}
 						if (!e.runMode) {
 							self.SaveReport(true);
 							self.ReportMode("generate");
@@ -4704,7 +5206,17 @@ var reportViewModel = function (options) {
 				};
 
 				e.copyReport = function () {
+					if (!e.canEdit) {
+						options.reportWizard.modal('hide');
+						toastr.error('No access to copy report');
+						return;
+					}
 					e.openReport().done(function () {
+						if (!self.CanEdit()) {
+							options.reportWizard.modal('hide');
+							toastr.error('No access to copy report');
+							return;
+						}
 						self.ReportID(0);
 						self.ReportName('Copy of ' + self.ReportName());
 						self.CanEdit(true);
@@ -4727,7 +5239,9 @@ var reportViewModel = function (options) {
 				}
 
 				e.runReport = function () {
+					self.reportRan(false);
 					self.SaveReport(false);
+					self.executingReport = false;
 					e.runMode = true;
 					e.openReport();
 				};
@@ -4747,6 +5261,7 @@ var reportViewModel = function (options) {
 								}
 							}).done(function () {
 								self.SavedReports.remove(e);
+								self.reportsInSearch.remove(e);
 							});
 						}
 					});
@@ -4775,6 +5290,15 @@ var reportViewModel = function (options) {
 			}
 
 			self.SavedReports(reports);
+			if (self.searchReports()) {
+				_.forEach(self.reportsInSearch(), (searchItem, index) => {
+					const updatedItem = _.find(reports, { reportId: searchItem.reportId });
+					if (updatedItem) {
+						self.reportsInSearch.splice(index, 1);
+						self.reportsInSearch.splice(index, 0, updatedItem);
+					}
+				});
+			}
 		});
 	};
 
@@ -4876,6 +5400,10 @@ var reportViewModel = function (options) {
 		if (options.reportWizard == null) return;
 		var curInputs = options.reportWizard.find(validateCustomOnly === true ? ".custom-field-design input, .custom-field-design select" : "input, select"),
 			isValid = true;
+
+		if (!self.isModalOpen()) {
+			curInputs = $("#filter-panel-" + self.ReportID()).find("input, select");
+		}
 
 		$(".needs-validation").removeClass("was-validated");
 		for (var i = 0; i < curInputs.length; i++) {
@@ -5065,7 +5593,10 @@ var reportViewModel = function (options) {
 			self.appSettings.noDefaultFolder = x.noDefaultFolder;
 			self.appSettings.showEmptyFolders = x.showEmptyFolders;
 			self.appSettings.useAltPdf = x.useAltPdf;
+			self.appSettings.useAltPivot = x.useAltPivot === true;
 			self.appSettings.dontXmlExport = x.dontXmlExport;
+			self.appSettings.dontWordExport = x.dontWordExport;
+			self.appSettings.showPageSize = x.showPageSize;
 		});
 	}
 
@@ -5169,7 +5700,7 @@ var reportViewModel = function (options) {
 		});
 	}
 
-	self.getExportJson = function () {
+	self.getExportJson = function (pageSize,pageOrientation) {
 		var reportData = self.BuildReportData();
 		reportData.DrillDownRowUsePlaceholders = true;
 		var pivotData = self.preparePivotData();
@@ -5185,15 +5716,17 @@ var reportViewModel = function (options) {
 			pivot: self.ReportType() == 'Pivot',
 			pivotColumn: pivotData.pivotColumn,
 			pivotFunction: pivotData.pivotFunction,
+			pageSize: pageSize,
+			pageOrientation: pageOrientation
 		};
 	}
 
-	self.downloadPdfAlt = function () {
-		var data = self.getExportJson();
+	self.downloadPdfAlt = function (pageSize,pageOrientation) {
+		var data = self.getExportJson(pageSize, pageOrientation);
 		self.downloadExport("DownloadPdfAlt", data, 'pdf');
 	}
 
-	self.downloadPdf = function (debug) {
+	self.downloadPdf = function (debug, pageSize, pageOrientation) {
 		var reportData = self.BuildReportData();
 		reportData.DrillDownRowUsePlaceholders = true;
 		var pivotData = self.preparePivotData();
@@ -5211,10 +5744,12 @@ var reportViewModel = function (options) {
 			expandSqls: JSON.stringify(reportData),
 			pivotColumn: pivotData.pivotColumn,
 			pivotFunction: pivotData.pivotFunction,
-			debug: debug === true ? true : false
+			debug: debug === true ? true : false,
+			pageSize: pageSize,
+			pageOrientation: pageOrientation
 		}, 'pdf');
 	}
-
+	self.PdfPage = new PdfPageViewModel(self.appSettings, self.downloadPdf, self.downloadPdfAlt);
 	self.runExcelDownload = function (expand) {
 		var hasOnlyAndGroupInDetail = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Only in Detail' || x.selectedAggregate() == 'Group in Detail'}) != null;
 		var onlyAndGroupInDetailColumnDetails = _.filter(self.SelectedFields(), function (x) { return x.selectedAggregate() === 'Only in Detail' || x.selectedAggregate() == 'Group in Detail'; });
@@ -5234,6 +5769,7 @@ var reportViewModel = function (options) {
 			pivotColumn: pivotData.pivotColumn,
 			pivotFunction: pivotData.pivotFunction,
 			onlyAndGroupInColumnDetail: hasOnlyAndGroupInDetail ? JSON.stringify(onlyAndGroupInDetailColumnDetails) : null,
+			isSubReport: false
 		}, 'xlsx');
 	}
 
@@ -5257,10 +5793,11 @@ var reportViewModel = function (options) {
 		var data = self.getExportJson();
 		self.downloadExport("DownloadXml", data, 'xml');
 	}
-	self.downloadWord = function () {
-		var data = self.getExportJson();		
+	self.downloadWord = function (pageSize, pageOrientation) {
+		var data = self.getExportJson(pageSize, pageOrientation);		
 		self.downloadExport("DownloadWord", data, 'docx');
 	}
+	self.WordPage = new WordPageViewModel(self.downloadWord);
 	self.preparePivotData = function () {
 		var pivotColumn = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot'; });
 		var pivotFunction = '';
@@ -5386,6 +5923,7 @@ var sqlFieldModel = function (options) {
 	}
 
 	self.selectedField = ko.observable();
+	self.selectedFieldTableId = ko.observable();
 	self.selectedSqlFunction = ko.observable();
 	self.inputValue = ko.observable();
 	self.customSQL = ko.observable('');
@@ -5398,6 +5936,7 @@ var sqlFieldModel = function (options) {
 	self.toJSON = function () {
 		return {
 			selectedField: self.selectedField(),
+			selectedFieldTableId: self.selectedFieldTableId(),
 			selectedSqlFunction: self.selectedSqlFunction(),
 			inputValue: encodeURIComponent(self.inputValue()),
 			fieldSql: encodeURIComponent(self.generateSQL()),
@@ -5415,6 +5954,7 @@ var sqlFieldModel = function (options) {
 
 	self.fromJs = function (x) {
 		self.selectedField(x.selectedField);
+		self.selectedFieldTableId(x.selectedFieldTableId);
 		self.selectedSqlFunction(x.selectedSqlFunction);
 		self.inputValue(decodeURIComponent(x.inputValue));
 		self.fieldSql(decodeURIComponent(x.fieldSql));
@@ -5669,6 +6209,24 @@ var dashboardViewModel = function (options) {
 	self.ReportResult = ko.observable({
 		ReportSql: ko.observable()		
 	});
+	self.isModalOpen = ko.observable(false);
+	self.isDirty = ko.observable(false);
+	$(document).on('shown.bs.modal', '.modal', function () {
+		self.isModalOpen(true);
+	});
+
+	$(document).on('hidden.bs.modal', '.modal', function () {
+		const anyOpen = $('.modal.show').length > 0;
+		self.isModalOpen(anyOpen);
+	});
+	self.setupDirtyCheckForDashboard = function () {
+		const $modal = $('#add-dashboard-modal');
+		$modal.find('#add-dash-name, textarea, input[type="checkbox"]')
+			.off('change.inputDirtyCheck input.inputDirtyCheck')
+			.on('change.inputDirtyCheck input.inputDirtyCheck', function () {
+				self.isDirty(true);
+			});
+	};
 	var currentDash = options.dashboardId > 0
 		? (_.find(self.dashboards(), { id: options.dashboardId }) || { name: '', description: '' })
 		: (self.dashboards().length > 0 ? self.dashboards()[0] : { name: '', description: '' });
@@ -5681,7 +6239,10 @@ var dashboardViewModel = function (options) {
 		noDefaultFolder: false,
 		showEmptyFolders: false,
 		useAltPdf: false,
-		dontXmlExport: false
+		useAltPivot: false,
+		dontXmlExport: false,
+		dontWordExport: false,
+		showPageSize:false,
 	};
 	self.loadAppSettings = function () {
 		return ajaxcall({
@@ -5704,7 +6265,10 @@ var dashboardViewModel = function (options) {
 			self.appSettings.noDefaultFolder = x.noDefaultFolder;
 			self.appSettings.showEmptyFolders = x.showEmptyFolders;
 			self.appSettings.useAltPdf = x.useAltPdf;
+			self.appSettings.useAltPivot = x.useAltPivot;
 			self.appSettings.dontXmlExport = x.dontXmlExport;
+			self.appSettings.dontWordExport = x.dontWordExport;
+			self.appSettings.showPageSize = x.showPageSize;
 		});
 	}
 
@@ -5713,7 +6277,9 @@ var dashboardViewModel = function (options) {
 		Name: ko.observable(currentDash.name),
 		Description: ko.observable(currentDash.description),
 		manageAccess: manageAccess(options),
-		scheduleBuilder: new scheduleBuilder(options.userId, options.getTimeZonesUrl)
+		scheduleBuilder: new scheduleBuilder(options.userId, options.getTimeZonesUrl, self.appSettings),
+		PdfPage: new PdfPageViewModel(),
+		WordPage: new WordPageViewModel()
 	};
 	self.dateFormatMappings = {
 		'United States': 'mm/dd/yy',
@@ -5725,12 +6291,17 @@ var dashboardViewModel = function (options) {
 	};
 	self.currentDashboard = ko.observable(currentDash);
 	self.selectDashboard = ko.observable(currentDash.id);
+	self.isOverlap = ko.observable(false);
 	self.loadDashboard = function (dashboardId) {
 		ajaxcall({
 			url: options.loadSavedDashbordUrl,
 			data: { id: dashboardId, adminMode: self.adminMode(), applyClientInAdmin: self.appSettings.useClientIdInAdmin },
 			noBlocking: true
 		}).done(function (reportsData) {
+			let resultGrid = self.checkOverlaps(reportsData);
+			if (resultGrid.length > 0) {
+				self.isOverlap(true);
+			}
 			if (reportsData.d) reportsData = reportsData.d;
 			var reports = [];
 			_.forEach(reportsData, function (r) {
@@ -5742,7 +6313,11 @@ var dashboardViewModel = function (options) {
 				: (self.dashboards().length > 0 ? self.dashboards()[0] : null);
 
 			if (currentDash == null) {
-				currentDash = { id: dashboardId, name: self.dashboard.Name(), description: self.dashboard.Description() };
+				var list = '';
+				_.forEach(reports, function (r) {
+					list += (list ? ',' : '') + r.reportId;
+				});
+				currentDash = { id: dashboardId, name: self.dashboard.Name(), description: self.dashboard.Description(),selectedReports:list };
 				if (dashboardId > 0) {
 					self.dashboards.push(currentDash);
 				}
@@ -5756,6 +6331,24 @@ var dashboardViewModel = function (options) {
 			self.loadDashboardReports(reports);
 		});
 	}
+	self.checkOverlaps =function (widgets) {
+		let overlaps = [];
+		for (let i = 0; i < widgets.length; i++) {
+			for (let j = i + 1; j < widgets.length; j++) {
+				let a = widgets[i];
+				let b = widgets[j];
+				let overlapX = a.X < b.X + b.Width && a.X + a.Width > b.X;
+				let overlapY = a.Y < b.Y + b.Height && a.Y + a.Height > b.Y;
+				if (overlapX && overlapY) {
+					overlaps.push({
+						box1: `Box ${i + 1} (x:${a.X}, y:${a.Y}, w:${a.Width}, h:${a.Height})`,
+						box2: `Box ${j + 1} (x:${b.X}, y:${b.Y}, w:${b.Width}, h:${b.Height})`
+					});
+				}
+			}
+		}
+		return overlaps;
+	}
 
 	self.selectDashboard.subscribe(function (newValue) {
 		if (newValue != self.currentDashboard().id) {
@@ -5767,10 +6360,10 @@ var dashboardViewModel = function (options) {
 		var filteredReports = [];
 		self.reportsAndFolders().forEach(function (folder) {
 			var filterReports = folder.reports.filter(function (report) {
-				var reportNameLower = report.reportName.toLowerCase();
-				var reportDescriptionLower = report.reportDescription.toLowerCase();
+				var reportNameLower = report.reportName?.toLowerCase();
+				var reportDescriptionLower = report.reportDescription?.toLowerCase();
 				var searchReportsLower = searchReports.toLowerCase();
-				return reportNameLower.includes(searchReportsLower) || reportDescriptionLower.includes(searchReportsLower);
+				return reportNameLower.includes(searchReportsLower) || reportDescriptionLower?.includes(searchReportsLower);
 			});
 			filteredReports = filteredReports.concat(filterReports);
 		});
@@ -5795,6 +6388,7 @@ var dashboardViewModel = function (options) {
 				r.selected(false);
 			});
 		});
+		self.setupDirtyCheckForDashboard();
 	};
 
 	self.editDashboard = function () {
@@ -5816,6 +6410,7 @@ var dashboardViewModel = function (options) {
 				r.selected(selectedReports.indexOf(r.reportId.toString()) >= 0);
 			});
 		});
+		self.setupDirtyCheckForDashboard();
 	};
 
 	self.removeReportFromDashboard = function (reportId) {
@@ -5842,7 +6437,19 @@ var dashboardViewModel = function (options) {
 			}
 		});
 	}
-
+	self.onModalCloseClicked = function () {
+		const $modal = $('#add-dashboard-modal');
+		if ($modal == null) return;
+		if (self.isDirty()) {
+			bootbox.confirm("You have unsaved changes. Do you want to discard them?", function (result) {
+				if (result) {
+					self.isDirty(false);
+				} else {
+					$modal.modal('show');
+				}
+			});
+		}
+	};
 	self.saveDashboard = function () {
 		$("#add-dash-name").removeClass("is-invalid");
 
@@ -5884,6 +6491,10 @@ var dashboardViewModel = function (options) {
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
 			if (result.result) { result = result.result; }
+			var currentdashboard = _.find(self.dashboards(), { id: self.dashboard.Id() });
+			if (currentdashboard) {
+				currentdashboard.selectedReports = list;
+			};
 			toastr.success("Dashboard saved successfully");
 			$('#add-dashboard-modal').modal('hide');
 			setTimeout(function () {
@@ -5956,7 +6567,8 @@ var dashboardViewModel = function (options) {
 				printReportUrl: options.printReportUrl,
 				dataFilters: options.dataFilters,
 				getTimeZonesUrl: options.getTimeZonesUrl,
-				arrangeDashboard: self.arrangeDashboard
+				arrangeDashboard: self.arrangeDashboard,
+				appSettings: self.appSettings
 			});
 
 			report.x = ko.observable(x.x);
@@ -6006,7 +6618,14 @@ var dashboardViewModel = function (options) {
 					}, 1000);
 				});
 			};
-			
+			report.loadPdfModel = function () {
+				self.selectedReport(report);
+				$('#pdfOptionsModal').modal('show'); 
+			}
+			report.loadWordModel = function () {
+				self.selectedReport(report);
+				$('#wordOptionsModal').modal('show');
+			}
 			report.RefreshReport = function (reportId) {
 				report.LoadReport(reportId, true, '');
 			};
@@ -6128,9 +6747,19 @@ var dashboardViewModel = function (options) {
 		self.RunReport();
 	}
 	self.RefreshAllReports = function () {
-		self.loadDashboardReports(options.reports, true);
+		self.reports().forEach(x => x.RunReport(false, true, true));
 	}
-	self.ExportAllPdfReports = function () {
+	self.ExportAllPdfReportsWithPageOption = function () {
+		if (self.dashboard.PdfPage) {
+			self.dashboard.PdfPage.download = function () {
+				var pageSize = self.dashboard.PdfPage.selectedPageSize();
+				var orientation = self.dashboard.PdfPage.selectedPageOrientation();
+				self.ExportAllPdfReports(pageSize, orientation);
+			}
+		}
+		$('#exportAllPdfOptionsModal').modal('show');
+	}
+	self.ExportAllPdfReports = function (pageSize, pageOrientation) {
 		const reports = self.reports();
 		const allreports = [];
 		_.forEach(reports, function (report) {
@@ -6150,13 +6779,54 @@ var dashboardViewModel = function (options) {
 				expandSqls: JSON.stringify(reportData),
 				pivotColumn: pivotData.pivotColumn,
 				pivotFunction: pivotData.pivotFunction,
+				pageSize: pageSize,
+				pageOrientation: pageOrientation
 			});
 		});
 		reports[0]?.downloadExport("DownloadAllPdf", {
 			reportdata: JSON.stringify(allreports)
 		}, 'pdf','CombinedReport');
 	}
-
+	self.ExportAllPdfAltReportsWithPageOption = function () {
+		if (self.dashboard.PdfPage) {
+			self.dashboard.PdfPage.download = function () {
+				var pageSize = self.dashboard.PdfPage.selectedPageSize();
+				var orientation = self.dashboard.PdfPage.selectedPageOrientation();
+				self.ExportAllPdfAltReports(pageSize, orientation);
+			}
+		}
+		$('#exportAllPdfOptionsModal').modal('show');
+	}
+	self.ExportAllPdfAltReports = function (pageSize, pageOrientation) {
+		const reports = self.reports();
+		const allreports = [];
+		_.forEach(reports, function (report) {
+			const reportData = report.BuildReportData();
+			const pivotData = report.preparePivotData();
+			allreports.push({
+				reportId: report.ReportID(),
+				reportSql: report.currentSql(),
+				connectKey: report.currentConnectKey(),
+				reportName: report.ReportName(),
+				expandAll: report.allExpanded(),
+				printUrl: options.printReportUrl,
+				chartData: report.ChartData() || '',
+				columnDetails: report.getColumnDetails(),
+				clientId: report.clientid || '',
+				userId: report.currentUserId || '',
+				userRoles: report.currentUserRole || '',
+				dataFilters: JSON.stringify(options.dataFilters),
+				expandSqls: JSON.stringify(reportData),
+				pivotColumn: pivotData.pivotColumn,
+				pivotFunction: pivotData.pivotFunction,
+				pageSize: pageSize,
+				pageOrientation: pageOrientation
+			});
+		});
+		reports[0]?.downloadExport("DownloadAllPdfAlt", {
+			reportdata: JSON.stringify(allreports)
+		}, 'pdf', 'CombinedReport');
+	}
 	self.ExportAllExcelReports = function () {
 		const reports = self.reports();
 		const allreports = [];
@@ -6213,7 +6883,17 @@ var dashboardViewModel = function (options) {
 	self.canDrilldown = ko.computed(function () {
 		return _.find(self.reports(), function (x) { return x.canDrilldown() == true }) != null;
 	});
-	self.ExportAllWordReports = function () {
+	self.ExportAllWordReportsWithPageOption = function () {
+		if (self.dashboard.WordPage) {
+			self.dashboard.WordPage.download = function () {
+				var pageSize = self.dashboard.WordPage.selectedPageSize();
+				var orientation = self.dashboard.WordPage.selectedPageOrientation();
+				self.ExportAllWordReports(pageSize, orientation);
+			}
+		}
+		$('#exportAllWordOptionsModal').modal('show');
+	}
+	self.ExportAllWordReports = function (pageSize , pageOrientation) {
 		const reports = self.reports();
 		const allreports = [];
 		_.forEach(reports, function (report) {
@@ -6231,6 +6911,8 @@ var dashboardViewModel = function (options) {
 				pivot: report.ReportType() == 'Pivot',
 				pivotColumn: pivotData.pivotColumn,
 				pivotFunction: pivotData.pivotFunction,
+				pageSize: pageSize,
+				pageOrientation: pageOrientation
 			});
 		});
 		reports[0]?.downloadExport("DownloadAllWord", {
@@ -6300,12 +6982,12 @@ var dashboardViewModel = function (options) {
 				});
 			};
 
-			return $.when(getReports(), getFolders()).done(function (allReports, allFolders) {
-				var setup = [];
-				if (allFolders[0].d) { allFolders[0] = allFolders[0].d; }
-				if (allReports[0].d) { allReports[0] = allReports[0].d; }
-				if (allFolders[0].result) { allFolders[0] = allFolders[0].result; }
-				if (allReports[0].result) { allReports[0] = allReports[0].result; }
+		return $.when(getReports(), getFolders()).done(function (allReports, allFolders) {
+			var setup = [];
+			if (allFolders[0].d) { allFolders[0] = allFolders[0].d; }
+			if (allReports[0].d) { allReports[0] = allReports[0].d; }
+			if (allFolders[0].result) { allFolders[0] = allFolders[0].result; }
+			if (allReports[0].result) { allReports[0] = allReports[0].result; }
 
 				_.forEach(allFolders[0], function (x) {
 					var folderReports = _.filter(allReports[0], { folderId: x.Id });
