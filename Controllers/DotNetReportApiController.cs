@@ -99,7 +99,7 @@ namespace ReportBuilder.Web.Controllers
             public string method { get; set; }
             public string headerJson { get; set; }
             public bool useReportHeader { get; set; }
-            public string headerClientId { get; set; }
+            public string headerClientId { get; set; } = "";
 
         }
 
