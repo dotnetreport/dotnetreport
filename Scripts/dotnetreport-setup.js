@@ -1875,13 +1875,15 @@ var manageViewModel = function (options) {
 						reportWizard: options.reportWizard,
 						lookupListUrl: options.lookupListUrl
 					});
-					await reportview.LoadReport(r.reportId, true, '', true, false,true);
-					const reportData = reportview.BuildReportData();
-					reportsWithData.push({
-						reportId: r.reportId,
-						reportName: r.reportName,
-						data: reportData
-					});
+					const response = await reportview.LoadReport(r.reportId, true, '', true, false, true);
+					if (response && response.UseStoredProc === false) {
+						const reportData = reportview.BuildReportData();
+						reportsWithData.push({
+							reportId: r.reportId,
+							reportName: r.reportName,
+							data: reportData
+						});
+					}
 				}));
 				selectedFolders.push({
 					folderId: folder.folderId,
