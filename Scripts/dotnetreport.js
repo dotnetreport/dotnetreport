@@ -3330,7 +3330,7 @@ var reportViewModel = function (options) {
 				$("#sqlModal").modal('show');
 				return;
 			}
-			options.reportWizard.modal('hide');
+			options?.reportWizard?.modal('hide');
 
 			if (isExecuteReportQuery === false) {
 				if (saveOnly) {
@@ -5093,7 +5093,7 @@ var reportViewModel = function (options) {
 		self.LoadReport(self.ReportID(), true, '');
 	};
 
-	self.LoadReport = function (reportId, filterOnFly, reportSeries, dontBlock, buildSql) {
+	self.LoadReport = function (reportId, filterOnFly, reportSeries, dontBlock, buildSql,adminMode) {
 		self.SelectedTable(null);
 		self.isFormulaField(false);
 		self.isFunctionField(false);
@@ -5103,7 +5103,7 @@ var reportViewModel = function (options) {
 				method: "/ReportApi/LoadReport",
 				model: JSON.stringify({
 					reportId: reportId,
-					adminMode: self.adminMode(),
+					adminMode: adminMode ? true : self.adminMode(),
 					userIdForSchedule: self.userIdForSchedule,
 					buildSql: buildSql === true
 				})

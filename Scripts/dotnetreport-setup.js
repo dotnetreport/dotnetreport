@@ -1860,29 +1860,42 @@ var manageViewModel = function (options) {
 		const exportJson = JSON.stringify(plainJson, null, 2);
 		downloadJson(exportJson, `FolderManageAccess_${FolderJson[0].FolderName}.json`, 'application/json');
 	};
-	self.exportFoldersReportJson = function () {
+	self.exportFoldersReportJson = async function () {
 		const selectedFolders = [];
-		_.forEach(self.reportsAndFolders(), function (folder) {
+		await Promise.all(_.map(self.reportsAndFolders(), async function (folder) {
 			const selectedReports = _.filter(folder.reports, function (r) {
-				return r.isSelected && r.isSelected(); // only selected reports
+				return r.isSelected && r.isSelected();
 			});
 			if (selectedReports.length > 0) {
+				const reportsWithData = [];
+				await Promise.all(_.map(selectedReports, async function (r) {
+					const reportview = new reportViewModel({
+						apiUrl: options.reportsApiUrl,
+						runReportApiUrl: options.runReportApiUrl,
+						reportWizard: options.reportWizard,
+						lookupListUrl: options.lookupListUrl
+					});
+					await reportview.LoadReport(r.reportId, true, '', true, false,true);
+					const reportData = reportview.BuildReportData();
+					reportsWithData.push({
+						reportId: r.reportId,
+						reportName: r.reportName,
+						data: reportData
+					});
+				}));
 				selectedFolders.push({
 					folderId: folder.folderId,
 					folder: folder.folder,
-					reports: selectedReports
+					reports: reportsWithData
 				});
 			}
-		});
+		}));
 		if (selectedFolders.length === 0) {
 			toastr.error("No Reports selected!");
 			return;
 		}
-		const plainJson = ko.mapping.toJS(selectedFolders, {
-			ignore: ["changeAccess", "isSelected"]  
-		});
-		const exportJson = JSON.stringify(plainJson, null, 2);
-		downloadJson(exportJson, `FolderReportsManageAccess.json`, 'application/json');
+		const exportJson = JSON.stringify(selectedFolders, null, 2);
+		downloadJson(exportJson, `FolderReports.json`, 'application/json');
 	};
 	self.exportFoldersJson = function () {
 		const selected = self.Folders().filter(f => f.isSelected());
