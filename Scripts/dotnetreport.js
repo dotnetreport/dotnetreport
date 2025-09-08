@@ -1478,7 +1478,7 @@ var reportViewModel = function (options) {
 				tableresize: true
 			});
 
-			$('#summernote-editor').summernote('code', decodeURIComponent(self.reportHtml()));
+			$('#summernote-editor').summernote('code', self.reportHtml());
 		}
 	}
 	self.ReportType.subscribe(function (newvalue) {
