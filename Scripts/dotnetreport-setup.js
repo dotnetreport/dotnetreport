@@ -1875,7 +1875,8 @@ var manageViewModel = function (options) {
 						reportWizard: options.reportWizard,
 						lookupListUrl: options.lookupListUrl
 					});
-					const response = await reportview.LoadReport(r.reportId, true, '', true, false, true);
+					reportview.adminMode = ko.observable(true);
+					const response = await reportview.LoadReport(r.reportId, true, '', true, false);
 					if (response && response.UseStoredProc === false) {
 						const reportData = reportview.BuildReportData();
 						reportsWithData.push({
@@ -1899,6 +1900,130 @@ var manageViewModel = function (options) {
 		const exportJson = JSON.stringify(selectedFolders, null, 2);
 		downloadJson(exportJson, `FolderReports.json`, 'application/json');
 	};
+	self.ManageJsonFile = {
+		file: ko.observable(null),
+		fileName: ko.observable(''),
+		triggerFileInput: function () {
+			$('#fileInputJson').click();
+		},
+		handleFileSelect: function (data, event) {
+			var selectedFile = event.target.files[0];
+			if (selectedFile && (selectedFile.type === "application/json" || selectedFile.name.endsWith('.json'))) {
+				self.ManageJsonFile.file(selectedFile);
+				self.ManageJsonFile.fileName(selectedFile.name);
+			} else {
+				self.ManageJsonFile.file(null);
+				self.ManageJsonFile.fileName('');
+				toastr.error('Only JSON files are allowed.');
+			}
+		},
+
+		uploadFile: function () {
+			var file = self.ManageJsonFile.file();
+			if (file != null) {
+				var reader = new FileReader();
+				reader.onload = function (event) {
+					try {
+						const parsed = JSON.parse(event.target.result);
+						const folders = Array.isArray(parsed) ? parsed : [parsed];
+						folders.forEach(function (folder) {
+							if (Array.isArray(folder.reports)) {
+								let existingFolder = _.find(self.reportsAndFolders(), function (f) {
+									return f.folder === folder.folder;
+								});
+								let ensureFolderPromise;
+								if (existingFolder) {
+									ensureFolderPromise = Promise.resolve(existingFolder.folderId);
+								} else {
+									// Folder create
+									ensureFolderPromise = ajaxcall({
+										url: options.reportsApiUrl,
+										data: {
+											method: "/ReportApi/SaveFolderData",
+											model: JSON.stringify({
+												folderData: JSON.stringify({
+													Id: 0,
+													FolderName: folder.folder,
+													UserId: self.manageAccess.getAsList(self.manageAccess.users),
+													ViewOnlyUserId: self.manageAccess.getAsList(self.manageAccess.viewOnlyUsers),
+													DeleteOnlyUserId: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUsers),
+													UserRoles: self.manageAccess.getAsList(self.manageAccess.userRoles),
+													ViewOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.viewOnlyUserRoles),
+													DeleteOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUserRoles),
+													ClientId: self.manageAccess.clientId(),
+												}),
+												adminMode: true
+											})
+										}
+									}).done(function (d) {
+										if (d.d) d = d.d;
+										var folderVm = {
+											folderId: d,
+											folder: folder.folder,
+											reports: [],
+											allReportsSelected: ko.observable(),
+											selectAllReports: function () {
+												_.forEach([], function (rep) {
+													rep.isSelected(true);
+												});
+											},
+											deselectAllReports: function () {
+												_.forEach([], function (rep) {
+													rep.isSelected(false);
+												});
+											}
+										};
+										self.reportsAndFolders.push(folderVm);
+										return d;
+									});
+								}
+								ensureFolderPromise.then(function (folderId) {
+									folder.reports.forEach(function (report) {
+										const reportName = report.reportName;
+										const matchFolder = _.find(self.reportsAndFolders(), f => f.folderId === folderId);
+										let existingReport = null;
+										if (matchFolder) {
+											existingReport = _.find(matchFolder.reports, r => r.reportName === reportName);
+										}
+										const reportview = new reportViewModel({
+											apiUrl: options.reportsApiUrl,
+											runReportApiUrl: options.runReportApiUrl,
+											reportWizard: options.reportWizard,
+											lookupListUrl: options.lookupListUrl
+										});
+										reportview.adminMode = ko.observable(true);
+										if (existingReport) {
+											report.data.ReportID = existingReport.reportId;
+											report.data.FolderID = matchFolder.folderId;
+											reportview.RunReport(true, true, false, report.data);
+										} else {
+											report.data.ReportID = 0;
+											report.data.FolderID = folderId;
+											reportview.RunReport(true, true, false, report.data);
+										}
+									});
+									self.loadReportsAndFolder();
+								});
+							}
+						});
+						// reset file inputs
+						self.ManageJsonFile.file(null);
+						self.ManageJsonFile.fileName('');
+						$('#uploadFileModal').modal('hide');
+					} catch (e) {
+						toastr.error('Invalid JSON file: ' + e.message);
+					}
+				};
+
+				reader.onerror = function (event) {
+					toastr.error('Error reading file.');
+				};
+				reader.readAsText(file); // Read the file as text
+			} else {
+				toastr.error('No JSON file selected for upload.');
+			}
+		}
+	}; 
 	self.exportFoldersJson = function () {
 		const selected = self.Folders().filter(f => f.isSelected());
 		if (selected.length === 0) {

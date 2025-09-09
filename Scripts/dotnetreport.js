@@ -3236,41 +3236,42 @@ var reportViewModel = function (options) {
 		skipValidation = skipValidation === true ? true : false;
 		self.setFlyFilters();
 		var saveAlertFlag = false;
-
 		self.TotalSeries(self.AdditionalSeries().length);
-		if (self.TotalSeries() > 0 && !saveOnly) self.ReportMode('start');
+		if (!importJson) {
+			if (self.TotalSeries() > 0 && !saveOnly) self.ReportMode('start');
 
-		if (self.ReportType() == 'Single') {
-			if (self.enabledFields().length != 1) {
-				toastr.error("All fields except one must be hidden for Widget type report");
+			if (self.ReportType() == 'Single') {
+				if (self.enabledFields().length != 1) {
+					toastr.error("All fields except one must be hidden for Widget type report");
+					return;
+				}
+			}
+			if (self.SelectedFields().length === 0) {
+				toastr.error("Please select at least one field to save or run the report.");
 				return;
 			}
-		}
-		if (self.SelectedFields().length === 0) {
-			toastr.error("Please select at least one field to save or run the report.");
-			return;
-		}
 
-		if (_.filter(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' }).length > 1) {
-			toastr.error("Select only one field for Pivot.");
-			return;
-		}
-		if (self.SelectedFields().slice(-1)[0]?.selectedAggregate() === 'Pivot') {
-			toastr.error("Pivot field cannot be the last column.");
-			return;
-		}
-		if (self.IsDynamicFieldFirstColumn(0) || self.IsAllDynamicFieldSelected()) {
-			toastr.error("Dynamic cannot be first column.\n Cannot be only dynamic without a parent field.");
-			return;
-		}
-		if (!skipValidation && !self.validateReport()) {
-			toastr.error("Please correct validation issues");
-			return;
-		}
-		let field = self.FilterGroups()[0]?.FilterGroups()[0]?.Filters()[0]?.Field();
-		if (field && field.fieldId === 0 && field.dynamicTableId != null) {
-			toastr.error("You can not use dynamic field is first in filter group");
-			return;
+			if (_.filter(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' }).length > 1) {
+				toastr.error("Select only one field for Pivot.");
+				return;
+			}
+			if (self.SelectedFields().slice(-1)[0]?.selectedAggregate() === 'Pivot') {
+				toastr.error("Pivot field cannot be the last column.");
+				return;
+			}
+			if (self.IsDynamicFieldFirstColumn(0) || self.IsAllDynamicFieldSelected()) {
+				toastr.error("Dynamic cannot be first column.\n Cannot be only dynamic without a parent field.");
+				return;
+			}
+			if (!skipValidation && !self.validateReport()) {
+				toastr.error("Please correct validation issues");
+				return;
+			}
+			let field = self.FilterGroups()[0]?.FilterGroups()[0]?.Filters()[0]?.Field();
+			if (field && field.fieldId === 0 && field.dynamicTableId != null) {
+				toastr.error("You can not use dynamic field is first in filter group");
+				return;
+			}
 		}
 
 		var i = 0;
@@ -5093,7 +5094,7 @@ var reportViewModel = function (options) {
 		self.LoadReport(self.ReportID(), true, '');
 	};
 
-	self.LoadReport = function (reportId, filterOnFly, reportSeries, dontBlock, buildSql,adminMode) {
+	self.LoadReport = function (reportId, filterOnFly, reportSeries, dontBlock, buildSql) {
 		self.SelectedTable(null);
 		self.isFormulaField(false);
 		self.isFunctionField(false);
@@ -5103,7 +5104,7 @@ var reportViewModel = function (options) {
 				method: "/ReportApi/LoadReport",
 				model: JSON.stringify({
 					reportId: reportId,
-					adminMode: adminMode ? true : self.adminMode(),
+					adminMode: self.adminMode(),
 					userIdForSchedule: self.userIdForSchedule,
 					buildSql: buildSql === true
 				})
