@@ -1718,12 +1718,16 @@ var reportViewModel = function (options) {
 				if (result.result) { result = result.result; }
 				if (self.ManageFolder.IsNew()) {
 					folderToSave.Id = result;
+					folderToSave.canEdit = true;
+					folderToSave.canDelete = true;
 					self.Folders.push(folderToSave);
 					toastr.success(folderToSave.FolderName + " added");
 				}
 				else {
 					var folderToUpdate = self.SelectedFolder();
 					self.Folders.remove(self.SelectedFolder());
+					folderToSave.canEdit = true;
+					folderToSave.canDelete = true;
 					self.Folders.push(folderToSave);
 					self.allFolders = self.Folders();
 					self.SelectedFolder(null);
