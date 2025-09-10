@@ -2007,8 +2007,17 @@ var reportViewModel = function (options) {
 		self.executingReport = false;
 		self.isDirty(false);
 		self.clearTableSettings();
+		self.clearManageAccess();	
 	};
-
+	self.clearManageAccess = function () {
+		self.manageAccess.clientId('');
+		self.manageAccess.setupList(self.manageAccess.users, '');
+		self.manageAccess.setupList(self.manageAccess.userRoles, '');
+		self.manageAccess.setupList(self.manageAccess.viewOnlyUserRoles, '');
+		self.manageAccess.setupList(self.manageAccess.viewOnlyUsers, '');
+		self.manageAccess.setupList(self.manageAccess.deleteOnlyUserRoles, '');
+		self.manageAccess.setupList(self.manageAccess.deleteOnlyUsers, '');
+	}
 	self.SelectedProc.subscribe(function (proc) {
 		if (proc == null) {
 			return;
