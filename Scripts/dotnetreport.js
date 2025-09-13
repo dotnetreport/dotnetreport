@@ -4652,19 +4652,29 @@ var reportViewModel = function (options) {
 		var subGroups = [];
 		var valColumns = [];
 		var series = {}
+		var isLatLongMap = (self.ReportType() == "Map"
+			&& reportData.Columns.length > 1
+			&& reportData.Columns[0].IsNumeric
+			&& reportData.Columns[1].IsNumeric);
+
 		_.forEach(reportData.Columns, function (e, i) {
 			var field = self.SelectedFields()[i];
 			if (i == 0) {
-				data.addColumn('string', e.fieldLabel() || e.ColumnName);
-				//} else if (typeof field !== "undefined" && field.groupInGraph()) {
-				//	subGroups.push({ index: i, column: e.fieldLabel || e.ColumnName });
+				data.addColumn(isLatLongMap ? 'number' : 'string', e.fieldLabel() || e.ColumnName);
 			} else if (e.IsNumeric && !e.groupInGraph()) {
 				valColumns.push({ index: i, column: e.fieldLabel() || e.ColumnName });
-			 	if (e.seriesType() != self.comboChartType()) series[i-1] = { type: e.seriesType() };
+				if (e.seriesType() != self.comboChartType()) series[i-1] = { type: e.seriesType() };
 			} else if (!e.groupInGraph() && self.ReportType() == 'Treemap') {
 				data.addColumn(e.IsNumeric ? 'number' : 'string', e.fieldLabel() || e.ColumnName);
 			}
 		});
+
+		if (isLatLongMap && valColumns.length === 0 && reportData.Columns.length > 2) {
+			var labelCol = reportData.Columns[2];
+			if (labelCol) {
+				data.addColumn('string', labelCol.fieldLabel() || labelCol.ColumnName);
+			}
+		}
 
 		if (subGroups.length == 0) {
 			_.forEach(reportData.Columns, function (e, i) {
@@ -4695,7 +4705,9 @@ var reportViewModel = function (options) {
 					return isNumeric ? parseFloat(r.Value) : r.FormattedValue || (isNumeric ? 0 : '');
 				})();
 
-				if (n == 0) {
+				if (isLatLongMap && (n === 0 || n === 1)) {
+						itemArray.push(value);
+				} else if (n == 0) {
 					if (subGroups.length > 0) {
 						var match = _.find(rowArray, x => x[0] == r.Value);
 						if (match) {
@@ -4824,6 +4836,15 @@ var reportViewModel = function (options) {
 			if (self.mapRegion() == 'North America') {
 				chartOptions.displayMode = 'regions';
 				chartOptions.region = '021';
+			}
+			if (self.mapRegion() == 'Florida') {
+				chartOptions.displayMode = 'regions';
+				chartOptions.region = 'US-FL';
+				chartOptions.resolution = 'provinces';
+			}
+
+			if (isLatLongMap) {
+				chartOptions.displayMode = 'markers';
 			}
 		}
 
