@@ -2185,24 +2185,24 @@
                         <div class="mb-2 col-6">
                             <label class="form-label small">Header Back Color</label>
                             <input type="color" class="color-picker"
-                                   data-bind="value: tableSettings().headerBackColor, event: { change: updateTable }"/>
+                                   data-bind="attr: { id: 'tbl-color-picker-' + ReportID()} , value: tableSettings().headerBackColor, event: { change: updateTable }"/>
                         </div>
                         <div class="mb-2 col-6">
                             <label class="form-label small">Header Font Color</label>
                             <input type="color" class="color-picker"
-                                   data-bind="value: tableSettings().headerFontColor, event: { change: updateTable }"/>
+                                   data-bind="attr: { id: 'tbl-color-picker-' + ReportID()} ,value: tableSettings().headerFontColor, event: { change: updateTable }"/>
                         </div>
                     </div>
                     <div class="form-group row">
                         <div class="mb-2 col-6">
                             <label class="form-label small">Row Back Color</label>
                             <input type="color" class="color-picker"
-                                   data-bind="value: tableSettings().rowBackColor, event: { change: updateTable }"/>
+                                   data-bind="attr: { id: 'tbl-color-picker-' + ReportID()} ,value: tableSettings().rowBackColor, event: { change: updateTable }"/>
                         </div>
                         <div class="mb-2 col-6">
                             <label class="form-label small">Row Font Color</label>
                             <input type="color" class="color-picker"
-                                   data-bind="value: tableSettings().rowFontColor, event: { change: updateTable }"/>
+                                   data-bind="attr: { id: 'tbl-color-picker-' + ReportID()} ,value: tableSettings().rowFontColor, event: { change: updateTable }"/>
                         </div>
                     </div>
                     <div class="form-group row" style="display: none;">

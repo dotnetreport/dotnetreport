@@ -4232,7 +4232,11 @@ var reportViewModel = function (options) {
 		self.tableSettings().altRowBackColor=null;
 		self.tableSettings().altRowFontColor=null;
 		self.tableSettings().border = null;
-		self.tableSettings().borderColor=null;
+		self.tableSettings().borderColor = null;
+		let inputs = document.querySelectorAll('#tbl-color-picker-' + self.ReportID());
+		inputs.forEach(function (inp) {
+			inp.value = null;   
+		});
 		self.updateTable(true);
 	};
 	self.toggleChartSettings = function () {
