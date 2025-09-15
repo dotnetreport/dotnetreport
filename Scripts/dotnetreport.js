@@ -961,6 +961,7 @@ var reportViewModel = function (options) {
 	self.lineChartArea = ko.observable();
 	self.barChartStacked = ko.observable();
 	self.comboChartType = ko.observable('bars');
+	self.showMarker = ko.observable();
 	self.DefaultPageSize = ko.observable(30);
 	self.FilterGroups = ko.observableArray();
 	self.PivotColumns = ko.observable();
@@ -2110,6 +2111,7 @@ var reportViewModel = function (options) {
 		self.lineChartArea(false);
 		self.barChartStacked(false);
 		self.comboChartType('bars');
+		self.showMarker(false);
 		self.selectedStyle('default');
 		self.reportHtml('');
 		self.DefaultPageSize(30);
@@ -2810,7 +2812,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.isFieldValidForYAxis = function (i, fieldType, aggregate) {
-		return !(i > 0 && (self.ReportType() == 'Treemap'
+		return self.ReportType() == 'Map' || self.ReportType()=='HeatMap' || !(i > 0 && (self.ReportType() == 'Treemap'
 			|| (["Int", "Integer", "Double", "Decimal", "Money"].indexOf(fieldType) < 0 && aggregate != 'Count' && aggregate != 'Count Distinct')
 			|| ["Only in Detail", "Pivot"].indexOf(aggregate) > 0))
 	};
@@ -3174,6 +3176,7 @@ var reportViewModel = function (options) {
 				pieChartDonut: self.pieChartDonut(),
 				lineChartArea: self.lineChartArea(),
 				comboChartType: self.comboChartType(),
+				showMarker: self.showMarker(),
 				DefaultPageSize: self.DefaultPageSize() || 30,
 				noHeaderRow: self.noHeaderRow(),
 				noDashboardBorders: self.noDashboardBorders(),
@@ -4647,6 +4650,94 @@ var reportViewModel = function (options) {
 		// Create the data table.
 		var reportData = self.ReportResult().ReportData();
 		if (!reportData || !google.visualization || !google.visualization.DataTable || !google.visualization.LineChart || !google.visualization.BarChart || !google.visualization.ColumnChart || !google.visualization.PieChart) return;
+		var chartDiv = document.getElementById('chart_div_' + self.ReportID());
+		if (!chartDiv || !reportData) return;
+
+		if (self.ReportType() === "HeatMap") {
+			chartDiv.innerHTML = "";
+			if (chartDiv._leaflet_id) chartDiv._leaflet_id = null;
+
+			if (!reportData.Columns || reportData.Columns.length < 2) {
+				toastr.error("HeatMap requires at least two numeric columns for Latitude and Longitude");
+				return;
+			}
+
+			var col0 = reportData.Columns[0];
+			var col1 = reportData.Columns[1];
+			if (!col0.IsNumeric || !col1.IsNumeric) {
+				toastr.error("HeatMap requires first two columns to be numeric (Latitude, Longitude)");
+				return;
+			}
+
+			var intensityCol = null;
+			_.forEach(reportData.Columns, function (c, i) {
+				if (i > 1 && c.IsNumeric && !c.groupInGraph() && !intensityCol) {
+					intensityCol = { index: i, column: c };
+				}
+			});
+
+			if (!intensityCol) {
+				toastr.error("HeatMap requires at least one numeric column after Lat/Long for intensity");
+				return;
+			}
+
+			var heatPoints = [];
+			var markerLayer = L.layerGroup();
+
+			_.forEach(reportData.Rows, function (row) {
+				if (!row.Items || row.Items.length <= intensityCol.index) return;
+				var lat = parseFloat(row.Items[0].Value);
+				var lon = parseFloat(row.Items[1].Value);
+				var intensity = parseFloat(row.Items[intensityCol.index].Value);
+				if (isNaN(lat) || isNaN(lon) || isNaN(intensity)) return;
+
+				heatPoints.push([lat, lon, intensity]);
+
+				var labelParts = [];
+
+				_.forEach(reportData.Columns, function (c, idx) {
+					if (!c.groupInGraph() && row.Items[idx] && idx > 1) {
+						labelParts.push((c.fieldLabel() || c.ColumnName) + ": " + row.Items[idx].FormattedValue);
+					}
+				});
+
+				var tooltipText = labelParts.join("<br/>");
+
+				var marker = L.circleMarker([lat, lon], {
+					radius: 6,
+					opacity: 0,
+					fillOpacity: 0
+				});
+
+				markerLayer.addLayer(marker);
+
+				if (self.showMarker()) {
+					marker = L.marker([lat, lon]).bindPopup(tooltipText);
+					markerLayer.addLayer(marker);
+				}
+			});
+
+			if (heatPoints.length === 0) {
+				toastr.error("No valid incident data found for HeatMap");
+				return;
+			}
+
+			var map = L.map(chartDiv).setView([29.9, -81.3], 10);
+			L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+				attribution: '&copy; OpenStreetMap contributors'
+			}).addTo(map);
+
+			L.heatLayer(heatPoints, {
+				radius: 25,
+				blur: 15,
+				maxZoom: 17,
+				gradient: { 0.2: 'blue', 0.4: 'lime', 0.65: 'yellow', 1: 'red' }
+			}).addTo(map);
+
+			markerLayer.addTo(map);
+			return;
+		}
+
 		var data = new google.visualization.DataTable();
 
 		var subGroups = [];
@@ -4788,10 +4879,8 @@ var reportViewModel = function (options) {
 			chartOptions.colors = self.colorScheme().slice(1);
 			chartOptions.backgroundColor = self.colorScheme()[0];
 		}
-		var chartDiv = document.getElementById('chart_div_' + self.ReportID());
-		var chart = null;
-		if (!chartDiv) return;
 
+		var chart = null;
 		if (self.ReportType() == "Pie") {
 			chart = new google.visualization.PieChart(chartDiv);
 			chartOptions.pieHole = self.pieChartDonut() === true ? 0.6 : 0.0;
@@ -4845,6 +4934,8 @@ var reportViewModel = function (options) {
 
 			if (isLatLongMap) {
 				chartOptions.displayMode = 'markers';
+				chartOptions.showTooltip = true;
+				chartOptions.showInfoWindow = true;
 			}
 		}
 
@@ -5332,7 +5423,7 @@ var reportViewModel = function (options) {
 
 		self.ReportID(report.ReportID);
 		self.mapRegion('');
-		if (report.ReportType.indexOf('Map') >= 0) {
+		if (report.ReportType.indexOf('Map') == 0) {
 			self.ReportType('Map');
 			var reportTokens = report.ReportType.split('|');
 			if (reportTokens.length > 1) {
@@ -5390,6 +5481,7 @@ var reportViewModel = function (options) {
 		self.pieChartDonut(reportSettings.pieChartDonut === true ? true : false);
 		self.lineChartArea(reportSettings.lineChartArea === true ? true : false);
 		self.comboChartType(reportSettings.comboChartType || 'bars');
+		self.showMarker(reportSettings.showMarker === true ? true : false);
 		if (reportSettings.chartOptions) self.chartOptions(reportSettings.chartOptions);
 		if (reportSettings.tableSettings) self.tableSettings(reportSettings.tableSettings);
 		self.DefaultPageSize(reportSettings.DefaultPageSize || 30);
@@ -5523,7 +5615,7 @@ var reportViewModel = function (options) {
 			if (report.d) { report = report.d; }
 			if (report.result) { report = report.result; }
 			self.useStoredProc(report.UseStoredProc);
-			self.ReportType(report.ReportType.indexOf('Map') >= 0 ? 'Map' : report.ReportType);
+			self.ReportType(report.ReportType.indexOf('Map') == 0 ? 'Map' : report.ReportType);
 			if (buildSql === true) options.reportSql = report.ReportSql;
 
 			if (self.useStoredProc()) {
