@@ -77,6 +77,9 @@
                     getAppSettingUrl: '/ReportApi/GetAccountSettings',
                     saveAppSettingUrl: '/ReportApi/ChangeAccountSettings',
                     reportsApiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")',
+                    runReportApiUrl: '@Url.Action("RunReportApi", "DotNetReportApi")',
+                    reportWizard: $("#modal-reportbuilder"),
+                    lookupListUrl: '@Url.Action("GetLookupList", "DotNetReportApi")',
                     getUsersAndRoles: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")',
                     searchProcUrl: '@Url.Action("SearchProcedure", "DotNetReportApi")',
                     getSchemaFromSql: '@Url.Action("GetSchemaFromSql", "DotNetReportApi")',
@@ -723,12 +726,17 @@
                     <div class="mb-2 d-flex gap-2">
                         <div class="mb-2">
                             <button class="btn btn-sm btn-primary" data-bind="click: function() { exportFoldersReportJson() }">
-                                <span class="fa fa-download"></span> Export Selected Reports Access
+                                <span class="fa fa-download"></span> Export Selected Reports
                             </button>
                         </div>                      
                         <div class="mb-2">
                             <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#searchModal">
                                 <span class="fa fa-tasks"></span> Bulk Actions
+                            </button>
+                        </div>
+                        <div class="mb-2">
+                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadFileModal">
+                                <span class="fa fa-upload"></span> Import Reports
                             </button>
                         </div>
                     </div>
@@ -1763,8 +1771,8 @@
                             </tr>
                         </thead>
                         <tbody data-bind="foreach: Rows">
-                            <tr>
-                                <td data-bind="foreach: Items">
+                            <tr data-bind="foreach: Items">
+                                <td>
                                     <span data-bind="html: FormattedValue"></span>
                                 </td>                                
                             </tr>
@@ -1989,3 +1997,30 @@
         </div>
     </div>
 </div>
+<!-- Import Json File Modal -->
+<div class="modal" id="uploadFileModal" tabindex="-1" aria-labelledby="uploadFileModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" data-bind="with: ManageJsonFile">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadFileModalLabel">Import JSON File Upload</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="dropzone" class="dropzone"
+                     data-bind="event: {click: triggerFileInput }"
+                     style="border: 2px dashed #007bff; border-radius: 5px; padding: 30px; text-align: center; color: #007bff; cursor: pointer;">
+                    click to select files
+                </div>
+                <input type="file" id="fileInputJson" accept=".json" style="display: none;" data-bind="event: { change: handleFileSelect }">
+                <div data-bind="visible: fileName">
+                    <p>Selected File: <span data-bind="text: fileName"></span></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" data-bind="click: uploadFile">Upload</button>
+            </div>
+        </div>
+    </div>
+</div>
+

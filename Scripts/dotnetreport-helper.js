@@ -148,7 +148,7 @@ function ajaxcall(options) {
         }
         if ($.unblockUI && !noBlocking) {
             $.unblockUI();
-            setTimeout(function () { $.unblockUI(); }, 1000);
+            //setTimeout(function () { $.unblockUI(); }, 1000);
         }
         delete options;
     }).fail(function (jqxhr, status, error) {
