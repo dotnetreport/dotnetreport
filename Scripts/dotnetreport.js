@@ -4074,13 +4074,7 @@ var reportViewModel = function (options) {
 		self.ReportResult().ReportData(null);
 		self.ReportResult().SubTotals([]);
 		if (self.DontExecuteOnRun() && !self.executingReport) return;
-		if (self.ReportMode() != "dashboard") {
-			setTimeout(function () {
-				if ($.blockUI) {
-					$.blockUI({ baseZ: 500 });
-				}
-			}, options.samePageOnRun ? 1000 : 500);
-		}
+		
 		var pivotData = self.preparePivotData();
 		var reportData = pivotData.pivotColumn != null ? self.BuildReportData() : '';
 		if (!isPageSizeClick) self.pager.pageSize(self.DefaultPageSize());
