@@ -1718,12 +1718,16 @@ var reportViewModel = function (options) {
 				if (result.result) { result = result.result; }
 				if (self.ManageFolder.IsNew()) {
 					folderToSave.Id = result;
+					folderToSave.canEdit = true;
+					folderToSave.canDelete = true;
 					self.Folders.push(folderToSave);
 					toastr.success(folderToSave.FolderName + " added");
 				}
 				else {
 					var folderToUpdate = self.SelectedFolder();
 					self.Folders.remove(self.SelectedFolder());
+					folderToSave.canEdit = true;
+					folderToSave.canDelete = true;
 					self.Folders.push(folderToSave);
 					self.allFolders = self.Folders();
 					self.SelectedFolder(null);
@@ -2003,8 +2007,17 @@ var reportViewModel = function (options) {
 		self.executingReport = false;
 		self.isDirty(false);
 		self.clearTableSettings();
+		self.clearManageAccess();	
 	};
-
+	self.clearManageAccess = function () {
+		self.manageAccess.clientId('');
+		self.manageAccess.setupList(self.manageAccess.users, '');
+		self.manageAccess.setupList(self.manageAccess.userRoles, '');
+		self.manageAccess.setupList(self.manageAccess.viewOnlyUserRoles, '');
+		self.manageAccess.setupList(self.manageAccess.viewOnlyUsers, '');
+		self.manageAccess.setupList(self.manageAccess.deleteOnlyUserRoles, '');
+		self.manageAccess.setupList(self.manageAccess.deleteOnlyUsers, '');
+	}
 	self.SelectedProc.subscribe(function (proc) {
 		if (proc == null) {
 			return;
@@ -3059,7 +3072,8 @@ var reportViewModel = function (options) {
 						FieldWidth:column.fieldWidth()
 					};
 				}),
-				chartOptions: self.chartOptions()
+				chartOptions: self.chartOptions(),
+				tableSettings: self.tableSettings(),
 			}),
 			OnlyTop: drilldown.length > 0 ? null : (self.maxRecords() ? self.OnlyTop() : null),
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : self.AggregateReport(),
@@ -4199,29 +4213,33 @@ var reportViewModel = function (options) {
 		yMin: null,
 		yMax: null
 	});
-
+	self.tableSettings = ko.observable({
+		headerBackColor: null,
+		headerFontColor: null,
+		rowBackColor: null,
+		rowFontColor: null,
+		altRowBackColor: null,
+		altRowFontColor: null,
+		border: null,
+		borderColor: null
+	});
 	self.showSettings = ko.observable(false);
 	self.showTableSettings = ko.observable(false);
-	self.tableheaderBackColor = ko.observable();
-	self.tableheaderFontColor = ko.observable();
-	self.tableRowBackColor = ko.observable();
-	self.tableRowFontColor = ko.observable();
-	self.tableAltRowBackColor = ko.observable();
-	self.tableAltRowFontColor = ko.observable();
-	self.tableBorder = ko.observable();
-	self.tableBorderColor = ko.observable();
 	self.clearTableSettings = function () {
-		self.tableheaderBackColor(null);
-		self.tableheaderFontColor(null);
-		self.tableRowBackColor(null);
-		self.tableRowFontColor(null);
-		self.tableAltRowBackColor(null);
-		self.tableAltRowFontColor(null);
-		self.tableBorder(null);
-		self.tableBorderColor(null);
+		self.tableSettings().headerBackColor=null;
+		self.tableSettings().headerFontColor=null;
+		self.tableSettings().rowBackColor=null;
+		self.tableSettings().rowFontColor=null;
+		self.tableSettings().altRowBackColor=null;
+		self.tableSettings().altRowFontColor=null;
+		self.tableSettings().border = null;
+		self.tableSettings().borderColor = null;
+		let inputs = document.querySelectorAll('#tbl-color-picker-' + self.ReportID());
+		inputs.forEach(function (inp) {
+			inp.value = null;   
+		});
 		self.updateTable(true);
-	}
-
+	};
 	self.toggleChartSettings = function () {
 		self.showSettings(!self.showSettings());
 	}; 
@@ -4229,11 +4247,12 @@ var reportViewModel = function (options) {
 		self.showTableSettings(!self.showTableSettings());
 	};
 	self.updateTable = function (clear) {
+		let setting = self.tableSettings();
 		_.forEach(self.SelectedFields(), function (f) {
-			if (self.tableheaderBackColor() || clear === true) f.headerBackColor(self.tableheaderBackColor());
-			if (self.tableheaderFontColor() || clear === true) f.headerFontColor(self.tableheaderFontColor());
-			if (self.tableRowBackColor() || clear === true) f.backColor(self.tableRowBackColor());
-			if (self.tableRowFontColor() || clear === true) f.fontColor(self.tableRowFontColor());
+			if (setting.headerBackColor || clear === true) f.headerBackColor(setting.headerBackColor);
+			if (setting.headerFontColor || clear === true) f.headerFontColor(setting.headerFontColor);
+			if (setting.rowBackColor || clear === true) f.backColor(setting.rowBackColor);
+			if (setting.rowFontColor || clear === true) f.fontColor(setting.rowFontColor);
 		});
 	}
 	self.addSeriesColor = function () {
@@ -4988,6 +5007,7 @@ var reportViewModel = function (options) {
 		self.lineChartArea(reportSettings.lineChartArea === true ? true : false);
 		self.comboChartType(reportSettings.comboChartType || 'bars');
 		if (reportSettings.chartOptions) self.chartOptions(reportSettings.chartOptions);
+		if (reportSettings.tableSettings) self.tableSettings(reportSettings.tableSettings);
 		self.DefaultPageSize(reportSettings.DefaultPageSize || 30);
 		self.noHeaderRow(reportSettings.noHeaderRow);
 		self.noDashboardBorders(reportSettings.noDashboardBorders);

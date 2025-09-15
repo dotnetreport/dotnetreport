@@ -76,7 +76,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                     <div class="collapse navbar-collapse" id="navbarSupportedContent">
                         <ul class="navbar-nav mr-auto">
 
-                            <li class="nav-item active" data-bind="visible: CanSaveReports() || adminMode()">
+                            <li class="nav-item active" data-bind="visible: SelectedFolder() ? SelectedFolder().canEdit : (CanSaveReports() || adminMode())">
                                 <a href="#" class="nav-link" data-bind="click: createNewReport" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
                                     <span class="fa fa-plus"></span> New Report
                                 </a>
