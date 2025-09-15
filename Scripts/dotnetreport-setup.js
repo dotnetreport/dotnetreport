@@ -1884,6 +1884,14 @@ var manageViewModel = function (options) {
 							reportName: r.reportName,
 							data: reportData
 						});
+					} else {
+						await reportview.loadProcs();
+						const reportData = reportview.BuildReportData();
+						reportsWithData.push({
+							reportId: r.reportId,
+							reportName: r.reportName,
+							data: reportData
+						});
 					}
 				}));
 				selectedFolders.push({
