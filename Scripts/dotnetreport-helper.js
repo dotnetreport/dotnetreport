@@ -1,8 +1,10 @@
 ﻿/// .Net Report Builder helper methods
 
 // Ajax call wrapper function
+var activeBlockUICount = 0;
+
 function ajaxcall(options) {
-    var noBlocking = options.noBlocking === true ? true : false;
+    var noBlocking = options.noBlocking === true;
     var useProgressBar = options.useProgressBar === true;
     var progressBarMessage = options.progressBarMessage || "Processing...";
     var progressBarId = 'ajaxProgressBarPopup';
@@ -29,23 +31,23 @@ function ajaxcall(options) {
     var currentProgress = 0;
 
     function showProgress() {
-        $progressBarPopup.find('.progress-popup-header span').text(progressBarMessage); // Set message text
+        $progressBarPopup.find('.progress-popup-header span').text(progressBarMessage);
         $progressBarPopup.show();
         currentProgress = 0;
         $progressBar.css('width', currentProgress + '%').attr('aria-valuenow', currentProgress);
 
         progressInterval = setInterval(function () {
-            if (currentProgress < 90) { // Incrementally go up to 90%
+            if (currentProgress < 90) {
                 currentProgress += 10;
                 $progressBar.css('width', currentProgress + '%').attr('aria-valuenow', currentProgress);
             }
         }, 500);
     }
-    
+
     function completeProgress() {
-        clearInterval(progressInterval); 
+        clearInterval(progressInterval);
         $progressBar.css('width', '100%').attr('aria-valuenow', 100);
-        setTimeout(hideProgress, 500); 
+        setTimeout(hideProgress, 500);
     }
 
     function hideProgress() {
@@ -54,9 +56,11 @@ function ajaxcall(options) {
 
     options.hideProgress = hideProgress;
 
-    // Show blocking spinner if not using progress bar
     if ($.blockUI && !noBlocking && !useProgressBar) {
-        $.blockUI({ baseZ: 500 });
+        if (activeBlockUICount === 0) {
+            $.blockUI({ baseZ: 500 });
+        }
+        activeBlockUICount++;
     }
 
     // setup your app auth here optionally
@@ -76,7 +80,7 @@ function ajaxcall(options) {
         }
 
         options.data = ({
-            __RequestVerificationToken: validationToken,  
+            __RequestVerificationToken: validationToken,
             ...options.data || {}
         });
 
@@ -94,13 +98,13 @@ function ajaxcall(options) {
         if (useProgressBar) {
             xhr.upload.addEventListener("progress", function (evt) {
                 if (evt.lengthComputable) {
-                    var percentComplete = Math.min(90, Math.round((evt.loaded / evt.total) * 90)); // Cap to 90%
+                    var percentComplete = Math.min(90, Math.round((evt.loaded / evt.total) * 90));
                     $progressBar.css('width', percentComplete + '%').attr('aria-valuenow', percentComplete);
                 }
             }, false);
             xhr.addEventListener("progress", function (evt) {
                 if (evt.lengthComputable) {
-                    var percentComplete = Math.min(90, Math.round((evt.loaded / evt.total) * 90)); // Cap to 90%
+                    var percentComplete = Math.min(90, Math.round((evt.loaded / evt.total) * 90));
                     $progressBar.css('width', percentComplete + '%').attr('aria-valuenow', percentComplete);
                 }
             }, false);
@@ -144,23 +148,26 @@ function ajaxcall(options) {
         beforeSend: beforeSend
     }).done(function (data) {
         if (useProgressBar) {
-            completeProgress(); 
+            completeProgress();
         }
         if ($.unblockUI && !noBlocking) {
-            $.unblockUI();
-            //setTimeout(function () { $.unblockUI(); }, 1000);
+            activeBlockUICount = Math.max(0, activeBlockUICount - 1);
+            if (activeBlockUICount === 0) {
+                $.unblockUI();
+            }
         }
         delete options;
-    }).fail(function (jqxhr, status, error) {
-        if (useProgressBar) {
-            hideProgress();
-        }
-        if ($.unblockUI) {
-            $.unblockUI();
-        }
-        delete options;
-        handleAjaxError(jqxhr, status, error);
-    });
+    })
+        .fail(function (jqxhr, status, error) {
+            if (useProgressBar) {
+                hideProgress();
+            }
+            if ($.unblockUI) {
+                $.unblockUI();
+            }
+            delete options;
+            handleAjaxError(jqxhr, status, error);
+        });
 }
 
 function handleAjaxError(jqxhr, status, error) {
@@ -203,7 +210,7 @@ function downloadJson(content, fileName, contentType) {
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
 }
-   // knockout binding extenders
+// knockout binding extenders
 ko.bindingHandlers.datepicker = {
     init: function (element, valueAccessor, allBindingsAccessor) {
         //initialize datepicker with some optional options
@@ -212,8 +219,8 @@ ko.bindingHandlers.datepicker = {
 
         //handle the field changing
         ko.utils.registerEventHandler(element, "change", function () {
-           var observable = valueAccessor();
-           var date = $(element).datepicker('getDate');
+            var observable = valueAccessor();
+            var date = $(element).datepicker('getDate');
             if (date) {
                 var value = options.value;
                 if (value) value(date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }));
@@ -223,7 +230,7 @@ ko.bindingHandlers.datepicker = {
         ko.utils.domNodeDisposal.addDisposeCallback(element, function () {
             $(element).datepicker("destroy");
         });
-        
+
     },
     //update the control when the view model changes
     update: function (element, valueAccessor) {
@@ -231,7 +238,7 @@ ko.bindingHandlers.datepicker = {
         if (value === null || value === undefined) {
             $(element).datepicker("setDate", null);
             $(element).val('');
-        } else {
+        } else if (value) {
             var formattedDate = $.datepicker.formatDate($(element).datepicker("option", "dateFormat") || 'mm/dd/yy', new Date(value));
             if (formattedDate !== $(element).val()) {
                 $(element).datepicker("setDate", formattedDate);
@@ -272,7 +279,7 @@ ko.bindingHandlers.checkedInArray = {
         var options = ko.utils.unwrapObservable(valueAccessor()),
             array = ko.utils.unwrapObservable(options.array),
             value = ko.utils.unwrapObservable(options.value);
-            isChecked = ko.utils.arrayIndexOf(array, value) >= 0;
+        isChecked = ko.utils.arrayIndexOf(array, value) >= 0;
         if (value && value.dynamicTableId !== null && value.fieldId === 0) {
             var matchingItem = array.find(item => item.fieldName === value.fieldName && item.dynamicTableId === value.dynamicTableId);
             if (matchingItem) {
@@ -459,7 +466,7 @@ function pagerViewModel(args) {
     args = args || {};
     var self = this;
 
-    self.pageSize = ko.observable(args.pageSize || 20);
+    self.pageSize = ko.observable(args.pageSize || 30);
     self.pages = ko.observable(args.pages || 1);
     self.currentPage = ko.observable(args.currentPage || 1);
     self.pauseNavigation = ko.observable(false);
@@ -773,7 +780,7 @@ var textQuery = function (options) {
         } else {
             document.getElementById("query-input").innerHTML = "Show me&nbsp;";
         }
-        
+
     }
 
     var tokenKey = 'token-key';
@@ -916,7 +923,7 @@ var textQuery = function (options) {
                     return;
                 }
 
-                if (token == "=" || token == ">" || token == "<") return;                
+                if (token == "=" || token == ">" || token == "<") return;
                 self.ParseQuery(token, "").done(function (results) {
                     if (results.d) results = results.d;
                     var items = _.map(results, function (x) {
@@ -928,7 +935,7 @@ var textQuery = function (options) {
                     });
                     if (options.concatFilterAndQuery) {
                         var lastField = self.getLastField();
-                        if (self.detectFilterTrigger(token) && lastField != null) 
+                        if (self.detectFilterTrigger(token) && lastField != null)
                         {
                             if (lastField.dataType == 'DateTime') {
                                 items = self.DateFilterMethods;
@@ -937,7 +944,7 @@ var textQuery = function (options) {
                             items = items.concat(self.QueryMethods);
                             items = items.concat(self.FilterMethods);
                         }
-                    }                   
+                    }
                     callback(items);
                 });
             },
@@ -979,8 +986,8 @@ var textQuery = function (options) {
         });
 
     }
-    
-    self.setupQuery = function () {       
+
+    self.setupQuery = function () {
         var tributeAttributes = self.getTributeAttributes({ concatFilterAndQuery: true });
         var tribute = new Tribute(tributeAttributes);
         tribute.attach(document.getElementById("query-input"));
@@ -1006,12 +1013,12 @@ var textQuery = function (options) {
             tribute.attach(searchInput);
 
             searchInput.addEventListener("tribute-replaced", function (e) {
-                    self.addQueryItem(e.detail.item.original);
-                });
+                self.addQueryItem(e.detail.item.original);
+            });
 
             searchInput.addEventListener("menuItemRemoved", function (e) {
-                    self.queryItems.remove(e.detail.item.original);
-                });
+                self.queryItems.remove(e.detail.item.original);
+            });
 
             searchInput.addEventListener('blur', function () {
                 const vm = ko.dataFor(searchInput);
@@ -1022,7 +1029,7 @@ var textQuery = function (options) {
 
             searchInput.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter') {
-                    e.preventDefault(); 
+                    e.preventDefault();
                     searchInput.blur();
                 }
             });
