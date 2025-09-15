@@ -1591,3 +1591,44 @@ tfoot tr.sub-total {
 .toggle-icon:hover {
     background-color: #f0f0f0;
 }
+
+/* Override jQuery UI Datepicker Prev/Next buttons */
+.ui-datepicker .ui-datepicker-header {
+    background: transparent;
+    border: none;
+    color: inherit;
+    font-weight: 500;
+    text-align: center;
+}
+
+.ui-datepicker .ui-datepicker-prev,
+.ui-datepicker .ui-datepicker-next {
+    top: 0.5rem;
+    background: none;
+    border: none;
+}
+
+    .ui-datepicker .ui-datepicker-prev span,
+    .ui-datepicker .ui-datepicker-next span {
+        display: none;
+    }
+
+    .ui-datepicker .ui-datepicker-prev::after,
+    .ui-datepicker .ui-datepicker-next::after {
+        content: '';
+        display: block;
+        width: 0;
+        height: 0;
+        margin: auto;
+        border-style: solid;
+    }
+
+    .ui-datepicker .ui-datepicker-prev::after {
+        border-width: 6px 8px 6px 0;
+        border-color: transparent #333 transparent transparent;
+    }
+
+    .ui-datepicker .ui-datepicker-next::after {
+        border-width: 6px 0 6px 8px;
+        border-color: transparent transparent transparent #333;
+    }
