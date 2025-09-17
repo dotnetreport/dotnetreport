@@ -1522,6 +1522,14 @@ var reportViewModel = function (options) {
 		$('#summernote-editor').summernote('pasteHTML', table);
 	};
 
+	self.insertHeaderBreak = function () {		
+		$('#summernote-editor').summernote('pasteHTML', `<br/>{{headerbreak}}`);
+	};
+
+	self.insertFooterBreak = function () {		
+		$('#summernote-editor').summernote('pasteHTML', `<br/>{{footerbreak}}`);
+	};
+
 	self.subReports = ko.observableArray([]);
 	self.selectedSubReport = ko.observable(null);
 
@@ -3680,8 +3688,21 @@ var reportViewModel = function (options) {
 			return txt.value;
 		}
 
-		function processRow(row, columns, subreportsRan) {
-			let renderedHtml = decodeHtmlEntities(self.reportHtml());
+		function processRow(row, columns, subreportsRan) {			
+			let fullHtml = decodeHtmlEntities(self.reportHtml());
+			let header = "", body = fullHtml, footer = "";
+
+			if (self.ReportType() == 'Html') {
+				let parts = fullHtml.split("{{headerbreak}}");
+				header = parts.length > 1 ? parts[0] : "";
+				let rest = parts.length > 1 ? parts[1] : parts[0];
+				parts = rest.split("{{footerbreak}}");
+				body = parts[0];
+				footer = parts.length > 1 ? parts[1] : "";
+			}
+
+			let renderedHtml = body;
+
 			_.forEach(row, function (r, i) {
 				r.LinkTo = '';
 				var col = columns[i];
@@ -3905,6 +3926,11 @@ var reportViewModel = function (options) {
 
 			});
 			renderedHtml = renderedHtml.replace(/\{\{[^}]+>[^}]+\}\}/g, "");
+			if (self.ReportType() == 'Html') {
+				if (row.__isFirstRow) renderedHtml = header + renderedHtml;
+				if (row.__isLastRow) renderedHtml = renderedHtml + footer;
+			}
+
 			return renderedHtml;			
 		}
 		self.ReportColumns(result.ReportData.Columns);
@@ -3922,7 +3948,7 @@ var reportViewModel = function (options) {
 			if (nextValue === 0) return null; // Avoid division by zero
 			return (((currentValue - nextValue) / nextValue) * 100).toFixed(1);
 		};
-		_.forEach(result.ReportData.Rows, function (e) {
+		_.forEach(result.ReportData.Rows, function (e, idx) {
 			e.DrillDownData = ko.observable(null);
 			e.pager = new pagerViewModel({ pageSize: self.DefaultPageSize() });
 			e.sql = "";
@@ -4048,6 +4074,8 @@ var reportViewModel = function (options) {
 				e.Items = _.filter(e.Items, function (x) { return _.includes(validFieldNames, x.Column.SqlField); });
 			}
 			e.subReportsRan = ko.observableArray([]);
+			e.Items.__isFirstRow = idx === 0;
+			e.Items.__isLastRow = idx === result.ReportData.Rows.length - 1;
 			e.renderedHtml = processRow(e.Items, result.ReportData.Columns, e.subReportsRan);
 		});
 		function renderTable(data, colspan) {

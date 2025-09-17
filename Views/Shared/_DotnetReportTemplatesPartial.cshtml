@@ -2031,16 +2031,27 @@
                                             <i class="fa fa-table"></i> Insert as Table
                                             </button>
                                             <ul class="dropdown-menu">
-                                            <li>
-                                                <a class="dropdown-item" href="#" data-bind="click: insertFieldTableTransposed">
-                                                Transposed
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <a class="dropdown-item" href="#" data-bind="click: insertFieldTableStandard">
-                                                Standard
-                                                </a>
-                                            </li>
+                                                <li>
+                                                    <a class="dropdown-item" href="#" data-bind="click: insertFieldTableTransposed">
+                                                    Transposed
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item" href="#" data-bind="click: insertFieldTableStandard">
+                                                    Standard
+                                                    </a>
+                                                </li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li>
+                                                    <a class="dropdown-item" href="#" data-bind="click: insertHeaderBreak">
+                                                        Add Header Break
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item" href="#" data-bind="click: insertFooterBreak">
+                                                        Add Footer Break
+                                                    </a>
+                                                </li>
                                             </ul>
                                         </div>
 
@@ -2049,7 +2060,7 @@
                                             <input class="form-check-input me-2" type="checkbox" data-bind="checked: cardView">
                                             Card Layout
                                         </label>
-                                        </div>
+                                        </div>                                        
                                     </div>
                                     <div class="mb-3">
                                         <textarea id="summernote-editor"></textarea>
