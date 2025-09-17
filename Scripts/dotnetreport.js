@@ -6480,8 +6480,7 @@ var dashboardViewModel = function (options) {
 	self.loadDashboard = function (dashboardId) {
 		ajaxcall({
 			url: options.loadSavedDashbordUrl,
-			data: { id: dashboardId, adminMode: self.adminMode(), applyClientInAdmin: self.appSettings.useClientIdInAdmin },
-			noBlocking: true
+			data: { id: dashboardId, adminMode: self.adminMode(), applyClientInAdmin: self.appSettings.useClientIdInAdmin }
 		}).done(function (reportsData) {
 			let resultGrid = self.checkOverlaps(reportsData);
 			if (resultGrid.length > 0) {
