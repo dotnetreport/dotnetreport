@@ -1505,20 +1505,23 @@ var reportViewModel = function (options) {
 
 	self.insertFieldTableTransposed = function () {
 		const rows = self.SelectedFields().map(f =>
-			`<tr><td><b>${f.selectedFieldName}</b></td><td>{{${f.selectedFieldName}}}</td></tr>`
+			`<tr data-field="${f.selectedFieldName}">
+			<td><b>${f.selectedFieldName}</b></td>
+			<td>{{${f.selectedFieldName}}}</td>
+		</tr>`
 		);
-		const table = `<table class="table table-bordered table-sm html-report-table">${rows.join('')}</table>`;
+		const table = `<table class="table table-bordered table-sm html-report-table html-report-table-transposed">${rows.join('')}</table>`;
 		$('#summernote-editor').summernote('pasteHTML', table);
 	};
 
 	self.insertFieldTableStandard = function () {
-		const headers = self.SelectedFields().map(f => `<th>${f.selectedFieldName}</th>`).join('');
-		const values = self.SelectedFields().map(f => `<td>{{${f.selectedFieldName}}}</td>`).join('');
+		const headers = self.SelectedFields().map(f => `<th data-field="${f.selectedFieldName}">${f.selectedFieldName}</th>`).join('');
+		const values = self.SelectedFields().map(f => `<td data-field="${f.selectedFieldName}">{{${f.selectedFieldName}}}</td>`).join('');
 		const table = `
-			<table class="table table-bordered table-sm html-report-table">
-				<thead><tr>${headers}</tr></thead>
-				<tbody><tr>${values}</tr></tbody>
-			</table>`;
+		<table class="table table-bordered table-sm html-report-table html-report-table-standard">
+			<thead><tr>${headers}</tr></thead>
+			<tbody><tr>${values}</tr></tbody>
+		</table>`;
 		$('#summernote-editor').summernote('pasteHTML', table);
 	};
 
@@ -3699,6 +3702,44 @@ var reportViewModel = function (options) {
 				parts = rest.split("{{footerbreak}}");
 				body = parts[0];
 				footer = parts.length > 1 ? parts[1] : "";
+
+				// detect standard table
+				if (body.indexOf("html-report-table-standard") >= 0) {
+					let match = body.match(/(<table[\s\S]*?<thead[\s\S]*?<\/thead>\s*<tbody>)([\s\S]*?)(<\/tbody>\s*<\/table>)/i);
+					if (match) {
+						const tableHeader = match[1];
+						const rowTemplate = match[2];
+						const tableFooter = match[3];
+
+						if (row.__isFirstRow) body = tableHeader + rowTemplate + tableFooter;
+						else body = rowTemplate;
+					}
+				}
+				// detect transposed table
+				else if (body.indexOf("html-report-table-transposed") >= 0) {
+					let match = body.match(/(<table[^>]*class="[^"]*html-report-table-transposed[^"]*"[^>]*>)([\s\S]*?)(<\/table>)/i);
+					if (match) {
+						let tableHeader = match[1];
+						let rowsBlock = match[2];
+						let tableFooter = match[3];
+
+						if (row.__isFirstRow) {
+							body = tableHeader + rowsBlock + tableFooter;
+						} else {
+							const tbody = rowsBlock.match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/i);
+							const rowsOnly = tbody ? tbody[1] : rowsBlock;
+
+							const extraValueTds = [];
+							rowsOnly.replace(/<tr[^>]*>([\s\S]*?)<\/tr>/gi, (_, trContent) => {
+								const tdMatch = trContent.match(/<td[^>]*>[\s\S]*?<\/td>\s*<td[^>]*>([\s\S]*?)<\/td>/i);
+								if (tdMatch) {
+									extraValueTds.push("<td>" + tdMatch[1].trim() + "</td>");
+								}
+							});
+							body = extraValueTds.join("");
+						}
+					}
+				}
 			}
 
 			let renderedHtml = body;
@@ -3926,7 +3967,8 @@ var reportViewModel = function (options) {
 
 			});
 			renderedHtml = renderedHtml.replace(/\{\{[^}]+>[^}]+\}\}/g, "");
-			if (self.ReportType() == 'Html') {
+
+			if (self.ReportType() == 'Html') {				
 				if (row.__isFirstRow) renderedHtml = header + renderedHtml;
 				if (row.__isLastRow) renderedHtml = renderedHtml + footer;
 			}
@@ -4078,6 +4120,61 @@ var reportViewModel = function (options) {
 			e.Items.__isLastRow = idx === result.ReportData.Rows.length - 1;
 			e.renderedHtml = processRow(e.Items, result.ReportData.Columns, e.subReportsRan);
 		});
+
+		if (result.ReportData.Rows.length > 0 && self.ReportType() == 'Html') {
+			let first = result.ReportData.Rows[0];
+			if (first.renderedHtml && first.renderedHtml.indexOf("html-report-table-standard") >= 0) {
+				let match = first.renderedHtml.match(/(<table[\s\S]*?<thead[\s\S]*?<\/thead>\s*<tbody>)([\s\S]*?)(<\/tbody>\s*<\/table>)/i);
+				if (match) {
+					const tableHeader = match[1];
+					const tableFooter = match[3];
+					let allRows = result.ReportData.Rows.map(r => r.renderedHtml)
+						.join("")
+						.replace(tableHeader, "")
+						.replace(tableFooter, "");
+					first.renderedHtml = tableHeader + allRows + tableFooter;
+					// clear the others
+					for (let i = 1; i < result.ReportData.Rows.length; i++) {
+						result.ReportData.Rows[i].renderedHtml = "";
+					}
+				}
+			}
+			else if (first.renderedHtml && first.renderedHtml.indexOf("html-report-table-transposed") >= 0) {
+				first.renderedHtml = first.renderedHtml.replace(
+					/([\s\S]*?)(<table[^>]*class="[^"]*html-report-table-transposed[^"]*"[^>]*>)([\s\S]*?)(<\/table>)([\s\S]*)/i,
+					function (_m, before, tableOpen, inside, tableClose, after) {
+						const tbodyMatch = inside.match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/i);
+						const rowsOnly = tbodyMatch ? tbodyMatch[1] : inside;
+						let trs = rowsOnly.match(/<tr[\s\S]*?<\/tr>/gi) || [];
+						let footerHtml = "";
+
+						for (let i = 1; i < result.ReportData.Rows.length; i++) {
+							const extra = result.ReportData.Rows[i].renderedHtml || "";
+							const extraTds = extra.match(/<td[^>]*>[\s\S]*?<\/td>/gi) || [];
+							if (extraTds.length) {
+								trs = trs.map((tr, idx) => tr.replace(/<\/tr>$/i, (extraTds[idx] || "") + "</tr>"));
+							}
+							if (i === result.ReportData.Rows.length - 1) {
+								const afterMatch = extra.match(/<\/table>([\s\S]*)$/i);
+								if (afterMatch) footerHtml = afterMatch[1];
+							}
+							result.ReportData.Rows[i].renderedHtml = "";
+						}
+
+						let stitchedTable;
+						if (tbodyMatch) {
+							const stitchedInside = inside.replace(/<tbody[^>]*>[\s\S]*?<\/tbody>/i, `<tbody>${trs.join("")}</tbody>`);
+							stitchedTable = tableOpen + stitchedInside + tableClose;
+						} else {
+							stitchedTable = tableOpen + trs.join("") + tableClose;
+						}
+
+						stitchedTable = stitchedTable.replace(/<td><b>([\s\S]*?)<\/b><\/td>/gi, '<td class="sticky-col"><b>$1</b></td>');
+						return before + stitchedTable + footerHtml + after;
+					}
+				);
+			}
+		}
 		function renderTable(data, colspan) {
 			const tableBody = document.getElementById('report-table-body' + self.ReportID());
 			if (tableBody) {

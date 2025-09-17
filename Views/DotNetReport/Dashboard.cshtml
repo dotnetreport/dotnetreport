@@ -416,7 +416,7 @@
                 </div>
             </div>
             <div class="card-body list-overflow-auto" style="padding-top: 0; margin-top: 0;">
-                <div data-bind="if: ReportType()!='Single' && CanEdit()">
+                <div data-bind="if: ReportType()!='Single' && ReportType()!='Html' && CanEdit()">
                     <div data-bind="template: 'chart-settings', data: $data"></div>
                 </div>
                 <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
