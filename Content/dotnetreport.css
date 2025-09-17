@@ -246,13 +246,13 @@
 
     .report-container > .report-inner {
         padding: 25px 25px 25px 25px;
-        background: #fff;
         margin-bottom: 38px;
     }
 
 .report-view {
     margin: 0 auto;
-    /*max-width: 1200px;*/
+    overflow-x: auto;
+    width: 100%;
 }
 
 @media(max-width: 992px) {
@@ -291,14 +291,12 @@
     right: 0;
     bottom: 32px;
     left: 0;
-    background-color: #888;
 }
 
 .report-menubar {
     z-index: 2;
     width: 100%;
     overflow: hidden;
-    background-color: #ddd;
 }
 
 .btn {
@@ -742,26 +740,22 @@ select.is-invalid ~ span .select2-selection {
     margin: 20px auto;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     font-family: 'Arial', sans-serif;
-    color: #333;
-    background-color: #f4f4f4;
 }
 
 .report-inner {
     padding: 30px;
+    overflow-x: auto;
+    overflow-y: hidden; 
+    white-space: nowrap;
+    max-width: 100%; 
 }
 
 .report-view {
     margin: 0 auto;
 }
 
-.report-canvas {
-    background-color: #fafafa;
-}
-
 .report-menubar {
     padding: 10px 15px;
-    background-color: #e9ecef;
-    border-bottom: 1px solid #ddd;
 }
 
 .styled-select {
@@ -1596,6 +1590,18 @@ tfoot tr.sub-total {
     float: left;
     margin: 10px;
     padding: 15px;    
+}
+
+.html-report-table-transposed td.sticky-col {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+}
+
+.html-report-table-standard th.sticky-row {
+    position: sticky;
+    top: 0;
+    z-index: 3;
 }
 
 @media print {
