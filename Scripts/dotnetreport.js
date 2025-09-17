@@ -6351,6 +6351,25 @@ var dashboardViewModel = function (options) {
 			self.loadDashboardReports(reports);
 		});
 	}
+	self.getDashboard = function () {
+		ajaxcall({
+			url: options.getDashbordUrl+ '?adminMode=' + self.adminMode(),
+			noBlocking: true
+		}).done(function (dashboardData) {
+			if (dashboardData && dashboardData.noAccount === true) {
+				$("#noaccountModal").modal('show');
+				return;
+			}
+            self.dashboards([]);
+			_.forEach(dashboardData, function (d) {
+				self.dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, schedule: d.Schedule, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles });
+			});
+			var dashboardId = 0;
+			if (self.dashboards().length > 0) { dashboardId = self.dashboards()[0].id; }
+			self.loadDashboard(dashboardId);
+		});
+	}
+
 	self.checkOverlaps =function (widgets) {
 		let overlaps = [];
 		for (let i = 0; i < widgets.length; i++) {
@@ -7031,7 +7050,7 @@ var dashboardViewModel = function (options) {
 	self.adminMode.subscribe(function (newValue) {
 		if (localStorage) localStorage.setItem('reportAdminMode', newValue);
 		if (typeof event !== "undefined" && event.type === "click") {
-			location.reload();
+            self.getDashboard();
 		}
 	});
 
