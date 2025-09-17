@@ -3493,7 +3493,13 @@ var reportViewModel = function (options) {
 					col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.jsonColumnName, e.ColumnName); });
 				}
 				else {
-					col = _.find(self.SelectedFields(), function (x) { return x.dbField == e.SqlField; });
+
+					if (self.SelectedFields()[i]) {
+						var _col = self.SelectedFields()[i];
+						if (_col.dbField == e.SqlField || (_col.hasForeignKey && `[${_col.foreignTable}].[${_col.foreignValueField}]` == e.SqlField)) col = self.SelectedFields()[i];
+					}
+
+					if (!col) col = _.find(self.SelectedFields(), function (x) { return x.dbField == e.SqlField; });
 					if (!col) col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.fieldName, e.ColumnName, x.dbField, e.SqlField, x.selectedAggregate()); });
 				}
 				if (col && col.fieldLabel && col.fieldLabel() && (e.ColumnName.indexOf('(Last ') > -1 || e.ColumnName.indexOf('Months ago)') > -1 || e.ColumnName.indexOf('Years ago)') > -1)) {
