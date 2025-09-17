@@ -34,8 +34,8 @@
             var reports = [];
             var dashboards = [];
             var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
-            var adminMode = queryParams.adminMode == 'true' ? 'true' : 'false';
-
+            var adminMode = false;
+            if (localStorage) adminMode = localStorage.getItem('reportAdminMode');
             ajaxcall({ url: '@Url.Action("GetDashboards", "DotNetReportApi")' + '?adminMode=' + adminMode, noBlocking: true }).done(function (dashboardData) {
                 if (dashboardData && dashboardData.noAccount === true) {
                     $("#noaccountModal").modal('show');
@@ -43,7 +43,7 @@
                 }
 
                 _.forEach(dashboardData, function (d) {
-                    dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, schedule: d.Schedule, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles });
+                    dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, schedule: d.Schedule, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles, clientId: d.ClientId });
                 });
 
                 var dashboardId = parseInt(queryParams.id || 0);
@@ -78,6 +78,7 @@
                             runExportUrl: "/api/DotnetReportApi/",
                             printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, Context.Request.Scheme)",
                             loadSavedDashbordUrl: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")',
+                            getDashbordsUrl: '@Url.Action("GetDashboards", "DotNetReportApi")',
                             getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")'
                         });
 

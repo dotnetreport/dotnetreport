@@ -6640,6 +6640,26 @@ var dashboardViewModel = function (options) {
 			self.loadDashboardReports(reports);
 		});
 	}
+
+	self.getDashboards = function () {
+		ajaxcall({
+			url: options.getDashbordsUrl+ '?adminMode=' + self.adminMode(),
+			noBlocking: true
+		}).done(function (dashboardData) {
+			if (dashboardData && dashboardData.noAccount === true) {
+				$("#noaccountModal").modal('show');
+				return;
+			}
+            self.dashboards([]);
+			_.forEach(dashboardData, function (d) {
+				self.dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, schedule: d.Schedule, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles, clientId: d.ClientId });
+			});
+			var dashboardId = 0;
+			if (self.dashboards().length > 0) { dashboardId = self.dashboards()[0].id; }
+			self.selectDashboard(dashboardId);
+		});
+	}
+
 	self.checkOverlaps =function (widgets) {
 		let overlaps = [];
 		for (let i = 0; i < widgets.length; i++) {
@@ -7334,7 +7354,9 @@ var dashboardViewModel = function (options) {
 
 	self.adminMode.subscribe(function (newValue) {
 		if (localStorage) localStorage.setItem('reportAdminMode', newValue);
-
+		if (typeof event !== "undefined" && event.type === "click") {
+            self.getDashboards();
+		}
 	});
 
 	self.zoomLevelDashboard = ko.observable(0.9); // Start at 90% actual scale
