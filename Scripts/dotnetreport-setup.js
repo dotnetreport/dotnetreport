@@ -47,6 +47,7 @@ var manageViewModel = function (options) {
 			self.Tables.refresh(model);
 			self.LoadJoins();
 			self.LoadCategories();
+			self.activeTable(null)
 		});
 	}
 

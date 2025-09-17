@@ -2393,56 +2393,56 @@
                         <div class="mb-2 col-6">
                             <label class="form-label small">Header Back Color</label>
                             <input type="color" class="color-picker"
-                                   data-bind="value: tableheaderBackColor, event: { change: updateTable }"/>
+                                   data-bind="attr: { id: 'tbl-color-picker-' + ReportID()} , value: tableSettings().headerBackColor, event: { change: updateTable }"/>
                         </div>
                         <div class="mb-2 col-6">
                             <label class="form-label small">Header Font Color</label>
                             <input type="color" class="color-picker"
-                                   data-bind="value: tableheaderFontColor, event: { change: updateTable }"/>
+                                   data-bind="attr: { id: 'tbl-color-picker-' + ReportID()} ,value: tableSettings().headerFontColor, event: { change: updateTable }"/>
                         </div>
                     </div>
                     <div class="form-group row">
                         <div class="mb-2 col-6">
                             <label class="form-label small">Row Back Color</label>
                             <input type="color" class="color-picker"
-                                   data-bind="value: tableRowBackColor, event: { change: updateTable }"/>
+                                   data-bind="attr: { id: 'tbl-color-picker-' + ReportID()} ,value: tableSettings().rowBackColor, event: { change: updateTable }"/>
                         </div>
                         <div class="mb-2 col-6">
                             <label class="form-label small">Row Font Color</label>
                             <input type="color" class="color-picker"
-                                   data-bind="value: tableRowFontColor, event: { change: updateTable }"/>
+                                   data-bind="attr: { id: 'tbl-color-picker-' + ReportID()} ,value: tableSettings().rowFontColor, event: { change: updateTable }"/>
                         </div>
                     </div>
                     <div class="form-group row" style="display: none;">
                         <div class="mb-2 col-6">
                             <label class="form-label small">Alt Row Back Color</label>
                             <input type="color" class="color-picker"
-                                   data-bind="value: tableAltRowBackColor, event: { change: updateTable }"/>
+                                   data-bind="value: tableSettings().altRowBackColor, event: { change: updateTable }"/>
                         </div>
                         <div class="mb-2 col-6">
                             <label class="form-label small">Alt Row Font Color</label>
                             <input type="color" class="color-picker"
-                                   data-bind="value: tableAltRowFontColor, event: { change: updateTable }"/>
+                                   data-bind="value: tableSettings().altRowFontColor, event: { change: updateTable }"/>
                         </div>
                     </div>
                     <div class="form-group mb-2" style="display: none;">
                         <label class="form-label small">Borders</label>
                         <div class="btn-group d-flex flex-wrap">
                             <button type="button" class="btn btn-light btn-sm flex-fill"
-                                    data-bind="click: function(){ tableBorder('none'); updateTable(); }, css: { active: tableBorder() === 'none' }">None</button>
+                                    data-bind="click: function(){ tableSettings().border('none'); updateTable(); }, css: { active: tableSettings().border === 'none' }">None</button>
                             <button type="button" class="btn btn-light btn-sm flex-fill"
-                                    data-bind="click: function(){ tableBorder('all'); updateTable(); }, css: { active: tableBorder() === 'all' }">All</button>
+                                    data-bind="click: function(){ tableSettings().border('all'); updateTable(); }, css: { active: tableSettings().border === 'all' }">All</button>
                             <button type="button" class="btn btn-light btn-sm flex-fill"
-                                    data-bind="click: function(){ tableBorder('outer'); updateTable(); }, css: { active: tableBorder() === 'outer' }">Outside</button>
+                                    data-bind="click: function(){ tableSettings().border('outer'); updateTable(); }, css: { active: tableSettings().border === 'outer' }">Outside</button>
                             <button type="button" class="btn btn-light btn-sm flex-fill"
-                                    data-bind="click: function(){ tableBorder('inner'); updateTable(); }, css: { active: tableBorder() === 'inner' }">Inside</button>
+                                    data-bind="click: function(){ tableSettings().border('inner'); updateTable(); }, css: { active: tableSettings().border === 'inner' }">Inside</button>
                         </div>
                     </div>
                     <div class="form-group row">
                         <div class="mb-2 col-6" style="display: none;">
                             <label class="form-label small">Border Color</label>
                             <input type="color" class="color-picker"
-                               data-bind="value: tableBorderColor, event: { change: updateTable }"/>
+                               data-bind="value: tableSettings().borderColor, event: { change: updateTable }"/>
                         </div>
                         <div class="mb-2 col-6 d-flex align-items-end">
                              <button class="btn btn-sm small btn-outline-secondary" data-bind="click: clearTableSettings">

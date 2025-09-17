@@ -85,7 +85,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <a class="dropdown-item" href="#" data-bind="click: createNewReportAi"><i class="fa fa-bolt"></i> Use Smarter Designer</a>
                                 </div>
                             </li>
-                            <li class="nav-item active" data-bind="visible: CanSaveReports() && !appSettings.usePromptBuilder() && !adminMode()">
+                            <li class="nav-item active" data-bind="visible: (SelectedFolder() ? SelectedFolder().canEdit : (CanSaveReports() || adminMode())) && !appSettings.usePromptBuilder()">
                                 <a href="#" class="nav-link" data-bind="click: createNewReport" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
                                     <span class="fa fa-plus"></span> New Report
                                 </a>
