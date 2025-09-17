@@ -4684,7 +4684,7 @@ var reportViewModel = function (options) {
 				var dimensions = JSON.parse(storedDimensions);
 				if (options.arrangeDashboard && !self.isExpanded()) {
 					chartOptions.width = dimensions.width || '100%';
-					chartOptions.height =dimensions.height || '450px';
+					chartOptions.height = dimensions.height || '450px';
 				} else {
 					chartOptions.width = dimensions.fullWidth || '100%';
 					chartOptions.height = dimensions.fullHeight || '450px';
@@ -4692,14 +4692,16 @@ var reportViewModel = function (options) {
 			}
 			else {
 				chartOptions.width = '100%';
-				chartOptions.height ='450px';
+				chartOptions.height = '450px';
+
+				if (options.reportMode == 'dashboard') {
+					chartOptions.height = !self.ShowDataWithGraph() ? parentElementHeight - 10 + 'px' : '450px';
+					// Apply the calculated height to the chart container directly (optional)
+					chartElement.style.height = chartOptions.height;
+				}
 			}
-			if (options.reportMode =='dashboard') {
-				chartOptions.height = !self.ShowDataWithGraph() ? parentElementHeight - 10 + 'px' :  '450px';
-			// Apply the calculated height to the chart container directly (optional)
-			chartElement.style.height = chartOptions.height;
 		}
-		}
+		
 		// Call retrieveDimensions to load saved dimensions when the chart is initialized
 		if (self.ReportMode() != 'print') retrieveDimensions();
 		chartOptions.hAxis = {}; chartOptions.vAxis = {};
