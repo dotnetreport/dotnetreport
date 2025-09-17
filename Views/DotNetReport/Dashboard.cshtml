@@ -58,6 +58,7 @@
                         var vm = new dashboardViewModel({
                             runReportUrl: "@Url.Action("Report")",
                             execReportUrl: "@Url.Action("RunReport", "DotNetReportApi")",
+                            runLinkReportUrl: "@Url.Action("RunReportLink", "DotNetReportApi")",
                             reportWizard: $("#filter-panel"),
                             lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
                             apiUrl: "@Url.Action("CallReportApi", "DotNetReportApi")",

@@ -6728,6 +6728,7 @@ var dashboardViewModel = function (options) {
 				runExportUrl: options.runExportUrl,
 				execReportUrl: options.execReportUrl,
 				reportWizard: options.reportWizard,
+				runLinkReportUrl: options.runLinkReportUrl,
 				fieldOptionsModal: options.fieldOptionsModal,
 				linkModal: options.linkModal,
 				lookupListUrl: options.lookupListUrl,
