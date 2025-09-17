@@ -35,8 +35,9 @@
             var reports = [];
             var dashboards = [];
             var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
-            var adminMode = queryParams.adminMode == 'true' ? 'true' : 'false';
-
+            //var adminMode = queryParams.adminMode == 'true' ? 'true' : 'false';
+            var adminMode = false;
+            if (localStorage) adminMode = localStorage.getItem('reportAdminMode');
             ajaxcall({ url: '@Url.Action("GetDashboards", "DotNetReportApi")' + '?adminMode=' + adminMode, noBlocking: true }).done(function (dashboardData) {
                 if (dashboardData && dashboardData.noAccount === true) {
                     $("#noaccountModal").modal('show');

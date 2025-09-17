@@ -7030,7 +7030,9 @@ var dashboardViewModel = function (options) {
 
 	self.adminMode.subscribe(function (newValue) {
 		if (localStorage) localStorage.setItem('reportAdminMode', newValue);
-
+		if (typeof event !== "undefined" && event.type === "click") {
+			location.reload();
+		}
 	});
 
 	self.zoomLevelDashboard = ko.observable(0.9); // Start at 90% actual scale
