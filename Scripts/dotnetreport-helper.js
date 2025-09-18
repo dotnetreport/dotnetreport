@@ -472,6 +472,7 @@ function pagerViewModel(args) {
     self.pauseNavigation = ko.observable(false);
     self.totalRecords = ko.observable(0);
     self.autoPage = ko.observable(args.autoPage === true ? true : false);
+    self.pageSizeOptions = ko.observableArray([1, 10, 30, 50, 100, 150, 200, 500]);
 
     self.sortColumn = ko.observable();
     self.sortDescending = ko.observable();
@@ -1155,3 +1156,182 @@ window.toastr = (function () {
         info: (msg) => show(msg, 'info')
     };
 })();
+
+$.extend($.summernote.plugins, {
+    'bgcolor': function (context) {
+        var ui = $.summernote.ui;
+        var $editor = context.layoutInfo.editor;
+        var $editable = context.layoutInfo.editable;
+
+        context.memo('button.bgcolor', function () {
+            return ui.buttonGroup([
+                ui.button({
+                    contents: '<i class="fa fa-paint-brush"></i>',
+                    tooltip: 'Cell Background Color',
+                    click: function () {
+                        var colorInput = $('<input type="color">');
+                        colorInput.on('input', function () {
+                            var color = $(this).val();
+                            var rng = context.invoke('editor.createRange');
+                            if (rng.isCollapsed()) {
+                                var td = $(rng.sc).closest('td,th');
+                                if (td.length) {
+                                    td.css('background-color', color);
+                                }
+                            }
+                        });
+                        colorInput.trigger('click');
+                    }
+                })
+            ]).render();
+        });
+    }
+});
+
+$.extend($.summernote.plugins, {
+    'tableresize': function (context) {
+        var $editable = context.layoutInfo.editable;
+
+        function makeResizable(table) {
+            $(table).css('position', 'relative');
+
+            $(table).find('th, td').each(function () {
+                var $cell = $(this);
+
+                if (!$cell.find('.resize-col').length) {
+                    var $colHandle = $('<div class="resize-col"></div>').css({
+                        position: 'absolute',
+                        right: 0,
+                        top: 0,
+                        width: '5px',
+                        cursor: 'col-resize',
+                        userSelect: 'none',
+                        height: '100%'
+                    });
+                    $cell.css('position', 'relative').append($colHandle);
+
+                    $colHandle.on('mousedown', function (e) {
+                        e.preventDefault();
+                        var startX = e.pageX;
+                        var startWidth = $cell.outerWidth();
+
+                        $(document).on('mousemove.colresize', function (e) {
+                            var newWidth = startWidth + (e.pageX - startX);
+                            $cell.css('width', newWidth + 'px');
+                        });
+
+                        $(document).on('mouseup.colresize', function () {
+                            $(document).off('.colresize');
+                        });
+                    });
+                }
+
+                if (!$cell.find('.resize-row').length) {
+                    var $rowHandle = $('<div class="resize-row"></div>').css({
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        height: '5px',
+                        cursor: 'row-resize',
+                        userSelect: 'none',
+                        width: '100%'
+                    });
+                    $cell.append($rowHandle);
+
+                    $rowHandle.on('mousedown', function (e) {
+                        e.preventDefault();
+                        var startY = e.pageY;
+                        var startHeight = $cell.outerHeight();
+
+                        $(document).on('mousemove.rowresize', function (e) {
+                            var newHeight = startHeight + (e.pageY - startY);
+                            $cell.css('height', newHeight + 'px');
+                        });
+
+                        $(document).on('mouseup.rowresize', function () {
+                            $(document).off('.rowresize');
+                        });
+                    });
+                }
+            });
+
+            if (!$(table).find('.resize-corner').length) {
+                var $cornerHandle = $('<div class="resize-corner"></div>').css({
+                    position: 'absolute',
+                    right: 0,
+                    bottom: 0,
+                    width: '10px',
+                    height: '10px',
+                    cursor: 'nwse-resize',
+                    background: 'rgba(0,0,0,0.2)'
+                });
+                $(table).append($cornerHandle);
+
+                $cornerHandle.on('mousedown', function (e) {
+                    e.preventDefault();
+                    var startX = e.pageX, startY = e.pageY;
+                    var startWidth = $(table).outerWidth();
+                    var startHeight = $(table).outerHeight();
+
+                    $(document).on('mousemove.tableresize', function (e) {
+                        var newWidth = startWidth + (e.pageX - startX);
+                        var newHeight = startHeight + (e.pageY - startY);
+                        $(table).css({
+                            width: newWidth + 'px',
+                            height: newHeight + 'px'
+                        });
+                    });
+
+                    $(document).on('mouseup.tableresize', function () {
+                        $(document).off('.tableresize');
+                    });
+                });
+            }
+        }
+
+        // hook into editor events
+        $editable.on('mousedown', 'table', function () {
+            makeResizable(this);
+        });
+
+        context.events = {
+            'summernote.init': function () {
+                $editable.find('table').each(function () {
+                    makeResizable(this);
+                });
+            }
+        };
+    }
+});
+
+$.extend($.summernote.plugins, {
+    'tablefullwidth': function (context) {
+        var ui = $.summernote.ui;
+
+        context.memo('button.tablefullwidth', function () {
+            return ui.button({
+                contents: '<i class="fa fa-arrows-h"></i>',
+                tooltip: 'Set Table Width 100%',
+                click: function () {
+                    var rng = context.invoke('editor.createRange');
+                    var $table = null;
+
+                    if (rng && rng.sc) {
+                        $table = $(rng.sc).closest('table');
+                    }
+
+                    if (!$table || !$table.length) {
+                        $table = $(rng.ec).closest('table');
+                    }
+
+                    if ($table && $table.length) {
+                        $table.css({
+                            width: '100%',
+                            tableLayout: 'auto'
+                        });
+                    }
+                }
+            }).render();
+        });
+    }
+});

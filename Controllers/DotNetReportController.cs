@@ -30,7 +30,7 @@ namespace ReportBuilder.Web.Controllers
                 ShowDataWithGraph = showDataWithGraph,
                 SelectedFolder = selectedFolder,
                 ReportSeries = !string.IsNullOrEmpty(reportSeries) ? reportSeries.Replace("%20", " ") : string.Empty,
-                ReportFilter = reportFilter // json data to setup filter correctly again                
+                ReportFilter = reportFilter // json data to setup filter correctly again
             };
 
             return View(model);
@@ -57,6 +57,13 @@ namespace ReportBuilder.Web.Controllers
             var exportId = ExportSessionStore.Save(settings);
             ViewBag.ExportId = exportId;
 
+            var sanitizer = new Ganss.Xss.HtmlSanitizer
+            {
+                AllowedSchemes = { "data" }, // allow base64 images
+                AllowedTags = { "b", "i", "u", "p", "span", "div", "img", "table", "tr", "td" },
+                AllowedAttributes = { "style", "class", "src", "alt", "width", "height" }
+            };
+
             var model = new DotNetReportPrintModel
             {
                 ReportId = reportId,
@@ -76,7 +83,7 @@ namespace ReportBuilder.Web.Controllers
                 UserId = userId,
                 CurrentUserRoles = currentUserRole,
                 DataFilters = HttpUtility.UrlDecode(dataFilters),
-                ReportData = HttpUtility.UrlDecode(reportData)
+                ReportData = sanitizer.Sanitize(HttpUtility.UrlDecode(reportData))
             };
 
             return View(model);
