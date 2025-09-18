@@ -2268,8 +2268,8 @@
 
         <div class="chart-settings-panel border p-2 shadow-sm bg-light" data-bind="visible: showSettings">
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <h6 class="mb-0">Report Settings</h6>
                 <button class="btn btn-sm btn-close" data-bind="click: toggleChartSettings"></button>
+                <h6 class="mb-0">Report Settings</h6>                
             </div>
              <ul class="nav nav-tabs nav-sm mb-2 small" data-bind="visible: ReportType() === 'Bar' || ReportType() === 'Pie' || ReportType() === 'Line'">
                 <li class="nav-item">
@@ -2402,31 +2402,31 @@
                      data-bind="attr: { id: 'tableTab-' + ReportID() }, css: { 'show active': !(ReportType() === 'Bar' || ReportType() === 'Pie' || ReportType() === 'Line') }">
                     <div class="form-group row">
                         <div class="mb-2 col-6">
-                            <label class="form-label small">Header Back Color</label>
+                            <label class="form-label small">Header Back Color</label><br />
                             <input type="color" class="color-picker"
                                    data-bind="attr: { id: 'tbl-color-picker-' + ReportID()} , value: tableSettings().headerBackColor, event: { change: updateTable }"/>
                         </div>
                         <div class="mb-2 col-6">
-                            <label class="form-label small">Header Font Color</label>
+                            <label class="form-label small">Header Font Color</label><br />
                             <input type="color" class="color-picker"
                                    data-bind="attr: { id: 'tbl-color-picker-' + ReportID()} ,value: tableSettings().headerFontColor, event: { change: updateTable }"/>
                         </div>
                     </div>
                     <div class="form-group row">
                         <div class="mb-2 col-6">
-                            <label class="form-label small">Row Back Color</label>
+                            <label class="form-label small">Row Back Color</label><br />
                             <input type="color" class="color-picker"
                                    data-bind="attr: { id: 'tbl-color-picker-' + ReportID()} ,value: tableSettings().rowBackColor, event: { change: updateTable }"/>
                         </div>
                         <div class="mb-2 col-6">
-                            <label class="form-label small">Row Font Color</label>
+                            <label class="form-label small">Row Font Color</label><br />
                             <input type="color" class="color-picker"
                                    data-bind="attr: { id: 'tbl-color-picker-' + ReportID()} ,value: tableSettings().rowFontColor, event: { change: updateTable }"/>
                         </div>
                     </div>
                     <div class="form-group row" style="display: none;">
                         <div class="mb-2 col-6">
-                            <label class="form-label small">Alt Row Back Color</label>
+                            <label class="form-label small">Alt Row Back Color</label><br />
                             <input type="color" class="color-picker"
                                    data-bind="value: tableSettings().altRowBackColor, event: { change: updateTable }"/>
                         </div>
