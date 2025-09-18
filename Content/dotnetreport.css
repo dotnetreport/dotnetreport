@@ -24,7 +24,7 @@
 .list-overflow-auto {
     height: 90%;
     overflow-y: auto;
-    overflow-x: hidden;
+    overflow-x: auto;
 }
 
 .list-report li {
@@ -1628,4 +1628,14 @@ tfoot tr.sub-total {
     ::-webkit-scrollbar {
         display: none;
     }
+}
+
+.note-popover {
+    position: absolute !important;
+}
+.note-popover-content {
+    padding: 2px;
+}
+.note-popover .popover-arrow {
+    position: absolute !important;
 }

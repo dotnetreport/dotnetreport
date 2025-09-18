@@ -791,7 +791,7 @@ var headerDesigner = function (options) {
 				table: [
 					['add', ['addRowDown', 'addRowUp', 'addColLeft', 'addColRight']],
 					['delete', ['deleteRow', 'deleteCol', 'deleteTable']],
-					['color', ['bgcolor']]
+					['color', ['bgcolor', 'tablefullwidth']]
 				],
 				air: [
 					['color', ['color']],
@@ -811,8 +811,6 @@ var headerDesigner = function (options) {
 				['insert', ['link', 'picture', 'hr']],
 				['view', ['fullscreen', 'codeview']]
 			],
-			popoverContainer: 'modal',
-			dialogsInBody: false,
 			tableresize: true
 		});
 		self.loadHtmlHeader();
@@ -1453,14 +1451,7 @@ var reportViewModel = function (options) {
 					table: [
 						['add', ['addRowDown', 'addRowUp', 'addColLeft', 'addColRight']],
 						['delete', ['deleteRow', 'deleteCol', 'deleteTable']],
-						['color', ['bgcolor']]
-					],
-					air: [
-						['color', ['color']],
-						['font', ['fontname', 'fontsize', 'bold', 'underline', 'clear']],
-						['para', ['ul', 'paragraph']],
-						['table', ['table']],
-						['insert', ['link', 'picture']]
+						['color', ['bgcolor', 'tablefullwidth']]
 					]
 				},
 				toolbar: [
@@ -1473,7 +1464,6 @@ var reportViewModel = function (options) {
 					['insert', ['link', 'picture', 'hr']],
 					['view', ['fullscreen','codeview']]
 				],
-				popoverContainer: 'modal',
 				dialogsInBody: false,
 				tableresize: true
 			});

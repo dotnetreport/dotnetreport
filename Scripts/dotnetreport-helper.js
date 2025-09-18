@@ -1291,3 +1291,35 @@ $.extend($.summernote.plugins, {
         };
     }
 });
+
+$.extend($.summernote.plugins, {
+    'tablefullwidth': function (context) {
+        var ui = $.summernote.ui;
+
+        context.memo('button.tablefullwidth', function () {
+            return ui.button({
+                contents: '<i class="fa fa-arrows-h"></i>',
+                tooltip: 'Set Table Width 100%',
+                click: function () {
+                    var rng = context.invoke('editor.createRange');
+                    var $table = null;
+
+                    if (rng && rng.sc) {
+                        $table = $(rng.sc).closest('table');
+                    }
+
+                    if (!$table || !$table.length) {
+                        $table = $(rng.ec).closest('table');
+                    }
+
+                    if ($table && $table.length) {
+                        $table.css({
+                            width: '100%',
+                            tableLayout: 'auto'
+                        });
+                    }
+                }
+            }).render();
+        });
+    }
+});
