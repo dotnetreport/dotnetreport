@@ -30,7 +30,6 @@ using System.Net.Http;
 using A = DocumentFormat.OpenXml.Drawing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
-using static ReportBuilder.Web.Controllers.DotNetReportApiController;
 using ReportBuilder.Web.Models;
 using PdfSharp.Pdf.IO;
 using System.Data.SqlClient;
@@ -124,6 +123,12 @@ namespace ReportBuilder.Web.Models
     {
         public List<DotNetReportDataRowModel> Rows { get; set; }
         public List<DotNetReportDataColumnModel> Columns { get; set; }
+    }
+
+    public class SqlQuery
+    {
+        public string sql { get; set; } = "";
+        public List<KeyValuePair<string, string>> parameters { get; set; } = null;
     }
 
     public class TableViewModel
@@ -2858,188 +2863,199 @@ namespace ReportBuilder.Web.Models
             var page = await browser.NewPageAsync();
             await page.SetRequestInterceptionAsync(true);
 
-            var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
-            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
-            var data = GetDataTable(reportSql, connectKey);
-
-            var qry = data.qry;
-            var sqlFields = data.sqlFields;
-            var dt = data.dt;
-
-            if (!string.IsNullOrEmpty(pivotColumn))
+            try
             {
-                if (!useAltPivot)
-                {
-                    var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
-                    dt = pd.dt;
-                    if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
-                }
-                else
-                {
-                    var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
-                    dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);
-                }
-                var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
-                sqlFields = sqlFields
-                    .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
-                    .ToList();
-                sqlFields.AddRange(dt.Columns.Cast<DataColumn>().Skip(sqlFields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
-            }
+                var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
+                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+                var data = GetDataTable(reportSql, connectKey);
 
-            var model = new DotNetReportResultModel
-            {
-                ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dt, sqlFields, false),
-                Warnings = "",
-                ReportSql = qry.sql,
-                ReportDebug = false,
-                Pager = new DotNetReportPagerModel
-                {
-                    CurrentPage = 1,
-                    PageSize = 100000,
-                    TotalRecords = dt.Rows.Count,
-                    TotalPages = 1
-                }
-            };
+                var qry = data.qry;
+                var sqlFields = data.sqlFields;
+                var dt = data.dt;
 
-            var formPosted = false;
-            var formData = new StringBuilder();
-            formData.AppendLine("<html><body>");
-            formData.AppendLine($"<form action=\"{printUrl}\" method=\"post\">");
-            formData.AppendLine($"<input name=\"reportSql\" value=\"{HttpUtility.HtmlEncode(reportSql)}\" />");
-            formData.AppendLine($"<input name=\"connectKey\" value=\"{HttpUtility.HtmlEncode(connectKey)}\" />");
-            formData.AppendLine($"<input name=\"reportId\" value=\"{reportId}\" />");
-            formData.AppendLine($"<input name=\"pageNumber\" value=\"1\" />");
-            formData.AppendLine($"<input name=\"pageSize\" value=\"99999\" />");
-            formData.AppendLine($"<input name=\"userId\" value=\"{userId}\" />");
-            formData.AppendLine($"<input name=\"clientId\" value=\"{clientId}\" />");
-            formData.AppendLine($"<input name=\"currentUserRole\" value=\"{currentUserRole}\" />");
-            formData.AppendLine($"<input name=\"expandAll\" value=\"{expandAll}\" />");
-            formData.AppendLine($"<input name=\"dataFilters\" value=\"{HttpUtility.HtmlEncode(string.IsNullOrEmpty(dataFilters) ? "{}" : dataFilters)}\" />");
-            formData.AppendLine($"<input name=\"reportData\" value=\"{HttpUtility.HtmlEncode(JsonConvert.SerializeObject(model))}\" />");
-            formData.AppendLine($"</form>");
-            formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");
-            formData.AppendLine("</body></html>");
-
-            page.Request += async (sender, e) =>
-            {
-                if (formPosted)
+                if (!string.IsNullOrEmpty(pivotColumn))
                 {
-                    await e.Request.ContinueAsync();
-                    return;
+                    if (!useAltPivot)
+                    {
+                        var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
+                        dt = pd.dt;
+                        if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
+                    }
+                    else
+                    {
+                        var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
+                        dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);
+                    }
+                    var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
+                    sqlFields = sqlFields
+                        .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
+                        .ToList();
+                    sqlFields.AddRange(dt.Columns.Cast<DataColumn>().Skip(sqlFields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
                 }
 
-                await e.Request.RespondAsync(new ResponseData
+                var model = new DotNetReportResultModel
                 {
-                    Status = System.Net.HttpStatusCode.OK,
-                    Body = formData.ToString()
+                    ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dt, sqlFields, false),
+                    Warnings = "",
+                    ReportSql = qry.sql,
+                    ReportDebug = false,
+                    Pager = new DotNetReportPagerModel
+                    {
+                        CurrentPage = 1,
+                        PageSize = 100000,
+                        TotalRecords = dt.Rows.Count,
+                        TotalPages = 1
+                    }
+                };
+
+                var formPosted = false;
+                var formData = new StringBuilder();
+                formData.AppendLine("<html><body>");
+                formData.AppendLine($"<form action=\"{printUrl}\" method=\"post\">");
+                formData.AppendLine($"<input name=\"reportSql\" value=\"{HttpUtility.HtmlEncode(reportSql)}\" />");
+                formData.AppendLine($"<input name=\"connectKey\" value=\"{HttpUtility.HtmlEncode(connectKey)}\" />");
+                formData.AppendLine($"<input name=\"reportId\" value=\"{reportId}\" />");
+                formData.AppendLine($"<input name=\"pageNumber\" value=\"1\" />");
+                formData.AppendLine($"<input name=\"pageSize\" value=\"99999\" />");
+                formData.AppendLine($"<input name=\"userId\" value=\"{userId}\" />");
+                formData.AppendLine($"<input name=\"clientId\" value=\"{clientId}\" />");
+                formData.AppendLine($"<input name=\"currentUserRole\" value=\"{currentUserRole}\" />");
+                formData.AppendLine($"<input name=\"expandAll\" value=\"{expandAll}\" />");
+                formData.AppendLine($"<input name=\"dataFilters\" value=\"{HttpUtility.HtmlEncode(string.IsNullOrEmpty(dataFilters) ? "{}" : dataFilters)}\" />");
+                formData.AppendLine($"<input name=\"reportData\" value=\"{HttpUtility.HtmlEncode(JsonConvert.SerializeObject(model))}\" />");
+                formData.AppendLine($"</form>");
+                formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");
+                formData.AppendLine("</body></html>");
+
+                page.Request += async (sender, e) =>
+                {
+                    if (formPosted)
+                    {
+                        await e.Request.ContinueAsync();
+                        return;
+                    }
+
+                    await e.Request.RespondAsync(new ResponseData
+                    {
+                        Status = System.Net.HttpStatusCode.OK,
+                        Body = formData.ToString()
+                    });
+
+                    formPosted = true;
+                };
+
+                await page.GoToAsync(printUrl, new NavigationOptions
+                {
+                    WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
                 });
 
-                formPosted = true;
-            };
-
-            await page.GoToAsync(printUrl, new NavigationOptions
-            {
-                WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
-            });
-
-            await page.WaitForSelectorAsync(".report-inner", new WaitForSelectorOptions { Visible = true });
-            if (imageOnly)
-            {
-                try
+                await page.WaitForSelectorAsync(".report-inner", new WaitForSelectorOptions { Visible = true });
+                if (imageOnly)
                 {
-                    var imageData = await page.EvaluateExpressionAsync<string>("window.chartImageUrl");
-                    await page.EvaluateExpressionAsync("delete window.chartImageUrl;");
-
-                    if (!string.IsNullOrEmpty(imageData))
+                    try
                     {
-                        string base64String = imageData.Split(',')[1];
+                        var imageData = await page.EvaluateExpressionAsync<string>("window.chartImageUrl");
+                        await page.EvaluateExpressionAsync("delete window.chartImageUrl;");
 
-                        return Convert.FromBase64String(base64String);
+                        if (!string.IsNullOrEmpty(imageData))
+                        {
+                            string base64String = imageData.Split(',')[1];
+
+                            return Convert.FromBase64String(base64String);
+                        }
                     }
-                }
-                catch (Exception ex)
-                {
+                    catch (Exception ex)
+                    {
+                        return new byte[0];
+                    }
+
                     return new byte[0];
                 }
 
-                return new byte[0];
-            }
+                int height = await page.EvaluateExpressionAsync<int>("document.body.offsetHeight");
+                int width = Convert.ToInt32(await page.EvaluateExpressionAsync<decimal>("$('table').width()"));
+                var pdfFile = Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
 
-            int height = await page.EvaluateExpressionAsync<int>("document.body.offsetHeight");
-            int width = Convert.ToInt32(await page.EvaluateExpressionAsync<decimal>("$('table').width()"));
-            var pdfFile = Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
-
-            var pdfOptions = new PdfOptions
-            {
-                PrintBackground = true,
-                PreferCSSPageSize = false,
-                MarginOptions = new MarginOptions() { Top = "0.75in", Bottom = "0.75in", Left = "0.1in", Right = "0.1in" }
-            };
-            if (!String.IsNullOrEmpty(pageOrientation))
-            {
-                var Oreintation = (pageOrientation ?? "PORTRAIT").ToUpperInvariant();
-                switch (Oreintation)
+                var pdfOptions = new PdfOptions
                 {
-                    case "LANDSCAPE":
-                        pdfOptions.Landscape = true;
-                        break;
-                    case "PORTRAIT":
-                    default:
-                        pdfOptions.Landscape = false;
-                        break;
+                    PrintBackground = true,
+                    PreferCSSPageSize = false,
+                    MarginOptions = new MarginOptions() { Top = "0.75in", Bottom = "0.75in", Left = "0.1in", Right = "0.1in" }
+                };
+                if (!String.IsNullOrEmpty(pageOrientation))
+                {
+                    var Oreintation = (pageOrientation ?? "PORTRAIT").ToUpperInvariant();
+                    switch (Oreintation)
+                    {
+                        case "LANDSCAPE":
+                            pdfOptions.Landscape = true;
+                            break;
+                        case "PORTRAIT":
+                        default:
+                            pdfOptions.Landscape = false;
+                            break;
+                    }
                 }
-            }
-            if (!String.IsNullOrEmpty(pageSize))
-            {
-                var normalizedPageSize = (pageSize ?? "Letter").ToUpperInvariant();
-                PaperFormat selectedFormat = PaperFormat.A4;
-                switch (normalizedPageSize)
+                if (!String.IsNullOrEmpty(pageSize))
                 {
-                    case "A4":
-                        selectedFormat = PaperFormat.A4;
-                        break;
-                    case "LEGAL":
-                        selectedFormat = PaperFormat.Legal;
-                        break;
-                    case "A1":
-                        selectedFormat = PaperFormat.A1;
-                        break;
-                    case "A2":
-                        selectedFormat = PaperFormat.A2;
-                        break;
-                    case "A3":
-                        selectedFormat = PaperFormat.A3;
-                        break;
-                    case "TABLOID":
-                        selectedFormat = PaperFormat.Tabloid;
-                        break;
-                    case "LETTER":
-                    default:
-                        selectedFormat = PaperFormat.Letter;
-                        break;
-                }
-                pdfOptions.Format = selectedFormat;
-            }
-            else
-            {
-                if (width < 900)
-                {
-                    pdfOptions.Format = PaperFormat.Letter;
-                    pdfOptions.Landscape = false;
+                    var normalizedPageSize = (pageSize ?? "Letter").ToUpperInvariant();
+                    PaperFormat selectedFormat = PaperFormat.A4;
+                    switch (normalizedPageSize)
+                    {
+                        case "A4":
+                            selectedFormat = PaperFormat.A4;
+                            break;
+                        case "LEGAL":
+                            selectedFormat = PaperFormat.Legal;
+                            break;
+                        case "A1":
+                            selectedFormat = PaperFormat.A1;
+                            break;
+                        case "A2":
+                            selectedFormat = PaperFormat.A2;
+                            break;
+                        case "A3":
+                            selectedFormat = PaperFormat.A3;
+                            break;
+                        case "TABLOID":
+                            selectedFormat = PaperFormat.Tabloid;
+                            break;
+                        case "LETTER":
+                        default:
+                            selectedFormat = PaperFormat.Letter;
+                            break;
+                    }
+                    pdfOptions.Format = selectedFormat;
                 }
                 else
                 {
-                    await page.SetViewportAsync(new ViewPortOptions { Width = width });
-                    await page.AddStyleTagAsync(new AddTagOptions { Content = "@page {size: landscape }" });
-                    pdfOptions.Width = $"{width}px";
-                    pdfOptions.MarginOptions.Right = "0.5in";
+                    if (width < 900)
+                    {
+                        pdfOptions.Format = PaperFormat.Letter;
+                        pdfOptions.Landscape = false;
+                    }
+                    else
+                    {
+                        await page.SetViewportAsync(new ViewPortOptions { Width = width });
+                        await page.AddStyleTagAsync(new AddTagOptions { Content = "@page {size: landscape }" });
+                        pdfOptions.Width = $"{width}px";
+                        pdfOptions.MarginOptions.Right = "0.5in";
+                    }
                 }
+                await page.EmulateMediaTypeAsync(MediaType.Screen);
+                await page.EvaluateExpressionAsync("$('.report-inner').css('transform','none')");
+                await page.PdfAsync(pdfFile, pdfOptions);
+                return File.ReadAllBytes(pdfFile);
             }
-            await page.EvaluateExpressionAsync("$('.report-inner').css('transform','none')");
-            await page.PdfAsync(pdfFile, pdfOptions);
-            await page.DisposeAsync();
-            await browser.DisposeAsync();
-            return File.ReadAllBytes(pdfFile);
+            catch
+            {
+                throw;
+            }
+            finally
+            {
+                if (page != null) await page.DisposeAsync();
+                if (browser != null) await browser.DisposeAsync();
+            }
         }
 
         public static byte[] GetCombinePdfFile(List<byte[]> pdfFiles)

@@ -18,7 +18,7 @@ var manageViewModel = function (options) {
 	self.DbConfig = {};
 	self.UserAndRolesConfig = {};
 	self.Functions = new customFunctionManageModel(options, self.keys);
-	self.pager = new pagerViewModel({autoPage: true});
+	self.pager = new pagerViewModel({autoPage: true, pageSize: 10});
 	self.pager.totalRecords(self.Tables.model().length);
 	self.onlyApi = ko.observable(options.onlyApi);
 	self.ChartDrillDownData = null;
@@ -33,21 +33,43 @@ var manageViewModel = function (options) {
 	self.loadFromDatabase = function() {
 		bootbox.confirm("Confirm loading all Tables and Views from the database? Note: This action will discard unsaved changes and it may take some time.", function (r) {
 			if (r) {
-				window.location.href = window.location.pathname + "?onlyApi=false&" + $.param({ 'databaseApiKey': self.currentConnectionKey() })
+				ajaxcall({ url: options.loadSchemaUrl + '?databaseApiKey=' + self.currentConnectionKey() + '&onlyApi=false' }).done(function (model) {
+					self.onlyApi(false);
+					self.Tables.refresh(model);
+				});
 			}
 		});
-
 	}
 
 	self.refreshAll = function () {
 		var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
-		ajaxcall({ url: options.loadSchemaUrl + '?databaseApiKey=' + (queryParams.databaseApiKey || '') + '&onlyApi=' + (queryParams.onlyApi === 'false' ? false : true) }).done(function (model) {
+		ajaxcall({ url: options.loadSchemaUrl + '?databaseApiKey=' + (queryParams.databaseApiKey || '') + '&onlyApi=' + self.onlyApi() }).done(function (model) {
 			self.Tables.refresh(model);
 			self.LoadJoins();
 			self.LoadCategories();
 			self.activeTable(null)
 		});
 	}
+
+	self.activeTable.subscribe(function (newValue) {
+		if (!newValue) return;
+		setTimeout(function () {
+			const details = document.getElementById('tableDetails');
+			if (details) {
+				details.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			}
+		}, 100);
+	});
+
+	self.activeProcedure.subscribe(function (newValue) {
+		if (!newValue) return;
+		setTimeout(function () {
+			const details = document.getElementById('procDetails');
+			if (details) {
+				details.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			}
+		}, 100);
+	});
 
 	self.Tables.filteredTables.subscribe(function (x) {		
 		self.pager.totalRecords(x.length);
@@ -606,22 +628,9 @@ var manageViewModel = function (options) {
 	}
 
 	self.editAllowedRoles = ko.observable();
-	self.newAllowedRole = ko.observable();
+	self.allRoles = ko.observableArray(); 
 	self.selectAllowedRoles = function (e) {
 		self.editAllowedRoles(e);
-	}
-
-	self.removeAllowedRole = function (e) {
-		self.editAllowedRoles().AllowedRoles.remove(e);
-	}
-
-	self.addAllowedRole = function () {
-		if (!self.newAllowedRole() || _.filter(self.editAllowedRoles().AllowedRoles(), function (x) { return x == self.newAllowedRole(); }).length > 0) {
-			toastr.error("Please add a new unique Role");
-			return;
-		}
-		self.editAllowedRoles().AllowedRoles.push(self.newAllowedRole());
-		self.newAllowedRole(null);
 	}
 
 	self.manageCategories = ko.observable();
@@ -1272,7 +1281,7 @@ var manageViewModel = function (options) {
 							table.Columns.forEach(c => c.Selected = ko.observable(true));
 						}
 
-						const tableMatch = _.some(self.Tables.model(), t => t.TableName() === tableName && t.Id() === tableId);
+						const tableMatch = _.some(self.Tables.model(), t => t.TableName() === tableName);
 
 						if (tableMatch) {
 							handleOverwriteConfirmation(tableName, function (action) {
@@ -1555,6 +1564,7 @@ var manageViewModel = function (options) {
 
 		ajaxcall({ url: options.getUsersAndRoles }).done(function (data) {
 			if (data.d) data = data.d;
+			self.allRoles(data.userRoles)
 			self.manageAccess = manageAccess(data);
 		});
 
@@ -2722,6 +2732,7 @@ var settingPageViewModel = function (options) {
 	self.useAltPivot = ko.observable(false);
 	self.dontXmlExport = ko.observable(false);
 	self.dontWordExport = ko.observable(false);
+	self.usePromptBuilder = ko.observable(true);
 	self.showPageSize = ko.observable(false);
 
 	self.appThemes = ko.observableArray([
@@ -2799,6 +2810,7 @@ var settingPageViewModel = function (options) {
 							useAltPivot: self.useAltPivot(),
 							dontXmlExport: self.dontXmlExport(),
 							dontWordExport: self.dontWordExport(),
+							usePromptBuilder: self.usePromptBuilder(),
 							showPageSize: self.showPageSize()
 						})
 					})
@@ -2847,12 +2859,13 @@ var settingPageViewModel = function (options) {
 				self.noFolders(settings.noFolders);
 				self.noDefaultFolder(settings.noDefaultFolder);
 				self.showEmptyFolders(settings.showEmptyFolders);
-				self.allowUsersToManageFolders(settings.allowUsersToManageFolders);
-				self.allowUsersToCreateReports(settings.allowUsersToCreateReports);
+				self.allowUsersToManageFolders(settings.allowUsersToManageFolders === false ? false : true);
+				self.allowUsersToCreateReports(settings.allowUsersToCreateReports === false ? false : true);
 				self.useAltPdf(settings.useAltPdf);
 				self.useAltPivot(settings.useAltPivot);
 				self.dontXmlExport(settings.dontXmlExport);
 				self.dontWordExport(settings.dontWordExport);
+				self.usePromptBuilder(settings.usePromptBuilder === false ? false : true);
 				self.showPageSize(settings.showPageSize);
 ;
 				//// Optionally, you can manually trigger change event for select elements
