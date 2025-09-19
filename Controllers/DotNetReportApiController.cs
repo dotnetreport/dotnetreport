@@ -82,6 +82,7 @@ namespace ReportBuilder.Web.Controllers
             public string method { get; set; }
             public string headerJson { get; set; }
             public bool useReportHeader { get; set; }
+            public string headerClientId { get; set; } = "";
 
         }
         [AllowAnonymous]
@@ -198,12 +199,6 @@ namespace ReportBuilder.Web.Controllers
             bool desc = false, string reportSeries = null, string pivotColumn = null, string pivotFunction = null, string reportData = null, bool subtotalMode = false, bool useAltPivot = false)
         {
             return await RunReport(reportSql, connectKey, reportType, pageNumber, pageSize, sortBy, desc, reportSeries, pivotColumn, pivotFunction, reportData, subtotalMode, useAltPivot);
-        }
-
-        public class SqlQuery
-        {
-            public string sql { get; set; } = "";
-            public List<KeyValuePair<string, string>> parameters { get; set; } = null;
         }
 
         [ValidateAntiForgeryToken]

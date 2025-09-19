@@ -4,7 +4,6 @@ using DocumentFormat.OpenXml.Wordprocessing;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using OfficeOpenXml;
-using PdfSharp;
 using PdfSharp.Drawing;
 using PdfSharp.Drawing.Layout;
 using PdfSharp.Pdf;
@@ -26,7 +25,6 @@ using A = DocumentFormat.OpenXml.Drawing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
 using System.Data.SqlClient;
-using ReportBuilder.Web.Models;
 using System.Web;
 using PuppeteerSharp;
 using PuppeteerSharp.Media;
@@ -810,7 +808,7 @@ namespace ReportBuilder.Web.Models
             }
             return jsonObj.ToString();
         }
-        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool loadHeader = true, string chartData = null,bool isexpanded=false,bool isSubReport=false)
+        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool loadHeader = true, string chartData = null, bool isexpanded = false, bool isSubReport = false)
         {
             RemoveColumnsBySubstring(dt, "__prm__");
             ws.Cells[rowstart, colstart].LoadFromDataTable(dt, loadHeader);
@@ -827,7 +825,7 @@ namespace ReportBuilder.Web.Models
                     picture.SetSize(400, 300); // Set the size of the image in pixels (width, height)
                 }
             }
-            int i = colstart; var isNumeric = false;int counter = 1;
+            int i = colstart; var isNumeric = false; int counter = 1;
             foreach (DataColumn dc in dt.Columns)
             {
                 var value = "";
@@ -912,7 +910,7 @@ namespace ReportBuilder.Web.Models
                         var cellValue = dt.Rows[rowIndex][dc.ColumnName]?.ToString();
                         if (!string.IsNullOrEmpty(cellValue))
                         {
-                            var increment = rowstart==3 ? 1 : 0;
+                            var increment = rowstart == 3 ? 1 : 0;
                             var hyperlinkAddress = formatColumn.LinkFieldItem.SendAsQueryParameter ? $"{formatColumn.LinkFieldItem.LinkToUrl}?{formatColumn.LinkFieldItem.QueryParameterName}={cellValue}" : formatColumn.LinkFieldItem.LinkToUrl;
                             ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = new Uri(hyperlinkAddress);
                             ws.Cells[rowIndex + rowstart + increment, i].Style.Font.UnderLine = true;
@@ -920,7 +918,7 @@ namespace ReportBuilder.Web.Models
                         }
                     }
                 }
-                if (formatColumn != null && formatColumn?.LinkFieldItem != null && formatColumn?.LinkFieldItem.LinksToReport != null &&  formatColumn?.LinkFieldItem.LinksToReport==true)
+                if (formatColumn != null && formatColumn?.LinkFieldItem != null && formatColumn?.LinkFieldItem.LinksToReport != null && formatColumn?.LinkFieldItem.LinksToReport == true)
                 {
                     for (int rowIndex = 0; rowIndex < dt.Rows.Count; rowIndex++)
                     {
@@ -1063,7 +1061,7 @@ namespace ReportBuilder.Web.Models
                         TableName = item.tableDbName,
                         DisplayName = item.tableName,
                         AllowedRoles = item.tableRoles.ToObject<List<string>>(),
-                        Categories= item.tableCategories != null ? ((JArray)item.tableCategories).ToObject<List<dynamic>>().Select(c => new CategoryViewModel { Id = c.CategoryId, Name = c.Name, Description = c.Description }).ToList() : new List<CategoryViewModel>(),
+                        Categories = item.tableCategories != null ? ((JArray)item.tableCategories).ToObject<List<dynamic>>().Select(c => new CategoryViewModel { Id = c.CategoryId, Name = c.Name, Description = c.Description }).ToList() : new List<CategoryViewModel>(),
                         DoNotDisplay = item.doNotDisplay,
                         CustomTable = item.customTable,
                         CustomTableSql = Convert.ToBoolean(item.customTable) == true ? DotNetReportHelper.Decrypt(Convert.ToString(item.customTableSql)) : "",
@@ -1960,7 +1958,7 @@ namespace ReportBuilder.Web.Models
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
             var dt = databaseConnection.ExecuteQuery(connectionString, sql, qry.parameters);
-            
+
             return (dt, qry, sqlFields);
         }
 
@@ -2118,7 +2116,7 @@ namespace ReportBuilder.Web.Models
                 return xp.GetAsByteArray();
             }
         }
-        
+
         public static ReportHeaderColumn GetColumnFormatting(DataColumn dc, List<ReportHeaderColumn> columns, ref string value)
         {
             var isCurrency = false;
@@ -2185,7 +2183,7 @@ namespace ReportBuilder.Web.Models
             return new XSolidBrush(xColor);
         }
 
-       
+
         private static List<string> WrapText(XGraphics gfx, string text, XRect rect, XFont font, XStringFormat format)
         {
             List<string> lines = new List<string>();
@@ -2271,7 +2269,7 @@ namespace ReportBuilder.Web.Models
         }
 
         public async static Task<byte[]> GetPdfFileAlt(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, string pageSize = "",string pageOrientation="")
+            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, string pageSize = "", string pageOrientation = "")
         {
 
             var dt = await BuildExportData(reportSql, connectKey, expandSqls, columns, pivot, pivotColumn, pivotFunction);
@@ -2507,7 +2505,7 @@ namespace ReportBuilder.Web.Models
         public static async Task<byte[]> GetWordFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
             string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, string pageSize = "", string pageOrientation = "")
         {
-            var dt = await BuildExportData(reportSql, connectKey, expandSqls, columns, pivot, pivotColumn, pivotFunction);           
+            var dt = await BuildExportData(reportSql, connectKey, expandSqls, columns, pivot, pivotColumn, pivotFunction);
             var subTotals = new decimal[dt.Columns.Count];
 
             using (MemoryStream memStream = new MemoryStream())
@@ -2613,13 +2611,13 @@ namespace ReportBuilder.Web.Models
                                     heightTwips = (UInt32Value)(11 * 1440);
                                     break;
                             }
-                            string safeOrientation = string.IsNullOrEmpty(pageOrientation)? "PORTRAIT": pageOrientation.ToUpper();
+                            string safeOrientation = string.IsNullOrEmpty(pageOrientation) ? "PORTRAIT" : pageOrientation.ToUpper();
                             // WORD Section Properties with Orientation
                             var wordPageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize()
                             {
                                 Width = widthTwips,
                                 Height = heightTwips,
-                                Orient = (safeOrientation == "LANDSCAPE")? PageOrientationValues.Landscape: PageOrientationValues.Portrait
+                                Orient = (safeOrientation == "LANDSCAPE") ? PageOrientationValues.Landscape : PageOrientationValues.Portrait
                             };
                             // Landscape → swap width/height
                             if (safeOrientation == "LANDSCAPE")
@@ -2819,9 +2817,10 @@ namespace ReportBuilder.Web.Models
             int averageCharWidthInTwips = 120;
             return text.Length * averageCharWidthInTwips;
         }
+
         public static byte[] GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
-                      string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false, string expandSqls = null,
-                      string pivotColumn = null, string pivotFunction = null, bool imageOnly = false, bool debug = false,string pageSize="",string pageOrientation="")
+                    string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false, string expandSqls = null,
+                    string pivotColumn = null, string pivotFunction = null, bool imageOnly = false, bool debug = false, string pageSize = "", string pageOrientation = "")
         {
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
             Task.Run(async () =>
@@ -2837,14 +2836,14 @@ namespace ReportBuilder.Web.Models
                 if (File.Exists(executablePath)) break;
             }
 
-            try
+            var file = Task.Run(async () =>
             {
-                var file = Task.Run(async () =>
-                {
-                    var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = true, ExecutablePath = executablePath });
-                    var page = await browser.NewPageAsync();
-                    await page.SetRequestInterceptionAsync(true);
+                var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = true, ExecutablePath = executablePath });
+                var page = await browser.NewPageAsync();
+                await page.SetRequestInterceptionAsync(true);
 
+                try
+                {
                     var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
                     IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
                     var data = GetDataTable(reportSql, connectKey);
@@ -2868,8 +2867,8 @@ namespace ReportBuilder.Web.Models
                         }
                         var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
                         sqlFields = sqlFields
-                            .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
-                            .ToList();
+                                .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
+                                .ToList();
                         sqlFields.AddRange(dt.Columns.Cast<DataColumn>().Skip(sqlFields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
                     }
 
@@ -2908,21 +2907,21 @@ namespace ReportBuilder.Web.Models
                     formData.AppendLine("</body></html>");
 
                     page.Request += async (sender, e) =>
-                    {
-                        if (formPosted)
                         {
-                            await e.Request.ContinueAsync();
-                            return;
-                        }
+                            if (formPosted)
+                            {
+                                await e.Request.ContinueAsync();
+                                return;
+                            }
 
-                        await e.Request.RespondAsync(new ResponseData
-                        {
-                            Status = System.Net.HttpStatusCode.OK,
-                            Body = formData.ToString()
-                        });
+                            await e.Request.RespondAsync(new ResponseData
+                            {
+                                Status = System.Net.HttpStatusCode.OK,
+                                Body = formData.ToString()
+                            });
 
-                        formPosted = true;
-                    };
+                            formPosted = true;
+                        };
 
                     await page.GoToAsync(printUrl, new NavigationOptions
                     {
@@ -3022,19 +3021,23 @@ namespace ReportBuilder.Web.Models
                             pdfOptions.MarginOptions.Right = "0.5in";
                         }
                     }
+                    await page.EmulateMediaTypeAsync(MediaType.Screen);
                     await page.EvaluateExpressionAsync("$('.report-inner').css('transform','none')");
                     await page.PdfAsync(pdfFile, pdfOptions);
-                    await page.DisposeAsync();
-                    await browser.DisposeAsync();
                     return File.ReadAllBytes(pdfFile);
-                }).GetAwaiter().GetResult();
+                }
+                catch
+                {
+                    throw;
+                }
+                finally
+                {
+                    if (page != null) await page.DisposeAsync();
+                    if (browser != null) await browser.DisposeAsync();
+                }
+            }).GetAwaiter().GetResult();
+            return file;
 
-                return file;
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
         }
 
         public static byte[] GetCombinePdfFile(List<byte[]> pdfFiles)
