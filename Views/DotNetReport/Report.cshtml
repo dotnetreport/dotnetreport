@@ -39,7 +39,7 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
                 AllSqlQuries: "@Model.ReportSql",
                 userSettings: data,
                 dataFilters: data.dataFilters,
-                runExportUrl: "",
+                runExportUrl: "/DotnetReportApi/",
                 printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, this.Request.Url.Scheme)",
                 getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")'
             });
@@ -47,20 +47,17 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
                 vm.loadProcs().done(function () {
                     vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {
                         ko.applyBindings(vm);
-                        vm.headerDesigner.resizeCanvas();
                     });
                 });
 
                 $(window).resize(function () {
                     vm.DrawChart();
-                    vm.headerDesigner.resizeCanvas();
                 });
             });
         });
 
     </script>
 }
-
 
 <!-- Report Builder -->
 <div class="modal modal-fullscreen" id="modal-reportbuilder" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="padding-right: 0px !important;">
@@ -141,7 +138,7 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
                                         <i class="fa fa-file-excel-o"></i> Excel (Expanded)
                                     </a>
                                 </li>
-                                <li>
+                                <li data-bind="hidden: appSettings.dontWordExport">
                                     <a class="dropdown-item" href="#" data-bind="click: downloadWord">
                                         <span class="fa fa-file-word-o"></span> Word
                                     </a>
@@ -259,17 +256,15 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
                                 <div class="report-container">
                                     <div class="report-inner">
                                         <div data-bind="template: 'chart-settings', data: $data"></div>
-                                        <div class="canvas-container">
-                                            <canvas id="report-header" width="900" height="120" data-bind="visible: useReportHeader"></canvas>
+                                        <div data-bind="visible: UseReportHeader">
+                                            <div id="report-header" width="900" height="120" data-bind="html: headerDesigner.headerHtml"></div>
                                         </div>
                                         <h2 data-bind="text: ReportName"></h2>
                                         <p data-bind="html: ReportDescription">
                                         </p>
 
                                         <div data-bind="with: ReportResult" class="report-expanded-scroll">
-                                            <div data-bind="visible: !ReportData()">
-                                                <div class="report-spinner"></div>
-                                            </div>
+                                            <div class="report-spinner" data-bind="visible: !ReportData()"></div>
                                             <div data-bind="template: 'report-template', data: $data"></div>
                                         </div>
                                     </div>

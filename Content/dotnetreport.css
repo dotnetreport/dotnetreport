@@ -24,7 +24,7 @@
 .list-overflow-auto {
     height: 90%;
     overflow-y: auto;
-    overflow-x: hidden;
+    overflow-x: auto;
 }
 
 .list-report li {
@@ -246,13 +246,13 @@
 
     .report-container > .report-inner {
         padding: 25px 25px 25px 25px;
-        background: #fff;
         margin-bottom: 38px;
     }
 
 .report-view {
     margin: 0 auto;
-    /*max-width: 1200px;*/
+    overflow-x: auto;
+    width: 100%;
 }
 
 @media(max-width: 992px) {
@@ -291,14 +291,12 @@
     right: 0;
     bottom: 32px;
     left: 0;
-    background-color: #888;
 }
 
 .report-menubar {
     z-index: 2;
     width: 100%;
     overflow: hidden;
-    background-color: #ddd;
 }
 
 .btn {
@@ -547,6 +545,13 @@ select.is-invalid ~ span .select2-selection {
         cursor: pointer;
     }
 
+    .search-input a {
+        background-color: transparent;
+        color: #2ba6cb !important;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
 .hint-input {
     outline: none;
     border: 1px solid #eee;
@@ -735,26 +740,22 @@ select.is-invalid ~ span .select2-selection {
     margin: 20px auto;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     font-family: 'Arial', sans-serif;
-    color: #333;
-    background-color: #f4f4f4;
 }
 
 .report-inner {
     padding: 30px;
+    overflow-x: auto;
+    overflow-y: hidden; 
+    white-space: nowrap;
+    max-width: 100%; 
 }
 
 .report-view {
     margin: 0 auto;
 }
 
-.report-canvas {
-    background-color: #fafafa;
-}
-
 .report-menubar {
     padding: 10px 15px;
-    background-color: #e9ecef;
-    border-bottom: 1px solid #ddd;
 }
 
 .styled-select {
@@ -1498,13 +1499,15 @@ tfoot tr.sub-total {
 .chart-settings-panel {
     position: absolute;
     width: 260px;
-    background: #fff;
     border-radius: 5px;
     z-index: 100;
     top: 0;
     left: auto;
     right: 0;
     box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.15);
+    max-height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
     .chart-settings-panel h6 {
@@ -1554,4 +1557,127 @@ tfoot tr.sub-total {
 
 .font-size-input {
     width: 50px;
+}
+
+#search-input:empty::before {
+    content: attr(data-placeholder);
+    color: #999;
+    display: block;
+    pointer-events: none;
+}
+
+#search-input:focus:empty::before {
+    content: attr(data-placeholder);
+}
+.toggle-icon {
+    background-color: white;
+    color: black;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 12px;
+}
+.toggle-icon:hover {
+    background-color: #f0f0f0;
+}
+
+/* Override jQuery UI Datepicker Prev/Next buttons */
+.ui-datepicker .ui-datepicker-header {
+    background: transparent;
+    border: none;
+    color: inherit;
+    font-weight: 500;
+    text-align: center;
+}
+
+.ui-datepicker .ui-datepicker-prev,
+.ui-datepicker .ui-datepicker-next {
+    top: 0.5rem;
+    background: none;
+    border: none;
+}
+
+    .ui-datepicker .ui-datepicker-prev span,
+    .ui-datepicker .ui-datepicker-next span {
+        display: none;
+    }
+
+    .ui-datepicker .ui-datepicker-prev::after,
+    .ui-datepicker .ui-datepicker-next::after {
+        content: '';
+        display: block;
+        width: 0;
+        height: 0;
+        margin: auto;
+        border-style: solid;
+    }
+
+    .ui-datepicker .ui-datepicker-prev::after {
+        border-width: 6px 8px 6px 0;
+        border-color: transparent #333 transparent transparent;
+    }
+
+    .ui-datepicker .ui-datepicker-next::after {
+        border-width: 6px 0 6px 8px;
+        border-color: transparent transparent transparent #333;
+    }
+}
+
+.card-view {
+    float: left;
+    margin: 10px;
+    padding: 15px;    
+}
+
+.html-report-table-transposed td.sticky-col {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+}
+
+.html-report-table-standard th.sticky-row {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+}
+
+@media print {
+    @page {
+        size: auto; 
+        margin: 10mm;
+    }
+    body * {
+        visibility: hidden !important;
+    }
+
+    .grid-stack,
+    .grid-stack * {
+        visibility: visible !important;
+    }
+
+    .grid-stack {
+        position: absolute !important;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+
+    ::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+.note-popover {
+    position: absolute !important;
+}
+.note-popover-content {
+    padding: 2px;
+}
+.note-popover .popover-arrow {
+    position: absolute !important;
 }

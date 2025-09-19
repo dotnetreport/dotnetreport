@@ -24,6 +24,14 @@
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
+        .table-name-label {
+            display: inline-block;
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            vertical-align: middle;
+        }
     </style>
 }
 @section scripts{
@@ -69,12 +77,16 @@
                     getAppSettingUrl: '/ReportApi/GetAccountSettings',
                     saveAppSettingUrl: '/ReportApi/ChangeAccountSettings',
                     reportsApiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")',
+                    runReportApiUrl: '@Url.Action("RunReportApi", "DotNetReportApi")',
+                    reportWizard: $("#modal-reportbuilder"),
+                    lookupListUrl: '@Url.Action("GetLookupList", "DotNetReportApi")',
                     getUsersAndRoles: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")',
                     searchProcUrl: '@Url.Action("SearchProcedure", "DotNetReportApi")',
                     getSchemaFromSql: '@Url.Action("GetSchemaFromSql", "DotNetReportApi")',
                     apiUrl: '@Url.Action("CallPostReportApi", "DotNetReportApi")',
                     getPreviewFromSqlUrl: "@Url.Action("GetPreviewFromSql", "DotNetReportApi")",
-                    onlyApi: queryParams.onlyApi !== 'false'
+                    onlyApi: queryParams.onlyApi !== 'false',
+                    loadSchemaUrl: '@Url.Action("LoadSetupSchema", "DotNetReportApi")'
                 };
 
                 var vm = new manageViewModel(options);
@@ -96,16 +108,22 @@
     <p>
         You can select and manage display names for the Tables and Columns you would like to allow in Dotnet Report Builder.
     </p>
-    <div class="alert alert-danger">
-        Do not expose this Setup Tool to end users who should not have access to it. Ideally, only Developers should be given access to this utility.
+    <div class="alert alert-danger d-flex justify-content-between align-items-center">
+        <div>
+            Do not expose this Setup Tool to end users who should not have access to it. Ideally, only Developers should be given access to this utility.
+        </div>
+        <button class="btn btn-primary ms-3" data-bind="click: refreshAll" title="Reload all Table and Columns">
+            <i class="fa fa-refresh"></i> Refresh
+        </button>
     </div>
+
     <div data-bind="visible: false;">
         Loading...
     </div>
 
-    <div>
+    <div class="d-flex justify-content-between align-items-center">
         <!-- Nav tabs -->
-        <ul class="nav nav-tabs" role="tablist">
+        <ul class="nav nav-tabs flex-grow-1" role="tablist">
             <li role="presentation" class="nav-item">
                 <a class="nav-link active" href="#tablesfields" aria-controls="home" role="tab" data-bs-toggle="tab" data-bind="click: function() { customTableMode(false); activeTable(null);}">
                     <i class="fa fa-database"></i> Database Tables
@@ -138,7 +156,7 @@
             </li>
             <li role="presentation" class="nav-item">
                 <a class="nav-link" href="#manageaccess" aria-controls="manageaccess" role="tab" data-bs-toggle="tab">
-                    <i class="fa fa-user"></i> Manage Access
+                    <i class="fa fa-folder"></i> Manage Reports
                 </a>
             </li>
             <li role="presentation" class="nav-item">
@@ -199,6 +217,7 @@
                     <div data-bind="with: settings">
                         <div class="row">
                             <div class="col-md-6">
+                                <h6 class="mt-2 mb-2">Admin Options</h6>
                                 <div class="form-check">
                                     <input type="checkbox" class="form-check-input" id="useClientIdInAdmin" data-bind="checked: useClientIdInAdmin">
                                     <label class="form-check-label" for="useClientIdInAdmin">Use Client ID in Admin</label>
@@ -209,13 +228,31 @@
                                     <label class="form-check-label" for="useSqlBuilderInAdminMode">Use SQL Builder in Admin Mode</label>
                                     <small class="text-muted d-block">Allows SQL query builder access in admin mode.</small>
                                 </div>
+                                <h6 class="mt-3 mb-2">Customization</h6>
                                 <div class="form-check">
                                     <input type="checkbox" class="form-check-input" id="useSqlCustomField" data-bind="checked: useSqlCustomField">
                                     <label class="form-check-label" for="useSqlCustomField">Use SQL in Custom Field</label>
                                     <small class="text-muted d-block">Allows the use of SQL expressions in custom fields.</small>
                                 </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: usePromptBuilder">
+                                    <label class="form-check-label">Use AI aided, prompt based Report Builder</label>
+                                    <small class="text-muted d-block">Let non Admin users create reports using the AI aided Prompt based builder</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: useAltPivot">
+                                    <label class="form-check-label">Pivot with Drilldown</label>
+                                    <small class="text-muted d-block">Use alternate Pivot method that doesn’t use SQL’s PIVOT.<br>Allows drilldown, but may be slower.</small>
+                                </div>
+                                <h6 class="mt-3 mb-2">Report Options</h6>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="allowUsersToCreateReports" data-bind="checked: allowUsersToCreateReports">
+                                    <label class="form-check-label" for="allowUsersToCreateReports">Allow All Users to Create Reports</label>
+                                    <small class="text-muted d-block">Permits users to generate and customize reports.</small>
+                                </div>
                             </div>
                             <div class="col-md-6">
+                                <h6 class="mt-2 mb-2">Folder Options</h6>
                                 <div class="form-check" data-bind="visible: false">
                                     <input type="checkbox" class="form-check-input" id="noFolders" data-bind="checked: noFolders">
                                     <label class="form-check-label" for="noFolders">No Folders</label>
@@ -234,30 +271,37 @@
                                 <div class="form-check">
                                     <input type="checkbox" class="form-check-input" id="allowUsersToManageFolders" data-bind="checked: allowUsersToManageFolders">
                                     <label class="form-check-label" for="allowUsersToManageFolders">Allow All Users to Manage Folders</label>
-                                    <small class="text-muted d-block">Grants users permission to organize and manage folders even when not in Admin Mode.</small>
+                                    <small class="text-muted d-block">Grants permission to organize and manage folders.</small>
                                 </div>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" id="allowUsersToCreateReports" data-bind="checked: allowUsersToCreateReports">
-                                    <label class="form-check-label" for="allowUsersToCreateReports">Allow All Users to Create Reports</label>
-                                    <small class="text-muted d-block">Permits users to generate and customize reports even when not in Admin Mode.</small>
-                                </div>
+                                <h6 class="mt-3 mb-2">Export Options</h6>
                                 <div class="form-check">
                                     <input type="checkbox" class="form-check-input" data-bind="checked: useAltPdf">
                                     <label class="form-check-label">PDF Export without Chromium</label>
-                                    <small class="text-muted d-block">Use alternate PDF export method that doesn't rely on Chromium'.</small>
+                                    <small class="text-muted d-block">Use alternate PDF export method that doesn’t rely on Chromium.</small>
                                 </div>
                                 <div class="form-check">
                                     <input type="checkbox" class="form-check-input" data-bind="checked: dontXmlExport">
                                     <label class="form-check-label">Hide XML Export option</label>
-                                    <small class="text-muted d-block">Remove XML Export option, as it's not common for all users'.</small>
+                                    <small class="text-muted d-block">Remove XML Export option.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: dontWordExport">
+                                    <label class="form-check-label">Hide Word Export option</label>
+                                    <small class="text-muted d-block">Remove Word Export option.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: showPageSize">
+                                    <label class="form-check-label">Show Page Size on PDF & Word export</label>
+                                    <small class="text-muted d-block">Display document dimensions in exported PDF & Word.</small>
                                 </div>
                             </div>
                         </div>
-                        <button type="button" id="saveAppSettings" class="btn btn-primary" data-bind="click: saveAppSettings">Save</button>
+                        <div class="mt-3">
+                            <button type="button" id="saveAppSettings" class="btn btn-primary" data-bind="click: saveAppSettings">Save</button>
+                        </div>
                     </div>
                 </div>
             </div>
-
         </div>
 
         <div role="tabpanel" class="tab-pane active" id="tablesfields">
@@ -272,26 +316,42 @@
             </p>
 
             <div data-bind="with: Tables">
-                <input type="text" class="form-control input-sm" placeholder="Filter Tables for..." data-bind="value: tableFilter, valueUpdate: 'afterkeydown'" style="float: left; width: 180px; margin-right: 5px;">
-                <button class="btn btn-sm" data-bind="click: clearTableFilter,  visible: tableFilter()!='' && tableFilter()!=null"><span class="fa fa-remove"></span></button>
-                <button class="btn btn-sm" data-bind="click: toggleShowAll, hidden: $root.customTableMode() || $root.onlyApi(), text: usedOnly() ? 'Show all' : 'Show used only'">Show used only</button>
+                <input type="text" class="form-control input-sm" placeholder="Filter Tables..." data-bind="value: tableFilter, valueUpdate: 'afterkeydown'" style="float: left; width: 180px; margin-right: 5px;">
+                <button class="btn btn-outline-secondary btn-sm" data-bind="click: clearTableFilter,  visible: tableFilter()!='' && tableFilter()!=null"><span class="fa fa-remove"></span></button>
+                <button class="btn btn-outline-secondary btn-sm" data-bind="click: toggleShowAll, hidden: $root.customTableMode() || $root.onlyApi(), text: usedOnly() ? 'Show all' : 'Show used only'">Show used only</button>
                 <button class="btn btn-sm btn-primary" data-bind="click: $root.customSql.addNewCustomSqlTable, visible: $root.customTableMode">Add New Custom Table</button>
                 <button class="btn btn-sm btn-primary" data-bind="click: $root.loadFromDatabase, hidden: $root.customTableMode() || !$root.onlyApi()">
                     <span class="fa fa-database"></span> Load all Database Tables
                 </button>
-                <button class="btn btn-sm btn-primary" data-bind="click: $root.visualizeJoins">Visualize Joins</button>&nbsp;
-                <button class="btn btn-sm btn-primary" data-bind="hidden: $root.customTableMode()" data-bs-toggle="modal" data-bs-target="#uploadTablesFileModal" aria-haspopup="true" aria-expanded="false">
+                <button class="btn btn-sm btn-primary" data-bind="click: $root.visualizeJoins"><span class="fa fa-arrows-h"></span> Visualize Joins</button>&nbsp;
+                <button class="btn btn-sm btn-primary"
+                        data-bind="click: function() { exportTablesJson(true) }, visible: $root.customTableMode">
+                    <span class="fa fa-download"></span> Export Custom Tables
+                </button>
+                <button class="btn btn-sm btn-primary"
+                        data-bind="click: function() { exportTablesJson(false) }, visible: !$root.customTableMode()">
+                    <span class="fa fa-download"></span> Export Tables/Views
+                </button>
+
+                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadTablesFileModal" aria-haspopup="true" aria-expanded="false">
                     <span class="fa fa-file"></span> Import Tables/Views
                 </button>
                 <button class="btn btn-sm btn-primary" title="Manage Categories" data-bs-toggle="modal" data-bs-target="#category-modal">
                     <span class="fa fa-server"></span> Manage Categories
+                </button>
+                <button class="btn btn-sm btn-primary" data-bind="click: selectAll, visible: !$root.onlyApi()">
+                    <span class="fa fa-check"></span> Select All Tables
+                </button>
+                <button class="btn btn-sm btn-primary" data-bind="click: function() { $root.saveChanges($root.customTableMode()) }">
+                    <span class="fa fa-floppy-o"></span> Save All Tables
                 </button>
             </div>
             <div class="clearfix"></div>
             <hr />
 
             <div class="row">
-                <div class="col-3 border-end" style="height: 100vh; overflow-y: auto;">
+                <div class="col-12 col-md-4 col-lg-3 border-end" style="height: 100vh; overflow-y: auto;">
+
                     <div class="row">
                         <div data-bind="ifnot: $root.customTableMode">
                             <div class="alert alert-info">
@@ -306,7 +366,7 @@
                                 <div class="checkbox pull-left">
                                     <label>
                                         <input type="checkbox" data-bind="checked: Selected" title="Check to use in Dotnet Report, uncheck to Remove">
-                                        <span data-bind="text: TableName, click: function() { $root.activeTable($data); }" style="cursor: pointer"></span>
+                                        <span data-bind="text: TableName,attr: { title: TableName }, click: function() { $root.activeTable($data); }" class="table-name-label" style="cursor: pointer"></span>
                                         <span data-bind="visible: IsView" class="label-sm">(view)</span>
                                     </label>
                                     <button class="btn btn-sm" title="Save this Table" data-bind="click: function() { saveTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey); }">
@@ -330,7 +390,7 @@
 
                 </div>
 
-                <div class="col-9">
+                <div class="col-12 col-md-8 col-lg-9" id="tableDetails">
                     <div data-bind="visible: pagedTables().length === 0">
                         <br />
                         <svg style="width:40px;float:left;transform:rotate(-45deg) translateY(6px);transform-origin:center center;" fill="#000000" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="icon flat-line"><g stroke-width="0"></g><g stroke-linecap="round" stroke-linejoin="round" stroke="#CCCCCC" stroke-width="0.048"></g><g><path d="M18,21A13.17,13.17,0,0,1,9,8.51V3" style="fill:none;stroke:#000000;stroke-linecap:round;stroke-linejoin:round;stroke-width:2;"></path><polyline points="12 6 9 3 6 6" style="fill:none;stroke:#000000;stroke-linecap:round;stroke-linejoin:round;stroke-width:2;"></polyline></g></svg>
@@ -357,6 +417,9 @@
                                 </button>
                                 <button class="btn btn-sm" title="Preview this Table" data-bind="click: function() { previewTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey); }">
                                     <i class="fa fa-table"></i> Preview Data
+                                </button>
+                                <button class="btn btn-sm btn-danger" title="Delete this Table" data-bind="click: function() { deleteTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey); }">
+                                    <i class="fa fa-trash"></i> Remove Table
                                 </button>
                             </div>
                             <div class="card-body">
@@ -432,122 +495,140 @@
             <p>
                 Setup your Database Relations for Dotnet Report to produce dynamic queries
             </p>
-            <button class="btn btn-sm btn-primary" data-bind="click: AddAllRelations">Auto Add Joins</button>
-            <button class="btn btn-sm btn-primary" data-bind="click: AddJoin">Add new Join</button>&nbsp;
-            <button class="btn btn-sm btn-primary" data-bind="click: SaveJoins">Save Joins</button>&nbsp;
-            <button class="btn btn-sm btn-primary" data-bind="click: visualizeJoins">Visualize Joins</button>&nbsp;
-            <button class="btn btn-sm btn-primary" data-bind="click: DeleteVisibleJoins">Delete Joins</button>&nbsp;
-            <button class="btn btn-sm btn-primary" data-bind="click: ExportJoins">Export Joins</button>&nbsp;
-            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadJoinsFileModal" aria-haspopup="true" aria-expanded="false">
-                <span class="fa fa-file"></span> Import Joins
+            <button class="btn btn-sm btn-primary" data-bind="click: AddAllRelations">
+                <span class="fa fa-magic"></span> Auto Add Joins
             </button>
-            <br />
-            <br />
+
+            <button class="btn btn-sm btn-primary" data-bind="click: AddJoin">
+                <span class="fa fa-plus"></span> Add new Join
+            </button>
+
+            <button class="btn btn-sm btn-primary" data-bind="click: SaveJoins">
+                <span class="fa fa-save"></span> Save Joins
+            </button>
+
+            <button class="btn btn-sm btn-primary" data-bind="click: visualizeJoins">
+                <span class="fa fa-arrows-h"></span> Visualize Joins
+            </button>
+
+            <button class="btn btn-sm btn-primary" data-bind="click: DeleteVisibleJoins">
+                <span class="fa fa-trash"></span> Delete Joins
+            </button>
+
+            <button class="btn btn-sm btn-primary" data-bind="click: ExportJoins">
+                <span class="fa fa-download"></span> Export Joins
+            </button>
+
+            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadJoinsFileModal" aria-haspopup="true" aria-expanded="false">
+                <span class="fa fa-upload"></span> Import Joins
+            </button>
+            <hr />
             <div id="form-joins">
                 <div class="alert alert-warning" data-bind="visible: isDirty">
                     You have unsaved changes. Please be sure to click <b>Save Joins</b> to save your changes.
                 </div>
 
-                <table class="table">
-                    <thead data-bind="with: JoinFilters">
-                        <tr>
-                            <th>
-                                Primary Table
-                                <div class="input-group input-group-sm">
-                                    <input type="text" class="form-control input-sm" data-bind="value: primaryTable, valueUpdate: 'afterkeydown'" placeholder="Search...">
-                                    <span class="input-group-addon"><i class="fa fa-filter"></i></span>
-                                    <span class="btn btn-sm" data-bind="click: $root.sortByPrimaryTable">
-                                        <i class="fa" data-bind="css: $root.sortDirection.primaryTable() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
-                                    </span>
-                                </div>
-                            </th>
-                            <th>
-                                Field
-                                <div class="input-group input-group-sm">
-                                    <input type="text" class="form-control input-sm" data-bind="value: primaryField, valueUpdate: 'afterkeydown'" placeholder="Search...">
-                                    <span class="input-group-addon"><i class="fa fa-filter"></i></span>
-                                    <span class="btn btn-sm" data-bind="click: $root.sortByField">
-                                        <i class="fa" data-bind="css: $root.sortDirection.primaryField() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
-                                    </span>
-                                </div>
-                            </th>
-                            <th>
-                                Join Type
-                                <div class="input-group input-group-sm">
-                                    <input type="text" class="form-control input-sm" data-bind="value: joinType, valueUpdate: 'afterkeydown'" placeholder="Search...">
-                                    <span class="input-group-addon"><i class="fa fa-filter"></i></span>
-                                    <span class="btn btn-sm" data-bind="click: $root.sortByJoinType">
-                                        <i class="fa" data-bind="css: $root.sortDirection.joinType() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
-                                    </span>
-                                </div>
-                            </th>
-                            <th>
-                                Join Table
-                                <div class="input-group input-group-sm">
-                                    <input type="text" class="form-control input-sm" data-bind="value: joinTable, valueUpdate: 'afterkeydown'" placeholder="Search...">
-                                    <span class="input-group-addon"><i class="fa fa-filter"></i></span>
-                                    <span class="btn btn-sm" data-bind="click: $root.sortByJoinTable">
-                                        <i class="fa" data-bind="css: $root.sortDirection.joinTable() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
-                                    </span>
-                                </div>
-                            </th>
-                            <th>
-                                Field<div class="input-group input-group-sm">
-                                    <input type="text" class="form-control input-sm" data-bind="value: joinField, valueUpdate: 'afterkeydown'" placeholder="Search...">
-                                    <span class="input-group-addon"><i class="fa fa-filter"></i></span>
-                                    <span class="btn btn-sm" data-bind="click: $root.sortByJoinField">
-                                        <i class="fa" data-bind="css: $root.sortDirection.joinField() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
-                                    </span>
-                                </div>
-                            </th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr class="table-info" data-bind="if: showNewJoinRow">
-                            <td>
-                                <select class="form-select input-medium" data-bind="options: Tables.availableTables, optionsText: 'DisplayName', value: NewJoin().JoinTable, optionsCaption: 'Pick a table...'"></select>
-                            </td>
-                            <td data-bind="with: NewJoin().JoinTable">
-                                <select class="form-select" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsCaption: 'Pick a field...', optionsValue: 'ColumnName', value: $root.NewJoin().FieldName"></select>
-                            </td>
-                            <td>
-                                <select class="form-select input-small" data-bind="options: $root.JoinTypes, value: NewJoin().JoinType"></select>
-                            </td>
-                            <td>
-                                <select class="form-select input-medium" data-bind="options: NewJoin().OtherTables, optionsText: 'DisplayName', value: NewJoin().OtherTable, optionsCaption: 'Pick a table...'"></select>
-                            </td>
-                            <td data-bind="with: NewJoin().OtherTable">
-                                <select class="form-select" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsValue: 'ColumnName', value: $root.NewJoin().JoinFieldName, optionsCaption: 'Pick a field...'"></select>
-                            </td>
-                            <td>
-                                <button class="btn btn-sm btn-success" data-bind="click: ConfirmAddJoin">+ Add Join</button>
-                            </td>
-                        </tr>
-                    </tbody>
-                    <tbody data-bind="foreach: pagedJoins">
-                        <tr>
-                            <td>
-                                <select class="form-select input-medium" data-bind="options: $root.Tables.availableTables, optionsText: 'DisplayName', value: JoinTable"></select>
-                            </td>
-                            <td data-bind="with: JoinTable">
+                <div class="container-fluid">
+                    <div class="row fw-bold bg-light border-bottom py-2" data-bind="with: JoinFilters">
+                        <!-- Repeat for each column header -->
+                        <div class="col-md-2">
+                            Primary Table
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control" data-bind="value: primaryTable, valueUpdate: 'afterkeydown'" placeholder="Search..." />
+                                <span class="input-group-text"><i class="fa fa-filter"></i></span>
+                                <button class="btn btn-sm" data-bind="click: $root.sortByPrimaryTable">
+                                    <i class="fa" data-bind="css: $root.sortDirection.primaryTable() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            Field
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control" data-bind="value: primaryField, valueUpdate: 'afterkeydown'" placeholder="Search..." />
+                                <span class="input-group-text"><i class="fa fa-filter"></i></span>
+                                <button class="btn btn-sm" data-bind="click: $root.sortByField">
+                                    <i class="fa" data-bind="css: $root.sortDirection.primaryField() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            Join Type
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control" data-bind="value: joinType, valueUpdate: 'afterkeydown'" placeholder="Search...">
+                                <span class="input-group-text"><i class="fa fa-filter"></i></span>
+                                <span class="btn btn-sm" data-bind="click: $root.sortByJoinType">
+                                    <i class="fa" data-bind="css: $root.sortDirection.joinType() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            Join Table
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control" data-bind="value: joinTable, valueUpdate: 'afterkeydown'" placeholder="Search...">
+                                <span class="input-group-text"><i class="fa fa-filter"></i></span>
+                                <span class="btn btn-sm" data-bind="click: $root.sortByJoinTable">
+                                    <i class="fa" data-bind="css: $root.sortDirection.joinTable() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            Field<div class="input-group input-group-sm">
+                                <input type="text" class="form-control" data-bind="value: joinField, valueUpdate: 'afterkeydown'" placeholder="Search...">
+                                <span class="input-group-text"><i class="fa fa-filter"></i></span>
+                                <span class="btn btn-sm" data-bind="click: $root.sortByJoinField">
+                                    <i class="fa" data-bind="css: $root.sortDirection.joinField() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- New Join Row -->
+                    <div class="row bg-info bg-opacity-25 p-2" data-bind="visible: showNewJoinRow">
+                        <div class="col-md-2">
+                            <select class="form-select" data-bind="options: Tables.availableTables, optionsText: 'DisplayName', value: NewJoin().JoinTable, optionsCaption: 'Pick a table...'"></select>
+                        </div>
+                        <div class="col-md-2" data-bind="with: NewJoin().JoinTable">
+                            <select class="form-select" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsCaption: 'Pick a field...', optionsValue: 'ColumnName', value: $root.NewJoin().FieldName"></select>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select" data-bind="options: $root.JoinTypes, value: NewJoin().JoinType"></select>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select" data-bind="options: NewJoin().OtherTables, optionsText: 'DisplayName', value: NewJoin().OtherTable, optionsCaption: 'Pick a table...'"></select>
+                        </div>
+                        <div class="col-md-2" data-bind="with: NewJoin().OtherTable">
+                            <select class="form-select" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsValue: 'ColumnName', value: $root.NewJoin().JoinFieldName, optionsCaption: 'Pick a field...'"></select>
+                        </div>
+                        <div class="col-md-2 text-end">
+                            <button class="btn btn-success btn-sm" data-bind="click: ConfirmAddJoin">+ Add Join</button>
+                        </div>
+                    </div>
+
+                    <!-- Existing Join Rows -->
+                    <div data-bind="foreach: pagedJoins">
+                        <div class="row align-items-center border-bottom py-2">
+                            <div class="col-md-2">
+                                <select class="form-select" data-bind="options: $root.Tables.availableTables, optionsText: 'DisplayName', value: JoinTable"></select>
+                            </div>
+                            <div class="col-md-2" data-bind="with: JoinTable">
                                 <select class="form-select" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsValue: 'ColumnName', value: $parent.FieldName"></select>
-                            </td>
-                            <td>
-                                <select class="form-select input-small" data-bind="options: $root.JoinTypes, value: JoinType"></select>
-                            </td>
-                            <td>
-                                <select class="form-select input-medium" data-bind="options: OtherTables, optionsText: 'DisplayName', value: OtherTable"></select>
-                            </td>
-                            <td data-bind="with: OtherTable">
+                            </div>
+                            <div class="col-md-2">
+                                <select class="form-select" data-bind="options: $root.JoinTypes, value: JoinType"></select>
+                            </div>
+                            <div class="col-md-2">
+                                <select class="form-select" data-bind="options: OtherTables, optionsText: 'DisplayName', value: OtherTable"></select>
+                            </div>
+                            <div class="col-md-2" data-bind="with: OtherTable">
                                 <select class="form-select" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsValue: 'ColumnName', value: $parent.JoinFieldName"></select>
-                            </td>
-                            <td>
-                                <button class="btn btn-sm btn-secondary" data-bind="click: DeleteJoin">Delete</button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                            </div>
+                            <div class="col-md-2 text-end">
+                                <button class="btn btn-secondary btn-sm" data-bind="click: DeleteJoin">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="row mt-3">
                     <div class="d-flex flex-row align-items-center col-md-12" data-bind="with: joinsPager">
                         <div data-bind="template: 'pager-template', data: $data"></div>
@@ -562,20 +643,19 @@
             <p>
                 Select and manage Stored Procedures to use in Dotnet Report for more complex and coded Reports
             </p>
-            <hr />
-            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#procedure-modal">Add Stored Procs from database</button>
+            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#procedure-modal"><span class="fa fa-plus"></span> Add Stored Procs from database</button>
             <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadStoredProceduresFileModal" aria-haspopup="true" aria-expanded="false">
                 <span class="fa fa-file"></span> Import Stored Procedures
             </button>
-            <br />
+            <hr />
             <div data-bind="if: Procedures.savedProcedures().length == 0">
                 <br />
                 No Stored Procedures have been setup yet.
             </div>
             <div class="row" data-bind="if: Procedures.savedProcedures().length > 0">
                 <!-- Left Panel for Stored Procedure Names -->
-                <div class="col-3 border-end" style="height: 100vh; overflow-y: auto;">
-                    <div class="menu g-3" data-bind="foreach: Procedures.savedProcedures" style="margin-left: 20px; padding-top: 20px;">
+                <div class="col-12 col-md-4 col-lg-3 border-end" style="height: 100vh; overflow-y: auto;">
+                    <div class="menu g-3" data-bind="foreach: Procedures.savedProcedures"">
                         <div class="menu-category card">
                             <div class="card-header clearfix">
                                 <div class="pull-left">
@@ -599,7 +679,7 @@
                 </div>
 
                 <!-- Right Panel for Stored Procedure Details -->
-                <div class="col-9">
+                <div class="col-12 col-md-8 col-lg-9" id="procDetails">
                     <div data-bind="with: activeProcedure">
                         <div class="card my-3">
                             <div class="card-header">
@@ -657,77 +737,161 @@
 
         </div>
         <div id="manageaccess" class="tab-pane">
-            <b>Reports Access</b>
-            <p>
-                You can setup access to invidiual Reports here
-            </p>
-            <hr />
-            <div data-bind="foreach: reportsAndFolders" class="list-group">
-                <div class="list-group-item">
-                    <a data-bs-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }">
-                        <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: folder"></span>
-                    </a>
-                    <div class="collapse" data-bind="attr: {id: 'folder-' + folderId }">
-                        <div data-bind="if: reports.length == 0">
-                            No Reports found in this folder
+            <ul class="nav nav-tabs" id="accessTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="reports-tab" data-bs-toggle="tab" data-bs-target="#reportsAccess" type="button" role="tab">Reports Access</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="folders-tab" data-bs-toggle="tab" data-bs-target="#foldersAccess" type="button" role="tab">Folders Access</button>
+                </li>
+            </ul>
+            <div class="tab-content mt-3">
+                <div class="tab-pane fade show active" id="reportsAccess" role="tabpanel" aria-labelledby="reports-tab">
+                    <b>Reports Access</b>
+                    <p>You can setup access to individual Reports here</p>
+                    <div class="mb-2 d-flex gap-2">
+                        <div class="mb-2">
+                            <button class="btn btn-sm btn-primary" data-bind="click: function() { exportFoldersReportJson() }">
+                                <span class="fa fa-download"></span> Export Selected Reports
+                            </button>
                         </div>
-                        <ul class="list-group" data-bind="foreach: reports">
-                            <li class="list-group-item">
+                        <div class="mb-2">
+                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadFileModal">
+                                <span class="fa fa-upload"></span> Import Reports
+                            </button>
+                        </div>
+                        <div class="mb-2">
+                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#searchModal">
+                                <span class="fa fa-tasks"></span> Bulk Actions
+                            </button>
+                        </div>
+                    </div>
+                    <hr />
+                    <div data-bind="foreach: reportsAndFolders" class="list-group">
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <input type="checkbox" class="form-check-input"
+                                           data-bind="checked: allReportsSelected">
+                                    <label>
+                                        <a data-bs-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }">
+                                            <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: folder"></span>
+                                        </a>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="collapse" data-bind="attr: {id: 'folder-' + folderId }">
+                                <div data-bind="if: reports.length == 0">
+                                    No Reports found in this folder
+                                </div>
+                                <ul class="list-group" data-bind="foreach: reports">
+                                    <li class="list-group-item">
+                                        <div class="row">
+                                            <div class="col-md-3 border-end">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" data-bind="checked: isSelected" />
+                                                    <label class="list-group-item-heading">
+                                                        <span class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map'}" style="font-size: 14pt; color: #808080"></span>
+                                                        <span data-bind="text: reportName"></span>
+                                                    </label>
+                                                </div>
+                                                <p class="list-group-item-text small" data-bind="text: reportDescription"></p>
+                                                <div class="small" style="padding-top: 10px;">
+                                                    <b>Current Report Access</b><br />
+                                                    Manage by User <span class="badge text-bg-info text-white" data-bind="text: userId() ? userId() : 'Any User'"></span><br />
+                                                    View only by User <span class="badge text-bg-info text-white" data-bind="text: (viewOnlyUserId() ? viewOnlyUserId() : (userId() ? userId() : 'Any User'))"></span><br />
+                                                    <div data-bind="if: deleteOnlyUserId()">
+                                                        Delete only by User <span class="badge text-bg-info text-white" data-bind="text: deleteOnlyUserId()"></span><br />
+                                                    </div>
+                                                    <div data-bind="if: userRole()">
+                                                        Manage by Role <span class="badge text-bg-info text-white" data-bind="text: userRole() ? userRole() : 'Any Role'"></span><br />
+                                                    </div>
+                                                    <div data-bind="if: viewOnlyUserRole()">
+                                                        View only by Role <span class="badge text-bg-info text-white" data-bind="text: viewOnlyUserRole() ? viewOnlyUserRole() : 'Any Role'"></span><br />
+                                                    </div>
+                                                    <div data-bind="if: deleteOnlyUserRole()">
+                                                        Delete only by Role <span class="badge text-bg-info text-white" data-bind="text: deleteOnlyUserRole() ? deleteOnlyUserRole() : 'Same as Manage'"></span><br />
+                                                    </div>
+                                                    <div>
+                                                        For Client <span class="badge text-bg-info text-white" data-bind="text: clientId() ? clientId() : 'All Clients'"></span><br />
+                                                    </div>
+                                                </div>
+                                                <br /><br />
+                                                <button class="btn btn-sm btn-primary" data-bind="click: function() { changeAccess(!changeAccess())}, text: !changeAccess() ? 'Change Access': 'Cancel Changing Access', hidden: changeAccess">Change Access</button>
+                                            </div>
+                                            <div data-bind="if: changeAccess" class="col-md-9">
+                                                <div style="padding-left: 10px;">
+                                                    <div data-bind="template: {name: 'manage-access-template', data: $root.manageAccess }"></div>
+                                                    <br /><br />
+                                                    <button class="btn btn-sm btn-primary" data-bind="click: saveAccessChanges">Save Access Changes</button>
+                                                    <button class="btn btn-sm btn-primary" data-bind="click: function() { changeAccess(!changeAccess())}, text: !changeAccess() ? 'Change Access': 'Cancel Changing Access'">Change Access</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="foldersAccess" role="tabpanel" aria-labelledby="folders-tab">
+                    <b>Folders Access</b>
+                    <p>You can setup access to individual Folders here</p>                    
+                    <div class="mb-2 d-flex gap-2">
+                        <div class="mb-2">
+                            <button class="btn btn-sm btn-primary" data-bind="click: function() { exportFoldersJson() }">
+                                <span class="fa fa-download"></span> Export Selected Folders Access
+                            </button>
+                        </div>
+                    </div>
+                    <hr />
+                    <div data-bind="foreach: Folders" class="list-group">
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <input type="checkbox" data-bind="checked: isSelected" />                                    
+                                    <a data-bs-toggle="collapse" data-bind="attr: {href: '#folderAccess-' + Id }">
+                                        <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: FolderName"></span>
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="collapse" data-bind="attr: {id: 'folderAccess-' + Id }">
                                 <div class="row">
                                     <div class="col-md-3 border-end">
-                                        <div>
-                                            <label class="list-group-item-heading">
-                                                <span class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map'}" style="font-size: 14pt; color: #808080"></span>
-                                                <span data-bind="text: reportName"></span>
-                                            </label>
-                                        </div>
-                                        <p class="list-group-item-text small" data-bind="text: reportDescription"></p>
-
                                         <div class="small" style="padding-top: 10px;">
-                                            <b>Current Report Access</b><br />
-                                            Manage by User <span class="badge text-bg-info text-white" data-bind="text: userId ? userId : 'Any User'"></span>
-                                            <br />
-                                            View only by User <span class="badge text-bg-info text-white" data-bind="text: (viewOnlyUserId ? viewOnlyUserId : (userId ? userId : 'Any User'))"></span>
-                                            <br />
-                                            <div data-bind="if: deleteOnlyUserId">
-                                                Delete only by User <span class="badge text-bg-info text-white" data-bind="text: deleteOnlyUserId"></span>
-                                                <br />
+                                            <b>Current Folder Access</b><br />
+                                            Manage by User <span class="badge text-bg-info text-white" data-bind="text: UserId()? UserId() : 'Any User'"></span><br />
+                                            View only by User <span class="badge text-bg-info text-white" data-bind="text: (ViewOnlyUserId() ? ViewOnlyUserId() : (UserId() ? UserId() : 'Any User'))"></span><br />
+                                            <div data-bind="if: DeleteOnlyUserId()">
+                                                Delete only by User <span class="badge text-bg-info text-white" data-bind="text: DeleteOnlyUserId()"></span><br />
                                             </div>
-                                            <div data-bind="if: userRole">
-                                                Manage by Role <span class="badge text-bg-info text-white" data-bind="text: userRole ? userRole : 'Any Role'"></span>
-                                                <br />
+                                            <div data-bind="if: UserRoles()">
+                                                Manage by Role <span class="badge text-bg-info text-white" data-bind="text: UserRoles() ? UserRoles() : 'Any Role'"></span><br />
                                             </div>
-                                            <div data-bind="if: viewOnlyUserRole">
-                                                View only by Role <span class="badge text-bg-info text-white" data-bind="text: viewOnlyUserRole ? viewOnlyUserRole : 'Any Role'"></span>
-                                                <br />
+                                            <div data-bind="if: ViewOnlyUserRoles()">
+                                                View only by Role <span class="badge text-bg-info text-white" data-bind="text: ViewOnlyUserRoles() ? ViewOnlyUserRoles() : 'Any Role'"></span><br />
                                             </div>
-                                            <div data-bind="if: deleteOnlyUserRole">
-                                                Delete only by Role <span class="badge text-bg-info text-white" data-bind="text: deleteOnlyUserRole ? deleteOnlyUserRole : 'Same as Manage'"></span>
-                                                <br />
+                                            <div data-bind="if: DeleteOnlyUserRoles()">
+                                                Delete only by Role <span class="badge text-bg-info text-white" data-bind="text: DeleteOnlyUserRoles() ? DeleteOnlyUserRoles() : 'Same as Manage'"></span><br />
                                             </div>
                                             <div>
-                                                For Client <span class="badge text-bg-info text-white" data-bind="text: clientId ? clientId : 'All Clients'"></span>
-                                                <br />
+                                                For Client <span class="badge text-bg-info text-white" data-bind="text: ClientId() ? ClientId() : 'All Clients'"></span><br />
                                             </div>
                                         </div>
-                                        <br />
-                                        <br />
-                                        <button class="btn btn-sm btn-primary" data-bind="click: function() { changeAccess(!changeAccess())}, text: !changeAccess() ? 'Change Access': 'Cancel Changing Access', hidden: changeAccess">Change Access</button>
+                                        <br /><br />
+                                        <button class="btn btn-sm btn-primary" data-bind="click: function() { changeFolderAccess(!changeFolderAccess())}, text: !changeFolderAccess() ? 'Change Access': 'Cancel Changing Access', hidden: changeFolderAccess">Change Access</button>
                                     </div>
-
-                                    <div data-bind="if: changeAccess" class="col-md-9">
+                                    <div data-bind="if: changeFolderAccess" class="col-md-9">
                                         <div style="padding-left: 10px;">
                                             <div data-bind="template: {name: 'manage-access-template', data: $root.manageAccess }"></div>
-                                            <br />
-                                            <br />
-                                            <button class="btn btn-sm btn-primary" data-bind="click: saveAccessChanges">Save Access Changes</button>
-                                            <button class="btn btn-sm btn-primary" data-bind="click: function() { changeAccess(!changeAccess())}, text: !changeAccess() ? 'Change Access': 'Cancel Changing Access'">Change Access</button>
-
+                                            <br /><br />
+                                            <button class="btn btn-sm btn-primary" data-bind="click: saveFolderAccessChanges">Save Access Changes</button>
+                                            <button class="btn btn-sm btn-primary" data-bind="click: function() { changeFolderAccess(!changeFolderAccess())}, text: !changeFolderAccess() ? 'Change Access': 'Cancel Changing Access'">Change Access</button>
                                         </div>
                                     </div>
                                 </div>
-                            </li>
-                        </ul>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -849,42 +1013,49 @@
                     <div data-bind="visible: schedules().length === 0">
                         <i class="fa fa-exclamation-circle"></i> No scheduled Reports or Dashboards available.
                     </div>
-                    <div class="table-responsive" data-bind="if: schedules().length > 0">
-                        <table class="table table-condensed table-striped table-hover">
-                            <thead>
-                                <tr>
-                                    <th style="border-top: none;"><i class="fa fa-clock-o"></i> Schedule</th>
-                                    <th style="border-top: none;"><i class="fa fa-envelope"></i> Email To</th>
-                                    <th style="border-top: none;"><i class="fa fa-file"></i> Format</th>
-                                    <th style="border-top: none;"><i class="fa fa-history"></i> Last Run</th>
-                                    <th style="border-top: none;"><i class="fa fa-user"></i> User ID</th>
-                                    <th style="border-top: none;"><i class="fa fa-globe"></i> Time Zone</th>
-                                    <th style="border-top: none;"><i class="fa fa-cogs"></i> Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody data-bind="foreach: schedules">
-                                <tr>
-                                    <td colspan="7">
-                                        For <span class="text-muted" data-bind="text: DashboardId === 0 ? 'Report' : 'Dashboard'"></span> <b><span data-bind="text: Name"></span></b>
-                                    </td>
-                                </tr>
-                                <!-- ko foreach: Schedules -->
-                                <tr>
-                                    <td data-bind="text: ScheduleDisplay"></td>
-                                    <td data-bind="text: EmailTo"></td>
-                                    <td data-bind="text: Format"></td>
-                                    <td data-bind="text: LastRun"></td>
-                                    <td data-bind="text: UserId ? UserId : 'N/A'"></td>
-                                    <td data-bind="text: Timezone ? Timezone : 'N/A'"></td>
-                                    <td>
+                    <div class="container-fluid" data-bind="if: schedules().length > 0">
+                        <div data-bind="foreach: schedules">
+                            <div class="row border-bottom py-2">
+                                <div class="col-12">
+                                    For <span class="text-muted" data-bind="text: DashboardId === 0 ? 'Report' : 'Dashboard'"></span>
+                                    <b><span data-bind="text: Name"></span></b>
+                                </div>
+                            </div>
+
+                            <!-- Inner schedule items -->
+                            <div class="row fw-bold bg-light py-2 d-none d-md-flex">
+                                <div class="col-md"><i class="fa fa-clock-o"></i> Schedule</div>
+                                <div class="col-md"><i class="fa fa-envelope"></i> Email To</div>
+                                <div class="col-md"><i class="fa fa-file"></i> Format</div>
+                                <div class="col-md"><i class="fa fa-history"></i> Last Run</div>
+                                <div class="col-md"><i class="fa fa-user"></i> User ID</div>
+                                <div class="col-md"><i class="fa fa-globe"></i> Time Zone</div>
+                                <div class="col-md"><i class="fa fa-cogs"></i> Actions</div>
+                            </div>
+
+                            <div data-bind="foreach: { data: Schedules, as: 'item' }">
+                                <div class="row border-bottom py-2 align-items-center">
+                                    <div class="col-md" data-bind="text: item.ScheduleDisplay"></div>
+                                    <div class="col-md" data-bind="text: item.EmailTo"></div>
+                                    <div class="col-md"
+                                         data-bind="if: item.Format && item.Format.trim().substring(0,1) === '{'">
+                                        <div data-bind="html: item.Format.slice(1,-1).split(',').join('<br>')"></div>
+                                    </div>
+                                    <div class="col-md"
+                                         data-bind="if: !item.Format || item.Format.trim().substring(0,1) !== '{'">
+                                        <div data-bind="text: item.Format"></div>
+                                    </div>
+                                    <div class="col-md" data-bind="text: item.LastRun"></div>
+                                    <div class="col-md" data-bind="text: item.UserId ? item.UserId : 'N/A'"></div>
+                                    <div class="col-md" data-bind="text: item.Timezone ? item.Timezone : 'N/A'"></div>
+                                    <div class="col-md">
                                         <button class="btn btn-sm btn-danger" data-bind="click: $root.deleteSchedule">
                                             <i class="fa fa-trash"></i> Delete
                                         </button>
-                                    </td>
-                                </tr>
-                                <!-- /ko -->
-                            </tbody>
-                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1061,7 +1232,7 @@
                                 <div class="form-group row">
                                     <label class="col-md-3 col-sm-3 control-label" data-bind="visible:ForeignKey(), attr: {required: ForeignKey()?'True':null, placeholder: 'Ex tblEmployees'}" placeholder="Ex tblEmployees" style="display: none;">Foreign Table</label>
                                     <div class="col-md-6 col-sm-6">
-                                        <select class="form-select" data-bind="value: JoinTable, visible:ForeignKey(), options: $root.Tables.model, optionsText: 'TableName'" placeholder="Ex tblEmployees" style="display: none;"></select>
+                                        <select class="form-select" data-bind="value: JoinTable, visible:ForeignKey(), options: $root.Tables.availableTables, optionsText: 'TableName'" placeholder="Ex tblEmployees" style="display: none;"></select>
 
                                     </div>
                                     <div class="col-md-3 col-sm-3">
@@ -1418,65 +1589,66 @@
     </div>
 </div>
 
-<div class="modal" id="role-access-modal" role="dialog" tabindex="-2">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content" data-bind="with: editAllowedRoles">
-            <div class="modal-header">
-                <h4 class="modal-title">Manage Access by Roles</h4>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Choose User Roles that will have Access</p>
-                <p class="small">Note: All Users will have access if no restricted roles are setup</p>
-                <div class="list-group" data-bind="foreach: AllowedRoles">
-                    <div class="list-group-item" style="padding-top: 2px; padding-bottom: 2px;">
-                        <span data-bind="text: $data"></span>
-                        <button class="btn btn-sm btn-danger pull-right"><i class="fa fa-trash" data-bind="click: $root.removeAllowedRole"></i></button>
+    <div class="modal" id="role-access-modal" role="dialog" tabindex="-2">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content" data-bind="with: editAllowedRoles">
+                <div class="modal-header">
+                    <h4 class="modal-title">Manage Access by Roles</h4>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Choose User Roles that will have Access</p>
+                    <p class="small">Note: All Users will have access if no restricted roles are setup</p>
+                    <div data-bind="if: $root.allRoles().length === 0">
+                        <div class="alert alert-warning">
+                            <strong>No roles available.</strong> Please add roles first.
+                        </div>
+                    </div>
+                    <div data-bind="if: $root.allRoles().length > 0">
+                        <div class="list-group" data-bind="foreach: $root.allRoles">
+                            <div class="list-group-item" style="padding: 2px 10px;">
+                                <label>
+                                    <input type="checkbox"
+                                           data-bind="value: $data,
+                                      checked: $root.editAllowedRoles().AllowedRoles" />
+                                    <span data-bind="text: $data"></span>
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 </div>
-
-                <div class="row">
-                    <div class="col-10">
-                        <input class="form-control" type="text" data-bind="value: $root.newAllowedRole" placeholder="Ex Sales">
-                    </div>
-                    <div class="col-2">
-                        <button class="btn btn-primary" data-bind="click: $root.addAllowedRole">Add</button>
-                    </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
                 </div>
-
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
             </div>
         </div>
     </div>
-</div>
-<div class="modal" id="category-manage-modal" role="dialog" tabindex="-2">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content" data-bind="with: manageCategories">
-            <div class="modal-header">
-                <b class="modal-title">Manage Categories for <span data-bind="text: TableName"></span></b>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div data-bind="visble: $root.Categories().lenth == 0">
-                    No categories have been set up yet.
+    <div class="modal" id="category-manage-modal" role="dialog" tabindex="-2">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content" data-bind="with: manageCategories">
+                <div class="modal-header">
+                    <b class="modal-title">Manage Categories for <span data-bind="text: TableName"></span></b>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="list-group" data-bind="foreach: $root.Categories">
-                    <div class="checkbox list-group-item" style="padding-top: 2px; padding-bottom: 2px;">
-                        <label>
-                            <input type="checkbox" data-bind="checked: $parent.Categories, checkedValue: $data" />
-                            <span data-bind="text: Name"></span> <!-- Display category name -->
-                        </label>
+                <div class="modal-body">
+                    <div data-bind="visble: $root.Categories().lenth == 0">
+                        No categories have been set up yet.
+                    </div>
+                    <div class="list-group" data-bind="foreach: $root.Categories">
+                        <div class="checkbox list-group-item" style="padding-top: 2px; padding-bottom: 2px;">
+                            <label>
+                                <input type="checkbox" data-bind="checked: $parent.Categories, checkedValue: $data" />
+                                <span data-bind="text: Name"></span> <!-- Display category name -->
+                            </label>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
 
 <div class="modal" id="category-modal" role="dialog" tabindex="-2">
@@ -1619,24 +1791,18 @@
                 <div style="overflow-x: auto; max-height: 500px; overflow-y: auto;">
                     <table class="table table-striped table-hover table-condensed">
                         <thead style="position: sticky; top: -1px; z-index: 2; background-color: #f8f9fa;">
-                            <tr>
-                                <!-- ko foreach: Columns -->
+                            <tr data-bind="foreach: Columns">
                                 <th>
                                     <span data-bind="text: ColumnName, attr: { title: DataType.replace('System.', '') }"></span>
                                 </th>
-                                <!-- /ko -->
                             </tr>
                         </thead>
-                        <tbody>
-                            <!-- ko foreach: Rows  -->
-                            <tr>
-                                <!-- ko foreach: Items -->
+                        <tbody data-bind="foreach: Rows">
+                            <tr data-bind="foreach: Items">
                                 <td>
                                     <span data-bind="html: FormattedValue"></span>
                                 </td>
-                                <!-- /ko-->
                             </tr>
-                            <!-- /ko -->
                         </tbody>
                     </table>
                 </div>
@@ -1772,3 +1938,116 @@
         </div>
     </div>
 </div>
+<div class="modal" id="searchModal" tabindex="-1" aria-hidden="true" data-bind="with: $root">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Bulk Manage Reports Access and Export</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex gap-2 mb-4 align-items-center">
+                    <input type="text" class="form-control" placeholder="Search Reports"
+                           data-bind="value: searchQuery, valueUpdate: 'input'">
+                    <button class="btn btn-sm btn-outline-primary flex-shrink-0" title="Select all Filtered"
+                            data-bind="click: selectAllFiltered">Select All
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary flex-shrink-0" title="Deselect all Filtered"
+                            data-bind="click: deselectAllFiltered">Deselect All
+                    </button>
+                </div>
+                <div data-bind="foreach: filteredReportsAndFolders">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <div class="d-flex fw-bold">
+                                <div class="w-50 flex-grow-1">
+                                    <input type="checkbox" data-bind="checked: allReportsSelected">
+                                    <span data-bind="text: folder"></span>
+                                </div>
+                                <div class="w-25">View</div>
+                                <div class="w-25">Manage</div>
+                                <div class="w-25">Delete</div>
+                                <div class="w-25">Client ID</div>
+                            </div>
+                        </div>
+                        <!-- Reports List -->
+                        <ul class="list-group list-group-flush" data-bind="foreach: reports">
+                            <li class="list-group-item">
+                                <div class="d-flex align-items-center">
+                                    <div class="w-50 flex-grow-1">
+                                        <input type="checkbox" data-bind="checked: isSelected">
+                                        <span data-bind="text: reportName"></span>
+                                    </div>
+                                    <div class="w-25">
+                                        <span class="badge text-bg-info text-white" data-bind="text: viewOnlyUserRole ? viewOnlyUserRole: 'Any User'"></span>
+                                    </div>
+                                    <div class="w-25">
+                                        <span class="badge text-bg-info text-white" data-bind="text: userRole ? userRole : 'Any User'"></span>
+                                    </div>
+                                    <div class="w-25">
+                                        <span class="badge text-bg-info text-white" data-bind="text: deleteOnlyUserRole ? deleteOnlyUserRole : 'Any User'"></span>
+                                    </div>
+                                    <div class="w-25">
+                                        <span class="badge text-bg-info text-white" data-bind="text: clientId ? clientId : 'Any User'"></span>
+                                    </div>
+                                </div>
+                            </li>
+                        </ul>
+                        <div class="p-2 text-muted" data-bind="visible: reports.length === 0">
+                            No matching reports found
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button class="btn btn-success" data-bind="click: exportFoldersReportJson">Export Selected</button>
+                <button class="btn btn-primary" data-bind="click: $root.openApplySecurityModal, enable: $root.anyReportSelected">Apply Security to All Selected</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal" id="applySecurityModal" tabindex="-1" aria-hidden="true" >
+    <div class="modal-dialog modal-lg" data-bind="if: $root.anyReportSelected">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Apply Security to All Selected</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div data-bind="template: { name: 'manage-access-template', data: $root.manageAccess }"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button class="btn btn-primary" data-bind="click: $root.applySecurityToAll">Apply to All</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Import Json File Modal -->
+<div class="modal" id="uploadFileModal" tabindex="-1" aria-labelledby="uploadFileModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" data-bind="with: ManageJsonFile">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadFileModalLabel">Import JSON File Upload</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="dropzone" class="dropzone"
+                     data-bind="event: {click: triggerFileInput }"
+                     style="border: 2px dashed #007bff; border-radius: 5px; padding: 30px; text-align: center; color: #007bff; cursor: pointer;">
+                    click to select files
+                </div>
+                <input type="file" id="fileInputJson" accept=".json" style="display: none;" data-bind="event: { change: handleFileSelect }">
+                <div data-bind="visible: fileName">
+                    <p>Selected File: <span data-bind="text: fileName"></span></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" data-bind="click: uploadFile">Upload</button>
+            </div>
+        </div>
+    </div>
+</div>
+
