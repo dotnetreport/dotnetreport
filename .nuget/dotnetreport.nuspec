@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
   <metadata>
     <id>dotnetreport.mvc</id>
-    <version>6.0.7-beta.6</version>
+    <version>6.1.0</version>
     <authors>Dotnet Report Builder</authors>
     <owners>Dotnet Report Builder</owners>
     <projectUrl>https://dotnetreport.com/</projectUrl>
@@ -50,8 +50,16 @@
     <file src="..\Scripts\dotnetreport-helper.js" target="Content\Scripts\dotnetreport-helper.js" />
     <file src="..\Scripts\dotnetreport-setup.js" target="Content\Scripts\dotnetreport-setup.js" />
     <file src="..\Scripts\dotnetreport.js" target="Content\Scripts\dotnetreport.js" />
-    <file src="..\Scripts\fabric.min.js" target="Content\Scripts\fabric.min.js" />
     <file src="..\Scripts\tribute.min.js" target="Content\Scripts\tribute.min.js" />
+    <file src="..\Content\gridstack\gridstack.min.css" target="Content\Content\gridstack\gridstack.min.css" />
+    <file src="..\Content\gridstack\gridstack-all.js" target="Content\Content\gridstack\gridstack-all.js" />
+    <file src="..\Content\summernote\summernote-bs5.min.css" target="Content\Content\summernote\summernote-bs5.min.css" />
+    <file src="..\Content\summernote\summernote-bs5.min.js" target="Content\Content\summernote\summernote-bs5.min.js" />   
+    <file src="..\Content\summernote\font\summernote.eot" target="Content\Content\summernote\font\summernote.eot" />
+    <file src="..\Content\summernote\font\summernote.hash" target="Content\Content\summernote\font\summernote.hash" />
+    <file src="..\Content\summernote\font\summernote.ttf" target="Content\Content\summernote\font\summernote.ttf" />
+    <file src="..\Content\summernote\font\summernote.woff" target="Content\Content\summernote\font\summernote.woff" />
+    <file src="..\Content\summernote\font\summernote.woff2" target="Content\Content\summernote\font\summernote.woff2" />
     <file src="..\Scripts\bootstrap-editable.min.js" target="Content\Scripts\bootstrap-editable.min.js" />
     <file src="..\Scripts\knockout.x-editable.min.js" target="Content\Scripts\knockout.x-editable.min.js" />
     <file src="..\Views\DotNetReport\Index.cshtml" target="Content\Views\DotNetReport\Index.cshtml" />
