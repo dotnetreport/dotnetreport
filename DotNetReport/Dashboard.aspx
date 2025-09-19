@@ -18,8 +18,7 @@
 
 </asp:Content>
 <asp:Content ID="Content3" ContentPlaceHolderID="scripts" runat="server">
-    <script type="text/javascript" src='//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.min.js'></script>
-    <script type="text/javascript" src='//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.jQueryUI.min.js'></script>
+    <script src="../Content/gridstack/gridstack-all.js"></script>
     <script type="text/javascript">
         $(document).ready(function () {
             if ($.blockUI) {
@@ -28,13 +27,20 @@
             var reports = [];
             var dashboards = [];
             var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
-            var adminMode = queryParams.adminMode == 'true' ? 'true' : 'false';
+            var adminMode = false;
+            if (localStorage) adminMode = localStorage.getItem('reportAdminMode');
+
             var svc = "/DotNetReport/ReportService.asmx/";
 
             ajaxcall({ url: svc + 'GetDashboards', data: { adminMode: adminMode } }).done(function (dashboardData) {
                 if (dashboardData.d) { dashboardData = dashboardData.d; }
+                if (dashboardData && dashboardData.noAccount === true) {
+                    $("#noaccountModal").modal('show');
+                    return;
+                }
+
                 _.forEach(dashboardData, function (d) {
-                    dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, schedule: d.Schedule, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles });
+                    dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, schedule: d.Schedule, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles, clientId: d.ClientId });
                 });
 
                 var dashboardId = parseInt(queryParams.id || 0);
@@ -52,10 +58,12 @@
                         var vm = new dashboardViewModel({
                             runReportUrl: svc + "Report",
                             execReportUrl: svc + "RunReport",
-                            reportWizard: $("#filter-panel"),
+                            runLinkReportUrl: svc + "RunReportLink",
                             lookupListUrl: svc + "GetLookupList",
+                            reportWizard: $("#filter-panel"),
                             apiUrl: svc + "CallReportApi",
                             runReportApiUrl: svc + "RunReportApi",
+                            getSchemaFromSql: svc + "GetSchemaFromSql",
                             reportMode: "execute",
                             reportWizard: $("#modal-reportbuilder"),
                             linkModal: $("#linkModal"),
@@ -70,6 +78,7 @@
                             runExportUrl: svc,
                             printReportUrl: window.location.protocol + "//" + window.location.host + "/DotnetReport/ReportPrint.aspx",
                             getTimeZonesUrl: svc + "GetAllTimezones",
+                            getDashbordsUrl: svc + 'GetDashboards',
                             loadSavedDashbordUrl: svc + 'LoadSavedDashboard'
                         });
 
@@ -78,35 +87,37 @@
                                 $.unblockUI();
                             }
                             ko.applyBindings(vm);
-                            $(function () {
-                                var options = {
-                                    cellHeight: 80,
-                                    verticalMargin: 10,
+                            setTimeout(() => {
+                                $('.grid-stack').show();
+                                const grid = GridStack.init({
+                                    cellHeight: 60,
+                                    margin: 10,
                                     resizable: {
                                         handles: 'se, sw, ne, nw, n, e, s, w'
                                     }
-                                };
-                                $('.grid-stack').gridstack(options);
-                                $('.grid-stack').on('change', function (event, items) {
-                                    _.forEach(items, function (x) {
+                                });
+
+                                grid.on('change', function (event, items) {
+                                    items.forEach(function (x) {
                                         vm.updatePosition(x);
                                     });
                                 });
-                                $('.grid-stack').on('resizestop', function (event, item) {
-                                    var e = $(event.target).find('.report-chart');
-                                    var d = $(event.target).find('table');
-                                    if (e.length > 0 && d.length == 0) {
+
+                                grid.on('resizestop', function (event, el) {
+                                    const e = el.querySelector('.report-chart');
+                                    const d = el.querySelector('table');
+                                    if (e && !d) {
                                         vm.drawChart();
                                     }
                                 });
-                            });
 
-                            setTimeout(function () {
-                                vm.drawChart();
-                                var grid = $('.grid-stack').data("gridstack");
-                                grid.disable();
+                                setTimeout(() => {
+                                    vm.drawChart();
+                                    grid.enableMove(false);
+                                    grid.enableResize(false);
+                                }, 1000);
+                            }, 10);
 
-                            }, 1000);
                         });
 
                         window.addEventListener('resize', function () {
@@ -134,11 +145,7 @@
         </ul>
     </div>
     <div class="col-4 d-flex align-items-end justify-content-end border-bottom">
-        <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-light btn-sm" data-bind="click: RefreshAllReports">
-                <i class="fa fa-refresh"></i>
-                <span>Refresh</span>
-            </button>
+        <div class="d-flex align-items-center gap-2">           
             <div class="dropdown">
                 <button class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="fa fa-pencil-square"></i>
@@ -169,19 +176,26 @@
                             <span>Edit this Dashboard</span>
                         </button>
                     </li>
+                    <li>
+                        <button class="dropdown-item" data-bind="click: RefreshAllReports">
+                            <i class="fa fa-refresh"></i>
+                            <span>Refresh</span>
+                        </button>
+                    </li>
                 </ul>
             </div>
             <div class="dropdown">
                 <button class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="fa fa-download"></i>
                     <span>Export</span>
-                </button>                
+                </button>
                 <ul class="dropdown-menu">
                     <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllPdfReportsWithPageOption() : ExportAllPdfReports('',''); }, hidden: appSettings.useAltPdf"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
                     <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllPdfAltReportsWithPageOption() : ExportAllPdfAltReports('',''); }, visible: appSettings.useAltPdf"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
                     <li><a class="dropdown-item" href="#" data-bind="click: ExportAllExcelReports"><i class="fa fa-file-excel-o"></i> Excel</a></li>
                     <li data-bind="visible: canDrilldown"><a class="dropdown-item" href="#" data-bind="click: ExportAllExcelExpandedReports"><i class="fa fa-file-excel-o"></i> Excel (Expanded)</a></li>
                     <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllWordReportsWithPageOption() : ExportAllWordReports('','');}"><i class="fa fa-file-word-o"></i> Word</a></li>
+                    <li><a class="dropdown-item" href="#" data-bind="click: PrintDashboard"><i class="fa fa-print"></i> Print</a></li>
                 </ul>
             </div>
             <div class="btn btn-light btn-sm d-flex align-items-center gap-2">
@@ -273,7 +287,7 @@
                                 <div class="checkbox">
                                     <label class="list-group-item-heading">
                                         <input type="checkbox" data-bind="checked: selected">
-                                        <span class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie', 'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map', 'fa-window-restore': reportType=='Treemap'}" style="font-size: 14pt; color: #808080"></span>
+                                        <span class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie', 'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map', 'fa-window-restore': reportType=='Treemap', 'fa-code': reportType=='Html'}" style="font-size: 14pt; color: #808080"></span>
                                         <span data-bind="highlightedText: { text: reportName, highlight: $parent.searchReports, css: 'highlight' }"></span>
                                     </label>
                                 </div>
@@ -298,7 +312,7 @@
                                             <div class="form-check">
                                                 <input class="form-check-input" type="checkbox" data-bind="checked: selected">
                                                 <label class="form-check-label">
-                                                    <i class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie', 'fa-line-chart': reportType=='Line', 'fa-globe': reportType=='Map', 'fa-window-restore': reportType=='Treemap'}" style="font-size: 14pt; color: #808080"></i>
+                                                    <i class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie', 'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map', 'fa-window-restore': reportType=='Treemap', 'fa-code': reportType=='Html'}" style="font-size: 14pt; color: #808080"></i>
                                                     <span data-bind="text: reportName"></span>
                                                 </label>
                                             </div>
@@ -329,10 +343,9 @@
 </div>
 
 
-<div class="grid-stack" data-bind="visible: reports().length>0, foreach: reports" style="display: none;">
-    <div class="grid-stack-item" data-bind="attr:$parent.isOverlap()? {'data-gs-width': width, 'data-gs-height': height, 'data-gs-auto-position': true, 'data-gs-id': ReportID}:{'data-gs-x': x, 'data-gs-y': y, 'data-gs-width': width, 'data-gs-height': height, 'data-gs-auto-position': true, 'data-gs-id': ReportID}">
-
-        <div class="card" data-bind="attr: {class: 'card ' + panelStyle + ' grid-stack-item-content'}, css: { expanded: isExpanded }, style: { border: noDashboardBorders() ? 'none' : '', 'box-shadow': noDashboardBorders() ? 'none' : '' }" " style="overflow-y: hidden;">
+<div class="grid-stack" data-bind="foreach: reports" style="display: none;">
+    <div class="grid-stack-item" data-bind="attr: {'gs-x': x, 'gs-y': y, 'gs-w': width, 'gs-h': height, 'gs-auto-position': true, 'gs-id': ReportID}">
+        <div class="card" data-bind="attr: {class: 'card ' + panelStyle + ' grid-stack-item-content'}, css: { expanded: isExpanded }, style: { border: noDashboardBorders() ? 'none' : '', 'box-shadow': noDashboardBorders() ? 'none' : '' }" style="overflow-y: hidden;">
             <div class="padded-div" style="padding-bottom: 0; margin-bottom: 0;">
                 <div class="pull-left">
                     <button type="button" class="btn" data-bs-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
@@ -377,7 +390,7 @@
                             </ul>
                         </li>
                         <li data-bind="visible: ReportType()!='Single'">
-                            <a class="dropdown-item" data-bind="attr: {href: '/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + ReportID() }" target="_blank">
+                            <a class="dropdown-item" data-bind="attr: {href: '/DotNetReport?linkedreport=true&noparent=true&reportId=' + ReportID() }" target="_blank">
                                 <span class="fa fa-file"></span> Report
                             </a>
                         </li>
@@ -406,7 +419,7 @@
                 </div>
             </div>
             <div class="card-body list-overflow-auto" style="padding-top: 0; margin-top: 0;">
-                <div data-bind="if: ReportType()!='Single' && CanEdit()">
+                <div data-bind="if: ReportType()!='Single' && ReportType()!='Html' && CanEdit()">
                     <div data-bind="template: 'chart-settings', data: $data"></div>
                 </div>
                 <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
@@ -450,11 +463,11 @@
 </div>
 
 <!-- This renders the template -->
-<div class="modal" id="pdfOptionsScheduleModal" tabindex="-1" aria-labelledby="pdfOptionsScheduleModalLabel" aria-hidden="true" data-bind="with: scheduleBuilder">
+<div class="modal" id="pdfOptionsScheduleModal" tabindex="-1" aria-labelledby="pdfOptionsScheduleModalLabel" aria-hidden="true" data-bind="with: dashboard">
     <div data-bind="template: { name: 'pdf-options-schedule-template', data: $data  }"></div>
 </div>
 <!-- This renders the template -->
-<div class="modal" id="wordOptionsScheduleModal" tabindex="-1" aria-labelledby="wordOptionsScheduleModalLabel" aria-hidden="true" data-bind="with: scheduleBuilder">
+<div class="modal" id="wordOptionsScheduleModal" tabindex="-1" aria-labelledby="wordOptionsScheduleModalLabel" aria-hidden="true" data-bind="with: dashboard">
     <div data-bind="template: { name: 'word-options-schedule-template', data: $data }"></div>
 </div>
 

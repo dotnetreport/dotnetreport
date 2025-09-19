@@ -14,73 +14,92 @@
     <link href="../Content/themes/base/theme.css" rel="stylesheet" />
     <link href="../Content/font-awesome.min.css" rel="stylesheet" />
     <link href="../Content/css/select2.min.css" rel="stylesheet" />
-    <link href="../Content/dotnetreport.css?v=4.2.0" rel="stylesheet" />
+    <link href="../Content/summernote/summernote-bs5.min.css" rel="stylesheet" />
+    <link href="../Content/dotnetreport.css?v=6.0.0" rel="stylesheet" />
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <style type="text/css">
         .report-view {
-            margin: 0 50px 0 50px;
+            margin: 0 0px 0 0px;
+            left: 0px !important;
+            width: 100%;
             max-width: inherit;
-        }
-        
-        .table {
-          width: 100%;
-          margin-bottom: 1rem;
-          color: #212529;
-          border-collapse: collapse;
+            overflow-y: hidden;
         }
 
-        .table th,
-        .table td {
-          padding: 0.75rem;
-          vertical-align: top;
-          border: 1px solid #dee2e6;
+        .report-inner {
+            margin: 0 0px 0 0px;
+            left: 0px !important;
+            overflow-y: hidden;
         }
+
+        .table {
+            width: 100%;
+            margin-bottom: 1rem;
+            color: #212529;
+            border-collapse: collapse;
+        }
+
+            .table th,
+            .table td {
+                padding: 0.75rem;
+                vertical-align: top;
+                border: 1px solid #dee2e6;
+            }
 
         .table-borderless th,
         .table-borderless td,
         .table-borderless thead th,
         .table-borderless tbody + tbody {
-          border: 0;
+            border: 0;
         }
 
         .table-striped tbody tr:nth-of-type(odd) {
-          background-color: rgba(0, 0, 0, 0.05);
+            background-color: rgba(0, 0, 0, 0.05);
         }
 
+        body * {
+            left: 0 !important;
+            visibility: visible !important;
+        }
     </style>
 </head>
 
 <body>
-    <form id="form1" runat="server">
+
+    @Html.AntiForgeryToken()
     <div data-bind="with: ReportResult">
 
         <!-- ko ifnot: HasError -->
-
         <div class="report-view" data-bind="with: $root">
-            <div class="report-inner" style="display: none;">
-                <canvas id="report-header" width="1100" height="120" data-bind="visible: useReportHeader"></canvas>
+            <div style="margin-left: 25px;">
+                <div data-bind="visible: useReportHeader">
+                    <div id="report-header" width="900" height="120" data-bind="html: headerDesigner.headerHtml"></div>
+                </div>
                 <h2 data-bind="text: ReportName"></h2>
                 <p data-bind="html: ReportDescription">
                 </p>
+            </div>
 
-                <!--<div data-bind="with: $root">
-                    <div class="" data-bind="ifnot: EditFiltersOnReport">
-                        <div data-bind="template: {name: 'fly-filter-template'}"></div>
-                        <div style="padding-bottom: 20px;"></div>
-                    </div>
-                </div>-->
-
-                <div data-bind="with: ReportResult">
-                    <div data-bind="template: 'report-template', data: $data"></div>
+            <div class="report-chart" data-bind="attr: {id: 'chart_div_' + ReportID()}, visible: isChart"></div>
+            <!--<div data-bind="with: $root">
+                <div class="" data-bind="ifnot: EditFiltersOnReport">
+                    <div data-bind="template: {name: 'fly-filter-template'}"></div>
+                    <div style="padding-bottom: 20px;"></div>
                 </div>
+            </div>-->
+
+            <div data-bind="with: ReportResult" class="report-inner" style="display: none;">
+                <div data-bind="template: 'report-template', data: $data"></div>
             </div>
             <br />
-            <span>Report ran on: <span data-bind="text: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString()"></span></span>
-
         </div>
         <!-- /ko -->
         <!-- ko if: HasError -->
-        
+        <h2>@Model.ReportName</h2>
+        <p>
+            @Model.ReportDescription
+        </p>
+
         <h3>An unexpected error occured while running the Report</h3>
         <hr />
         <b>Error Details</b>
@@ -91,77 +110,190 @@
         <!-- /ko -->
 
     </div>
-    </form>
+
+    <script type="text/html" id="report-render">
+        <div data-bind="with: ReportData">
+            <div data-bind="foreach: Rows">
+                <div data-bind="html: renderedHtml"></div>
+            </div>
+        </div>
+    </script>
+
     <script type="text/html" id="report-template">
+        <!-- ko if: $parent.ReportType() == 'Pivot' -->
+        <div data-bind="template: {name: 'report-pivot', data: $data }"></div>
+        <!-- /ko -->
+        <!-- ko if: $parent.ReportType() == 'Html' -->
+        <div data-bind="template: {name: 'report-render', data: $data }"></div>
+        <!-- /ko -->
+        <!-- ko if: $parent.ReportType() != 'Pivot' && $parent.ReportType() != 'Html' && (!$parent.isChart() || $parent.ShowDataWithGraph()) -->
+        <div class="pull-right" data-bind="if: $parent.OuterGroupColumns().length > 0">
+            <a href="#" data-bs-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
+                Manage Groups <span class="fa fa-ellipsis-v"></span>
+            </a>
+            <ul class="dropdown-menu" style="z-index: 1001;" data-bind="foreach: $parent.OuterGroupColumns">
+                <li class="dropdown-item small">
+                    <a href="#" data-bind="click: remove" title="Remove from Group">
+                        <span class="fa fa-close"></span> <span data-bind="text: fieldName"></span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+        <div class="clear-fix"></div>
 
-        <div class="report-chart" data-bind="attr: {id: 'chart_div_' + $parent.ReportID()}, visible: $parent.isChart"></div>
+        <div data-bind="foreach: outerGroupData">
+            <!-- ko if: rows.length > 0 || ($parent.outerGroupData && $parent.outerGroupData().length == 1) -->
+            <h6 data-bind="html: display"></h6>
+            <div class="" style="padding-top: 5px;"></div>
 
+            <!-- ko if: $parents[1].ReportType() != 'Single'-->
+            <div data-bind="template: {name: 'report-table', data: $parent.ReportData }"></div>
+            <!-- /ko -->
+            <!-- ko if: $parents[1].ReportType() == 'Single'-->
+            <div data-bind="template: {name: 'report-widget', data: $parent.ReportData }"></div>
+            <!-- /ko -->
+            <!-- /ko -->
+        </div>
+        <!-- /ko -->
+    </script>
+
+
+    <script type="text/html" id="report-column-header">
+        <!-- ko foreach: Columns -->
+        <th data-bind="attr: { id: !IsPivotField ? fieldId : 'pivot--' + fieldName }, style: {'text-align': fieldAlign() ? fieldAlign() : (IsNumeric ? 'right' : 'left'), 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
+            <div data-bind="style: {'width': fieldWidth}">
+                <!-- ko if: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false) -->
+                <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
+                <!-- /ko -->
+                <!-- ko ifnot: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false)  -->
+                <span data-bind="click: function(){ if (!IsPivotField) { $parents[pagerIndex($parents)].changeSort(SqlField); } }, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}">
+                    <span data-bind="text: $parent.IsDrillDown() && fieldLabel2() ? fieldLabel2() : (fieldLabel() ? fieldLabel() : fieldName)"></span>
+                </span>
+                <!-- /ko -->
+            </div>
+        </th>
+        <!-- /ko -->
+    </script>
+
+    <script type="text/html" id="report-widget">
+        <div style="text-align: center; width: 100%;font-size: 48px">
+            <span data-bind="visible: Rows.length < 1" title="No data found">/</span>
+
+            <div data-bind="if: Rows.length > 0">
+                <div data-bind="with: $parent.rows[0].Items[0]">
+                    <span data-bind="html: formattedVal"></span>
+
+                    <!-- ko if: $parent.Rows.length > 1 && $parents[$parents.length-2].showPriorInKpi() -->
+                    <span data-bind="style: {'color': $parent.calculateRate() > 0 ? 'green' : 'red', 'font-size': '24px'}">
+                        <span data-bind="html: $parent.calculateRate() + '%'"></span>
+                    </span>
+
+                    <div data-bind="style: {'font-size': '24px', 'color': 'gray'}, css: {'text-muted': true}">
+                        Prior Period: <span data-bind="html: $parent.Rows[1].Items[0].formattedVal"></span>
+                    </div>
+                    <!-- /ko -->
+
+                </div>
+            </div>
+        </div>
+
+    </script>
+
+    <script type="text/html" id="report-column">
+        <!-- ko foreach: Items -->
+        <td data-bind="hidden: outerGroup, style: {'background-color': _backColor ?? backColor(), 'color': _fontColor ?? fontColor(), 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': fieldAlign() ? fieldAlign() : (Column.IsNumeric ? 'right' : 'left')}">
+            <div data-bind="style: {'width': fieldWidth }">
+                <!-- ko if: LinkTo-->
+                <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: formattedVal"></span></a>
+                <!-- /ko-->
+                <!-- ko ifnot: LinkTo-->
+                <span data-bind="html: formattedVal"></span>
+                <!-- /ko-->
+            </div>
+        </td>
+    </script>
+
+    <script type="text/html" id="report-pivot">
         <div class="table-responsive" data-bind="with: ReportData">
-            <table class="table table-condensed table-striped" data-bind="attr: {class: 'table table-hover table-condensed table-striped ' +  $root.selectedStyle()}">
-                <thead>
-                    <tr class="no-highlight">
-                        <!-- ko foreach: Columns -->
-                        <th data-bind="attr: { id: fieldId }, css: {'right-align': IsNumeric}, style: {'width': fieldWidth, 'background-color': headerBackColor }" style="border-right: 1px solid;">
-                            <!-- ko if: $root.useStoredProc() -->
-                            <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
-                            <!-- /ko -->
-                            <!-- ko ifnot: $root.useStoredProc()  -->
-                            <span data-bind="style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}">
-                                <span data-bind="text: fieldLabel() ? fieldLabel() : ColumnName"></span>
-                            </span>
-                            <!-- /ko -->
+            <table class="table table-striped table-hover table-condensed">
+                <thead style="position: sticky; top: -1px; z-index: 2;">
+                    <tr>
+                        <th></th>
+                        <!-- ko foreach: Rows -->
+                        <th>
+                            <span data-bind="text: Items[0].FormattedValue"></span>
                         </th>
                         <!-- /ko -->
                     </tr>
                 </thead>
-                <tbody>
+                <tbody data-bind="foreach: Columns">
+                    <tr>
+                        <!-- ko if: $index() > 0 -->
+                        <td>
+                            <span data-bind="text: fieldLabel || ColumnName"></span>
+                        </td>
+                        <!-- ko foreach: $parent.Rows -->
+                        <td data-bind="style: {'background-color': $parent.backColor, 'color': $parent.fontColor, 'font-weight': $parent.fontBold() ? 'bold' : 'normal', 'text-align': $parent.fieldAlign ? $parent.fieldAlign : ($parent.IsNumeric ? 'right' : 'left') }">
+                            <span data-bind="text: Items[$parentContext.$index()].FormattedValue"></span>
+                        </td>
+                        <!-- /ko -->
+                        <!-- /ko -->
+                    </tr>
+                </tbody>
+            </table>
+
+        </div>
+
+    </script>
+
+    <script type="text/html" id="report-table">
+        <div class="table-responsive">
+            <table class="table table-hover table-condensed" data-bind="attr: {class: 'table table-striped table-hover table-condensed ' + $parents[2].selectedStyle()}">
+                <thead style="position: sticky; top: -1px; z-index: 2;" data-bind="if: !$parents[2].noHeaderRow()">
+                    <tr class="no-highlight" data-bind="sortableColumns: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight',selectedFields: $parents[2].SelectedFields }">
+
+                        <!-- ko template: 'report-column-header', data: $data -->
+                        <!-- /ko-->
+                    </tr>
+                </thead>
+                <tbody data-bind="attr: {id: 'report-table-body' + $parents[2].ReportID()}">
                     <tr style="display: none;" data-bind="visible: Rows.length < 1">
-                        <td class="text-info" data-bind="attr:{colspan: Columns.length}">
+                        <td data-bind="attr:{colspan: Columns.length + 1}">
                             No records found
                         </td>
                     </tr>
-                    <!-- ko foreach: Rows  -->
+
+                    <!-- ko if: !$parents[2].hasPivotColumn() && (!$parents[2].ShowExpandOption() || $parents[2].ReportType() == 'List') -->
+                    <!-- ko foreach: $parent.rows  -->
                     <tr>
-                        <!-- ko foreach: Items -->
-                        <td data-bind="style: {'background-color': _backColor != 'none' ? backColor() : '', 'color': _fontColor != 'none' ? fontColor() : '', 'font-weight': fontBold() && _fontBold != 'none' ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '48px' : ''}">
-                            <!-- ko if: LinkTo-->
-                                <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: FormattedValue"></span></a>
-                            <!-- /ko-->
-                            <!-- ko ifnot: LinkTo-->
-                            <span data-bind="html: FormattedValue"></span>
-                            <!-- /ko-->
-                        </td>
-                        <!-- /ko -->
+                        <!-- ko template: 'report-column', data: $data -->
+                        <!-- /ko-->
                     </tr>
                     <!-- ko if: isExpanded -->
                     <tr>
-                        <td></td>
-                        <td data-bind="attr:{colspan: $parent.Columns.length }">
+                        <td style="width: 30px;"></td>
+                        <td data-bind="attr:{colspan: $parent.Columns.length }" style="padding-left: 0px;">
+                            <div data-bind="visible: !DrillDownData()">
+                                <div class="report-spinner"></div>
+                            </div>
                             <!-- ko if: DrillDownData -->
-                            <table class="table table-hover table-condensed" data-bind="with: DrillDownData">
+                            <table class="table table-striped table-hover table-condensed" data-bind="with: DrillDownData">
                                 <thead>
                                     <tr class="no-highlight">
-                                        <!-- ko foreach: Columns -->
-                                        <th data-bind="css: {'right-align': IsNumeric}">
-                                            <a href="" data-bind="click: function(){ $parents[1].changeSort(SqlField); }">
-                                                <span data-bind="text: ColumnName"></span>
-                                                <span data-bind="text: $parents[1].pager.sortColumn() === SqlField ? ($parents[1].pager.sortDescending() ? '&#9660;' : '&#9650;') : ''"></span>
-                                            </a>
-                                        </th>
-                                        <!-- /ko -->
+                                        <!-- ko template: 'report-column-header', data: $data -->
+                                        <!-- /ko-->
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr style="display: none;" data-bind="visible: Rows.length < 1">
-                                        <td class="text-info" data-bind="attr:{colspan: Columns.length}">
+                                    <tr style="display: none;" data-bind="visible: Rows && Rows.length < 1">
+                                        <td data-bind="attr: {colspan: Columns.length}">
                                             No records found
                                         </td>
                                     </tr>
                                     <!-- ko foreach: Rows  -->
                                     <tr>
-                                        <!-- ko foreach: Items -->
-                                        <td data-bind="html: FormattedValue, css: {'right-align': Column.IsNumeric}"></td>
-                                        <!-- /ko -->
+                                        <!-- ko template: 'report-column', data: $data -->
+                                        <!-- /ko-->
                                     </tr>
                                     <!-- /ko -->
                                 </tbody>
@@ -171,14 +303,17 @@
                     </tr>
                     <!-- /ko -->
                     <!-- /ko -->
+                    <!-- /ko-->
                 </tbody>
-                <!-- ko if: $parent.SubTotals().length == 1 && $parentContext.$parent.OuterGroupColumns().length == 0 -->
-                <tfoot data-bind="foreach: $parent.SubTotals">
-                    <tr class="sub-total">                        
+                <!-- ko if: $parentContext.$parent.SubTotals().length == 1 && $parentContext.$parentContext.$parent.OuterGroupColumns().length == 0 -->
+                <tfoot data-bind="foreach: $parentContext.$parent.SubTotals">
+                    <tr class="sub-total">
                         <!-- ko foreach: Items -->
                         <!-- ko if: Value != 'NA' && Value != 'NaN' && !outerGroup() -->
-                        <td data-bind="style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal', 'text-align': $parents[4].pager && $parents[4].ReportType()=='Single' ? 'center' : (fieldAlign ? fieldAlign : (Column.IsNumeric ? 'right' : 'left')), 'font-size':$parents[4].pager && $parents[4].ReportType()=='Single' ? '48px' : ''}">
-                            <span data-bind="html: formattedVal, css: {'right-align': true}"></span>
+                        <td data-bind="style: {'background-color': _backColor ?? backColor(), 'color': _fontColor ?? fontColor(), 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': fieldAlign() ? fieldAlign() : 'right'}">
+                            <div data-bind="style: {'width': fieldWidth }">
+                                <span data-bind="html: formattedVal"></span>
+                            </div>
                         </td>
                         <!-- /ko -->
                         <!-- /ko -->
@@ -187,22 +322,23 @@
                 <!-- /ko -->
             </table>
         </div>
-
     </script>
+    <input type="hidden" id="exportId" value="@ViewBag.ExportId" />
 
     <script src="../Scripts/jquery-3.7.1.min.js"></script>
     <script src="../Scripts/bootstrap.bundle.min.js"></script>
-    <script src="../Scripts/jquery-ui-1.13.1.min.js""></script>
+    <script src="../Scripts/jquery-ui-1.13.3.min.js"></script>
     <script src="../Scripts/jquery.validate.min.js"></script>
     <script src="../Scripts/knockout-3.5.1.js"></script>
     <script src="../Scripts/jquery.blockUI.js"></script>
     <script src="../Scripts/bootbox.min.js"></script>
-    \<script src="../Scripts/knockout-sortable.min.js"></script>
+    <script src="../Scripts/knockout-sortable.min.js"></script>
     <script src="../Scripts/select2.min.js"></script>
-    <script src="../Scripts/dotnetreport-helper.js"></script>
     <script src="../Scripts/lodash.min.js"></script>
-    <script src="../Scripts/fabric.min.js"></script>
-    <script src="../Scripts/dotnetreport.js?v=5.0.0"></script>
+    <script src="../Scripts/tribute.min.js"></script>
+    <script src="../Content/summernote/summernote-bs5.min.js"></script>
+    <script src="../Scripts/dotnetreport-helper.js"></script>
+    <script src="../Scripts/dotnetreport.js?v=6.0.0"></script>
 
     <style type="text/css">
         a[href]:after {
@@ -250,13 +386,13 @@
                 reportData: JSON.parse(decodeHTMLEntities('<%= Model.ReportData.Replace("'", "\\'") %>')),
                 getTimeZonesUrl: svc + "GetAllTimezones",
                 chartSize: { width: 1000, height: 450 }
+                chartSize: { width: 800, height: 450 }
             });
             vm.pager.pageSize(10000);
             ko.applyBindings(vm);
             vm.LoadReport(<%= Model.ReportId %>, true,'<%= Model.ReportSeries %>').done(function () {
                 if (vm.useReportHeader()) {
-                    vm.headerDesigner.init(true);
-                    vm.headerDesigner.loadCanvas(true);
+                    vm.headerDesigner.init();
                 }
 
                 if (vm.useStoredProc()) {
@@ -278,7 +414,6 @@
 
             $(window).resize(function () {
                 vm.DrawChart();
-                vm.headerDesigner.resizeCanvas();
             });
 
         });
