@@ -289,6 +289,7 @@ ko.bindingHandlers.select2 = {
     update: function (el, valueAccessor, allBindingsAccessor, viewModel) {
         var allBindings = allBindingsAccessor();
         var select2 = $(el).data("select2");
+        if (!select2) return;
         if ("value" in allBindings) {
             var newValue = "" + ko.unwrap(allBindings.value);
             if ((allBindings.select2.multiple || el.multiple) && newValue.constructor !== Array) {
@@ -419,6 +420,72 @@ ko.bindingHandlers.sortableColumns = {
                 bindingContext.$parents[2].sortReportHeaderColumn();
             }
         }).disableSelection(); // Prevent text selection while dragging
+    }
+};
+
+ko.bindingHandlers.summernote = {
+    init: function (element, valueAccessor, allBindings) {
+        const observable = valueAccessor();
+
+        const options = {
+            height: 300,
+            popover: {
+                image: [
+                    ['image', ['resizeFull', 'resizeHalf', 'resizeQuarter', 'resizeNone']],
+                    ['float', ['floatLeft', 'floatRight', 'floatNone']],
+                    ['remove', ['removeMedia']]
+                ],
+                link: [
+                    ['link', ['linkDialogShow', 'unlink']]
+                ],
+                table: [
+                    ['add', ['addRowDown', 'addRowUp', 'addColLeft', 'addColRight']],
+                    ['delete', ['deleteRow', 'deleteCol', 'deleteTable']],
+                    ['color', ['bgcolor', 'tablefullwidth']]
+                ]
+            },
+            toolbar: [
+                ['style', ['style']],
+                ['font', ['bold', 'italic', 'underline', 'clear']],
+                ['fontname', ['fontname', 'fontsize']],
+                ['color', ['color']],
+                ['para', ['ul', 'ol', 'paragraph']],
+                ['table', ['table']],
+                ['insert', ['link', 'picture', 'hr']],
+                ['view', ['fullscreen', 'codeview']]
+            ],
+            dialogsInBody: false,
+            tableresize: true,
+            callbacks: {
+                onChange: function (contents) {
+                    if (ko.isObservable(observable)) {
+                        observable(contents);
+                    }
+                }
+            }
+        };
+
+        $(element).summernote(options);
+
+        // Set initial value
+        const value = ko.unwrap(observable);
+        $(element).summernote('code', value || "");
+
+        // ✅ Attach editor reference to observable
+        if (ko.isObservable(observable)) {
+            observable.editor = $(element);
+        }
+
+        // Dispose correctly
+        ko.utils.domNodeDisposal.addDisposeCallback(element, function () {
+            $(element).summernote('destroy');
+        });
+    },
+    update: function (element, valueAccessor) {
+        const value = ko.unwrap(valueAccessor());
+        if ($(element).summernote('code') !== value) {
+            $(element).summernote('code', value || "");
+        }
     }
 };
 
