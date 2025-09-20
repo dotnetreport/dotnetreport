@@ -231,7 +231,7 @@ function scheduleBuilder(userId, getTimeZonesUrl,appSettings) {
 
 	self.getTimezones = function () {
 		ajaxcall({
-			url: getTimeZonesUrl || '/api/DotNetReportApi/GetAllTimezones',
+			url: getTimeZonesUrl || '/DotNetReport/ReportService.asmx/GetAllTimezones',
 			noBlocking: true,
 			type: 'GET'
 		}).done(function (timezonesData) {
