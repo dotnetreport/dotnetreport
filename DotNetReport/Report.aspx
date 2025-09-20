@@ -45,13 +45,11 @@
                 vm.loadProcs().done(function () {
                     vm.LoadReport(<%= Model.ReportId %>, true, "<%= Model.ReportSeries %>").done(function () {
                         ko.applyBindings(vm);
-                        vm.headerDesigner.resizeCanvas();
                     });
             });
 
             $(window).resize(function () {
                 vm.DrawChart();
-                vm.headerDesigner.resizeCanvas();
             });
         });
     });

@@ -90,18 +90,20 @@ namespace ReportBuilder.WebForms.DotNetReport
             public string method { get; set; }
             public string headerJson { get; set; }
             public bool useReportHeader { get; set; }
+            public string headerClientId { get; set; } = "";
 
         }
 
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
-        public object PostReportApi(string method, string headerJson, bool useReportHeader)
+        public object PostReportApi(string method, string headerJson, bool useReportHeader,string headerClientId)
         {
             return CallReportApi(method, JsonConvert.SerializeObject(new PostReportApiCallMode
             {
                 method = method,
                 headerJson = headerJson,
-                useReportHeader = useReportHeader
+                useReportHeader = useReportHeader,
+                headerClientId= headerClientId
             }));
         }
 

@@ -6643,9 +6643,11 @@ var dashboardViewModel = function (options) {
 
 	self.getDashboards = function () {
 		ajaxcall({
-			url: options.getDashbordsUrl+ '?adminMode=' + self.adminMode(),
+			url: options.getDashbordsUrl,
+			data: { adminMode: self.adminMode() },
 			noBlocking: true
 		}).done(function (dashboardData) {
+			if (dashboardData.d) { dashboardData = dashboardData.d; }
 			if (dashboardData && dashboardData.noAccount === true) {
 				$("#noaccountModal").modal('show');
 				return;

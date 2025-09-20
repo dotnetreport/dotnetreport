@@ -48,7 +48,6 @@ Its Recommended you use it as is, and only change styling as needed to match you
 
                 $(window).resize(function () {
                     vm.DrawChart();
-                    vm.headerDesigner.resizeCanvas();
                 });
             });
         });
