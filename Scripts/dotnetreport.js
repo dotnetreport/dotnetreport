@@ -5872,7 +5872,7 @@ var reportViewModel = function (options) {
 
 		self.inInit = true;
 		var adminMode = false;
-		if (localStorage) adminMode = localStorage.getItem('reportAdminMode');
+		if (localStorage.length > 0) adminMode = localStorage.getItem('reportAdminMode');
 
 		if (adminMode === 'true' && self.allowAdmin()) {
 			self.adminMode(true);
@@ -7348,7 +7348,7 @@ var dashboardViewModel = function (options) {
 	self.init = function () {
 		return self.loadAppSettings().done(function () {
 			var adminMode = false;
-			if (localStorage) adminMode = localStorage.getItem('reportAdminMode');
+			if (localStorage.length > 0) adminMode = localStorage.getItem('reportAdminMode');
 
 			if (adminMode === 'true') {
 				self.adminMode(true);
