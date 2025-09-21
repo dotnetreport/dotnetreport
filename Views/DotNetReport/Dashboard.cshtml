@@ -94,7 +94,8 @@
                                     margin: 10,
                                     resizable: {
                                         handles: 'se, sw, ne, nw, n, e, s, w'
-                                    }
+                                    },
+                                    oneColumnSize: 768
                                 });
 
                                 grid.on('change', function (event, items) {
@@ -115,6 +116,7 @@
                                     vm.drawChart();
                                     grid.enableMove(false);
                                     grid.enableResize(false);
+                                    vm.gridResponsive();
                                 }, 1000);
                             }, 10);
 
@@ -122,6 +124,7 @@
 
                         window.addEventListener('resize', function () {
                             vm.drawChart();
+                            vm.gridResponsive();
                         });
                     });
                 });

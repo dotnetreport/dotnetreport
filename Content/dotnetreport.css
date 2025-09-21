@@ -1768,3 +1768,7 @@ tfoot tr.sub-total {
     max-height: 250px;
 }
 
+.grid-stack-one-column-mode > .grid-stack-item {
+    width: 100% !important;
+    left: 0 !important;
+}

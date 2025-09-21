@@ -7447,7 +7447,15 @@ var dashboardViewModel = function (options) {
 	// Apply initial zoom on page load
 	updateZoomDashboard();
 
-
+	self.gridResponsive = function () {
+		const gridEl = document.querySelector('.grid-stack');
+		if (!gridEl) return;
+		if (window.innerWidth < 768) {
+			gridEl.classList.add('grid-stack-one-column-mode');
+		} else {
+			gridEl.classList.remove('grid-stack-one-column-mode');
+		}
+	}
 	var eventHandlers = {};
 	self.arrangeDashboard.subscribe(function (newValue) {
 		const grid = document.querySelector('.grid-stack')?.gridstack;
