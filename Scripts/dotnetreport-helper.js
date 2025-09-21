@@ -457,9 +457,9 @@ ko.bindingHandlers.summernote = {
             dialogsInBody: false,
             tableresize: true,
             callbacks: {
-                onChange: function (contents) {
+                onBlur: function () {
                     if (ko.isObservable(observable)) {
-                        observable(contents);
+                        observable($(element).summernote('code'));
                     }
                 }
             }
@@ -467,16 +467,13 @@ ko.bindingHandlers.summernote = {
 
         $(element).summernote(options);
 
-        // Set initial value
         const value = ko.unwrap(observable);
         $(element).summernote('code', value || "");
 
-        // ✅ Attach editor reference to observable
         if (ko.isObservable(observable)) {
             observable.editor = $(element);
         }
 
-        // Dispose correctly
         ko.utils.domNodeDisposal.addDisposeCallback(element, function () {
             $(element).summernote('destroy');
         });
@@ -1233,6 +1230,7 @@ $.extend($.summernote.plugins, {
                                 if (td.length) {
                                     td.css('background-color', color);
                                 }
+                                context.triggerEvent('change', $editable.html(), $editable);
                             }
                         });
                         colorInput.trigger('click');
@@ -1277,6 +1275,7 @@ $.extend($.summernote.plugins, {
 
                         $(document).on('mouseup.colresize', function () {
                             $(document).off('.colresize');
+                            context.triggerEvent('change', $editable.html(), $editable);
                         });
                     });
                 }
@@ -1305,6 +1304,7 @@ $.extend($.summernote.plugins, {
 
                         $(document).on('mouseup.rowresize', function () {
                             $(document).off('.rowresize');
+                            context.triggerEvent('change', $editable.html(), $editable);
                         });
                     });
                 }
@@ -1339,6 +1339,7 @@ $.extend($.summernote.plugins, {
 
                     $(document).on('mouseup.tableresize', function () {
                         $(document).off('.tableresize');
+                        context.triggerEvent('change', $editable.html(), $editable);
                     });
                 });
             }
@@ -1358,10 +1359,10 @@ $.extend($.summernote.plugins, {
         };
     }
 });
-
 $.extend($.summernote.plugins, {
     'tablefullwidth': function (context) {
         var ui = $.summernote.ui;
+        var $editable = context.layoutInfo.editable;
 
         context.memo('button.tablefullwidth', function () {
             return ui.button({
@@ -1384,6 +1385,7 @@ $.extend($.summernote.plugins, {
                             width: '100%',
                             tableLayout: 'auto'
                         });
+                        context.triggerEvent('change', $editable.html(), $editable);
                     }
                 }
             }).render();

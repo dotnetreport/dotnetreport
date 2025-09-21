@@ -3384,7 +3384,7 @@ var reportViewModel = function (options) {
 					SubTotalMode: false,
 					useAltPivot: self.appSettings.useAltPivot
 				}),
-				noBlocking: dashboardRun === true
+				noBlocking: dashboardRun === true || self.activeDesign()
 			}).done(function (result) {
 				if (result.d) { result = result.d; }
 				if (result.result) { result = result.result; }
@@ -4365,7 +4365,7 @@ var reportViewModel = function (options) {
 				SubTotalMode: false,
 				useAltPivot: self.appSettings.useAltPivot
 			}),
-			noBlocking: self.ReportMode() == 'dashboard'
+			noBlocking: self.ReportMode() == 'dashboard' || self.activeDesign()
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
 			if (result.result) { result = result.result; }

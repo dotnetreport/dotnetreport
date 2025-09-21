@@ -2051,8 +2051,11 @@
 
       <!-- Visualization Toolbar -->
       <div class="card p-1 mb-2">
-        <div class="card-header p-1">
-          <i class="fa fa-file"></i> Visualization
+         <div class="card-header p-1 d-flex justify-content-between align-items-center">
+          <span><i class="fa fa-file"></i> Visualization</span>
+          <button type="button" class="btn btn-sm btn-light" data-bind="visible: ReportID(), click: function() {activeDesign(false);}" title="Close">
+            <i class="fa fa-times"></i> Close Designer
+          </button>
         </div>
         <div class="card-body p-1">
           <div data-bind="template: 'designer-choose-visual'"></div>
