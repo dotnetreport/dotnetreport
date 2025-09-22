@@ -65,8 +65,6 @@
 </head>
 
 <body>
-
-    @Html.AntiForgeryToken()
     <div data-bind="with: ReportResult">
 
         <!-- ko ifnot: HasError -->
@@ -95,17 +93,12 @@
         </div>
         <!-- /ko -->
         <!-- ko if: HasError -->
-        <h2>@Model.ReportName</h2>
-        <p>
-            @Model.ReportDescription
-        </p>
-
         <h3>An unexpected error occured while running the Report</h3>
         <hr />
         <b>Error Details</b>
-        <p class="report-inner" style="display: none;">
+        <div class="report-inner" style="display: none;">
             <div data-bind="text: Exception"></div>
-        </p>
+        </div>
 
         <!-- /ko -->
 
@@ -323,7 +316,6 @@
             </table>
         </div>
     </script>
-    <input type="hidden" id="exportId" value="@ViewBag.ExportId" />
 
     <script src="../Scripts/jquery-3.7.1.min.js"></script>
     <script src="../Scripts/bootstrap.bundle.min.js"></script>
@@ -385,7 +377,6 @@
                 dataFilters: JSON.parse(data.dataFilters || '{}'),
                 reportData: JSON.parse(decodeHTMLEntities('<%= Model.ReportData.Replace("'", "\\'") %>')),
                 getTimeZonesUrl: svc + "GetAllTimezones",
-                chartSize: { width: 1000, height: 450 }
                 chartSize: { width: 800, height: 450 }
             });
             vm.pager.pageSize(10000);

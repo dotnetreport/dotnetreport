@@ -2838,7 +2838,7 @@ namespace ReportBuilder.Web.Models
 
             var file = Task.Run(async () =>
             {
-                var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = true, ExecutablePath = executablePath });
+                var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = !debug, ExecutablePath = executablePath });
                 var page = await browser.NewPageAsync();
                 await page.SetRequestInterceptionAsync(true);
 
@@ -3707,6 +3707,9 @@ namespace ReportBuilder.Web.Models
                             schemaTable = reader.GetSchemaTable();
                             foreach (DataRow dr in schemaTable.Rows)
                             {
+                                if (Convert.ToInt32(dr["ColumnOrdinal"]) < 0)
+                                    continue;
+
                                 var column = new ColumnViewModel
                                 {
                                     ColumnName = dr["ColumnName"].ToString(),
