@@ -213,6 +213,7 @@ namespace ReportBuilder.Web.Controllers
             public string reportData { get; set; }
             public bool SubTotalMode { get; set; }
             public bool useAltPivot { get; set; }
+            public bool adminmode { get; set; }
         }
 
         [ValidateAntiForgeryToken]
@@ -231,6 +232,7 @@ namespace ReportBuilder.Web.Controllers
             string pivotFunction = data.pivotFunction;
             string reportData = data.reportData;
             bool subtotalMode = data.SubTotalMode;
+            bool adminmode = data.adminmode;
             var sql = "";
             var sqlCount = "";
             int totalRecords = 0;
@@ -447,7 +449,7 @@ namespace ReportBuilder.Web.Controllers
                 {
                     ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dtPaged, fields),
                     //Warnings = GetWarnings(sql),
-                    ReportSql = sql,
+                    ReportSql = adminmode ? sql : " ",
                     ReportDebug = Request.Host.Host.Contains("localhost"),
                     Pager = new DotNetReportPagerModel
                     {
@@ -467,7 +469,7 @@ namespace ReportBuilder.Web.Controllers
                 var model = new DotNetReportResultModel
                 {
                     ReportData = new DotNetReportDataModel(),
-                    ReportSql = sql,
+                    ReportSql = adminmode ? sql : " ",
                     HasError = true,
                     Exception = ex.Message,
                     ReportDebug = Request.Host.Host.Contains("localhost"),

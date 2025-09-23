@@ -4060,7 +4060,8 @@ var reportViewModel = function (options) {
 						pivotColumn: '',
 						pivotFunction: '',
 						reportData: '',
-						SubTotalMode: false
+						SubTotalMode: false,
+						adminMode: self.adminMode(),
 					}),
 					noBlocking: true
 				}).done(function (ddData) {
@@ -4307,7 +4308,8 @@ var reportViewModel = function (options) {
 						SubTotalMode: pivotData.pivotColumn ? true : false,
 						pivotColumn: pivotData.pivotColumn,
 						pivotFunction: pivotData.pivotFunction,
-						useAltPivot: self.appSettings.useAltPivot
+						useAltPivot: self.appSettings.useAltPivot,
+						adminMode: self.adminMode(),
 					}),
 					noBlocking: self.ReportMode() == 'dashboard'
 				}).done(function (subtotalResult) {
@@ -4364,7 +4366,8 @@ var reportViewModel = function (options) {
 				pivotFunction: pivotData.pivotFunction,
 				reportData: pivotData.pivotColumn ? JSON.stringify(reportData) : '',
 				SubTotalMode: false,
-				useAltPivot: self.appSettings.useAltPivot
+				useAltPivot: self.appSettings.useAltPivot,
+				adminMode: self.adminMode(),
 			}),
 			noBlocking: self.ReportMode() == 'dashboard' || self.activeDesign()
 		}).done(function (result) {
