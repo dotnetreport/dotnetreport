@@ -4068,6 +4068,7 @@ var reportViewModel = function (options) {
 					if (ddData.result) { ddData = ddData.result; }
 					ddData.ReportData.IsDrillDown = ko.observable(true);
 					ddData.ReportData.CanExpandOption = ko.computed(function () { return self.ShowExpandOption(); });
+					ddData.ReportData.ReportSql = ko.observable(beautifySql(ddData.ReportSql, true));
 					if (ddData.HasError) {
 						toastr.error(ddData.Exception || 'Error occured in drill down');
 						e.isExpanded(false);
