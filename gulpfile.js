@@ -65,6 +65,10 @@ var deps = {
 	"bootbox": {
 		"dist/*": ""
 	},
+	"gridstack": {
+		"dist/gridstack-all.js": "",
+		"dist/gridstack.min.css": ""
+	},
 	"knockout-sortable": {
 		"build/*": ""
 	},
@@ -77,12 +81,14 @@ var deps = {
 	"knockout-x-editable": {
 		"knockout.x-editable.min.js": ""
 	},
-	"fabric": {
-		"dist/fabric.min.js": ""
-	},
 	"tributejs": {
 		"dist/tribute.min.js": "",
 		"dist/tribute.css": ""
+	},
+	"summernote": {
+		"dist/summernote-bs5.min.js": "",
+		"dist/summernote-bs5.min.css": "",
+		"dist/font/*": "font/"
 	}
 };
 

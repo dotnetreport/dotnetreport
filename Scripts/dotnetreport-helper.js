@@ -1,8 +1,10 @@
 ﻿/// .Net Report Builder helper methods
 
 // Ajax call wrapper function
+var activeBlockUICount = 0;
+
 function ajaxcall(options) {
-    var noBlocking = options.noBlocking === true ? true : false;
+    var noBlocking = options.noBlocking === true;
     var useProgressBar = options.useProgressBar === true;
     var progressBarMessage = options.progressBarMessage || "Processing...";
     var progressBarId = 'ajaxProgressBarPopup';
@@ -29,23 +31,23 @@ function ajaxcall(options) {
     var currentProgress = 0;
 
     function showProgress() {
-        $progressBarPopup.find('.progress-popup-header span').text(progressBarMessage); // Set message text
+        $progressBarPopup.find('.progress-popup-header span').text(progressBarMessage);
         $progressBarPopup.show();
         currentProgress = 0;
         $progressBar.css('width', currentProgress + '%').attr('aria-valuenow', currentProgress);
 
         progressInterval = setInterval(function () {
-            if (currentProgress < 90) { // Incrementally go up to 90%
+            if (currentProgress < 90) {
                 currentProgress += 10;
                 $progressBar.css('width', currentProgress + '%').attr('aria-valuenow', currentProgress);
             }
         }, 500);
     }
-    
+
     function completeProgress() {
-        clearInterval(progressInterval); 
+        clearInterval(progressInterval);
         $progressBar.css('width', '100%').attr('aria-valuenow', 100);
-        setTimeout(hideProgress, 500); 
+        setTimeout(hideProgress, 500);
     }
 
     function hideProgress() {
@@ -54,9 +56,11 @@ function ajaxcall(options) {
 
     options.hideProgress = hideProgress;
 
-    // Show blocking spinner if not using progress bar
     if ($.blockUI && !noBlocking && !useProgressBar) {
-        $.blockUI({ baseZ: 500 });
+        if (activeBlockUICount === 0) {
+            $.blockUI({ baseZ: 500 });
+        }
+        activeBlockUICount++;
     }
 
     // setup your app auth here optionally
@@ -82,13 +86,13 @@ function ajaxcall(options) {
         if (useProgressBar) {
             xhr.upload.addEventListener("progress", function (evt) {
                 if (evt.lengthComputable) {
-                    var percentComplete = Math.min(90, Math.round((evt.loaded / evt.total) * 90)); // Cap to 90%
+                    var percentComplete = Math.min(90, Math.round((evt.loaded / evt.total) * 90));
                     $progressBar.css('width', percentComplete + '%').attr('aria-valuenow', percentComplete);
                 }
             }, false);
             xhr.addEventListener("progress", function (evt) {
                 if (evt.lengthComputable) {
-                    var percentComplete = Math.min(90, Math.round((evt.loaded / evt.total) * 90)); // Cap to 90%
+                    var percentComplete = Math.min(90, Math.round((evt.loaded / evt.total) * 90));
                     $progressBar.css('width', percentComplete + '%').attr('aria-valuenow', percentComplete);
                 }
             }, false);
@@ -122,7 +126,7 @@ function ajaxcall(options) {
     return $.ajax({
         url: options.url,
         type: options.type || "GET",
-        data: options.data, 
+        data: options.data,
         cache: options.cache || false,
         dataType: options.dataType || "json",
         contentType: options.contentType || "application/json; charset=utf-8",
@@ -132,27 +136,26 @@ function ajaxcall(options) {
         beforeSend: beforeSend
     }).done(function (data) {
         if (useProgressBar) {
-            completeProgress(); 
+            completeProgress();
         }
         if ($.unblockUI && !noBlocking) {
-            $.unblockUI();
-            setTimeout(function () { $.unblockUI(); }, 1000);
+            activeBlockUICount = Math.max(0, activeBlockUICount - 1);
+            if (activeBlockUICount === 0) {
+                $.unblockUI();
+            }
         }
         delete options;
-
-        if (data.IsError && data.Message) {
-            toastr.error(data.Message);
-        }
-    }).fail(function (jqxhr, status, error) {
-        if (useProgressBar) {
-            hideProgress();
-        }
-        if ($.unblockUI) {
-            $.unblockUI();
-        }
-        delete options;
-        handleAjaxError(jqxhr, status, error);
-    });
+    })
+        .fail(function (jqxhr, status, error) {
+            if (useProgressBar) {
+                hideProgress();
+            }
+            if ($.unblockUI) {
+                $.unblockUI();
+            }
+            delete options;
+            handleAjaxError(jqxhr, status, error);
+        });
 }
 
 function handleAjaxError(jqxhr, status, error) {
@@ -223,7 +226,7 @@ ko.bindingHandlers.datepicker = {
         if (value === null || value === undefined) {
             $(element).datepicker("setDate", null);
             $(element).val('');
-        } else {
+        } else if (value) {
             var formattedDate = $.datepicker.formatDate($(element).datepicker("option", "dateFormat") || 'mm/dd/yy', new Date(value));
             if (formattedDate !== $(element).val()) {
                 $(element).datepicker("setDate", formattedDate);
@@ -451,12 +454,13 @@ function pagerViewModel(args) {
     args = args || {};
     var self = this;
 
-    self.pageSize = ko.observable(args.pageSize || 20);
+    self.pageSize = ko.observable(args.pageSize || 30);
     self.pages = ko.observable(args.pages || 1);
     self.currentPage = ko.observable(args.currentPage || 1);
     self.pauseNavigation = ko.observable(false);
     self.totalRecords = ko.observable(0);
     self.autoPage = ko.observable(args.autoPage === true ? true : false);
+    self.pageSizeOptions = ko.observableArray([1, 10, 30, 50, 100, 150, 200, 500]);
 
     self.sortColumn = ko.observable();
     self.sortDescending = ko.observable();
@@ -1126,6 +1130,87 @@ function changeTheme(theme) {
     }
 }
 
+self.lookupSqlPrms = {};
+self.searchValues = [];
+self.initLookupQuery = function (field) {
+    return ajaxcall({
+        url: options.apiUrl,
+        data: {
+            method: "/ReportApi/GetLookupList",
+            model: JSON.stringify({ fieldId: field.fieldId, addToken: true })
+        }
+    }).done(function (result) {
+        if (result.d) { result = result.d; }
+        if (result.result) { result = result.result; }
+        self.lookupSqlPrms = {
+            lookupSql: result.sql,
+            connectKey: result.connectKey
+        };
+    });
+}
+
+self.SearchLookup = function (token, text) {
+    return ajaxcall({
+        type: 'POST',
+        noBlocking: true,
+        url: options.lookupListUrl,
+        data: JSON.stringify({
+            lookupSql: self.lookupSqlPrms.lookupSql,
+            connectKey: self.lookupSqlPrms.connectKey,
+            token: encodeURIComponent(token),
+        })
+    });
+}
+
+self.setupLookup = function (field, filter) {
+    var tributeAttributes = self.getTributeAttributes({ searchLookupFilter: true });
+    var tribute = new Tribute(tributeAttributes);
+    var prefixes = ['C', 'F', 'M', 'P'];
+    var filterInputs = [];
+    prefixes.forEach(function (p) {
+        var el = document.getElementById('ctl-' + p + '-' + field.uiId);
+        if (el) filterInputs.push(el);
+    });
+
+    if (filterInputs.length > 0) {
+        tribute.attach(filterInputs);
+
+        filterInputs.forEach(function (filterInput) {
+            self.initLookupQuery(field);
+
+            filterInput.addEventListener("tribute-replaced", function (e) {
+                self.addQueryItem(e.detail.item.original);
+            });
+
+            filterInput.addEventListener("menuItemRemoved", function (e) {
+                self.queryItems.remove(e.detail.item.original);
+            });
+
+            filterInput.addEventListener('blur', function () {
+                if (self.queryItems.length > 0) {
+                    filter.Value(self.queryItems.map(x => x.text).join(','));
+                }
+            });
+
+            filterInput.addEventListener("input", function () {
+                if (!filterInput.value.trim()) {
+                    self.queryItems = [];
+                    filter.Value("");
+                    return;
+                }
+            });
+
+            filterInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    filterInput.blur();
+                }
+            });
+        });
+    }
+}
+
+
 window.toastr = (function () {
     const containerId = 'toast-container-bs5';
     let container = document.getElementById(containerId);
@@ -1163,3 +1248,182 @@ window.toastr = (function () {
         info: (msg) => show(msg, 'info')
     };
 })();
+
+$.extend($.summernote.plugins, {
+    'bgcolor': function (context) {
+        var ui = $.summernote.ui;
+        var $editor = context.layoutInfo.editor;
+        var $editable = context.layoutInfo.editable;
+
+        context.memo('button.bgcolor', function () {
+            return ui.buttonGroup([
+                ui.button({
+                    contents: '<i class="fa fa-paint-brush"></i>',
+                    tooltip: 'Cell Background Color',
+                    click: function () {
+                        var colorInput = $('<input type="color">');
+                        colorInput.on('input', function () {
+                            var color = $(this).val();
+                            var rng = context.invoke('editor.createRange');
+                            if (rng.isCollapsed()) {
+                                var td = $(rng.sc).closest('td,th');
+                                if (td.length) {
+                                    td.css('background-color', color);
+                                }
+                            }
+                        });
+                        colorInput.trigger('click');
+                    }
+                })
+            ]).render();
+        });
+    }
+});
+
+$.extend($.summernote.plugins, {
+    'tableresize': function (context) {
+        var $editable = context.layoutInfo.editable;
+
+        function makeResizable(table) {
+            $(table).css('position', 'relative');
+
+            $(table).find('th, td').each(function () {
+                var $cell = $(this);
+
+                if (!$cell.find('.resize-col').length) {
+                    var $colHandle = $('<div class="resize-col"></div>').css({
+                        position: 'absolute',
+                        right: 0,
+                        top: 0,
+                        width: '5px',
+                        cursor: 'col-resize',
+                        userSelect: 'none',
+                        height: '100%'
+                    });
+                    $cell.css('position', 'relative').append($colHandle);
+
+                    $colHandle.on('mousedown', function (e) {
+                        e.preventDefault();
+                        var startX = e.pageX;
+                        var startWidth = $cell.outerWidth();
+
+                        $(document).on('mousemove.colresize', function (e) {
+                            var newWidth = startWidth + (e.pageX - startX);
+                            $cell.css('width', newWidth + 'px');
+                        });
+
+                        $(document).on('mouseup.colresize', function () {
+                            $(document).off('.colresize');
+                        });
+                    });
+                }
+
+                if (!$cell.find('.resize-row').length) {
+                    var $rowHandle = $('<div class="resize-row"></div>').css({
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        height: '5px',
+                        cursor: 'row-resize',
+                        userSelect: 'none',
+                        width: '100%'
+                    });
+                    $cell.append($rowHandle);
+
+                    $rowHandle.on('mousedown', function (e) {
+                        e.preventDefault();
+                        var startY = e.pageY;
+                        var startHeight = $cell.outerHeight();
+
+                        $(document).on('mousemove.rowresize', function (e) {
+                            var newHeight = startHeight + (e.pageY - startY);
+                            $cell.css('height', newHeight + 'px');
+                        });
+
+                        $(document).on('mouseup.rowresize', function () {
+                            $(document).off('.rowresize');
+                        });
+                    });
+                }
+            });
+
+            if (!$(table).find('.resize-corner').length) {
+                var $cornerHandle = $('<div class="resize-corner"></div>').css({
+                    position: 'absolute',
+                    right: 0,
+                    bottom: 0,
+                    width: '10px',
+                    height: '10px',
+                    cursor: 'nwse-resize',
+                    background: 'rgba(0,0,0,0.2)'
+                });
+                $(table).append($cornerHandle);
+
+                $cornerHandle.on('mousedown', function (e) {
+                    e.preventDefault();
+                    var startX = e.pageX, startY = e.pageY;
+                    var startWidth = $(table).outerWidth();
+                    var startHeight = $(table).outerHeight();
+
+                    $(document).on('mousemove.tableresize', function (e) {
+                        var newWidth = startWidth + (e.pageX - startX);
+                        var newHeight = startHeight + (e.pageY - startY);
+                        $(table).css({
+                            width: newWidth + 'px',
+                            height: newHeight + 'px'
+                        });
+                    });
+
+                    $(document).on('mouseup.tableresize', function () {
+                        $(document).off('.tableresize');
+                    });
+                });
+            }
+        }
+
+        // hook into editor events
+        $editable.on('mousedown', 'table', function () {
+            makeResizable(this);
+        });
+
+        context.events = {
+            'summernote.init': function () {
+                $editable.find('table').each(function () {
+                    makeResizable(this);
+                });
+            }
+        };
+    }
+});
+
+$.extend($.summernote.plugins, {
+    'tablefullwidth': function (context) {
+        var ui = $.summernote.ui;
+
+        context.memo('button.tablefullwidth', function () {
+            return ui.button({
+                contents: '<i class="fa fa-arrows-h"></i>',
+                tooltip: 'Set Table Width 100%',
+                click: function () {
+                    var rng = context.invoke('editor.createRange');
+                    var $table = null;
+
+                    if (rng && rng.sc) {
+                        $table = $(rng.sc).closest('table');
+                    }
+
+                    if (!$table || !$table.length) {
+                        $table = $(rng.ec).closest('table');
+                    }
+
+                    if ($table && $table.length) {
+                        $table.css({
+                            width: '100%',
+                            tableLayout: 'auto'
+                        });
+                    }
+                }
+            }).render();
+        });
+    }
+});
