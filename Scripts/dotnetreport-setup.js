@@ -2259,8 +2259,8 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 	}
 
 	self.columnSorted = function (args) {
-		_.forEach(args.targetParent(), function (e) {
-			e.DisplayOrder(i);
+		_.forEach(args.targetParent(), function (e, index) {
+			e.DisplayOrder(index);
 		});
 
 	}

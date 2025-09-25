@@ -461,7 +461,7 @@
                                 </div>
                             </div>
 
-                            <div class="list-group" data-bind="sortable: { data: Columns, options: { handle: '.sortable', cursor: 'move' }, afterMove: $root.columnSorted }">
+                            <div class="list-group" data-bind="sortable: { data: Columns, options: { handle: '.sortable', cursor: 'move' }, afterMove: $root.Tables.columnSorted }">
                                 <div class="list-group-item">
                                     <div data-bind="if: $parent.DynamicColumns()">
                                         <span data-bind="html: DisplayName, attr: { title: 'DB field is ' + ColumnName() }"></span>
