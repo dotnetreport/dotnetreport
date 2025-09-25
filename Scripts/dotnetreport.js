@@ -4229,7 +4229,9 @@ var reportViewModel = function (options) {
 							let tdStyle = `style="background-color: ${item._backColor ?? item.backColor()};
 						color: ${item._fontColor ?? item.fontColor()}; 
 						font-weight: ${(item.fontBold() || item._fontBold) ? 'bold' : 'normal'}; 
-						text-align: ${item.fieldAlign() ? item.fieldAlign() : (item.Column.IsNumeric ? 'right' : 'left')}"`;
+						text-align: ${item.fieldAlign() ? item.fieldAlign() : (item.Column.IsNumeric ? 'right' : 'left')};
+						width:${(item.fieldWidth() ?? item.fieldWidth)};
+						text-wrap:${(item.fieldWidth() ?? item.fieldWidth) ? 'wrap' : 'nowrap'}"`;
 
 							if (item.LinkTo) {
 								rowsHTML +=
