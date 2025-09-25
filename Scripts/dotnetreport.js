@@ -1851,9 +1851,12 @@ var reportViewModel = function (options) {
 					try {
 						var report = JSON.parse(event.target.result);
 						var reportName = report.ReportName;
-						var reportId = report.ReportID;
-						var reportExists = _.some(self.SavedReports(), function (report) {
-							return report.reportName === reportName && report.reportId === reportId;
+						var folderId = self.SelectedFolder()?.Id ?? 0;
+						var reportsInFolder = _.filter(self.SavedReports(), function (r) {
+							return r.folderId === folderId;
+						});
+						var reportExists = _.some(reportsInFolder, function (report) {
+							return report.reportName === reportName;
 						});
 						if (reportExists) {
 							handleOverwriteConfirmation(reportName, function (action) {
@@ -1870,6 +1873,7 @@ var reportViewModel = function (options) {
 							$('#uploadFileModal').modal('hide');
 						} else {
 							report.ReportID = 0;
+							report.FolderID = folderId;
 							self.RunReport(true, true, false, report);
 							$('#uploadFileModal').modal('hide');
 						}
@@ -3319,44 +3323,45 @@ var reportViewModel = function (options) {
 		skipValidation = skipValidation === true ? true : false;
 		self.setFlyFilters();
 		var saveAlertFlag = false;
+		if (!importJson) {
+			self.TotalSeries(self.AdditionalSeries().length);
+			if (self.TotalSeries() > 0 && !saveOnly) self.ReportMode('start');
 
-		self.TotalSeries(self.AdditionalSeries().length);
-		if (self.TotalSeries() > 0 && !saveOnly) self.ReportMode('start');
 
-		
-		if (self.ReportType() == 'Single') {
-			if (self.enabledFields().length != 1) {
-				toastr.error("All data fields except one must be hidden for Widget type report");
+			if (self.ReportType() == 'Single') {
+				if (self.enabledFields().length != 1) {
+					toastr.error("All data fields except one must be hidden for Widget type report");
+					return;
+				}
+			}
+			if (self.SelectedFields().length === 0) {
+				if (!skipValidation) {
+					toastr.error("Please select at least one data field");
+				}
 				return;
 			}
-		}
-		if (self.SelectedFields().length === 0) {
-			if (!skipValidation) { 
-				toastr.error("Please select at least one data field");
-			}
-			return;
-		}
 
-		if (_.filter(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' }).length > 1) {
-			toastr.error("Select only one data field for Pivot.");
-			return;
-		}
-		if (self.SelectedFields().slice(-1)[0]?.selectedAggregate() === 'Pivot') {
-			toastr.error("Pivot field cannot be the last column.");
-			return;
-		}
-		if (self.IsDynamicFieldFirstColumn(0) || self.IsAllDynamicFieldSelected()) {
-			toastr.error("Dynamic cannot be first column.\n Cannot be only dynamic without a parent field.");
-			return;
-		}
-		if (!skipValidation && !self.validateReport()) {
-			toastr.error("Please correct validation issues");
-			return;
-		}
-		let field = self.FilterGroups()[0]?.FilterGroups()[0]?.Filters()[0]?.Field();
-		if (field && field.fieldId === 0 && field.dynamicTableId != null) {
-			toastr.error("You can not use dynamic field is first in filter group");
-			return;
+			if (_.filter(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' }).length > 1) {
+				toastr.error("Select only one data field for Pivot.");
+				return;
+			}
+			if (self.SelectedFields().slice(-1)[0]?.selectedAggregate() === 'Pivot') {
+				toastr.error("Pivot field cannot be the last column.");
+				return;
+			}
+			if (self.IsDynamicFieldFirstColumn(0) || self.IsAllDynamicFieldSelected()) {
+				toastr.error("Dynamic cannot be first column.\n Cannot be only dynamic without a parent field.");
+				return;
+			}
+			if (!skipValidation && !self.validateReport()) {
+				toastr.error("Please correct validation issues");
+				return;
+			}
+			let field = self.FilterGroups()[0]?.FilterGroups()[0]?.Filters()[0]?.Field();
+			if (field && field.fieldId === 0 && field.dynamicTableId != null) {
+				toastr.error("You can not use dynamic field is first in filter group");
+				return;
+			}
 		}
 		self.ValidateTableJoins().done(function (isValid) {
 			if (isValid) {
