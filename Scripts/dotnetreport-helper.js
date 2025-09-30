@@ -283,7 +283,9 @@ ko.bindingHandlers.select2 = {
     init: function (el, valueAccessor, allBindingsAccessor, viewModel) {
         $(el).select2(ko.unwrap(valueAccessor()));
         ko.utils.domNodeDisposal.addDisposeCallback(el, function () {
-            $(el).select2('destroy');
+            if (el && $(el).length && $(el).data('select2')) {
+                $(el).select2('destroy');
+            }
         });
     },
     update: function (el, valueAccessor, allBindingsAccessor, viewModel) {

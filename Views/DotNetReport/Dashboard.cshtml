@@ -358,11 +358,24 @@
                                 <span class="fa fa-filter"></span> Filter
                             </a>
                         </li>
-                        <li data-bind="visible: CanEdit">
-                            <a href="#" class="dropdown-item" data-bind="click: openReport">
+                        <li class="dropdown dropdown-hover">
+                            <a href="#" class="dropdown-toggle dropdown-item">
                                 <span class="fa fa-pencil"></span> Edit
                             </a>
+                            <ul class="dropdown-menu small">                                
+                                <li>
+                                    <a class="dropdown-item" href="#" data-bind="click: openReport">
+                                        <span class="fa fa-pencil"></span> Edit Standard
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="#" data-bind="click: editReportAi">
+                                        <span class="fa fa-bolt"></span> Edit Smarter
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
+
                         <li class="dropdown dropdown-hover" data-bind="visible: ReportType()!='Single'">
                             <a href="#" class="dropdown-toggle dropdown-item">
                                 <span class="fa fa-download"></span> Export
@@ -418,6 +431,9 @@
                 <div class="pull-right">
                     <a class="btn btn-link" data-bind="click: toggleExpand"><span class="fa" data-bind="css: {'fa-expand': !isExpanded(), 'fa-minus': isExpanded() }, visible: ReportType() != 'Single' && !noDashboardBorders()"></span></a>
                 </div>
+            </div>
+            <div data-bind="if: activeDesign()">
+                <div data-bind="template: 'report-designer-compact'"></div>
             </div>
             <div class="card-body list-overflow-auto" style="padding-top: 0; margin-top: 0;">
                 <div data-bind="if: ReportType()!='Single' && ReportType()!='Html' && CanEdit()">

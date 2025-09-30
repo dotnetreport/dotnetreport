@@ -5814,6 +5814,58 @@ var reportViewModel = function (options) {
 		});
 	};
 
+	self.Tables.subscribe(function (tables) {
+		if (!tables) return;
+		const categorizedTables = [];
+		tables.forEach(function (table) {
+			table.isEnabled = ko.observable(true);
+			table.selectTable = function (data) {
+				if (table.isEnabled()) {
+					self.SelectedTable(self.SelectedTable() == data ? null : data)
+				}
+			}
+			if (table.tableCategories && table.tableCategories.length > 0) {
+				table.tableCategories.forEach(function (category) {
+					let categoryGroup = categorizedTables.find(function (cat) {
+						return cat.categoryId === category.CategoryId;
+					});
+					if (!categoryGroup) {
+						categoryGroup = {
+							isExpanded: ko.observable(false),
+							categoryId: category.CategoryId,
+							categoryName: category.Name,
+							tables: []
+						};
+						categorizedTables.push(categoryGroup);
+					} else {
+						categoryGroup.isExpanded = ko.observable(false);
+					}
+					categoryGroup.tables.push(table);
+				});
+			} else {
+				let withoutCategoryGroup = categorizedTables.find(function (cat) {
+					return cat.categoryId === 'without_category';
+				});
+				if (!withoutCategoryGroup) {
+					withoutCategoryGroup = {
+						isExpanded: ko.observable(true),
+						categoryId: 'without_category',
+						categoryName: '   ',
+						tables: []
+					};
+					categorizedTables.push(withoutCategoryGroup);
+				}
+				withoutCategoryGroup.tables.push(table);
+			}
+		});
+		categorizedTables.sort((a, b) => {
+			if (a.categoryName === '   ') return 1;
+			if (b.categoryName === '   ') return -1;
+			return a.categoryName.localeCompare(b.categoryName);
+		});
+		self.CategorizedTables(categorizedTables);
+	});
+
 	self.loadTables = function () {
 		// Load tables
 		return ajaxcall({
@@ -5831,54 +5883,7 @@ var reportViewModel = function (options) {
 
 			tables = _.sortBy(tables, function (x) { return x.tableName });
 			self.Tables(tables);
-			const categorizedTables = [];
-			tables.forEach(function (table) {
-				table.isEnabled = ko.observable(true);
-				table.selectTable = function (data) {
-					if (table.isEnabled()) {
-						self.SelectedTable(self.SelectedTable() == data ? null : data)
-					}
-				}
-				if (table.tableCategories && table.tableCategories.length > 0) {
-					table.tableCategories.forEach(function (category) {
-						let categoryGroup = categorizedTables.find(function (cat) {
-							return cat.categoryId === category.CategoryId;
-						});
-						if (!categoryGroup) {
-							categoryGroup = {
-								isExpanded: ko.observable(false),
-								categoryId: category.CategoryId,
-								categoryName: category.Name,
-								tables: []
-							};
-							categorizedTables.push(categoryGroup);
-						} else {
-							categoryGroup.isExpanded = ko.observable(false);
-						}
-						categoryGroup.tables.push(table);
-					});
-				} else {
-					let withoutCategoryGroup = categorizedTables.find(function (cat) {
-						return cat.categoryId === 'without_category';
-					});
-					if (!withoutCategoryGroup) {
-						withoutCategoryGroup = {
-							isExpanded: ko.observable(true),
-							categoryId: 'without_category',
-							categoryName: '   ',
-							tables: []
-						};
-						categorizedTables.push(withoutCategoryGroup);
-					}
-					withoutCategoryGroup.tables.push(table);
-				}
-			});
-			categorizedTables.sort((a, b) => {
-				if (a.categoryName === '   ') return 1; 
-				if (b.categoryName === '   ') return -1; 
-				return a.categoryName.localeCompare(b.categoryName); 
-			});
-			self.CategorizedTables(categorizedTables);
+			
 		});
 	};
 
@@ -6987,33 +6992,50 @@ var dashboardViewModel = function (options) {
 			report.toggleFlyFilters = function () {
 				report.showFlyFilters(!report.showFlyFilters());
 			};
-			report.openReport = function () {
+
+			report.ensureReportData = function () {
 				var promises = [];
-				if (self.tables.length == 0) {
+				if (self.tables.length === 0) {
 					promises.push(report.loadTables().done(function (x) {
 						if (x.d) x = x.d;
 						self.tables = x;
-						report.Tables(self.tables);
 					}));
+				}
+				if (self.procs.length === 0) {
 					promises.push(report.loadProcs().done(function (x) {
 						if (x.d) x = x.d;
 						self.procs = x;
-						report.Procs(self.procs);
 					}));
+				}
+				if (self.procs.folders === 0) {
 					promises.push(report.loadFolders().done(function (x) {
 						if (x.d) x = x.d;
 						self.folders = x;
-						report.Folders(self.folders);
 					}));
 				}
+				return $.when.apply($, promises);
+			};
 
-				$.when(promises).done(function () {
-					// Load report
+			report.editReportAi = function () {
+				report.ensureReportData().done(function () {
 					report.Tables(self.tables);
 					report.Procs(self.procs);
 					report.Folders(self.folders);
 					report.SaveReport(true);
 					self.selectedReport(report);
+					report.activeDesign(true);
+					report.isExpanded(true);
+				});
+			}
+
+			report.openReport = function () {
+				report.ensureReportData().done(function () {
+					report.Tables(self.tables);
+					report.Procs(self.procs);
+					report.Folders(self.folders);
+					report.SaveReport(true);
+					self.selectedReport(report);
+
 					setTimeout(function () {
 						var reportModel = new bootstrap.Modal(document.getElementById('modal-reportbuilder'));
 						reportModel.show();
