@@ -968,6 +968,7 @@ var reportViewModel = function (options) {
 	self.ReportColumns = ko.observable();
 	self.isModalOpen = ko.observable(false);
 	self.cardView = ko.observable(false);
+	self.dontGroupCustom = ko.observable(false);
 	self.isDirty = ko.observable(false);
 	self.activeDesign = ko.observable(false);
 	self.panels = new DesignerViewModel();
@@ -1498,7 +1499,7 @@ var reportViewModel = function (options) {
 	}
 
 	self.ReportType.subscribe(function (newvalue) {
-		if (newvalue == 'List' || newvalue == 'Treemap') {
+		if (newvalue == 'List' || newvalue == 'Treemap' || self.dontGroupCustom()) {
 			self.AggregateReport(false);
 		}
 		else {
@@ -1507,6 +1508,10 @@ var reportViewModel = function (options) {
 		if (self.chartTypes.indexOf(newvalue) < 0) {
 			self.DrawChart();
 		}		
+	});
+
+	self.dontGroupCustom.subscribe(function (newValue) {
+		self.AggregateReport(!newValue);
 	});
 
 	self.SelectFieldToInsert = ko.observable();
@@ -2071,6 +2076,7 @@ var reportViewModel = function (options) {
 		self.DefaultPageSize(30);
 		self.reportRan(false);
 		self.cardView(false);
+		self.dontGroupCustom(false);
 		self.executingReport = false;
 		self.queryPrompt = "";
 		self.isDirty(false);
@@ -3145,6 +3151,7 @@ var reportViewModel = function (options) {
 				reportHtml: self.ReportType() == 'Html' ? encodeURIComponent(self.getReportHtml()) : '',
 				queryPrompt: self.queryPrompt,
 				cardView: self.cardView(),
+				dontGroupCustom: self.dontGroupCustom(),
 				subReports: self.subReports(),
 				tableSettings: self.tableSettings()
 			}),
@@ -5294,6 +5301,7 @@ var reportViewModel = function (options) {
 		self.PivotColumnsWidth(reportSettings.PivotColumnsWidth || null);
 		self.reportHtml(decodeURIComponent(reportSettings.reportHtml));
 		self.cardView(reportSettings.cardView === true ? true : false);
+		self.dontGroupCustom(reportSettings.dontGroupCustom === true ? true : false);
 		self.subReports(reportSettings.subReports || []);
 
 		if (self.ReportMode() == "execute") {

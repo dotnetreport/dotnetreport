@@ -1540,7 +1540,18 @@
 
         <div data-bind="visible: ReportType()=='Single'" class="card card-body">
             <div class="alert alert-info small py-1 mb-0">
-            <span class="fa fa-lightbulb-o"></span>&nbsp;Widget is a single value report that is ideal for placing on a Dashboard. All fields except one must be hidden for Widgets.
+            <span class="fa fa-lightbulb-o"></span>&nbsp;KPI is a single value report that is ideal for placing on a Dashboard. All fields except one must be hidden for Widgets.
+            </div>
+        </div>
+
+        <div data-bind="visible: ReportType()=='Html'" class="card card-body">
+            <div class="form-group row small">
+            <div class="checkbox col-6">
+                <label>
+                <input type="checkbox" data-bind="checked: dontGroupCustom" />
+                List (Don't Summarize)
+                </label>
+            </div>
             </div>
         </div>
 
