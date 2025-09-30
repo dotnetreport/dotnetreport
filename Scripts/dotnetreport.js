@@ -4751,7 +4751,9 @@ var reportViewModel = function (options) {
 		}
 		if (self.ReportType() != 'Combo') {
 			delete chartOptions.seriesType;
+			delete chartOptions.series;
 		}
+
 		if (self.ReportType() == "Map") {
 			chart = new google.visualization.GeoChart(chartDiv);
 			// Refer to for full list of regions https://developers.google.com/chart/interactive/docs/gallery/geochart#Continent_Hierarchy
