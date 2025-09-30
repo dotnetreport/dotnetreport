@@ -1430,22 +1430,22 @@
                         <div class="row border-bottom py-2 w-100">
                             <div class="col-md-12">
                                 <div class="pull-left" data-bind="click: function() { selectTable($data); }, css: {'text-muted': !isEnabled()}, style: {cursor: isEnabled() ? 'pointer' : ''}, attr: {title: !isEnabled() ? 'Cannot use table as joins do not exist': ''}">
-                                    <span class="text-secondary fa" data-bind="css: isEnabled() ? ($data === $parents[$parents.length-1].SelectedTable() ? 'fa-chevron-down' : 'fa-chevron-right') : 'fa-ban'"></span>&nbsp;
+                                    <span class="text-secondary fa" data-bind="css: isEnabled() ? ($data === $parents[1].SelectedTable() ? 'fa-chevron-down' : 'fa-chevron-right') : 'fa-ban'"></span>&nbsp;
                                     <span class="fa fa-table"></span>&nbsp;<span data-bind="text: tableName" class=""></span>
                                 </div>
-                                <div class="pull-right" data-bind="visible: $data === $parents[$parents.length-1].SelectedTable() && !$parents[$parents.length-1].isFormulaField() && !$parents[$parents.length-1].SelectedTable().dynamicColumns">
-                                    <a href="#" class="small text-muted" data-bind="click: $parents[$parents.length-1].MoveAllFields">Select all</a> |
-                                    <a href="#" class="small text-muted" data-bind="click: $parents[$parents.length-1].RemoveSelectedFields">Remove all</a>
+                                <div class="pull-right" data-bind="visible: $data === $parents[1].SelectedTable() && !$parents[1].isFormulaField() && !$parents[1].SelectedTable().dynamicColumns">
+                                    <a href="#" class="small text-muted" data-bind="click: $parents[1].MoveAllFields">Select all</a> |
+                                    <a href="#" class="small text-muted" data-bind="click: $parents[1].RemoveSelectedFields">Remove all</a>
                                 </div>
                             </div>
 
                             <!-- Fields Expand Here -->
-                            <div data-bind="visible: $data === $parents[$parents.length-1].SelectedTable()" style="padding-left: 30px;">
-                                <!-- ko foreach: $parents[$parents.length-1].ChooseFields -->
+                            <div data-bind="visible: $data === $parents[1].SelectedTable()" style="padding-left: 30px;">
+                                <!-- ko foreach: $parents[1].ChooseFields -->
                                 <div class="row border-bottom py-2 align-items-center w-100">
                                     <div class="checkbox">
                                         <label>
-                                            <input type="checkbox" data-bind="checkedInArray: {array: $parents[$parents.length-1].isFormulaField() ? $parents[$parents.length-1].formulaFields : $parents[$parents.length-1].SelectedFields, value: $data}">
+                                            <input type="checkbox" data-bind="checkedInArray: {array: $parents[2].isFormulaField() ? $parents[2].formulaFields : $parents[2].SelectedFields, value: $data}">
                                             <span data-bind="text: fieldName"></span>
                                         </label>
                                     </div>
