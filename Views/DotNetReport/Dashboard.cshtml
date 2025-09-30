@@ -375,7 +375,6 @@
                                 </li>
                             </ul>
                         </li>
-
                         <li class="dropdown dropdown-hover" data-bind="visible: ReportType()!='Single'">
                             <a href="#" class="dropdown-toggle dropdown-item">
                                 <span class="fa fa-download"></span> Export
@@ -405,7 +404,7 @@
                         </li>
                         <li data-bind="visible: ReportType()!='Single'">
                             <a class="dropdown-item" data-bind="attr: {href: '/DotNetReport?linkedreport=true&noparent=true&reportId=' + ReportID() }" target="_blank">
-                                <span class="fa fa-file"></span> Report
+                                <span class="fa fa-folder-open"></span> Open Report
                             </a>
                         </li>
                         <li data-bind="visible: CanEdit() && CanSaveReports()">
@@ -421,6 +420,11 @@
                         <li>
                             <a href="#" class="dropdown-item" data-bind="click: function() { RefreshReport(ReportID()); }">
                                 <span class="fa fa-refresh"></span> Refresh
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: $parent.adminMode, click: getCode">
+                                <span class="fa fa-code"></span> Report Code
                             </a>
                         </li>
                     </ul>

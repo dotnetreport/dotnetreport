@@ -4081,7 +4081,7 @@ var reportViewModel = function (options) {
 					if (ddData.result) { ddData = ddData.result; }
 					ddData.ReportData.IsDrillDown = ko.observable(true);
 					ddData.ReportData.CanExpandOption = ko.computed(function () { return self.ShowExpandOption(); });
-					ddData.ReportData.ReportSql = ko.observable(beautifySql(ddData.ReportSql, true));
+					ddData.ReportData.ReportSql = beautifySql(ddData.ReportSql, true);
 					if (ddData.HasError) {
 						toastr.error(ddData.Exception || 'Error occured in drill down');
 						e.isExpanded(false);
@@ -4160,10 +4160,15 @@ var reportViewModel = function (options) {
 					connectKey: self.currentConnectKey(),
 					reportName: 'Sub Report for ' + self.ReportName(),
 					allExpanded: false,
-					expandSqls: '',
+					expandSqls: e.sql,
+					chartData: '',
 					columnDetails: self.getColumnDetails(),
 					includeSubTotals: false,
-					isSubReport:true
+					pivot: false,
+					pivotColumn: '',
+					pivotFunction: '',
+					onlyAndGroupInColumnDetail: null,
+					isSubReport: true					
 				}, 'xlsx');
 			}
 
@@ -4570,7 +4575,7 @@ var reportViewModel = function (options) {
 		if (!self.isChart() || self.skipDraw === true) return;
 		// Create the data table.
 		var reportData = self.ReportResult().ReportData();
-		if (!reportData || !google.visualization || !google.visualization.DataTable) return;
+		if (!reportData || !google.visualization || !google.visualization.DataTable || !google.visualization.LineChart || !google.visualization.BarChart || !google.visualization.ColumnChart || !google.visualization.PieChart) return;
 		var data = new google.visualization.DataTable();
 
 		var subGroups = [];
@@ -7059,6 +7064,10 @@ var dashboardViewModel = function (options) {
 			report.ChartDrillDownData.subscribe(function (e) {
 				self.ChartDrillDownData(e);
 			});
+			report.getCode = function () {				
+				self.ReportResult().ReportSql(report.ReportResult().ReportSql());
+			}
+
 			allreports.push(report);
 			promises.push(report.LoadReport(x.reportId, true, '', true, false).then(function () {
 				return report.RunReport(false, true, true);
@@ -7148,6 +7157,13 @@ var dashboardViewModel = function (options) {
 
 			self.drawChart();
 		});
+	}
+
+	var adminMode = false;
+	if (localStorage.length > 0) adminMode = localStorage.getItem('reportAdminMode');
+
+	if (adminMode === 'true') {
+		self.adminMode(true);
 	}
 
 	self.loadDashboardReports(options.reports, true);
@@ -7388,13 +7404,7 @@ var dashboardViewModel = function (options) {
 
 	self.init = function () {
 		return self.loadAppSettings().done(function () {
-			var adminMode = false;
-			if (localStorage.length > 0) adminMode = localStorage.getItem('reportAdminMode');
-
-			if (adminMode === 'true') {
-				self.adminMode(true);
-			}
-
+			
 			var getReports = function () {
 				return ajaxcall({
 					url: options.apiUrl,

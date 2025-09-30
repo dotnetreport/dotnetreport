@@ -329,11 +329,13 @@
                                 <div class="pull-left total-records" data-bind="visible: pages()">
                                     <span data-bind="text: 'Total Records: ' + totalRecords()"></span>
                                 </div>
-                                <div class="pull-left">
-                                    <button class="btn btn-xs" title="Download Excel" data-bind="click: $parent.exportExcel"><span class="fa fa-file-excel-o"></span></button>
-                                    <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#sqlDrillDownModal" data-bind="visible: $root.adminMode">
-                                            <span class="fa fa-code"></span> View Code
-                                    </button>       
+                                <div class="pull-left total-records">
+                                    &nbsp;
+                                    <a href="#" title="Download Excel" data-bind="click: $parent.exportExcel"><span class="fa fa-file-excel-o"></span></a>
+                                    &nbsp;
+                                    <a href="#" title="View Code" data-bs-toggle="modal" data-bs-target="#sqlDrillDownModal" data-bind="visible: $root.adminMode">
+                                        <span class="fa fa-code"></span> 
+                                    </a>       
                                 </div>
                                 <div class="form-group pull-right" data-bind="visible: pages()">
                                     <div data-bind="template: 'pager-template', data: $data"></div>
@@ -2771,7 +2773,7 @@
             </div>
             <div class="modal-body" data-bind="with: ReportResult">
                 <div style="overflow-x: auto; max-height: 500px; overflow-y: scroll; border: 1px solid; padding: 10px;" class="bg-dark text-light">
-                    <pre><code id="reportSqlCode" data-bind="html: ReportSql()" style="white-space: pre-wrap;"></code></pre>
+                    <pre><code data-bind="html: ReportSql" style="white-space: pre-wrap;"></code></pre>
                 </div>
             </div>
         </div>
@@ -2791,7 +2793,7 @@
             </div>
             <div class="modal-body" data-bind="with:DrillDownData">
                 <div style="overflow-x: auto; max-height: 500px; overflow-y: scroll; border: 1px solid; padding: 10px;" class="bg-dark text-light">
-                    <pre><code id="reportSqlCode" data-bind="html: ReportSql()" style="white-space: pre-wrap;"></code></pre>
+                    <pre><code data-bind="html: ReportSql" style="white-space: pre-wrap;"></code></pre>
                 </div>
             </div>
         </div>
