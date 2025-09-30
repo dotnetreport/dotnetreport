@@ -2,11 +2,11 @@
 <script type="text/html" id="report-filter">
     <div class="form-group" data-bind="attr: {id: 'filter-'+uiId }">
         <!-- ko if: !hasForeignKey-->
-        <!-- ko if: fieldType=='DateTime'-->
+        <!-- ko if: ['DateTime','Date','Time'].indexOf(fieldType) != -1 -->
         <div style="display: flex; align-items: center; gap: 8px;">
             <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 -->
             <input class="form-control" data-bind="datepicker: $parent.fmtValue, datepickerOptions: {value: $parent.Value, dateFormat: dateFormat() === 'Custom' ? customDateFormat().replace(/yyyy/g, 'yy') : $root.dateFormatMappings[dateFormat()]}" required />
-            <!-- ko if: fieldFormat()=='Time' || fieldFormat()=='Date and Time'-->
+            <!-- ko if: fieldType=='Time' || fieldFormat()=='Time' || fieldFormat()=='Date and Time'-->
             <input class="form-control" type="time" data-bind="value:$parent.Valuetime" required>
             <!-- /ko -->
             <!-- /ko -->
@@ -15,14 +15,14 @@
         From
         <div style="display: flex; align-items: center; gap: 8px;">
             <input required class="form-control from-date" data-bind="datepicker: $parent.fmtValue, datepickerOptions: {value: $parent.Value, dateFormat: dateFormat() === 'Custom' ? customDateFormat().replace(/yyyy/g, 'yy') : $root.dateFormatMappings[dateFormat()]}" />
-            <!-- ko if: fieldFormat()=='Time' || fieldFormat()=='Date and Time'-->
+            <!-- ko if:fieldType=='Time' || fieldFormat()=='Time' || fieldFormat()=='Date and Time'-->
             <input class="form-control" type="time" data-bind="value:$parent.Valuetime" required>
             <!-- /ko -->
         </div>
         to
         <div style="display: flex; align-items: center; gap: 8px;">
             <input data-bind="datepicker: $parent.fmtValue2, datepickerOptions: {value: $parent.Value2, dateFormat: dateFormat() === 'Custom' ? customDateFormat().replace(/yyyy/g, 'yy') : $root.dateFormatMappings[dateFormat()]}" class="form-control to-date" required />
-            <!-- ko if: fieldFormat()=='Time' || fieldFormat()=='Date and Time'-->
+            <!-- ko if:fieldType=='Time' || fieldFormat()=='Time' || fieldFormat()=='Date and Time'-->
             <input class="form-control" type="time" data-bind="value:$parent.Valuetime2" required>
             <!-- /ko -->
         </div>
@@ -92,7 +92,7 @@
             <option value="0">No</option>
         </select>
         <!-- /ko -->
-        <!-- ko if: ['Int','Money','Float','Double','Date','DateTime','Boolean'].indexOf(fieldType) == -1 && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
+        <!-- ko if: ['Int','Money','Float','Double','Date','DateTime','Time','Boolean'].indexOf(fieldType) == -1 && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
         <input class="form-control" type="text" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default',attr: {id: 'ctl-' + $element.closest('[data-parentprefix]').getAttribute('data-parentprefix') + '-' + uiId}" required />
         <!-- /ko -->
         <!-- /ko -->

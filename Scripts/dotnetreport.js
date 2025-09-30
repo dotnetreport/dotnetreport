@@ -3860,6 +3860,7 @@ var reportViewModel = function (options) {
 				}
 
 				col = col || {};
+				console.log(col);
 				r.backColor = col.backColor;
 				r.fieldAlign = col.fieldAlign;
 				r.fieldWidth = col.fieldWidth;
@@ -3872,6 +3873,22 @@ var reportViewModel = function (options) {
 				r._backColor = null; r._fontBold = null; r._fontColor = null;
 
 				r.formattedVal = ko.computed(function () {
+					if (col.fieldFormat && (col.fieldFormat() === null || col.fieldFormat() == 'Auto')) {
+						if (col.fieldType == 'Time') {
+							r.FormattedValue = (new Date(r.Value)).toLocaleTimeString(dtFormat, { hour: 'numeric', minute: 'numeric', second: 'numeric' });
+						}
+						else if (col.fieldType == 'Date') {
+							r.FormattedValue = (new Date(r.Value)).toLocaleDateString(dtFormat, { year: 'numeric', month: 'numeric', day: 'numeric' }); 
+						}
+						else if (col.fieldType == 'Percentage') {
+							let num = parseFloat(r.FormattedValue);
+							if (!isNaN(num)) {
+								r.FormattedValue = (num * 100).toFixed(2) + '%';
+							} else {
+								r.FormattedValue = r.FormattedValue + '%';
+							}
+						}
+					}
 
 					if (self.decimalFormatTypes.indexOf(col.fieldFormat()) >= 0 && !isNaN(r.Value)) {
 						r.FormattedValue = self.formatNumber(r.Value, col.decimalPlaces());

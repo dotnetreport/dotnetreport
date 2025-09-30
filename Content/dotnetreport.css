@@ -1420,7 +1420,7 @@ tfoot tr.sub-total {
 
 
 .rule-container .form-control {
-    min-width: 100%;
+    /*min-width: 100%;*/
 }
 
 .rule-container select {
