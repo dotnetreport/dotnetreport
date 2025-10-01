@@ -99,6 +99,7 @@ namespace ReportBuilder.Web.Controllers
             public string method { get; set; }
             public string headerJson { get; set; }
             public bool useReportHeader { get; set; }
+            public string headerClientId { get; set; } = "";
 
         }
 
@@ -212,12 +213,6 @@ namespace ReportBuilder.Web.Controllers
             public string reportData { get; set; }
             public bool SubTotalMode { get; set; }
             public bool useAltPivot { get; set; }
-        }
-
-        public class SqlQuery
-        {
-            public string sql { get; set; } = "";
-            public List<KeyValuePair<string, string>> parameters { get; set; } = null;
         }
 
         [ValidateAntiForgeryToken]
