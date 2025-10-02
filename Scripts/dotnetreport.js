@@ -1657,6 +1657,8 @@ var reportViewModel = function (options) {
 		newFolder: function () {
 			self.ManageFolder.IsNew(true);
 			self.ManageFolder.FolderName("");
+			self.clearManageFolderAccess();
+
 			$("#folderModal").modal("show");
 		},
 		editFolder: function () {
@@ -2017,6 +2019,27 @@ var reportViewModel = function (options) {
 		self.manageAccess.setupList(self.manageAccess.viewOnlyUsers, '');
 		self.manageAccess.setupList(self.manageAccess.deleteOnlyUserRoles, '');
 		self.manageAccess.setupList(self.manageAccess.deleteOnlyUsers, '');
+		self.manageAccess.showManageUsers(false),
+		self.manageAccess.showViewUsers(false),
+		self.manageAccess.showDeleteUsers(false),
+		self.manageAccess.showManageRoles(false),
+		self.manageAccess.showViewRoles(false),
+		self.manageAccess.showDeleteRoles(false)
+	}
+	self.clearManageFolderAccess = function () {
+		self.manageFolderAccess.clientId('');
+		self.manageFolderAccess.setupList(self.manageFolderAccess.users, '');
+		self.manageFolderAccess.setupList(self.manageFolderAccess.userRoles, '');
+		self.manageFolderAccess.setupList(self.manageFolderAccess.viewOnlyUserRoles, '');
+		self.manageFolderAccess.setupList(self.manageFolderAccess.viewOnlyUsers, '');
+		self.manageFolderAccess.setupList(self.manageFolderAccess.deleteOnlyUserRoles, '');
+		self.manageFolderAccess.setupList(self.manageFolderAccess.deleteOnlyUsers, '');
+		self.manageFolderAccess.showManageUsers(false),
+		self.manageFolderAccess.showViewUsers(false),
+		self.manageFolderAccess.showDeleteUsers(false),
+		self.manageFolderAccess.showManageRoles(false),
+		self.manageFolderAccess.showViewRoles(false),
+		self.manageFolderAccess.showDeleteRoles(false)
 	}
 	self.SelectedProc.subscribe(function (proc) {
 		if (proc == null) {
