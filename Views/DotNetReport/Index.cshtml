@@ -521,10 +521,10 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <i class="fa fa-arrow-circle-left"></i>
                                 <span>Back to Parent Report</span>
                             </button>
-                            <div class="nav-item dropdown" data-bind="visible: $root.CanEdit() && ReportID()">
-                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <div class="dropdown" data-bind="visible: $root.CanEdit() && ReportID()">
+                                <button class="dropdown-toggle btn btn-light btn-sm" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                     <i class="fa fa-edit"></i> Edit Report
-                                </a>
+                                </button>
                                 <div class="dropdown-menu">
                                     <a class="dropdown-item" href="#"
                                        data-bind="click: function(){ SaveReport(true); }"
@@ -542,9 +542,12 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             <button class="btn btn-light btn-sm" data-bind="click: RefreshReport, visible: false">
                                 <i class="fa fa-refresh"></i>
                                 <span>Refresh</span>
-                            </button>
+                            </button>                            
+                            <span data-bind="visible: isDirty" title="You have unsaved changes">
+                                <i class="text-warning fa fa-exclamation-triangle"></i>
+                            </span>
                             <button class="btn btn-light btn-sm" data-bind="visible: $root.CanEdit(), click: SaveWithoutRun">
-                                <i class="fa fa-save"></i>
+                                <i class="fa fa-save"></i>                                                                
                                 <span>Save Report</span>
                             </button>
                             <div class="dropdown" data-bind="hidden: (DontExecuteOnRun() && !reportRan()) || !ReportID()">
@@ -755,7 +758,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         <div class="form-inline pull-right">
                                             <div data-bind="template: 'pager-template', data: $data"></div>
                                         </div>
-                                        <div class="btn-group btn-group-sm pull-right" role="group">
+                                        <div class="btn-group btn-group-sm pull-right" role="group">                                            
                                             <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: $parent.adminMode">
                                                 <i class="fa fa-code"></i> View Report Code
                                             </button>

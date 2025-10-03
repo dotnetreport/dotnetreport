@@ -136,45 +136,48 @@
 <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
 
 <div class="row" style="display: none" data-bind="visible: currentDashboard">
-    <div class="col-8">
-        <ul class="nav nav-tabs" data-bind="foreach: dashboards">
+    <div class="col-12 d-flex flex-wrap justify-content-between align-items-center">
+        <ul class="nav nav-tabs flex-grow-1" data-bind="foreach: dashboards">
             <li class="nav-item">
                 <h2>
                     <a class="nav-link" href="#" data-bind="text: name, click: function() { $parent.selectDashboard(id);}, css: { 'active': $parent.currentDashboard().id === id, 'selected-tab': $parent.currentDashboard().id === id }"></a>
                 </h2>
             </li>
         </ul>
-    </div>
-    <div class="col-4 d-flex align-items-end justify-content-end border-bottom">
-        <div class="d-flex align-items-center gap-2">           
+        <div class="d-flex flex-wrap align-items-end gap-2 mt-2 mt-md-0 border-bottom" style="padding-top: 21px;">            
             <div class="dropdown">
                 <button class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="fa fa-pencil-square"></i>
                     <span>Manage</span>
                 </button>
                 <ul class="dropdown-menu">
-                    <!--<li>
-                        <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard">
-                            <i class="fa fa-plus"></i>
-                            <span>Add New Report</span>
-                        </button>
-                    </li>
-                    <li>
-                        <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: editDashboard">
-                            <i class="fa fa-plus"></i>
-                            <span>Add Existing Report</span>
-                        </button>
-                    </li>-->
-                    <li>
-                        <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard">
-                            <i class="fa fa-plus"></i>
-                            <span>Add New Dashboard</span>
-                        </button>
+                    <li class="dropdown dropdown-hover">
+                        <a href="#" class="dropdown-toggle dropdown-item" data-bs-toggle="dropdown" role="button" aria-expanded="false" data-bind="click: function() { newReport(true) }">
+                            <span class="fa fa-plus"></span> Add New Report
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item" href="#" data-bind="click: function() { newReport(false) }">
+                                    <span class="fa fa-pencil"></span> Add using Standard Designer
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="#" data-bind="click: function() { newReport(true) }">
+                                    <span class="fa fa-bolt"></span> Add using Smarter Designer
+                                </a>
+                            </li>
+                        </ul>
                     </li>
                     <li>
                         <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: editDashboard">
                             <i class="fa fa-pencil"></i>
-                            <span>Edit this Dashboard</span>
+                            <span>Add Existing Report</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard">
+                            <i class="fa fa-dashboard"></i>
+                            <span>Add a New Dashboard</span>
                         </button>
                     </li>
                     <li>
@@ -359,10 +362,10 @@
                             </a>
                         </li>
                         <li class="dropdown dropdown-hover">
-                            <a href="#" class="dropdown-toggle dropdown-item">
+                            <a href="#" class="dropdown-toggle dropdown-item" data-bs-toggle="dropdown" role="button" aria-expanded="false" data-bind="click: editReportAi">
                                 <span class="fa fa-pencil"></span> Edit
                             </a>
-                            <ul class="dropdown-menu small">                                
+                            <ul class="dropdown-menu small">
                                 <li>
                                     <a class="dropdown-item" href="#" data-bind="click: openReport">
                                         <span class="fa fa-pencil"></span> Edit Standard
@@ -433,6 +436,12 @@
 
                 <h2 class="pull-left" data-bind="text: ReportName"></h2>
                 <div class="pull-right">
+                    <span data-bind="visible: isDirty" class="text-warning small" title="You have unsaved changes">
+                        <i class="fa fa-exclamation-triangle"></i>
+                    </span>
+                    <a class="btn btn-link" data-bind="visible: CanEdit() && CanSaveReports() && isDirty(), click: SaveWithoutRun">
+                        <span class="fa fa-save"></span>
+                    </a>
                     <a class="btn btn-link" data-bind="click: toggleExpand"><span class="fa" data-bind="css: {'fa-expand': !isExpanded(), 'fa-minus': isExpanded() }, visible: ReportType() != 'Single' && !noDashboardBorders()"></span></a>
                 </div>
             </div>
