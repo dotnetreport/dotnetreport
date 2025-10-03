@@ -5852,7 +5852,11 @@ var reportViewModel = function (options) {
 				}
 			}
 		});
-		_.forEach(self.SavedReports(), function (e) {
+		var folderId = self.SelectedFolder()?.Id ?? 0;
+		var folderReports = _.filter(self.SavedReports(), function (e) {
+			return e.folderId === folderId;
+		});
+		_.forEach(folderReports, function (e) {
 			if (e.reportName == self.ReportName() && e.reportId != self.ReportID()) {
 				isValid = false;
 				toastr.error("Report name is already in use, please choose a different name");
