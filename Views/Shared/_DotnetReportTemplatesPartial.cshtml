@@ -1369,6 +1369,10 @@
             <span class="fa fa-2x fa-globe"></span>
             <p>Map</p>
         </button>
+        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('HeatMap'); }, css: { active: ReportType().indexOf('HeatMap')==0 }">
+            <span class="fa fa-2x fa-map"></span>
+            <p>HeatMap</p>
+        </button>
         <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Single'); }, css: { active: ReportType()=='Single' }">
             <span class="fa fa-2x fa-window-maximize"></span>
             <p>KPI</p>
@@ -1507,7 +1511,21 @@
             <span class="fa fa-lightbulb-o"></span>&nbsp;For Treemap, the data must be in a hierarchical format with 2nd column having parent and third column having a numeric value. The data must have a single root node having null as its parent as well.
             </div>
         </div>
-
+        <div data-bind="visible: ReportType()=='HeatMap'" class="card card-body">
+            <div class="alert alert-info">
+                <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For HeatMap, the first two columns must be numeric values representing <strong>Latitude</strong> and <strong>Longitude</strong>.
+                        At least one additional numeric column is required to provide the <strong>intensity</strong> of each point.
+            </div>
+                <div class="form-group row">
+                    <div class="checkbox col-6">
+                        <label>
+                            <input type="checkbox" data-bind="checked: showMarker" />
+                            Show Marker
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div data-bind="visible: ReportType()=='Line'" class="card card-body">
             <div class="alert alert-info small py-1 mb-2">
             <span class="fa fa-lightbulb-o"></span>&nbsp;For Line Graph, the first field below will show on the x-axis. All other fields will numeric fields will show on y-axis.
