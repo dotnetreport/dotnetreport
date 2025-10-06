@@ -782,7 +782,7 @@ namespace ReportBuilder.Web.Controllers
                     tables.AddRange(await databaseConnection.GetTables("VIEW", connect.AccountApiKey, connect.DatabaseApiKey));
                 }
                 procedures.AddRange(await DotNetReportHelper.GetApiProcs(connect.AccountApiKey, connect.DatabaseApiKey));
-                functions.AddRange(await DotNetReportHelper.GetApiFunctions(connect.AccountApiKey, connect.DatabaseApiKey));
+                functions.AddRange(await DotNetReportHelper.GetApiFunctions(connect.AccountApiKey, connect.DatabaseApiKey));                
 
                 var model = new ManageViewModel
                 {
@@ -791,7 +791,8 @@ namespace ReportBuilder.Web.Controllers
                     DatabaseApiKey = connect.DatabaseApiKey,
                     Tables = tables,
                     Procedures = procedures,
-                    Functions = functions
+                    Functions = functions,
+                    CurrentUserId = settings.UserId
                 };
 
                 return new JsonResult { Data = model, MaxJsonLength = int.MaxValue };

@@ -86,7 +86,8 @@
                     apiUrl: '@Url.Action("CallPostReportApi", "DotNetReportApi")',
                     getPreviewFromSqlUrl: "@Url.Action("GetPreviewFromSql", "DotNetReportApi")",
                     onlyApi: queryParams.onlyApi !== 'false',
-                    loadSchemaUrl: '@Url.Action("LoadSetupSchema", "DotNetReportApi")'
+                    loadSchemaUrl: '@Url.Action("LoadSetupSchema", "DotNetReportApi")',
+                    currentUserId: model.CurrentUserId
                 };
 
                 var vm = new manageViewModel(options);
