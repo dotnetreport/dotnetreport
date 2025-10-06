@@ -107,6 +107,7 @@ namespace ReportBuilder.Web.Controllers
         {
             public string method { get; set; }
             public string model { get; set; }
+            public string userId { get; set; }
         }
 
         [AllowAnonymous]
@@ -135,19 +136,24 @@ namespace ReportBuilder.Web.Controllers
         [HttpPost]
         public async Task<IActionResult> RunReportApi(DotNetReportApiCall data)
         {
-            return await CallReportApi(data.Method, JsonSerializer.Serialize(data));
+            return await CallReportApi(data.Method, JsonSerializer.Serialize(data), data.userId);
         }
 
         [ValidateAntiForgeryToken]
         [HttpPost]
         public async Task<IActionResult> CallPostReportApi(ReportApiCallModel data)
         {
-            return await CallReportApi(data.method, data.model);
+            return await CallReportApi(data.method, data.model, data.userId);
         }
 
         [HttpGet]
-        public async Task<IActionResult> CallReportApi(string? method, string? model)
+        public async Task<IActionResult> CallReportApi(string? method, string? model, string? userId = "")
         {
+            var settings = GetSettings();
+            if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
+            {
+                throw new Exception("User context mismatch");
+            }
             return string.IsNullOrEmpty(method) || string.IsNullOrEmpty(model) ? Ok() : await ExecuteCallReportApi(method, model);
         }
 

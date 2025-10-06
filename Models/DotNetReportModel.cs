@@ -320,6 +320,7 @@ namespace ReportBuilder.Web.Models
         public string ReportJson { get; set; }
         public bool adminMode { get; set; }
         public bool SubTotalMode { get; set; }
+        public string userId { get; set; }
     }
 
     public class DotNetDasboardReportModel : DotNetReportModel
