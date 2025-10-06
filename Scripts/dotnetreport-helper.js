@@ -75,6 +75,17 @@ function ajaxcall(options) {
         options.headers['RequestVerificationToken'] = validationToken;
     }
 
+    if (typeof options.data === 'string') {
+        options.data = JSON.parse(options.data);
+    }
+    options.data = options.data || {};
+    if (window.currentUserId) {
+        options.data.userId = window.currentUserId;
+    }
+    if (options.type !== 'POST') {
+        options.data = JSON.stringify(options.data);
+    }
+
     var beforeSend = function (x) {
         if (token && !options.url.startsWith("https://dotnetreport.com")) {
             x.setRequestHeader("Authorization", "Bearer " + token);
@@ -157,6 +168,7 @@ function ajaxcall(options) {
             handleAjaxError(jqxhr, status, error);
         });
 }
+
 
 function handleAjaxError(jqxhr, status, error) {
     if (jqxhr.responseJSON && jqxhr.responseJSON.d) jqxhr.responseJSON = jqxhr.responseJSON.d;

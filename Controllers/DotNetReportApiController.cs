@@ -867,8 +867,14 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string pivotColumn = null,
             [FromForm] string pivotFunction = null,
             [FromForm] string onlyAndGroupInColumnDetail = null,
-            [FromForm] bool isSubReport = false)
+            [FromForm] bool isSubReport = false,
+            [FromForm] string userId = "")
         {
+            var settings = GetSettings();
+            if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
+            {
+                throw new Exception("User context mismatch");
+            }
             reportSql = HttpUtility.HtmlDecode(reportSql);
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
@@ -921,8 +927,14 @@ namespace ReportBuilder.Web.Controllers
            [FromForm] string pivotColumn = null,
            [FromForm] string pivotFunction = null,
            [FromForm] string pageSize = "",
-           [FromForm] string pageOrientation = "")
+           [FromForm] string pageOrientation = "",
+           [FromForm] string userId = "")
         {
+            var settings = GetSettings();
+            if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
+            {
+                throw new Exception("User context mismatch");
+            }
             reportSql = HttpUtility.HtmlDecode(reportSql);
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
@@ -948,8 +960,14 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string pivotColumn = null,
             [FromForm] string pivotFunction = null,
             [FromForm] string pageSize = "", 
-            [FromForm] string pageOrientation = "")
+            [FromForm] string pageOrientation = "",
+            [FromForm] string userId = "")
         {
+            var settings = GetSettings();
+            if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
+            {
+                throw new Exception("User context mismatch");
+            }
             reportSql = HttpUtility.HtmlDecode(reportSql);
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
@@ -972,8 +990,15 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] bool includeSubtotal = false,
             [FromForm] bool pivot = false,
             [FromForm] string pivotColumn = null,
-            [FromForm] string pivotFunction = null)
+            [FromForm] string pivotFunction = null,
+            [FromForm] string userId = "")
         {
+            var settings = GetSettings();
+            if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
+            {
+                throw new Exception("User context mismatch");
+            }
+            
             reportSql = HttpUtility.HtmlDecode(reportSql);
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
 
@@ -991,8 +1016,14 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string reportName,
             [FromForm] string expandSqls = null,
             [FromForm] string pivotColumn = null,
-            [FromForm] string pivotFunction = null)
+            [FromForm] string pivotFunction = null,
+            [FromForm] string userId = "")
         {
+            var settings = GetSettings();
+            if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
+            {
+                throw new Exception("User context mismatch");
+            }
             reportSql = HttpUtility.HtmlDecode(reportSql);
             string xml = await DotNetReportHelper.GetXmlFile(reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName), expandSqls, pivotColumn, pivotFunction);
             var data = System.Text.Encoding.UTF8.GetBytes(xml);
@@ -1021,9 +1052,14 @@ namespace ReportBuilder.Web.Controllers
         {
             var pdfBytesList = new List<byte[]>();
             var reports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
+            var settings = GetSettings();
 
             foreach (var report in reports)
             {
+                if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != report.userId)
+                {
+                    throw new Exception("User context mismatch");
+                }
                 report.reportSql = HttpUtility.HtmlDecode(report.reportSql);
                 report.chartData = HttpUtility.UrlDecode(report.chartData)?.Replace(" ", " +");
                 var columns = report.columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(report.columnDetails));
@@ -1040,8 +1076,14 @@ namespace ReportBuilder.Web.Controllers
         {
             var excelbyteList = new List<byte[]>();
             var reports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
+            var settings = GetSettings();
+
             foreach (var report in reports)
             {
+                if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != report.userId)
+                {
+                    throw new Exception("User context mismatch");
+                }
                 report.reportSql = HttpUtility.HtmlDecode(report.reportSql);
                 report.chartData = HttpUtility.UrlDecode(report.chartData)?.Replace(" ", " +");
                 var columns = report.columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(report.columnDetails));
@@ -1061,8 +1103,14 @@ namespace ReportBuilder.Web.Controllers
         {
             var wordbyteList = new List<byte[]>();
             var ListofReports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
+            var settings = GetSettings();
+
             foreach (var report in ListofReports)
             {
+                if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != report.userId)
+                {
+                    throw new Exception("User context mismatch");
+                }
                 report.reportSql = HttpUtility.HtmlDecode(report.reportSql);
                 report.chartData = HttpUtility.UrlDecode(report.chartData)?.Replace(" ", " +");
                 var columns = report.columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(report.columnDetails));

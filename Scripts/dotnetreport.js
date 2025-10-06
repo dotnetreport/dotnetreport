@@ -902,7 +902,9 @@ var reportViewModel = function (options) {
 	options.users = options.userSettings.users;
 	options.userRoles = options.userSettings.userRoles;
 
-	self.currentUserId = options.userSettings.userId;
+	self.currentUserId = options.userSettings.currentUserId;
+	window.currentUserId = options.userSettings.currentUserId;
+
 	self.currentUserRole = (options.userSettings.currentUserRoles || []).join();
 	self.currentUserName = options.userSettings.currentUserName;
 	self.allowAdmin = ko.observable(options.userSettings.allowAdminMode);
