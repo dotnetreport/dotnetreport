@@ -109,31 +109,37 @@ namespace ReportBuilder.Web.Controllers
         [HttpPost]
         public async Task<JsonResult> RunReportApi(DotNetReportApiCall data)
         {
-            return await CallReportApi(data.Method, (new JavaScriptSerializer()).Serialize(data));
+            return await CallReportApi(data.Method, (new JavaScriptSerializer()).Serialize(data), data.userId);
         }
         public class ReportApiCallModel
         {
             public string method { get; set; }
             public string model { get; set; }
+            public string userId { get; set; }
         }
 
         [ValidateAntiForgeryToken]
         [HttpPost]
         public async Task<JsonResult> CallPostReportApi(ReportApiCallModel data)
         {
-            return await CallReportApi(data.method, data.model);
+            return await CallReportApi(data.method, data.model, data.userId);
         }
 
         [HttpPost]
         public async Task<JsonResult> CallReportApi(ReportApiCallModel data)
         {
-            return await CallReportApi(data.method, data.model);
+            return await CallReportApi(data.method, data.model, data.userId);
         }
          
         [HttpGet]
-        public async Task<JsonResult> CallReportApi(string method, string model)
+        public async Task<JsonResult> CallReportApi(string method, string model, string userId = "")
         {
-            return string.IsNullOrEmpty(method) || string.IsNullOrEmpty(model) ? Json(new { }) : await ExecuteCallReportApi(method, model);
+            var settings = GetSettings();
+            if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
+            {
+                throw new Exception("User context mismatch");
+            }
+            return string.IsNullOrEmpty(method) || string.IsNullOrEmpty(model) ? Json(new { }) : await ExecuteCallReportApi(method, model, settings);
         }
 
         private async Task<JsonResult> ExecuteCallReportApi(string method, string model, DotNetReportSettings settings = null)
@@ -166,7 +172,7 @@ namespace ReportBuilder.Web.Controllers
                         }
                         else if (key == "account" && data[key] != null)
                         {
-                            requestData["account"] = data[key]; 
+                            requestData["account"] = data[key];
                         }
                         else if (key != "adminMode" || (key == "adminMode" && settings.CanUseAdminMode))
                         {
