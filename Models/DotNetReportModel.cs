@@ -304,6 +304,7 @@ namespace ReportBuilder.Web.Models
 
         public dynamic DbConfig { get; set; }
         public UserRolesConfig UserAndRolesConfig { get; set; }
+        public string CurrentUserId { get; set; }
 
     }
     public class UserRolesConfig

@@ -6796,7 +6796,8 @@ var dashboardViewModel = function (options) {
 	options.isDashboard = true;
 	self.dashboards = ko.observableArray(options.dashboards || []);
 	self.adminMode = ko.observable(false);
-	self.currentUserId = options.userId;
+	self.currentUserId = options.currentUserId;
+	window.currentUserId = options.userSettings.currentUserId;
 	self.currentUserRole = (options.currentUserRole || []).join();
 	self.reportsAndFolders = ko.observableArray([]);
 	self.allowAdmin = ko.observable(options.allowAdmin);
@@ -7236,6 +7237,7 @@ var dashboardViewModel = function (options) {
 			reportSql: x.reportSql,
 			reportId: x.reportId,
 			reportConnect: x.connectKey,
+			userSettings: options.userSettings,
 			users: options.users,
 			userRoles: options.userRoles,
 			skipDraw: true,

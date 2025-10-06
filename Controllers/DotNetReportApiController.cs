@@ -817,7 +817,8 @@ namespace ReportBuilder.Web.Controllers
                 DatabaseApiKey = connect.DatabaseApiKey,
                 Tables = tables,
                 Procedures = procedures,
-                Functions = functions
+                Functions = functions,
+                CurrentUserId = settings.UserId
             };
 
                 return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });

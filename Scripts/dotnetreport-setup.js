@@ -10,6 +10,7 @@ var manageViewModel = function (options) {
 		DatabaseApiKey: options.model.DatabaseApiKey
 	};
 
+	window.currentUserId = options.currentUserId;
 	self.previewData = ko.observable();
 	self.activeTable = ko.observable();
 	self.DataConnections = ko.observableArray([]);
@@ -1562,13 +1563,13 @@ var manageViewModel = function (options) {
 
 	self.setupManageAccess = function () {
 
-		ajaxcall({ url: options.getUsersAndRoles }).done(function (data) {
+		ajaxcall({ url: options.getUsersAndRoles }).done(function (data) {			
 			if (data.d) data = data.d;
 			self.allRoles(data.userRoles)
 			self.manageAccess = manageAccess(data);
 		});
 
-		
+
 		self.loadReportsAndFolder();
 	}
 
