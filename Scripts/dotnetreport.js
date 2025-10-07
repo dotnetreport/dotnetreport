@@ -5135,7 +5135,13 @@ var reportViewModel = function (options) {
 			chartOptions.vAxis.viewWindow = chartOptions.vAxis.viewWindow || {};
 			chartOptions.vAxis.viewWindow.max = Number(self.chartOptions().yMax);
 		}
-		if (chartOptions.seriesColors && chartOptions.seriesColors.length > 0) chartOptions.colors = chartOptions.seriesColors;
+		if (chartOptions.seriesColors && chartOptions.seriesColors.length > 0)
+		{
+			chartOptions.colors = chartOptions.seriesColors;
+		}
+		else {
+			delete chartOptions.colors;
+		}
 		chartOptions.legend = { position: self.chartOptions().legendPosition }
 		chart.draw(data, chartOptions);
 
