@@ -1512,20 +1512,39 @@
             </div>
         </div>
         <div data-bind="visible: ReportType()=='HeatMap'" class="card card-body">
-            <div class="alert alert-info">
-                <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For HeatMap, the first two columns must be numeric values representing <strong>Latitude</strong> and <strong>Longitude</strong>.
-                        At least one additional numeric column is required to provide the <strong>intensity</strong> of each point.
+            <div class="alert alert-info mb-3">
+                <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;For HeatMap, the first two columns must be numeric values representing
+                <strong>Latitude</strong> and <strong>Longitude</strong>. At least one additional numeric column is required to provide the
+                <strong>intensity</strong> of each point.
             </div>
-                <div class="form-group row">
-                    <div class="checkbox col-6">
-                        <label>
-                            <input type="checkbox" data-bind="checked: showMarker" />
-                            Show Marker
-                        </label>
-                    </div>
+
+            <div class="form-group row mb-2">
+                <div class="checkbox col-6">
+                    <label>
+                        <input type="checkbox" data-bind="checked: heatMapOptions.showMarker" />
+                        Show Marker
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group row mb-3">
+                <label class="col-12 fw-bold">Heatmap Colors</label>
+
+                <div class="col-4 mb-2">                    
+                    <input type="color" class="color-picker"
+                            data-bind="value: heatMapOptions.gradient1" title="Gradient 1" />
+                </div>
+                <div class="col-4 mb-2">
+                    <input type="color" class="color-picker"
+                            data-bind="value: heatMapOptions.gradient2" title="Gradient 2" />
+                </div>
+                <div class="col-4 mb-2">
+                    <input type="color" class="color-picker"
+                            data-bind="value: heatMapOptions.gradient3" title="Gradient 3" />
                 </div>
             </div>
         </div>
+
         <div data-bind="visible: ReportType()=='Line'" class="card card-body">
             <div class="alert alert-info small py-1 mb-2">
             <span class="fa fa-lightbulb-o"></span>&nbsp;For Line Graph, the first field below will show on the x-axis. All other fields will numeric fields will show on y-axis.
