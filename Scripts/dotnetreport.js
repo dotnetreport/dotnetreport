@@ -6946,8 +6946,8 @@ var dashboardViewModel = function (options) {
 			});
 	};
 	var currentDash = options.dashboardId > 0
-		? (_.find(self.dashboards(), { id: options.dashboardId }) || { name: '', description: '' })
-		: (self.dashboards().length > 0 ? self.dashboards()[0] : { name: '', description: '' });
+		? (_.find(self.dashboards(), { id: options.dashboardId }) || { name: '', description: '', canManage: true })
+		: (self.dashboards().length > 0 ? self.dashboards()[0] : { name: '', description: '', canManage: true });
 
 	self.appSettings = {
 		allowUsersToCreateReports: true,
@@ -7039,7 +7039,7 @@ var dashboardViewModel = function (options) {
 				_.forEach(reports, function (r) {
 					list += (list ? ',' : '') + r.reportId;
 				});
-				currentDash = { id: dashboardId, name: self.dashboard.Name(), description: self.dashboard.Description(),selectedReports:list };
+				currentDash = { id: dashboardId, name: self.dashboard.Name(), description: self.dashboard.Description(),selectedReports:list, canManage: true };
 				if (dashboardId > 0) {
 					self.dashboards.push(currentDash);
 				}
