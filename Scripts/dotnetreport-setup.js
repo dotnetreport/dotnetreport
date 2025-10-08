@@ -1872,30 +1872,231 @@ var manageViewModel = function (options) {
 		const exportJson = JSON.stringify(plainJson, null, 2);
 		downloadJson(exportJson, `FolderManageAccess_${FolderJson[0].FolderName}.json`, 'application/json');
 	};
-	self.exportFoldersReportJson = function () {
-		const selectedFolders = [];
-		_.forEach(self.reportsAndFolders(), function (folder) {
-			const selectedReports = _.filter(folder.reports, function (r) {
-				return r.isSelected && r.isSelected(); // only selected reports
+	self.exportFoldersReportJson = async function () {
+		const selectedReports = [];
+
+		await Promise.all(_.map(self.reportsAndFolders(), async function (folder) {
+			const selectedInFolder = _.filter(folder.reports, function (r) {
+				return r.isSelected && r.isSelected();
 			});
-			if (selectedReports.length > 0) {
-				selectedFolders.push({
-					folderId: folder.folderId,
-					folder: folder.folder,
-					reports: selectedReports
-				});
-			}
-		});
-		if (selectedFolders.length === 0) {
+
+			await Promise.all(_.map(selectedInFolder, async function (r) {
+				try {
+					const reportview = new reportViewModel({
+						apiUrl: options.reportsApiUrl,
+						runReportApiUrl: options.runReportApiUrl,
+						reportWizard: options.reportWizard,
+						lookupListUrl: options.lookupListUrl,
+						userSettings: { currentUserId: options.currentUserId }
+					});
+					reportview.adminMode = ko.observable(true);
+
+					const response = await reportview.LoadReport(r.reportId, true, '', true, false);
+					const reportData = response && response.UseStoredProc === false
+						? reportview.BuildReportData()
+						: (await reportview.loadProcs(), reportview.BuildReportData());
+
+					selectedReports.push({
+						reportId: r.reportId,
+						reportName: r.reportName,
+						folder: folder.folder,
+						data: reportData
+					});
+				} catch (err) {
+					console.error(`Error exporting report ${r.reportName}:`, err);
+					toastr.error(`Error exporting report: ${r.reportName}`);
+				}
+			}));
+		}));
+
+		if (selectedReports.length === 0) {
 			toastr.error("No Reports selected!");
 			return;
 		}
-		const plainJson = ko.mapping.toJS(selectedFolders, {
-			ignore: ["changeAccess", "isSelected"]  
-		});
-		const exportJson = JSON.stringify(plainJson, null, 2);
-		downloadJson(exportJson, `FolderReportsManageAccess.json`, 'application/json');
+
+		const exportJson = JSON.stringify(selectedReports, null, 2);
+		downloadJson(exportJson, `SelectedReports.json`, 'application/json');
 	};
+
+	self.ManageJsonFile = {
+		file: ko.observable(null),
+		fileName: ko.observable(''),
+		triggerFileInput: function () {
+			$('#fileInputJson').click();
+		},
+		handleFileSelect: function (data, event) {
+			var selectedFile = event.target.files[0];
+			if (selectedFile && (selectedFile.type === "application/json" || selectedFile.name.endsWith('.json'))) {
+				self.ManageJsonFile.file(selectedFile);
+				self.ManageJsonFile.fileName(selectedFile.name);
+			} else {
+				self.ManageJsonFile.file(null);
+				self.ManageJsonFile.fileName('');
+				toastr.error('Only JSON files are allowed.');
+			}
+		},
+
+		uploadFile: function () {
+			var file = self.ManageJsonFile.file();
+			if (!file) {
+				toastr.error('No JSON file selected for upload.');
+				return;
+			}
+
+			var reader = new FileReader();
+			reader.onload = function (event) {
+				try {
+					const parsed = JSON.parse(event.target.result);
+					const reports = Array.isArray(parsed) ? parsed : [parsed];
+
+					if (!reports || reports.length === 0) {
+						toastr.error("No valid reports found in the uploaded file.");
+						return;
+					}
+
+					function handleOverwriteConfirmation(reportName, callback) {
+						bootbox.dialog({
+							title: "Confirm Action",
+							message: `A report with the name "${reportName}" already exists. What would you like to do?`,
+							buttons: {
+								cancel: {
+									label: 'Skip',
+									className: 'btn-secondary',
+									callback: function () { callback('cancel'); }
+								},
+								duplicate: {
+									label: 'Make Copy',
+									className: 'btn-warning',
+									callback: function () { callback('duplicate'); }
+								},
+								overwrite: {
+									label: 'Overwrite',
+									className: 'btn-primary',
+									callback: function () { callback('overwrite'); }
+								}
+							}
+						});
+					}
+
+					const distinctFolders = _.uniq(_.map(reports, function (r) {
+						return r.folder || "Imported Reports";
+					}));
+
+					const folderPromises = [];
+
+					distinctFolders.forEach(function (folderName) {
+						let existingFolder = _.find(self.reportsAndFolders(), function (f) {
+							return f.folder === folderName;
+						});
+
+						if (existingFolder) {
+							folderPromises.push(Promise.resolve(existingFolder.folderId));
+						} else {
+							const p = ajaxcall({
+								url: options.reportsApiUrl,
+								data: {
+									method: "/ReportApi/SaveFolderData",
+									model: JSON.stringify({
+										folderData: JSON.stringify({
+											Id: 0,
+											FolderName: folderName
+										})
+									})
+								}
+							}).done(function (d) {
+								if (d.d) d = d.d;
+								var folderVm = {
+									folderId: d,
+									folder: folderName,
+									reports: [],
+									allReportsSelected: ko.observable(),
+									selectAllReports: function () {
+										_.forEach([], function (rep) { rep.isSelected(true); });
+									},
+									deselectAllReports: function () {
+										_.forEach([], function (rep) { rep.isSelected(false); });
+									}
+								};
+								self.reportsAndFolders.push(folderVm);
+								return d;
+							});
+							folderPromises.push(p);
+						}
+					});
+
+					$.when.apply($, folderPromises).done(function () {
+						const allPromises = [];
+
+						reports.forEach(function (report) {
+							const folderName = report.folder || "Imported Reports";
+							const matchFolder = _.find(self.reportsAndFolders(), f => f.folder === folderName);
+							if (!matchFolder) return;
+
+							const folderId = matchFolder.folderId;
+							const reportName = report.reportName;
+							const existingReport = _.find(matchFolder.reports, r => r.reportName === reportName);
+
+							const importReport = function (action) {
+								const reportview = new reportViewModel({
+									apiUrl: options.reportsApiUrl,
+									runReportApiUrl: options.runReportApiUrl,
+									reportWizard: options.reportWizard,
+									lookupListUrl: options.lookupListUrl,
+									userSettings: { currentUserId: options.currentUserId }
+								});
+								reportview.adminMode = ko.observable(true);
+								report.data = report.data || {};
+								report.data.FolderID = folderId;
+
+								if (existingReport && action === 'overwrite') {
+									report.data.ReportID = existingReport.reportId;
+								} else {
+									report.data.ReportID = 0;
+									if (action === 'duplicate') {
+										report.data.ReportName = reportName + " Copy";
+									}
+								}
+
+								return reportview.RunReport(true, true, false, report.data);
+							};
+
+							if (existingReport) {
+								const def = $.Deferred();
+								handleOverwriteConfirmation(reportName, function (action) {
+									if (action === 'cancel') def.resolve();
+									else importReport(action).done(() => def.resolve());
+								});
+								allPromises.push(def.promise());
+							} else {
+								allPromises.push(importReport());
+							}
+						});
+
+						$.when.apply($, allPromises).done(function () {
+							self.loadReportsAndFolder().done(function () {
+								toastr.success('Reports imported successfully!');
+							});
+						});
+					});
+
+					self.ManageJsonFile.file(null);
+					self.ManageJsonFile.fileName('');
+					$('#uploadFileModal').modal('hide');
+					$('#uploadFileModal input[type=file]').val('');
+
+				} catch (e) {
+					toastr.error('Invalid JSON file: ' + e.message);
+				}
+			};
+
+			reader.onerror = function () {
+				toastr.error('Error reading file.');
+			};
+
+			reader.readAsText(file);
+		}
+	};
+
 	self.exportFoldersJson = function () {
 		const selected = self.Folders().filter(f => f.isSelected());
 		if (selected.length === 0) {

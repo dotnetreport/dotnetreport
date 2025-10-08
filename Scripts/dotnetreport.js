@@ -974,6 +974,7 @@ var reportViewModel = function (options) {
 	self.isDirty = ko.observable(false);
 	self.activeDesign = ko.observable(false);
 	self.panels = new DesignerViewModel();
+	self.selectMode = ko.observable(false);
 
 	$(document).on('shown.bs.modal', '.modal', function () {
 		self.isModalOpen(true);
@@ -1893,80 +1894,146 @@ var reportViewModel = function (options) {
 		},
 		uploadFile: function () {
 			var file = self.ManageJsonFile.file();
-			if (file != null) {
-				var reader = new FileReader();
-				reader.onload = function (event) {
-					try {
-						var report = JSON.parse(event.target.result);
-						var reportName = report.ReportName;
-						var folderId = self.SelectedFolder()?.Id ?? 0;
-						var reportsInFolder = _.filter(self.SavedReports(), function (r) {
-							return r.folderId === folderId;
-						});
-						var reportExists = _.some(reportsInFolder, function (report) {
-							return report.reportName === reportName;
-						});
-						if (reportExists) {
-							handleOverwriteConfirmation(reportName, function (action) {
-								if (action === 'overwrite') {
-									self.RunReport(true, true, false, report);
-								} else if (action === 'duplicate') {
-									report.ReportID = 0;
-									report.ReportName = `Copy of ${reportName}`;
-									self.RunReport(true, true, false, report);
-								} else {
-									toastr.info('Upload canceled.');
-								}
-							});
-							$('#uploadFileModal').modal('hide');
-						} else {
-							report.ReportID = 0;
-							report.FolderID = folderId;
-							self.RunReport(true, true, false, report);
-							$('#uploadFileModal').modal('hide');
-						}
-						self.ManageJsonFile.file(null);
-						self.ManageJsonFile.fileName('');
-					} catch (e) {
-						toastr.error('Invalid JSON file.'+ e);
+			if (!file) {
+				toastr.error('No JSON file selected for upload.');
+				return;
+			}
+
+			var reader = new FileReader();
+			reader.onload = function (event) {
+				try {
+					const parsed = JSON.parse(event.target.result);
+					const reports = Array.isArray(parsed) ? parsed : [parsed];
+
+					if (!reports || reports.length === 0) {
+						toastr.error("No valid reports found in the uploaded file.");
+						return;
 					}
-				};
-				reader.onerror = function (event) {
-					toastr.error('Error reading file.');
-				};
-				reader.readAsText(file); // Read the file as text
-				function handleOverwriteConfirmation(reportName, callback) {
-					bootbox.dialog({
-						title: "Confirm Action",
-						message: `A report with the name "${reportName}" already exists. What would you like to do?`,
-						buttons: {
-							cancel: {
-								label: 'Cancel',
-								className: 'btn-secondary',
-								callback: function () {
-									callback('cancel');
-								}
-							},
-							duplicate: {
-								label: 'Make Copy',
-								className: 'btn-warning',
-								callback: function () {
-									callback('duplicate');
-								}
-							},
-							overwrite: {
-								label: 'Overwrite',
-								className: 'btn-primary',
-								callback: function () {
-									callback('overwrite');
+
+					function handleOverwriteConfirmation(reportName, callback) {
+						bootbox.dialog({
+							title: "Confirm Action",
+							message: `A report with the name "${reportName}" already exists. What would you like to do?`,
+							buttons: {
+								cancel: {
+									label: 'Skip',
+									className: 'btn-secondary',
+									callback: function () { callback('cancel'); }
+								},
+								duplicate: {
+									label: 'Make Copy',
+									className: 'btn-warning',
+									callback: function () { callback('duplicate'); }
+								},
+								overwrite: {
+									label: 'Overwrite',
+									className: 'btn-primary',
+									callback: function () { callback('overwrite'); }
 								}
 							}
+						});
+					}
+
+					const distinctFolders = _.uniq(_.map(reports, function (r) {
+						return r.folder || r.folderName || "Imported Reports";
+					}));
+
+					const folderPromises = [];
+
+					distinctFolders.forEach(function (folderName) {
+						let existingFolder = _.find(self.allFolders, function (f) {
+							return f.FolderName === folderName;
+						});
+
+						if (existingFolder) {
+							folderPromises.push(Promise.resolve(existingFolder.Id));
+						} else {
+							const p = ajaxcall({
+								url: options.apiUrl,
+								data: {
+									method: "/ReportApi/SaveFolderData",
+									model: JSON.stringify({
+										folderData: JSON.stringify({
+											Id: 0,
+											FolderName: folderName
+										})
+									})
+								}
+							}).done(function (d) {
+								if (d.d) d = d.d;
+								const newFolder = { Id: d, FolderName: folderName, isSelected: ko.observable(false) };
+								self.allFolders.push(newFolder);
+								self.Folders(self.allFolders);
+							});
+							folderPromises.push(p);
 						}
 					});
+
+					$.when.apply($, folderPromises).done(function () {
+						const allPromises = [];
+
+						reports.forEach(function (report) {
+							const folderName = report.folder || report.folderName || "Imported Reports";
+							const folder = _.find(self.allFolders, f => f.FolderName === folderName);
+							if (!folder) return;
+
+							const folderId = folder.Id;
+							const reportName = report.reportName;
+							const existingReport = _.find(self.SavedReports(), function (r) {
+								return r.folderId == folderId && r.reportName === reportName;
+							});
+
+							const importReport = function (action) {
+								const reportview = new reportViewModel(options);
+								report.data = report.data || {};
+								report.data.FolderID = folderId;
+
+								if (existingReport && action === 'overwrite') {
+									report.data.ReportID = existingReport.reportId;
+								} else {
+									report.data.ReportID = 0;
+									if (action === 'duplicate') {
+										report.data.ReportName = reportName + " Copy";
+									}
+								}
+
+								return reportview.RunReport(true, true, false, report.data);
+							};
+
+							if (existingReport) {
+								const def = $.Deferred();
+								handleOverwriteConfirmation(reportName, function (action) {
+									if (action === 'cancel') def.resolve();
+									else importReport(action).done(() => def.resolve());
+								});
+								allPromises.push(def.promise());
+							} else {
+								allPromises.push(importReport());
+							}
+						});
+
+						$.when.apply($, allPromises).done(function () {
+							self.loadFolders().done(function () {
+								self.LoadAllSavedReports();
+								toastr.success('Reports imported successfully!');
+							});
+						});
+					});
+
+					self.ManageJsonFile.file(null);
+					self.ManageJsonFile.fileName('');
+					$('#uploadFileModal').modal('hide');
+					$('#uploadFileModal input[type=file]').val('');
+				} catch (e) {
+					toastr.error('Invalid JSON file: ' + e.message);
 				}
-			} else {
-				toastr.error('No JSON file selected for upload.');
-			}
+			};
+
+			reader.onerror = function () {
+				toastr.error('Error reading file.');
+			};
+
+			reader.readAsText(file);
 		}
 	}; 
 	self.reportsInFolder = ko.computed(function () {
@@ -5317,6 +5384,15 @@ var reportViewModel = function (options) {
 		}).done(function (folders) {
 			if (folders.d) { folders = folders.d; }
 			if (folders.result) { folders = folders.result; }
+			_.each(folders, function (f) {
+				f.isSelected = ko.observable(false);
+				f.isSelected.subscribe(function (val) {
+					var reportsInFolder = _.filter(self.SavedReports(), function (r) { return r.folderId == f.Id; });
+					_.each(reportsInFolder, function (r) {
+						if (r.isSelected) r.isSelected(val);
+					});
+				});
+			});
 			self.SelectedFolder(null);
 			if (folderId) {
 				var match = _.filter(folders, function (x) { return x.Id == folderId; });
@@ -5816,6 +5892,7 @@ var reportViewModel = function (options) {
 			if (reports.result) { reports = reports.result; }
 			_.forEach(reports, function (e) {
 				e.runMode = false;
+				e.isSelected = ko.observable(false);
 				e.openReport = function () {			
 					if (!e.canEdit && !e.runMode) {
 						options.reportWizard.modal('hide');
@@ -6531,6 +6608,49 @@ var reportViewModel = function (options) {
 			pivotColumn: pivotColumn ? pivotColumn.fieldName : '',
 			pivotFunction: pivotColumn && pivotFunction ? pivotFunction : '',
 		};
+	};
+
+	self.exportSelectedReportJson = async function () {
+		const selectedReports = _.filter(self.SavedReports(), function (r) {
+			return r.isSelected && r.isSelected();
+		});
+
+		if (selectedReports.length === 0) {
+			toastr.error("Please select at least one report before exporting!");
+			return;
+		}
+
+		const reportsWithData = [];
+
+		await Promise.all(_.map(selectedReports, async function (r) {
+			try {
+				const reportview = new reportViewModel(options);
+				reportview.adminMode = ko.observable(true);
+
+				const response = await reportview.LoadReport(r.reportId, true, '', true, false);
+				const reportData = response && response.UseStoredProc === false
+					? reportview.BuildReportData()
+					: (await reportview.loadProcs(), reportview.BuildReportData());
+
+				reportsWithData.push({
+					reportId: r.reportId,
+					reportName: r.reportName,
+					folder: r.folderName || "", // add folder name here
+					data: reportData
+				});
+			} catch (err) {
+				console.error(`Error exporting report ${r.reportName}:`, err);
+				toastr.error(`Error exporting report: ${r.reportName}`);
+			}
+		}));
+
+		if (reportsWithData.length === 0) {
+			toastr.error("No valid reports found for export!");
+			return;
+		}
+
+		const exportJson = JSON.stringify(reportsWithData, null, 2);
+		downloadJson(exportJson, `SelectedReports.json`, 'application/json');
 	};
 
 	// Unit tests

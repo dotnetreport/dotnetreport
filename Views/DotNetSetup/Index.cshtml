@@ -24,6 +24,7 @@
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
+
         .table-name-label {
             display: inline-block;
             max-width: 200px;
@@ -153,7 +154,7 @@
             </li>
             <li role="presentation" class="nav-item">
                 <a class="nav-link" href="#manageaccess" aria-controls="manageaccess" role="tab" data-bs-toggle="tab">
-                    <i class="fa fa-user"></i> Manage Access
+                    <i class="fa fa-folder"></i> Manage Reports
                 </a>
             </li>
             <li role="presentation" class="nav-item">
@@ -751,7 +752,12 @@
                             <button class="btn btn-sm btn-primary" data-bind="click: function() { exportFoldersReportJson() }">
                                 <span class="fa fa-download"></span> Export Selected Reports Access
                             </button>
-                        </div>                      
+                        </div>     
+                        <div class="mb-2">
+                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadFileModal">
+                                <span class="fa fa-upload"></span> Import Reports
+                            </button>
+                        </div>
                         <div class="mb-2">
                             <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#searchModal">
                                 <span class="fa fa-tasks"></span> Bulk Actions
@@ -828,20 +834,12 @@
                 </div>
                 <div class="tab-pane fade" id="foldersAccess" role="tabpanel" aria-labelledby="folders-tab">
                     <b>Folders Access</b>
-                    <p>You can setup access to individual Folders here</p>                    
-                    <div class="mb-2 d-flex gap-2">
-                        <div class="mb-2">
-                            <button class="btn btn-sm btn-primary" data-bind="click: function() { exportFoldersJson() }">
-                                <span class="fa fa-download"></span> Export Selected Folders Access
-                            </button>
-                        </div>
-                    </div>
+                    <p>You can setup access to individual Folders here</p>
                     <hr />
                     <div data-bind="foreach: Folders" class="list-group">
                         <div class="list-group-item">
                             <div class="d-flex justify-content-between">
                                 <div>
-                                    <input type="checkbox" data-bind="checked: isSelected" />                                    
                                     <a data-bs-toggle="collapse" data-bind="attr: {href: '#folderAccess-' + Id }">
                                         <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: FolderName"></span>
                                     </a>
@@ -1945,10 +1943,12 @@
                     <input type="text" class="form-control" placeholder="Search Reports"
                            data-bind="value: searchQuery, valueUpdate: 'input'">
                     <button class="btn btn-sm btn-outline-primary flex-shrink-0" title="Select all Filtered"
-                            data-bind="click: selectAllFiltered">Select All
+                            data-bind="click: selectAllFiltered">
+                        Select All
                     </button>
                     <button class="btn btn-sm btn-outline-secondary flex-shrink-0" title="Deselect all Filtered"
-                            data-bind="click: deselectAllFiltered">Deselect All
+                            data-bind="click: deselectAllFiltered">
+                        Deselect All
                     </button>
                 </div>
                 <div data-bind="foreach: filteredReportsAndFolders">
@@ -2002,7 +2002,7 @@
         </div>
     </div>
 </div>
-<div class="modal" id="applySecurityModal" tabindex="-1" aria-hidden="true" >
+<div class="modal" id="applySecurityModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg" data-bind="if: $root.anyReportSelected">
         <div class="modal-content">
             <div class="modal-header">
@@ -2019,3 +2019,46 @@
         </div>
     </div>
 </div>
+<!-- Import Json File Modal -->
+<div class="modal" id="uploadFileModal" tabindex="-1" aria-labelledby="uploadFileModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" data-bind="with: ManageJsonFile">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadFileModalLabel">Import previously Exported Reports</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+
+                <div class="alert alert-info small">
+                    <strong>Instructions:</strong><br />
+                    • Select a <code>.json</code> file previously exported from Dotnet Report.<br />
+                    • The file may include multiple reports and their folders.<br />
+                    • Any missing folders will be created automatically.<br />
+                    • If a report with the same name already exists, you will be prompted to:
+                    <em>Skip</em>, <em>Overwrite</em>, or <em>Make a Copy</em>.<br />
+                    • Once uploaded, all imported reports will be available immediately.
+                </div>
+
+                <div id="dropzone" class="dropzone"
+                     data-bind="event: {click: triggerFileInput }"
+                     style="border: 2px dashed #007bff; border-radius: 5px; padding: 30px; text-align: center; color: #007bff; cursor: pointer;">
+                    Click here to select a JSON file
+                </div>
+
+                <input type="file" id="fileInputJson" accept=".json" style="display: none;"
+                       data-bind="event: { change: handleFileSelect }">
+
+                <div class="mt-3" data-bind="visible: fileName">
+                    <p><strong>Selected File:</strong> <span data-bind="text: fileName"></span></p>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" data-bind="click: uploadFile">Upload</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
