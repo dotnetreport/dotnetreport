@@ -107,7 +107,7 @@ namespace ReportBuilder.Web.Controllers
         {
             public string method { get; set; }
             public string model { get; set; }
-            public string userId { get; set; }
+            public string? userId { get; set; }
         }
 
         [AllowAnonymous]

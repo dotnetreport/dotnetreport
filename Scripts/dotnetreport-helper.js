@@ -75,14 +75,16 @@ function ajaxcall(options) {
         options.headers['RequestVerificationToken'] = validationToken;
     }
 
+    var wasJson = false;
     if (typeof options.data === 'string') {
+        wasJson = true;
         options.data = JSON.parse(options.data);
     }
     options.data = options.data || {};
     if (window.currentUserId) {
         options.data.userId = window.currentUserId;
     }
-    if (options.type !== 'POST') {
+    if (wasJson) {
         options.data = JSON.stringify(options.data);
     }
 
