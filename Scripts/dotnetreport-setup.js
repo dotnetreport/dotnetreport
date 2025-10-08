@@ -1917,7 +1917,103 @@ var manageViewModel = function (options) {
 		const exportJson = JSON.stringify(selectedReports, null, 2);
 		downloadJson(exportJson, `SelectedReports.json`, 'application/json');
 	};
+	self.deleteSelectedItems = function () {
+		const selectedFolders = [];
+		const selectedReports = [];
 
+		self.reportsAndFolders().forEach(folder => {
+			if (folder.allReportsSelected() && folder.folderId > 0) {
+				selectedFolders.push(folder);
+			} else {
+				folder.reports.forEach(r => {
+					if (r.isSelected && r.isSelected()) {
+						selectedReports.push({ folder: folder, report: r });
+					}
+				});
+			}
+		});
+
+		if (selectedFolders.length === 0 && selectedReports.length === 0) {
+			toastr.error("No folders or reports selected to delete!");
+			return;
+		}
+
+		// Build a more descriptive confirmation message
+		let message = `<div style="max-height:300px; overflow:auto;">`;
+		message += `<p class="fw-bold">This action will permanently delete the following items and <u>cannot be undone</u>:</p>`;
+
+		if (selectedFolders.length > 0) {
+			message += `<p><strong>Folders to delete (Deleting folders will delete all the reports in the folder as well):</strong></p><ul>`;
+			selectedFolders.forEach(f => {
+				message += `<li><span class="fa fa-folder text-warning"></span> ${f.folder}</li>`;
+			});
+			message += `</ul>`;
+		}
+
+		const reportsNotInDeletedFolders = selectedReports.filter(item => {
+			return !selectedFolders.some(f => f.folderId === item.folder.folderId);
+		});
+
+		if (reportsNotInDeletedFolders.length > 0) {
+			message += `<p><strong>Reports to delete (${reportsNotInDeletedFolders.length}):</strong></p><ul>`;
+			reportsNotInDeletedFolders.forEach(item => {
+				message += `<li><span class="fa fa-file text-secondary"></span> ${item.report.reportName} <span class="text-muted small">(in folder: ${item.folder.folder})</span></li>`;
+			});
+			message += `</ul>`;
+		}
+
+		message += `<p class="text-danger fw-bold mb-0">Are you absolutely sure you want to proceed?</p></div>`;
+
+		bootbox.dialog({
+			title: "Confirm Delete",
+			message: message,
+			size: 'medium',
+			buttons: {
+				cancel: {
+					label: 'Cancel',
+					className: 'btn-secondary'
+				},
+				confirm: {
+					label: 'Delete Permanently',
+					className: 'btn-danger',
+					callback: function () {
+						const deletePromises = [];
+
+						// Delete folders first
+						selectedFolders.forEach(folder => {
+							deletePromises.push(
+								ajaxcall({
+									url: options.reportsApiUrl,
+									data: {
+										method: "/ReportApi/DeleteFolder",
+										model: JSON.stringify({ folderId: folder.folderId, adminMode: true })
+									}
+								})
+							);
+						});
+
+						reportsNotInDeletedFolders.forEach(item => {
+							deletePromises.push(
+								ajaxcall({
+									url: options.reportsApiUrl,
+									data: {
+										method: "/ReportApi/DeleteReport",
+										model: JSON.stringify({ reportId: item.report.reportId, adminMode: true })
+									}
+								})
+							);
+						});
+
+						$.when.apply($, deletePromises).done(function () {
+							self.loadReportsAndFolder().done(function () {
+								toastr.success("Selected folders and reports have been permanently deleted.");
+							});
+						});
+					}
+				}
+			}
+		});
+	};
 	self.ManageJsonFile = {
 		file: ko.observable(null),
 		fileName: ko.observable(''),
