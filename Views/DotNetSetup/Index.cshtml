@@ -493,30 +493,12 @@
             <p>
                 Setup your Database Relations for Dotnet Report to produce dynamic queries
             </p>
-            <button class="btn btn-sm btn-primary" data-bind="click: AddAllRelations">
-                <span class="fa fa-magic"></span> Auto Add Joins
-            </button>
-
-            <button class="btn btn-sm btn-primary" data-bind="click: AddJoin">
-                <span class="fa fa-plus"></span> Add new Join
-            </button>
-
-            <button class="btn btn-sm btn-primary" data-bind="click: SaveJoins">
-                <span class="fa fa-save"></span> Save Joins
-            </button>
-
-            <button class="btn btn-sm btn-primary" data-bind="click: visualizeJoins">
-                <span class="fa fa-arrows-h"></span> Visualize Joins
-            </button>
-
-            <button class="btn btn-sm btn-primary" data-bind="click: DeleteVisibleJoins">
-                <span class="fa fa-trash"></span> Delete Joins
-            </button>
-
-            <button class="btn btn-sm btn-primary" data-bind="click: ExportJoins">
-                <span class="fa fa-download"></span> Export Joins
-            </button>
-
+            <button class="btn btn-sm btn-primary" data-bind="click: AddAllRelations">Auto Add Joins</button>
+            <button class="btn btn-sm btn-primary" data-bind="click: AddJoin">Add new Join</button>&nbsp;
+            <button class="btn btn-sm btn-primary" data-bind="click: SaveJoins">Save Joins</button>&nbsp;
+            <button class="btn btn-sm btn-primary" data-bind="click: visualizeJoins">Visualize Joins</button>&nbsp;
+            <button class="btn btn-sm btn-primary" data-bind="click: DeleteVisibleJoins" title="Delete filtered Joins">Delete Joins</button>&nbsp;
+            <button class="btn btn-sm btn-primary" data-bind="click: ExportJoins" title="Export filtered Joins">Export Joins</button>&nbsp;
             <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadJoinsFileModal" aria-haspopup="true" aria-expanded="false">
                 <span class="fa fa-upload"></span> Import Joins
             </button>
@@ -1857,7 +1839,7 @@
     <div class="modal-dialog">
         <div class="modal-content" data-bind="with: ManageTablesJsonFile">
             <div class="modal-header">
-                <h5 class="modal-title" id="uploadTablesFileModalLabel">Import Tables/Views JSON File Upload</h5>
+                <h5 class="modal-title" id="uploadTablesFileModalLabel">Import Tables/Views (Previously Exported)</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -1884,7 +1866,7 @@
     <div class="modal-dialog">
         <div class="modal-content" data-bind="with: ManageJoinsJsonFile">
             <div class="modal-header">
-                <h5 class="modal-title" id="uploadJoinsFileModalLabel">Import Joins JSON File Upload</h5>
+                <h5 class="modal-title" id="uploadJoinsFileModalLabel">Import Joins (Previously Exported)</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -1910,7 +1892,7 @@
     <div class="modal-dialog">
         <div class="modal-content" data-bind="with: ManageStoredProceduresJsonFile">
             <div class="modal-header">
-                <h5 class="modal-title" id="uploadStoredProceduresFileModalLabel">Import Stored Procedures JSON File Upload</h5>
+                <h5 class="modal-title" id="uploadStoredProceduresFileModalLabel">Import Stored Procedures (Previously Exported)</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">

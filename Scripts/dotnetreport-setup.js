@@ -155,7 +155,6 @@ var manageViewModel = function (options) {
 		});
 	});
 
-
 	self.joinsPager = new pagerViewModel({ autoPage: true });
 
 	self.pagedJoins = ko.computed(function () {
@@ -1111,13 +1110,13 @@ var manageViewModel = function (options) {
 		});
 	};
 
-	self.getJoinsToSave = function () {
+	self.getJoinsToSave = function (filteredJoins) {
 		_.forEach(self.Joins(), function (x) {
 			x.TableId(x.JoinTable().Id());
 			x.JoinedTableId(x.OtherTable().Id());
 		});
 
-		var joinsToSave = $.map(ko.mapping.toJS(self.Joins), function (x) {
+		var joinsToSave = $.map(ko.mapping.toJS(filteredJoins === true ? self.filteredJoins() : self.Joins), function (x) {
 			return {
 				DataConnectionId: x.DataConnectionId,
 				RelationId: x.Id ? x.Id : x.RelationId,
@@ -1132,12 +1131,12 @@ var manageViewModel = function (options) {
 		return joinsToSave;
 	}
 	self.ExportJoins = function () {
-		var joinsToSave = self.getJoinsToSave();
+		var joinsToSave = self.getJoinsToSave(true);
 		var exportJson = JSON.stringify(joinsToSave, null, 2)
 		downloadJson(exportJson, 'Relations' + '.json', 'application/json');
 	}
 	self.SaveJoins = function () {
-		var joinsToSave = self.getJoinsToSave();
+		var joinsToSave = self.getJoinsToSave(false);
 
 		ajaxcall({
 			url: options.apiUrl,
@@ -1201,7 +1200,7 @@ var manageViewModel = function (options) {
 			}
 		});
 
-		var joinsTosave = self.getJoinsToSave();
+		var joinsTosave = self.getJoinsToSave(false);
 
 		var exportJson = JSON.stringify({
 			tables: tablesToSave,
