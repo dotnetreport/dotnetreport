@@ -963,7 +963,6 @@ var reportViewModel = function (options) {
 	self.lineChartArea = ko.observable();
 	self.barChartStacked = ko.observable();
 	self.comboChartType = ko.observable('bars');
-	self.showMarker = ko.observable();
 	self.DefaultPageSize = ko.observable(30);
 	self.FilterGroups = ko.observableArray();
 	self.PivotColumns = ko.observable();
@@ -2115,7 +2114,7 @@ var reportViewModel = function (options) {
 		self.lineChartArea(false);
 		self.barChartStacked(false);
 		self.comboChartType('bars');
-		self.showMarker(false);
+		self.heatMapOptions.showMarker(false);
 		self.selectedStyle('default');
 		self.reportHtml('');
 		self.DefaultPageSize(30);
@@ -3201,7 +3200,7 @@ var reportViewModel = function (options) {
 				pieChartDonut: self.pieChartDonut(),
 				lineChartArea: self.lineChartArea(),
 				comboChartType: self.comboChartType(),
-				showMarker: self.showMarker(),
+				heatMapOptions: ko.toJS(self.heatMapOptions),
 				DefaultPageSize: self.DefaultPageSize() || 30,
 				noHeaderRow: self.noHeaderRow(),
 				noDashboardBorders: self.noDashboardBorders(),
@@ -4561,6 +4560,116 @@ var reportViewModel = function (options) {
 		updateZoom();
 	}
 
+	self.heatMapOptions = {
+		showMarker: ko.observable(false),
+		gradient1: ko.observable('#0000ff'), // blue
+		gradient2: ko.observable('#00ff00'), // lime
+		gradient3: ko.observable('#ff0000'), // red
+		showZipLayer: ko.observable(false),
+		showCountyLayer: ko.observable(false),
+		baseLayer: ko.observable('')
+	}
+
+	function drawHeatMap(chartDiv, heatPoints, markers) {
+		const opts = self.heatMapOptions;
+		const map = L.map(chartDiv);
+		chartDiv._leaflet_map = map;
+
+		if (heatPoints && heatPoints.length > 0) {
+			const latLngs = heatPoints.map(p => L.latLng(p[0], p[1]));
+			const bounds = L.latLngBounds(latLngs);
+			map.fitBounds(bounds, { padding: [20, 20] });
+		} 
+
+		const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+			attribution: '&copy; OpenStreetMap contributors'
+		});
+		const grayLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+			attribution: '&copy; OpenStreetMap, &copy; CartoDB'
+		});
+		const satelliteLayer = L.tileLayer(
+			'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+			{ attribution: 'Tiles © Esri' }
+		);
+
+		if (opts.baseLayer() === 'gray') grayLayer.addTo(map);
+		else if (opts.baseLayer() === 'satellite') satelliteLayer.addTo(map);
+		else streetLayer.addTo(map);
+
+		const gradient = {
+			0.2: opts.gradient1(),
+			0.4: opts.gradient2(),
+			0.65: opts.gradient3(),
+			1: opts.gradient3()
+		};
+
+		L.heatLayer(heatPoints, {
+			radius: 25,
+			blur: 15,
+			maxZoom: 17,
+			gradient: gradient
+		}).addTo(map);
+
+		if (opts.showMarker() && markers) {			
+			markers.addTo(map);
+		}
+
+		const countyLayer = L.tileLayer.wms(
+			'https://tigerweb.geo.census.gov/arcgis/services/TIGERweb/Counties_Carto/MapServer/WMSServer',
+			{
+				layers: '0',   // 0 = Counties layer
+				format: 'image/png',
+				transparent: true,
+				uppercase: true
+			}
+		);
+
+		const zipLayer = L.tileLayer.wms(
+			'https://tigerweb.geo.census.gov/arcgis/services/TIGERweb/State_ZCTA/MapServer/WMSServer',
+			{
+				layers: '0',   // 0 = ZCTA5 layer
+				format: 'image/png',
+				transparent: true,
+				uppercase: true
+			}
+		);
+
+		const baseMaps = {
+			"Street View": streetLayer,
+			"Grayscale": grayLayer,
+			"Satellite": satelliteLayer
+		};
+
+		const overlayMaps = {
+			"County Boundaries": countyLayer,
+			"Zipcode Boundaries": zipLayer
+		};
+
+		const control = L.control.layers(baseMaps, null, {
+			collapsed: true,
+			position: 'topright'
+		}).addTo(map);
+
+		map.on('baselayerchange', function (e) {
+			if (e.name === 'Grayscale') opts.baseLayer('gray');
+			else if (e.name === 'Satellite') opts.baseLayer('satellite');
+			else opts.baseLayer('street');
+		});
+
+		map.on('overlayadd', function (e) {
+			if (e.name === 'County Boundaries') opts.showCountyLayer(true);
+			if (e.name === 'Zipcode Boundaries') opts.showZipLayer(true);
+		});
+
+		map.on('overlayremove', function (e) {
+			if (e.name === 'County Boundaries') opts.showCountyLayer(false);
+			if (e.name === 'Zipcode Boundaries') opts.showZipLayer(false);
+		});
+
+		if (opts.showCountyLayer()) countyLayer.addTo(map);
+		if (opts.showZipLayer()) zipLayer.addTo(map);
+	}
+
 	self.chartOptions = ko.observable({
 		title: self.ReportName(),
 		animation: {
@@ -4679,18 +4788,24 @@ var reportViewModel = function (options) {
 		if (!chartDiv || !reportData) return;
 
 		if (self.ReportType() === "HeatMap") {
+			if (chartDiv._leaflet_map) {
+				chartDiv._leaflet_map.remove();
+				chartDiv._leaflet_map = null;
+			}
 			chartDiv.innerHTML = "";
-			if (chartDiv._leaflet_id) chartDiv._leaflet_id = null;
-
 			if (!reportData.Columns || reportData.Columns.length < 2) {
-				toastr.error("HeatMap requires at least two numeric columns for Latitude and Longitude");
+				if (!self.activeDesign()) {
+					toastr.error("HeatMap requires at least two numeric columns for Latitude and Longitude");
+				}
 				return;
 			}
 
 			var col0 = reportData.Columns[0];
 			var col1 = reportData.Columns[1];
 			if (!col0.IsNumeric || !col1.IsNumeric) {
-				toastr.error("HeatMap requires first two columns to be numeric (Latitude, Longitude)");
+				if (!self.activeDesign()) {
+					toastr.error("HeatMap requires first two columns to be numeric (Latitude, Longitude)");
+				}
 				return;
 			}
 
@@ -4702,7 +4817,9 @@ var reportViewModel = function (options) {
 			});
 
 			if (!intensityCol) {
-				toastr.error("HeatMap requires at least one numeric column after Lat/Long for intensity");
+				if (!self.activeDesign()) {
+					toastr.error("HeatMap requires at least one numeric column after Lat/Long for intensity");
+				}
 				return;
 			}
 
@@ -4728,16 +4845,10 @@ var reportViewModel = function (options) {
 
 				var tooltipText = labelParts.join("<br/>");
 
-				var marker = L.circleMarker([lat, lon], {
-					radius: 6,
-					opacity: 0,
-					fillOpacity: 0
-				});
+				
 
-				markerLayer.addLayer(marker);
-
-				if (self.showMarker()) {
-					marker = L.marker([lat, lon]).bindPopup(tooltipText);
+				if (self.heatMapOptions.showMarker()) {
+					var marker = L.marker([lat, lon]).bindPopup(tooltipText);
 					markerLayer.addLayer(marker);
 				}
 			});
@@ -4747,19 +4858,8 @@ var reportViewModel = function (options) {
 				return;
 			}
 
-			var map = L.map(chartDiv).setView([29.9, -81.3], 10);
-			L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-				attribution: '&copy; OpenStreetMap contributors'
-			}).addTo(map);
+			drawHeatMap(chartDiv, heatPoints, markerLayer);
 
-			L.heatLayer(heatPoints, {
-				radius: 25,
-				blur: 15,
-				maxZoom: 17,
-				gradient: { 0.2: 'blue', 0.4: 'lime', 0.65: 'yellow', 1: 'red' }
-			}).addTo(map);
-
-			markerLayer.addTo(map);
 			return;
 		}
 
@@ -5512,7 +5612,13 @@ var reportViewModel = function (options) {
 		self.pieChartDonut(reportSettings.pieChartDonut === true ? true : false);
 		self.lineChartArea(reportSettings.lineChartArea === true ? true : false);
 		self.comboChartType(reportSettings.comboChartType || 'bars');
-		self.showMarker(reportSettings.showMarker === true ? true : false);
+		if (reportSettings.heatMapOptions) {
+			self.heatMapOptions.showMarker(reportSettings.heatMapOptions.showMarker);
+			self.heatMapOptions.gradient1(reportSettings.heatMapOptions.gradient1);
+			self.heatMapOptions.gradient2(reportSettings.heatMapOptions.gradient2);
+			self.heatMapOptions.gradient3(reportSettings.heatMapOptions.gradient3);
+			self.heatMapOptions.baseLayer(reportSettings.heatMapOptions.baseLayer);
+		};
 		if (reportSettings.chartOptions) self.chartOptions(reportSettings.chartOptions);
 		if (reportSettings.tableSettings) self.tableSettings(reportSettings.tableSettings);
 		self.DefaultPageSize(reportSettings.DefaultPageSize || 30);
