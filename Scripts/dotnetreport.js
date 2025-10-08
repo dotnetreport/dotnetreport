@@ -4788,6 +4788,9 @@ var reportViewModel = function (options) {
 		if (!chartDiv || !reportData) return;
 
 		if (self.ReportType() === "HeatMap") {
+			if (chartDiv.offsetHeight === 0) {
+				chartDiv.style.height = '400px';
+			}
 			if (chartDiv._leaflet_map) {
 				chartDiv._leaflet_map.remove();
 				chartDiv._leaflet_map = null;
