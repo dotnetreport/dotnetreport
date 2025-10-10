@@ -1605,7 +1605,7 @@ var reportViewModel = function (options) {
 		} else {
 			self.DefaultPageSize(30);
 			self.changePageSize(false);
-			self.pager.pageSizeOptions([1, 10, 30, 50, 100, 150, 200, 500]);
+			self.pager.pageSizeOptions([1, 10, 30, 50, 100, 150, 200, 500, 1000]);
 		}
 	});
 
@@ -5706,7 +5706,6 @@ var reportViewModel = function (options) {
 		};
 		if (reportSettings.chartOptions) self.chartOptions(reportSettings.chartOptions);
 		if (reportSettings.tableSettings) self.tableSettings(reportSettings.tableSettings);
-		self.DefaultPageSize(reportSettings.DefaultPageSize || 30);
 		self.noHeaderRow(reportSettings.noHeaderRow);
 		self.noDashboardBorders(reportSettings.noDashboardBorders);
 		self.showPriorInKpi(reportSettings.showPriorInKpi);
@@ -5716,6 +5715,10 @@ var reportViewModel = function (options) {
 		self.cardView(reportSettings.cardView === true ? true : false);
 		self.dontGroupCustom(reportSettings.dontGroupCustom === true ? true : false);
 		self.subReports(reportSettings.subReports || []);
+		if (self.subReports().length <= 0) {
+			self.DefaultPageSize(reportSettings.DefaultPageSize || 30);
+			self.changePageSize(self.DefaultPageSize() != '30');
+		}
 		setTimeout(function () { self.isDirty(false); }, 500);
 		
 		if (self.ReportMode() == "execute") {
