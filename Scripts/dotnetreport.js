@@ -4670,18 +4670,75 @@ var reportViewModel = function (options) {
 		};
 
 		const scaledPoints = heatPoints.map(p => [p[0], p[1], p[2] * 100]);
-		const maxValue = Math.max(...heatPoints.map(p => p[2])); 
+		const maxPlotValue = Math.max(...heatPoints.map(p => p[2])); 
 
 		L.heatLayer(scaledPoints, {
-			radius: 40,
-			blur: 15,
-			max: maxValue * 10, 
+			radius: 50,
+			blur: 15, 
+			max: maxPlotValue,
 			gradient: gradient
 		}).addTo(map);
 
 		if (opts.showMarker() && markers) {			
 			markers.addTo(map);
 		}
+
+		const hoverTooltip = L.tooltip({
+			permanent: false,
+			direction: "top",
+			opacity: 0.9,
+			className: "heatmap-tooltip"
+		});
+
+		let tooltipVisible = false;
+
+		map.on("mousemove", function (e) {
+			let closestPoint = null;
+			let minDist = Infinity;
+
+			for (const p of heatPoints) {
+				if (!p || p.length < 3) continue;
+				const lat = parseFloat(p[0]);
+				const lon = parseFloat(p[1]);
+				if (isNaN(lat) || isNaN(lon)) continue;
+
+				const latlng = L.latLng(lat, lon);
+				const dist = map.distance(e.latlng, latlng);
+				if (dist < minDist && dist < 1000) {
+					minDist = dist;
+					closestPoint = p;
+				}
+			}
+
+			if (closestPoint) {
+				const lat = parseFloat(closestPoint[0]);
+				const lon = parseFloat(closestPoint[1]);
+				if (isFinite(lat) && isFinite(lon)) {
+					const originalValue = closestPoint[2];
+
+					hoverTooltip
+						.setLatLng([lat, lon])
+						.setContent(
+							`<b>Value:</b> ${self.formatNumberShort(originalValue)}`
+						);
+
+					if (!tooltipVisible) {
+						hoverTooltip.addTo(map);
+						tooltipVisible = true;
+					}
+				}
+			} else if (tooltipVisible) {
+				map.removeLayer(hoverTooltip);
+				tooltipVisible = false;
+			}
+		});
+
+		map.on("zoomstart", () => {
+			if (tooltipVisible) {
+				map.removeLayer(hoverTooltip);
+				tooltipVisible = false;
+			}
+		});
 
 		const countyLayer = L.tileLayer.wms(
 			'https://tigerweb.geo.census.gov/arcgis/services/TIGERweb/tigerWMS_Current/MapServer/WMSServer',
@@ -4741,6 +4798,55 @@ var reportViewModel = function (options) {
 
 		if (opts.showCountyLayer()) countyLayer.addTo(map);
 		if (opts.showZipLayer()) zipLayer.addTo(map);
+
+
+		// Calculate intensity range
+		const intensities = heatPoints.map(p => p[2]);
+		const minValue = Math.min(...intensities);
+		const maxValue = Math.max(...intensities);
+		const midValue = (minValue + maxValue) / 2;
+		const legend = L.control({ position: 'bottomleft' });
+
+		legend.onAdd = function (map) {
+			const div = L.DomUtil.create('div', 'heatmap-legend');
+
+			const grades = [
+				{ label: self.formatNumberShort(minValue), color: opts.gradient1() },
+				{ label: self.formatNumberShort(midValue), color: opts.gradient2() },
+				{ label: self.formatNumberShort(maxValue), color: opts.gradient3() }
+			];
+
+			let html = `
+					<div style="
+						padding:8px 12px; 
+						background: rgba(255,255,255,0.9);
+						border-radius:8px; 
+						box-shadow:0 0 6px rgba(0,0,0,0.2);
+						font-size:13px;
+					">
+						<strong>Intensity Scale</strong>
+						<div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:6px;">
+				`;
+
+			grades.forEach(g => {
+				html += `
+						<div style="text-align:center;">
+							<div style="width:40px; height:10px; background:${g.color}; margin-bottom:3px;"></div>
+							<span>${g.label}</span>
+						</div>
+					`;
+						});
+
+						html += `
+						</div>
+					</div>
+				`;
+
+			div.innerHTML = html;
+			return div;
+		};
+
+		legend.addTo(map);
 	}
 
 	self.chartOptions = ko.observable({
@@ -6043,7 +6149,20 @@ var reportViewModel = function (options) {
 		parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 		return parts.join('.');
 	}
+	self.formatNumberShort = function(value) {
+		if (value === null || value === undefined || isNaN(value)) return "";
+		const absValue = Math.abs(value);
 
+		if (absValue >= 1_000_000_000) {
+			return (value / 1_000_000_000).toFixed(1).replace(/\.0$/, '') + "B";
+		} else if (absValue >= 1_000_000) {
+			return (value / 1_000_000).toFixed(1).replace(/\.0$/, '') + "M";
+		} else if (absValue >= 1_000) {
+			return (value / 1_000).toFixed(1).replace(/\.0$/, '') + "k";
+		} else {
+			return value.toLocaleString(undefined, { maximumFractionDigits: 0 });
+		}
+	}
 	self.formatDate = function(date, format) {
 		const pad = (n) => n < 10 ? '0' + n : n;
 		const monthNamesShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
