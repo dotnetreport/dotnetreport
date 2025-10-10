@@ -127,6 +127,7 @@ namespace ReportBuilder.Web.Models
     {
         public string sql { get; set; } = "";
         public List<KeyValuePair<string, string>> parameters { get; set; } = null;
+        public int reportId { get; set; }
     }
 
     public class TableViewModel
