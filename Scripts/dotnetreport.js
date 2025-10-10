@@ -4664,16 +4664,18 @@ var reportViewModel = function (options) {
 		else streetLayer.addTo(map);
 
 		const gradient = {
-			0.2: opts.gradient1(),
-			0.4: opts.gradient2(),
-			0.65: opts.gradient3(),
-			1: opts.gradient3()
+			0.0: opts.gradient1(),  
+			0.5: opts.gradient2(), 
+			1.0: opts.gradient3()  
 		};
 
-		L.heatLayer(heatPoints, {
-			radius: 25,
+		const scaledPoints = heatPoints.map(p => [p[0], p[1], p[2] * 100]);
+		const maxValue = Math.max(...heatPoints.map(p => p[2])); 
+
+		L.heatLayer(scaledPoints, {
+			radius: 40,
 			blur: 15,
-			maxZoom: 17,
+			max: maxValue * 10, 
 			gradient: gradient
 		}).addTo(map);
 
@@ -4682,22 +4684,26 @@ var reportViewModel = function (options) {
 		}
 
 		const countyLayer = L.tileLayer.wms(
-			'https://tigerweb.geo.census.gov/arcgis/services/TIGERweb/Counties_Carto/MapServer/WMSServer',
+			'https://tigerweb.geo.census.gov/arcgis/services/TIGERweb/tigerWMS_Current/MapServer/WMSServer',
 			{
-				layers: '0',   // 0 = Counties layer
+				layers: '55,54',
 				format: 'image/png',
 				transparent: true,
-				uppercase: true
+				version: '1.3.0',
+				crs: L.CRS.EPSG4326,
+				opacity: 0.7
 			}
-		);
+		)
 
 		const zipLayer = L.tileLayer.wms(
-			'https://tigerweb.geo.census.gov/arcgis/services/TIGERweb/State_ZCTA/MapServer/WMSServer',
+			'https://tigerweb.geo.census.gov/arcgis/services/TIGERweb/tigerWMS_Current/MapServer/WMSServer',
 			{
-				layers: '0',   // 0 = ZCTA5 layer
+				layers: '77,76',  
 				format: 'image/png',
 				transparent: true,
-				uppercase: true
+				version: '1.3.0',
+				crs: L.CRS.EPSG4326,
+				opacity: 0.7
 			}
 		);
 
@@ -4712,7 +4718,7 @@ var reportViewModel = function (options) {
 			"Zipcode Boundaries": zipLayer
 		};
 
-		const control = L.control.layers(baseMaps, null, {
+		const control = L.control.layers(baseMaps, overlayMaps, {
 			collapsed: true,
 			position: 'topright'
 		}).addTo(map);
