@@ -1328,6 +1328,7 @@ var reportViewModel = function (options) {
 		dontWordExport: false,
 		usePromptBuilder: ko.observable(true),
 		showPageSize: false,
+		showImportExport:false
 	};
 	self.appSettings = options && options.appSettings ? options.appSettings : self.appSettings;
 	self.runQuery = function (useAi) {
@@ -6491,6 +6492,7 @@ var reportViewModel = function (options) {
 			self.appSettings.dontWordExport = x.dontWordExport;
 			self.appSettings.usePromptBuilder(x.usePromptBuilder !== false ? true : false);
 			self.appSettings.showPageSize = x.showPageSize;
+			self.appSettings.showImportExport = x.showImportExport;
 		});
 	}
 
@@ -7216,7 +7218,8 @@ var dashboardViewModel = function (options) {
 		dontXmlExport: false,
 		dontWordExport: false,
 		usePromptBuilder: true,
-		showPageSize:false,
+		showPageSize: false,
+		showImportExport: false
 	};
 
 	self.loadAppSettings = function () {
@@ -7245,6 +7248,7 @@ var dashboardViewModel = function (options) {
 			self.appSettings.dontWordExport = x.dontWordExport;
 			self.appSettings.usePromptBuilder = x.usePromptBuilder;
 			self.appSettings.showPageSize = x.showPageSize;
+			self.appSettings.showImportExport = x.showImportExport;
 		});
 	}
 

@@ -2883,6 +2883,7 @@ var settingPageViewModel = function (options) {
 	self.dontWordExport = ko.observable(false);
 	self.usePromptBuilder = ko.observable(true);
 	self.showPageSize = ko.observable(false);
+	self.showImportExport = ko.observable(false);
 
 	self.appThemes = ko.observableArray([
 		{ name: 'Default', value: 'default' },
@@ -2960,7 +2961,8 @@ var settingPageViewModel = function (options) {
 							dontXmlExport: self.dontXmlExport(),
 							dontWordExport: self.dontWordExport(),
 							usePromptBuilder: self.usePromptBuilder(),
-							showPageSize: self.showPageSize()
+							showPageSize: self.showPageSize(),
+							showImportExport: self.showImportExport()
 						})
 					})
 				})
@@ -3016,6 +3018,7 @@ var settingPageViewModel = function (options) {
 				self.dontWordExport(settings.dontWordExport);
 				self.usePromptBuilder(settings.usePromptBuilder === false ? false : true);
 				self.showPageSize(settings.showPageSize);
+				self.showImportExport(settings.showImportExport);
 ;
 				//// Optionally, you can manually trigger change event for select elements
 				$('#themeSelect').trigger('change');
