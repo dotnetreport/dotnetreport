@@ -1829,6 +1829,7 @@ var reportViewModel = function (options) {
 					folderToSave.Id = result;
 					folderToSave.canEdit = true;
 					folderToSave.canDelete = true;
+					folderToSave.isSelected = ko.observable(false);	
 					self.Folders.push(folderToSave);
 					toastr.success(folderToSave.FolderName + " added");
 				}
@@ -1837,6 +1838,7 @@ var reportViewModel = function (options) {
 					self.Folders.remove(self.SelectedFolder());
 					folderToSave.canEdit = true;
 					folderToSave.canDelete = true;
+					folderToSave.isSelected = ko.observable(false);	
 					self.Folders.push(folderToSave);
 					self.allFolders = self.Folders();
 					self.SelectedFolder(null);
