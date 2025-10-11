@@ -2585,7 +2585,7 @@ var reportViewModel = function (options) {
 
 		var result = true;
 		_.forEach(allFields, function (x) {
-			if (x.fieldType == 'Custom' || (!x.setupFormula.isParenthesesStart() && !x.setupFormula.isParenthesesEnd() && !x.setupFormula.isConstantValue() && x.fieldType && x.fieldType.indexOf("Date") < 0)) {
+			if ((x.setupFormula.constantValue() != '|Today|' && x.fieldType == 'Custom') || (!x.setupFormula.isParenthesesStart() && !x.setupFormula.isParenthesesEnd() && !x.setupFormula.isConstantValue() && x.fieldType && x.fieldType.indexOf("Date") < 0)) {
 				result = false;
 				return false;
 			}
@@ -2844,7 +2844,7 @@ var reportViewModel = function (options) {
 		});
 
 		var field = self.getEmptyFormulaField();
-		if (field.fieldFormat == 'Integer' || field.fieldFormat == 'Decimal' || field.fieldFormat == 'Currency') {
+		if (field.fieldFormat == 'Integer' || field.fieldFormat == 'Decimal' || field.fieldFormat == 'Currency' || self.formulaOnlyHasDateFields()) {
 			field.fieldType = "Int";
 			field.fieldFilter = ['=', '>', '<', '>=', '<=', 'not equal','is blank', 'is not blank'];
 		} else {
@@ -4588,8 +4588,27 @@ var reportViewModel = function (options) {
 	});
 
 	self.getColumnDetails = ko.computed(function () {
-		var formatData = JSON.stringify(self.columnDetails());
-		return formatData;
+		var cleaned = ko.toJS(self.columnDetails());
+
+		cleaned.forEach(col => {
+			if (col.fieldCondtionalFormats) {
+				col.fieldCondtionalFormats.forEach(fmt => {
+					if (fmt.filter && fmt.filter.Filters) {
+						fmt.filter.Filters.forEach(flt => {
+							// Avoid circular reference
+							if (flt.Field) {
+								flt.Field = {
+									fieldId: flt.Field.fieldId,
+									fieldName: flt.Field.fieldName
+								};
+							}
+						});
+					}
+				});
+			}
+		});
+
+		return JSON.stringify(cleaned);
 	});
 
 	self.zoomLevel = ko.observable(.9); 
