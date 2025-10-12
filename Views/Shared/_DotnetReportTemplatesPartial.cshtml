@@ -273,7 +273,7 @@
             <thead style="position: sticky; top: -1px; z-index: 2;" data-bind="if: !$parents[2].noHeaderRow()">
                 <tr class="no-highlight" data-bind="sortableColumns: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight',selectedFields: $parents[2].SelectedFields }">
                     <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !IsDrillDown() && !CanExpandOption() && (!$parents[2].hasPivotColumn() || ($parents[2].hasPivotColumn() && $parents[2].appSettings.useAltPivot)) -->
-                    <th style="width: 30px; border-left: 1px solid;"></th>
+                    <th style="width: 30px; border-left: 1px solid;" data-bind="style: {'background-color': Columns[0].headerBackColor}"></th>
                     <!-- /ko -->
                     <!-- ko template: 'report-column-header', data: $data -->
                     <!-- /ko-->
