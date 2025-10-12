@@ -1250,18 +1250,55 @@ namespace ReportBuilder.Web.Models
 
         public static List<string> SplitSqlColumns(string sql)
         {
-            if (sql.StartsWith("EXEC")) return new List<string>();
-            var fromIndex = FindFromIndex(sql);
-            var sqlSplit = sql.Substring(0, fromIndex).Replace("SELECT", "").Trim();
-            var sqlFields = Regex.Split(sqlSplit, "], (?![^\\(]*?\\))").Where(x => x != "CONVERT(VARCHAR(3)")
-                .Select(x => x.EndsWith("]") ? x : x + "]")
-                .Select(x => x.StartsWith("DISTINCT ") ? x.Replace("DISTINCT ", "") : x)
-                .Select(x => x.StartsWith("TOP ") ? Regex.Replace(x, @"TOP\s+\d+", "") : x)
-                .Where(x => x.Contains(" AS "))
-                .ToList();
+            if (sql.StartsWith("EXEC", StringComparison.OrdinalIgnoreCase))
+                return new List<string>();
 
-            return sqlFields;
+            var fromIndex = FindFromIndex(sql);
+            if (fromIndex < 0) return new List<string>();
+
+            string selectPart = sql.Substring(0, fromIndex).Replace("SELECT", "", StringComparison.OrdinalIgnoreCase).Trim();
+
+            var columns = new List<string>();
+            var current = new StringBuilder();
+            int parenDepth = 0;
+            bool inString = false;
+
+            for (int i = 0; i < selectPart.Length; i++)
+            {
+                char c = selectPart[i];
+
+                if (c == '\'' && (i == 0 || selectPart[i - 1] != '\\'))
+                    inString = !inString;
+
+                if (!inString)
+                {
+                    if (c == '(') parenDepth++;
+                    else if (c == ')') parenDepth--;
+                }
+
+                // Split only when comma is outside parentheses and strings
+                if (c == ',' && parenDepth == 0 && !inString)
+                {
+                    columns.Add(current.ToString().Trim());
+                    current.Clear();
+                }
+                else
+                {
+                    current.Append(c);
+                }
+            }
+
+            if (current.Length > 0)
+                columns.Add(current.ToString().Trim());
+
+            // Cleanup, handle DISTINCT/TOP and ensure alias exists
+            return columns
+                .Select(x => x.StartsWith("DISTINCT ", StringComparison.OrdinalIgnoreCase) ? x.Substring(9) : x)
+                .Select(x => Regex.Replace(x, @"TOP\s+\d+", "", RegexOptions.IgnoreCase))
+                .Where(x => x.Contains(" AS ", StringComparison.OrdinalIgnoreCase))
+                .ToList();
         }
+
 
         public static DotNetReportDataModel DataTableToDotNetReportDataModel(DataTable dt, List<string> sqlFields, bool jsonAsTable = true)
         {
