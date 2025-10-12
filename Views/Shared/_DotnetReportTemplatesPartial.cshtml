@@ -2600,6 +2600,12 @@
                         </div>
                     </div>
                     <div class="mb-2">
+                        <label class="form-label small">Font Color</label>
+                        <div class="d-flex align-items-center flex-wrap">
+                            <input type="color" class="color-picker" data-bind="value: chartOptions().fontColor, attr: { placeholder: 'Select' }, event: { change: updateChart }">
+                        </div>
+                    </div>
+                    <div class="mb-2">
                         <label class="form-label small">Series Colors</label>
                         <div class="d-flex flex-wrap" data-bind="foreach: chartOptions().seriesColors">
                             <div class="color-box me-2">

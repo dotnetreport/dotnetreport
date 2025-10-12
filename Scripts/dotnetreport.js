@@ -4888,6 +4888,7 @@ var reportViewModel = function (options) {
 		backgroundColor: '#fff',
 		fontSize: 12,
 		fontFamily: "",
+		fontColor: "#00000", 
 		showXAxisLabel: true,
 		showYAxisLabel: true,
 		showSmallValuesOnLabel: false,
@@ -5210,11 +5211,6 @@ var reportViewModel = function (options) {
 			chartOptions.height = options.chartSize.height;
 		}
 
-		if (self.colorScheme() != null && self.colorScheme().length > 0) {
-			chartOptions.colors = self.colorScheme().slice(1);
-			chartOptions.backgroundColor = self.colorScheme()[0];
-		}
-
 		var chart = null;
 		if (self.ReportType() == "Pie") {
 			chart = new google.visualization.PieChart(chartDiv);
@@ -5413,7 +5409,7 @@ var reportViewModel = function (options) {
 		
 		// Call retrieveDimensions to load saved dimensions when the chart is initialized
 		if (self.ReportMode() != 'print') retrieveDimensions();
-		chartOptions.hAxis = {}; chartOptions.vAxis = {};
+		chartOptions.hAxis = { titleTextStyle: { color: self.chartOptions().fontColor }, textStyle: { color: self.chartOptions().fontColor } }; chartOptions.vAxis = { titleTextStyle: { color: self.chartOptions().fontColor }, textStyle: { color: self.chartOptions().fontColor } };
 		if (!chartOptions.showGridlines) { chartOptions.hAxis.gridlines = { color: 'none' }; chartOptions.vAxis.gridlines = { color: 'none' }; }
 		if (!chartOptions.showXAxisLabel) { chartOptions.hAxis.textPosition = 'none'; }
 		if (!chartOptions.showYAxisLabel) { chartOptions.vAxis.textPosition = 'none'; }
@@ -5477,7 +5473,7 @@ var reportViewModel = function (options) {
 		else {
 			delete chartOptions.colors;
 		}
-		chartOptions.legend = { position: self.chartOptions().legendPosition }
+		chartOptions.legend = { position: self.chartOptions().legendPosition, textStyle: { color: self.chartOptions().fontColor } }
 		chart.draw(data, chartOptions);
 
 		// Add event listener for pointer down on the chart container
