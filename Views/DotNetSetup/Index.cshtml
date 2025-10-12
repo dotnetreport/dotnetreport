@@ -218,13 +218,13 @@
                                 <h6 class="mt-2 mb-2">Admin Options</h6>
                                 <div class="form-check">
                                     <input type="checkbox" class="form-check-input" id="useClientIdInAdmin" data-bind="checked: useClientIdInAdmin">
-                                    <label class="form-check-label" for="useClientIdInAdmin">Use Client ID in Admin</label>
-                                    <small class="text-muted d-block">Enable this to use client IDs in the admin panel.</small>
+                                    <label class="form-check-label" for="useClientIdInAdmin">Use Client ID in Admin mode</label>
+                                    <small class="text-muted d-block">Enable this to respect client IDs even when in admin mode.</small>
                                 </div>
                                 <div class="form-check">
                                     <input type="checkbox" class="form-check-input" id="useSqlBuilderInAdminMode" data-bind="checked: useSqlBuilderInAdminMode">
                                     <label class="form-check-label" for="useSqlBuilderInAdminMode">Use SQL Builder in Admin Mode</label>
-                                    <small class="text-muted d-block">Allows SQL query builder access in admin mode.</small>
+                                    <small class="text-muted d-block">Allows SQL query builder access <b>only</b> in admin mode.</small>
                                 </div>
                                 <h6 class="mt-3 mb-2">Customization</h6>
                                 <div class="form-check">
@@ -269,7 +269,7 @@
                                 <div class="form-check">
                                     <input type="checkbox" class="form-check-input" id="allowUsersToManageFolders" data-bind="checked: allowUsersToManageFolders">
                                     <label class="form-check-label" for="allowUsersToManageFolders">Allow All Users to Manage Folders</label>
-                                    <small class="text-muted d-block">Grants permission to organize and manage folders.</small>
+                                    <small class="text-muted d-block">Grants permission to organize and manage folders without admin mode.</small>
                                 </div>
                                 <h6 class="mt-3 mb-2">Export Options</h6>
                                 <div class="form-check">
@@ -381,11 +381,11 @@
                         </div>
                     </div>
                     <div class="row mt-3">
-                        <div class="d-flex flex-row align-items-center col-md-12" data-bind="with: pager">
+                        <div class="d-flex flex-column col-md-12" data-bind="with: pager">
                             <div data-bind="template: 'pager-template', data: $data"></div>
+                            <div class="text-muted small mt-0 pt-0" style="padding-left: 3px" data-bind="text: 'Total Records: ' + totalRecords()"></div>
                         </div>
                     </div>
-
                 </div>
 
                 <div class="col-12 col-md-8 col-lg-9" id="tableDetails">
@@ -602,16 +602,25 @@
                             <div class="col-md-2" data-bind="with: OtherTable">
                                 <select class="form-select" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsValue: 'ColumnName', value: $parent.JoinFieldName"></select>
                             </div>
+
                             <div class="col-md-2 text-end">
+                                <span class="badge bg-warning text-dark me-2"
+                                      data-bind="visible: isNew"
+                                      data-bs-toggle="tooltip"
+                                      title="New record added or imported, not saved yet">
+                                    <i class="fa fa-warning"></i> New
+                                </span>
+
                                 <button class="btn btn-secondary btn-sm" data-bind="click: DeleteJoin">Delete</button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="row mt-3">
-                    <div class="d-flex flex-row align-items-center col-md-12" data-bind="with: joinsPager">
+                <div class="row mt-3">                    
+                    <div class="d-flex flex-row align-items-center col-md-12" data-bind="with: joinsPager">                        
                         <div data-bind="template: 'pager-template', data: $data"></div>
+                        <div class="text-muted small mt-0 pt-0" style="padding-left: 3px" data-bind="text: 'Total Records: ' + totalRecords()"></div>
                     </div>
                 </div>
             </div>
@@ -1980,7 +1989,7 @@
                 <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 <button class="btn btn-success" data-bind="click: exportFoldersReportJson">Export Selected</button>
                 <button class="btn btn-primary" data-bind="click: $root.openApplySecurityModal, enable: $root.anyReportSelected">Apply Security to All Selected</button>
-                <button class="btn btn-primary" data-bind="click: $root.deleteSelectedItems">Delete All Selected</button>
+                <button class="btn btn-primary" data-bind="click: $root.deleteSelectedItems, enable: $root.anyReportSelected">Delete All Selected</button>
             </div>
         </div>
     </div>

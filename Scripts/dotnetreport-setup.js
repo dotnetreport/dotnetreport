@@ -85,7 +85,9 @@ var manageViewModel = function (options) {
 		var usedOnly = self.Tables.usedOnly();
 
 		if (self.customTableMode()) {
-			tables = _.filter(tables, function(x) { return x.CustomTable(); });
+			tables = _.filter(tables, function (x) { return x.CustomTable(); });
+		} else {
+			tables = _.filter(tables, function (x) { return !x.CustomTable(); });
 		}
 
 		if (usedOnly) {
@@ -892,6 +894,7 @@ var manageViewModel = function (options) {
 		item.OtherTable = ko.observable();
 		item.originalField = item.FieldName;
 		item.originalJoinField = item.JoinFieldName;
+		item.isNew = false;
 
 		item = ko.mapping.fromJS(item);
 
@@ -1083,6 +1086,7 @@ var manageViewModel = function (options) {
 			return;
 		}
 
+		join.isNew = true;
 		self.trackJoinChanges(join);
 		self.Joins.push(join);
 		// Reset form
@@ -1101,11 +1105,33 @@ var manageViewModel = function (options) {
 	};
 
 	self.DeleteVisibleJoins = function () {
-		bootbox.confirm("Are you sure you would like to delete 'All Filtered' Joins?", function (r) {
-			if (r) {
-				const toDelete = self.filteredJoins();
-				self.Joins.removeAll(toDelete);
-				self.isDirty(true);
+		const filtered = self.filteredJoins();
+		const total = self.Joins().length;
+
+		// Decide message
+		var message = filtered.length < total
+			? `Only filtered joins (${filtered.length}) will be deleted. This cannot be undone.<br><br>Do you want to continue?`
+			: `No filters applied. All ${total} joins will be deleted. This cannot be undone.<br><br>Are you sure you want to continue?`;
+
+		bootbox.confirm({
+			title: "Confirm Delete",
+			message: message,
+			buttons: {
+				cancel: {
+					label: 'Cancel',
+					className: 'btn-secondary'
+				},
+				confirm: {
+					label: 'Delete',
+					className: 'btn-danger'
+				}
+			},
+			callback: function (result) {
+				if (result) {
+					self.Joins.removeAll(filtered);
+					self.isDirty(true);
+					toastr.success(filtered.length + " join(s) deleted.");
+				}
 			}
 		});
 	};
@@ -1132,9 +1158,32 @@ var manageViewModel = function (options) {
 	}
 	self.ExportJoins = function () {
 		var joinsToSave = self.getJoinsToSave(true);
-		var exportJson = JSON.stringify(joinsToSave, null, 2)
-		downloadJson(exportJson, 'Relations' + '.json', 'application/json');
-	}
+		var message = joinsToSave.length < self.Joins().length
+			? "Only filtered joins will be exported.\nDo you want to continue?"
+			: "No filters applied. All joins will be exported.\nDo you want to continue?";
+
+		bootbox.confirm({
+			title: "Confirm Export",
+			message: message,
+			buttons: {
+				cancel: {
+					label: 'Cancel',
+					className: 'btn-secondary'
+				},
+				confirm: {
+					label: 'Export',
+					className: 'btn-primary'
+				}
+			},
+			callback: function (result) {
+				if (result) {
+					var exportJson = JSON.stringify(joinsToSave, null, 2);
+					downloadJson(exportJson, 'Relations.json', 'application/json');
+				}
+			}
+		});
+	};
+
 	self.SaveJoins = function () {
 		var joinsToSave = self.getJoinsToSave(false);
 
@@ -1373,13 +1422,12 @@ var manageViewModel = function (options) {
 				clearFileInput('joinsFileInputJson');
 				return;
 			}
-			let addedJoins = []; 
+			let addedJoins = [];
 			const reader = new FileReader();
+
 			reader.onload = function (event) {
 				try {
 					const joins = JSON.parse(event.target.result);
-					let hasConflicts = false;
-					let conflictingItems = [];
 
 					joins.forEach(newItem => {
 						const existingItem = self.Joins().find(item =>
@@ -1388,69 +1436,31 @@ var manageViewModel = function (options) {
 							item.JoinFieldName() === newItem.JoinFieldName &&
 							item.FieldName() === newItem.FieldName
 						);
+
 						if (existingItem) {
-							hasConflicts = true;
-							conflictingItems.push({ existingItem, newItem });
+							if (newItem.JoinType) existingItem.JoinType(newItem.JoinType);
+							if (newItem.Alias) existingItem.Alias(newItem.Alias);
+							if (newItem.Relationship) existingItem.Relationship(newItem.Relationship);
+
+							existingItem.isNew = true;
+						} else {
+							const added = self.setupJoin(newItem);
+							added.isNew = true;
+							self.Joins.push(added);
+							addedJoins.push(added);
 						}
 					});
 
-					const addUniqueJoins = (joinList) => {
-						joinList.forEach(newItem => {
-							const exists = self.Joins().some(item =>
-								item.TableId() === newItem.TableId &&
-								item.JoinedTableId() === newItem.JoinedTableId &&
-								item.JoinFieldName() === newItem.JoinFieldName &&
-								item.FieldName() === newItem.FieldName
-							);
-							if (!exists) {
-								const added = self.setupJoin(newItem);
-								self.Joins.push(added);
-								addedJoins.push(added); // Track it for rollback
-							}
-						});
-					};
+					// Don't auto save 
+					// self.SaveJoins();
+					self.isDirty(true);
 
-					const handleOverwriteConfirmation = (relations, callback) => {
-						const relationList = relations.map(conflict => `- ${conflict.existingItem.FieldName()}`).join('\n');
-						bootbox.dialog({
-							title: "Confirm Action",
-							message: `Some joins already exist:\n${relationList}\nWhat would you like to do?`,
-							buttons: {
-								cancel: {
-									label: 'Cancel',
-									className: 'btn-secondary',
-									callback: () => callback('cancel')
-								},
-								overwrite: {
-									label: 'Overwrite',
-									className: 'btn-primary',
-									callback: () => callback('overwrite')
-								}
-							}
-						});
-					};
+					toastr.success('Joins imported in view. Please click "Save Joins" to apply.');
+					$('#uploadJoinsFileModal').modal('hide');
+					clearFileInput('joinsFileInputJson');
 
-					if (hasConflicts) {
-						handleOverwriteConfirmation(conflictingItems, function (action) {
-							if (action === 'overwrite') {
-								self.Joins().length = 0;
-								addUniqueJoins(joins);
-								self.SaveJoins();
-								toastr.success('Conflicting items have been overwritten successfully.');
-							} else {
-								toastr.info('Upload canceled.');
-							}
-							$('#uploadJoinsFileModal').modal('hide');
-							clearFileInput('joinsFileInputJson');
-						});
-					} else {
-						addUniqueJoins(joins);
-						self.SaveJoins();
-						$('#uploadJoinsFileModal').modal('hide');
-						clearFileInput('joinsFileInputJson');
-					}
 				} catch (e) {
-					addedJoins.forEach(join => self.Joins.remove(join));
+					addedJoins.forEach(j => self.Joins.remove(j));
 					toastr.error('Invalid JSON file: ' + e.message);
 					clearFileInput('joinsFileInputJson');
 				}
