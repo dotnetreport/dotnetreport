@@ -248,6 +248,13 @@
                                     <label class="form-check-label" for="allowUsersToCreateReports">Allow All Users to Create Reports</label>
                                     <small class="text-muted d-block">Permits users to generate and customize reports.</small>
                                 </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: showImportExport">
+                                    <label class="form-check-label">Allow All Users to export/import reports</label>
+                                    <small class="text-muted d-block">
+                                        Allow non admin users to export and import Reports in the system.
+                                    </small>
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <h6 class="mt-2 mb-2">Folder Options</h6>
@@ -291,14 +298,7 @@
                                     <input type="checkbox" class="form-check-input" data-bind="checked: showPageSize">
                                     <label class="form-check-label">Show Page Size on PDF & Word export</label>
                                     <small class="text-muted d-block">Display document dimensions in exported PDF & Word.</small>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" data-bind="checked: showImportExport">
-                                    <label class="form-check-label">Show import/export reports</label>
-                                    <small class="text-muted d-block">
-                                        Will show import/export reports for non admin users.
-                                    </small>
-                                </div>
+                                </div>                               
                             </div>
                         </div>
                         <div class="mt-3">

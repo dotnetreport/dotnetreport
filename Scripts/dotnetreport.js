@@ -1328,7 +1328,7 @@ var reportViewModel = function (options) {
 		dontWordExport: false,
 		usePromptBuilder: ko.observable(true),
 		showPageSize: false,
-		showImportExport:false
+		showImportExport: ko.observable(false)
 	};
 	self.appSettings = options && options.appSettings ? options.appSettings : self.appSettings;
 	self.runQuery = function (useAi) {
@@ -6511,7 +6511,7 @@ var reportViewModel = function (options) {
 			self.appSettings.dontWordExport = x.dontWordExport;
 			self.appSettings.usePromptBuilder(x.usePromptBuilder !== false ? true : false);
 			self.appSettings.showPageSize = x.showPageSize;
-			self.appSettings.showImportExport = x.showImportExport;
+			self.appSettings.showImportExport(x.showImportExport);
 		});
 	}
 

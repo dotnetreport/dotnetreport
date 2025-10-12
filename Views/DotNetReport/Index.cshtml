@@ -107,7 +107,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <span class="fa fa-arrow-up"></span> Report Header
                                 </a>
                             </li>
-                            <li class="nav-item dropdown" data-bind="visible:(appSettings.showImportExport || adminMode())">
+                            <li class="nav-item dropdown" data-bind="visible: appSettings.showImportExport() || adminMode()">
                                 <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                     <span class="fa fa-exchange"></span> Import / Export
                                 </a>
