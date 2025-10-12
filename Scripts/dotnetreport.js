@@ -2794,7 +2794,8 @@ var reportViewModel = function (options) {
 		if (self.formulaType() == 'sql') {
 			self.customSqlField.fromJs(field.customSqlField);
 		}
-
+		const index = self.SelectedFields.indexOf(field);
+		self._editIndex = index;
 		self.currentFormulaField(field)
 		self.SelectedFields.remove(field);
 		if (self.isFormulaField()) {
@@ -2853,7 +2854,12 @@ var reportViewModel = function (options) {
 		} else {
 			field.fieldFilter = ['=', 'in', 'not in', 'like', 'not like', 'not equal', 'is blank', 'is not blank'];
 		}
-		self.SelectedFields.push(self.setupField(field));
+		if (typeof self._editIndex === 'number') {
+			self.SelectedFields.splice(self._editIndex, 0, self.setupField(field));
+			self._editIndex = null;
+		} else {
+			self.SelectedFields.push(self.setupField(field));
+		}
 		self.clearFormulaField();
 		self.isFormulaField(false);
 	};
