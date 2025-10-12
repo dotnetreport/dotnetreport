@@ -94,6 +94,8 @@ var manageViewModel = function (options) {
 			tables = _.filter(tables, function (x) { return x.Selected(); });
 		}
 
+		self.pager.totalRecords(tables.length);
+
 		var pageNumber = self.pager.currentPage();
 		var pageSize = self.pager.pageSize();
 
@@ -1384,7 +1386,7 @@ var manageViewModel = function (options) {
 					message: `A table/view with the name "${tableName}" already exists. What would you like to do?`,
 					buttons: {
 						cancel: {
-							label: 'Cancel',
+							label: 'Skip',
 							className: 'btn-secondary',
 							callback: () => callback('cancel')
 						},
@@ -1540,7 +1542,7 @@ var manageViewModel = function (options) {
 						message: `A Stored Procedures Json with the name "${storedProcedure}" already exists. What would you like to do?`,
 						buttons: {
 							cancel: {
-								label: 'Cancel',
+								label: 'Skip',
 								className: 'btn-secondary',
 								callback: function () {
 									callback('cancel');
@@ -2502,20 +2504,35 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 	};
 
 	self.exportTablesJson = function (customOnly) {
-		const selectedTables = self.model().filter(tbl =>
-			tbl.Selected() && (customOnly ? tbl.CustomTable() === true : tbl.CustomTable() === false)
-		);
+		const inCategory = t => customOnly ? t.CustomTable() : !t.CustomTable();
+		const all = self.model().filter(inCategory);
+		const filtered = self.filteredTables().filter(inCategory);
+		const selected = filtered.filter(t => t.Selected());
 
-		const exportList = selectedTables.map(tbl =>
-			ko.mapping.toJS(tbl, {
-				ignore: ["saveTable", "JoinTable", "ForeignJoinTable"]
-			})
-		);
+		if (!selected.length) return toastr.warning('No tables to export.');
 
-		const exportJson = JSON.stringify(exportList, null, 2);
-		downloadJson(exportJson, customOnly == true ? 'CustomTables.json':'Tables.json', 'application/json');
+		const msg = (filtered.length < all.length
+			? `Only filtered tables (${filtered.length} of ${all.length}) will be exported.`
+			: `All ${all.length} tables will be exported.`);
+
+		bootbox.confirm({
+			title: "Confirm Export Tables",
+			message: msg,
+			buttons: {
+				cancel: { label: 'Cancel', className: 'btn-secondary' },
+				confirm: { label: 'Export', className: 'btn-primary' }
+			},
+			callback: ok => {
+				if (!ok) return;
+				const exportList = selected.map(t => ko.mapping.toJS(t, {
+					ignore: ["saveTable", "JoinTable", "ForeignJoinTable"]
+				}));
+				downloadJson(JSON.stringify(exportList, null, 2),
+					customOnly ? 'CustomTables.json' : 'Tables.json', 'application/json');
+				toastr.success('Table schema exported.');
+			}
+		});
 	};
-
 
 	self.availableTables = ko.computed(function () {
 		return _.filter(self.model(), function (e) {

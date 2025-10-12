@@ -360,7 +360,7 @@
                     <div class="row">
                         <div data-bind="ifnot: $root.customTableMode">
                             <div class="alert alert-info">
-                                <span data-bind="text: Tables.model().length"></span> Tables/Views
+                                <span data-bind="text: Tables.model().filter(t => !t.CustomTable()).length"></span> Tables/Views
                                 <span data-bind="text: $root.onlyApi() ? 'configured and used' : 'read from database'"></span>
                             </div>
                         </div>
