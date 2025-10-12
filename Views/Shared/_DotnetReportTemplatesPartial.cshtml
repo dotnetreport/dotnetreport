@@ -290,7 +290,9 @@
                 <!-- ko foreach: $parent.rows  -->
                 <tr>
                     <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() && !$parent.CanExpandOption() && $parentContext.$parentContext.$parentContext.$parent.ReportType() != 'Single' -->
-                    <td style="width: 30px; vertical-align: middle;"><a href="#" data-bind="click: function(){ toggle(); }"><span class="fa" data-bind="css: {'fa-plus': !isExpanded(), 'fa-minus': isExpanded()}"></span></a></td>
+                    <td style="width: 30px; vertical-align: middle;" data-bind="style: {'background-color': Items[0]._backColor ?? Items[0].backColor(), 'color': Items[0]._fontColor ?? Items[0].fontColor()}">
+                        <a href="#" data-bind="click: function(){ toggle(); }"><span class="fa" data-bind="css: {'fa-plus': !isExpanded(), 'fa-minus': isExpanded()}"></span></a>
+                    </td>
                     <!-- /ko -->
                     <!-- ko template: 'report-column', data: $data -->
                     <!-- /ko-->
