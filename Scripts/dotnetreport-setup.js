@@ -1144,20 +1144,24 @@ var manageViewModel = function (options) {
 			x.JoinedTableId(x.OtherTable().Id());
 		});
 
-		var joinsToSave = $.map(ko.mapping.toJS(filteredJoins === true ? self.filteredJoins() : self.Joins), function (x) {
-			return {
-				DataConnectionId: x.DataConnectionId,
-				RelationId: x.Id ? x.Id : x.RelationId,
-				TableId: x.TableId,
-				JoinedTableId: x.JoinedTableId,
-				JoinType: x.JoinType,
-				FieldName: x.FieldName,
-				JoinFieldName: x.JoinFieldName
+		return $.map(
+			ko.mapping.toJS(filteredJoins === true ? self.filteredJoins() : self.Joins),
+			function (x) {
+				return {
+					DataConnectionId: x.DataConnectionId,
+					RelationId: x.Id ? x.Id : x.RelationId,
+					TableId: x.TableId,
+					TableName: x.JoinTable ? x.JoinTable.DisplayName : null,       
+					JoinedTableId: x.JoinedTableId,
+					JoinedTableName: x.OtherTable ? x.OtherTable.DisplayName : null, 
+					JoinType: x.JoinType,
+					FieldName: x.FieldName,
+					JoinFieldName: x.JoinFieldName
+				};
 			}
-		});
+		);
+	};
 
-		return joinsToSave;
-	}
 	self.ExportJoins = function () {
 		var joinsToSave = self.getJoinsToSave(true);
 		var message = joinsToSave.length < self.Joins().length
@@ -1432,20 +1436,44 @@ var manageViewModel = function (options) {
 					const joins = JSON.parse(event.target.result);
 
 					joins.forEach(newItem => {
-						const existingItem = self.Joins().find(item =>
+						let existingItem = self.Joins().find(item =>
 							item.TableId() === newItem.TableId &&
 							item.JoinedTableId() === newItem.JoinedTableId &&
 							item.JoinFieldName() === newItem.JoinFieldName &&
 							item.FieldName() === newItem.FieldName
 						);
 
+						// If no ID match, try match by table names
+						if (!existingItem && newItem.TableName && newItem.JoinedTableName) {
+							existingItem = self.Joins().find(item =>
+								item.JoinTable().DisplayName === newItem.TableName &&
+								item.OtherTable().DisplayName === newItem.JoinedTableName &&
+								item.JoinFieldName() === newItem.JoinFieldName &&
+								item.FieldName() === newItem.FieldName
+							);
+						}
+
 						if (existingItem) {
 							if (newItem.JoinType) existingItem.JoinType(newItem.JoinType);
 							if (newItem.Alias) existingItem.Alias(newItem.Alias);
 							if (newItem.Relationship) existingItem.Relationship(newItem.Relationship);
-
 							existingItem.isNew = true;
 						} else {
+							const allTables = self.Tables.model();
+							const getTableById = id => allTables.find(t => ko.unwrap(t.Id) === id);
+							const getTableByName = name => allTables.find(t => ko.unwrap(t.DisplayName) === name || ko.unwrap(t.TableName) === name);
+
+							let table = getTableById(newItem.TableId) || (newItem.TableName ? getTableByName(newItem.TableName) : null);
+							let joinedTable = getTableById(newItem.JoinedTableId) || (newItem.JoinedTableName ? getTableByName(newItem.JoinedTableName) : null);
+
+							if (!table || !joinedTable) {
+								toastr.warning(`Skipping join: could not find table "${newItem.TableName}" or "${newItem.JoinedTableName}" in this schema.`);
+								return;
+							}
+
+							newItem.TableId = ko.unwrap(table.Id);
+							newItem.JoinedTableId = ko.unwrap(joinedTable.Id);
+
 							const added = self.setupJoin(newItem);
 							added.isNew = true;
 							self.Joins.push(added);

@@ -3512,7 +3512,7 @@ var reportViewModel = function (options) {
 				return;
 			}
 		}
-		self.ValidateTableJoins().done(function (isValid) {
+		return self.ValidateTableJoins().done(function (isValid) {
 			if (isValid) {
 				var i = 0;
 				var isComparison = false;
