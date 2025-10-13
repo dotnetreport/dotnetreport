@@ -2690,7 +2690,12 @@ var reportViewModel = function (options) {
 	});
 	self.cancelFormulaField = function () {
 		if (self.currentFormulaField() != null) {
-			self.SelectedFields.push(self.currentFormulaField());
+			if (typeof self._editIndex === 'number') {
+				self.SelectedFields.splice(self._editIndex, 0, self.currentFormulaField());
+				self._editIndex = null;
+			} else {
+				self.SelectedFields.push(self.currentFormulaField());
+			}
 			self.customSqlField.clear();
 			self.currentFormulaField(null);
 		}
