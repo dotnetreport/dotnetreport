@@ -107,8 +107,7 @@
 
                                 grid.on('resizestop', function (event, el) {
                                     const e = el.querySelector('.report-chart');
-                                    const d = el.querySelector('table');
-                                    if (e && !d) {
+                                    if (e) {
                                         vm.drawChart();
                                     }
                                 });
@@ -123,9 +122,9 @@
 
                         });
 
-                        window.addEventListener('resize', function () {
-                            vm.drawChart();
+                        window.addEventListener('resize', function () {                            
                             vm.gridResponsive();
+                            vm.drawChart();
                         });
                     });
                 });

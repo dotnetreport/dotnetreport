@@ -1768,7 +1768,27 @@ tfoot tr.sub-total {
     max-height: 250px;
 }
 
-.grid-stack-one-column-mode > .grid-stack-item {
-    width: 100% !important;
-    left: 0 !important;
+.grid-stack-one-column-mode {
+    position: relative !important;
 }
+
+    .grid-stack-one-column-mode .grid-stack-item {
+        position: relative !important;
+        width: 100% !important;
+        left: 0 !important;
+        top: 0 !important;
+        transform: none !important;
+        margin-bottom: 12px;
+    }
+
+        /* IMPORTANT: Also reset internal Gridstack positioning engine */
+        .grid-stack-one-column-mode .grid-stack-item[gs-y],
+        .grid-stack-one-column-mode .grid-stack-item[gs-x] {
+            top: unset !important;
+            left: unset !important;
+        }
+
+    .grid-stack-one-column-mode .grid-stack-item-content {
+        height: auto !important;
+        width: 100% !important;
+    }

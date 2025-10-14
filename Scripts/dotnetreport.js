@@ -5463,27 +5463,34 @@ var reportViewModel = function (options) {
 		function retrieveDimensions() {
 			var storedDimensions = localStorage.getItem('chart_dimensions_' + self.ReportID());
 			var chartElement = document.getElementById('chart_div_' + self.ReportID());
-			var parentElementHeight = document.getElementById('chart_div_' + self.ReportID()).parentElement.parentElement.parentElement.offsetHeight;
+			var containerWidth = chartElement.parentElement.clientWidth;
+			var parentElementHeight = chartElement.parentElement.parentElement.parentElement.offsetHeight;
+
 			if (storedDimensions) {
 				var dimensions = JSON.parse(storedDimensions);
+				var savedWidth = parseInt(dimensions.width || dimensions.fullWidth || 0);
+				var appliedWidth = savedWidth > 0 ? Math.min(savedWidth, containerWidth) + 'px' : '100%';
+
 				if (options.arrangeDashboard && !self.isExpanded()) {
-					chartOptions.width = dimensions.width || '100%';
+					chartOptions.width = appliedWidth;
 					chartOptions.height = dimensions.height || '450px';
 				} else {
-					chartOptions.width = dimensions.fullWidth || '100%';
+					chartOptions.width = appliedWidth;
 					chartOptions.height = dimensions.fullHeight || '450px';
 				}
-			}
-			else {
+			} else {
 				chartOptions.width = '100%';
 				chartOptions.height = '450px';
-
 				if (options.reportMode == 'dashboard') {
-					chartOptions.height = !self.ShowDataWithGraph() ? parentElementHeight - 10 + 'px' : '450px';
-					// Apply the calculated height to the chart container directly (optional)
+					chartOptions.height = !self.ShowDataWithGraph()
+						? parentElementHeight - 10 + 'px'
+						: '450px';
 					chartElement.style.height = chartOptions.height;
 				}
 			}
+
+			chartElement.style.width = chartOptions.width;
+			chartElement.style.maxWidth = '100%';
 		}
 		
 		// Call retrieveDimensions to load saved dimensions when the chart is initialized
@@ -7918,6 +7925,7 @@ var dashboardViewModel = function (options) {
 						expandedChartHeight: item.h,
 						expandedChartWidth: item.w
 					}),
+					adminMode: self.adminMode()
 				})
 			}
 		});
