@@ -559,6 +559,7 @@ namespace ReportBuilder.Web.Controllers
                 id = ((dynamic)dashboards.First()).Id;
             }
 
+            ValidateAccess("", "", dashboardId: id.GetValueOrDefault());
             using (var client = new HttpClient())
             {
                 var content = new FormUrlEncodedContent(new[]
