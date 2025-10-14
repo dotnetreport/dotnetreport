@@ -176,6 +176,7 @@ namespace ReportBuilder.Web.Controllers
                 };
 
                 var data = JsonSerializer.Deserialize<Dictionary<string, dynamic>>(model);
+                var adminMode = false; var dashboardId = 0; var folderId = 0; var reportId = 0;
                 foreach (var key in data.Keys)
                 {
                     if (key == "dataConnect" && data[key] is not null)
@@ -189,19 +190,27 @@ namespace ReportBuilder.Web.Controllers
                     if ((key != "adminMode" || (key == "adminMode" && settings.CanUseAdminMode)) && data[key] is not null)
                     {
                         keyvalues.Add(new KeyValuePair<string, string>(key, data[key].ToString()));
+                        if (key == "adminMode") adminMode = ((JsonElement)data[key]).GetBoolean();
                     }
                     if (key == "dashboardId")
                     {
-                        await ValidateAccess(userId, dashboardId: ((JsonElement)data[key]).GetInt32());
+                        dashboardId = ((JsonElement)data[key]).GetInt32();
                     }
                     if (key == "folderId")
                     {
-                        await ValidateAccess(userId, folderId: ((JsonElement)data[key]).GetInt32());
+                        folderId = ((JsonElement)data[key]).GetInt32();
                     }
                     if (key == "reportId")
                     {
-                        await ValidateAccess(userId, reportId: ((JsonElement)data[key]).GetInt32());
+                        reportId = ((JsonElement)data[key]).GetInt32();
                     }
+                }
+
+                if (!adminMode)
+                {
+                    if (dashboardId > 0) await ValidateAccess(userId, dashboardId: dashboardId);
+                    if (folderId > 0) await ValidateAccess(userId, folderId: folderId);
+                    if (reportId > 0) await ValidateAccess(userId, reportId: reportId);
                 }
 
                 var content = new FormUrlEncodedContent(keyvalues);

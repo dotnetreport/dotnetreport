@@ -1913,6 +1913,32 @@ var reportViewModel = function (options) {
 						return;
 					}
 
+					let useSelectedFolder = false;
+					function askFolderChoice() {
+						return new Promise(resolve => {
+							if (self.SelectedFolder()) {
+								bootbox.dialog({
+									title: "Select Import Location",
+									message: "A folder is currently selected. Where would you like to import the reports?",
+									buttons: {
+										current: {
+											label: "Current Folder",
+											className: "btn-primary",
+											callback: () => resolve(true)
+										},
+										filefolders: {
+											label: "Use Folders From Import File",
+											className: "btn-secondary",
+											callback: () => resolve(false)
+										}
+									}
+								});
+							} else {
+								resolve(false);
+							}
+						});
+					}
+
 					function handleOverwriteConfirmation(reportName, callback) {
 						bootbox.dialog({
 							title: "Confirm Action",
@@ -1937,96 +1963,108 @@ var reportViewModel = function (options) {
 						});
 					}
 
-					const distinctFolders = _.uniq(_.map(reports, function (r) {
-						return r.folder || r.folderName || "Imported Reports";
-					}));
+					askFolderChoice().then(selectedChoice => {
+						useSelectedFolder = selectedChoice;
 
-					const folderPromises = [];
+						let folderPromises = [];
+						let distinctFolders = [];
 
-					distinctFolders.forEach(function (folderName) {
-						let existingFolder = _.find(self.allFolders, function (f) {
-							return f.FolderName === folderName;
-						});
-
-						if (existingFolder) {
-							folderPromises.push(Promise.resolve(existingFolder.Id));
-						} else {
-							const p = ajaxcall({
-								url: options.apiUrl,
-								data: {
-									method: "/ReportApi/SaveFolderData",
-									model: JSON.stringify({
-										folderData: JSON.stringify({
-											Id: 0,
-											FolderName: folderName
-										})
-									})
-								}
-							}).done(function (d) {
-								if (d.d) d = d.d;
-								const newFolder = { Id: d, FolderName: folderName, isSelected: ko.observable(false) };
-								self.allFolders.push(newFolder);
-								self.Folders(self.allFolders);
-							});
-							folderPromises.push(p);
+						if (!useSelectedFolder) {
+							distinctFolders = _.uniq(_.map(reports, function (r) {
+								return r.folder || r.folderName || "Imported Reports";
+							}));
 						}
-					});
 
-					$.when.apply($, folderPromises).done(function () {
-						const allPromises = [];
-
-						reports.forEach(function (report) {
-							const folderName = report.folder || report.folderName || "Imported Reports";
-							const folder = _.find(self.allFolders, f => f.FolderName === folderName);
-							if (!folder) return;
-
-							const folderId = folder.Id;
-							const reportName = report.reportName;
-							const existingReport = _.find(self.SavedReports(), function (r) {
-								return r.folderId == folderId && r.reportName === reportName;
+						distinctFolders.forEach(function (folderName) {
+							let existingFolder = _.find(self.allFolders, function (f) {
+								return f.FolderName === folderName;
 							});
 
-							const importReport = function (action) {
-								const reportview = new reportViewModel(options);
-								report.data = report.data || {};
-								report.data.FolderID = folderId;
-
-								if (existingReport && action === 'overwrite') {
-									report.data.ReportID = existingReport.reportId;
-								} else {
-									report.data.ReportID = 0;
-									if (action === 'duplicate') {
-										report.data.ReportName = reportName + " Copy";
-									}
-								}
-
-								return reportview.RunReport(true, true, false, report.data);
-							};
-
-							if (existingReport) {
-								const def = $.Deferred();
-								handleOverwriteConfirmation(reportName, function (action) {
-									if (action === 'cancel') def.resolve();
-									else importReport(action).done(() => def.resolve());
-								});
-								allPromises.push(def.promise());
+							if (existingFolder) {
+								folderPromises.push(Promise.resolve(existingFolder.Id));
 							} else {
-								allPromises.push(importReport());
+								const p = ajaxcall({
+									url: options.apiUrl,
+									data: {
+										method: "/ReportApi/SaveFolderData",
+										model: JSON.stringify({
+											folderData: JSON.stringify({ Id: 0, FolderName: folderName })
+										})
+									}
+								}).done(function (d) {
+									if (d.d) d = d.d;
+									const newFolder = { Id: d, FolderName: folderName, isSelected: ko.observable(false) };
+									self.allFolders.push(newFolder);
+									self.Folders(self.allFolders);
+								});
+								folderPromises.push(p);
 							}
 						});
 
-						$.when.apply($, allPromises).done(function () {
-							self.loadFolders().done(function () {
-								self.LoadAllSavedReports();
-								toastr.success('Reports imported successfully!');
+						$.when.apply($, folderPromises).done(function () {
+							const allPromises = [];
+
+							reports.forEach(function (report) {
+								let folderId;
+								if (useSelectedFolder) {
+									folderId = self.SelectedFolder().Id;
+								} else {
+									const folderName = report.folder || report.folderName || "Imported Reports";
+									const folder = _.find(self.allFolders, f => f.FolderName === folderName);
+									if (!folder) return;
+									folderId = folder.Id;
+								}
+
+								const reportName = report.reportName;
+								const existingReport = _.find(self.SavedReports(), function (r) {
+									return r.folderId == folderId && r.reportName === reportName;
+								});
+
+								const importReport = function (action) {
+									const reportview = new reportViewModel(options);
+									report.data = report.data || {};
+									report.data.FolderID = folderId;
+
+									if (existingReport && action === 'overwrite') {
+										report.data.ReportID = existingReport.reportId;
+									} else {
+										report.data.ReportID = 0;
+										if (action === 'duplicate') {
+											report.data.ReportName = reportName + " Copy";
+										}
+									}
+
+									return reportview.RunReport(true, true, false, report.data);
+								};
+
+								if (existingReport) {
+									const def = $.Deferred();
+									handleOverwriteConfirmation(reportName, function (action) {
+										if (action === 'cancel') def.resolve();
+										else importReport(action).done(() => def.resolve());
+									});
+									allPromises.push(def.promise());
+								} else {
+									allPromises.push(importReport());
+								}
+							});
+
+							$.when.apply($, allPromises).done(function () {
+								setTimeout(function () {
+									self.loadFolders().done(function () {
+										self.LoadAllSavedReports();
+										toastr.success('Reports imported successfully!');
+									});
+								}, 1000);
 							});
 						});
+
+						self.ManageJsonFile.file(null);
+						self.ManageJsonFile.fileName('');
+						$('#uploadFileModal').modal('hide');
+						$('#uploadFileModal input[type=file]').val('');
 					});
 
-					self.ManageJsonFile.file(null);
-					self.ManageJsonFile.fileName('');
-					$('#uploadFileModal').modal('hide');
-					$('#uploadFileModal input[type=file]').val('');
 				} catch (e) {
 					toastr.error('Invalid JSON file: ' + e.message);
 				}
@@ -3581,7 +3619,7 @@ var reportViewModel = function (options) {
 					i++;
 				}
 				while (i < seriesCount + 1);
-				$.when.apply($, promises).done(function () {
+				return $.when.apply($, promises).done(function () {
 					if (previewOnly === true) {
 						$("#sqlModal").modal('show');
 						return;
@@ -3621,7 +3659,7 @@ var reportViewModel = function (options) {
 						if (options.samePageOnRun || dashboardRun) {
 							self.ReportID(_result.reportId);
 							self.setupSettingsDirtyCheck();
-							self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, _.map(self.AdditionalSeries(), function (e, i) {
+							return self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, _.map(self.AdditionalSeries(), function (e, i) {
 								return e.Value();
 							}).join(','));
 
