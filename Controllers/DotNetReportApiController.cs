@@ -121,7 +121,7 @@ namespace ReportBuilder.Web.Controllers
             settings.AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken");
             settings.DataConnectApiToken = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken");
 
-            return await ExecuteCallReportApi(method, model, settings);
+            return await ExecuteCallReportApi(method, model, null, settings);
         }
 
         [ValidateAntiForgeryToken]
@@ -154,10 +154,10 @@ namespace ReportBuilder.Web.Controllers
             {
                 throw new Exception("User context mismatch");
             }
-            return string.IsNullOrEmpty(method) || string.IsNullOrEmpty(model) ? Ok() : await ExecuteCallReportApi(method, model);
+            return string.IsNullOrEmpty(method) || string.IsNullOrEmpty(model) ? Ok() : await ExecuteCallReportApi(method, model, userId);
         }
 
-        private async Task<IActionResult> ExecuteCallReportApi(string method, string model, DotNetReportSettings settings = null)
+        private async Task<IActionResult> ExecuteCallReportApi(string method, string model, string userId, DotNetReportSettings settings = null)
         {
             using (var client = new HttpClient())
             {
@@ -189,6 +189,18 @@ namespace ReportBuilder.Web.Controllers
                     if ((key != "adminMode" || (key == "adminMode" && settings.CanUseAdminMode)) && data[key] is not null)
                     {
                         keyvalues.Add(new KeyValuePair<string, string>(key, data[key].ToString()));
+                    }
+                    if (key == "dashboardId")
+                    {
+                        await ValidateAccess(userId, dashboardId: ((JsonElement)data[key]).GetInt32());
+                    }
+                    if (key == "folderId")
+                    {
+                        await ValidateAccess(userId, folderId: ((JsonElement)data[key]).GetInt32());
+                    }
+                    if (key == "reportId")
+                    {
+                        await ValidateAccess(userId, reportId: ((JsonElement)data[key]).GetInt32());
                     }
                 }
 
@@ -864,7 +876,7 @@ namespace ReportBuilder.Web.Controllers
             public bool hasAccess { get; set; }
             public string access { get; set; }
         }
-        private async Task ValidateAccess(string userId, string reportSql = "", int reportId = 0)
+        private async Task ValidateAccess(string userId, string reportSql = "", int reportId = 0, int dashboardId = 0, int folderId = 0)
         {
             var isValid = true;
             var settings = GetSettings();
@@ -886,19 +898,21 @@ namespace ReportBuilder.Web.Controllers
                     }
                 }
             }
-            if (reportId > 0)
+            if (reportId > 0 || dashboardId > 0 || folderId > 0)
             {
                 using (var client = new HttpClient())
                 {
                     var content = new FormUrlEncodedContent(new[]
                     {
-                                new KeyValuePair<string, string>("account", settings.AccountApiToken),
-                                new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
-                                new KeyValuePair<string, string>("clientId", settings.ClientId),
-                                new KeyValuePair<string, string>("userId", settings.UserId),
-                                new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
-                                new KeyValuePair<string, string>("reportId", reportId.ToString()),
-                            });
+                        new KeyValuePair<string, string>("account", settings.AccountApiToken),
+                        new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
+                        new KeyValuePair<string, string>("clientId", settings.ClientId),
+                        new KeyValuePair<string, string>("userId", settings.UserId),
+                        new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
+                        new KeyValuePair<string, string>("reportId", reportId.ToString()),
+                        new KeyValuePair<string, string>("dashboardId", dashboardId.ToString()),
+                        new KeyValuePair<string, string>("folderId", folderId.ToString()),
+                    });
 
                     var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/CheckReportAccess"), content);
                     var stringContent = await response.Content.ReadAsStringAsync();
