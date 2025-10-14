@@ -847,7 +847,7 @@ var headerDesigner = function (options) {
 			],
 			tableresize: true
 		});
-		self.loadHtmlHeader();
+		self.loadHtmlHeader(false);
 	};
 
 	self.saveHtmlHeader = function () {
@@ -865,17 +865,20 @@ var headerDesigner = function (options) {
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
 			if (result.result) { result = result.result; }
-			toastr.success('Report Header changes saved')
+			toastr.success('Report Header changes saved');
+			var selectedId = self.headerClientId();
+			if (selectedId && self.clientListIds().indexOf(selectedId) < 0) {
+				self.clientListIds.push(selectedId);				
+			}
+			self.selectedHeaderClientId(selectedId);
 		});
 	}
 
 	self.selectedHeaderClientId.subscribe(function (newValue) {
-		if (newValue) {
-			self.headerClientId(newValue);
-		}
+		self.headerClientId(newValue);
 	})
 
-	self.loadHtmlHeader = function () {
+	self.loadHtmlHeader = function (editing) {
 		return ajaxcall({
 			url: options.apiUrl,
 			data: {
@@ -885,7 +888,9 @@ var headerDesigner = function (options) {
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
 			if (result.result) { result = result.result; }
-			self.UseReportHeader(result.useReportHeader);
+			if (!editing) {
+				self.UseReportHeader(result.useReportHeader);
+			}
 			self.headerHtml(decodeURIComponent(result.headerJson));
 			self.clientListIds(result.clientIds);
 			$('#report-header-editor').summernote('code', decodeURIComponent(result.headerJson) || '');

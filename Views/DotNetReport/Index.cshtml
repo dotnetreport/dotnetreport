@@ -156,7 +156,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         data-bind="options: clientListIds,
                                             value: selectedHeaderClientId,
                                             optionsCaption: 'No Client Id (Global)',
-                                            event: { change: loadHtmlHeader }">
+                                            event: { change: function () { loadHtmlHeader(true); } }">
                                 </select>
                             </div>
                             <div class="col-md-1 col-sm-1">
@@ -748,6 +748,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 </button>
                                                 <button class="btn btn-secondary btn-sm" data-bind="visible: $parent.canDrilldown, click: $parent.CollapseAll" title="Collapse all rows">
                                                     <span class="fa fa-minus"></span>
+                                                </button>
+                                                <button class="btn btn-secondary btn-sm" title="Re-run Report" data-bind="click: function() { $root.RunReport(false, true);}">
+                                                    <i class="fa fa-play"></i> 
                                                 </button>
                                                 <div data-bind="with: $parent" class="pull-left">
                                                     <div class="dropdown-selected" data-bind="click: toggleDropdown">
