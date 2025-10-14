@@ -1044,7 +1044,7 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-md-5 control-label">Pick Data Format</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-select" data-bind="options: $parents[1].fieldFormatTypes, value: fieldFormat"></select>
+                            <select class="form-select" data-bind="options: ['Days', 'Hours', 'Minutes', 'Seconds'].indexOf(fieldFormat()) >= 0 ? ['Days', 'Hours', 'Minutes', 'Seconds'] : $parents[1].fieldFormatTypes, value: fieldFormat"></select>
                         </div>
                     </div>
                     <div class="form-group row" data-bind="visible: $parents[1].decimalFormatTypes.indexOf($data.fieldFormat())>=0">

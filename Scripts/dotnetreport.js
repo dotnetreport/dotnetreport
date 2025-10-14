@@ -2638,6 +2638,7 @@ var reportViewModel = function (options) {
 	self.formulaFields.subscribe(function (value) {
 		if (!value) return;
 		var result = self.formulaOnlyHasDateFields();
+		if (_formulaDateFormat && result) { self.formulaDataFormat(_formulaDateFormat); _formulaDateFormat = ''; }
 		if (result && ['Days', 'Hours', 'Minutes', 'Seconds'].indexOf(self.formulaDataFormat()) < 0) self.formulaDataFormat('Days');
 		if (!result && ['String', 'Integer', 'Double', 'Decimal', 'Currency'].indexOf(self.formulaDataFormat()) < 0) self.formulaDataFormat('String');
 	});
@@ -2785,6 +2786,7 @@ var reportViewModel = function (options) {
 		});		
 	}
 
+	var _formulaDateFormat = "";
 	self.editFormulaField = function (field) {
 		if (field.fieldSettings && field.fieldSettings.functionConfig && Object.keys(field.fieldSettings.functionConfig).length > 0) { 
 			self.designFunctionField();
@@ -2798,6 +2800,7 @@ var reportViewModel = function (options) {
 		self.formulaType(field.formulaType);
 		self.formulaFieldLabel(field.fieldName);
 		self.formulaDataFormat(field.fieldFormat());
+		_formulaDateFormat = ['Days', 'Hours', 'Minutes', 'Seconds'].indexOf(field.fieldFormat()) ? field.fieldFormat() : "";
 		self.formulaDecimalPlaces(field.decimalPlaces());
 		self.formulaFields([]);
 		self.CustomChooseFields([]);
@@ -2835,7 +2838,7 @@ var reportViewModel = function (options) {
 		const index = self.SelectedFields.indexOf(field);
 		self._editIndex = index;
 		self.currentFormulaField(field)
-		self.SelectedFields.remove(field);
+		self.SelectedFields.remove(field);	
 		if (self.isFormulaField()) {
 			setTimeout(function () {
 				var target = document.getElementById("customFieldSection");
@@ -3659,7 +3662,7 @@ var reportViewModel = function (options) {
 						if (options.samePageOnRun || dashboardRun) {
 							self.ReportID(_result.reportId);
 							self.setupSettingsDirtyCheck();
-							return self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, _.map(self.AdditionalSeries(), function (e, i) {
+							self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, _.map(self.AdditionalSeries(), function (e, i) {
 								return e.Value();
 							}).join(','));
 
@@ -4132,7 +4135,7 @@ var reportViewModel = function (options) {
 						var compareTo = c.value;
 						var compareTo2 = c.value2;
 						var dataIsNumeric = !isNaN(r.Value);
-						var dataIsDate = !isNaN(new Date(r.Value).getTime());
+						var dataIsDate = parseDate(r.Value, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || 'United States']);
 
 						switch (operation) {
 							case '=':
@@ -4167,31 +4170,59 @@ var reportViewModel = function (options) {
 								conditionTrue = !!value;
 								break;
 							case '>':
-								conditionTrue = dataIsNumeric && value > parseFloat(compareTo);
+								if (dataIsNumeric) {
+									conditionTrue = parseFloat(value) > parseFloat(compareTo);
+								} else if (dataIsDate) {
+									conditionTrue =
+										dataIsDate.getTime() >
+										parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || 'United States']).getTime();
+								}
 								break;
+
 							case '<':
-								conditionTrue = dataIsNumeric && value < parseFloat(compareTo);
+								if (dataIsNumeric) {
+									conditionTrue = parseFloat(value) < parseFloat(compareTo);
+								} else if (dataIsDate) {
+									conditionTrue =
+										dataIsDate.getTime() <
+										parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || 'United States']).getTime();
+								}
 								break;
+
 							case '>=':
-								conditionTrue = dataIsNumeric && value >= parseFloat(compareTo);
+								if (dataIsNumeric) {
+									conditionTrue = parseFloat(value) >= parseFloat(compareTo);
+								} else if (dataIsDate) {
+									conditionTrue =
+										dataIsDate.getTime() >=
+									parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || 'United States']).getTime();
+								}
 								break;
+
 							case '<=':
-								conditionTrue = dataIsNumeric && value <= parseFloat(compareTo);
+								if (dataIsNumeric) {
+									conditionTrue = parseFloat(value) <= parseFloat(compareTo);
+								} else if (dataIsDate) {
+									conditionTrue =
+										dataIsDate.getTime() <=
+									parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || 'United States']).getTime();
+								}
 								break;
+
 							case 'between':
 								if (dataIsNumeric) {
 									conditionTrue = value >= parseFloat(compareTo) && value <= parseFloat(compareTo2);
 								} else if (dataIsDate) {
-									var dateValue = new Date(value).getTime();
-									var startDate = new Date(compareTo).getTime();
-									var endDate = new Date(compareTo2).getTime();
+									var dateValue = dataIsDate;
+									var startDate = parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || 'United States']).getTime();
+									var endDate = parseDate(compareTo2, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || 'United States']) .getTime();
 									conditionTrue = dateValue >= startDate && dateValue <= endDate;
 								}
 								break;
 							case 'range':
 								if (dataIsDate) {
 									var { start, end } = getDateRange(compareTo, compareTo2);
-									var dateValue = new Date(value).getTime();
+									var dateValue =dataIsDate;
 									conditionTrue = dateValue >= start.getTime() && dateValue <= end.getTime();
 								}
 								break;
@@ -5743,7 +5774,7 @@ var reportViewModel = function (options) {
 			}
 
 			self.editFieldOptions(e);
-			if (options.fieldOptionsModal) options.fieldOptionsModal.modal('show');
+			if (options.fieldOptionsModal) options.fieldOptionsModal.modal('show');			
 		}
 
 		e.saveFieldOptions = function () {
@@ -6040,7 +6071,7 @@ var reportViewModel = function (options) {
 						field.tableName === "Custom" &&
 						field.dynamicTableId === null
 					) {
-						if (field.fieldFormat() === 'Integer' || field.fieldFormat() === 'Decimal' || field.fieldFormat() === 'Currency') {
+						if (['Integer', 'Decimal', 'Currency', 'Days', 'Hours', 'Minutes', 'Seconds'].indexOf(field.fieldFormat()) >= 0) {
 							field.fieldType = "Int";
 							field.fieldFilter = ['=', '>', '<', '>=', '<=', 'not equal', 'is blank', 'is not blank'];
 						} else {
@@ -6281,7 +6312,7 @@ var reportViewModel = function (options) {
 		if (day && month !== undefined && year) {
 			return new Date(year, month, day);
 		} else {
-			//throw new Error('Invalid date or format');
+			return null;
 		}
 	}
 
