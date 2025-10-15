@@ -87,14 +87,16 @@ function ajaxcall(options) {
         options.contentType = 'application/x-www-form-urlencoded';
     }
 
+    var wasJson = false;
     if (typeof options.data === 'string') {
+        wasJson = true;
         options.data = JSON.parse(options.data);
     }
     options.data = options.data || {};
     if (window.currentUserId) {
         options.data.userId = window.currentUserId;
     }
-    if (options.type !== 'POST') {
+    if (wasJson) {
         options.data = JSON.stringify(options.data);
     }
 
@@ -148,8 +150,8 @@ function ajaxcall(options) {
 
     return $.ajax({
         url: options.url,
-        type: options.type || "POST",
-        data: (options.type == "POST") ? options.data : JSON.stringify(options.data),
+        type: options.type || "GET",
+        data: options.data,
         cache: options.cache || false,
         dataType: options.dataType || "json",
         contentType: options.contentType || "application/json; charset=utf-8",
@@ -158,17 +160,17 @@ function ajaxcall(options) {
         xhr: xhr,
         beforeSend: beforeSend
     }).done(function (data) {
-        if (useProgressBar) {
-            completeProgress();
-        }
-        if ($.unblockUI && !noBlocking) {
-            activeBlockUICount = Math.max(0, activeBlockUICount - 1);
-            if (activeBlockUICount === 0) {
-                $.unblockUI();
+            if (useProgressBar) {
+                completeProgress();
             }
-        }
-        delete options;
-    })
+            if ($.unblockUI && !noBlocking) {
+                activeBlockUICount = Math.max(0, activeBlockUICount - 1);
+                if (activeBlockUICount === 0) {
+                    $.unblockUI();
+                }
+            }
+            delete options;
+        })
         .fail(function (jqxhr, status, error) {
             if (useProgressBar) {
                 hideProgress();
@@ -307,12 +309,15 @@ ko.bindingHandlers.select2 = {
     init: function (el, valueAccessor, allBindingsAccessor, viewModel) {
         $(el).select2(ko.unwrap(valueAccessor()));
         ko.utils.domNodeDisposal.addDisposeCallback(el, function () {
-            $(el).select2('destroy');
+            if (el && $(el).length && $(el).data('select2')) {
+                $(el).select2('destroy');
+            }
         });
     },
     update: function (el, valueAccessor, allBindingsAccessor, viewModel) {
         var allBindings = allBindingsAccessor();
         var select2 = $(el).data("select2");
+        if (!select2) return;
         if ("value" in allBindings) {
             var newValue = "" + ko.unwrap(allBindings.value);
             if ((allBindings.select2.multiple || el.multiple) && newValue.constructor !== Array) {
@@ -446,6 +451,69 @@ ko.bindingHandlers.sortableColumns = {
     }
 };
 
+ko.bindingHandlers.summernote = {
+    init: function (element, valueAccessor, allBindings) {
+        const observable = valueAccessor();
+
+        const options = {
+            height: 300,
+            popover: {
+                image: [
+                    ['image', ['resizeFull', 'resizeHalf', 'resizeQuarter', 'resizeNone']],
+                    ['float', ['floatLeft', 'floatRight', 'floatNone']],
+                    ['remove', ['removeMedia']]
+                ],
+                link: [
+                    ['link', ['linkDialogShow', 'unlink']]
+                ],
+                table: [
+                    ['add', ['addRowDown', 'addRowUp', 'addColLeft', 'addColRight']],
+                    ['delete', ['deleteRow', 'deleteCol', 'deleteTable']],
+                    ['color', ['bgcolor', 'tablefullwidth']]
+                ]
+            },
+            toolbar: [
+                ['style', ['style']],
+                ['font', ['bold', 'italic', 'underline', 'clear']],
+                ['fontname', ['fontname', 'fontsize']],
+                ['color', ['color']],
+                ['para', ['ul', 'ol', 'paragraph']],
+                ['table', ['table']],
+                ['insert', ['link', 'picture', 'hr']],
+                ['view', ['fullscreen', 'codeview']]
+            ],
+            dialogsInBody: false,
+            tableresize: true,
+            callbacks: {
+                onBlur: function () {
+                    if (ko.isObservable(observable)) {
+                        observable($(element).summernote('code'));
+                    }
+                }
+            }
+        };
+
+        $(element).summernote(options);
+
+        const value = ko.unwrap(observable);
+        $(element).summernote('code', value || "");
+
+        if (ko.isObservable(observable)) {
+            observable.editor = $(element);
+        }
+
+        ko.utils.domNodeDisposal.addDisposeCallback(element, function () {
+            $(element).summernote('destroy');
+        });
+    },
+    update: function (element, valueAccessor) {
+        const value = ko.unwrap(valueAccessor());
+        if ($(element).summernote('code') !== value) {
+            $(element).summernote('code', value || "");
+        }
+    }
+};
+
 function redirectToReport(url, prm, newtab, multipart) {
     prm = (typeof prm == 'undefined') ? {} : prm;
     newtab = (typeof newtab == 'undefined') ? false : newtab;
@@ -484,6 +552,7 @@ function pagerViewModel(args) {
     self.pauseNavigation = ko.observable(false);
     self.totalRecords = ko.observable(0);
     self.autoPage = ko.observable(args.autoPage === true ? true : false);
+    self.pageSizeOptions = ko.observableArray([1, 10, 30, 50, 100, 150, 200, 500]);
 
     self.sortColumn = ko.observable();
     self.sortDescending = ko.observable();
@@ -1167,3 +1236,187 @@ window.toastr = (function () {
         info: (msg) => show(msg, 'info')
     };
 })();
+
+$.extend($.summernote.plugins, {
+    'bgcolor': function (context) {
+        var ui = $.summernote.ui;
+        var $editor = context.layoutInfo.editor;
+        var $editable = context.layoutInfo.editable;
+
+        context.memo('button.bgcolor', function () {
+            return ui.buttonGroup([
+                ui.button({
+                    contents: '<i class="fa fa-paint-brush"></i>',
+                    tooltip: 'Cell Background Color',
+                    click: function () {
+                        var colorInput = $('<input type="color">');
+                        colorInput.on('input', function () {
+                            var color = $(this).val();
+                            var rng = context.invoke('editor.createRange');
+                            if (rng.isCollapsed()) {
+                                var td = $(rng.sc).closest('td,th');
+                                if (td.length) {
+                                    td.css('background-color', color);
+                                }
+                                context.triggerEvent('change', $editable.html(), $editable);
+                            }
+                        });
+                        colorInput.trigger('click');
+                    }
+                })
+            ]).render();
+        });
+    }
+});
+
+$.extend($.summernote.plugins, {
+    'tableresize': function (context) {
+        var $editable = context.layoutInfo.editable;
+
+        function makeResizable(table) {
+            $(table).css('position', 'relative');
+
+            $(table).find('th, td').each(function () {
+                var $cell = $(this);
+
+                if (!$cell.find('.resize-col').length) {
+                    var $colHandle = $('<div class="resize-col"></div>').css({
+                        position: 'absolute',
+                        right: 0,
+                        top: 0,
+                        width: '5px',
+                        cursor: 'col-resize',
+                        userSelect: 'none',
+                        height: '100%'
+                    });
+                    $cell.css('position', 'relative').append($colHandle);
+
+                    $colHandle.on('mousedown', function (e) {
+                        e.preventDefault();
+                        var startX = e.pageX;
+                        var startWidth = $cell.outerWidth();
+
+                        $(document).on('mousemove.colresize', function (e) {
+                            var newWidth = startWidth + (e.pageX - startX);
+                            $cell.css('width', newWidth + 'px');
+                        });
+
+                        $(document).on('mouseup.colresize', function () {
+                            $(document).off('.colresize');
+                            context.triggerEvent('change', $editable.html(), $editable);
+                        });
+                    });
+                }
+
+                if (!$cell.find('.resize-row').length) {
+                    var $rowHandle = $('<div class="resize-row"></div>').css({
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        height: '5px',
+                        cursor: 'row-resize',
+                        userSelect: 'none',
+                        width: '100%'
+                    });
+                    $cell.append($rowHandle);
+
+                    $rowHandle.on('mousedown', function (e) {
+                        e.preventDefault();
+                        var startY = e.pageY;
+                        var startHeight = $cell.outerHeight();
+
+                        $(document).on('mousemove.rowresize', function (e) {
+                            var newHeight = startHeight + (e.pageY - startY);
+                            $cell.css('height', newHeight + 'px');
+                        });
+
+                        $(document).on('mouseup.rowresize', function () {
+                            $(document).off('.rowresize');
+                            context.triggerEvent('change', $editable.html(), $editable);
+                        });
+                    });
+                }
+            });
+
+            if (!$(table).find('.resize-corner').length) {
+                var $cornerHandle = $('<div class="resize-corner"></div>').css({
+                    position: 'absolute',
+                    right: 0,
+                    bottom: 0,
+                    width: '10px',
+                    height: '10px',
+                    cursor: 'nwse-resize',
+                    background: 'rgba(0,0,0,0.2)'
+                });
+                $(table).append($cornerHandle);
+
+                $cornerHandle.on('mousedown', function (e) {
+                    e.preventDefault();
+                    var startX = e.pageX, startY = e.pageY;
+                    var startWidth = $(table).outerWidth();
+                    var startHeight = $(table).outerHeight();
+
+                    $(document).on('mousemove.tableresize', function (e) {
+                        var newWidth = startWidth + (e.pageX - startX);
+                        var newHeight = startHeight + (e.pageY - startY);
+                        $(table).css({
+                            width: newWidth + 'px',
+                            height: newHeight + 'px'
+                        });
+                    });
+
+                    $(document).on('mouseup.tableresize', function () {
+                        $(document).off('.tableresize');
+                        context.triggerEvent('change', $editable.html(), $editable);
+                    });
+                });
+            }
+        }
+
+        // hook into editor events
+        $editable.on('mousedown', 'table', function () {
+            makeResizable(this);
+        });
+
+        context.events = {
+            'summernote.init': function () {
+                $editable.find('table').each(function () {
+                    makeResizable(this);
+                });
+            }
+        };
+    }
+});
+$.extend($.summernote.plugins, {
+    'tablefullwidth': function (context) {
+        var ui = $.summernote.ui;
+        var $editable = context.layoutInfo.editable;
+
+        context.memo('button.tablefullwidth', function () {
+            return ui.button({
+                contents: '<i class="fa fa-arrows-h"></i>',
+                tooltip: 'Set Table Width 100%',
+                click: function () {
+                    var rng = context.invoke('editor.createRange');
+                    var $table = null;
+
+                    if (rng && rng.sc) {
+                        $table = $(rng.sc).closest('table');
+                    }
+
+                    if (!$table || !$table.length) {
+                        $table = $(rng.ec).closest('table');
+                    }
+
+                    if ($table && $table.length) {
+                        $table.css({
+                            width: '100%',
+                            tableLayout: 'auto'
+                        });
+                        context.triggerEvent('change', $editable.html(), $editable);
+                    }
+                }
+            }).render();
+        });
+    }
+});
