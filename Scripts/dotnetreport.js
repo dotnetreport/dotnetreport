@@ -7429,7 +7429,7 @@ var dashboardViewModel = function (options) {
 			}
             self.dashboards([]);
 			_.forEach(dashboardData, function (d) {
-				self.dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, schedule: d.Schedule, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles, clientId: d.ClientId });
+				self.dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, schedule: d.Schedule, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles, clientId: d.ClientId, canManage: d.CanManage });
 			});
 			var dashboardId = 0;
 			if (self.dashboards().length > 0) { dashboardId = self.dashboards()[0].id; }
@@ -7621,13 +7621,13 @@ var dashboardViewModel = function (options) {
 					url: options.apiUrl,
 					data: {
 						method: "/ReportApi/DeleteDashboard",
-						model: JSON.stringify({ id: self.currentDashboard().id, adminMode: self.adminMode() })
+						model: JSON.stringify({ dashboardId: self.currentDashboard().id, adminMode: self.adminMode() })
 					}
 				}).done(function (result) {
 					toastr.success("Dashboard deleted successfully");
 					$('#add-dashboard-modal').modal('hide');
 					setTimeout(function () {
-						window.location = window.location.href.split("?")[0];
+						self.getDashboards();
 					}, 500);
 				});
 			}
@@ -8198,8 +8198,10 @@ var dashboardViewModel = function (options) {
 
 	self.adminMode.subscribe(function (newValue) {
 		if (localStorage) localStorage.setItem('reportAdminMode', newValue);
-		if (typeof event !== "undefined" && event.type === "click") {
-            self.getDashboards();
+		if (typeof event !== "undefined" && event.type === "click") {			
+			self.init().done(function () {
+				self.getDashboards();
+			})
 		}
 	});
 
