@@ -16,6 +16,7 @@
     <link href="~/Content/themes/base/theme.css" rel="stylesheet" />
     <link href="~/Content/font-awesome.min.css" rel="stylesheet" />
     <link href="~/Content/css/select2.min.css" rel="stylesheet" />
+    <link href="~/Scripts/leaflet/leaflet.css" rel="stylesheet" />
     <link href="~/Content/dotnetreport.css?v=5.4.0" rel="stylesheet" />
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <style type="text/css">
@@ -338,7 +339,9 @@
     <script src="~/Scripts/lodash.min.js"></script>
     <script src="~/Scripts/fabric.min.js"></script>
     <script src="~/Scripts/tribute.min.js"></script>
-    <script src="~/Scripts/summernote-bs5.min.js"></script>
+    <script src="~/Scripts/summernote/summernote-bs5.min.js"></script>
+    <script src="~/Scripts/leaflet/leaflet.js"></script>
+    <script src="~/Scripts/leaflet.heat/leaflet-heat.js"></script>
     <script src="~/Scripts/dotnetreport-helper.js"></script>
     <script src="~/Scripts/dotnetreport.js?v=4.0.0"></script>
 
@@ -350,74 +353,74 @@
     <script type="text/javascript">
 
         $(document).ready(function () {
-        var data = {
-            currentUserId: '@Model.UserId',
-            currentUserRoles: ('@Model.CurrentUserRoles' ||'').split(','),
-            dataFilters: '@Model.DataFilters',
-            clientId: '@Model.ClientId'
-        };
+            var data = {
+                currentUserId: '@Model.UserId',
+                currentUserRoles: ('@Model.CurrentUserRoles' || '').split(','),
+                dataFilters: '@Model.DataFilters',
+                clientId: '@Model.ClientId'
+            };
 
-        function decodeHTMLEntities(text) {
-            var parser = new DOMParser();
-            var dom = parser.parseFromString('<!doctype html><body>' + text, 'text/html');
-            var decodedText = dom.body.textContent;
+            function decodeHTMLEntities(text) {
+                var parser = new DOMParser();
+                var dom = parser.parseFromString('<!doctype html><body>' + text, 'text/html');
+                var decodedText = dom.body.textContent;
 
-            // Remove new lines and carriage returns
-            return decodedText.replace(/[\n\r]/g, '');
-        }
-
-        var vm = new reportViewModel({
-            runReportUrl: "@Url.Action("Report")",
-            execReportUrl: "@Url.Action("RunReport", "DotNetReportApi")",
-            runLinkReportUrl: "@Url.Action("RunReportLink", "DotNetReportApi")",
-            reportWizard: $("#filter-panel"),
-            reportHeader: "report-header",
-            lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
-            apiUrl: '@Url.Action("CallReportApiUnAuth", "DotNetReportApi")',
-            runReportApiUrl: '@Url.Action("RunReportApi", "DotNetReportApi")',
-            reportFilter: htmlDecode('@System.Web.HttpUtility.UrlDecode(Model.ReportFilter)'),
-            reportMode: "print",
-            reportSql: "@Model.ReportSql",
-            reportConnect: "@Model.ConnectKey",
-            ReportSeries : "@Model.ReportSeries",
-            reportHeader: 'report-header',
-            userSettings: data,
-            dataFilters: JSON.parse(decodeHTMLEntities(data.dataFilters) || '{}'),
-            reportData: JSON.parse(decodeHTMLEntities('@Model.ReportData')),
-            getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
-            chartSize: { width: 800, height: 450 }
-        });
-        vm.pager.pageSize(10000);
-        ko.applyBindings(vm);
-        vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {
-        vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {
-            if (vm.useReportHeader()) {
-                vm.headerDesigner.init();
+                // Remove new lines and carriage returns
+                return decodedText.replace(/[\n\r]/g, '');
             }
 
-            if (vm.useStoredProc()) {
-                setTimeout(function(){
-                    vm.printReport();
-                }, 1000);
-            } else {
-                vm.printReport();
-            }
+            var vm = new reportViewModel({
+                runReportUrl: "@Url.Action("Report")",
+                execReportUrl: "@Url.Action("RunReport", "DotNetReportApi")",
+                runLinkReportUrl: "@Url.Action("RunReportLink", "DotNetReportApi")",
+                reportWizard: $("#filter-panel"),
+                reportHeader: "report-header",
+                lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
+                apiUrl: '@Url.Action("CallReportApiUnAuth", "DotNetReportApi")',
+                runReportApiUrl: '@Url.Action("RunReportApi", "DotNetReportApi")',
+                reportFilter: htmlDecode('@System.Web.HttpUtility.UrlDecode(Model.ReportFilter)'),
+                reportMode: "print",
+                reportSql: "@Model.ReportSql",
+                reportConnect: "@Model.ConnectKey",
+                ReportSeries: "@Model.ReportSeries",
+                reportHeader: 'report-header',
+                userSettings: data,
+                dataFilters: JSON.parse(decodeHTMLEntities(data.dataFilters) || '{}'),
+                reportData: JSON.parse(decodeHTMLEntities('@Model.ReportData')),
+                getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
+                chartSize: { width: 800, height: 450 }
+            });
+            vm.pager.pageSize(10000);
+            ko.applyBindings(vm);
+            vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {
+                vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {
+                    if (vm.useReportHeader()) {
+                        vm.headerDesigner.init();
+                    }
 
-            setTimeout(function () {
-                $('.report-inner').show();
-            }, 1500);
+                    if (vm.useStoredProc()) {
+                        setTimeout(function () {
+                            vm.printReport();
+                        }, 1000);
+                    } else {
+                        vm.printReport();
+                    }
 
-            setTimeout(function () {
-                    $('.report-inner').show();
-            }, 15000);
+                    setTimeout(function () {
+                        $('.report-inner').show();
+                    }, 1500);
+
+                    setTimeout(function () {
+                        $('.report-inner').show();
+                    }, 15000);
+                });
+
+                $(window).resize(function () {
+                    vm.DrawChart();
+                });
+
+            });
         });
-
-        $(window).resize(function(){
-            vm.DrawChart();
-        });
-
-    });
-
     </script>
 
     <script type="text/html" id="fly-filter-template">
