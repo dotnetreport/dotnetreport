@@ -9,7 +9,8 @@ var manageViewModel = function (options) {
 		AccountApiKey: options.model.AccountApiKey,
 		DatabaseApiKey: options.model.DatabaseApiKey
 	};
-
+	self.currentUserId = options.currentUserId;
+	window.currentUserId = options.currentUserId;
 	self.previewData = ko.observable();
 	self.activeTable = ko.observable();
 	self.DataConnections = ko.observableArray([]);
@@ -84,12 +85,16 @@ var manageViewModel = function (options) {
 		var usedOnly = self.Tables.usedOnly();
 
 		if (self.customTableMode()) {
-			tables = _.filter(tables, function(x) { return x.CustomTable(); });
+			tables = _.filter(tables, function (x) { return x.CustomTable(); });
+		} else {
+			tables = _.filter(tables, function (x) { return !x.CustomTable(); });
 		}
 
 		if (usedOnly) {
 			tables = _.filter(tables, function (x) { return x.Selected(); });
 		}
+
+		self.pager.totalRecords(tables.length);
 
 		var pageNumber = self.pager.currentPage();
 		var pageSize = self.pager.pageSize();
@@ -153,7 +158,6 @@ var manageViewModel = function (options) {
 				&& (!joinFieldFilter || !x.JoinFieldName() || x.JoinFieldName().toLowerCase().indexOf(joinFieldFilter.toLowerCase()) >= 0);
 		});
 	});
-
 
 	self.joinsPager = new pagerViewModel({ autoPage: true });
 
@@ -710,11 +714,13 @@ var manageViewModel = function (options) {
 					account: self.keys.AccountApiKey,
 					dataConnect: self.keys.DatabaseApiKey,
 					categories: self.Categories()
-				})
+				}),
+				userId: self.currentUserId || ' '
 			})
-		}).done(function (x) {
-			if (x.d) x = d;
-			if (x.success) {
+		}).done(function (result) {
+			if (result.d) result = result.d;
+			if (result.Result) result = result.Result;
+			if (result.success) {
 				toastr.success("Saved Categories ");
 				self.LoadCategories();
 			} else {
@@ -734,7 +740,8 @@ var manageViewModel = function (options) {
 							scheduleId: e.Id,
 							account: self.keys.AccountApiKey,
 							dataConnect: self.keys.DatabaseApiKey,
-						})
+						}),
+						userId: self.currentUserId || ' '
 					})
 				}).done(function () {
 					toastr.success("Deleted Schedule");
@@ -753,11 +760,12 @@ var manageViewModel = function (options) {
 				model: JSON.stringify({
 					account: self.keys.AccountApiKey,
 					dataConnect: self.keys.DatabaseApiKey
-				})
+				}),
+				userId: self.currentUserId || ' '
 			})
 		}).done(function (result) {
 			if (result.d) result = result.d;
-			
+			if (result.Result) result = result.Result;
 			self.schedules(result);
 		});
 	}
@@ -770,10 +778,12 @@ var manageViewModel = function (options) {
 				model: JSON.stringify({
 					account: self.keys.AccountApiKey,
 					dataConnect: self.keys.DatabaseApiKey
-				})
+				}),
+				userId: self.currentUserId || ' '
 			})
 		}).done(function (result) {
 			if (result.d) result = result.d;
+			if (result.Result) result = result.Result;
 			self.Tables.model().forEach(function (t) {
 				t.Categories(_.map(t.Categories(), function (e) {
 					return result.find(r => r.Id === (typeof e.Id === 'function' ? e.Id() : e.Id));
@@ -832,10 +842,12 @@ var manageViewModel = function (options) {
 					useSchema: self.newDataConnection.UseSchema(),
 					connectionKey: self.newDataConnection.ConnectionKey(),
 					connectName: self.newDataConnection.Name()
-				})
+				}),
+				userId: self.currentUserId || ' '
 			})
 		}).done(function (result) {		
 			if (result.d) result = d;
+			if (result.Result) result = result.Result;
 			var dc = self.DataConnections().find(x => self.currentConnectionKey() == x.DataConnectGuid);
 			dc.DataConnectName = self.newDataConnection.Name();
 			dc.ConnectionKey = self.newDataConnection.ConnectionKey();
@@ -869,7 +881,8 @@ var manageViewModel = function (options) {
 					newDataConnect: self.newDataConnection.Name(),
 					connectionKey: self.newDataConnection.ConnectionKey(),
 					copySchema: self.newDataConnection.copySchema()
-				})
+				}),
+				userId: self.currentUserId || ' '
 			})
 		}).done(function (result) {
 			if (result.d) result = result.d;
@@ -897,6 +910,7 @@ var manageViewModel = function (options) {
 		item.OtherTable = ko.observable();
 		item.originalField = item.FieldName;
 		item.originalJoinField = item.JoinFieldName;
+		item.isNew = false;
 
 		item = ko.mapping.fromJS(item);
 
@@ -946,7 +960,8 @@ var manageViewModel = function (options) {
 				model: JSON.stringify({
 					account: self.keys.AccountApiKey,
 					dataConnect: self.keys.DatabaseApiKey
-				})
+				}),
+				userId: self.currentUserId || ' '
 			})
 		}).done(function (result) {
 			if (result.d) result = result.d;
@@ -1023,7 +1038,8 @@ var manageViewModel = function (options) {
 					model: jsonProcedure ? jsonProcedure : e,
 					account: self.keys.AccountApiKey,
 					dataConnect: self.keys.DatabaseApiKey
-				})
+				}),
+				userId: self.currentUserId || ' '
 			})
 		}).done(function (result) {
 			if (result.d) result = result.d;
@@ -1060,7 +1076,8 @@ var manageViewModel = function (options) {
 				model: JSON.stringify({
 					account: self.keys.AccountApiKey,
 					dataConnect: self.keys.DatabaseApiKey
-				})
+				}),
+				userId: self.currentUserId || ' '
 			})
 		}).done(function (result) {
 			if (result.d) result = result.d;
@@ -1096,6 +1113,7 @@ var manageViewModel = function (options) {
 			return;
 		}
 
+		join.isNew = true;
 		self.trackJoinChanges(join);
 		self.Joins.push(join);
 		// Reset form
@@ -1114,42 +1132,91 @@ var manageViewModel = function (options) {
 	};
 
 	self.DeleteVisibleJoins = function () {
-		bootbox.confirm("Are you sure you would like to delete 'All Filtered' Joins?", function (r) {
-			if (r) {
-				const toDelete = self.filteredJoins();
-				self.Joins.removeAll(toDelete);
-				self.isDirty(true);
+		const filtered = self.filteredJoins();
+		const total = self.Joins().length;
+
+		// Decide message
+		var message = filtered.length < total
+			? `Only filtered joins (${filtered.length}) will be deleted. This cannot be undone.<br><br>Do you want to continue?`
+			: `No filters applied. All ${total} joins will be deleted. This cannot be undone.<br><br>Are you sure you want to continue?`;
+
+		bootbox.confirm({
+			title: "Confirm Delete",
+			message: message,
+			buttons: {
+				cancel: {
+					label: 'Cancel',
+					className: 'btn-secondary'
+				},
+				confirm: {
+					label: 'Delete',
+					className: 'btn-danger'
+				}
+			},
+			callback: function (result) {
+				if (result) {
+					self.Joins.removeAll(filtered);
+					self.isDirty(true);
+					toastr.success(filtered.length + " join(s) deleted.");
+				}
 			}
 		});
 	};
 
-	self.getJoinsToSave = function () {
+	self.getJoinsToSave = function (filteredJoins) {
 		_.forEach(self.Joins(), function (x) {
 			x.TableId(x.JoinTable().Id());
 			x.JoinedTableId(x.OtherTable().Id());
 		});
 
-		var joinsToSave = $.map(ko.mapping.toJS(self.Joins), function (x) {
-			return {
-				DataConnectionId: x.DataConnectionId,
-				RelationId: x.Id ? x.Id : x.RelationId,
-				TableId: x.TableId,
-				JoinedTableId: x.JoinedTableId,
-				JoinType: x.JoinType,
-				FieldName: x.FieldName,
-				JoinFieldName: x.JoinFieldName
+		return $.map(
+			ko.mapping.toJS(filteredJoins === true ? self.filteredJoins() : self.Joins),
+			function (x) {
+				return {
+					DataConnectionId: x.DataConnectionId,
+					RelationId: x.Id ? x.Id : x.RelationId,
+					TableId: x.TableId,
+					TableName: x.JoinTable ? x.JoinTable.DisplayName : null,       
+					JoinedTableId: x.JoinedTableId,
+					JoinedTableName: x.OtherTable ? x.OtherTable.DisplayName : null, 
+					JoinType: x.JoinType,
+					FieldName: x.FieldName,
+					JoinFieldName: x.JoinFieldName
+				};
+			}
+		);
+	};
+
+	self.ExportJoins = function () {
+		var joinsToSave = self.getJoinsToSave(true);
+		var message = joinsToSave.length < self.Joins().length
+			? "Only filtered joins will be exported.\nDo you want to continue?"
+			: "No filters applied. All joins will be exported.\nDo you want to continue?";
+
+		bootbox.confirm({
+			title: "Confirm Export",
+			message: message,
+			buttons: {
+				cancel: {
+					label: 'Cancel',
+					className: 'btn-secondary'
+				},
+				confirm: {
+					label: 'Export',
+					className: 'btn-primary'
+				}
+			},
+			callback: function (result) {
+				if (result) {
+					var exportJson = JSON.stringify(joinsToSave, null, 2);
+					downloadJson(exportJson, 'Relations.json', 'application/json');
+				}
 			}
 		});
+	};
 
-		return joinsToSave;
-	}
-	self.ExportJoins = function () {
-		var joinsToSave = self.getJoinsToSave();
-		var exportJson = JSON.stringify(joinsToSave, null, 2)
-		downloadJson(exportJson, 'Relations' + '.json', 'application/json');
-	}
 	self.SaveJoins = function () {
-		var joinsToSave = self.getJoinsToSave();
+		var joinsToSave = self.getJoinsToSave(false);
 
 		ajaxcall({
 			url: options.apiUrl,
@@ -1160,7 +1227,8 @@ var manageViewModel = function (options) {
 					account: self.keys.AccountApiKey,
 					dataConnect: self.keys.DatabaseApiKey,
 					relations: joinsToSave
-				})
+				}),
+				userId: self.currentUserId || ' '
 			})
 		}).done(function (result) {
 			if (result.d) result = result.d;
@@ -1215,7 +1283,7 @@ var manageViewModel = function (options) {
 			}
 		});
 
-		var joinsTosave = self.getJoinsToSave();
+		var joinsTosave = self.getJoinsToSave(false);
 
 		var exportJson = JSON.stringify({
 			tables: tablesToSave,
@@ -1286,53 +1354,58 @@ var manageViewModel = function (options) {
 					const parsed = JSON.parse(event.target.result);
 					const tables = Array.isArray(parsed) ? parsed : [parsed];
 
-					const handleImport = function (table) {
-						const tableName = table.TableName;
-						const tableId = table.Id;
-						table.Selected = ko.observable(true);
+					const importPromises = tables.map(table => {
+						return new Promise(resolve => {
+							const tableName = table.TableName;
+							const tableId = table.Id;
+							table.Selected = ko.observable(true);
 
-						const anySelected = _.some(table.Columns, c => ko.unwrap(c.Selected) === true);
-						if (!anySelected) {
-							table.Columns.forEach(c => c.Selected = ko.observable(true));
-						}
+							const anySelected = _.some(table.Columns, c => ko.unwrap(c.Selected) === true);
+							if (!anySelected) {
+								table.Columns.forEach(c => c.Selected = ko.observable(true));
+							}
 
-						const tableMatch = _.some(self.Tables.model(), t => t.TableName() === tableName);
+							const tableMatch = _.some(self.Tables.model(), t => t.TableName() === tableName);
 
-						if (tableMatch) {
-							handleOverwriteConfirmation(tableName, function (action) {
-								if (action === 'overwrite') {
-									self.Tables.model.remove(_.find(self.Tables.model(), e => e.TableName() === tableName));
-									const mapped = ko.mapping.fromJS(table);
-									self.Tables.model.push(self.Tables.processTable(mapped));
-									const newTable = self.Tables.model()[self.Tables.model().length - 1];
-									newTable.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey).then(function (success) {
+							const processAndSave = () => {
+								table.Id = 0;
+								const mapped = ko.mapping.fromJS(table);
+								self.Tables.model.push(self.Tables.processTable(mapped));
+								const newTable = self.Tables.model()[self.Tables.model().length - 1];
+
+								newTable.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey)
+									.then(success => {
 										if (!success) {
-											self.Tables.model.remove(newTable); // remove if save failed
+											self.Tables.model.remove(newTable);
 										}
-									});
-								} else {
-									toastr.info('Upload canceled for ' + tableName + '.');
-								}
-								$('#uploadTablesFileModal').modal('hide');
-								clearFileInput('tablesFileInputJson');
-							});
-						} else {
-							table.Id = 0;
-							const mapped = ko.mapping.fromJS(table);
-							self.Tables.model.push(self.Tables.processTable(mapped));
-							const newTable = self.Tables.model()[self.Tables.model().length - 1];
-							newTable.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey).then(function (success) {
-								if (!success) {
-									self.Tables.model.remove(newTable); // remove if save failed
-								}
-							});
-						}
-					};
+										resolve(); 
+									})
+									.catch(() => resolve());
+							};
 
-					tables.forEach(handleImport);
+							if (tableMatch) {
+								handleOverwriteConfirmation(tableName, function (action) {
+									if (action === 'overwrite') {
+										self.Tables.model.remove(_.find(self.Tables.model(), e => e.TableName() === tableName));
+										processAndSave();
+									} else {
+										toastr.info('Upload canceled for ' + tableName + '.');
+										resolve(); 
+									}
+								});
+							} else {
+								processAndSave();
+							}
+						});
+					});
 
-					$('#uploadTablesFileModal').modal('hide');
-					clearFileInput('tablesFileInputJson');
+					Promise.all(importPromises).then(() => {
+						self.LoadJoins();
+						$('#uploadTablesFileModal').modal('hide');
+						clearFileInput('tablesFileInputJson');
+						toastr.success('All tables processed successfully!');
+					});
+
 				} catch (e) {
 					toastr.error('Invalid JSON file: ' + e.message);
 					clearFileInput('tablesFileInputJson');
@@ -1350,7 +1423,7 @@ var manageViewModel = function (options) {
 					message: `A table/view with the name "${tableName}" already exists. What would you like to do?`,
 					buttons: {
 						cancel: {
-							label: 'Cancel',
+							label: 'Skip',
 							className: 'btn-secondary',
 							callback: () => callback('cancel')
 						},
@@ -1388,84 +1461,69 @@ var manageViewModel = function (options) {
 				clearFileInput('joinsFileInputJson');
 				return;
 			}
-			let addedJoins = []; 
+			let addedJoins = [];
 			const reader = new FileReader();
+
 			reader.onload = function (event) {
 				try {
 					const joins = JSON.parse(event.target.result);
-					let hasConflicts = false;
-					let conflictingItems = [];
 
 					joins.forEach(newItem => {
-						const existingItem = self.Joins().find(item =>
+						let existingItem = self.Joins().find(item =>
 							item.TableId() === newItem.TableId &&
 							item.JoinedTableId() === newItem.JoinedTableId &&
 							item.JoinFieldName() === newItem.JoinFieldName &&
 							item.FieldName() === newItem.FieldName
 						);
-						if (existingItem) {
-							hasConflicts = true;
-							conflictingItems.push({ existingItem, newItem });
-						}
-					});
 
-					const addUniqueJoins = (joinList) => {
-						joinList.forEach(newItem => {
-							const exists = self.Joins().some(item =>
-								item.TableId() === newItem.TableId &&
-								item.JoinedTableId() === newItem.JoinedTableId &&
+						// If no ID match, try match by table names
+						if (!existingItem && newItem.TableName && newItem.JoinedTableName) {
+							existingItem = self.Joins().find(item =>
+								item.JoinTable().DisplayName === newItem.TableName &&
+								item.OtherTable().DisplayName === newItem.JoinedTableName &&
 								item.JoinFieldName() === newItem.JoinFieldName &&
 								item.FieldName() === newItem.FieldName
 							);
-							if (!exists) {
-								const added = self.setupJoin(newItem);
-								self.Joins.push(added);
-								addedJoins.push(added); // Track it for rollback
-							}
-						});
-					};
+						}
 
-					const handleOverwriteConfirmation = (relations, callback) => {
-						const relationList = relations.map(conflict => `- ${conflict.existingItem.FieldName()}`).join('\n');
-						bootbox.dialog({
-							title: "Confirm Action",
-							message: `Some joins already exist:\n${relationList}\nWhat would you like to do?`,
-							buttons: {
-								cancel: {
-									label: 'Cancel',
-									className: 'btn-secondary',
-									callback: () => callback('cancel')
-								},
-								overwrite: {
-									label: 'Overwrite',
-									className: 'btn-primary',
-									callback: () => callback('overwrite')
-								}
-							}
-						});
-					};
+						if (existingItem) {
+							if (newItem.JoinType) existingItem.JoinType(newItem.JoinType);
+							if (newItem.Alias) existingItem.Alias(newItem.Alias);
+							if (newItem.Relationship) existingItem.Relationship(newItem.Relationship);
+							existingItem.isNew = true;
+						} else {
+							const allTables = self.Tables.model();
+							const getTableById = id => allTables.find(t => ko.unwrap(t.Id) === id);
+							const getTableByName = name => allTables.find(t => ko.unwrap(t.DisplayName) === name || ko.unwrap(t.TableName) === name);
 
-					if (hasConflicts) {
-						handleOverwriteConfirmation(conflictingItems, function (action) {
-							if (action === 'overwrite') {
-								self.Joins().length = 0;
-								addUniqueJoins(joins);
-								self.SaveJoins();
-								toastr.success('Conflicting items have been overwritten successfully.');
-							} else {
-								toastr.info('Upload canceled.');
+							let table = getTableById(newItem.TableId) || (newItem.TableName ? getTableByName(newItem.TableName) : null);
+							let joinedTable = getTableById(newItem.JoinedTableId) || (newItem.JoinedTableName ? getTableByName(newItem.JoinedTableName) : null);
+
+							if (!table || !joinedTable) {
+								toastr.warning(`Skipping join: could not find table "${newItem.TableName}" or "${newItem.JoinedTableName}" in this schema.`);
+								return;
 							}
-							$('#uploadJoinsFileModal').modal('hide');
-							clearFileInput('joinsFileInputJson');
-						});
-					} else {
-						addUniqueJoins(joins);
-						self.SaveJoins();
-						$('#uploadJoinsFileModal').modal('hide');
-						clearFileInput('joinsFileInputJson');
-					}
+
+							newItem.TableId = ko.unwrap(table.Id);
+							newItem.JoinedTableId = ko.unwrap(joinedTable.Id);
+
+							const added = self.setupJoin(newItem);
+							added.isNew = true;
+							self.Joins.push(added);
+							addedJoins.push(added);
+						}
+					});
+
+					// Don't auto save 
+					// self.SaveJoins();
+					self.isDirty(true);
+
+					toastr.success('Joins imported in view. Please click "Save Joins" to apply.');
+					$('#uploadJoinsFileModal').modal('hide');
+					clearFileInput('joinsFileInputJson');
+
 				} catch (e) {
-					addedJoins.forEach(join => self.Joins.remove(join));
+					addedJoins.forEach(j => self.Joins.remove(j));
 					toastr.error('Invalid JSON file: ' + e.message);
 					clearFileInput('joinsFileInputJson');
 				}
@@ -1545,7 +1603,7 @@ var manageViewModel = function (options) {
 						message: `A Stored Procedures Json with the name "${storedProcedure}" already exists. What would you like to do?`,
 						buttons: {
 							cancel: {
-								label: 'Cancel',
+								label: 'Skip',
 								className: 'btn-secondary',
 								callback: function () {
 									callback('cancel');
@@ -1577,13 +1635,13 @@ var manageViewModel = function (options) {
 
 	self.setupManageAccess = function () {
 
-		ajaxcall({ url: options.getUsersAndRoles }).done(function (data) {
+		ajaxcall({ url: options.getUsersAndRoles }).done(function (data) {			
 			if (data.d) data = data.d;
 			self.allRoles(data.userRoles)
 			self.manageAccess = manageAccess(data);
 		});
 
-		
+
 		self.loadReportsAndFolder();
 	}
 
@@ -1599,7 +1657,8 @@ var manageViewModel = function (options) {
 						account: self.keys.AccountApiKey,
 						dataConnect: self.keys.DatabaseApiKey,
 						adminMode: true
-					})
+					}),
+					userId: self.currentUserId || ' '
 				})
 			});
 		};
@@ -1614,7 +1673,8 @@ var manageViewModel = function (options) {
 						account: self.keys.AccountApiKey,
 						dataConnect: self.keys.DatabaseApiKey,
 						adminMode: true
-					})
+					}),
+					userId: self.currentUserId || ' '
 				})
 			});
 		};
@@ -1623,7 +1683,8 @@ var manageViewModel = function (options) {
 			var setup = [];
 			if (allFolders[0].d) { allFolders[0] = allFolders[0].d; }
 			if (allReports[0].d) { allReports[0] = allReports[0].d; }
-
+			if (allFolders[0].Result) { allFolders[0] = allFolders[0].Result; }
+			if (allReports[0].Result) { allReports[0] = allReports[0].Result; }
 			_.forEach(allFolders[0], function (x) {
 				var folderReports = _.filter(allReports[0], { folderId: x.Id });
 				_.forEach(folderReports, function (r) {
@@ -1671,7 +1732,8 @@ var manageViewModel = function (options) {
 										ViewOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.viewOnlyUserRoles),
 										DeleteOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUserRoles)
 									})
-								})
+								}),
+								userId: self.currentUserId || ' '
 							})
 						}).done(function (d) {
 							if (d.d) d = d.d;
@@ -1761,7 +1823,8 @@ var manageViewModel = function (options) {
 									ClientId: self.manageAccess.clientId(),
 								}),
 								adminMode: true
-							})
+							}),
+							userId: self.currentUserId || ' '
 						}
 					}).done(function (d) {
 						if (d.d) d = d.d;
@@ -1887,52 +1950,148 @@ var manageViewModel = function (options) {
 		downloadJson(exportJson, `FolderManageAccess_${FolderJson[0].FolderName}.json`, 'application/json');
 	};
 	self.exportFoldersReportJson = async function () {
-		const selectedFolders = [];
+		const selectedReports = [];
+
 		await Promise.all(_.map(self.reportsAndFolders(), async function (folder) {
-			const selectedReports = _.filter(folder.reports, function (r) {
+			const selectedInFolder = _.filter(folder.reports, function (r) {
 				return r.isSelected && r.isSelected();
 			});
-			if (selectedReports.length > 0) {
-				const reportsWithData = [];
-				await Promise.all(_.map(selectedReports, async function (r) {
+
+			await Promise.all(_.map(selectedInFolder, async function (r) {
+				try {
 					const reportview = new reportViewModel({
 						apiUrl: options.reportsApiUrl,
 						runReportApiUrl: options.runReportApiUrl,
 						reportWizard: options.reportWizard,
-						lookupListUrl: options.lookupListUrl
+						lookupListUrl: options.lookupListUrl,
+						userSettings: { currentUserId: options.currentUserId }
 					});
 					reportview.adminMode = ko.observable(true);
+
 					const response = await reportview.LoadReport(r.reportId, true, '', true, false);
-					if (response && response.UseStoredProc === false) {
-						const reportData = reportview.BuildReportData();
-						reportsWithData.push({
-							reportId: r.reportId,
-							reportName: r.reportName,
-							data: reportData
-						});
-					} else {
-						await reportview.loadProcs();
-						const reportData = reportview.BuildReportData();
-						reportsWithData.push({
-							reportId: r.reportId,
-							reportName: r.reportName,
-							data: reportData
-						});
-					}
-				}));
-				selectedFolders.push({
-					folderId: folder.folderId,
-					folder: folder.folder,
-					reports: reportsWithData
-				});
-			}
+					const reportData = response && response.UseStoredProc === false
+						? reportview.BuildReportData()
+						: (await reportview.loadProcs(), reportview.BuildReportData());
+
+					selectedReports.push({
+						reportId: r.reportId,
+						reportName: r.reportName,
+						folder: folder.folder,
+						data: reportData
+					});
+				} catch (err) {
+					console.error(`Error exporting report ${r.reportName}:`, err);
+					toastr.error(`Error exporting report: ${r.reportName}`);
+				}
+			}));
 		}));
-		if (selectedFolders.length === 0) {
+
+		if (selectedReports.length === 0) {
 			toastr.error("No Reports selected!");
 			return;
 		}
-		const exportJson = JSON.stringify(selectedFolders, null, 2);
-		downloadJson(exportJson, `FolderReports.json`, 'application/json');
+
+		const exportJson = JSON.stringify(selectedReports, null, 2);
+		downloadJson(exportJson, `SelectedReports.json`, 'application/json');
+	};
+	self.deleteSelectedItems = function () {
+		const selectedFolders = [];
+		const selectedReports = [];
+
+		self.reportsAndFolders().forEach(folder => {
+			if (folder.allReportsSelected() && folder.folderId > 0) {
+				selectedFolders.push(folder);
+			} else {
+				folder.reports.forEach(r => {
+					if (r.isSelected && r.isSelected()) {
+						selectedReports.push({ folder: folder, report: r });
+					}
+				});
+			}
+		});
+
+		if (selectedFolders.length === 0 && selectedReports.length === 0) {
+			toastr.error("No folders or reports selected to delete!");
+			return;
+		}
+
+		// Build a more descriptive confirmation message
+		let message = `<div style="max-height:300px; overflow:auto;">`;
+		message += `<p class="fw-bold">This action will permanently delete the following items and <u>cannot be undone</u>:</p>`;
+
+		if (selectedFolders.length > 0) {
+			message += `<p><strong>Folders to delete (Deleting folders will delete all the reports in the folder as well):</strong></p><ul>`;
+			selectedFolders.forEach(f => {
+				message += `<li><span class="fa fa-folder text-warning"></span> ${f.folder}</li>`;
+			});
+			message += `</ul>`;
+		}
+
+		const reportsNotInDeletedFolders = selectedReports.filter(item => {
+			return !selectedFolders.some(f => f.folderId === item.folder.folderId);
+		});
+
+		if (reportsNotInDeletedFolders.length > 0) {
+			message += `<p><strong>Reports to delete (${reportsNotInDeletedFolders.length}):</strong></p><ul>`;
+			reportsNotInDeletedFolders.forEach(item => {
+				message += `<li><span class="fa fa-file text-secondary"></span> ${item.report.reportName} <span class="text-muted small">(in folder: ${item.folder.folder})</span></li>`;
+			});
+			message += `</ul>`;
+		}
+
+		message += `<p class="text-danger fw-bold mb-0">Are you absolutely sure you want to proceed?</p></div>`;
+
+		bootbox.dialog({
+			title: "Confirm Delete",
+			message: message,
+			size: 'medium',
+			buttons: {
+				cancel: {
+					label: 'Cancel',
+					className: 'btn-secondary'
+				},
+				confirm: {
+					label: 'Delete Permanently',
+					className: 'btn-danger',
+					callback: function () {
+						const deletePromises = [];
+
+						// Delete folders first
+						selectedFolders.forEach(folder => {
+							deletePromises.push(
+								ajaxcall({
+									url: options.reportsApiUrl,
+									data: {
+										method: "/ReportApi/DeleteFolder",
+										model: JSON.stringify({ folderId: folder.folderId, adminMode: true }),
+										userId: self.currentUserId || ' '
+									}
+								})
+							);
+						});
+
+						reportsNotInDeletedFolders.forEach(item => {
+							deletePromises.push(
+								ajaxcall({
+									url: options.reportsApiUrl,
+									data: {
+										method: "/ReportApi/DeleteReport",
+										model: JSON.stringify({ reportId: item.report.reportId, adminMode: true }),
+										userId: self.currentUserId || ' '
+									}
+								})
+							);
+						});
+
+						$.when.apply($, deletePromises).done(function () {
+							self.loadReportsAndFolder().done(function () {
+								toastr.success("Selected folders and reports have been permanently deleted.");
+							});
+						});
+					}
+				}
+			}
+		});
 	};
 	self.ManageJsonFile = {
 		file: ko.observable(null),
@@ -1954,110 +2113,167 @@ var manageViewModel = function (options) {
 
 		uploadFile: function () {
 			var file = self.ManageJsonFile.file();
-			if (file != null) {
-				var reader = new FileReader();
-				reader.onload = function (event) {
-					try {
-						const parsed = JSON.parse(event.target.result);
-						const folders = Array.isArray(parsed) ? parsed : [parsed];
-						folders.forEach(function (folder) {
-							if (Array.isArray(folder.reports)) {
-								let existingFolder = _.find(self.reportsAndFolders(), function (f) {
-									return f.folder === folder.folder;
-								});
-								let ensureFolderPromise;
-								if (existingFolder) {
-									ensureFolderPromise = Promise.resolve(existingFolder.folderId);
-								} else {
-									// Folder create
-									ensureFolderPromise = ajaxcall({
-										url: options.reportsApiUrl,
-										data: {
-											method: "/ReportApi/SaveFolderData",
-											model: JSON.stringify({
-												folderData: JSON.stringify({
-													Id: 0,
-													FolderName: folder.folder,
-													UserId: self.manageAccess.getAsList(self.manageAccess.users),
-													ViewOnlyUserId: self.manageAccess.getAsList(self.manageAccess.viewOnlyUsers),
-													DeleteOnlyUserId: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUsers),
-													UserRoles: self.manageAccess.getAsList(self.manageAccess.userRoles),
-													ViewOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.viewOnlyUserRoles),
-													DeleteOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUserRoles),
-													ClientId: self.manageAccess.clientId(),
-												}),
-												adminMode: true
-											})
-										}
-									}).done(function (d) {
-										if (d.d) d = d.d;
-										var folderVm = {
-											folderId: d,
-											folder: folder.folder,
-											reports: [],
-											allReportsSelected: ko.observable(),
-											selectAllReports: function () {
-												_.forEach([], function (rep) {
-													rep.isSelected(true);
-												});
-											},
-											deselectAllReports: function () {
-												_.forEach([], function (rep) {
-													rep.isSelected(false);
-												});
-											}
-										};
-										self.reportsAndFolders.push(folderVm);
-										return d;
-									});
+			if (!file) {
+				toastr.error('No JSON file selected for upload.');
+				return;
+			}
+
+			var reader = new FileReader();
+			reader.onload = function (event) {
+				try {
+					const parsed = JSON.parse(event.target.result);
+					const reports = Array.isArray(parsed) ? parsed : [parsed];
+
+					if (!reports || reports.length === 0) {
+						toastr.error("No valid reports found in the uploaded file.");
+						return;
+					}
+
+					function handleOverwriteConfirmation(reportName, callback) {
+						bootbox.dialog({
+							title: "Confirm Action",
+							message: `A report with the name "${reportName}" already exists. What would you like to do?`,
+							buttons: {
+								cancel: {
+									label: 'Skip',
+									className: 'btn-secondary',
+									callback: function () { callback('cancel'); }
+								},
+								duplicate: {
+									label: 'Make Copy',
+									className: 'btn-warning',
+									callback: function () { callback('duplicate'); }
+								},
+								overwrite: {
+									label: 'Overwrite',
+									className: 'btn-primary',
+									callback: function () { callback('overwrite'); }
 								}
-								ensureFolderPromise.then(function (folderId) {
-									folder.reports.forEach(function (report) {
-										const reportName = report.reportName;
-										const matchFolder = _.find(self.reportsAndFolders(), f => f.folderId === folderId);
-										let existingReport = null;
-										if (matchFolder) {
-											existingReport = _.find(matchFolder.reports, r => r.reportName === reportName);
-										}
-										const reportview = new reportViewModel({
-											apiUrl: options.reportsApiUrl,
-											runReportApiUrl: options.runReportApiUrl,
-											reportWizard: options.reportWizard,
-											lookupListUrl: options.lookupListUrl
-										});
-										reportview.adminMode = ko.observable(true);
-										if (existingReport) {
-											report.data.ReportID = existingReport.reportId;
-											report.data.FolderID = matchFolder.folderId;
-											reportview.RunReport(true, true, false, report.data);
-										} else {
-											report.data.ReportID = 0;
-											report.data.FolderID = folderId;
-											reportview.RunReport(true, true, false, report.data);
-										}
-									});
-									self.loadReportsAndFolder();
-								});
 							}
 						});
-						// reset file inputs
-						self.ManageJsonFile.file(null);
-						self.ManageJsonFile.fileName('');
-						$('#uploadFileModal').modal('hide');
-					} catch (e) {
-						toastr.error('Invalid JSON file: ' + e.message);
 					}
-				};
 
-				reader.onerror = function (event) {
-					toastr.error('Error reading file.');
-				};
-				reader.readAsText(file); // Read the file as text
-			} else {
-				toastr.error('No JSON file selected for upload.');
-			}
+					const distinctFolders = _.uniq(_.map(reports, function (r) {
+						return r.folder || "Imported Reports";
+					}));
+
+					const folderPromises = [];
+
+					distinctFolders.forEach(function (folderName) {
+						let existingFolder = _.find(self.reportsAndFolders(), function (f) {
+							return f.folder === folderName;
+						});
+
+						if (existingFolder) {
+							folderPromises.push(Promise.resolve(existingFolder.folderId));
+						} else {
+							const p = ajaxcall({
+								url: options.reportsApiUrl,
+								data: {
+									method: "/ReportApi/SaveFolderData",
+									model: JSON.stringify({
+										folderData: JSON.stringify({
+											Id: 0,
+											FolderName: folderName
+										})
+									}),
+									userId: self.currentUserId || ' '
+								}
+							}).done(function (d) {
+								if (d.d) d = d.d;
+								if (d.Result) d = d.Result;
+								var folderVm = {
+									folderId: d,
+									folder: folderName,
+									reports: [],
+									allReportsSelected: ko.observable(),
+									selectAllReports: function () {
+										_.forEach([], function (rep) { rep.isSelected(true); });
+									},
+									deselectAllReports: function () {
+										_.forEach([], function (rep) { rep.isSelected(false); });
+									}
+								};
+								self.reportsAndFolders.push(folderVm);
+								return d;
+							});
+							folderPromises.push(p);
+						}
+					});
+
+					$.when.apply($, folderPromises).done(function () {
+						const allPromises = [];
+
+						reports.forEach(function (report) {
+							const folderName = report.folder || "Imported Reports";
+							const matchFolder = _.find(self.reportsAndFolders(), f => f.folder === folderName);
+							if (!matchFolder) return;
+
+							const folderId = matchFolder.folderId;
+							const reportName = report.reportName;
+							const existingReport = _.find(matchFolder.reports, r => r.reportName === reportName);
+
+							const importReport = function (action) {
+								const reportview = new reportViewModel({
+									apiUrl: options.reportsApiUrl,
+									runReportApiUrl: options.runReportApiUrl,
+									reportWizard: options.reportWizard,
+									lookupListUrl: options.lookupListUrl,
+									userSettings: { currentUserId: options.currentUserId }
+								});
+								reportview.adminMode = ko.observable(true);
+								report.data = report.data || {};
+								report.data.FolderID = folderId;
+
+								if (existingReport && action === 'overwrite') {
+									report.data.ReportID = existingReport.reportId;
+								} else {
+									report.data.ReportID = 0;
+									if (action === 'duplicate') {
+										report.data.ReportName = reportName + " Copy";
+									}
+								}
+
+								return reportview.RunReport(true, true, false, report.data);
+							};
+
+							if (existingReport) {
+								const def = $.Deferred();
+								handleOverwriteConfirmation(reportName, function (action) {
+									if (action === 'cancel') def.resolve();
+									else importReport(action).done(() => def.resolve());
+								});
+								allPromises.push(def.promise());
+							} else {
+								allPromises.push(importReport());
+							}
+						});
+
+						$.when.apply($, allPromises).done(function () {
+							self.loadReportsAndFolder().done(function () {
+								toastr.success('Reports imported successfully!');
+							});
+						});
+					});
+
+					self.ManageJsonFile.file(null);
+					self.ManageJsonFile.fileName('');
+					$('#uploadFileModal').modal('hide');
+					$('#uploadFileModal input[type=file]').val('');
+
+				} catch (e) {
+					toastr.error('Invalid JSON file: ' + e.message);
+				}
+			};
+
+			reader.onerror = function () {
+				toastr.error('Error reading file.');
+			};
+
+			reader.readAsText(file);
 		}
-	}; 
+	};
+
 	self.exportFoldersJson = function () {
 		const selected = self.Folders().filter(f => f.isSelected());
 		if (selected.length === 0) {
@@ -2252,7 +2468,7 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 				})
 			}).done(function (result) {
 				if (result.d) result = result.d;
-
+				if (result.Result) result = result.Result;
 				if (result.errorMessage) {
 					toastr.error("Could not execute Query. Please check your query and try again. Error: " + result.errorMessage);
 					return;
@@ -2278,7 +2494,8 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 								account: apiKey,
 								dataConnect: dbKey,
 								tableId: e.Id
-							})
+							}),
+							userId: self.currentUserId || ' '
 						})
 					}).done(function () {
 						toastr.success("Deleted table " + e.DisplayName);
@@ -2321,10 +2538,12 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 							account: apiKey,
 							dataConnect: dbKey,
 							table: e
-						})
+						}),
+						userId: self.currentUserId || ' '
 					})
 				}).done(function (x) {
 					if (x.d) x = x.d;
+					if (x.Result) x = x.Result;
 					if (x.success && x.tableId) {
 						t.Id(x.tableId);
 						if (silent !== true) toastr.success("Saved table " + e.DisplayName);
@@ -2359,20 +2578,35 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 	};
 
 	self.exportTablesJson = function (customOnly) {
-		const selectedTables = self.model().filter(tbl =>
-			tbl.Selected() && (customOnly ? tbl.CustomTable() === true : tbl.CustomTable() === false)
-		);
+		const inCategory = t => customOnly ? t.CustomTable() : !t.CustomTable();
+		const all = self.model().filter(inCategory);
+		const filtered = self.filteredTables().filter(inCategory);
+		const selected = filtered.filter(t => t.Selected());
 
-		const exportList = selectedTables.map(tbl =>
-			ko.mapping.toJS(tbl, {
-				ignore: ["saveTable", "JoinTable", "ForeignJoinTable"]
-			})
-		);
+		if (!selected.length) return toastr.warning('No tables to export.');
 
-		const exportJson = JSON.stringify(exportList, null, 2);
-		downloadJson(exportJson, customOnly == true ? 'CustomTables.json':'Tables.json', 'application/json');
+		const msg = (filtered.length < all.length
+			? `Only filtered tables (${filtered.length} of ${all.length}) will be exported.`
+			: `All ${all.length} tables will be exported.`);
+
+		bootbox.confirm({
+			title: "Confirm Export Tables",
+			message: msg,
+			buttons: {
+				cancel: { label: 'Cancel', className: 'btn-secondary' },
+				confirm: { label: 'Export', className: 'btn-primary' }
+			},
+			callback: ok => {
+				if (!ok) return;
+				const exportList = selected.map(t => ko.mapping.toJS(t, {
+					ignore: ["saveTable", "JoinTable", "ForeignJoinTable"]
+				}));
+				downloadJson(JSON.stringify(exportList, null, 2),
+					customOnly ? 'CustomTables.json' : 'Tables.json', 'application/json');
+				toastr.success('Table schema exported.');
+			}
+		});
 	};
-
 
 	self.availableTables = ko.computed(function () {
 		return _.filter(self.model(), function (e) {
@@ -2423,8 +2657,8 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 	}
 
 	self.columnSorted = function (args) {
-		_.forEach(args.targetParent(), function (e) {
-			e.DisplayOrder(i);
+		_.forEach(args.targetParent(), function (e, index) {
+			e.DisplayOrder(index);
 		});
 
 	}
@@ -2466,7 +2700,8 @@ var proceduresViewModel = function (options) {
 								procId: e.Id,
 								account: apiKey,
 								dataConnect: dbKey
-							})
+							}),
+							userId: self.currentUserId || ' '
 						})
 					}).done(function () {
 						toastr.success("Deleted procedure " + e.TableName);
@@ -2582,10 +2817,12 @@ var customSqlModel = function (options, keys, tables, activeTable) {
 				method: "/ReportApi/GetFieldsByIds",
 				model: JSON.stringify({
 					fieldIds: fieldIds.join(",")
-				})
+				}),
+				userId: self.currentUserId || ' '
 			}
 		}).done(function (result) {
 			if (result.d) result = result.d;
+			if (result.Result) result = result.Result;
 			ajaxcall({
 				url: options.apiUrl,
 				data: {
@@ -2598,6 +2835,7 @@ var customSqlModel = function (options, keys, tables, activeTable) {
 				}
 			}).done(function (result) {
 				if (result.d) result = result.d;
+				if (result.Result) result = result.Result;
 				if (result.success === false) {
 					toastr.error(result.message || 'Could not process this correctly, please try again');
 					return;
@@ -2663,7 +2901,7 @@ var customSqlModel = function (options, keys, tables, activeTable) {
 			})
 		}).done(function (result) {
 			if (result.d) result = result.d;
-
+			if (result.Result) result = result.Result;
 			if (result.errorMessage) {
 				toastr.error("Could not execute Query. Please check your query and try again. Error: " + result.errorMessage);
 				return;
@@ -2750,6 +2988,7 @@ var settingPageViewModel = function (options) {
 	self.dontWordExport = ko.observable(false);
 	self.usePromptBuilder = ko.observable(true);
 	self.showPageSize = ko.observable(false);
+	self.showImportExport = ko.observable(false);
 
 	self.appThemes = ko.observableArray([
 		{ name: 'Default', value: 'default' },
@@ -2827,13 +3066,16 @@ var settingPageViewModel = function (options) {
 							dontXmlExport: self.dontXmlExport(),
 							dontWordExport: self.dontWordExport(),
 							usePromptBuilder: self.usePromptBuilder(),
-							showPageSize: self.showPageSize()
+							showPageSize: self.showPageSize(),
+							showImportExport: self.showImportExport()
 						})
-					})
+					}),
+					userId: self.currentUserId || ' '
 				})
 			}).done(function (response) {
 				if (response) {
 					if (response.d) response = response.d;
+					if (response.Result) response = response.Result;
 					if (response.success) {
 						toastr.success('Account Settings Updated');
 					} else {
@@ -2854,12 +3096,14 @@ var settingPageViewModel = function (options) {
 			type: 'POST',
 			data: JSON.stringify({
 				method: "/ReportApi/GetAccountSettings",
-				model: "{}"
+				model: "{}",
+				userId: self.currentUserId || ' '
 			})
 		}).done(function (response) {
 
 			if (response) {
 				if (response.d) response = response.d;
+				if (response.Result) response = response.Result;
 				var settings = response; // Assuming the response contains the settings object
 				self.backendApiUrl(settings.backendApiUrl);
 				self.emailServer(settings.emailServer);
@@ -2885,6 +3129,7 @@ var settingPageViewModel = function (options) {
 				self.dontWordExport(settings.dontWordExport);
 				self.usePromptBuilder(settings.usePromptBuilder === false ? false : true);
 				self.showPageSize(settings.showPageSize);
+				self.showImportExport(settings.showImportExport);
 ;
 				//// Optionally, you can manually trigger change event for select elements
 				$('#themeSelect').trigger('change');
@@ -3029,10 +3274,12 @@ var customFunctionManageModel = function (options, keys) {
 					model: e,
 					account: self.keys.AccountApiKey,
 					dataConnect: self.keys.DatabaseApiKey
-				})
+				}),
+				userId: self.currentUserId || ' '
 			})
 		}).done(function (result) {
 			if (result.d) result = result.d;
+			if (result.Result) result = result.Result;
 			if (!result) {
 				toastr.error('Error saving Function: ' + result.Message);
 				return false;
@@ -3065,7 +3312,8 @@ var customFunctionManageModel = function (options, keys) {
 							account: self.keys.AccountApiKey,
 							dataConnect: self.keys.DatabaseApiKey,
 							funcId: functionModel.id()
-						})
+						}),
+						userId: self.currentUserId || ' '
 					})
 				}).done(function () {
 					toastr.success("Deleted Function " + functionModel.name());		

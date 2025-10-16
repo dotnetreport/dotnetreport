@@ -1,24 +1,25 @@
 ﻿<%@ Page Title="" Language="C#" MasterPageFile="~/DotNetReport/ReportLayout.Master" AutoEventWireup="true" CodeBehind="Dashboard.aspx.cs" Inherits="ReportBuilder.WebForms.DotNetReport.Dashboard" %>
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
-     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.min.css" />
-    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.min.css" />
-    <style type="text/css">
-        .report-chart { min-height: auto !important; }
-        .expanded {
-            position: fixed !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
-            z-index: 1050 !important;
-        }
-    </style>
+<link rel="stylesheet" href="../Scripts/gridstack/gridstack.min.css" />
+<style type="text/css">
+    .report-chart {
+        min-height: auto !important;
+    }
+    .expanded {
+        position: fixed !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        z-index: 1050 !important;
+    }
+</style>
 
 </asp:Content>
 <asp:Content ID="Content3" ContentPlaceHolderID="scripts" runat="server">
-    <script src="../Content/gridstack/gridstack-all.js"></script>
+    <script src="../Scripts/gridstack/gridstack-all.js"></script>
     <script type="text/javascript">
         $(document).ready(function () {
             if ($.blockUI) {
@@ -72,6 +73,7 @@
                             dashboards: dashboards,
                             users: data.users,
                             userRoles: data.userRoles,
+                            currentUserId: data.currentUserId,
                             allowAdmin: data.allowAdminMode,
                             dataFilters: data.dataFilters,
                             dashboardId: dashboardId,
@@ -94,7 +96,8 @@
                                     margin: 10,
                                     resizable: {
                                         handles: 'se, sw, ne, nw, n, e, s, w'
-                                    }
+                                    },
+                                    oneColumnSize: 768
                                 });
 
                                 grid.on('change', function (event, items) {
@@ -105,8 +108,7 @@
 
                                 grid.on('resizestop', function (event, el) {
                                     const e = el.querySelector('.report-chart');
-                                    const d = el.querySelector('table');
-                                    if (e && !d) {
+                                    if (e) {
                                         vm.drawChart();
                                     }
                                 });
@@ -115,12 +117,13 @@
                                     vm.drawChart();
                                     grid.enableMove(false);
                                     grid.enableResize(false);
+                                    vm.gridResponsive();
                                 }, 1000);
                             }, 10);
 
                         });
-
                         window.addEventListener('resize', function () {
+                            vm.gridResponsive();
                             vm.drawChart();
                         });
                     });
@@ -135,45 +138,48 @@
 <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
 
 <div class="row" style="display: none" data-bind="visible: currentDashboard">
-    <div class="col-8">
-        <ul class="nav nav-tabs" data-bind="foreach: dashboards">
+    <div class="col-12 d-flex flex-wrap justify-content-between align-items-center">
+        <ul class="nav nav-tabs flex-grow-1" data-bind="foreach: dashboards">
             <li class="nav-item">
                 <h2>
                     <a class="nav-link" href="#" data-bind="text: name, click: function() { $parent.selectDashboard(id);}, css: { 'active': $parent.currentDashboard().id === id, 'selected-tab': $parent.currentDashboard().id === id }"></a>
                 </h2>
             </li>
         </ul>
-    </div>
-    <div class="col-4 d-flex align-items-end justify-content-end border-bottom">
-        <div class="d-flex align-items-center gap-2">           
+        <div class="d-flex flex-wrap align-items-end gap-2 mt-2 mt-md-0 border-bottom" style="padding-top: 21px;">            
             <div class="dropdown">
                 <button class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="fa fa-pencil-square"></i>
                     <span>Manage</span>
                 </button>
                 <ul class="dropdown-menu">
-                    <!--<li>
-                        <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard">
-                            <i class="fa fa-plus"></i>
-                            <span>Add New Report</span>
-                        </button>
+                    <li class="dropdown dropdown-hover">
+                        <a href="#" class="dropdown-toggle dropdown-item" data-bs-toggle="dropdown" role="button" aria-expanded="false" data-bind="click: function() { newReport(true) }, visible: currentDashboard().canManage || adminMode()">
+                            <span class="fa fa-plus"></span> Add New Report
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item" href="#" data-bind="click: function() { newReport(false) }">
+                                    <span class="fa fa-pencil"></span> Add using Standard Designer
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="#" data-bind="click: function() { newReport(true) }">
+                                    <span class="fa fa-bolt"></span> Add using Smarter Designer
+                                </a>
+                            </li>
+                        </ul>
                     </li>
                     <li>
-                        <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: editDashboard">
-                            <i class="fa fa-plus"></i>
-                            <span>Add Existing Report</span>
-                        </button>
-                    </li>-->
-                    <li>
-                        <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard">
-                            <i class="fa fa-plus"></i>
-                            <span>Add New Dashboard</span>
-                        </button>
-                    </li>
-                    <li>
-                        <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: editDashboard">
+                        <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: editDashboard, visible: currentDashboard().canManage || adminMode()">
                             <i class="fa fa-pencil"></i>
-                            <span>Edit this Dashboard</span>
+                            <span>Edit Dashboard</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard">
+                            <i class="fa fa-dashboard"></i>
+                            <span>Add a New Dashboard</span>
                         </button>
                     </li>
                     <li>
@@ -198,11 +204,13 @@
                     <li><a class="dropdown-item" href="#" data-bind="click: PrintDashboard"><i class="fa fa-print"></i> Print</a></li>
                 </ul>
             </div>
-            <div class="btn btn-light btn-sm d-flex align-items-center gap-2">
-                <div class="form-check form-switch m-0">
-                    <input class="form-check-input" id="arrange-mode" type="checkbox" data-bind="checked: arrangeDashboard">
+            <div data-bind="if: currentDashboard().canManage || adminMode()">
+                <div class="btn btn-light btn-sm d-flex align-items-center gap-2">
+                    <div class="form-check form-switch m-0">
+                        <input class="form-check-input" id="arrange-mode" type="checkbox" data-bind="checked: arrangeDashboard">
+                    </div>
+                    <span>Arrange</span>
                 </div>
-                <span>Arrange</span>
             </div>
             <div class="btn-group btn-group-sm" role="group">
                 <button class="btn btn-light" data-bind="click: zoomOutDashboard" data-bs-toggle="tooltip" title="Zoom Out">
@@ -357,10 +365,22 @@
                                 <span class="fa fa-filter"></span> Filter
                             </a>
                         </li>
-                        <li data-bind="visible: CanEdit">
-                            <a href="#" class="dropdown-item" data-bind="click: openReport">
+                        <li class="dropdown dropdown-hover">
+                            <a href="#" class="dropdown-toggle dropdown-item" data-bs-toggle="dropdown" role="button" aria-expanded="false" data-bind="click: editReportAi">
                                 <span class="fa fa-pencil"></span> Edit
                             </a>
+                            <ul class="dropdown-menu small">
+                                <li>
+                                    <a class="dropdown-item" href="#" data-bind="click: openReport">
+                                        <span class="fa fa-pencil"></span> Edit Standard
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="#" data-bind="click: editReportAi">
+                                        <span class="fa fa-bolt"></span> Edit Smarter
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
                         <li class="dropdown dropdown-hover" data-bind="visible: ReportType()!='Single'">
                             <a href="#" class="dropdown-toggle dropdown-item">
@@ -391,7 +411,7 @@
                         </li>
                         <li data-bind="visible: ReportType()!='Single'">
                             <a class="dropdown-item" data-bind="attr: {href: '/DotNetReport?linkedreport=true&noparent=true&reportId=' + ReportID() }" target="_blank">
-                                <span class="fa fa-file"></span> Report
+                                <span class="fa fa-folder-open"></span> Open Report
                             </a>
                         </li>
                         <li data-bind="visible: CanEdit() && CanSaveReports()">
@@ -399,7 +419,7 @@
                                 <span class="fa fa-save"></span> Save
                             </a>
                         </li>
-                        <li>
+                        <li data-bind="visible: $parent.currentDashboard().canManage || $parent.adminMode()">
                             <a href="#" class="dropdown-item" data-bind="click: function() { $parent.removeReportFromDashboard(ReportID()); }">
                                 <span class="fa fa-close"></span> Remove
                             </a>
@@ -409,14 +429,28 @@
                                 <span class="fa fa-refresh"></span> Refresh
                             </a>
                         </li>
+                        <li>
+                            <a href="#" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: $parent.adminMode, click: getCode">
+                                <span class="fa fa-code"></span> Report Code
+                            </a>
+                        </li>
                     </ul>
 
                 </div>
 
                 <h2 class="pull-left" data-bind="text: ReportName"></h2>
                 <div class="pull-right">
+                    <span data-bind="visible: isDirty" class="text-warning small" title="You have unsaved changes">
+                        <i class="fa fa-exclamation-triangle"></i>
+                    </span>
+                    <a class="btn btn-link" data-bind="visible: CanEdit() && CanSaveReports() && isDirty(), click: SaveWithoutRun">
+                        <span class="fa fa-save"></span>
+                    </a>
                     <a class="btn btn-link" data-bind="click: toggleExpand"><span class="fa" data-bind="css: {'fa-expand': !isExpanded(), 'fa-minus': isExpanded() }, visible: ReportType() != 'Single' && !noDashboardBorders()"></span></a>
                 </div>
+            </div>
+            <div data-bind="if: activeDesign()">
+                <div data-bind="template: 'report-designer-compact'"></div>
             </div>
             <div class="card-body list-overflow-auto" style="padding-top: 0; margin-top: 0;">
                 <div data-bind="if: ReportType()!='Single' && ReportType()!='Html' && CanEdit()">
@@ -483,4 +517,5 @@
 <div class="modal" id="exportAllPdfOptionsModal" tabindex="-1" aria-labelledby="exportAllPdfOptionsModalLabel" aria-hidden="true" data-bind="with: dashboard">
     <div data-bind="template: { name: 'pdf-options-template', data: $data  }"></div>
 </div>
+
 </asp:Content>

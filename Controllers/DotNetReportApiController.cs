@@ -95,7 +95,7 @@ namespace ReportBuilder.Web.Controllers
             settings.AccountApiToken = ConfigurationManager.AppSettings["dotNetReport.accountApiToken"];
             settings.DataConnectApiToken = ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"];            
 
-            return await ExecuteCallReportApi(method, model, settings);
+            return await ExecuteCallReportApi(method, model, null, settings);
         }
 
         [ValidateAntiForgeryToken]
@@ -110,34 +110,40 @@ namespace ReportBuilder.Web.Controllers
         [HttpPost]
         public async Task<JsonResult> RunReportApi(DotNetReportApiCall data)
         {
-            return await CallReportApi(data.Method, (new JavaScriptSerializer()).Serialize(data));
+            return await CallReportApi(data.Method, (new JavaScriptSerializer()).Serialize(data), data.userId);
         }
         public class ReportApiCallModel
         {
             public string method { get; set; }
             public string model { get; set; }
+            public string userId { get; set; }
         }
 
         [ValidateAntiForgeryToken]
         [HttpPost]
         public async Task<JsonResult> CallPostReportApi(ReportApiCallModel data)
         {
-            return await CallReportApi(data.method, data.model);
+            return await CallReportApi(data.method, data.model, data.userId);
         }
 
         [HttpPost]
         public async Task<JsonResult> CallReportApi(ReportApiCallModel data)
         {
-            return await CallReportApi(data.method, data.model);
+            return await CallReportApi(data.method, data.model, data.userId);
         }
          
         [HttpGet]
-        public async Task<JsonResult> CallReportApi(string method, string model)
+        public async Task<JsonResult> CallReportApi(string method, string model, string userId = "")
         {
-            return string.IsNullOrEmpty(method) || string.IsNullOrEmpty(model) ? Json(new { }) : await ExecuteCallReportApi(method, model);
+            var settings = GetSettings();
+            if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
+            {
+                throw new Exception("User context mismatch");
+            }
+            return string.IsNullOrEmpty(method) || string.IsNullOrEmpty(model) ? Json(new { }) : await ExecuteCallReportApi(method, model, userId, settings);
         }
 
-        private async Task<JsonResult> ExecuteCallReportApi(string method, string model, DotNetReportSettings settings = null)
+        private async Task<JsonResult> ExecuteCallReportApi(string method, string model, string userId, DotNetReportSettings settings = null)
         {
             try
             {
@@ -159,6 +165,7 @@ namespace ReportBuilder.Web.Controllers
                     };
 
                     var data = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(model);
+                    var adminMode = false; var dashboardId = 0; var folderId = 0; var reportId = 0;
                     foreach (var key in data.Keys)
                     {
                         if (key == "dataConnect" && data[key] != null)
@@ -167,13 +174,20 @@ namespace ReportBuilder.Web.Controllers
                         }
                         else if (key == "account" && data[key] != null)
                         {
-                            requestData["account"] = data[key]; 
+                            requestData["account"] = data[key];
                         }
                         else if (key != "adminMode" || (key == "adminMode" && settings.CanUseAdminMode))
                         {
                             requestData[key] = data[key]; 
                         }
                     }
+
+                if (!adminMode)
+                {
+                    if (dashboardId > 0) await ValidateAccess(userId, dashboardId: dashboardId);
+                    if (folderId > 0) await ValidateAccess(userId, folderId: folderId);
+                    if (reportId > 0) await ValidateAccess(userId, reportId: reportId);
+                }
 
                     var jsonContent = JsonConvert.SerializeObject(requestData);
                     var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
@@ -204,7 +218,7 @@ namespace ReportBuilder.Web.Controllers
         [ValidateAntiForgeryToken]
         [HttpPost]
         public async Task<JsonResult> RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, 
-            bool desc = false, string reportSeries = null, string pivotColumn = null, string pivotFunction = null, string reportData = null, bool subtotalMode = false, bool useAltPivot = false)
+            bool desc = false, string reportSeries = null, string pivotColumn = null, string pivotFunction = null, string reportData = null, bool subtotalMode = false,bool adminmode=false, bool useAltPivot = false)
         {
             var sql = "";
             var sqlCount = "";
@@ -317,7 +331,7 @@ namespace ReportBuilder.Web.Controllers
                     {
                         foreach (DataColumn c in dtPagedRun.Columns) { sqlFields.Add($"{c.ColumnName} AS {c.ColumnName}"); }
                     }
-                    
+
                     string[] series = { };
                     if (i == 0)
                     {
@@ -408,7 +422,7 @@ namespace ReportBuilder.Web.Controllers
                             }
                         }
                     }
-                }                
+                }
 
                 if (string.IsNullOrEmpty(pivotColumn)) sql = DotNetReportHelper.Decrypt(HttpUtility.HtmlDecode(allSqls[0]));
 
@@ -421,7 +435,7 @@ namespace ReportBuilder.Web.Controllers
                 {
                     ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dtPaged, fields),
                     //Warnings = GetWarnings(sql),
-                    ReportSql = sql,
+                    ReportSql = adminmode ? sql : " ",
                     ReportDebug = Request.Url.Host.Contains("localhost"),
                     Pager = new DotNetReportPagerModel
                     {
@@ -446,7 +460,7 @@ namespace ReportBuilder.Web.Controllers
                 var model = new DotNetReportResultModel
                 {
                     ReportData = new DotNetReportDataModel(),
-                    ReportSql = sql,
+                    ReportSql = adminmode ? sql : " ",
                     HasError = true,
                     Exception = ex.Message,
                     ReportDebug = Request.Url.Host.Contains("localhost"),
@@ -508,6 +522,7 @@ namespace ReportBuilder.Web.Controllers
                 id = dashboards.First().Id;
             }
 
+            ValidateAccess("", "", dashboardId: id.GetValueOrDefault());
             using (var client = new HttpClient())
             {
                 var content = new FormUrlEncodedContent(new[]
@@ -592,7 +607,7 @@ namespace ReportBuilder.Web.Controllers
             try
             {
                 return DotNetReportHelper.Decrypt(sql);
-            }catch (Exception ex)
+            } catch (Exception ex)
             {
                 return sql;
             }
@@ -780,7 +795,8 @@ namespace ReportBuilder.Web.Controllers
                     DatabaseApiKey = connect.DatabaseApiKey,
                     Tables = tables,
                     Procedures = procedures,
-                    Functions = functions
+                    Functions = functions,
+                    CurrentUserId = settings.UserId
                 };
 
                 return new JsonResult { Data = model, MaxJsonLength = int.MaxValue };
@@ -792,9 +808,9 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        public class SearchProcCall { 
-            public string value { get; set; } 
-            public string accountKey { get; set; } 
+        public class SearchProcCall {
+            public string value { get; set; }
+            public string accountKey { get; set; }
             public string dataConnectKey { get; set; }
             public bool dynamicColumns { get; set; } = false;
         }
@@ -821,6 +837,62 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
+        private class checkAccessModel {
+            public bool hasAccess { get; set; }
+            public string access { get; set; }
+        }
+        private async Task ValidateAccess(string userId, string reportSql = "", int reportId = 0, int dashboardId = 0, int folderId = 0)
+        {
+            var isValid = true;
+            var settings = GetSettings();
+            if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
+            {
+                isValid = false;
+            }
+
+            if (!string.IsNullOrEmpty(reportSql) && reportId <= 0)
+            {
+
+                var sql = DotNetReportHelper.Decrypt(reportSql);
+                if (sql.StartsWith("{\"sql\""))
+                {
+                    var qry = JsonConvert.DeserializeObject<SqlQuery>(sql);
+                    if (qry.reportId > 0)
+                    {
+                        reportId = qry.reportId;
+                    }
+                }
+            }
+            if (reportId > 0 || dashboardId > 0 || folderId > 0)
+            {
+                using (var client = new HttpClient())
+                {
+                    var content = new FormUrlEncodedContent(new[]
+                    {
+                        new KeyValuePair<string, string>("account", settings.AccountApiToken),
+                        new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
+                        new KeyValuePair<string, string>("clientId", settings.ClientId),
+                        new KeyValuePair<string, string>("userId", settings.UserId),
+                        new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
+                        new KeyValuePair<string, string>("reportId", reportId.ToString()),
+                        new KeyValuePair<string, string>("dashboardId", dashboardId.ToString()),
+                        new KeyValuePair<string, string>("folderId", folderId.ToString()),
+                    });
+
+                    var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/CheckReportAccess"), content);
+                    var stringContent = await response.Content.ReadAsStringAsync();
+
+                    var model = JsonConvert.DeserializeObject<checkAccessModel>(stringContent);
+                    isValid = model.hasAccess;
+                }
+            }
+
+            if (!isValid)
+            {
+                throw new Exception("Could not validate access");
+            }
+        }
+
         [HttpPost]
         public async Task<ActionResult> DownloadExcel(
             string reportSql,
@@ -835,9 +907,16 @@ namespace ReportBuilder.Web.Controllers
             string pivotColumn = null,
             string pivotFunction = null,
             string onlyAndGroupInColumnDetail = null,
-            bool isSubReport = false)
+            bool isSubReport = false,
+            string userId = "")
         {
+            var settings = GetSettings();
+            if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
+            {
+                throw new Exception("User context mismatch");
+            }
             reportSql = HttpUtility.HtmlDecode(reportSql);
+            await ValidateAccess(userId, reportSql);
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
             var columns = string.IsNullOrEmpty(columnDetails) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
@@ -893,9 +972,16 @@ namespace ReportBuilder.Web.Controllers
            string pivotColumn = null,
            string pivotFunction = null,
            string pageSize = "",
-           string pageOrientation = "")
+           string pageOrientation = "",
+            string userId = "")
         {
+            var settings = GetSettings();
+            if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
+            {
+                throw new Exception("User context mismatch");
+            }
             reportSql = HttpUtility.HtmlDecode(reportSql);
+            await ValidateAccess(userId, reportSql);
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
             reportName = HttpUtility.UrlDecode(reportName);
@@ -920,9 +1006,16 @@ namespace ReportBuilder.Web.Controllers
             string pivotColumn = null,
             string pivotFunction = null,
             string pageSize = "",
-            string pageOrientation = "")
+            string pageOrientation = "",
+            string userId = "")
         {
+            var settings = GetSettings();
+            if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
+            {
+                throw new Exception("User context mismatch");
+            }
             reportSql = HttpUtility.HtmlDecode(reportSql);
+            await ValidateAccess(userId, reportSql);
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
@@ -947,9 +1040,16 @@ namespace ReportBuilder.Web.Controllers
             bool includeSubtotal = false,
             bool pivot = false,
             string pivotColumn = null,
-            string pivotFunction = null)
+            string pivotFunction = null,
+            string userId = "")
         {
+            var settings = GetSettings();
+            if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
+            {
+                throw new Exception("User context mismatch");
+            }
             reportSql = HttpUtility.HtmlDecode(reportSql);
+            await ValidateAccess(userId, reportSql);
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
 
             var csv = await DotNetReportHelper.GetCSVFile(reportSql, HttpUtility.UrlDecode(connectKey), columns, includeSubtotal, expandSqls, pivot, pivotColumn, pivotFunction);
@@ -969,9 +1069,16 @@ namespace ReportBuilder.Web.Controllers
             string reportName,
             string expandSqls = null,
             string pivotColumn = null,
-            string pivotFunction = null)
+            string pivotFunction = null,
+            string userId = "")
         {
+            var settings = GetSettings();
+            if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
+            {
+                throw new Exception("User context mismatch");
+            }
             reportSql = HttpUtility.HtmlDecode(reportSql);
+            await ValidateAccess(userId, reportSql);
             string xml = await DotNetReportHelper.GetXmlFile(reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName), expandSqls, pivotColumn, pivotFunction);
             var data = System.Text.Encoding.UTF8.GetBytes(xml);
             Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".xml");
@@ -1003,14 +1110,20 @@ namespace ReportBuilder.Web.Controllers
         {
             var pdfBytesList = new List<byte[]>();
             var reports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
+            var settings = GetSettings();
 
             foreach (var report in reports)
             {
+                if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != report.userId)
+                {
+                    throw new Exception("User context mismatch");
+                }
                 report.reportSql = HttpUtility.HtmlDecode(report.reportSql);
                 report.chartData = HttpUtility.UrlDecode(report.chartData)?.Replace(" ", " +");
+                await ValidateAccess(report.userId, report.reportSql);
                 var columns = report.columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(report.columnDetails));
 
-                var pdf = await DotNetReportHelper.GetPdfFileAlt(report.reportSql, report.connectKey, HttpUtility.UrlDecode(report.reportName), report.chartData, report.expandAll, report.expandSqls, columns, report.includeSubTotal, report.pivot, report.pivotColumn, report.pivotFunction,report.pageSize,report.pageOrientation);
+                var pdf = await DotNetReportHelper.GetPdfFileAlt(report.reportSql, report.connectKey, HttpUtility.UrlDecode(report.reportName), report.chartData, report.expandAll, report.expandSqls, columns, report.includeSubTotal, report.pivot, report.pivotColumn, report.pivotFunction, report.pageSize, report.pageOrientation);
                 pdfBytesList.Add(pdf);
             }
             var combinedPdf = DotNetReportHelper.GetCombinePdfFile(pdfBytesList);
@@ -1022,10 +1135,17 @@ namespace ReportBuilder.Web.Controllers
         {
             var excelbyteList = new List<byte[]>();
             var reports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
+            var settings = GetSettings();
+
             foreach (var report in reports)
             {
+                if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != report.userId)
+                {
+                    throw new Exception("User context mismatch");
+                }
                 report.reportSql = HttpUtility.HtmlDecode(report.reportSql);
                 report.chartData = HttpUtility.UrlDecode(report.chartData)?.Replace(" ", " +");
+                await ValidateAccess(report.userId, report.reportSql);
                 var columns = report.columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(report.columnDetails));
                 var onlyAndGroupInDetailColumns = string.IsNullOrEmpty(report.onlyAndGroupInColumnDetail) ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(report.onlyAndGroupInColumnDetail));
                 var excelreport = await DotNetReportHelper.GetExcelFile(report.reportSql, report.connectKey, HttpUtility.UrlDecode(report.reportName), report.chartData, report.expandAll, HttpUtility.UrlDecode(report.expandSqls), columns, report.includeSubTotal, report.pivot, report.pivotColumn, report.pivotFunction, onlyAndGroupInDetailColumns);
@@ -1048,10 +1168,17 @@ namespace ReportBuilder.Web.Controllers
         {
             var wordbyteList = new List<byte[]>();
             var ListofReports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
+            var settings = GetSettings();
+
             foreach (var report in ListofReports)
             {
+                if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != report.userId)
+                {
+                    throw new Exception("User context mismatch");
+                }
                 report.reportSql = HttpUtility.HtmlDecode(report.reportSql);
                 report.chartData = HttpUtility.UrlDecode(report.chartData)?.Replace(" ", " +");
+                await ValidateAccess(report.userId, report.reportSql);
                 var columns = report.columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(report.columnDetails));
                 var wordreport = await DotNetReportHelper.GetWordFile(report.reportSql, report.connectKey, HttpUtility.UrlDecode(report.reportName), report.chartData, report.expandAll, HttpUtility.UrlDecode(report.expandSqls), columns, report.includeSubTotal, report.pivot, report.pivotColumn, report.pivotFunction,report.pageSize,report.pageOrientation);
                 wordbyteList.Add(wordreport);

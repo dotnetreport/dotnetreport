@@ -10,11 +10,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="keywords" content="ad-hoc reporting, reporting, asp .net reporting, asp .net report, report builder, ad hoc report builder, ad-hoc report builder, adhoc report, ad hoc reports, .net report viewer, reportviewer, sql reportviewer, report builder mvc, report mvc, report builder web forms, query builder, sql report builder,visual report builder,custom query,query maker" />
     <meta name="description" content="Ad hoc Reporting software that allows programmers to easily add Reporting functionality to their ASP .NET Web Software Solution" />
-    <link href="../Content/themes/base/datepicker.css" rel="stylesheet" />
+     <link href="../Content/themes/base/datepicker.css" rel="stylesheet" />
     <link href="../Content/themes/base/theme.css" rel="stylesheet" />
     <link href="../Content/font-awesome.min.css" rel="stylesheet" />
     <link href="../Content/css/select2.min.css" rel="stylesheet" />
-    <link href="../Content/summernote/summernote-bs5.min.css" rel="stylesheet" />
+    <link href="../Scripts/leaflet/leaflet.css" rel="stylesheet" />
+    <link href="../Scripts/summernote/summernote-bs5.min.css" rel="stylesheet" />
     <link href="../Content/dotnetreport.css?v=6.0.0" rel="stylesheet" />
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <style type="text/css">
@@ -66,7 +67,6 @@
 
 <body>
 
-    @Html.AntiForgeryToken()
     <div data-bind="with: ReportResult">
 
         <!-- ko ifnot: HasError -->
@@ -95,9 +95,9 @@
         </div>
         <!-- /ko -->
         <!-- ko if: HasError -->
-        <h2>@Model.ReportName</h2>
+        <h2><%= Model.ReportName %></h2>
         <p>
-            @Model.ReportDescription
+            <%= Model.ReportDescription %>
         </p>
 
         <h3>An unexpected error occured while running the Report</h3>
@@ -202,7 +202,7 @@
     <script type="text/html" id="report-column">
         <!-- ko foreach: Items -->
         <td data-bind="hidden: outerGroup, style: {'background-color': _backColor ?? backColor(), 'color': _fontColor ?? fontColor(), 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': fieldAlign() ? fieldAlign() : (Column.IsNumeric ? 'right' : 'left')}">
-            <div data-bind="style: {'width': fieldWidth }">
+            <div data-bind="style: {'width': fieldWidth }, css: { 'text-wrap': fieldWidth }">
                 <!-- ko if: LinkTo-->
                 <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: formattedVal"></span></a>
                 <!-- /ko-->
@@ -336,7 +336,9 @@
     <script src="../Scripts/select2.min.js"></script>
     <script src="../Scripts/lodash.min.js"></script>
     <script src="../Scripts/tribute.min.js"></script>
-    <script src="../Content/summernote/summernote-bs5.min.js"></script>
+    <script src="../Scripts/summernote/summernote-bs5.min.js"></script>
+    <script src="../Scripts/leaflet/leaflet.js"></script>
+    <script src="../Scripts/leaflet.heat/leaflet-heat.js"></script>
     <script src="../Scripts/dotnetreport-helper.js"></script>
     <script src="../Scripts/dotnetreport.js?v=6.0.0"></script>
 
@@ -385,7 +387,6 @@
                 dataFilters: JSON.parse(data.dataFilters || '{}'),
                 reportData: JSON.parse(decodeHTMLEntities('<%= Model.ReportData.Replace("'", "\\'") %>')),
                 getTimeZonesUrl: svc + "GetAllTimezones",
-                chartSize: { width: 1000, height: 450 }
                 chartSize: { width: 800, height: 450 }
             });
             vm.pager.pageSize(10000);
