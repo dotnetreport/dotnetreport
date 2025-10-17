@@ -860,7 +860,7 @@ var headerDesigner = function (options) {
 				method: "/ReportApi/SaveReportHeader",
 				headerJson: data,
 				useReportHeader: self.UseReportHeader(),
-				headerClientId: self.UseReportHeader() ? self.headerClientId(): ''
+				headerClientId: self.UseReportHeader() ? self.headerClientId(): '' ?? ''
 			})
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
@@ -3942,7 +3942,37 @@ var reportViewModel = function (options) {
 					start.setDate(today.getDate() - 30);
 					end = today;
 					break;
-				// Add more cases as needed
+				case '>= Today':
+					start = today;
+					end = null;
+					break;
+				case '<= Today':
+					start = new Date(-8640000000000000);
+					end = today;
+					break;
+				case '>= Today +':
+					start = new Date(today);
+					start.setDate(today.getDate() + (n || 0));
+					end = null;
+					break;
+				case '<= Today +':
+					start = new Date(-8640000000000000);
+					end = new Date(today);
+					end.setDate(today.getDate() + (n || 0));
+					break;
+				case '>= Today -':
+					start = new Date(today);
+					start.setDate(today.getDate() - (n || 0));
+					end = null;
+					break;
+				case '<= Today -':
+					start = new Date(-8640000000000000);
+					end = new Date(today);
+					end.setDate(today.getDate() - (n || 0));
+					break;
+				default:
+					start = end = today;
+					break;
 			}
 			return { start, end };
 		}
