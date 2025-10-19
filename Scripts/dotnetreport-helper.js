@@ -658,7 +658,9 @@ var manageAccess = function (options) {
             var viewUserRoles = userSettings.newReportViewUserRoles ? userSettings.newReportViewUserRoles.split(',') : [];
 
             access.matchAndSelect(access.users, editUserIds);
+            access.matchAndSelect(access.deleteOnlyUsers, editUserIds);
             access.matchAndSelect(access.userRoles, editUserRoles);
+            access.matchAndSelect(access.deleteOnlyUserRoles, editUserRoles);
             access.matchAndSelect(access.viewOnlyUsers, viewUserIds);
             access.matchAndSelect(access.viewOnlyUserRoles, viewUserRoles);
         }
