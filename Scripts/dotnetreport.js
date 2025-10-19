@@ -2734,14 +2734,9 @@ var reportViewModel = function (options) {
 	});
 	self.cancelFormulaField = function () {
 		if (self.currentFormulaField() != null) {
-			if (typeof self._editIndex === 'number') {
-				self.SelectedFields.splice(self._editIndex, 0, self.currentFormulaField());
-				self._editIndex = null;
-			} else {
-				self.SelectedFields.push(self.currentFormulaField());
-			}
 			self.customSqlField.clear();
 			self.currentFormulaField(null);
+			self._editIndex = null;
 		}
 		self.isFormulaField(!self.isFormulaField());
 		if (self.isFormulaField()) {
@@ -2798,10 +2793,10 @@ var reportViewModel = function (options) {
 
 	var _formulaDateFormat = "";
 	self.editFormulaField = function (field) {
-		if (field.fieldSettings && field.fieldSettings.functionConfig && Object.keys(field.fieldSettings.functionConfig).length > 0) { 
+		if (field.fieldSettings && field.fieldSettings.functionConfig && Object.keys(field.fieldSettings.functionConfig).length > 0) {
 			self.designFunctionField();
 			codeEditor.setValue(field.fieldSettings.functionConfig.input);
-			self.isFunctionField(true);	
+			self.isFunctionField(true);
 		}
 		else {
 			self.isFormulaField(true);
@@ -2848,19 +2843,17 @@ var reportViewModel = function (options) {
 		const index = self.SelectedFields.indexOf(field);
 		self._editIndex = index;
 		self.currentFormulaField(field)
-		self.SelectedFields.remove(field);	
 		if (self.isFormulaField()) {
 			setTimeout(function () {
-				var target = document.getElementById("customFieldSection");
-				if (target) {
-					target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-				}
-			}, 300); // delay ensures DOM is updated
+			var target = document.getElementById("customFieldSection");
+			if (target) {
+				target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			}
+		}, 300); // delay ensures DOM is updated
 		}
 	}
 
 	self.saveFormulaField = function () {
-
 		if (self.formulaType() != 'sql' && self.formulaFields().length == 0) {
 			toastr.error('Please select some items for the Custom Field');
 			return;
@@ -2897,24 +2890,49 @@ var reportViewModel = function (options) {
 		_.forEach(self.formulaFields(), function (e) {
 			e.tableId = e.tableId;
 		});
-
-		var field = self.getEmptyFormulaField();
-		if (field.fieldFormat == 'Integer' || field.fieldFormat == 'Decimal' || field.fieldFormat == 'Currency' || self.formulaOnlyHasDateFields()) {
-			field.fieldType = "Int";
-			field.fieldFilter = ['=', '>', '<', '>=', '<=', 'not equal','is blank', 'is not blank'];
-		} else {
-			field.fieldFilter = ['=', 'in', 'not in', 'like', 'not like', 'not equal', 'is blank', 'is not blank'];
-		}
-		if (typeof self._editIndex === 'number') {
-			self.SelectedFields.splice(self._editIndex, 0, self.setupField(field));
+		let field = self.currentFormulaField();
+		if (field!=null && field !=undefined) {
+			field.fieldName = self.formulaFieldLabel();
+			field.fieldFormat(self.formulaDataFormat());
+			field.decimalPlaces(self.formulaDecimalPlaces());
+			field.formulaType = self.formulaType();
+			var formulaItems = [];
+			_.forEach(self.formulaFields() || [], function (e) {
+				formulaItems.push(new formulaFieldViewModel({
+					tableId: e.tableId,
+					fieldId: e.fieldId || 0,
+					isParenthesesStart: e.setupFormula ? e.setupFormula.isParenthesesStart() : e.isParenthesesStart,
+					isParenthesesEnd: e.setupFormula ? e.setupFormula.isParenthesesEnd() : e.isParenthesesEnd,
+					formulaOperation: e.setupFormula ? e.setupFormula.formulaOperation() : e.formulaOperation,
+					constantValue: e.setupFormula ? e.setupFormula.constantValue() : e.constantValue,
+					parameterId: e.setupFormula ? e.setupFormula.parameterId() : e.parameterId
+				}));
+			});
+			field.formulaItems = ko.observableArray(formulaItems);
+			field.customSqlField = self.formulaType() == 'sql' ? self.customSqlField.toJSON() : {}; 
+			setFieldFilters(field);
+			self.SelectedFields.valueHasMutated();
+			self.currentFormulaField(null);
 			self._editIndex = null;
 		} else {
+			field = self.getEmptyFormulaField();
+			setFieldFilters(field);
 			self.SelectedFields.push(self.setupField(field));
 		}
 		self.clearFormulaField();
 		self.isFormulaField(false);
 	};
-
+	function setFieldFilters(field) {
+		const isNumericOrDate = isNumericOrDateField(field.fieldFormat);
+		field.fieldType = isNumericOrDate ? "Int" : field.fieldType;
+		field.fieldFilter = isNumericOrDate
+			? ['=', '>', '<', '>=', '<=', 'not equal', 'is blank', 'is not blank']
+			: ['=', 'in', 'not in', 'like', 'not like', 'not equal', 'is blank', 'is not blank'];
+	}
+	function isNumericOrDateField(fieldFormat) {
+		const numericFormats = ['Integer', 'Decimal', 'Currency'];
+		return numericFormats.includes(fieldFormat) || self.formulaOnlyHasDateFields();
+	}
 	self.showFormulaOperation = function (c) {
 		var l = self.formulaFields().length;
 		if (l <= 1 || c == l - 1) return false;
