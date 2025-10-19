@@ -5523,7 +5523,7 @@ var reportViewModel = function (options) {
 					chartOptions.width = appliedWidth;
 					chartOptions.height = dimensions.height || '450px';
 				} else {
-					chartOptions.width = appliedWidth;
+					chartOptions.width = dimensions.fullWidth;
 					chartOptions.height = dimensions.fullHeight || '450px';
 				}
 			} else {
