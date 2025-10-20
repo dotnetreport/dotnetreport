@@ -721,8 +721,7 @@ namespace ReportBuilder.Web.Controllers
                     throw new Exception("Query not found");
                 }
                 sql = TryDecrypt(HttpUtility.HtmlDecode(reportSql));
-
-
+                sql = ConvertTopQuery(sql, dbtype);
                 List<string> fields = new List<string>();
                 List<string> sqlFields = new List<string>();
                 // Execute sql
@@ -760,6 +759,33 @@ namespace ReportBuilder.Web.Controllers
 
                 return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
             }
+        }
+        public static string ConvertTopQuery(string sql, string dbtype)
+        {
+            if (string.IsNullOrWhiteSpace(sql) || string.IsNullOrWhiteSpace(dbtype))
+                return sql;
+            if (dbtype.Equals("MS SQL", StringComparison.OrdinalIgnoreCase))
+                return sql;
+            if (sql.Contains("TOP", StringComparison.OrdinalIgnoreCase))
+            {
+                var m = System.Text.RegularExpressions.Regex.Match(sql, @"TOP\s+(\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                if (m.Success)
+                {
+                    var top = m.Groups[1].Value;
+                    sql = System.Text.RegularExpressions.Regex.Replace(sql, @"TOP\s+\d+", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                    sql = System.Text.RegularExpressions.Regex.Replace(sql, @"\[(.*?)\]", "`$1`").Trim();
+                    if (dbtype.Equals("MySQL", StringComparison.OrdinalIgnoreCase) ||
+                        dbtype.Equals("Postgre Sql", StringComparison.OrdinalIgnoreCase))
+                    {
+                        sql = sql.TrimEnd(';') + $" LIMIT {top};";
+                    }
+                    else if (dbtype.Equals("Oracle", StringComparison.OrdinalIgnoreCase))
+                    {
+                        sql = $"SELECT * FROM ({sql}) WHERE ROWNUM <= {top}";
+                    }
+                }
+            }
+            return sql;
         }
         private SortedList<string, string> GetTimezones()
         {

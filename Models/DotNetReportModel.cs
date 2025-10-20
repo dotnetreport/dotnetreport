@@ -245,7 +245,7 @@ namespace ReportBuilder.Web.Models
     public enum DbTypes
     {
         MS_SQL,
-        MySql,
+        MySQL,
         Postgre_Sql,
         Oracle,
         Informix
@@ -4348,7 +4348,7 @@ namespace ReportBuilder.Web.Models
 
                 string sql = @"SELECT TABLE_NAME, TABLE_SCHEMA, TABLE_TYPE 
                            FROM INFORMATION_SCHEMA.TABLES 
-                           WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = @type";
+                           WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE LIKE CONCAT('%', @type, '%');";
 
                 var cmd = new MySqlCommand(sql, conn);
                 cmd.Parameters.AddWithValue("@type", type);
