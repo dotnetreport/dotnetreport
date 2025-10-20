@@ -810,7 +810,8 @@ var headerDesigner = function (options) {
 	self.clientListIds = ko.observableArray([]);
 	self.selectedHeaderClientId = ko.observable('');
 	self.headerClientId = ko.observable('');
-	self.init = function () {
+	self.executeMode = false;
+	self.init = function (executeMode) {
 		$('#report-header-editor').summernote({
 			height: 150,
 			popover: {
@@ -847,6 +848,7 @@ var headerDesigner = function (options) {
 			],
 			tableresize: true
 		});
+		self.executeMode = executeMode;
 		self.loadHtmlHeader(false);
 	};
 
@@ -860,7 +862,7 @@ var headerDesigner = function (options) {
 				method: "/ReportApi/SaveReportHeader",
 				headerJson: data,
 				useReportHeader: self.UseReportHeader(),
-				headerClientId: self.UseReportHeader() ? self.headerClientId(): ''
+				headerClientId: self.UseReportHeader() ? self.headerClientId(): '' ?? ''
 			})
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
@@ -883,7 +885,7 @@ var headerDesigner = function (options) {
 			url: options.apiUrl,
 			data: {
 				method: "/ReportApi/GetReportHeader",
-				model: JSON.stringify({ headerClientId: self.selectedHeaderClientId()})
+				model: JSON.stringify({ headerClientId: self.selectedHeaderClientId(), forceGlobal: !self.executeMode})
 			}
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
@@ -1214,8 +1216,8 @@ var reportViewModel = function (options) {
 		'Chinese': 'yy/mm/dd'
 	};
 
-	self.initHeaderDesigner = function () {
-		self.headerDesigner.init();
+	self.initHeaderDesigner = function (executeMode) {
+		self.headerDesigner.init(executeMode);
 		self.designingHeader(true);
 	}
 
@@ -2734,14 +2736,9 @@ var reportViewModel = function (options) {
 	});
 	self.cancelFormulaField = function () {
 		if (self.currentFormulaField() != null) {
-			if (typeof self._editIndex === 'number') {
-				self.SelectedFields.splice(self._editIndex, 0, self.currentFormulaField());
-				self._editIndex = null;
-			} else {
-				self.SelectedFields.push(self.currentFormulaField());
-			}
 			self.customSqlField.clear();
 			self.currentFormulaField(null);
+			self._editIndex = null;
 		}
 		self.isFormulaField(!self.isFormulaField());
 		if (self.isFormulaField()) {
@@ -2798,10 +2795,10 @@ var reportViewModel = function (options) {
 
 	var _formulaDateFormat = "";
 	self.editFormulaField = function (field) {
-		if (field.fieldSettings && field.fieldSettings.functionConfig && Object.keys(field.fieldSettings.functionConfig).length > 0) { 
+		if (field.fieldSettings && field.fieldSettings.functionConfig && Object.keys(field.fieldSettings.functionConfig).length > 0) {
 			self.designFunctionField();
 			codeEditor.setValue(field.fieldSettings.functionConfig.input);
-			self.isFunctionField(true);	
+			self.isFunctionField(true);
 		}
 		else {
 			self.isFormulaField(true);
@@ -2848,19 +2845,17 @@ var reportViewModel = function (options) {
 		const index = self.SelectedFields.indexOf(field);
 		self._editIndex = index;
 		self.currentFormulaField(field)
-		self.SelectedFields.remove(field);	
 		if (self.isFormulaField()) {
 			setTimeout(function () {
-				var target = document.getElementById("customFieldSection");
-				if (target) {
-					target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-				}
-			}, 300); // delay ensures DOM is updated
+			var target = document.getElementById("customFieldSection");
+			if (target) {
+				target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			}
+		}, 300); // delay ensures DOM is updated
 		}
 	}
 
 	self.saveFormulaField = function () {
-
 		if (self.formulaType() != 'sql' && self.formulaFields().length == 0) {
 			toastr.error('Please select some items for the Custom Field');
 			return;
@@ -2897,24 +2892,49 @@ var reportViewModel = function (options) {
 		_.forEach(self.formulaFields(), function (e) {
 			e.tableId = e.tableId;
 		});
-
-		var field = self.getEmptyFormulaField();
-		if (field.fieldFormat == 'Integer' || field.fieldFormat == 'Decimal' || field.fieldFormat == 'Currency' || self.formulaOnlyHasDateFields()) {
-			field.fieldType = "Int";
-			field.fieldFilter = ['=', '>', '<', '>=', '<=', 'not equal','is blank', 'is not blank'];
-		} else {
-			field.fieldFilter = ['=', 'in', 'not in', 'like', 'not like', 'not equal', 'is blank', 'is not blank'];
-		}
-		if (typeof self._editIndex === 'number') {
-			self.SelectedFields.splice(self._editIndex, 0, self.setupField(field));
+		let field = self.currentFormulaField();
+		if (field!=null && field !=undefined) {
+			field.fieldName = self.formulaFieldLabel();
+			field.fieldFormat(self.formulaDataFormat());
+			field.decimalPlaces(self.formulaDecimalPlaces());
+			field.formulaType = self.formulaType();
+			var formulaItems = [];
+			_.forEach(self.formulaFields() || [], function (e) {
+				formulaItems.push(new formulaFieldViewModel({
+					tableId: e.tableId,
+					fieldId: e.fieldId || 0,
+					isParenthesesStart: e.setupFormula ? e.setupFormula.isParenthesesStart() : e.isParenthesesStart,
+					isParenthesesEnd: e.setupFormula ? e.setupFormula.isParenthesesEnd() : e.isParenthesesEnd,
+					formulaOperation: e.setupFormula ? e.setupFormula.formulaOperation() : e.formulaOperation,
+					constantValue: e.setupFormula ? e.setupFormula.constantValue() : e.constantValue,
+					parameterId: e.setupFormula ? e.setupFormula.parameterId() : e.parameterId
+				}));
+			});
+			field.formulaItems = ko.observableArray(formulaItems);
+			field.customSqlField = self.formulaType() == 'sql' ? self.customSqlField.toJSON() : {}; 
+			setFieldFilters(field);
+			self.SelectedFields.valueHasMutated();
+			self.currentFormulaField(null);
 			self._editIndex = null;
 		} else {
+			field = self.getEmptyFormulaField();
+			setFieldFilters(field);
 			self.SelectedFields.push(self.setupField(field));
 		}
 		self.clearFormulaField();
 		self.isFormulaField(false);
 	};
-
+	function setFieldFilters(field) {
+		const isNumericOrDate = isNumericOrDateField(field.fieldFormat);
+		field.fieldType = isNumericOrDate ? "Int" : field.fieldType;
+		field.fieldFilter = isNumericOrDate
+			? ['=', '>', '<', '>=', '<=', 'not equal', 'is blank', 'is not blank']
+			: ['=', 'in', 'not in', 'like', 'not like', 'not equal', 'is blank', 'is not blank'];
+	}
+	function isNumericOrDateField(fieldFormat) {
+		const numericFormats = ['Integer', 'Decimal', 'Currency'];
+		return numericFormats.includes(fieldFormat) || self.formulaOnlyHasDateFields();
+	}
 	self.showFormulaOperation = function (c) {
 		var l = self.formulaFields().length;
 		if (l <= 1 || c == l - 1) return false;
@@ -3942,7 +3962,37 @@ var reportViewModel = function (options) {
 					start.setDate(today.getDate() - 30);
 					end = today;
 					break;
-				// Add more cases as needed
+				case '>= Today':
+					start = today;
+					end = null;
+					break;
+				case '<= Today':
+					start = new Date(-8640000000000000);
+					end = today;
+					break;
+				case '>= Today +':
+					start = new Date(today);
+					start.setDate(today.getDate() + (n || 0));
+					end = null;
+					break;
+				case '<= Today +':
+					start = new Date(-8640000000000000);
+					end = new Date(today);
+					end.setDate(today.getDate() + (n || 0));
+					break;
+				case '>= Today -':
+					start = new Date(today);
+					start.setDate(today.getDate() - (n || 0));
+					end = null;
+					break;
+				case '<= Today -':
+					start = new Date(-8640000000000000);
+					end = new Date(today);
+					end.setDate(today.getDate() - (n || 0));
+					break;
+				default:
+					start = end = today;
+					break;
 			}
 			return { start, end };
 		}
@@ -5475,7 +5525,7 @@ var reportViewModel = function (options) {
 					chartOptions.width = appliedWidth;
 					chartOptions.height = dimensions.height || '450px';
 				} else {
-					chartOptions.width = appliedWidth;
+					chartOptions.width = dimensions.fullWidth;
 					chartOptions.height = dimensions.fullHeight || '450px';
 				}
 			} else {
@@ -7429,7 +7479,7 @@ var dashboardViewModel = function (options) {
 			}
             self.dashboards([]);
 			_.forEach(dashboardData, function (d) {
-				self.dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, schedule: d.Schedule, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles, clientId: d.ClientId });
+				self.dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, schedule: d.Schedule, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles, clientId: d.ClientId, canManage: d.CanManage });
 			});
 			var dashboardId = 0;
 			if (self.dashboards().length > 0) { dashboardId = self.dashboards()[0].id; }
@@ -7621,13 +7671,13 @@ var dashboardViewModel = function (options) {
 					url: options.apiUrl,
 					data: {
 						method: "/ReportApi/DeleteDashboard",
-						model: JSON.stringify({ id: self.currentDashboard().id, adminMode: self.adminMode() })
+						model: JSON.stringify({ dashboardId: self.currentDashboard().id, adminMode: self.adminMode() })
 					}
 				}).done(function (result) {
 					toastr.success("Dashboard deleted successfully");
 					$('#add-dashboard-modal').modal('hide');
 					setTimeout(function () {
-						window.location = window.location.href.split("?")[0];
+						self.getDashboards();
 					}, 500);
 				});
 			}
@@ -8200,8 +8250,10 @@ var dashboardViewModel = function (options) {
 
 	self.adminMode.subscribe(function (newValue) {
 		if (localStorage) localStorage.setItem('reportAdminMode', newValue);
-		if (typeof event !== "undefined" && event.type === "click") {
-            self.getDashboards();
+		if (typeof event !== "undefined" && event.type === "click") {			
+			self.init().done(function () {
+				self.getDashboards();
+			})
 		}
 	});
 
