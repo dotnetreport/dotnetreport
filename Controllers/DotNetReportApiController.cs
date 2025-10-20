@@ -83,6 +83,7 @@ namespace ReportBuilder.Web.Controllers
             public string headerJson { get; set; }
             public bool useReportHeader { get; set; }
             public string headerClientId { get; set; } = "";
+            public string userId { get; set; } = "";
 
         }
         [AllowAnonymous]
@@ -103,7 +104,7 @@ namespace ReportBuilder.Web.Controllers
         public async Task<JsonResult> PostReportApi(PostReportApiCallMode data)
         {
             string method = data.method;
-            return await CallReportApi(method, JsonConvert.SerializeObject(data));
+            return await CallReportApi(method, JsonConvert.SerializeObject(data), data.userId);
         }
 
         [ValidateAntiForgeryToken]
