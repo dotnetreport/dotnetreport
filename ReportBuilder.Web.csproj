@@ -415,13 +415,9 @@
     <Content Include="Scripts\knockout.mapping-latest.js" />
     <Content Include="Scripts\knockout.x-editable.min.js" />
     <Content Include="Scripts\leaflet.heat\leaflet-heat.js" />
-    <Content Include="Scripts\leaflet\images\layers-2x.png" />
     <Content Include="Scripts\leaflet\images\layers.png" />
-    <Content Include="Scripts\leaflet\images\marker-icon-2x.png" />
     <Content Include="Scripts\leaflet\images\marker-icon.png" />
     <Content Include="Scripts\leaflet\images\marker-shadow.png" />
-    <Content Include="Scripts\leaflet\leaflet-src.esm.js" />
-    <Content Include="Scripts\leaflet\leaflet-src.js" />
     <Content Include="Scripts\leaflet\leaflet.css" />
     <Content Include="Scripts\leaflet\leaflet.js" />
     <Content Include="Scripts\lodash.core.js" />
@@ -557,9 +553,6 @@
     <Content Include="Scripts\jquery-3.7.1.slim.min.map" />
     <Content Include="Scripts\jquery-3.7.1.min.map" />
     <Content Include="Views\DotNetReport\Query.cshtml" />
-    <Content Include="Scripts\leaflet\leaflet-src.esm.js.map" />
-    <Content Include="Scripts\leaflet\leaflet-src.js.map" />
-    <Content Include="Scripts\leaflet\leaflet.js.map" />
     <Content Include="Scripts\summernote\font\summernote.eot" />
     <Content Include="Scripts\summernote\font\summernote.hash" />
     <Content Include="Scripts\summernote\font\summernote.ttf" />

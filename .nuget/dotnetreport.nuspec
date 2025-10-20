@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
   <metadata>
     <id>dotnetreport.mvc</id>
-    <version>6.1.0</version>
+    <version>6.2.0</version>
     <authors>Dotnet Report Builder</authors>
     <owners>Dotnet Report Builder</owners>
     <projectUrl>https://dotnetreport.com/</projectUrl>
@@ -51,15 +51,21 @@
     <file src="..\Scripts\dotnetreport-setup.js" target="Content\Scripts\dotnetreport-setup.js" />
     <file src="..\Scripts\dotnetreport.js" target="Content\Scripts\dotnetreport.js" />
     <file src="..\Scripts\tribute.min.js" target="Content\Scripts\tribute.min.js" />
-    <file src="..\Content\gridstack\gridstack.min.css" target="Content\Content\gridstack\gridstack.min.css" />
-    <file src="..\Content\gridstack\gridstack-all.js" target="Content\Content\gridstack\gridstack-all.js" />
-    <file src="..\Content\summernote\summernote-bs5.min.css" target="Content\Content\summernote\summernote-bs5.min.css" />
-    <file src="..\Content\summernote\summernote-bs5.min.js" target="Content\Content\summernote\summernote-bs5.min.js" />   
-    <file src="..\Content\summernote\font\summernote.eot" target="Content\Content\summernote\font\summernote.eot" />
-    <file src="..\Content\summernote\font\summernote.hash" target="Content\Content\summernote\font\summernote.hash" />
-    <file src="..\Content\summernote\font\summernote.ttf" target="Content\Content\summernote\font\summernote.ttf" />
-    <file src="..\Content\summernote\font\summernote.woff" target="Content\Content\summernote\font\summernote.woff" />
-    <file src="..\Content\summernote\font\summernote.woff2" target="Content\Content\summernote\font\summernote.woff2" />
+    <file src="..\Scripts\gridstack\gridstack.min.css" target="Content\Scripts\gridstack\gridstack.min.css" />
+    <file src="..\Scripts\gridstack\gridstack-all.js" target="Content\Scripts\gridstack\gridstack-all.js" />
+    <file src="..\Scripts\summernote\summernote-bs5.min.css" target="Content\Scripts\summernote\summernote-bs5.min.css" />
+    <file src="..\Scripts\summernote\summernote-bs5.min.js" target="Content\Scripts\summernote\summernote-bs5.min.js" />   
+    <file src="..\Scripts\summernote\font\summernote.eot" target="Content\Scripts\summernote\font\summernote.eot" />
+    <file src="..\Scripts\summernote\font\summernote.hash" target="Content\Scripts\summernote\font\summernote.hash" />
+    <file src="..\Scripts\summernote\font\summernote.ttf" target="Content\Scripts\summernote\font\summernote.ttf" />
+    <file src="..\Scripts\summernote\font\summernote.woff" target="Content\Scripts\summernote\font\summernote.woff" />
+    <file src="..\Scripts\summernote\font\summernote.woff2" target="Content\Scripts\summernote\font\summernote.woff2" />
+    <file src="..\Scripts\leaflet\leaflet.css" target="Content\Scripts\leaflet\leaflet.css" />
+    <file src="..\Scripts\leaflet\leaflet.js" target="Content\Scripts\leaflet\leaflet.js" />
+    <file src="..\Scripts\leaflet\images\layers.png" target="Content\Scripts\leaflet\images\layers.png" />
+    <file src="..\Scripts\leaflet\images\marker-icon.png" target="Content\leaflet\images\marker-icon.png" />
+    <file src="..\Scripts\leaflet\images\marker-shadow.png" target="Content\leaflet\images\marker-shadow.png" />
+    <file src="..\Scripts\leaflet.heat\leaflet-heat.js" target="Content\Scripts\leaflet\leaflet.heat\leaflet-heat.js" />    
     <file src="..\Scripts\bootstrap-editable.min.js" target="Content\Scripts\bootstrap-editable.min.js" />
     <file src="..\Scripts\knockout.x-editable.min.js" target="Content\Scripts\knockout.x-editable.min.js" />
     <file src="..\Views\DotNetReport\Index.cshtml" target="Content\Views\DotNetReport\Index.cshtml" />
