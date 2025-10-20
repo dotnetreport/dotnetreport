@@ -129,6 +129,7 @@ namespace ReportBuilder.Web.Models
     {
         public string sql { get; set; } = "";
         public List<KeyValuePair<string, string>> parameters { get; set; } = null;
+        public int reportId { get; set; }
     }
 
     public class TableViewModel
@@ -306,6 +307,7 @@ namespace ReportBuilder.Web.Models
 
         public dynamic DbConfig { get; set; }
         public UserRolesConfig UserAndRolesConfig { get; set; }
+        public string CurrentUserId { get; set; }
 
     }
     public class UserRolesConfig
@@ -322,6 +324,7 @@ namespace ReportBuilder.Web.Models
         public string ReportJson { get; set; }
         public bool adminMode { get; set; }
         public bool SubTotalMode { get; set; }
+        public string userId { get; set; }
     }
 
     public class DotNetDasboardReportModel : DotNetReportModel
