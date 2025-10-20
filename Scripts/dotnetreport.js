@@ -810,7 +810,8 @@ var headerDesigner = function (options) {
 	self.clientListIds = ko.observableArray([]);
 	self.selectedHeaderClientId = ko.observable('');
 	self.headerClientId = ko.observable('');
-	self.init = function () {
+	self.executeMode = false;
+	self.init = function (executeMode) {
 		$('#report-header-editor').summernote({
 			height: 150,
 			popover: {
@@ -847,6 +848,7 @@ var headerDesigner = function (options) {
 			],
 			tableresize: true
 		});
+		self.executeMode = executeMode;
 		self.loadHtmlHeader(false);
 	};
 
@@ -883,7 +885,7 @@ var headerDesigner = function (options) {
 			url: options.apiUrl,
 			data: {
 				method: "/ReportApi/GetReportHeader",
-				model: JSON.stringify({ headerClientId: self.selectedHeaderClientId()})
+				model: JSON.stringify({ headerClientId: self.selectedHeaderClientId(), forceGlobal: !self.executeMode})
 			}
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
@@ -1214,8 +1216,8 @@ var reportViewModel = function (options) {
 		'Chinese': 'yy/mm/dd'
 	};
 
-	self.initHeaderDesigner = function () {
-		self.headerDesigner.init();
+	self.initHeaderDesigner = function (executeMode) {
+		self.headerDesigner.init(executeMode);
 		self.designingHeader(true);
 	}
 
