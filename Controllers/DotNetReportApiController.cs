@@ -16,7 +16,7 @@ namespace ReportBuilder.Web.Controllers
     {
         private readonly IConfigurationRoot _configuration;
         public readonly static string _configFileName = "appsettings.dotnetreport.json";
-        public readonly static string dbtype = DbTypes.MS_SQL.ToString().Replace("_", " ");
+        public readonly static string dbtype = DbTypes.MySQL.ToString().Replace("_", " ");
         public DotNetReportApiController()
         {
             var builder = new ConfigurationBuilder()
@@ -76,7 +76,7 @@ namespace ReportBuilder.Web.Controllers
             {
                 sql = sql.Replace("{{token}}", $"'%{model.token}%'");
             }
-
+            sql = ConvertTopQuery(sql, dbtype);
             var json = new StringBuilder();
             var dt = new DataTable();
 
