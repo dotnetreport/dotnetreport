@@ -2365,9 +2365,29 @@ namespace ReportBuilder.Web.Models
             var document = new PdfDocument();
             int leftMargin = 40;
             int rightMargin = 40;
-            double columnWidth = Math.Max(100, 100f);
+            double minColumnWidth = 100; // minimum column width
+            double maxColumnWidth = 300; // optional max width limit
 
-            double totalWidth = dt.Columns.Count * columnWidth + leftMargin + rightMargin;
+            var tempPage = document.AddPage();
+            var gfxMeasure = XGraphics.FromPdfPage(tempPage);
+            var fontMeasure = new XFont("Arial", 11, XFontStyleEx.Bold);
+            List<double> columnWidths = new List<double>();
+            foreach (DataColumn col in dt.Columns)
+            {
+                string headerText = col.ColumnName;
+                double width = gfxMeasure.MeasureString(headerText, fontMeasure).Width + 10;
+                foreach (DataRow row in dt.Rows.Cast<DataRow>().Take(20)) // sample first 20 rows for width
+                {
+                    var cellText = row[col]?.ToString() ?? "";
+                    double w = gfxMeasure.MeasureString(cellText, fontMeasure).Width + 10;
+                    if (w > width)
+                        width = w;
+                }
+                width = Math.Max(minColumnWidth, Math.Min(width, maxColumnWidth));
+                columnWidths.Add(width);
+            }
+            document.Pages.Remove(tempPage); // remove temp measuring page
+            double totalWidth = columnWidths.Sum() + leftMargin + rightMargin;
             PdfPage page = null;
             XGraphics gfx = null;
             XTextFormatter tfx = null;
@@ -2482,11 +2502,11 @@ namespace ReportBuilder.Web.Models
                     {
                         var columnFormatting = columns.Count > k ? columns[k] : new ReportHeaderColumn();
                         var columnName = !string.IsNullOrEmpty(columnFormatting.fieldLabel) ? columnFormatting.fieldLabel : columnFormatting.fieldName;
-                        rect = new XRect(currentXPosition, currentYPosition, columnWidth, 20);
+                        rect = new XRect(currentXPosition, currentYPosition, columnWidths[k], 20);
                         gfx.DrawRectangle(XPens.LightGray, rect);
                         rect.Inflate(-cellPadding, -cellPadding);
                         tfx.DrawString(columnName ?? "", fontBold, GetBrushWithColor(), rect, XStringFormats.TopLeft);
-                        currentXPosition += (int) columnWidth;
+                        currentXPosition += (int)columnWidths[k];
                     }
 
                     currentYPosition += 20;
@@ -2503,7 +2523,7 @@ namespace ReportBuilder.Web.Models
                         var value = dt.Rows[i][j].ToString();
                         var dc = dt.Columns[j];
                         var tempVal = value;
-                        var lines = WrapText(gfx, tempVal, new XRect(0, 0, columnWidth, 9999), fontNormal, XStringFormats.Center);
+                        var lines = WrapText(gfx, tempVal, new XRect(0, 0, columnWidths[i], 9999), fontNormal, XStringFormats.Center);
                         maxLines = Math.Max(maxLines, lines.Count);
 
                     }
@@ -2522,7 +2542,7 @@ namespace ReportBuilder.Web.Models
                         var dc = dt.Columns[j];
                         var tempVal = GetFormattedValue(dc, dt.Rows[i], null, false);
                         var formatColumn = GetColumnFormatting(dc, columns, ref tempVal);
-                        var lines = WrapText(gfx, tempVal, new XRect(0, 0, columnWidth, 9999), fontNormal, XStringFormats.Center);
+                        var lines = WrapText(gfx, tempVal, new XRect(0, 0, columnWidths[j], 9999), fontNormal, XStringFormats.Center);
                         
                         if (formatColumn.isNumeric && !formatColumn.dontSubTotal)
                         {
@@ -2530,7 +2550,7 @@ namespace ReportBuilder.Web.Models
                                 subTotals[j] += decVal;
                         }
 
-                        rect = new XRect(currentXPosition, currentYPosition, columnWidth, rowHeight);
+                        rect = new XRect(currentXPosition, currentYPosition, columnWidths[j], rowHeight);
                         gfx.DrawRectangle(XPens.WhiteSmoke, rect);
 
                         var horizontalAlignment = XStringFormats.Center;
@@ -2552,7 +2572,7 @@ namespace ReportBuilder.Web.Models
                             yPosition += fontNormal.Height;
                         }
 
-                        currentXPosition += (int) columnWidth;
+                        currentXPosition += (int) columnWidths[j];
                     }
 
                     currentYPosition += rowHeight;
@@ -2568,7 +2588,7 @@ namespace ReportBuilder.Web.Models
                         var dc = dt.Columns[j];
                         var formatColumn = GetColumnFormatting(dc, columns, ref value);
 
-                        rect = new XRect(currentXPosition, currentYPosition, columnWidth, 20);
+                        rect = new XRect(currentXPosition, currentYPosition, columnWidths[j], 20);
                         gfx.DrawRectangle(XPens.LightGray, rect);
 
                         if (formatColumn.isNumeric && !(formatColumn?.dontSubTotal ?? false))
@@ -2580,7 +2600,7 @@ namespace ReportBuilder.Web.Models
                             gfx.DrawString(" ", fontNormal, XBrushes.Black, rect, XStringFormats.Center);
                         }
 
-                        currentXPosition += (int)columnWidth;
+                        currentXPosition += (int)columnWidths[j];
                     }
                 }
 
