@@ -89,6 +89,14 @@ var deps = {
 		"dist/summernote-bs5.min.js": "",
 		"dist/summernote-bs5.min.css": "",
 		"dist/font/*": "font/"
+	},
+	"leaflet": {
+		"dist/**/*": "",
+		"dist/leaflet.js": "",
+		"dist/leaflet.css": ""
+	},
+	"leaflet.heat": {
+		"dist/leaflet-heat.js": ""
 	}
 };
 
@@ -102,7 +110,7 @@ gulp.task("clean", function (cb) {
 		rimraf.sync("wwwroot/lib/")
 	];
 	cb();
-	return Promise.all(cleanTasks); // Optional, to make sure all tasks are resolved
+	return Promise.all(cleanTasks);
 });
 
 gulp.task("scripts", function (done) {
@@ -121,11 +129,10 @@ gulp.task("scripts", function (done) {
 			});
 		}
 	}
-
 	// move dotnet report files
 	tasks.push(function (cb) { pump(gulp.src("Scripts/dotnetreport.js"), gulp.dest("wwwroot/js/"), cb); });
 	tasks.push(function (cb) { pump(gulp.src("Scripts/dotnetreport-helper.js"), gulp.dest("wwwroot/js/"), cb); });
-	tasks.push(function (cb) { pump(gulp.src("Scripts/dotnetreport-setup.js"),gulp.dest("wwwroot/js/"),cb);})
+	tasks.push(function (cb) { pump(gulp.src("Scripts/dotnetreport-setup.js"), gulp.dest("wwwroot/js/"), cb); })
 	tasks.push(function (cb) { pump(gulp.src("Content/dotnetreport.css"), gulp.dest("wwwroot/css/"), cb); });
 	tasks.push(function (cb) { pump(gulp.src("Content/themes/*.css"), gulp.dest("wwwroot/css/"), cb); });
 

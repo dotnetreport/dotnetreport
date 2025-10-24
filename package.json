@@ -17,6 +17,8 @@
     "knockout-mapping": "2.6.0",
     "knockout-sortable": "1.2.2",
     "knockout-x-editable": "0.1.2",
+    "leaflet": "1.9.4",
+    "leaflet.heat": "0.2.0",
     "lodash": "4.17.21",
     "summernote": "0.9.1",
     "select2": "4.0.13",
