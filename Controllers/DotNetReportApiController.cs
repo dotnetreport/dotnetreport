@@ -330,7 +330,7 @@ namespace ReportBuilder.Web.Controllers
                     if (!sql.StartsWith("EXEC"))
                     {
                         var fromIndex = DotNetReportHelper.FindFromIndex(sql);
-                        sqlFields = DotNetReportHelper.SplitSqlColumns(sql);
+                        sqlFields = DotNetReportHelper.SplitSqlColumns(sql, dbtype);
 
                         var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(fromIndex)}".Replace("{FROM}", "FROM");
                         bool hasDistinct = sql.Contains("DISTINCT");
