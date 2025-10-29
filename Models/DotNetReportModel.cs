@@ -1248,55 +1248,131 @@ namespace ReportBuilder.Web.Models
             }
         }
 
-        public static List<string> SplitSqlColumns(string sql)
+        public static List<string> SplitSqlColumns(string sql, string dbType = "MS SQL")
         {
-            if (sql.StartsWith("EXEC", StringComparison.OrdinalIgnoreCase))
-                return new List<string>();
-
-            var fromIndex = FindFromIndex(sql);
-            if (fromIndex < 0) return new List<string>();
-
-            string selectPart = sql.Substring(0, fromIndex).Replace("SELECT", "", StringComparison.OrdinalIgnoreCase).Trim();
-
-            var columns = new List<string>();
+            if (string.IsNullOrWhiteSpace(sql)) return new List<string>();
+            sql = sql.Trim();
+            var selectPart = ""; 
             var current = new StringBuilder();
             int parenDepth = 0;
+            bool inSingleQuote = false;
+            bool inDoubleQuote = false;
+            bool inBacktick = false;
             bool inString = false;
+            var columns = new List<string>();
 
-            for (int i = 0; i < selectPart.Length; i++)
+            switch (dbType)
             {
-                char c = selectPart[i];
+                case "MySql":
+                    if (sql.StartsWith("CALL", StringComparison.OrdinalIgnoreCase))
+                        return new List<string>();
 
-                if (c == '\'' && (i == 0 || selectPart[i - 1] != '\\'))
-                    inString = !inString;
+                    var fromIndexMy = FindFromIndex(sql);
+                    if (fromIndexMy <= 0) return new List<string>();
 
-                if (!inString)
-                {
-                    if (c == '(') parenDepth++;
-                    else if (c == ')') parenDepth--;
-                }
+                    selectPart = sql.Substring(0, fromIndexMy)
+                         .Replace("SELECT", "", StringComparison.OrdinalIgnoreCase)
+                         .Trim();
 
-                // Split only when comma is outside parentheses and strings
-                if (c == ',' && parenDepth == 0 && !inString)
-                {
-                    columns.Add(current.ToString().Trim());
-                    current.Clear();
-                }
-                else
-                {
-                    current.Append(c);
-                }
+
+                    foreach (char c in selectPart)
+                    {
+                        if (c == '\'' && !inDoubleQuote && !inBacktick)
+                            inSingleQuote = !inSingleQuote;
+                        else if (c == '"' && !inSingleQuote && !inBacktick)
+                            inDoubleQuote = !inDoubleQuote;
+                        else if (c == '`' && !inSingleQuote && !inDoubleQuote)
+                            inBacktick = !inBacktick;
+                        else if (c == '(' && !inSingleQuote && !inDoubleQuote && !inBacktick)
+                            parenDepth++;
+                        else if (c == ')' && !inSingleQuote && !inDoubleQuote && !inBacktick && parenDepth > 0)
+                            parenDepth--;
+                        else if (c == ',' && parenDepth == 0 && !inSingleQuote && !inDoubleQuote && !inBacktick)
+                        {
+                            // split here
+                            columns.Add(current.ToString().Trim());
+                            current.Clear();
+                            continue;
+                        }
+
+                        current.Append(c);
+                    }
+
+                    if (current.Length > 0)
+                        columns.Add(current.ToString().Trim());
+
+                    return columns
+                        .Select(x => x.Trim())
+                        .Select(x => x.StartsWith("DISTINCT ", StringComparison.OrdinalIgnoreCase) ? x.Substring(9).Trim() : x)
+                        .ToList();
+
+                case "Postgre Sql":
+                    if (sql.StartsWith("CALL", StringComparison.OrdinalIgnoreCase))
+                        return new List<string>();
+
+                    var fromIndexPg = FindFromIndex(sql);
+                    if (fromIndexPg <= 0) return new List<string>();
+
+                    var sqlSplitPg = sql.Substring(0, fromIndexPg)
+                        .Replace("SELECT", "", StringComparison.OrdinalIgnoreCase)
+                        .Trim();
+                    sqlSplitPg = Regex.Replace(sqlSplitPg, @"LIMIT\\s+\\d+(\\s+OFFSET\\s+\\d+)?", "", RegexOptions.IgnoreCase);
+
+                    return Regex.Split(sqlSplitPg, ",(?![^()]*\\))")
+                        .Select(x => x.Trim())
+                        .Select(x => x.StartsWith("DISTINCT ", StringComparison.OrdinalIgnoreCase) ? x.Substring(9).Trim() : x)
+                        .Select(x => x.Replace("\"", ""))
+                        .Where(x => Regex.IsMatch(x, "\\s+AS\\s+", RegexOptions.IgnoreCase))
+                        .ToList();
+
+                case "MS SQL":
+                default:
+                    if (sql.StartsWith("EXEC", StringComparison.OrdinalIgnoreCase))
+                        return new List<string>();
+
+                    var fromIndex = FindFromIndex(sql);
+                    if (fromIndex < 0) return new List<string>();
+
+                    selectPart = sql.Substring(0, fromIndex).Replace("SELECT", "", StringComparison.OrdinalIgnoreCase).Trim();
+
+                    current = new StringBuilder();
+                    parenDepth = 0;
+
+                    for (int i = 0; i < selectPart.Length; i++)
+                    {
+                        char c = selectPart[i];
+
+                        if (c == '\'' && (i == 0 || selectPart[i - 1] != '\\'))
+                            inString = !inString;
+
+                        if (!inString)
+                        {
+                            if (c == '(') parenDepth++;
+                            else if (c == ')') parenDepth--;
+                        }
+
+                        // Split only when comma is outside parentheses and strings
+                        if (c == ',' && parenDepth == 0 && !inString)
+                        {
+                            columns.Add(current.ToString().Trim());
+                            current.Clear();
+                        }
+                        else
+                        {
+                            current.Append(c);
+                        }
+                    }
+
+                    if (current.Length > 0)
+                        columns.Add(current.ToString().Trim());
+
+                    // Cleanup, handle DISTINCT/TOP and ensure alias exists
+                    return columns
+                        .Select(x => x.StartsWith("DISTINCT ", StringComparison.OrdinalIgnoreCase) ? x.Substring(9) : x)
+                        .Select(x => Regex.Replace(x, @"TOP\s+\d+", "", RegexOptions.IgnoreCase))
+                        .Where(x => x.Contains(" AS ", StringComparison.OrdinalIgnoreCase))
+                        .ToList();
             }
-
-            if (current.Length > 0)
-                columns.Add(current.ToString().Trim());
-
-            // Cleanup, handle DISTINCT/TOP and ensure alias exists
-            return columns
-                .Select(x => x.StartsWith("DISTINCT ", StringComparison.OrdinalIgnoreCase) ? x.Substring(9) : x)
-                .Select(x => Regex.Replace(x, @"TOP\s+\d+", "", RegexOptions.IgnoreCase))
-                .Where(x => x.Contains(" AS ", StringComparison.OrdinalIgnoreCase))
-                .ToList();
         }
 
 
@@ -4220,7 +4296,8 @@ namespace ReportBuilder.Web.Models
 
                     using (MySqlCommand command = new MySqlCommand(sqlCount, conn))
                     {
-                        if (!sql.StartsWith("EXEC")) totalRecords = Math.Max(totalRecords, (int)command.ExecuteScalar());
+                        if (!sql.StartsWith("EXEC"))
+                            totalRecords = Convert.ToInt32(command.ExecuteScalar());
                     }
 
                     conn.Close();
@@ -4290,22 +4367,184 @@ namespace ReportBuilder.Web.Models
             }
             return dts;
         }
+        private static FieldTypes ConvertToMySqlDataType(string mysqlType)
+        {
+            mysqlType = mysqlType.ToLower();
+            if (mysqlType.Contains("int")) return FieldTypes.Int;
+            if (mysqlType.Contains("decimal") || mysqlType.Contains("numeric")) return FieldTypes.Double;
+            if (mysqlType.Contains("double") || mysqlType.Contains("float")) return FieldTypes.Double;
+            if (mysqlType.Contains("date") || mysqlType.Contains("time")) return FieldTypes.DateTime;
+            if (mysqlType.Contains("bool") || mysqlType.Contains("tinyint(1)")) return FieldTypes.Boolean;
+            if (mysqlType.Contains("text") || mysqlType.Contains("char")) return FieldTypes.Varchar;
+            if (mysqlType.Contains("blob") || mysqlType.Contains("binary")) return FieldTypes.Varchar;
+            return FieldTypes.Varchar;
+        }
+
         public async Task<List<TableViewModel>> GetTables(string type = "TABLE", string? accountKey = null, string? dataConnectKey = null)
         {
-            var conn = new OleDbDatabaseConnection();
-            return await conn.GetTables(type, accountKey, dataConnectKey);
+            var tables = new List<TableViewModel>();
+            var currentTables = new List<TableViewModel>();
+
+            if (!string.IsNullOrEmpty(accountKey) && !string.IsNullOrEmpty(dataConnectKey))
+            {
+                currentTables = await DotNetReportHelper.GetApiTables(accountKey, dataConnectKey, true);
+                currentTables = currentTables.Where(x => !string.IsNullOrEmpty(x.TableName)).ToList();
+            }
+
+            var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey), false);
+            using (var conn = new MySqlConnection(connString))
+            {
+                await conn.OpenAsync();
+
+                string sql = @"SELECT TABLE_NAME, TABLE_SCHEMA, TABLE_TYPE 
+                           FROM INFORMATION_SCHEMA.TABLES 
+                           WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = @type";
+
+                var cmd = new MySqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("@type", type == "TABLE" ? "BASE TABLE" : type);
+
+                var reader = await cmd.ExecuteReaderAsync();
+                var schemaTables = new DataTable();
+                schemaTables.Load(reader);
+
+                foreach (DataRow row in schemaTables.Rows)
+                {
+                    string tableName = row["TABLE_NAME"].ToString();
+                    string schema = row["TABLE_SCHEMA"].ToString();
+
+                    var matchTable = currentTables.FirstOrDefault(x => x.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase));
+
+                    var table = new TableViewModel
+                    {
+                        Id = matchTable?.Id ?? 0,
+                        SchemaName = schema,
+                        TableName = tableName,
+                        DisplayName = matchTable?.DisplayName ?? tableName,
+                        IsView = type == "VIEW",
+                        Selected = matchTable != null,
+                        Columns = new List<ColumnViewModel>(),
+                        AllowedRoles = matchTable?.AllowedRoles ?? new List<string>(),
+                        AccountIdField = matchTable?.AccountIdField ?? ""
+                    };
+
+                    string columnQuery = $@"SELECT COLUMN_NAME, DATA_TYPE 
+                                        FROM INFORMATION_SCHEMA.COLUMNS 
+                                        WHERE TABLE_NAME = @table AND TABLE_SCHEMA = DATABASE()";
+
+                    var colCmd = new MySqlCommand(columnQuery, conn);
+                    colCmd.Parameters.AddWithValue("@table", tableName);
+                    var colReader = colCmd.ExecuteReader();
+
+                    int idx = 0;
+                    var colSchema = new DataTable();
+                    colSchema.Load(colReader);
+
+                    foreach (DataRow col in colSchema.Rows)
+                    {
+                        string colName = col["COLUMN_NAME"].ToString();
+                        string dataType = col["DATA_TYPE"].ToString();
+
+                        var matchColumn = matchTable?.Columns.FirstOrDefault(x => x.ColumnName.Equals(colName, StringComparison.OrdinalIgnoreCase));
+
+                        var newCol = new ColumnViewModel
+                        {
+                            ColumnName = matchColumn?.ColumnName ?? colName,
+                            DisplayName = matchColumn?.DisplayName ?? colName,
+                            PrimaryKey = matchColumn?.PrimaryKey ?? (colName.ToLower().EndsWith("id") && idx == 0),
+                            DisplayOrder = matchColumn?.DisplayOrder ?? idx,
+                            FieldType = matchColumn?.FieldType ?? ConvertToMySqlDataType(dataType).ToString(),
+                            AllowedRoles = matchColumn?.AllowedRoles ?? new List<string>(),
+                            Selected = matchColumn != null
+                        };
+
+                        if (matchColumn != null)
+                        {
+                            newCol.Id = matchColumn.Id;
+                            newCol.ForeignKey = matchColumn.ForeignKey;
+                            newCol.ForeignJoin = matchColumn.ForeignJoin;
+                            newCol.ForeignTable = matchColumn.ForeignTable;
+                            newCol.ForeignKeyField = matchColumn.ForeignKeyField;
+                            newCol.ForeignValueField = matchColumn.ForeignValueField;
+                        }
+
+                        idx++;
+                        table.Columns.Add(newCol);
+                    }
+
+                    tables.Add(table);
+                }
+            }
+            return tables;
         }
 
-        public Task<TableViewModel> GetSchemaFromSql(string connString, TableViewModel table, string sql, bool dynamicColumns)
+        public async Task<TableViewModel> GetSchemaFromSql(string connString, TableViewModel table, string sql, bool dynamicColumns)
         {
-            var conn = new OleDbDatabaseConnection();
-            return conn.GetSchemaFromSql(connString, table, sql, dynamicColumns);
+            using var conn = new MySqlConnection(connString);
+            await conn.OpenAsync();
+
+            using var cmd = new MySqlCommand(sql, conn);
+            using var reader = await cmd.ExecuteReaderAsync();
+
+            int idx = 0;
+            if (dynamicColumns)
+            {
+                while (await reader.ReadAsync())
+                {
+                    table.Columns.Add(new ColumnViewModel
+                    {
+                        ColumnName = reader.GetName(0),
+                        DisplayName = reader.GetName(0)
+                    });
+                }
+            }
+            else
+            {
+                var schema = reader.GetSchemaTable();
+                foreach (DataRow row in schema.Rows)
+                {
+                    table.Columns.Add(new ColumnViewModel
+                    {
+                        ColumnName = row["ColumnName"].ToString(),
+                        DisplayName = row["ColumnName"].ToString(),
+                        FieldType = FieldTypes.Varchar.ToString(),
+                        DisplayOrder = idx++,
+                        Selected = true
+                    });
+                }
+            }
+            return table;
         }
 
-        public Task<List<TableViewModel>> GetSearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
+        public async Task<List<TableViewModel>> GetSearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
         {
-            var conn = new OleDbDatabaseConnection();
-            return conn.GetSearchProcedure(value, accountKey, dataConnectKey);
+            var tables = new List<TableViewModel>();
+            var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey), false);
+            using var conn = new MySqlConnection(connString);
+            await conn.OpenAsync();
+
+            string sql = @"SELECT ROUTINE_NAME, ROUTINE_SCHEMA 
+                       FROM INFORMATION_SCHEMA.ROUTINES 
+                       WHERE ROUTINE_TYPE='PROCEDURE' 
+                       AND ROUTINE_NAME LIKE @value";
+
+            var cmd = new MySqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("@value", $"%{value}%");
+            var reader = await cmd.ExecuteReaderAsync();
+            var dt = new DataTable();
+            dt.Load(reader);
+
+            foreach (DataRow proc in dt.Rows)
+            {
+                tables.Add(new TableViewModel
+                {
+                    TableName = proc["ROUTINE_NAME"].ToString(),
+                    SchemaName = proc["ROUTINE_SCHEMA"].ToString(),
+                    DisplayName = proc["ROUTINE_NAME"].ToString(),
+                    Columns = new List<ColumnViewModel>(),
+                    Parameters = new List<ParameterViewModel>()
+                });
+            }
+            return tables;
         }
     }
     public class PostgresDatabaseConnection : IDatabaseConnection

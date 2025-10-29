@@ -173,7 +173,7 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("userIdForFilter", settings.UserIdForFilter),
                     new KeyValuePair<string, string>("userRole", string.Join(",", settings.CurrentUserRole)),
                     new KeyValuePair<string, string>("dataFilters", JsonSerializer.Serialize(settings.DataFilters)),
-                    new KeyValuePair<string, string>("useParameters", "true")
+                    new KeyValuePair<string, string>("useParameters", dbtype=="MS SQL" ? "true" : "false")
                 };
 
                 var data = JsonSerializer.Deserialize<Dictionary<string, dynamic>>(model);
@@ -290,7 +290,7 @@ namespace ReportBuilder.Web.Controllers
                     if (!sql.StartsWith("EXEC"))
                     {
                         var fromIndex = DotNetReportHelper.FindFromIndex(sql);
-                        sqlFields = DotNetReportHelper.SplitSqlColumns(sql);
+                        sqlFields = DotNetReportHelper.SplitSqlColumns(sql, dbtype);
 
                         var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(fromIndex)}".Replace("{FROM}", "FROM");
                         bool hasDistinct = sql.Contains("DISTINCT");
@@ -325,6 +325,13 @@ namespace ReportBuilder.Web.Controllers
                             {
                                 sortBy = sortBy.Replace("MONTH(", "CONVERT(VARCHAR(3), DATENAME(MONTH, ");
                             }
+                            if (sortBy.StartsWith("CONCAT(DATE_FORMAT(") || sortBy.StartsWith("DATE_FORMAT("))
+                            {
+                                var match = System.Text.RegularExpressions.Regex.Match(sortBy, @"`[^`]+`\.`[^`]+`");
+                                if (match.Success)
+                                    sortBy = $"MIN({match.Value})";
+                            }
+
                             if (!sql.Contains("ORDER BY"))
                             {
                                 sql = sql + "ORDER BY " + sortBy + (desc ? " DESC" : "");
@@ -336,9 +343,26 @@ namespace ReportBuilder.Web.Controllers
                         }
 
                         if (!sql.Contains("ORDER BY"))
-                            sql = sql + $" ORDER BY {(hasDistinct ? "1" : "NEWID()")} ";
+                        {
+                            if (dbtype == "MS SQL")
+                                sql += $" ORDER BY {(hasDistinct ? "1" : "NEWID()")} ";
+                            else if (dbtype == "Postgre Sql")
+                                sql += $" ORDER BY {(hasDistinct ? "1" : "RANDOM()")} ";
+                            else if (dbtype == "MySQL")
+                                sql += $" ORDER BY {(hasDistinct ? "1" : "RAND()")} ";
+                            else
+                                sql += " ORDER BY 1 ";
+                        }
+
                         if (!sql.Contains(" TOP ") && string.IsNullOrEmpty(pivotColumn))
-                            sql = sql + $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
+                        {
+                            if (dbtype == "MS SQL")
+                                sql += $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
+                            else if (dbtype == "Postgre Sql" || dbtype == "MySQL")
+                                sql += $" LIMIT {pageSize} OFFSET {(pageNumber - 1) * pageSize}";
+                            else
+                                sql += $" LIMIT {pageSize} OFFSET {(pageNumber - 1) * pageSize}";
+                        }
 
                         if (sql.Contains("__jsonc__"))
                             sql = sql.Replace("__jsonc__", "");
@@ -527,7 +551,7 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("filterValue", filterValue.ToString()),
                     new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
                     new KeyValuePair<string, string>("dataFilters", JsonSerializer.Serialize(settings.DataFilters)),
-                    new KeyValuePair<string, string>("useParameters", "true")
+                    new KeyValuePair<string, string>("useParameters", dbtype=="MS SQL" ? "true" : "false")
                 });
 
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/RunLinkedReport"), content);
