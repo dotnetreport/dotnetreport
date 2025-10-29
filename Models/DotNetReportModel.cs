@@ -323,6 +323,8 @@ namespace ReportBuilder.Web.Models
         public bool adminMode { get; set; }
         public bool SubTotalMode { get; set; }
         public string? userId { get; set; }
+        public string? query { get; set; } = "";
+        public string? fieldIds { get; set; } = "";
     }
 
     public class DotNetDasboardReportModel : DotNetReportModel

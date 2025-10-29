@@ -356,12 +356,10 @@ namespace ReportBuilder.Web.Controllers
 
                         if (!sql.Contains(" TOP ") && string.IsNullOrEmpty(pivotColumn))
                         {
-                            if (dbtype == "MS SQL")
-                                sql += $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
-                            else if (dbtype == "Postgre Sql" || dbtype == "MySQL")
+                            if (dbtype == "Postgre Sql" || dbtype == "MySQL")
                                 sql += $" LIMIT {pageSize} OFFSET {(pageNumber - 1) * pageSize}";
                             else
-                                sql += $" LIMIT {pageSize} OFFSET {(pageNumber - 1) * pageSize}";
+                                sql += $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
                         }
 
                         if (sql.Contains("__jsonc__"))

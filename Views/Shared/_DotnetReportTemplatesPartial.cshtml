@@ -336,8 +336,8 @@
                                     <a href="#" title="Download Excel" data-bind="click: $parent.exportExcel"><span class="fa fa-file-excel-o"></span></a>
                                     &nbsp;
                                     <a href="#" title="View Code" data-bs-toggle="modal" data-bs-target="#sqlDrillDownModal" data-bind="visible: $root.adminMode">
-                                        <span class="fa fa-code"></span> 
-                                    </a>       
+                                        <span class="fa fa-code"></span>
+                                    </a>
                                 </div>
                                 <div class="form-group pull-right" data-bind="visible: pages()">
                                     <div data-bind="template: 'pager-template', data: $data"></div>
@@ -1532,7 +1532,7 @@
             <div class="form-group row mb-3">
                 <label class="col-12 fw-bold">Heatmap Colors</label>
 
-                <div class="col-4 mb-2">                    
+                <div class="col-4 mb-2">
                     <input type="color" class="color-picker"
                             data-bind="value: heatMapOptions.gradient1" title="Gradient 1" />
                 </div>
@@ -2108,6 +2108,13 @@
       <div class="card p-1 mb-2">
          <div class="card-header p-1 d-flex justify-content-between align-items-center">
           <span><i class="fa fa-file"></i> Visualization</span>
+          <button id="aiToggleBtn"
+                class="btn btn-primary position-fixed bottom-0 end-0 m-3 rounded-circle shadow"
+                style="width: 50px; height: 50px; z-index: 1050;"
+                title="Chat with AI Assistant"
+                data-bind="click: toggleAiChat">
+            <i class="fa fa-comment fa-lg"></i>
+          </button>
           <button type="button" class="btn btn-sm btn-light" data-bind="visible: ReportID(), click: function() {activeDesign(false);}" title="Close">
             <i class="fa fa-times"></i> Close Designer
           </button>
@@ -2272,6 +2279,57 @@
       </div>
     </div>
     <hr />
+    <!-- AI Assistant Popup -->
+        <div id="aiPopup"
+         class="position-fixed bottom-0 end-0 m-3 shadow-lg bg-white border rounded-3 d-none d-flex flex-column"
+         style="width: 440px; height: 460px; z-index: 1060; overflow: hidden;">
+
+        <div class="d-flex justify-content-between align-items-center border-bottom bg-light p-2 px-3 flex-shrink-0">
+            <h6 class="mb-0">
+                <i class="fa fa-comments-o me-1"></i> AI Report Assistant
+                <span title="This feature is still in Beta release. You can turn it off from settings" style="font-size: 10pt; padding: 5px; max-width: 350px; white-space: normal; margin-bottom: 0;">
+                    <i class="fa fa-info-circle"></i>
+                </span>
+            </h6>
+            <div>
+                <button class="btn btn-sm btn-outline-secondary me-2" data-bind="click: clearAiChat" title="Clear Chat">
+                    <i class="fa fa-trash"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" data-bind="click: toggleAiChat" title="Close">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+        </div>
+
+        <div id="aiChatBody"
+             class="flex-grow-1 overflow-auto p-3"
+             style="background: #f8f9fa;">
+            <div data-bind="foreach: aiMessages">
+            <div class="mb-2" data-bind="css: { 'text-end': role === 'user', 'text-start': role === 'assistant' }">
+                <div data-bind="text: content, css: role === 'user' ? 'bg-primary text-white' : 'bg-light border'"
+                     class="p-2 rounded-3 d-inline-block"
+                     style="max-width: 85%; white-space: pre-wrap;"></div>
+            </div>
+            </div>
+        </div>
+
+        <div class="border-top bg-white p-2 flex-shrink-0">
+            <div class="w-100 mb-1 small text-muted">
+                💡 Ask things like “Add a column for total orders” or “Show top 5 salespeople this year”
+            </div>
+            <div class="d-flex align-items-center w-100">
+                <p id="query-input"
+                   class="query-input flex-grow-1 mb-0 p-2 border rounded"
+                   contenteditable="true"
+                   style="min-height: 38px; overflow-y: auto;"></p>
+                <button class="btn btn-primary ms-2"
+                        data-bind="click: sendAiMessage">
+                    <i class="fa fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
 </script>
 
 <script type="text/html" id="report-designer">

@@ -1322,6 +1322,49 @@ var reportViewModel = function (options) {
 	self.queryPrompt = "";
 	self.textQuery = new textQuery(options);
 
+	self.aiChatVisible = ko.observable(false);
+	self.aiMessages = ko.observableArray([]);
+	self.aiHistory = []; 
+
+	self.toggleAiChat = function () {
+		self.aiChatVisible(!self.aiChatVisible());
+		const popup = document.getElementById("aiPopup");
+		popup.classList.toggle("d-none", !self.aiChatVisible());
+
+		if (self.aiChatVisible()) {
+			setTimeout(function () {
+				self.textQuery.setupQuery();
+			}, 250);
+		}
+	};
+
+	self.clearAiChat = function (skipResetQuery) {
+		self.aiMessages([]);
+		self.aiHistory = [];
+		if (skipResetQuery !== true) {
+			self.textQuery.resetQuery();
+		}
+	};
+
+	self.sendAiMessage = function () {
+		var queryInput = document.getElementById("query-input");
+		if (!queryInput) return;
+
+		var msg = queryInput.innerText.trim();
+		if (!msg) return;
+
+		self.aiMessages.push({ role: "user", content: msg });
+		self.aiHistory.push({ role: "user", content: msg });
+		queryInput.innerText = "";
+		self.aiMessages.push({ role: "assistant", content: "..." });
+		self.runQuery(true);
+	};
+
+	self.aiMessages.subscribe(function () {
+		const el = document.getElementById("aiChatBody");
+		if (el) el.scrollTop = el.scrollHeight;
+	});
+
 	self.appSettings = {
 		useClientIdInAdmin: false,
 		useSqlBuilderInAdminMode: false,
@@ -1367,45 +1410,61 @@ var reportViewModel = function (options) {
 				e = self.setupField(e);
 
 				var fltrs = self.textQuery.getFilters(e.fieldId);
-
 				fltrs.forEach(f => {
 					filters.push({
 						FieldId: e.fieldId,
 						Operator: f.operator || '',
 						Value1: f.value || '',
 						Value2: f.value2 || '',
-					})
+					});
 				});
 			});
 
 			self.SortByField(fieldIds[0]);
 			self.SelectedFields(result);
 			filters.forEach(f => self.FilterGroups()[0].AddFilter(f));
-			
-			self.queryPrompt = document.getElementById("query-input").innerText;
+
+			self.queryPrompt = document.getElementById("query-input").innerText.trim();
+
+			if (useAi) {
+				self.aiMessages.pop();
+				self.aiMessages.push({ role: "assistant", content: "..." });
+			}
+
 			ajaxcall({
-				url: options.apiUrl,
-				data: {
+				type: 'POST',
+				url: options.runReportApiUrl,
+				data: JSON.stringify({
 					method: "/ReportApi/RunQueryAi",
-					model: JSON.stringify({
-						query: self.queryPrompt,
-						fieldIds: fieldIds.join(","),
-						reportJson: JSON.stringify(self.BuildReportData()) // send whatever our parser has built to improve
-					})
-				}
+					query: self.queryPrompt,
+					fieldIds: fieldIds.join(","),
+					reportJson: JSON.stringify(self.BuildReportData())
+				})
 			}).done(function (result) {
 				if (result.d) result = result.d;
 				if (result.success === false) {
 					toastr.error(result.message || 'Could not process this correctly, please try again');
+					if (useAi) {
+						self.aiMessages.pop();
+						self.aiMessages.push({ role: "assistant", content: "⚠️ Could not process this correctly, please try again." });
+					}
 					return;
 				}
 
 				options.reportSql = result.reportSql;
 				options.reportConnect = result.connectKey;
 				self.PopulateReport(result.report);
+
+				if (useAi) {
+					self.aiMessages.pop();
+					var msg = result.aiMessage || "✅ Report updated successfully.";
+					self.aiMessages.push({ role: "assistant", content: msg });
+					self.aiHistory.push({ role: "assistant", content: msg });
+				}
 			});
 		});
-	}
+	};
+
 
 	self.resetSearch = function () {
 		self.SelectedFolder(null);
@@ -1508,15 +1567,13 @@ var reportViewModel = function (options) {
 	self.createNewReportAi = function () {
 		self.clearReport();
 		self.activeDesign(true);
-		self.ReportMode("design");
-		setTimeout(function () {
-			self.textQuery.setupQuery();
-			self.resetQuery(false);
-		}, 250);
+		self.ReportMode("design");	
+		self.clearAiChat(true);
 	}
 
 	self.editReportAi = function () {
 		self.activeDesign(true);
+		self.clearAiChat(true);
 	}
 
 	self.ReportType.subscribe(function (newvalue) {
@@ -2193,7 +2250,7 @@ var reportViewModel = function (options) {
 		self.pager.currentPage(1);
 
 		self.ChosenFields([]);
-
+		
 		self.SelectedFields([]);
 		self.SelectFields([]);
 		self.SelectedField(null);
@@ -3688,7 +3745,9 @@ var reportViewModel = function (options) {
 							self.ReportMode('start');
 							return;
 						}
-						self.LoadAllSavedReports(true);
+						if (!self.activeDesign()) {
+							self.LoadAllSavedReports(true);
+						}
 						if (options.samePageOnRun || dashboardRun) {
 							self.ReportID(_result.reportId);
 							self.setupSettingsDirtyCheck();

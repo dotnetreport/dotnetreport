@@ -1058,22 +1058,30 @@ var textQuery = function (options) {
 
     }
     
-    self.setupQuery = function () {       
+    self.setupQuery = function () {
+        var inputEl = document.getElementById("query-input");
+        if (!inputEl) return;
+
+        self.resetQuery();
+        inputEl.innerText = "";
+
+        if (inputEl.tribute) {
+            return;
+        }
+
         var tributeAttributes = self.getTributeAttributes({ concatFilterAndQuery: true });
         var tribute = new Tribute(tributeAttributes);
-        tribute.attach(document.getElementById("query-input"));
+        tribute.attach(inputEl);
 
-        document.getElementById("query-input")
-            .addEventListener("tribute-replaced", function (e) {
-                self.addQueryItem(e.detail.item.original);
-            });
+        inputEl.addEventListener("tribute-replaced", function (e) {
+            self.addQueryItem(e.detail.item.original);
+        });
 
-        document.getElementById("query-input")
-            .addEventListener("menuItemRemoved", function (e) {
-                self.queryItems.remove(e.detail.item.original);
-            });
+        inputEl.addEventListener("menuItemRemoved", function (e) {
+            self.queryItems.remove(e.detail.item.original);
+        });
+    };
 
-    }
 
     self.setupSearch = function () {
         var tributeAttributes = self.getTributeAttributes({ searchReportFlag: true });
