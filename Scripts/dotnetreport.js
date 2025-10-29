@@ -1009,9 +1009,12 @@ var reportViewModel = function (options) {
 		}
 	})
 
+	self.activeDesignRunning = false;
 	self.reportChanged = function () {
 		self.isDirty(true);
 		if (self.activeDesign()) {
+			if (self.activeDesignRunning || self.executingReport) return;
+			self.activeDesignRunning = true;
 			self.RunReport(false, true);
 		}
 	}
@@ -1569,6 +1572,7 @@ var reportViewModel = function (options) {
 		self.activeDesign(true);
 		self.ReportMode("design");	
 		self.clearAiChat(true);
+		self.activeDesignRunning = false;
 	}
 
 	self.editReportAi = function () {
@@ -3615,6 +3619,7 @@ var reportViewModel = function (options) {
 				if (!skipValidation) {
 					toastr.error("Please select at least one data field");
 				}
+				self.activeDesignRunning = false;
 				return;
 			}
 
@@ -3752,6 +3757,7 @@ var reportViewModel = function (options) {
 							self.ReportID(_result.reportId);
 							self.setupSettingsDirtyCheck();
 							self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, _.map(self.AdditionalSeries(), function (e, i) {
+								self.activeDesignRunning = false;
 								return e.Value();
 							}).join(','));
 
@@ -4752,6 +4758,7 @@ var reportViewModel = function (options) {
 			}),
 			noBlocking: self.ReportMode() == 'dashboard' || self.activeDesign()
 		}).done(function (result) {
+			self.activeDesignRunning = false;
 			if (result.d) { result = result.d; }
 			if (result.result) { result = result.result; }
 			self.processReportResult(result, reportSql, connectKey, reportSeries, previewOnly);
