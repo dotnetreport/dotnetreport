@@ -5,7 +5,7 @@
 }
 
 @section head {
-    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.min.css" />
+    <link rel="stylesheet" href="~/lib/gridstack/gridstack.min.css" />
     <style type="text/css">
         .report-chart {
             min-height: auto !important;
@@ -25,8 +25,7 @@
 }
 
 @section scripts{
-    <script type="text/javascript" src='//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.min.js'></script>
-    <script type="text/javascript" src='//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.4.0/gridstack.jQueryUI.min.js'></script>
+    <script src="~/lib/gridstack/gridstack-all.js"></script>
     <script type="text/javascript">
         $(document).ready(function () {
             if ($.blockUI) {
@@ -35,9 +34,8 @@
             var reports = [];
             var dashboards = [];
             var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
-            //var adminMode = queryParams.adminMode == 'true' ? 'true' : 'false';
             var adminMode = false;
-            if (localStorage) adminMode = localStorage.getItem('reportAdminMode');
+            if (localStorage.length > 0) adminMode = localStorage.getItem('reportAdminMode');
             ajaxcall({ url: '@Url.Action("GetDashboards", "DotNetReportApi")' + '?adminMode=' + adminMode, noBlocking: true }).done(function (dashboardData) {
                 if (dashboardData && dashboardData.noAccount === true) {
                     $("#noaccountModal").modal('show');
@@ -45,7 +43,7 @@
                 }
 
                 _.forEach(dashboardData, function (d) {
-                    dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, schedule: d.Schedule, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles });
+                    dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, schedule: d.Schedule, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles, clientId: d.ClientId, canManage: d.CanManage });
                 });
 
                 var dashboardId = parseInt(queryParams.id || 0);
@@ -60,6 +58,7 @@
                         var vm = new dashboardViewModel({
                             runReportUrl: "@Url.Action("Report")",
                             execReportUrl: "@Url.Action("RunReport", "DotNetReportApi")",
+                            runLinkReportUrl: "@Url.Action("RunReportLink", "DotNetReportApi")",
                             reportWizard: $("#filter-panel"),
                             lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
                             apiUrl: "@Url.Action("CallReportApi", "DotNetReportApi")",
@@ -71,6 +70,7 @@
                             fieldOptionsModal: $("#fieldOptionsModal"),
                             reports: reports,
                             dashboards: dashboards,
+                            userSettings: data,
                             users: data.users,
                             userRoles: data.userRoles,
                             allowAdmin: data.allowAdminMode,
@@ -79,7 +79,7 @@
                             runExportUrl: "/api/DotnetReportApi/",
                             printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, Context.Request.Scheme)",
                             loadSavedDashbordUrl: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")',
-                            getDashbordUrl: '@Url.Action("GetDashboards", "DotNetReportApi")',
+                            getDashbordsUrl: '@Url.Action("GetDashboards", "DotNetReportApi")',
                             getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")'
                         });
 
@@ -88,38 +88,42 @@
                                 $.unblockUI();
                             }
                             ko.applyBindings(vm);
-                            $(function () {
-                                var options = {
-                                    cellHeight: 80,
-                                    verticalMargin: 10,
+                            setTimeout(() => {
+                                $('.grid-stack').show();
+                                const grid = GridStack.init({
+                                    cellHeight: 60,
+                                    margin: 10,
                                     resizable: {
-                                        handles: 'se, sw, ne, nw, n, e, s, w' 
-                                    }
-                                };
-                                $('.grid-stack').gridstack(options);
-                                $('.grid-stack').on('change', function (event, items) {
-                                    _.forEach(items, function (x) {
+                                        handles: 'se, sw, ne, nw, n, e, s, w'
+                                    },
+                                    oneColumnSize: 768
+                                });
+
+                                grid.on('change', function (event, items) {
+                                    items.forEach(function (x) {
                                         vm.updatePosition(x);
                                     });
                                 });
-                                $('.grid-stack').on('resizestop', function (event, item) {
-                                    var e = $(event.target).find('.report-chart');
-                                    var d = $(event.target).find('table');
-                                    if (e.length > 0 && d.length == 0) {
+
+                                grid.on('resizestop', function (event, el) {
+                                    const e = el.querySelector('.report-chart');
+                                    if (e) {
                                         vm.drawChart();
                                     }
                                 });
-                            });
 
-                            setTimeout(function () {
-                                vm.drawChart();
-                                var grid = $('.grid-stack').data("gridstack");
-                                grid.disable();
+                                setTimeout(() => {
+                                    vm.drawChart();
+                                    grid.enableMove(false);
+                                    grid.enableResize(false);
+                                    vm.gridResponsive();
+                                }, 1000);
+                            }, 10);
 
-                            }, 1000);
                         });
 
-                        window.addEventListener('resize', function () {
+                        window.addEventListener('resize', function () {                            
+                            vm.gridResponsive();
                             vm.drawChart();
                         });
                     });
@@ -132,49 +136,54 @@
 <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
 
 <div class="row" style="display: none" data-bind="visible: currentDashboard">
-    <div class="col-8">
-        <ul class="nav nav-tabs" data-bind="foreach: dashboards">
+    <div class="col-12 d-flex flex-wrap justify-content-between align-items-center">
+        <ul class="nav nav-tabs flex-grow-1" data-bind="foreach: dashboards">
             <li class="nav-item">
                 <h2>
                     <a class="nav-link" href="#" data-bind="text: name, click: function() { $parent.selectDashboard(id);}, css: { 'active': $parent.currentDashboard().id === id, 'selected-tab': $parent.currentDashboard().id === id }"></a>
                 </h2>
             </li>
         </ul>
-    </div>
-    <div class="col-4 d-flex align-items-end justify-content-end border-bottom">
-        <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-light btn-sm" data-bind="click: RefreshAllReports">
-                <i class="fa fa-refresh"></i>
-                <span>Refresh</span>
-            </button>
+        <div class="d-flex flex-wrap align-items-end gap-2 mt-2 mt-md-0 border-bottom" style="padding-top: 21px;">            
             <div class="dropdown">
                 <button class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="fa fa-pencil-square"></i>
                     <span>Manage</span>
                 </button>
                 <ul class="dropdown-menu">
-                    <!--<li>
-                        <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard">
-                            <i class="fa fa-plus"></i>
-                            <span>Add New Report</span>
-                        </button>
+                    <li class="dropdown dropdown-hover">
+                        <a href="#" class="dropdown-toggle dropdown-item" data-bs-toggle="dropdown" role="button" aria-expanded="false" data-bind="click: function() { newReport(true) }, visible: currentDashboard().canManage || adminMode()">
+                            <span class="fa fa-plus"></span> Add New Report
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item" href="#" data-bind="click: function() { newReport(false) }">
+                                    <span class="fa fa-pencil"></span> Add using Standard Designer
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="#" data-bind="click: function() { newReport(true) }">
+                                    <span class="fa fa-bolt"></span> Add using Smarter Designer
+                                </a>
+                            </li>
+                        </ul>
                     </li>
                     <li>
-                        <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: editDashboard">
-                            <i class="fa fa-plus"></i>
-                            <span>Add Existing Report</span>
-                        </button>
-                    </li>-->
-                    <li>
-                        <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard">
-                            <i class="fa fa-plus"></i>
-                            <span>Add New Dashboard</span>
-                        </button>
-                    </li>
-                    <li>
-                        <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: editDashboard">
+                        <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: editDashboard, visible: currentDashboard().canManage || adminMode()">
                             <i class="fa fa-pencil"></i>
-                            <span>Edit this Dashboard</span>
+                            <span>Edit Dashboard</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard">
+                            <i class="fa fa-dashboard"></i>
+                            <span>Add a New Dashboard</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="dropdown-item" data-bind="click: RefreshAllReports">
+                            <i class="fa fa-refresh"></i>
+                            <span>Refresh</span>
                         </button>
                     </li>
                 </ul>
@@ -183,20 +192,23 @@
                 <button class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="fa fa-download"></i>
                     <span>Export</span>
-                </button>                
+                </button>
                 <ul class="dropdown-menu">
                     <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllPdfReportsWithPageOption() : ExportAllPdfReports('',''); }, hidden: appSettings.useAltPdf"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
                     <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllPdfAltReportsWithPageOption() : ExportAllPdfAltReports('',''); }, visible: appSettings.useAltPdf"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
                     <li><a class="dropdown-item" href="#" data-bind="click: ExportAllExcelReports"><i class="fa fa-file-excel-o"></i> Excel</a></li>
                     <li data-bind="visible: canDrilldown"><a class="dropdown-item" href="#" data-bind="click: ExportAllExcelExpandedReports"><i class="fa fa-file-excel-o"></i> Excel (Expanded)</a></li>
                     <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllWordReportsWithPageOption() : ExportAllWordReports('','');}"><i class="fa fa-file-word-o"></i> Word</a></li>
+                    <li><a class="dropdown-item" href="#" data-bind="click: PrintDashboard"><i class="fa fa-print"></i> Print</a></li>
                 </ul>
             </div>
-            <div class="btn btn-light btn-sm d-flex align-items-center gap-2">
-                <div class="form-check form-switch m-0">
-                    <input class="form-check-input" id="arrange-mode" type="checkbox" data-bind="checked: arrangeDashboard">
+            <div data-bind="if: currentDashboard().canManage || adminMode()">
+                <div class="btn btn-light btn-sm d-flex align-items-center gap-2">
+                    <div class="form-check form-switch m-0">
+                        <input class="form-check-input" id="arrange-mode" type="checkbox" data-bind="checked: arrangeDashboard">
+                    </div>
+                    <span>Arrange</span>
                 </div>
-                <span>Arrange</span>
             </div>
             <div class="btn-group btn-group-sm" role="group">
                 <button class="btn btn-light" data-bind="click: zoomOutDashboard" data-bs-toggle="tooltip" title="Zoom Out">
@@ -281,7 +293,7 @@
                                 <div class="checkbox">
                                     <label class="list-group-item-heading">
                                         <input type="checkbox" data-bind="checked: selected">
-                                        <span class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie', 'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map', 'fa-window-restore': reportType=='Treemap'}" style="font-size: 14pt; color: #808080"></span>
+                                        <span class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie', 'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map', 'fa-window-restore': reportType=='Treemap', 'fa-code': reportType=='Html'}" style="font-size: 14pt; color: #808080"></span>
                                         <span data-bind="highlightedText: { text: reportName, highlight: $parent.searchReports, css: 'highlight' }"></span>
                                     </label>
                                 </div>
@@ -306,7 +318,7 @@
                                             <div class="form-check">
                                                 <input class="form-check-input" type="checkbox" data-bind="checked: selected">
                                                 <label class="form-check-label">
-                                                    <i class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie', 'fa-line-chart': reportType=='Line', 'fa-globe': reportType=='Map', 'fa-window-restore': reportType=='Treemap'}" style="font-size: 14pt; color: #808080"></i>
+                                                    <i class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie', 'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map', 'fa-window-restore': reportType=='Treemap', 'fa-code': reportType=='Html'}" style="font-size: 14pt; color: #808080"></i>
                                                     <span data-bind="text: reportName"></span>
                                                 </label>
                                             </div>
@@ -337,9 +349,8 @@
 </div>
 
 
-<div class="grid-stack" data-bind="visible: reports().length>0, foreach: reports" style="display: none;">
-    <div class="grid-stack-item" data-bind="attr:$parent.isOverlap()? {'data-gs-width': width, 'data-gs-height': height, 'data-gs-auto-position': true, 'data-gs-id': ReportID}:{'data-gs-x': x, 'data-gs-y': y, 'data-gs-width': width, 'data-gs-height': height, 'data-gs-auto-position': true, 'data-gs-id': ReportID}">
-
+<div class="grid-stack" data-bind="foreach: reports" style="display: none;">
+    <div class="grid-stack-item" data-bind="attr: {'gs-x': x, 'gs-y': y, 'gs-w': width, 'gs-h': height, 'gs-auto-position': true, 'gs-id': ReportID}">
         <div class="card" data-bind="attr: {class: 'card ' + panelStyle + ' grid-stack-item-content'}, css: { expanded: isExpanded }, style: { border: noDashboardBorders() ? 'none' : '', 'box-shadow': noDashboardBorders() ? 'none' : '' }" style="overflow-y: hidden;">
             <div class="padded-div" style="padding-bottom: 0; margin-bottom: 0;">
                 <div class="pull-left">
@@ -352,10 +363,22 @@
                                 <span class="fa fa-filter"></span> Filter
                             </a>
                         </li>
-                        <li data-bind="visible: CanEdit">
-                            <a href="#" class="dropdown-item" data-bind="click: openReport">
+                        <li class="dropdown dropdown-hover">
+                            <a href="#" class="dropdown-toggle dropdown-item" data-bs-toggle="dropdown" role="button" aria-expanded="false" data-bind="click: editReportAi">
                                 <span class="fa fa-pencil"></span> Edit
                             </a>
+                            <ul class="dropdown-menu small">
+                                <li>
+                                    <a class="dropdown-item" href="#" data-bind="click: openReport">
+                                        <span class="fa fa-pencil"></span> Edit Standard
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="#" data-bind="click: editReportAi">
+                                        <span class="fa fa-bolt"></span> Edit Smarter
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
                         <li class="dropdown dropdown-hover" data-bind="visible: ReportType()!='Single'">
                             <a href="#" class="dropdown-toggle dropdown-item">
@@ -385,8 +408,8 @@
                             </ul>
                         </li>
                         <li data-bind="visible: ReportType()!='Single'">
-                            <a class="dropdown-item" data-bind="attr: {href: '/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + ReportID() }" target="_blank">
-                                <span class="fa fa-file"></span> Report
+                            <a class="dropdown-item" data-bind="attr: {href: '/DotNetReport?linkedreport=true&noparent=true&reportId=' + ReportID() }" target="_blank">
+                                <span class="fa fa-folder-open"></span> Open Report
                             </a>
                         </li>
                         <li data-bind="visible: CanEdit() && CanSaveReports()">
@@ -394,7 +417,7 @@
                                 <span class="fa fa-save"></span> Save
                             </a>
                         </li>
-                        <li>
+                        <li data-bind="visible: $parent.currentDashboard().canManage || $parent.adminMode()">
                             <a href="#" class="dropdown-item" data-bind="click: function() { $parent.removeReportFromDashboard(ReportID()); }">
                                 <span class="fa fa-close"></span> Remove
                             </a>
@@ -404,17 +427,31 @@
                                 <span class="fa fa-refresh"></span> Refresh
                             </a>
                         </li>
+                        <li>
+                            <a href="#" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: $parent.adminMode, click: getCode">
+                                <span class="fa fa-code"></span> Report Code
+                            </a>
+                        </li>
                     </ul>
 
                 </div>
 
                 <h2 class="pull-left" data-bind="text: ReportName"></h2>
                 <div class="pull-right">
+                    <span data-bind="visible: isDirty" class="text-warning small" title="You have unsaved changes">
+                        <i class="fa fa-exclamation-triangle"></i>
+                    </span>
+                    <a class="btn btn-link" data-bind="visible: CanEdit() && CanSaveReports() && isDirty(), click: SaveWithoutRun">
+                        <span class="fa fa-save"></span>
+                    </a>
                     <a class="btn btn-link" data-bind="click: toggleExpand"><span class="fa" data-bind="css: {'fa-expand': !isExpanded(), 'fa-minus': isExpanded() }, visible: ReportType() != 'Single' && !noDashboardBorders()"></span></a>
                 </div>
             </div>
+            <div data-bind="if: activeDesign()">
+                <div data-bind="template: 'report-designer-compact'"></div>
+            </div>
             <div class="card-body list-overflow-auto" style="padding-top: 0; margin-top: 0;">
-                <div data-bind="if: ReportType()!='Single' && CanEdit()">
+                <div data-bind="if: ReportType()!='Single' && ReportType()!='Html' && CanEdit()">
                     <div data-bind="template: 'chart-settings', data: $data"></div>
                 </div>
                 <p data-bind="html: ReportDescription, visible: ReportDescription"></p>

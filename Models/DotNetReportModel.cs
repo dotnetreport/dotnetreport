@@ -30,7 +30,6 @@ using System.Collections.Concurrent;
 using A = DocumentFormat.OpenXml.Drawing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
-using static ReportBuilder.Web.Controllers.DotNetReportApiController;
 using PdfSharp.Pdf.IO;
 
 namespace ReportBuilder.Web.Models
@@ -122,6 +121,13 @@ namespace ReportBuilder.Web.Models
     {
         public List<DotNetReportDataRowModel> Rows { get; set; }
         public List<DotNetReportDataColumnModel> Columns { get; set; }
+    }
+
+    public class SqlQuery
+    {
+        public string sql { get; set; } = "";
+        public List<KeyValuePair<string, string>> parameters { get; set; } = null;
+        public int reportId { get; set; }
     }
 
     public class TableViewModel
@@ -299,6 +305,7 @@ namespace ReportBuilder.Web.Models
 
         public dynamic DbConfig { get; set; }
         public UserRolesConfig UserAndRolesConfig { get; set; }
+        public string CurrentUserId { get; set; }
 
     }
     public class UserRolesConfig
@@ -315,6 +322,9 @@ namespace ReportBuilder.Web.Models
         public string ReportJson { get; set; }
         public bool adminMode { get; set; }
         public bool SubTotalMode { get; set; }
+        public string? userId { get; set; }
+        public string? query { get; set; } = "";
+        public string? fieldIds { get; set; } = "";
     }
 
     public class DotNetDasboardReportModel : DotNetReportModel
@@ -1240,20 +1250,133 @@ namespace ReportBuilder.Web.Models
             }
         }
 
-        public static List<string> SplitSqlColumns(string sql)
+        public static List<string> SplitSqlColumns(string sql, string dbType = "MS SQL")
         {
-            if (sql.StartsWith("EXEC")) return new List<string>();
-            var fromIndex = FindFromIndex(sql);
-            var sqlSplit = sql.Substring(0, fromIndex).Replace("SELECT", "").Trim();
-            var sqlFields = Regex.Split(sqlSplit, "], (?![^\\(]*?\\))").Where(x => x != "CONVERT(VARCHAR(3)")
-                .Select(x => x.EndsWith("]") ? x : x + "]")
-                .Select(x => x.StartsWith("DISTINCT ") ? x.Replace("DISTINCT ", "") : x)
-                .Select(x => x.StartsWith("TOP ") ? Regex.Replace(x, @"TOP\s+\d+", "") : x)
-                .Where(x => x.Contains(" AS "))
-                .ToList();
+            if (string.IsNullOrWhiteSpace(sql)) return new List<string>();
+            sql = sql.Trim();
+            var selectPart = ""; 
+            var current = new StringBuilder();
+            int parenDepth = 0;
+            bool inSingleQuote = false;
+            bool inDoubleQuote = false;
+            bool inBacktick = false;
+            bool inString = false;
+            var columns = new List<string>();
 
-            return sqlFields;
+            switch (dbType)
+            {
+                case "MySql":
+                    if (sql.StartsWith("CALL", StringComparison.OrdinalIgnoreCase))
+                        return new List<string>();
+
+                    var fromIndexMy = FindFromIndex(sql);
+                    if (fromIndexMy <= 0) return new List<string>();
+
+                    selectPart = sql.Substring(0, fromIndexMy)
+                         .Replace("SELECT", "", StringComparison.OrdinalIgnoreCase)
+                         .Trim();
+
+
+                    foreach (char c in selectPart)
+                    {
+                        if (c == '\'' && !inDoubleQuote && !inBacktick)
+                            inSingleQuote = !inSingleQuote;
+                        else if (c == '"' && !inSingleQuote && !inBacktick)
+                            inDoubleQuote = !inDoubleQuote;
+                        else if (c == '`' && !inSingleQuote && !inDoubleQuote)
+                            inBacktick = !inBacktick;
+                        else if (c == '(' && !inSingleQuote && !inDoubleQuote && !inBacktick)
+                            parenDepth++;
+                        else if (c == ')' && !inSingleQuote && !inDoubleQuote && !inBacktick && parenDepth > 0)
+                            parenDepth--;
+                        else if (c == ',' && parenDepth == 0 && !inSingleQuote && !inDoubleQuote && !inBacktick)
+                        {
+                            // split here
+                            columns.Add(current.ToString().Trim());
+                            current.Clear();
+                            continue;
+                        }
+
+                        current.Append(c);
+                    }
+
+                    if (current.Length > 0)
+                        columns.Add(current.ToString().Trim());
+
+                    return columns
+                        .Select(x => x.Trim())
+                        .Select(x => x.StartsWith("DISTINCT ", StringComparison.OrdinalIgnoreCase) ? x.Substring(9).Trim() : x)
+                        .ToList();
+
+                case "Postgre Sql":
+                    if (sql.StartsWith("CALL", StringComparison.OrdinalIgnoreCase))
+                        return new List<string>();
+
+                    var fromIndexPg = FindFromIndex(sql);
+                    if (fromIndexPg <= 0) return new List<string>();
+
+                    var sqlSplitPg = sql.Substring(0, fromIndexPg)
+                        .Replace("SELECT", "", StringComparison.OrdinalIgnoreCase)
+                        .Trim();
+                    sqlSplitPg = Regex.Replace(sqlSplitPg, @"LIMIT\\s+\\d+(\\s+OFFSET\\s+\\d+)?", "", RegexOptions.IgnoreCase);
+
+                    return Regex.Split(sqlSplitPg, ",(?![^()]*\\))")
+                        .Select(x => x.Trim())
+                        .Select(x => x.StartsWith("DISTINCT ", StringComparison.OrdinalIgnoreCase) ? x.Substring(9).Trim() : x)
+                        .Select(x => x.Replace("\"", ""))
+                        .Where(x => Regex.IsMatch(x, "\\s+AS\\s+", RegexOptions.IgnoreCase))
+                        .ToList();
+
+                case "MS SQL":
+                default:
+                    if (sql.StartsWith("EXEC", StringComparison.OrdinalIgnoreCase))
+                        return new List<string>();
+
+                    var fromIndex = FindFromIndex(sql);
+                    if (fromIndex < 0) return new List<string>();
+
+                    selectPart = sql.Substring(0, fromIndex).Replace("SELECT", "", StringComparison.OrdinalIgnoreCase).Trim();
+
+                    current = new StringBuilder();
+                    parenDepth = 0;
+
+                    for (int i = 0; i < selectPart.Length; i++)
+                    {
+                        char c = selectPart[i];
+
+                        if (c == '\'' && (i == 0 || selectPart[i - 1] != '\\'))
+                            inString = !inString;
+
+                        if (!inString)
+                        {
+                            if (c == '(') parenDepth++;
+                            else if (c == ')') parenDepth--;
+                        }
+
+                        // Split only when comma is outside parentheses and strings
+                        if (c == ',' && parenDepth == 0 && !inString)
+                        {
+                            columns.Add(current.ToString().Trim());
+                            current.Clear();
+                        }
+                        else
+                        {
+                            current.Append(c);
+                        }
+                    }
+
+                    if (current.Length > 0)
+                        columns.Add(current.ToString().Trim());
+
+                    // Cleanup, handle DISTINCT/TOP and ensure alias exists
+                    return columns
+                        .Select(x => x.StartsWith("DISTINCT ", StringComparison.OrdinalIgnoreCase) ? x.Substring(9) : x)
+                        .Select(x => Regex.Replace(x, @"TOP\s+\d+", "", RegexOptions.IgnoreCase))
+                        .Where(x => x.Contains(" AS ", StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+            }
         }
+
 
         public static DotNetReportDataModel DataTableToDotNetReportDataModel(DataTable dt, List<string> sqlFields, bool jsonAsTable = true)
         {
@@ -2320,9 +2443,29 @@ namespace ReportBuilder.Web.Models
             var document = new PdfDocument();
             int leftMargin = 40;
             int rightMargin = 40;
-            double columnWidth = Math.Max(100, 100f);
+            double minColumnWidth = 100; // minimum column width
+            double maxColumnWidth = 300; // optional max width limit
 
-            double totalWidth = dt.Columns.Count * columnWidth + leftMargin + rightMargin;
+            var tempPage = document.AddPage();
+            var gfxMeasure = XGraphics.FromPdfPage(tempPage);
+            var fontMeasure = new XFont("Arial", 11, XFontStyleEx.Bold);
+            List<double> columnWidths = new List<double>();
+            foreach (DataColumn col in dt.Columns)
+            {
+                string headerText = col.ColumnName;
+                double width = gfxMeasure.MeasureString(headerText, fontMeasure).Width + 10;
+                foreach (DataRow row in dt.Rows.Cast<DataRow>().Take(20)) // sample first 20 rows for width
+                {
+                    var cellText = row[col]?.ToString() ?? "";
+                    double w = gfxMeasure.MeasureString(cellText, fontMeasure).Width + 10;
+                    if (w > width)
+                        width = w;
+                }
+                width = Math.Max(minColumnWidth, Math.Min(width, maxColumnWidth));
+                columnWidths.Add(width);
+            }
+            document.Pages.Remove(tempPage); // remove temp measuring page
+            double totalWidth = columnWidths.Sum() + leftMargin + rightMargin;
             PdfPage page = null;
             XGraphics gfx = null;
             XTextFormatter tfx = null;
@@ -2437,11 +2580,11 @@ namespace ReportBuilder.Web.Models
                     {
                         var columnFormatting = columns.Count > k ? columns[k] : new ReportHeaderColumn();
                         var columnName = !string.IsNullOrEmpty(columnFormatting.fieldLabel) ? columnFormatting.fieldLabel : columnFormatting.fieldName;
-                        rect = new XRect(currentXPosition, currentYPosition, columnWidth, 20);
+                        rect = new XRect(currentXPosition, currentYPosition, columnWidths[k], 20);
                         gfx.DrawRectangle(XPens.LightGray, rect);
                         rect.Inflate(-cellPadding, -cellPadding);
                         tfx.DrawString(columnName ?? "", fontBold, GetBrushWithColor(), rect, XStringFormats.TopLeft);
-                        currentXPosition += (int) columnWidth;
+                        currentXPosition += (int)columnWidths[k];
                     }
 
                     currentYPosition += 20;
@@ -2458,7 +2601,7 @@ namespace ReportBuilder.Web.Models
                         var value = dt.Rows[i][j].ToString();
                         var dc = dt.Columns[j];
                         var tempVal = value;
-                        var lines = WrapText(gfx, tempVal, new XRect(0, 0, columnWidth, 9999), fontNormal, XStringFormats.Center);
+                        var lines = WrapText(gfx, tempVal, new XRect(0, 0, columnWidths[i], 9999), fontNormal, XStringFormats.Center);
                         maxLines = Math.Max(maxLines, lines.Count);
 
                     }
@@ -2477,7 +2620,7 @@ namespace ReportBuilder.Web.Models
                         var dc = dt.Columns[j];
                         var tempVal = GetFormattedValue(dc, dt.Rows[i], null, false);
                         var formatColumn = GetColumnFormatting(dc, columns, ref tempVal);
-                        var lines = WrapText(gfx, tempVal, new XRect(0, 0, columnWidth, 9999), fontNormal, XStringFormats.Center);
+                        var lines = WrapText(gfx, tempVal, new XRect(0, 0, columnWidths[j], 9999), fontNormal, XStringFormats.Center);
                         
                         if (formatColumn.isNumeric && !formatColumn.dontSubTotal)
                         {
@@ -2485,7 +2628,7 @@ namespace ReportBuilder.Web.Models
                                 subTotals[j] += decVal;
                         }
 
-                        rect = new XRect(currentXPosition, currentYPosition, columnWidth, rowHeight);
+                        rect = new XRect(currentXPosition, currentYPosition, columnWidths[j], rowHeight);
                         gfx.DrawRectangle(XPens.WhiteSmoke, rect);
 
                         var horizontalAlignment = XStringFormats.Center;
@@ -2507,7 +2650,7 @@ namespace ReportBuilder.Web.Models
                             yPosition += fontNormal.Height;
                         }
 
-                        currentXPosition += (int) columnWidth;
+                        currentXPosition += (int) columnWidths[j];
                     }
 
                     currentYPosition += rowHeight;
@@ -2523,7 +2666,7 @@ namespace ReportBuilder.Web.Models
                         var dc = dt.Columns[j];
                         var formatColumn = GetColumnFormatting(dc, columns, ref value);
 
-                        rect = new XRect(currentXPosition, currentYPosition, columnWidth, 20);
+                        rect = new XRect(currentXPosition, currentYPosition, columnWidths[j], 20);
                         gfx.DrawRectangle(XPens.LightGray, rect);
 
                         if (formatColumn.isNumeric && !(formatColumn?.dontSubTotal ?? false))
@@ -2535,7 +2678,7 @@ namespace ReportBuilder.Web.Models
                             gfx.DrawString(" ", fontNormal, XBrushes.Black, rect, XStringFormats.Center);
                         }
 
-                        currentXPosition += (int)columnWidth;
+                        currentXPosition += (int)columnWidths[j];
                     }
                 }
 
@@ -2877,188 +3020,199 @@ namespace ReportBuilder.Web.Models
             var page = await browser.NewPageAsync();
             await page.SetRequestInterceptionAsync(true);
 
-            var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
-            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
-            var data = GetDataTable(reportSql, connectKey);
-
-            var qry = data.qry;
-            var sqlFields = data.sqlFields;
-            var dt = data.dt;
-
-            if (!string.IsNullOrEmpty(pivotColumn))
+            try
             {
-                if (!useAltPivot)
-                {
-                    var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
-                    dt = pd.dt;
-                    if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
-                }
-                else
-                {
-                    var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
-                    dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);
-                }
-                var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
-                sqlFields = sqlFields
-                    .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
-                    .ToList();
-                sqlFields.AddRange(dt.Columns.Cast<DataColumn>().Skip(sqlFields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
-            }
+                var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
+                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+                var data = GetDataTable(reportSql, connectKey);
 
-            var model = new DotNetReportResultModel
-            {
-                ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dt, sqlFields, false),
-                Warnings = "",
-                ReportSql = qry.sql,
-                ReportDebug = false,
-                Pager = new DotNetReportPagerModel
-                {
-                    CurrentPage = 1,
-                    PageSize = 100000,
-                    TotalRecords = dt.Rows.Count,
-                    TotalPages = 1
-                }
-            };
+                var qry = data.qry;
+                var sqlFields = data.sqlFields;
+                var dt = data.dt;
 
-            var formPosted = false;
-            var formData = new StringBuilder();
-            formData.AppendLine("<html><body>");
-            formData.AppendLine($"<form action=\"{printUrl}\" method=\"post\">");
-            formData.AppendLine($"<input name=\"reportSql\" value=\"{HttpUtility.HtmlEncode(reportSql)}\" />");
-            formData.AppendLine($"<input name=\"connectKey\" value=\"{HttpUtility.HtmlEncode(connectKey)}\" />");
-            formData.AppendLine($"<input name=\"reportId\" value=\"{reportId}\" />");
-            formData.AppendLine($"<input name=\"pageNumber\" value=\"1\" />");
-            formData.AppendLine($"<input name=\"pageSize\" value=\"99999\" />");
-            formData.AppendLine($"<input name=\"userId\" value=\"{userId}\" />");
-            formData.AppendLine($"<input name=\"clientId\" value=\"{clientId}\" />");
-            formData.AppendLine($"<input name=\"currentUserRole\" value=\"{currentUserRole}\" />");
-            formData.AppendLine($"<input name=\"expandAll\" value=\"{expandAll}\" />");
-            formData.AppendLine($"<input name=\"dataFilters\" value=\"{HttpUtility.HtmlEncode(string.IsNullOrEmpty(dataFilters) ? "{}" : dataFilters)}\" />");
-            formData.AppendLine($"<input name=\"reportData\" value=\"{HttpUtility.HtmlEncode(JsonConvert.SerializeObject(model))}\" />");
-            formData.AppendLine($"</form>");
-            formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");
-            formData.AppendLine("</body></html>");
-
-            page.Request += async (sender, e) =>
-            {
-                if (formPosted)
+                if (!string.IsNullOrEmpty(pivotColumn))
                 {
-                    await e.Request.ContinueAsync();
-                    return;
+                    if (!useAltPivot)
+                    {
+                        var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
+                        dt = pd.dt;
+                        if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
+                    }
+                    else
+                    {
+                        var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
+                        dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);
+                    }
+                    var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
+                    sqlFields = sqlFields
+                        .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
+                        .ToList();
+                    sqlFields.AddRange(dt.Columns.Cast<DataColumn>().Skip(sqlFields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
                 }
 
-                await e.Request.RespondAsync(new ResponseData
+                var model = new DotNetReportResultModel
                 {
-                    Status = System.Net.HttpStatusCode.OK,
-                    Body = formData.ToString()
+                    ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dt, sqlFields, false),
+                    Warnings = "",
+                    ReportSql = qry.sql,
+                    ReportDebug = false,
+                    Pager = new DotNetReportPagerModel
+                    {
+                        CurrentPage = 1,
+                        PageSize = 100000,
+                        TotalRecords = dt.Rows.Count,
+                        TotalPages = 1
+                    }
+                };
+
+                var formPosted = false;
+                var formData = new StringBuilder();
+                formData.AppendLine("<html><body>");
+                formData.AppendLine($"<form action=\"{printUrl}\" method=\"post\">");
+                formData.AppendLine($"<input name=\"reportSql\" value=\"{HttpUtility.HtmlEncode(reportSql)}\" />");
+                formData.AppendLine($"<input name=\"connectKey\" value=\"{HttpUtility.HtmlEncode(connectKey)}\" />");
+                formData.AppendLine($"<input name=\"reportId\" value=\"{reportId}\" />");
+                formData.AppendLine($"<input name=\"pageNumber\" value=\"1\" />");
+                formData.AppendLine($"<input name=\"pageSize\" value=\"99999\" />");
+                formData.AppendLine($"<input name=\"userId\" value=\"{userId}\" />");
+                formData.AppendLine($"<input name=\"clientId\" value=\"{clientId}\" />");
+                formData.AppendLine($"<input name=\"currentUserRole\" value=\"{currentUserRole}\" />");
+                formData.AppendLine($"<input name=\"expandAll\" value=\"{expandAll}\" />");
+                formData.AppendLine($"<input name=\"dataFilters\" value=\"{HttpUtility.HtmlEncode(string.IsNullOrEmpty(dataFilters) ? "{}" : dataFilters)}\" />");
+                formData.AppendLine($"<input name=\"reportData\" value=\"{HttpUtility.HtmlEncode(JsonConvert.SerializeObject(model))}\" />");
+                formData.AppendLine($"</form>");
+                formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");
+                formData.AppendLine("</body></html>");
+
+                page.Request += async (sender, e) =>
+                {
+                    if (formPosted)
+                    {
+                        await e.Request.ContinueAsync();
+                        return;
+                    }
+
+                    await e.Request.RespondAsync(new ResponseData
+                    {
+                        Status = System.Net.HttpStatusCode.OK,
+                        Body = formData.ToString()
+                    });
+
+                    formPosted = true;
+                };
+
+                await page.GoToAsync(printUrl, new NavigationOptions
+                {
+                    WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
                 });
 
-                formPosted = true;
-            };
-
-            await page.GoToAsync(printUrl, new NavigationOptions
-            {
-                WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
-            });
-
-            await page.WaitForSelectorAsync(".report-inner", new WaitForSelectorOptions { Visible = true });
-            if (imageOnly)
-            {
-                try
+                await page.WaitForSelectorAsync(".report-inner", new WaitForSelectorOptions { Visible = true });
+                if (imageOnly)
                 {
-                    var imageData = await page.EvaluateExpressionAsync<string>("window.chartImageUrl");
-                    await page.EvaluateExpressionAsync("delete window.chartImageUrl;");
-
-                    if (!string.IsNullOrEmpty(imageData))
+                    try
                     {
-                        string base64String = imageData.Split(',')[1];
+                        var imageData = await page.EvaluateExpressionAsync<string>("window.chartImageUrl");
+                        await page.EvaluateExpressionAsync("delete window.chartImageUrl;");
 
-                        return Convert.FromBase64String(base64String);
+                        if (!string.IsNullOrEmpty(imageData))
+                        {
+                            string base64String = imageData.Split(',')[1];
+
+                            return Convert.FromBase64String(base64String);
+                        }
                     }
-                }
-                catch (Exception ex)
-                {
+                    catch (Exception ex)
+                    {
+                        return new byte[0];
+                    }
+
                     return new byte[0];
                 }
 
-                return new byte[0];
-            }
+                int height = await page.EvaluateExpressionAsync<int>("document.body.offsetHeight");
+                int width = Convert.ToInt32(await page.EvaluateExpressionAsync<decimal>("$('table').width()"));
+                var pdfFile = Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
 
-            int height = await page.EvaluateExpressionAsync<int>("document.body.offsetHeight");
-            int width = Convert.ToInt32(await page.EvaluateExpressionAsync<decimal>("$('table').width()"));
-            var pdfFile = Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
-
-            var pdfOptions = new PdfOptions
-            {
-                PrintBackground = true,
-                PreferCSSPageSize = false,
-                MarginOptions = new MarginOptions() { Top = "0.75in", Bottom = "0.75in", Left = "0.1in", Right = "0.1in" }
-            };
-            if (!String.IsNullOrEmpty(pageOrientation))
-            {
-                var Oreintation = (pageOrientation ?? "PORTRAIT").ToUpperInvariant();
-                switch (Oreintation)
+                var pdfOptions = new PdfOptions
                 {
-                    case "LANDSCAPE":
-                        pdfOptions.Landscape = true;
-                        break;
-                    case "PORTRAIT":
-                    default:
-                        pdfOptions.Landscape = false;
-                        break;
+                    PrintBackground = true,
+                    PreferCSSPageSize = false,
+                    MarginOptions = new MarginOptions() { Top = "0.75in", Bottom = "0.75in", Left = "0.1in", Right = "0.1in" }
+                };
+                if (!String.IsNullOrEmpty(pageOrientation))
+                {
+                    var Oreintation = (pageOrientation ?? "PORTRAIT").ToUpperInvariant();
+                    switch (Oreintation)
+                    {
+                        case "LANDSCAPE":
+                            pdfOptions.Landscape = true;
+                            break;
+                        case "PORTRAIT":
+                        default:
+                            pdfOptions.Landscape = false;
+                            break;
+                    }
                 }
-            }
-            if (!String.IsNullOrEmpty(pageSize))
-            {
-                var normalizedPageSize = (pageSize ?? "Letter").ToUpperInvariant();
-                PaperFormat selectedFormat = PaperFormat.A4;
-                switch (normalizedPageSize)
+                if (!String.IsNullOrEmpty(pageSize))
                 {
-                    case "A4":
-                        selectedFormat = PaperFormat.A4;
-                        break;
-                    case "LEGAL":
-                        selectedFormat = PaperFormat.Legal;
-                        break;
-                    case "A1":
-                        selectedFormat = PaperFormat.A1;
-                        break;
-                    case "A2":
-                        selectedFormat = PaperFormat.A2;
-                        break;
-                    case "A3":
-                        selectedFormat = PaperFormat.A3;
-                        break;
-                    case "TABLOID":
-                        selectedFormat = PaperFormat.Tabloid;
-                        break;
-                    case "LETTER":
-                    default:
-                        selectedFormat = PaperFormat.Letter;
-                        break;
-                }
-                pdfOptions.Format = selectedFormat;
-            }
-            else
-            {
-                if (width < 900)
-                {
-                    pdfOptions.Format = PaperFormat.Letter;
-                    pdfOptions.Landscape = false;
+                    var normalizedPageSize = (pageSize ?? "Letter").ToUpperInvariant();
+                    PaperFormat selectedFormat = PaperFormat.A4;
+                    switch (normalizedPageSize)
+                    {
+                        case "A4":
+                            selectedFormat = PaperFormat.A4;
+                            break;
+                        case "LEGAL":
+                            selectedFormat = PaperFormat.Legal;
+                            break;
+                        case "A1":
+                            selectedFormat = PaperFormat.A1;
+                            break;
+                        case "A2":
+                            selectedFormat = PaperFormat.A2;
+                            break;
+                        case "A3":
+                            selectedFormat = PaperFormat.A3;
+                            break;
+                        case "TABLOID":
+                            selectedFormat = PaperFormat.Tabloid;
+                            break;
+                        case "LETTER":
+                        default:
+                            selectedFormat = PaperFormat.Letter;
+                            break;
+                    }
+                    pdfOptions.Format = selectedFormat;
                 }
                 else
                 {
-                    await page.SetViewportAsync(new ViewPortOptions { Width = width });
-                    await page.AddStyleTagAsync(new AddTagOptions { Content = "@page {size: landscape }" });
-                    pdfOptions.Width = $"{width}px";
-                    pdfOptions.MarginOptions.Right = "0.5in";
+                    if (width < 900)
+                    {
+                        pdfOptions.Format = PaperFormat.Letter;
+                        pdfOptions.Landscape = false;
+                    }
+                    else
+                    {
+                        await page.SetViewportAsync(new ViewPortOptions { Width = width });
+                        await page.AddStyleTagAsync(new AddTagOptions { Content = "@page {size: landscape }" });
+                        pdfOptions.Width = $"{width}px";
+                        pdfOptions.MarginOptions.Right = "0.5in";
+                    }
                 }
+                await page.EmulateMediaTypeAsync(MediaType.Screen);
+                await page.EvaluateExpressionAsync("$('.report-inner').css('transform','none')");
+                await page.PdfAsync(pdfFile, pdfOptions);
+                return File.ReadAllBytes(pdfFile);
             }
-            await page.EvaluateExpressionAsync("$('.report-inner').css('transform','none')");
-            await page.PdfAsync(pdfFile, pdfOptions);
-            await page.DisposeAsync();
-            await browser.DisposeAsync();
-            return File.ReadAllBytes(pdfFile);
+            catch
+            {
+                throw;
+            }
+            finally
+            {
+                if (page != null) await page.DisposeAsync();
+                if (browser != null) await browser.DisposeAsync();
+            }
         }
 
         public static byte[] GetCombinePdfFile(List<byte[]> pdfFiles)
@@ -4144,7 +4298,8 @@ namespace ReportBuilder.Web.Models
 
                     using (MySqlCommand command = new MySqlCommand(sqlCount, conn))
                     {
-                        if (!sql.StartsWith("EXEC")) totalRecords = Math.Max(totalRecords, (int)command.ExecuteScalar());
+                        if (!sql.StartsWith("EXEC"))
+                            totalRecords = Convert.ToInt32(command.ExecuteScalar());
                     }
 
                     conn.Close();
@@ -4214,22 +4369,184 @@ namespace ReportBuilder.Web.Models
             }
             return dts;
         }
+        private static FieldTypes ConvertToMySqlDataType(string mysqlType)
+        {
+            mysqlType = mysqlType.ToLower();
+            if (mysqlType.Contains("int")) return FieldTypes.Int;
+            if (mysqlType.Contains("decimal") || mysqlType.Contains("numeric")) return FieldTypes.Double;
+            if (mysqlType.Contains("double") || mysqlType.Contains("float")) return FieldTypes.Double;
+            if (mysqlType.Contains("date") || mysqlType.Contains("time")) return FieldTypes.DateTime;
+            if (mysqlType.Contains("bool") || mysqlType.Contains("tinyint(1)")) return FieldTypes.Boolean;
+            if (mysqlType.Contains("text") || mysqlType.Contains("char")) return FieldTypes.Varchar;
+            if (mysqlType.Contains("blob") || mysqlType.Contains("binary")) return FieldTypes.Varchar;
+            return FieldTypes.Varchar;
+        }
+
         public async Task<List<TableViewModel>> GetTables(string type = "TABLE", string? accountKey = null, string? dataConnectKey = null)
         {
-            var conn = new OleDbDatabaseConnection();
-            return await conn.GetTables(type, accountKey, dataConnectKey);
+            var tables = new List<TableViewModel>();
+            var currentTables = new List<TableViewModel>();
+
+            if (!string.IsNullOrEmpty(accountKey) && !string.IsNullOrEmpty(dataConnectKey))
+            {
+                currentTables = await DotNetReportHelper.GetApiTables(accountKey, dataConnectKey, true);
+                currentTables = currentTables.Where(x => !string.IsNullOrEmpty(x.TableName)).ToList();
+            }
+
+            var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey), false);
+            using (var conn = new MySqlConnection(connString))
+            {
+                await conn.OpenAsync();
+
+                string sql = @"SELECT TABLE_NAME, TABLE_SCHEMA, TABLE_TYPE 
+                           FROM INFORMATION_SCHEMA.TABLES 
+                           WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = @type";
+
+                var cmd = new MySqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("@type", type == "TABLE" ? "BASE TABLE" : type);
+
+                var reader = await cmd.ExecuteReaderAsync();
+                var schemaTables = new DataTable();
+                schemaTables.Load(reader);
+
+                foreach (DataRow row in schemaTables.Rows)
+                {
+                    string tableName = row["TABLE_NAME"].ToString();
+                    string schema = row["TABLE_SCHEMA"].ToString();
+
+                    var matchTable = currentTables.FirstOrDefault(x => x.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase));
+
+                    var table = new TableViewModel
+                    {
+                        Id = matchTable?.Id ?? 0,
+                        SchemaName = schema,
+                        TableName = tableName,
+                        DisplayName = matchTable?.DisplayName ?? tableName,
+                        IsView = type == "VIEW",
+                        Selected = matchTable != null,
+                        Columns = new List<ColumnViewModel>(),
+                        AllowedRoles = matchTable?.AllowedRoles ?? new List<string>(),
+                        AccountIdField = matchTable?.AccountIdField ?? ""
+                    };
+
+                    string columnQuery = $@"SELECT COLUMN_NAME, DATA_TYPE 
+                                        FROM INFORMATION_SCHEMA.COLUMNS 
+                                        WHERE TABLE_NAME = @table AND TABLE_SCHEMA = DATABASE()";
+
+                    var colCmd = new MySqlCommand(columnQuery, conn);
+                    colCmd.Parameters.AddWithValue("@table", tableName);
+                    var colReader = colCmd.ExecuteReader();
+
+                    int idx = 0;
+                    var colSchema = new DataTable();
+                    colSchema.Load(colReader);
+
+                    foreach (DataRow col in colSchema.Rows)
+                    {
+                        string colName = col["COLUMN_NAME"].ToString();
+                        string dataType = col["DATA_TYPE"].ToString();
+
+                        var matchColumn = matchTable?.Columns.FirstOrDefault(x => x.ColumnName.Equals(colName, StringComparison.OrdinalIgnoreCase));
+
+                        var newCol = new ColumnViewModel
+                        {
+                            ColumnName = matchColumn?.ColumnName ?? colName,
+                            DisplayName = matchColumn?.DisplayName ?? colName,
+                            PrimaryKey = matchColumn?.PrimaryKey ?? (colName.ToLower().EndsWith("id") && idx == 0),
+                            DisplayOrder = matchColumn?.DisplayOrder ?? idx,
+                            FieldType = matchColumn?.FieldType ?? ConvertToMySqlDataType(dataType).ToString(),
+                            AllowedRoles = matchColumn?.AllowedRoles ?? new List<string>(),
+                            Selected = matchColumn != null
+                        };
+
+                        if (matchColumn != null)
+                        {
+                            newCol.Id = matchColumn.Id;
+                            newCol.ForeignKey = matchColumn.ForeignKey;
+                            newCol.ForeignJoin = matchColumn.ForeignJoin;
+                            newCol.ForeignTable = matchColumn.ForeignTable;
+                            newCol.ForeignKeyField = matchColumn.ForeignKeyField;
+                            newCol.ForeignValueField = matchColumn.ForeignValueField;
+                        }
+
+                        idx++;
+                        table.Columns.Add(newCol);
+                    }
+
+                    tables.Add(table);
+                }
+            }
+            return tables;
         }
 
-        public Task<TableViewModel> GetSchemaFromSql(string connString, TableViewModel table, string sql, bool dynamicColumns)
+        public async Task<TableViewModel> GetSchemaFromSql(string connString, TableViewModel table, string sql, bool dynamicColumns)
         {
-            var conn = new OleDbDatabaseConnection();
-            return conn.GetSchemaFromSql(connString, table, sql, dynamicColumns);
+            using var conn = new MySqlConnection(connString);
+            await conn.OpenAsync();
+
+            using var cmd = new MySqlCommand(sql, conn);
+            using var reader = await cmd.ExecuteReaderAsync();
+
+            int idx = 0;
+            if (dynamicColumns)
+            {
+                while (await reader.ReadAsync())
+                {
+                    table.Columns.Add(new ColumnViewModel
+                    {
+                        ColumnName = reader.GetName(0),
+                        DisplayName = reader.GetName(0)
+                    });
+                }
+            }
+            else
+            {
+                var schema = reader.GetSchemaTable();
+                foreach (DataRow row in schema.Rows)
+                {
+                    table.Columns.Add(new ColumnViewModel
+                    {
+                        ColumnName = row["ColumnName"].ToString(),
+                        DisplayName = row["ColumnName"].ToString(),
+                        FieldType = FieldTypes.Varchar.ToString(),
+                        DisplayOrder = idx++,
+                        Selected = true
+                    });
+                }
+            }
+            return table;
         }
 
-        public Task<List<TableViewModel>> GetSearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
+        public async Task<List<TableViewModel>> GetSearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
         {
-            var conn = new OleDbDatabaseConnection();
-            return conn.GetSearchProcedure(value, accountKey, dataConnectKey);
+            var tables = new List<TableViewModel>();
+            var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey), false);
+            using var conn = new MySqlConnection(connString);
+            await conn.OpenAsync();
+
+            string sql = @"SELECT ROUTINE_NAME, ROUTINE_SCHEMA 
+                       FROM INFORMATION_SCHEMA.ROUTINES 
+                       WHERE ROUTINE_TYPE='PROCEDURE' 
+                       AND ROUTINE_NAME LIKE @value";
+
+            var cmd = new MySqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("@value", $"%{value}%");
+            var reader = await cmd.ExecuteReaderAsync();
+            var dt = new DataTable();
+            dt.Load(reader);
+
+            foreach (DataRow proc in dt.Rows)
+            {
+                tables.Add(new TableViewModel
+                {
+                    TableName = proc["ROUTINE_NAME"].ToString(),
+                    SchemaName = proc["ROUTINE_SCHEMA"].ToString(),
+                    DisplayName = proc["ROUTINE_NAME"].ToString(),
+                    Columns = new List<ColumnViewModel>(),
+                    Parameters = new List<ParameterViewModel>()
+                });
+            }
+            return tables;
         }
     }
     public class PostgresDatabaseConnection : IDatabaseConnection

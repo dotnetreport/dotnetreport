@@ -21,7 +21,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
     $(document).ready(function() {
         ajaxcall({ url: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")' }).done(function(data) {
             var vm = new reportViewModel({
-                runReportUrl: '@Url.Action("Report")',
+                runReportUrl: '@Url.Action("Index")',
                 reportWizard: $("#modal-reportbuilder"),
                 execReportUrl: "@Url.Action("RunReport", "DotNetReportApi")",
                 runLinkReportUrl: "@Url.Action("RunReportLink", "DotNetReportApi")",
@@ -42,14 +42,13 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 samePageOnRun: true
             });
 
-            vm.init(queryParams.folderid || 0, data.noAccount);
+            vm.init(queryParams.folderid || 0, data.noAccount, queryParams.reportId || 0);
             ko.applyBindings(vm);
             vm.textQuery.setupSearch();
 
             $(window).resize(function() {
                 vm.DrawChart();
-                vm.headerDesigner.resizeCanvas();
-            });
+            });            
         });
     });
 </script>
@@ -75,36 +74,56 @@ Its Recommended you use it as is, and only change styling as needed to match you
 
                     <div class="collapse navbar-collapse" id="navbarSupportedContent">
                         <ul class="navbar-nav mr-auto">
-
-                            <li class="nav-item active" data-bind="visible: SelectedFolder() ? SelectedFolder().canEdit : (CanSaveReports() || adminMode())">
+                            <li class="nav-item dropdown" data-bind="visible: (CanSaveReports() && appSettings.usePromptBuilder()) || adminMode()">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    <span class="fa fa-plus"></span> New Report
+                                </a>
+                                <div class="dropdown-menu">
+                                    <a class="dropdown-item" href="#" data-bind="click: createNewReport" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder"><i class="fa fa-sliders"></i> Use Standard Designer</a>
+                                    <a class="dropdown-item" href="#" data-bind="click: createNewReportAi"><i class="fa fa-bolt"></i> Use Smarter Designer</a>
+                                </div>
+                            </li>
+                            <li class="nav-item active" data-bind="visible: (SelectedFolder() ? SelectedFolder().canEdit : (CanSaveReports() || adminMode())) && !appSettings.usePromptBuilder()">
                                 <a href="#" class="nav-link" data-bind="click: createNewReport" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
                                     <span class="fa fa-plus"></span> New Report
                                 </a>
                             </li>
-
                             <li class="nav-item" data-bind="visible: CanManageFolders() || adminMode()">
                                 <a href="#" class="nav-link" data-bind="click: ManageFolder.newFolder">
                                     <span class="fa fa-folder-o"></span> Add Folder
                                 </a>
                             </li>
-                            <li class="nav-item dropdown" data-bind="visible: (CanManageFolders() || adminMode()) && SelectedFolder()!=null && (SelectedFolder().canEdit || SelectedFolder().canDelete)">
+                            <li class="nav-item dropdown" data-bind="visible: (CanManageFolders() || adminMode()) && SelectedFolder()!=null && (SelectedFolder().canEdit || SelectedFolder().canDelete || adminMode())">
                                 <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                     <span class="fa fa-folder"></span> Folder Options
                                 </a>
                                 <div class="dropdown-menu">
-                                    <a class="dropdown-item" href="#" data-bind="click: ManageFolder.editFolder, visible: SelectedFolder() && SelectedFolder().canEdit">Edit Selected Folder</a>
-                                    <a class="dropdown-item" href="#" data-bind="click: ManageFolder.deleteFolder, visible: SelectedFolder() && SelectedFolder().canDelete">Delete Selected Folder</a>
+                                    <a class="dropdown-item" href="#" data-bind="click: ManageFolder.editFolder, visible: SelectedFolder() && (SelectedFolder().canEdit || adminMode())">Edit Selected Folder</a>
+                                    <a class="dropdown-item" href="#" data-bind="click: ManageFolder.deleteFolder, visible: SelectedFolder() && (SelectedFolder().canDelete || adminMode())">Delete Selected Folder</a>
                                 </div>
                             </li>
                             <li class="nav-item active" data-bind="visible: adminMode() && SelectedFolder() ==null">
-                                <a href="#" class="nav-link" data-bind="click: function(){ initHeaderDesigner(); }">
+                                <a href="#" class="nav-link" data-bind="click: function(){ initHeaderDesigner(false); }">
                                     <span class="fa fa-arrow-up"></span> Report Header
                                 </a>
                             </li>
-                            <li class="nav-item active" data-bind="visible: adminMode">
-                                <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#uploadFileModal" aria-haspopup="true" aria-expanded="false" title="Import Report from JSON file">
-                                    <span class="fa fa-upload"></span> Import Report
+                            <li class="nav-item dropdown" data-bind="visible: appSettings.showImportExport() || adminMode()">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    <span class="fa fa-exchange"></span> Import / Export
                                 </a>
+                                <div class="dropdown-menu">
+                                    <a class="dropdown-item" href="#" data-bind="click: function(){ selectMode(!selectMode()); }">
+                                        <span data-bind="css: selectMode() ? 'fa fa-check-square text-primary' : 'fa fa-square-o'"></span>
+                                        <span data-bind="text: selectMode() ? 'Cancel Select Mode' : 'Select Mode'"></span>
+                                    </a>
+                                    <div class="dropdown-divider"></div>
+                                    <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#uploadFileModal" data-bind="visible: !selectMode()" title="Import Report from JSON file">
+                                        <span class="fa fa-upload"></span> Import Reports
+                                    </a>
+                                    <a class="dropdown-item" href="#" data-bind="visible: selectMode, click: exportSelectedReportJson">
+                                        <span class="fa fa-download"></span> Export Selected Reports
+                                    </a>
+                                </div>
                             </li>
                         </ul>
                         <div class="form-inline my-2 my-lg-0 ms-auto w-50">
@@ -128,58 +147,47 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         <p class="alert alert-info">
                             You can design the common report header below that will be applied to all reports where report headers are turned on.
                         </p>
-                        <div class="d-flex align-items-center report-menubar">
-                            <div class="btn-group me-2">
-                                <button class="btn btn-sm btn-outline-secondary" title="Add Text" data-bind="click: addText">
-                                    <span class="fa fa-font"></span>
-                                </button>
-                                <label class="btn btn-sm btn-outline-secondary" title="Add Image">
-                                    <span class="fa fa-image"></span>
-                                    <input type="file" accept="image/*" hidden data-bind="event: { change: function() { uploadImage($element.files[0]) } }" />
-                                </label>
-                                <button class="btn btn-sm btn-outline-secondary" title="Add Line" data-bind="click: addLine">
-                                    <span class="fa fa-arrows-h"></span>
-                                </button>
+                        <div class="form-group row m-1" data-bind="visible: clientListIds().length > 0">
+                            <div class="col-md-3 col-sm-3">
+                                <label class="control-label">Headers for other Clients saved</label>
                             </div>
-                            <div data-bind="if: selectedObject()" class="d-flex align-items-center me-2">
-                                <span class="mx-2">|</span>
-                                <button class="btn btn-sm btn-outline-danger me-2" data-bind="click: remove" title="Delete">
-                                    <span class="fa fa-trash"></span>
-                                </button>
-                                <div data-bind="if: getText()" class="d-flex align-items-center">
-                                    <select class="form-select form-select-sm me-2" title="Font Family" data-bind="event: {change: setFontFamily }, value: objectProperties.fontFamily">
-                                        <option value="arial" selected>Arial</option>
-                                        <option value="helvetica">Helvetica</option>
-                                        <option value="myriad pro">Myriad Pro</option>
-                                        <option value="delicious">Delicious</option>
-                                        <option value="verdana">Verdana</option>
-                                        <option value="georgia">Georgia</option>
-                                        <option value="courier">Courier</option>
-                                        <option value="comic sans ms">Comic Sans MS</option>
-                                    </select>
-                                    <select class="form-select form-select-sm me-2" title="Text Align" data-bind="event: {change: setTextAlign }, value: objectProperties.textAlign">
-                                        <option>Left</option>
-                                        <option>Center</option>
-                                        <option>Right</option>
-                                        <option>Justify</option>
-                                    </select>
-                                    <input type="color" class="form-control form-control-color me-2" style="width: 100px; height: 30px;" title="Font Color" data-bind="event: {change: setFontColor }, value: objectProperties.fontColor" style="min-width: 20px;">
-                                    <button class="btn btn-sm btn-outline-secondary me-2" title="Bold" data-bind="event: {click: setFontBold }, value: objectProperties.fontBold">
-                                        <span class="fa fa-bold"></span>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-secondary me-2" title="Italic" data-bind="event: {click: setFontItalic }, value: objectProperties.fontItalic">
-                                        <span class="fa fa-italic"></span>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-secondary me-2" title="Underline" data-bind="event: {click: setFontUnderline }, value: objectProperties.fontUnderline">
-                                        <span class="fa fa-underline"></span>
-                                    </button>
-                                </div>
+                            <div class="col-md-3 col-sm-3">
+                                <select class="form-control"
+                                        data-bind="options: clientListIds,
+                                            value: selectedHeaderClientId,
+                                            optionsCaption: 'No Client Id (Global)',
+                                            event: { change: function () { loadHtmlHeader(true); } }">
+                                </select>
                             </div>
-                            <button class="btn btn-primary btn-sm ms-auto" data-bind="click: saveCanvas">Save Changes</button>
+                            <div class="col-md-1 col-sm-1">
+                                <span data-bs-toggle="tooltip" class="fa fa-question-circle helptip"
+                                      title="Choose a client to design its report header"></span>
+                            </div>
                         </div>
-
-                        <canvas id="report-header" width="900" height="120" style="border: solid 1px #ccc"></canvas>
-
+                        <div class="form-group row m-1">
+                            <div class="col-md-3 col-sm-3">
+                                <label class="control-label">Specify Client Id to Restrict Access</label>
+                            </div>
+                            <div class="col-md-3 col-sm-3">
+                                <input class="form-control text-box single-line" type="text" data-bind="value: headerClientId">
+                            </div>
+                            <div class="col-md-1 col-sm-1">
+                                <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Leave blank to give all clients access (Global Report Header)"></span>
+                            </div>
+                        </div>
+                        <textarea id="report-header-editor"></textarea>
+                        <button class="btn btn-primary btn-sm mt-2" data-bind="click: saveHtmlHeader">
+                            Save Changes
+                        </button>
+                    </div>
+                    <div data-bind="visible: !UseReportHeader()">
+                        <p class="alert alert-info">
+                            If you turn off the <b>Use Report Header</b> option,
+                            the <b>Report Header</b> will not be applied in reports.
+                        </p>
+                        <button class="btn btn-primary btn-sm mt-2" data-bind="click: saveHtmlHeader">
+                            Save Changes
+                        </button>
                     </div>
                 </div>
                 <div data-bind="ifnot: designingHeader">
@@ -199,6 +207,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             <p>Please choose Folders below to view Reports</p>
                             <ul class="folder-list" data-bind="foreach: Folders">
                                 <li data-bind="click: function(){ $parent.SelectedFolder($data); }">
+                                    <span data-bind="visible: $root.selectMode, click: function(d,e){ isSelected(!isSelected()); e.stopPropagation(); },
+                                          css: isSelected() ? 'fa fa-check-square text-primary me-2' : 'fa fa-square-o me-2'"></span>
                                     <span class="fa fa-3x fa-folder text-secondary"></span>
                                     <span class="desc" data-bind="text: FolderName"></span>
                                 </li>
@@ -224,7 +234,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <div class="list-group-item">
                                         <div class="row">
                                             <div class="col-sm-7">
-                                                <div class="fa fa-2x pull-left" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType.indexOf('Map')==0, 'fa-window-maximize': reportType=='Single', 'fa-random': reportType=='Pivot', 'fa-window-restore': reportType=='Treemap', 'fa-signal': reportType == 'Combo'}"></div>
+                                                <input type="checkbox" data-bind="visible: $root.selectMode, checked: isSelected" class="pull-left me-2" />
+                                                <div class="fa fa-2x pull-left" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType.indexOf('Map')==0, 'fa-window-maximize': reportType=='Single', 'fa-random': reportType=='Pivot', 'fa-window-restore': reportType=='Treemap', 'fa-signal': reportType == 'Combo', 'fa-code': reportType == 'Html', 'fa-map': reportType == 'HeatMap'}"></div>
                                                 <div class="pull-left">
                                                     <h4>
                                                         <a data-bind="click: runReport" style="cursor: pointer">
@@ -236,9 +247,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 <p data-bind="text: reportDescription"></p>
                                                 <p data-bind="if: $parent.searchReports()">
                                                     <span class="fa fa-folder"></span> <span data-bind="text: folderName"></span>
-                                                    <div>
+                                                    <span>
                                                         <span data-bind="text: message" class="highlight small"></span>
-                                                    </div>
+                                                    </span>
                                                 </p>
                                                 <div data-bind="if: $parent.adminMode">
                                                     <div class="small">
@@ -268,8 +279,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                             <br />
                                                         </div>
                                                         <div>
-                                                            Direct Link to Run Report: <a data-bind="attr: {href: '/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + reportId }" target="_blank"><span class="fa fa-link"></span></a>
-                                                            &nbsp;<a href="#" data-bind="click: navigator.clipboard.writeText(window.location.href + '/Report?linkedreport=true&noparent=true&reportId=' + reportId )"><span class="fa fa-copy" title="Click to Copy Link"></span></a>
+                                                            Direct Link to Run Report: <a data-bind="attr: {href: '/DotNetReport/?linkedreport=true&noparent=true&reportId=' + reportId }" target="_blank"><span class="fa fa-link"></span></a>
+                                                            &nbsp;<a href="#" data-bind="click: navigator.clipboard.writeText(window.location.href + '?linkedreport=true&noparent=true&reportId=' + reportId )"><span class="fa fa-copy" title="Click to Copy Link"></span></a>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -302,13 +313,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                             <a class="dropdown-item" href="#" data-bind="visible: hasDrilldown, click: function() {exportReport('excel-sub');}">
                                                                 <span class="fa fa-file-excel-o"></span> Download Excel (Expanded)
                                                             </a>
-                                                            <a class="dropdown-item" href="#" data-bind="visible:$parent.adminMode, click: function() {exportReport('json');}">
-                                                                <span class="fa fa-file"></span> Export Json
-                                                            </a>
                                                         </div>
-
                                                     </div>
-
                                                     <button class="btn btn-sm btn-outline-secondary" data-bind="click: deleteReport, visible: canDelete">
                                                         <span class="fa fa-trash" aria-hidden="true"></span> Delete
                                                     </button>
@@ -374,12 +380,14 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <div class="folder-list" data-bind="foreach: Folders">
                                         <div class="row clickable py-2 border-bottom align-items-center w-100" data-bind="click: function(){ $parent.SelectedFolder($data); }">
                                             <div class="col-md-6 d-flex align-items-center">
+                                                <span data-bind="visible: $root.selectMode, click: function(d,e){ isSelected(!isSelected()); e.stopPropagation(); },
+                                                    css: isSelected() ? 'fa fa-check-square text-primary me-2' : 'fa fa-square-o me-2'"></span>
                                                 <span class="fa fa-folder text-secondary me-2"></span>
                                                 <span data-bind="text: FolderName"></span>
                                             </div>
                                             <div class="col-md-6 text-end" data-bind="visible: $parent.adminMode">
-                                                @*  <div class="badge bg-info text-white" data-bind="text: userId ? userId : 'Any User'"></div>
-                                                    <div class="badge bg-info text-white" data-bind="text: userRole ? userRole : 'No Role'"></div> *@
+                                                <!--<div class="badge bg-info text-white" data-bind="text: userId ? userId : 'Any User'"></div>
+                                                    <div class="badge bg-info text-white" data-bind="text: userRole ? userRole : 'No Role'"></div>-->
                                             </div>
                                         </div>
                                     </div>
@@ -408,6 +416,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         <div class="report-list" data-bind="foreach: searchReports() ? reportsInSearch() : reportsInFolder()">
                                             <div class="row border-bottom py-2 align-items-center w-100">
                                                 <div class="col-md-4 d-flex align-items-center">
+                                                    <input type="checkbox" data-bind="visible: $root.selectMode, checked: isSelected" class="me-2" />
                                                     <span class="fa" data-bind="css: {
                                                     'fa-file': reportType=='List',
                                                     'fa-th-list': reportType=='Summary',
@@ -418,7 +427,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                     'fa-globe': reportType.indexOf('Map')==0,
                                                     'fa-window-maximize': reportType=='Single',
                                                     'fa-random': reportType=='Pivot',
-                                                    'fa-window-restore': reportType=='Treemap'
+                                                    'fa-window-restore': reportType=='Treemap',
+                                                    'fa-code': reportType == 'Html',
+                                                    'fa-map': reportType == 'HeatMap'
                                                 }"></span>
                                                     <a class="ms-2" data-bind="click: runReport, highlightedText: { text: reportName, highlight: $parent.searchReports, css: 'highlight' }" style="cursor: pointer"></a>&nbsp;
                                                     <span data-bind="text: message" class="highlight small"></span>
@@ -487,9 +498,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                     <div class="badge bg-info text-white" data-bind="text: userRole ? userRole : 'No Role'"></div>
                                                 </div>
                                                 <div class="col-md-1" data-bind="visible: $parent.adminMode">
-                                                    <a data-bind="attr: {href: '/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + reportId }" target="_blank"><span class="fa fa-link"></span></a>
+                                                    <a data-bind="attr: {href: '/DotNetReport?linkedreport=true&noparent=true&reportId=' + reportId }" target="_blank"><span class="fa fa-link"></span></a>
                                                     &nbsp;
-                                                    <a href="#" data-bind="click: function() { navigator && navigator.clipboard && navigator.clipboard.writeText('/DotNetReport/Report?linkedreport=true&noparent=true&reportId=' + reportId) }">
+                                                    <a href="#" data-bind="click: function() { navigator && navigator.clipboard && navigator.clipboard.writeText('/DotNetReport?linkedreport=true&noparent=true&reportId=' + reportId) }">
                                                         <span class="fa fa-copy" title="Copy Link"></span>
                                                     </a>
                                                 </div>
@@ -504,8 +515,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
             </div>
         </div>
     </div>
+   
 
-    <div data-bind="if: ReportMode() == 'execute' || ReportMode() == 'Linked'">
+    <div data-bind="visible: ReportMode() == 'execute' || ReportMode() == 'linked' || ReportMode() == 'design'">
         <div class="card" data-bind="visible: true;" style="display: none;">
             <div class="card-header">
                 <nav class="navbar navbar-expand-lg navbar-light bg-light">
@@ -524,24 +536,41 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <i class="fa fa-arrow-circle-left"></i>
                                 <span>Back to Parent Report</span>
                             </button>
-                            <a href="#" class="btn btn-light btn-sm" data-bind="visible: $root.CanEdit(), click: function(){SaveReport(true);}" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
-                                <i class="fa fa-edit"></i>
-                                <span>Edit Report</span>
-                            </a>
+                            <div class="dropdown" data-bind="visible: $root.CanEdit() && ReportID()">
+                                <button class="dropdown-toggle btn btn-light btn-sm" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    <i class="fa fa-edit"></i> Edit Report
+                                </button>
+                                <div class="dropdown-menu">
+                                    <a class="dropdown-item" href="#"
+                                       data-bind="click: function(){ SaveReport(true); }"
+                                       data-bs-toggle="modal"
+                                       data-bs-target="#modal-reportbuilder">
+                                        <i class="fa fa-sliders"></i> Edit with Standard Designer
+                                    </a>
+                                    <a class="dropdown-item" href="#"
+                                       data-bind="click: editReportAi">
+                                        <i class="fa fa-bolt"></i> Edit with Smarter Designer
+                                    </a>
+                                </div>
+                            </div>
+
                             <button class="btn btn-light btn-sm" data-bind="click: RefreshReport, visible: false">
                                 <i class="fa fa-refresh"></i>
                                 <span>Refresh</span>
-                            </button>
+                            </button>                            
+                            <span data-bind="visible: isDirty" title="You have unsaved changes">
+                                <i class="text-warning fa fa-exclamation-triangle"></i>
+                            </span>
                             <button class="btn btn-light btn-sm" data-bind="visible: $root.CanEdit(), click: SaveWithoutRun">
-                                <i class="fa fa-save"></i>
+                                <i class="fa fa-save"></i>                                                                
                                 <span>Save Report</span>
                             </button>
-                            <div class="dropdown" data-bind="hidden: DontExecuteOnRun() && !reportRan()">
+                            <div class="dropdown" data-bind="hidden: (DontExecuteOnRun() && !reportRan()) || !ReportID()">
                                 <button type="button" class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="fa fa-download"></i>
                                     <span>Export</span>
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
+                                <ul class="dropdown-menu dropdown-menu-end">                                    
                                     <li data-bind="hidden: appSettings.useAltPdf">
                                         <a href="#" class="dropdown-item" data-bind="click: appSettings.showPageSize
                                               ? function() { PdfPage.isDebug = false; $('#pdfOptionsModal').modal('show'); }
@@ -549,7 +578,6 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             <i class="fa fa-file-pdf-o"></i> Pdf
                                         </a>
                                     </li>
-
                                     <li data-bind="visible: adminMode() && !appSettings.useAltPdf">
                                         <a href="#" class="dropdown-item" data-bind="click: appSettings.showPageSize
                                               ? function() { PdfPage.isDebug = true; $('#pdfOptionsModal').modal('show'); }
@@ -591,6 +619,11 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             <i class="fa fa-file-code-o"></i> Xml
                                         </a>
                                     </li>
+                                    <li>
+                                        <a href="#" class="dropdown-item" data-bind="click: printReportPage">
+                                            <i class="fa fa-print"></i> Print
+                                        </a>
+                                    </li>
                                 </ul>
                             </div>
                         </div>
@@ -598,41 +631,45 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 </nav>
             </div>
             <div class="card-body">
+                <div data-bind="if: activeDesign()">
+                    <div data-bind="template: 'report-designer-compact', data: $root"></div>
+                </div>
+
                 <div data-bind="with: ReportResult" class="report-view">
                     <div data-bind="ifnot: HasError">
                         <div data-bind="with: $root">
                             <div>
-                            <div data-bind="if: EditFiltersOnReport">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <a data-bs-toggle="collapse" data-bs-target="#filter-panel" href="#">
-                                            <i class="fa fa-filter"></i>Choose Filters
-                                        </a>
-                                    </div>
-                                    <div id="filter-panel" class="card-body collapse">
-                                        <div data-bind="if: useStoredProc">
-                                            <div class="row">
-                                                <div data-bind="template: {name: 'filter-parameters'}" class="col-md-12"></div>
-                                            </div>
+                                <div data-bind="if: EditFiltersOnReport">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <a data-bs-toggle="collapse" data-bs-target="#filter-panel" href="#">
+                                                <i class="fa fa-filter"></i>Choose Filters
+                                            </a>
                                         </div>
-                                        <div data-bind="ifnot: useStoredProc">
-                                            <div class="row">
-                                                <div data-bind="template: {name: 'filter-group'}" class="col-md-12"></div>
+                                        <div id="filter-panel" class="card-body collapse">
+                                            <div data-bind="if: useStoredProc">
+                                                <div class="row">
+                                                    <div data-bind="template: {name: 'filter-parameters'}" class="col-md-12"></div>
+                                                </div>
                                             </div>
+                                            <div data-bind="ifnot: useStoredProc">
+                                                <div class="row">
+                                                    <div data-bind="template: {name: 'filter-group'}" class="col-md-12"></div>
+                                                </div>
+                                            </div>
+                                            <br />
+                                            <button class="btn btn-primary" data-bind="click: SaveFilterAndRunReport">Update Filters</button>
                                         </div>
-                                        <br />
-                                        <button class="btn btn-primary" data-bind="click: SaveFilterAndRunReport">Update Filters</button>
                                     </div>
+                                    <br />
                                 </div>
-                                <br />
-                            </div>
-                            <div data-bind="ifnot: EditFiltersOnReport">
-                                <div data-bind="template: {name: 'fly-filter-template'}"></div>
-                                <br />
-                            </div>
+                                <div data-bind="ifnot: EditFiltersOnReport">
+                                    <div data-bind="template: {name: 'fly-filter-template'}"></div>
+                                    <br />
+                                </div>
                             </div>
                             <div class="report-render" data-bind="css: { 'report-expanded': isExpanded }">
-                                <div class="report-menubar" data-bind="hidden: DontExecuteOnRun() && !reportRan()">
+                                <div class="report-menubar bg-light" data-bind="hidden: DontExecuteOnRun() && !reportRan()">
                                     <div class="col-xs-12 col-centered" data-bind="with: pager">
                                         <div class="form-inline pull-left" data-bind="visible: pages()">
                                             <div class="form-group pull-left total-records">
@@ -650,6 +687,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 </button>
                                                 <button class="btn btn-secondary btn-sm" data-bind="visible: $parent.canDrilldown, click: $parent.CollapseAll" title="Collapse all rows">
                                                     <span class="fa fa-minus"></span>
+                                                </button>
+                                                <button class="btn btn-secondary btn-sm" title="Re-run Report" data-bind="click: function() { $root.RunReport(false, true);}">
+                                                    <i class="fa fa-play"></i> 
                                                 </button>
                                                 <div data-bind="with: $parent" class="pull-left">
                                                     <div class="dropdown-selected" data-bind="click: toggleDropdown">
@@ -675,7 +715,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         <div class="form-inline pull-right">
                                             <div data-bind="template: 'pager-template', data: $data"></div>
                                         </div>
-                                        <div class="btn-group btn-group-sm pull-right" role="group">
+                                        <div class="btn-group btn-group-sm pull-right" role="group">                                            
                                             <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: $parent.adminMode">
                                                 <i class="fa fa-code"></i> View Report Code
                                             </button>
@@ -692,11 +732,13 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     </div>
                                 </div>
                                 <div class="report-canvas" data-bind="hidden: DontExecuteOnRun() && !reportRan()">
-                                    <div class="report-container">
-                                        <div class="report-inner">
-                                            <div data-bind="template: 'chart-settings', data: $data, visible: $root.CanEdit()"></div>
-                                            <div class="canvas-container">
-                                                <canvas id="report-header" width="900" height="120" data-bind="visible: useReportHeader"></canvas>
+                                    <div class="report-container bg-light">
+                                        <div class="report-inner bg-white">
+                                            <div data-bind="if: $root.CanEdit() && ReportType()!='Html' && ReportType()!='Single'">
+                                                <div data-bind="template: 'chart-settings', data: $data"></div>
+                                            </div>
+                                            <div data-bind="visible: headerDesigner.UseReportHeader">
+                                                <div id="report-header" width="900" height="120" data-bind="html: headerDesigner.headerHtml"></div>
                                             </div>
                                             <h2 data-bind="text: ReportName"></h2>
                                             <p data-bind="html: ReportDescription">
@@ -728,7 +770,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: $parent.adminMode">
                             <i class="fa fa-code"></i> View Report Code
                         </button>
-                        <button class="btn btn-light" data-bind="click: $root.RunReport">
+                        <button class="btn btn-light" data-bind="click: function() { $root.RunReport(false, true);}">
                             <i class="fa fa-play"></i> Re-run Report
                         </button>
                         <hr />
@@ -787,19 +829,34 @@ Its Recommended you use it as is, and only change styling as needed to match you
     <div class="modal-dialog">
         <div class="modal-content" data-bind="with: ManageJsonFile">
             <div class="modal-header">
-                <h5 class="modal-title" id="uploadFileModalLabel">Import JSON File Upload</h5>
+                <h5 class="modal-title" id="uploadFileModalLabel">Import previously Exported Reports</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+
+                <div class="alert alert-info small">
+                    <strong>Instructions:</strong><br />
+                    • Select a <code>.json</code> file previously exported from Dotnet Report.<br />
+                    • The file may include multiple reports and their folders.<br />
+                    • Any missing folders will be created automatically.<br />
+                    • If a report with the same name already exists, you will be prompted to:
+                    <em>Skip</em>, <em>Overwrite</em>, or <em>Make a Copy</em>.<br />
+                    • Once uploaded, all imported reports will be available immediately.
+                </div>
+
                 <div id="dropzone" class="dropzone"
                      data-bind="event: {click: triggerFileInput }"
                      style="border: 2px dashed #007bff; border-radius: 5px; padding: 30px; text-align: center; color: #007bff; cursor: pointer;">
-                    click to select files
+                    Click here to select a JSON file
                 </div>
-                <input type="file" id="fileInputJson" accept=".json" style="display: none;" data-bind="event: { change: handleFileSelect }">
-                <div data-bind="visible: fileName">
-                    <p>Selected File: <span data-bind="text: fileName"></span></p>
+
+                <input type="file" id="fileInputJson" accept=".json" style="display: none;"
+                       data-bind="event: { change: handleFileSelect }">
+
+                <div class="mt-3" data-bind="visible: fileName">
+                    <p><strong>Selected File:</strong> <span data-bind="text: fileName"></span></p>
                 </div>
+
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -808,7 +865,6 @@ Its Recommended you use it as is, and only change styling as needed to match you
         </div>
     </div>
 </div>
-
 
 <div class="modal" id="wordOptionsModal" tabindex="-1" aria-labelledby="wordOptionsModalLabel" aria-hidden="true">
     <div data-bind="template: { name: 'word-options-template', data: $data }"></div>

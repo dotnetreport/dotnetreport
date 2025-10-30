@@ -50,9 +50,6 @@ var deps = {
 	"lodash": {
 		"lodash.min.js": ""
 	},
-	"toastr": {
-		"build/*": ""
-	},
 	"bootstrap-datepicker": {
 		"dist/**/*": ""
 	},
@@ -68,6 +65,10 @@ var deps = {
 	"bootbox": {
 		"dist/*": ""
 	},
+	"gridstack": {
+		"dist/gridstack-all.js": "",
+		"dist/gridstack.min.css": ""
+	},
 	"knockout-sortable": {
 		"build/*": ""
 	},
@@ -80,12 +81,22 @@ var deps = {
 	"knockout-x-editable": {
 		"knockout.x-editable.min.js": ""
 	},
-	"fabric": {
-		"dist/fabric.min.js": ""
-	},
 	"tributejs": {
 		"dist/tribute.min.js": "",
 		"dist/tribute.css": ""
+	},
+	"summernote": {
+		"dist/summernote-bs5.min.js": "",
+		"dist/summernote-bs5.min.css": "",
+		"dist/font/*": "font/"
+	},
+	"leaflet": {
+		"dist/**/*": "",
+		"dist/leaflet.js": "",
+		"dist/leaflet.css": ""
+	},
+	"leaflet.heat": {
+		"dist/leaflet-heat.js": ""
 	}
 };
 
@@ -99,7 +110,7 @@ gulp.task("clean", function (cb) {
 		rimraf.sync("wwwroot/lib/")
 	];
 	cb();
-	return Promise.all(cleanTasks); // Optional, to make sure all tasks are resolved
+	return Promise.all(cleanTasks);
 });
 
 gulp.task("scripts", function (done) {
@@ -118,13 +129,11 @@ gulp.task("scripts", function (done) {
 			});
 		}
 	}
-
 	// move dotnet report files
 	tasks.push(function (cb) { pump(gulp.src("Scripts/dotnetreport.js"), gulp.dest("wwwroot/js/"), cb); });
 	tasks.push(function (cb) { pump(gulp.src("Scripts/dotnetreport-helper.js"), gulp.dest("wwwroot/js/"), cb); });
-	tasks.push(function (cb) { pump(gulp.src("Scripts/dotnetreport-setup.js"),gulp.dest("wwwroot/js/"),cb);})
+	tasks.push(function (cb) { pump(gulp.src("Scripts/dotnetreport-setup.js"), gulp.dest("wwwroot/js/"), cb); })
 	tasks.push(function (cb) { pump(gulp.src("Content/dotnetreport.css"), gulp.dest("wwwroot/css/"), cb); });
-
 	tasks.push(function (cb) {
 		pump(
 			gulp.src("Content/img/report-logo.png", { encoding: false }),
