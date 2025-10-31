@@ -8317,6 +8317,7 @@ var dashboardViewModel = function (options) {
 		if (typeof event !== "undefined" && event.type === "click") {			
 			self.init().done(function () {
 				self.getDashboards();
+				self.loadDashboard(self.selectDashboard());
 			})
 		}
 	});
