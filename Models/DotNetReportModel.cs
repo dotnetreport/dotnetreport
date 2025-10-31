@@ -2601,7 +2601,7 @@ namespace ReportBuilder.Web.Models
                         var value = dt.Rows[i][j].ToString();
                         var dc = dt.Columns[j];
                         var tempVal = value;
-                        var lines = WrapText(gfx, tempVal, new XRect(0, 0, columnWidths[i], 9999), fontNormal, XStringFormats.Center);
+                        var lines = WrapText(gfx, tempVal, new XRect(0, 0, columnWidths[j], 9999), fontNormal, XStringFormats.Center);
                         maxLines = Math.Max(maxLines, lines.Count);
 
                     }
