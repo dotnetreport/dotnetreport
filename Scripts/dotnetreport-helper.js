@@ -766,7 +766,9 @@ var textQuery = function (options) {
     self.queryItems = [];
     self.filterItems = [];
     self.filterField = null;
-
+    if (window.currentUserId) {
+        options.userId = window.currentUserId;
+    }
     self.ParseQuery = function (token, text) {
         return ajaxcall({
             noBlocking: true,
@@ -776,7 +778,8 @@ var textQuery = function (options) {
                 model: JSON.stringify({
                     token: encodeURIComponent(token),
                     text: encodeURIComponent(text)
-                })
+                }),
+                userid: options.userId
             }
         });
     }
@@ -867,7 +870,8 @@ var textQuery = function (options) {
                 model: JSON.stringify({
                     token: encodeURIComponent(params.term),
                     text: ''
-                })
+                }),
+                userid: options.userId
             } : null;
         },
         processResults: function (data) {
