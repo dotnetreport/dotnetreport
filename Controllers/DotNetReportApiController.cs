@@ -963,6 +963,7 @@ namespace ReportBuilder.Web.Controllers
 
         [HttpPost]
         public async Task<IActionResult> DownloadExcel(
+            [FromForm] bool adminMode,
             [FromForm] string reportSql,
             [FromForm] string connectKey,
             [FromForm] string reportName, 
@@ -979,7 +980,10 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string userId = "")
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            await ValidateAccess(userId, reportSql);
+            if (!adminMode)
+            {
+                await ValidateAccess(userId, reportSql);
+            }
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
             var columns = string.IsNullOrEmpty(columnDetails) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
@@ -994,6 +998,7 @@ namespace ReportBuilder.Web.Controllers
 
         [HttpPost]
         public async Task<IActionResult> DownloadPdf(
+            [FromForm] bool adminMode,
             [FromForm] string printUrl,
             [FromForm] int reportId,
             [FromForm] string reportSql,
@@ -1005,12 +1010,17 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string pivotFunction = null,
             [FromForm] bool debug = false,
             [FromForm] string pageSize = "",
-            [FromForm] string pageOrientation = "")
+            [FromForm] string pageOrientation = "",
+            [FromForm] string userId = "")
         {
 
             var settings = GetSettings();
             
             reportSql = HttpUtility.HtmlDecode(reportSql);
+            if (!adminMode)
+            {
+                await ValidateAccess(userId, reportSql);
+            }
             var pdf = await DotNetReportHelper.GetPdfFile(HttpUtility.UrlDecode(printUrl), reportId, reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName),
                                 settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), JsonConvert.SerializeObject(settings.DataFilters), expandAll, expandSqls, pivotColumn, pivotFunction, false, debug, pageSize, pageOrientation);
 
@@ -1019,6 +1029,7 @@ namespace ReportBuilder.Web.Controllers
 
         [HttpPost]
         public async Task<IActionResult> DownloadPdfAlt(
+           [FromForm] bool adminMode,
            [FromForm] string reportSql,
            [FromForm] string connectKey,
            [FromForm] string reportName,
@@ -1035,7 +1046,10 @@ namespace ReportBuilder.Web.Controllers
            [FromForm] string userId = "")
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            await ValidateAccess(userId, reportSql);
+            if (!adminMode)
+            {
+                await ValidateAccess(userId, reportSql);
+            }
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
             reportName = HttpUtility.UrlDecode(reportName);
@@ -1048,6 +1062,7 @@ namespace ReportBuilder.Web.Controllers
 
         [HttpPost]
         public async Task<IActionResult> DownloadWord(
+            [FromForm] bool adminMode,
             [FromForm] string reportSql,
             [FromForm] string connectKey,
             [FromForm] string reportName,
@@ -1064,7 +1079,10 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string userId = "")
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            await ValidateAccess(userId, reportSql);
+            if (!adminMode)
+            {
+                await ValidateAccess(userId, reportSql);
+            }
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
@@ -1076,6 +1094,7 @@ namespace ReportBuilder.Web.Controllers
 
         [HttpPost]
         public async Task<IActionResult> DownloadCsv(
+            [FromForm] bool adminMode,
             [FromForm] string reportSql,
             [FromForm] string connectKey,
             [FromForm] string reportName,
@@ -1090,7 +1109,10 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string userId = "")
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            await ValidateAccess(userId, reportSql);
+            if (!adminMode)
+            {
+                await ValidateAccess(userId, reportSql);
+            }
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
 
             var csv = await DotNetReportHelper.GetCSVFile(reportSql, HttpUtility.UrlDecode(connectKey), columns, includeSubtotal, expandSqls, pivot, pivotColumn, pivotFunction);
@@ -1102,6 +1124,7 @@ namespace ReportBuilder.Web.Controllers
         }
         [HttpPost]
         public async Task<IActionResult> DownloadXml(
+            [FromForm] bool adminMode,
             [FromForm] string reportSql,
             [FromForm] string connectKey,
             [FromForm] string reportName,
@@ -1111,7 +1134,10 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string userId = "")
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            await ValidateAccess(userId, reportSql);
+            if (!adminMode)
+            {
+                await ValidateAccess(userId, reportSql);
+            }
             string xml = await DotNetReportHelper.GetXmlFile(reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName), expandSqls, pivotColumn, pivotFunction);
             var data = System.Text.Encoding.UTF8.GetBytes(xml);
             Response.ContentType = "text/txt";

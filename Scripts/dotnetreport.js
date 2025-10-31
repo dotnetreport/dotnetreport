@@ -4524,6 +4524,7 @@ var reportViewModel = function (options) {
 
 			e.exportExcel = function () {
 				self.downloadExport("DownloadExcel", {
+					adminMode: self.adminMode(),
 					reportSql: e.sql,
 					connectKey: self.currentConnectKey(),
 					reportName: 'Sub Report for ' + self.ReportName(),
@@ -6908,6 +6909,7 @@ var reportViewModel = function (options) {
 		reportData.DrillDownRowUsePlaceholders = true;
 		var pivotData = self.preparePivotData();
 		self.downloadExport("DownloadExcel", {
+			adminMode: self.adminMode(),
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
