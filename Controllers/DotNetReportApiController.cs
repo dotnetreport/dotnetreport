@@ -121,7 +121,7 @@ namespace ReportBuilder.Web.Controllers
             settings.ApiUrl = _configuration.GetValue<string>("dotNetReport:apiUrl");
             settings.AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken");
             settings.DataConnectApiToken = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken");
-
+            settings.CanUseAdminMode = true;
             return await ExecuteCallReportApi(method, model, null, settings);
         }
 
@@ -909,10 +909,11 @@ namespace ReportBuilder.Web.Controllers
             public bool hasAccess { get; set; }
             public string access { get; set; }
         }
-        private async Task ValidateAccess(string userId, string reportSql = "", int reportId = 0, int dashboardId = 0, int folderId = 0)
+        private async Task ValidateAccess(string userId, string reportSql = "", int reportId = 0, int dashboardId = 0, int folderId = 0, bool adminMode = false)
         {
             var isValid = true;
             var settings = GetSettings();
+            if (adminMode && settings.CanUseAdminMode) return;
             if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
             {
                 isValid = false;
@@ -963,7 +964,6 @@ namespace ReportBuilder.Web.Controllers
 
         [HttpPost]
         public async Task<IActionResult> DownloadExcel(
-            [FromForm] bool adminMode,
             [FromForm] string reportSql,
             [FromForm] string connectKey,
             [FromForm] string reportName, 
@@ -977,13 +977,11 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string pivotFunction = null,
             [FromForm] string onlyAndGroupInColumnDetail = null,
             [FromForm] bool isSubReport = false,
-            [FromForm] string userId = "")
+            [FromForm] string userId = "",
+            [FromForm] bool adminMode = false)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            if (!adminMode)
-            {
-                await ValidateAccess(userId, reportSql);
-            }
+            await ValidateAccess(userId, reportSql, adminMode: adminMode);            
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
             var columns = string.IsNullOrEmpty(columnDetails) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
@@ -1029,7 +1027,6 @@ namespace ReportBuilder.Web.Controllers
 
         [HttpPost]
         public async Task<IActionResult> DownloadPdfAlt(
-           [FromForm] bool adminMode,
            [FromForm] string reportSql,
            [FromForm] string connectKey,
            [FromForm] string reportName,
@@ -1043,13 +1040,11 @@ namespace ReportBuilder.Web.Controllers
            [FromForm] string pivotFunction = null,
            [FromForm] string pageSize = "",
            [FromForm] string pageOrientation = "",
-           [FromForm] string userId = "")
+           [FromForm] string userId = "",
+           [FromForm] bool adminMode = false)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            if (!adminMode)
-            {
-                await ValidateAccess(userId, reportSql);
-            }
+            await ValidateAccess(userId, reportSql, adminMode: adminMode);            
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
             reportName = HttpUtility.UrlDecode(reportName);
@@ -1062,7 +1057,6 @@ namespace ReportBuilder.Web.Controllers
 
         [HttpPost]
         public async Task<IActionResult> DownloadWord(
-            [FromForm] bool adminMode,
             [FromForm] string reportSql,
             [FromForm] string connectKey,
             [FromForm] string reportName,
@@ -1076,13 +1070,11 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string pivotFunction = null,
             [FromForm] string pageSize = "", 
             [FromForm] string pageOrientation = "",
-            [FromForm] string userId = "")
+            [FromForm] string userId = "",
+            [FromForm] bool adminMode = false)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            if (!adminMode)
-            {
-                await ValidateAccess(userId, reportSql);
-            }
+            await ValidateAccess(userId, reportSql, adminMode: adminMode);            
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
@@ -1094,7 +1086,6 @@ namespace ReportBuilder.Web.Controllers
 
         [HttpPost]
         public async Task<IActionResult> DownloadCsv(
-            [FromForm] bool adminMode,
             [FromForm] string reportSql,
             [FromForm] string connectKey,
             [FromForm] string reportName,
@@ -1106,13 +1097,11 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] bool pivot = false,
             [FromForm] string pivotColumn = null,
             [FromForm] string pivotFunction = null,
-            [FromForm] string userId = "")
+            [FromForm] string userId = "",
+            [FromForm] bool adminMode = false)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            if (!adminMode)
-            {
-                await ValidateAccess(userId, reportSql);
-            }
+            await ValidateAccess(userId, reportSql, adminMode: adminMode);
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
 
             var csv = await DotNetReportHelper.GetCSVFile(reportSql, HttpUtility.UrlDecode(connectKey), columns, includeSubtotal, expandSqls, pivot, pivotColumn, pivotFunction);
@@ -1124,20 +1113,17 @@ namespace ReportBuilder.Web.Controllers
         }
         [HttpPost]
         public async Task<IActionResult> DownloadXml(
-            [FromForm] bool adminMode,
             [FromForm] string reportSql,
             [FromForm] string connectKey,
             [FromForm] string reportName,
             [FromForm] string expandSqls = null,
             [FromForm] string pivotColumn = null,
             [FromForm] string pivotFunction = null,
-            [FromForm] string userId = "")
+            [FromForm] string userId = "",
+            [FromForm] bool adminMode = false)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            if (!adminMode)
-            {
-                await ValidateAccess(userId, reportSql);
-            }
+            await ValidateAccess(userId, reportSql, adminMode: adminMode);            
             string xml = await DotNetReportHelper.GetXmlFile(reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName), expandSqls, pivotColumn, pivotFunction);
             var data = System.Text.Encoding.UTF8.GetBytes(xml);
             Response.ContentType = "text/txt";
