@@ -2072,11 +2072,11 @@
                                 <p class="hint-input" id="condition-result" contenteditable="true" placeholder="Condition Result" title="Condition Result"></p>
                             </div>
                         </div>
-
-                        <button class="btn btn-outline-primary" data-bind="click: addCondition">Add Condition</button>
+                        <button class="btn btn-outline-primary" data-bind="click: addOrUpdateCondition,text: editingCondition() ? 'Update Condition' : 'Add Condition'"></button>
                         <ul class="list-group mt-3" data-bind="foreach: conditions">
                             <li class="list-group-item d-flex justify-content-between align-items-center">
                                 <span data-bind="text: conditionDisplay"></span>
+                                <button class="btn btn-sm btn-secondary me-1" data-bind="click: $parent.editCondition">Edit</button>
                                 <button class="btn btn-sm btn-danger" data-bind="click: $parent.removeCondition">Remove</button>
                             </li>
                         </ul>

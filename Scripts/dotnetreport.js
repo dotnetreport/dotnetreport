@@ -7128,7 +7128,7 @@ var sqlFieldModel = function (options) {
 	self.fieldSql = ko.observable();
 	self.availableOperators = ko.observableArray(['=', '!=', '>', '<', '>=', '<=']);
 	self.selectedOperator = ko.observable();
-
+	self.editingCondition = ko.observable(null); 
 	self.toJSON = function () {
 		return {
 			selectedField: self.selectedField(),
@@ -7181,31 +7181,47 @@ var sqlFieldModel = function (options) {
 	self.isConditionalFunction = ko.computed(function () {
 		return ['CASE', 'IIF', 'COALESCE', 'NULLIF', 'DECODE', 'ISNULL', 'IFNULL'].includes(self.selectedSqlFunction());  
 	});
-
-	self.addCondition = function () {
+	self.addOrUpdateCondition = function () {
 		var conditionField = $('#condition-field').text();
 		var conditionValue = $('#condition-value').text();
 		var conditionResult = $('#condition-result').text();
-
 		if (conditionField && conditionValue && conditionResult && self.selectedOperator()) {
-			self.conditions.push({
-				field: conditionField,
-				operator: self.selectedOperator(),
-				value: conditionValue,
-				result: conditionResult,
-				conditionDisplay: `${conditionField} ${self.selectedOperator()} ${conditionValue} THEN ${conditionResult}`
-			});
+			if (self.editingCondition()) {
+				var cond = self.editingCondition();
+				cond.field = conditionField;
+				cond.operator = self.selectedOperator();
+				cond.value = conditionValue;
+				cond.result = conditionResult;
+				cond.conditionDisplay =`${conditionField} ${self.selectedOperator()} ${conditionValue} THEN ${conditionResult}`;
+				var index = self.conditions.indexOf(cond);
+				document.querySelectorAll('.list-group-item span')[index].innerText = cond.conditionDisplay;
+				self.editingCondition(null);
+			} else {
+				self.conditions.push({
+					field: conditionField,
+					operator: self.selectedOperator(),
+					value: conditionValue,
+					result: conditionResult,
+					conditionDisplay:`${conditionField} ${self.selectedOperator()} ${conditionValue} THEN ${conditionResult}`
+				});
+			}
 			$('#condition-field').text('');
 			$('#condition-value').text('');
 			$('#condition-result').text('');
 			self.selectedOperator('');
 		}
 	};
-
 	self.removeCondition = function (item) {
 		self.conditions.remove(item);
+		if (self.editingCondition() === item) self.editingCondition(null);
 	};
-
+	self.editCondition = function (item) {
+		$('#condition-field').text(item.field);
+		$('#condition-value').text(item.value);
+		$('#condition-result').text(item.result);
+		self.selectedOperator(item.operator);
+		self.editingCondition(item);
+	};
 	self.generateSQL = function () {
 		var field = self.selectedField();
 		var func = self.selectedSqlFunction();
