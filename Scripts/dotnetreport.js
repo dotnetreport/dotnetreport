@@ -1360,7 +1360,49 @@ var reportViewModel = function (options) {
 		self.aiHistory.push({ role: "user", content: msg });
 		queryInput.innerText = "";
 		self.aiMessages.push({ role: "assistant", content: "..." });
-		self.runQuery(true);
+		self.processAiMessage(msg);
+	};
+
+	self.processAiMessage = function(msg) {
+		self.SaveReport(false);
+		self.aiMessages.pop();
+		self.aiMessages.push({ role: "assistant", content: "..." });
+		var fieldIds = _.filter(self.textQuery.queryItems, { type: 'Field' }).map(function (x) { return x.value });
+		self.textQuery.resetQuery();
+
+		var reportJson = self.BuildReportData();
+		fieldIds = _.uniq(reportJson.SelectedFieldIDs.concat(fieldIds.map(Number)));
+
+		ajaxcall({
+			type: 'POST',
+			url: options.runReportApiUrl,
+			data: JSON.stringify({
+				method: "/ReportApi/RunQueryAiAlt",
+				query: msg,
+				fieldIds: fieldIds.join(","),
+				reportJson: JSON.stringify(reportJson)
+			}),
+			noBlocking: true
+		}).done(function (result) {
+			if (result.d) result = result.d;
+			if (result.success === false) {
+				toastr.error(result.message || 'Could not process this correctly, please try again');
+				if (useAi) {
+					self.aiMessages.pop();
+					self.aiMessages.push({ role: "assistant", content: "⚠️ Could not process this correctly, please try again." });
+				}
+				return;
+			}
+
+			options.reportSql = result.reportSql;
+			options.reportConnect = result.connectKey;
+			self.PopulateReport(result.report);
+
+			self.aiMessages.pop();
+			var msg = result.aiMessage || "Report updated.";
+			self.aiMessages.push({ role: "assistant", content: msg });
+			self.aiHistory.push({ role: "assistant", content: msg });
+		});
 	};
 
 	self.aiMessages.subscribe(function () {
@@ -1428,12 +1470,9 @@ var reportViewModel = function (options) {
 			filters.forEach(f => self.FilterGroups()[0].AddFilter(f));
 
 			self.queryPrompt = document.getElementById("query-input").innerText.trim();
-
-			if (useAi) {
-				self.aiMessages.pop();
-				self.aiMessages.push({ role: "assistant", content: "..." });
-			}
-
+			self.aiMessages.pop();
+			self.aiMessages.push({ role: "assistant", content: "..." });
+			
 			ajaxcall({
 				type: 'POST',
 				url: options.runReportApiUrl,
@@ -1446,11 +1485,8 @@ var reportViewModel = function (options) {
 			}).done(function (result) {
 				if (result.d) result = result.d;
 				if (result.success === false) {
-					toastr.error(result.message || 'Could not process this correctly, please try again');
-					if (useAi) {
-						self.aiMessages.pop();
-						self.aiMessages.push({ role: "assistant", content: "⚠️ Could not process this correctly, please try again." });
-					}
+					self.aiMessages.pop();
+					self.aiMessages.push({ role: "assistant", content: "Could not process this correctly, please try again." });
 					return;
 				}
 
@@ -1460,7 +1496,7 @@ var reportViewModel = function (options) {
 
 				if (useAi) {
 					self.aiMessages.pop();
-					var msg = result.aiMessage || "✅ Report updated successfully.";
+					var msg = result.aiMessage || "Report updated.";
 					self.aiMessages.push({ role: "assistant", content: msg });
 					self.aiHistory.push({ role: "assistant", content: msg });
 				}
@@ -1570,7 +1606,7 @@ var reportViewModel = function (options) {
 	self.createNewReportAi = function () {
 		self.clearReport();
 		self.activeDesign(true);
-		self.ReportMode("design");	
+		self.ReportMode("design");
 		self.clearAiChat(true);
 		self.activeDesignRunning = false;
 	}
