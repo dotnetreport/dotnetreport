@@ -129,6 +129,10 @@ namespace ReportBuilder.Web.Jobs
                         try
                         {
                             schedule.NormalizeFormat();
+                            TimeZoneInfo targetTimeZone = !String.IsNullOrEmpty(schedule.TimeZone)
+                                ? TimeZoneInfo.FindSystemTimeZoneById(schedule.TimeZone)
+                                : TimeZoneInfo.Local;
+
                             var chron = new CronExpression(schedule.Schedule);
                             var lastRun = !String.IsNullOrEmpty(schedule.LastRun) ? Convert.ToDateTime(schedule.LastRun) : DateTimeOffset.UtcNow.AddMinutes(-10);
                             var nextRun = chron.GetTimeAfter(lastRun);
@@ -139,16 +143,16 @@ namespace ReportBuilder.Web.Jobs
                                 // Convert last run to user's local time zone
                                 lastRun = TimeZoneInfo.ConvertTime(lastRun, timeZoneInfo);
                                 nextRun = chron.GetTimeAfter(lastRun);
-                                // Get current time in user's time zone
-                                DateTime currentTime = TimeZoneInfo.ConvertTime(DateTime.UtcNow, timeZoneInfo);
                             }
                             schedule.NextRun = (nextRun.HasValue ? nextRun.Value.ToLocalTime().DateTime : (DateTime?)null);
 
+                            DateTime currentTimeInTargetTz = TimeZoneInfo.ConvertTime(DateTime.UtcNow, targetTimeZone);
+
                             if ((schedule.ScheduleStart.HasValue && schedule.NextRun.HasValue && schedule.NextRun.Value < schedule.ScheduleStart.Value) ||
-                                    (schedule.ScheduleEnd.HasValue && schedule.NextRun.HasValue && schedule.NextRun.Value > schedule.ScheduleEnd.Value))
+                                (schedule.ScheduleEnd.HasValue && schedule.NextRun.HasValue && schedule.NextRun.Value > schedule.ScheduleEnd.Value))
                                 continue;
 
-                            if (schedule.NextRun.HasValue && DateTime.Now >= schedule.NextRun && (!String.IsNullOrEmpty(schedule.LastRun) || lastRun <= schedule.NextRun))
+                            if (schedule.NextRun.HasValue && currentTimeInTargetTz >= schedule.NextRun && (!String.IsNullOrEmpty(schedule.LastRun) || lastRun <= schedule.NextRun))
                             {
                                 var isDashboard = report.DashboardId > 0;
                                 var itemId = isDashboard ? report.DashboardId : report.ReportId;
