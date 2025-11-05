@@ -763,6 +763,7 @@ function beautifySql(sql, htmlMode = true) {
 
 var textQuery = function (options) {
     var self = this;
+    self.disabled = false;
     self.queryItems = [];
     self.filterItems = [];
     self.filterField = null;
@@ -987,6 +988,7 @@ var textQuery = function (options) {
                 }
             },
             values: function (token, callback) {
+                if (self.disabled) return;
                 if (options.searchLookupFilter === true) {
                     self.SearchLookup(token, "").done(function (results) {
                         if (results.d) results = results.d;

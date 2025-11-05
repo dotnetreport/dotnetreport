@@ -1326,8 +1326,12 @@ var reportViewModel = function (options) {
 	self.textQuery = new textQuery(options);
 
 	self.aiChatVisible = ko.observable(false);
+	self.aiAutocompleteDisabled = ko.observable(false);
 	self.aiMessages = ko.observableArray([]);
 	self.aiHistory = []; 
+	self.aiAutocompleteDisabled.subscribe(function (newValue) {
+		self.textQuery.disabled = newValue;
+	});
 
 	self.toggleAiChat = function () {
 		self.aiChatVisible(!self.aiChatVisible());
@@ -1386,11 +1390,8 @@ var reportViewModel = function (options) {
 		}).done(function (result) {
 			if (result.d) result = result.d;
 			if (result.success === false) {
-				toastr.error(result.message || 'Could not process this correctly, please try again');
-				if (useAi) {
-					self.aiMessages.pop();
-					self.aiMessages.push({ role: "assistant", content: "⚠️ Could not process this correctly, please try again." });
-				}
+				self.aiMessages.pop();
+				self.aiMessages.push({ role: "assistant", content: result.message || "⚠️ Could not process this correctly, please try again." });
 				return;
 			}
 
