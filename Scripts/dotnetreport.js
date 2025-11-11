@@ -6894,6 +6894,7 @@ var reportViewModel = function (options) {
 		reportData.DrillDownRowUsePlaceholders = true;
 		var pivotData = self.preparePivotData();
 		return {
+			adminMode: self.adminMode(),
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
