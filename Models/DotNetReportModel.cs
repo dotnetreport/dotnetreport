@@ -779,7 +779,7 @@ namespace ReportBuilder.Web.Models
                     case TypeCode.Decimal:
                         return col.ColumnName.Contains("%")
                             ? (Convert.ToDouble(row[col].ToString()) / 100).ToString("P2")
-                            : Convert.ToDouble(row[col].ToString()).ToString("C");
+                            : Convert.ToDouble(row[col].ToString()).ToString();
 
 
                     case TypeCode.Boolean:
