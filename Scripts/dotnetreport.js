@@ -721,14 +721,17 @@ function filterGroupViewModel(args) {
 				});
 			}
 		});
-
-		if (e.FieldId) {
+		if (e.FieldId == 0) {
+			field(args.parent.FindCustomField());
+			if (field()) field().uiId = generateUniqueId();
+		}
+		else if (e.FieldId) {
 			field(args.parent.FindField(e.FieldId));
 			if (field()) field().uiId = generateUniqueId();
 		} else if (e.FilterSettings) {
 			field(args.parent.FindDynamicField(JSON.parse(e.FilterSettings)));
 			if (field()) field().uiId = generateUniqueId();
-		}
+		} 
 
 		filter.compareTo = ko.computed(function () {
 			return field() ? _.filter(args.parent.AdditionalSeries(), function (x) { return x.Field().fieldId == field().fieldId; }) : [];
@@ -3260,7 +3263,11 @@ var reportViewModel = function (options) {
 					||	(x.tableName == 'Custom' && fieldSettings.IsCustomField && x.fieldName == fieldSettings.CustomFieldName);
 		})[0];
 	};
-
+	self.FindCustomField = function () {
+		return _.filter(self.SelectedFields(), function (x) {
+			return (x.tableName == 'Custom');
+		})[0];
+	};
 	self.SaveWithoutRun = function () {
 		self.RunReport(true);
 	};
@@ -5787,8 +5794,7 @@ var reportViewModel = function (options) {
 		if (typeof e.fieldSettings !== 'object' || e.fieldSettings === null) {
 			e.fieldSettings = JSON.parse(e.fieldSettings || "{}");
 		}
-		e.selectedFieldName = e.tableName + " > " + e.fieldName + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
-		e.selectedFilterName = e.tableName + " > " + (e.fieldLabel || e.fieldName) + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
+		e.selectedFieldName = ko.observable(e.tableName + " > " + e.fieldName + (e.jsonColumnName ? ' > ' + e.jsonColumnName : ''));		e.selectedFilterName = e.tableName + " > " + (e.fieldLabel || e.fieldName) + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
 		if (e.fieldId === 0 && e.dynamicTableId != null) {
 			e.fieldAggregateWithDrilldown = ['Only in Detail','Max', 'Count'];
 		} else {
