@@ -3882,7 +3882,7 @@ var reportViewModel = function (options) {
 				var col;
 				if (self.useStoredProc()) {
 					col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.procColumnName, e.ColumnName); });
-					e.hideStoredProcColumn = (col ? col.disabled() : true);
+					e.hideStoredProcColumn = (col ? col.disabled() : false);
 				}
 				else if (e.FormatType == 'Json') {
 					col = _.find(self.SelectedFields(), function (x) { return matchColumnName(x.jsonColumnName, e.ColumnName); });
