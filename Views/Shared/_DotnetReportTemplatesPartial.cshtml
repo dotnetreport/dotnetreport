@@ -2112,7 +2112,7 @@
                 class="btn btn-primary position-fixed bottom-0 end-0 m-3 rounded-circle shadow"
                 style="width: 50px; height: 50px; z-index: 1050;"
                 title="Chat with AI Assistant"
-                data-bind="click: toggleAiChat">
+                data-bind="click: toggleAiChat, visible: appSettings.usePromptBuilder">
             <i class="fa fa-comment fa-lg"></i>
           </button>
           <button type="button" class="btn btn-sm btn-light" data-bind="visible: ReportID(), click: function() {activeDesign(false);}" title="Close">
@@ -2287,8 +2287,8 @@
         <div class="d-flex justify-content-between align-items-center border-bottom bg-light p-2 px-3 flex-shrink-0">
             <h6 class="mb-0">
                 <i class="fa fa-comments-o me-1"></i> AI Report Assistant
-                <span title="This feature is still in Beta release. You can turn it off from settings" style="font-size: 10pt; padding: 5px; max-width: 350px; white-space: normal; margin-bottom: 0;">
-                    <i class="fa fa-info-circle"></i>
+                <span class="alert alert-info" title="This feature is still in Beta release. You can turn it off from settings" style="font-size: 10pt; padding: 5px; max-width: 350px; white-space: normal; margin-bottom: 0;">
+                    <i class="fa fa-info-circle"></i> Beta
                 </span>
             </h6>
             <div>
@@ -2315,14 +2315,14 @@
 
         <div class="border-top bg-white p-2 flex-shrink-0">
             <div class="w-100 mb-1 small text-muted">
-                💡 Ask things like “Add a column for total orders” or “Show top 5 salespeople this year”
+                💡 Ask things like “Add a column for total orders” or “Show top salesperson this year”
             </div>
             <div class="form-check mb-2">
                 <input type="checkbox" class="form-check-input"
                        data-bind="checked: aiAutocompleteDisabled">
                 <label class="form-check-label small text-muted">
                     Disable column autocomplete hints
-                    <span title="If you disable this, plesae select some data fields in the report designer" style="font-size: 10pt; padding: 5px; max-width: 350px; white-space: normal; margin-bottom: 0;">
+                    <span title="If you disable this, plesae select some data fields in the report designer, choosing data fields to use helps improve results" style="font-size: 10pt; padding: 5px; max-width: 350px; white-space: normal; margin-bottom: 0;">
                         <i class="fa fa-info-circle"></i>
                     </span>
                 </label>
