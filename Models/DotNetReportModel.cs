@@ -4068,16 +4068,19 @@ namespace ReportBuilder.Web.Models
                 // Store the table names in the class scoped array list of table names
                 for (int i = 0; i < schemaTable.Rows.Count; i++)
                 {
-                    var tableName = schemaTable.Rows[i].ItemArray[2].ToString();
+                    var schemaName = schemaTable.Rows[i]["TABLE_SCHEMA"].ToString();
+                    var tableName = schemaTable.Rows[i]["TABLE_NAME"].ToString();
 
                     // see if this table is already in database
-                    var matchTable = currentTables.FirstOrDefault(x => x.TableName.ToLower() == tableName.ToLower());
-                    
+                    var matchTable = currentTables.FirstOrDefault(x =>
+                        x.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase) &&
+                        x.SchemaName.Equals(schemaName, StringComparison.OrdinalIgnoreCase)
+                    );
                     var table = new TableViewModel
                     {
                         Id = matchTable != null ? matchTable.Id : 0,
-                        SchemaName = matchTable != null ? matchTable.SchemaName : schemaTable.Rows[i]["TABLE_SCHEMA"].ToString(),
-                        TableName = matchTable != null ? matchTable.TableName : tableName,
+                        SchemaName = schemaName, 
+                        TableName = tableName,
                         DisplayName = matchTable != null ? matchTable.DisplayName : tableName,
                         IsView = type == "VIEW",
                         Selected = matchTable != null,
@@ -4085,8 +4088,7 @@ namespace ReportBuilder.Web.Models
                         AllowedRoles = matchTable != null ? matchTable.AllowedRoles : new List<string>(),
                         AccountIdField = matchTable != null ? matchTable.AccountIdField : ""
                     };
-
-                    var dtField = conn.GetSchema("Columns", new string[] { null, null, tableName });
+                    var dtField = conn.GetSchema("Columns", new string[] { null, schemaName, tableName });
                     var idx = 0;
 
                     foreach (DataRow dr in dtField.Rows)
