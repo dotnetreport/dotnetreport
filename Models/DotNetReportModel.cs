@@ -1108,7 +1108,7 @@ namespace ReportBuilder.Web.Models
                     var table = new TableViewModel
                     {
                         Id = item.tableId,
-                        SchemaName = item.schemaName,
+                        SchemaName = item.schemaName == null ? "" : item.schemaName,
                         AccountIdField = item.accountIdField,
                         TableName = item.tableDbName,
                         DisplayName = item.tableName,
