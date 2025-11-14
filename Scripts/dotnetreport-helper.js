@@ -775,10 +775,13 @@ function beautifySql(sql, htmlMode = true) {
 
 var textQuery = function (options) {
     var self = this;
+    self.disabled = false;
     self.queryItems = [];
     self.filterItems = [];
     self.filterField = null;
-
+    if (window.currentUserId) {
+        options.userId = window.currentUserId;
+    }
     self.ParseQuery = function (token, text) {
         return ajaxcall({
             noBlocking: true,
@@ -787,8 +790,10 @@ var textQuery = function (options) {
                 method: "/ReportApi/ParseQuery",
                 model: JSON.stringify({
                     token: encodeURIComponent(token),
-                    text: encodeURIComponent(text)
-                })
+                    text: encodeURIComponent(text),
+                    pageSize: 7
+                }),
+                userid: options.userId
             }
         });
     }
@@ -796,12 +801,12 @@ var textQuery = function (options) {
     self.QueryMethods = [
         { value: 'Sum', key: '<span class="fa fa-flash"></span> Sum of', type: 'Function', searchKey: 'Sum of' },
         { value: 'Avg', key: '<span class="fa fa-flash"></span> Average of', type: 'Function', searchKey: 'Average of' },
-        { value: 'Sum', key: '<span class="fa fa-flash"></span> Total of', type: 'Function', searchKey: 'Total of' },
-        { value: 'Count', key: '<span class="fa fa-flash"></span> Count of', type: 'Function', searchKey: 'Count of' },
-        { value: 'Percent', key: '<span class="fa fa-flash"></span> Percentage of', type: 'Function', searchKey: 'Percentage of' },
-        { value: 'OrderBy', key: '<span class="fa fa-gear"></span> Order by', type: 'Order', searchKey: 'Order By' },
-        { value: 'Bar', key: '<span class="fa fa-bar-chart"></span> as Bar Chart', type: 'ReportType', searchKey: 'as Bar Chart' },
-        { value: 'Pie', key: '<span class="fa fa-pie-chart"></span> as Pie Chart', type: 'ReportType', searchKey: 'as Pie Chart' },
+        //{ value: 'Sum', key: '<span class="fa fa-flash"></span> Total of', type: 'Function', searchKey: 'Total of' },
+        //{ value: 'Count', key: '<span class="fa fa-flash"></span> Count of', type: 'Function', searchKey: 'Count of' },
+        //{ value: 'Percent', key: '<span class="fa fa-flash"></span> Percentage of', type: 'Function', searchKey: 'Percentage of' },
+        //{ value: 'OrderBy', key: '<span class="fa fa-gear"></span> Order by', type: 'Order', searchKey: 'Order By' },
+        //{ value: 'Bar', key: '<span class="fa fa-bar-chart"></span> as Bar Chart', type: 'ReportType', searchKey: 'as Bar Chart' },
+        //{ value: 'Pie', key: '<span class="fa fa-pie-chart"></span> as Pie Chart', type: 'ReportType', searchKey: 'as Pie Chart' },
     ];
 
     self.FilterMethods = [
@@ -810,12 +815,12 @@ var textQuery = function (options) {
     ];
 
     self.DateFilterMethods = [
-        { value: 'Today', key: '<span class="fa fa-calendar"></span> for Today', operator: 'range', type: 'DateFilter', searchKey: 'for Today' },
-        { value: 'Yesterday', key: '<span class="fa fa-calendar"></span> for Yesterday', operator: 'range', type: 'DateFilter', searchKey: 'for Yesterday' },
+        //{ value: 'Today', key: '<span class="fa fa-calendar"></span> for Today', operator: 'range', type: 'DateFilter', searchKey: 'for Today' },
+        //{ value: 'Yesterday', key: '<span class="fa fa-calendar"></span> for Yesterday', operator: 'range', type: 'DateFilter', searchKey: 'for Yesterday' },
         { value: 'This Month', key: '<span class="fa fa-calendar"></span> for This Month', operator: 'range', type: 'DateFilter', searchKey: 'for This Month' },
         { value: 'Last Month', key: '<span class="fa fa-calendar"></span> for Last Month', operator: 'range', type: 'DateFilter', searchKey: 'for Last Month' },
         { value: 'This Year', key: '<span class="fa fa-calendar"></span> for This Year', operator: 'range', type: 'DateFilter', searchKey: 'for This Year' },
-        { value: 'Last Year', key: '<span class="fa fa-calendar"></span> for Last Year', operator: 'range', type: 'DateFilter', searchKey: 'for Last Year' },
+        //{ value: 'Last Year', key: '<span class="fa fa-calendar"></span> for Last Year', operator: 'range', type: 'DateFilter', searchKey: 'for Last Year' },
     ];
 
     self.getAggregate = function (columnId) {
@@ -861,7 +866,7 @@ var textQuery = function (options) {
         if (searchReportFlag) {
             document.getElementById("search-input").innerHTML = '';
         } else {
-            document.getElementById("query-input").innerHTML = "Show me&nbsp;";
+            document.getElementById("query-input").innerHTML = '';
         }
 
     }
@@ -879,7 +884,8 @@ var textQuery = function (options) {
                 model: JSON.stringify({
                     token: encodeURIComponent(params.term),
                     text: ''
-                })
+                }),
+                userid: options.userId
             } : null;
         },
         processResults: function (data) {
@@ -994,6 +1000,7 @@ var textQuery = function (options) {
                 }
             },
             values: function (token, callback) {
+                if (self.disabled) return;
                 if (options.searchLookupFilter === true) {
                     self.SearchLookup(token, "").done(function (results) {
                         if (results.d) results = results.d;
@@ -1069,23 +1076,31 @@ var textQuery = function (options) {
         });
 
     }
-
+    
     self.setupQuery = function () {
+        var inputEl = document.getElementById("query-input");
+        if (!inputEl) return;
+
+        self.resetQuery();
+        inputEl.innerText = "";
+
+        if (inputEl.tribute) {
+            return;
+        }
+
         var tributeAttributes = self.getTributeAttributes({ concatFilterAndQuery: true });
         var tribute = new Tribute(tributeAttributes);
-        tribute.attach(document.getElementById("query-input"));
+        tribute.attach(inputEl);
 
-        document.getElementById("query-input")
-            .addEventListener("tribute-replaced", function (e) {
-                self.addQueryItem(e.detail.item.original);
-            });
+        inputEl.addEventListener("tribute-replaced", function (e) {
+            self.addQueryItem(e.detail.item.original);
+        });
 
-        document.getElementById("query-input")
-            .addEventListener("menuItemRemoved", function (e) {
-                self.queryItems.remove(e.detail.item.original);
-            });
+        inputEl.addEventListener("menuItemRemoved", function (e) {
+            self.queryItems.remove(e.detail.item.original);
+        });
+    };
 
-    }
 
     self.setupSearch = function () {
         var tributeAttributes = self.getTributeAttributes({ searchReportFlag: true });

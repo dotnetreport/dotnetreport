@@ -1149,7 +1149,7 @@ var manageViewModel = function (options) {
 			function (x) {
 				return {
 					DataConnectionId: x.DataConnectionId,
-					RelationId: x.Id ? x.Id : x.RelationId,
+					Id: x.Id ? x.Id : x.RelationId, 
 					TableId: x.TableId,
 					TableName: x.JoinTable ? x.JoinTable.DisplayName : null,       
 					JoinedTableId: x.JoinedTableId,
