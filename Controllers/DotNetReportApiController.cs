@@ -192,6 +192,10 @@ namespace ReportBuilder.Web.Controllers
                         {
                             requestData[key] = data[key]; 
                         }
+                        if (key == "adminMode" && settings.CanUseAdminMode)
+                        {
+                            adminMode = data[key];
+                        }
                         if (key == "dashboardId")
                         {
                             dashboardId = Convert.ToInt32(data[key]);
