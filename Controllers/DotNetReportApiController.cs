@@ -94,7 +94,8 @@ namespace ReportBuilder.Web.Controllers
                 throw new Exception("Unauthorized");
             settings.ApiUrl = ConfigurationManager.AppSettings["dotNetReport.apiUrl"];
             settings.AccountApiToken = ConfigurationManager.AppSettings["dotNetReport.accountApiToken"];
-            settings.DataConnectApiToken = ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"];            
+            settings.DataConnectApiToken = ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"];
+            settings.CanUseAdminMode = true;
 
             return await ExecuteCallReportApi(method, model, null, settings);
         }
@@ -162,7 +163,7 @@ namespace ReportBuilder.Web.Controllers
                         { "userIdForFilter", settings.UserIdForFilter },
                         { "userRole", string.Join(",", settings.CurrentUserRole) },
                         { "dataFilters", JsonConvert.SerializeObject(settings.DataFilters) },
-                        { "useParameters", false }
+                        { "useParameters", dbtype=="MS SQL" ? "true" : "false" }
                     };
 
                     var data = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(model);
@@ -180,6 +181,22 @@ namespace ReportBuilder.Web.Controllers
                         else if (key != "adminMode" || (key == "adminMode" && settings.CanUseAdminMode))
                         {
                             requestData[key] = data[key]; 
+                        }
+                        if (key == "adminMode" && settings.CanUseAdminMode)
+                        {
+                            adminMode = data[key];
+                        }
+                        if (key == "dashboardId")
+                        {
+                            dashboardId = Convert.ToInt32(data[key]);
+                        }
+                        if (key == "folderId")
+                        {
+                            folderId = Convert.ToInt32(data[key]);
+                        }
+                        if (key == "reportId")
+                        {
+                            reportId = Convert.ToInt32(data[key]);
                         }
                     }
 
@@ -249,7 +266,7 @@ namespace ReportBuilder.Web.Controllers
                     if (!sql.StartsWith("EXEC"))
                     {
                         var fromIndex = DotNetReportHelper.FindFromIndex(sql);
-                        sqlFields = DotNetReportHelper.SplitSqlColumns(sql);
+                        sqlFields = DotNetReportHelper.SplitSqlColumns(sql, dbtype);
 
                         var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(fromIndex)}".Replace("{FROM}", "FROM");
                         bool hasDistinct = sql.Contains("DISTINCT");
@@ -284,6 +301,13 @@ namespace ReportBuilder.Web.Controllers
                             {
                                 sortBy = sortBy.Replace("MONTH(", "CONVERT(VARCHAR(3), DATENAME(MONTH, ");
                             }
+                            if (sortBy.StartsWith("CONCAT(DATE_FORMAT(") || sortBy.StartsWith("DATE_FORMAT("))
+                            {
+                                var match = System.Text.RegularExpressions.Regex.Match(sortBy, @"`[^`]+`\.`[^`]+`");
+                                if (match.Success)
+                                    sortBy = $"MIN({match.Value})";
+                            }
+
                             if (!sql.Contains("ORDER BY"))
                             {
                                 sql = sql + "ORDER BY " + sortBy + (desc ? " DESC" : "");
@@ -295,9 +319,24 @@ namespace ReportBuilder.Web.Controllers
                         }
 
                         if (!sql.Contains("ORDER BY"))
-                            sql = sql + $" ORDER BY {(hasDistinct ? "1" : "NEWID()")} ";
+                        {
+                            if (dbtype == "MS SQL")
+                                sql += $" ORDER BY {(hasDistinct ? "1" : "NEWID()")} ";
+                            else if (dbtype == "Postgre Sql")
+                                sql += $" ORDER BY {(hasDistinct ? "1" : "RANDOM()")} ";
+                            else if (dbtype == "MySQL")
+                                sql += $" ORDER BY {(hasDistinct ? "1" : "RAND()")} ";
+                            else
+                                sql += " ORDER BY 1 ";
+                        }
+
                         if (!sql.Contains(" TOP ") && string.IsNullOrEmpty(pivotColumn))
-                            sql = sql + $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
+                        {
+                            if (dbtype == "Postgre Sql" || dbtype == "MySQL")
+                                sql += $" LIMIT {pageSize} OFFSET {(pageNumber - 1) * pageSize}";
+                            else
+                                sql += $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
+                        }
 
                         if (sql.Contains("__jsonc__"))
                             sql = sql.Replace("__jsonc__", "");
@@ -491,7 +530,7 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("filterValue", filterValue.ToString()),
                     new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
                     new KeyValuePair<string, string>("dataFilters", JsonConvert.SerializeObject(settings.DataFilters)),
-                    new KeyValuePair<string, string>("useParameters", "false")
+                    new KeyValuePair<string, string>("useParameters", dbtype=="MS SQL" ? "true" : "false")
                 });
 
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/RunLinkedReport"), content);
@@ -842,10 +881,11 @@ namespace ReportBuilder.Web.Controllers
             public bool hasAccess { get; set; }
             public string access { get; set; }
         }
-        private async Task ValidateAccess(string userId, string reportSql = "", int reportId = 0, int dashboardId = 0, int folderId = 0)
+        private async Task ValidateAccess(string userId, string reportSql = "", int reportId = 0, int dashboardId = 0, int folderId = 0, bool adminMode = false)
         {
             var isValid = true;
             var settings = GetSettings();
+            if (adminMode && settings.CanUseAdminMode) return;
             if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
             {
                 isValid = false;
@@ -909,7 +949,8 @@ namespace ReportBuilder.Web.Controllers
             string pivotFunction = null,
             string onlyAndGroupInColumnDetail = null,
             bool isSubReport = false,
-            string userId = "")
+            string userId = "",
+            bool adminMode = false)
         {
             var settings = GetSettings();
             if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
@@ -917,7 +958,7 @@ namespace ReportBuilder.Web.Controllers
                 throw new Exception("User context mismatch");
             }
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            await ValidateAccess(userId, reportSql);
+            await ValidateAccess(userId, reportSql, adminMode: adminMode);            
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
             var columns = string.IsNullOrEmpty(columnDetails) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
@@ -947,12 +988,18 @@ namespace ReportBuilder.Web.Controllers
             string pivotFunction = null,
             bool debug = false,
             string pageSize = "",
-            string pageOrientation = "")
+            string pageOrientation = "",
+            string userId = "",
+            bool adminMode = false)
         {
 
             var settings = GetSettings();
             
             reportSql = HttpUtility.HtmlDecode(reportSql);
+            if (!adminMode)
+            {
+                await ValidateAccess(userId, reportSql);
+            }
             var pdf = await DotNetReportHelper.GetPdfFile(HttpUtility.UrlDecode(printUrl), reportId, reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName),
                                 settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), JsonConvert.SerializeObject(settings.DataFilters), expandAll, expandSqls, pivotColumn, pivotFunction, false, debug, pageSize, pageOrientation);
 
@@ -974,7 +1021,8 @@ namespace ReportBuilder.Web.Controllers
            string pivotFunction = null,
            string pageSize = "",
            string pageOrientation = "",
-            string userId = "")
+           string userId = "",
+           bool adminMode = false)
         {
             var settings = GetSettings();
             if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
@@ -982,7 +1030,7 @@ namespace ReportBuilder.Web.Controllers
                 throw new Exception("User context mismatch");
             }
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            await ValidateAccess(userId, reportSql);
+            await ValidateAccess(userId, reportSql, adminMode: adminMode);            
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
             reportName = HttpUtility.UrlDecode(reportName);
@@ -1008,7 +1056,8 @@ namespace ReportBuilder.Web.Controllers
             string pivotFunction = null,
             string pageSize = "",
             string pageOrientation = "",
-            string userId = "")
+            string userId = "",
+            bool adminMode = false)
         {
             var settings = GetSettings();
             if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
@@ -1016,7 +1065,7 @@ namespace ReportBuilder.Web.Controllers
                 throw new Exception("User context mismatch");
             }
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            await ValidateAccess(userId, reportSql);
+            await ValidateAccess(userId, reportSql, adminMode: adminMode);            
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
@@ -1042,7 +1091,8 @@ namespace ReportBuilder.Web.Controllers
             bool pivot = false,
             string pivotColumn = null,
             string pivotFunction = null,
-            string userId = "")
+            string userId = "",
+            bool adminMode = false)
         {
             var settings = GetSettings();
             if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
@@ -1050,7 +1100,7 @@ namespace ReportBuilder.Web.Controllers
                 throw new Exception("User context mismatch");
             }
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            await ValidateAccess(userId, reportSql);
+            await ValidateAccess(userId, reportSql, adminMode: adminMode);
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
 
             var csv = await DotNetReportHelper.GetCSVFile(reportSql, HttpUtility.UrlDecode(connectKey), columns, includeSubtotal, expandSqls, pivot, pivotColumn, pivotFunction);
@@ -1071,7 +1121,8 @@ namespace ReportBuilder.Web.Controllers
             string expandSqls = null,
             string pivotColumn = null,
             string pivotFunction = null,
-            string userId = "")
+            string userId = "",
+            bool adminMode = false)
         {
             var settings = GetSettings();
             if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
@@ -1079,7 +1130,7 @@ namespace ReportBuilder.Web.Controllers
                 throw new Exception("User context mismatch");
             }
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            await ValidateAccess(userId, reportSql);
+            await ValidateAccess(userId, reportSql, adminMode: adminMode);            
             string xml = await DotNetReportHelper.GetXmlFile(reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName), expandSqls, pivotColumn, pivotFunction);
             var data = System.Text.Encoding.UTF8.GetBytes(xml);
             Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".xml");

@@ -5,6 +5,7 @@ using ReportBuilder.Web.Models;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -94,6 +95,48 @@ namespace ReportBuilder.Web.Jobs
 
     public class DotNetReportJob : IJob
     {
+        public (DateTime? NextRunLocal, bool ShouldRun, DateTime currentTimeInTargetTz) CalculateNextRun(
+            string cron,
+            string timeZoneId,
+            string lastRunFromDb,
+            DateTime? scheduleStart,
+            DateTime? scheduleEnd,
+            DateTime? currentTimeToTest = null)
+        {
+            TimeZoneInfo targetTimeZone = !String.IsNullOrEmpty(timeZoneId)
+                    ? TimeZoneInfo.FindSystemTimeZoneById(timeZoneId)
+                    : TimeZoneInfo.Local;
+
+            var chron = new CronExpression(cron);
+            var lastRun = !String.IsNullOrEmpty(lastRunFromDb) ? Convert.ToDateTime(lastRunFromDb) : DateTimeOffset.UtcNow.AddMinutes(-10);
+            var nextRun = chron.GetTimeAfter(lastRun);
+
+            if (!String.IsNullOrEmpty(timeZoneId))
+            {
+                TimeZoneInfo timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+                // Convert last run to user's local time zone
+                lastRun = TimeZoneInfo.ConvertTime(lastRun, timeZoneInfo);
+                nextRun = chron.GetTimeAfter(lastRun);
+            }
+            var _nextRun = (nextRun.HasValue ? nextRun.Value.ToLocalTime().DateTime : (DateTime?)null);
+
+            DateTime currentTimeInTargetTz = TimeZoneInfo.ConvertTime(DateTime.UtcNow, targetTimeZone);
+
+            bool shouldRun = false;
+            if ((scheduleStart.HasValue && _nextRun.HasValue && _nextRun < scheduleStart.Value) ||
+                (scheduleEnd.HasValue && _nextRun.HasValue && _nextRun > scheduleEnd.Value))
+            {
+                shouldRun = false;
+            }
+            else if (_nextRun.HasValue && currentTimeInTargetTz >= _nextRun
+                && (!String.IsNullOrEmpty(lastRunFromDb) || lastRun <= _nextRun))
+            {
+                shouldRun = true;
+            }
+
+            return (_nextRun, shouldRun, currentTimeInTargetTz);
+        }
+
         async Task IJob.Execute(IJobExecutionContext context)
         {
             var apiUrl = ConfigurationManager.AppSettings["dotNetReport.apiUrl"];
@@ -125,32 +168,25 @@ namespace ReportBuilder.Web.Jobs
                         try
                         {
                             schedule.NormalizeFormat();
-                            var chron = new CronExpression(schedule.Schedule);
-                            var lastRun = !String.IsNullOrEmpty(schedule.LastRun) ? Convert.ToDateTime(schedule.LastRun) : DateTimeOffset.UtcNow.AddMinutes(-10);
-                            var nextRun = chron.GetTimeAfter(lastRun);
+                            TimeZoneInfo targetTimeZone = !String.IsNullOrEmpty(schedule.TimeZone)
+                                ? TimeZoneInfo.FindSystemTimeZoneById(schedule.TimeZone)
+                                : TimeZoneInfo.Local;
 
-                            if (!String.IsNullOrEmpty(schedule.TimeZone))
-                            {
-                                TimeZoneInfo timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById(schedule.TimeZone);
-                                // Convert last run to user's local time zone
-                                lastRun = TimeZoneInfo.ConvertTime(lastRun, timeZoneInfo);
-                                nextRun = chron.GetTimeAfter(lastRun);
-                                // Get current time in user's time zone
-                                DateTime currentTime = TimeZoneInfo.ConvertTime(DateTime.UtcNow, timeZoneInfo);
-                            }
-                            schedule.NextRun = (nextRun.HasValue ? nextRun.Value.ToLocalTime().DateTime : (DateTime?)null);
+                            var (nextRun, shouldRun, currentTimeInTargetTz) = CalculateNextRun(
+                                 schedule.Schedule,
+                                 schedule.TimeZone,
+                                 schedule.LastRun ?? DateTime.UtcNow.AddMinutes(-10).ToString(CultureInfo.InvariantCulture),
+                                 schedule.ScheduleStart,
+                                 schedule.ScheduleEnd);
 
-                            if ((schedule.ScheduleStart.HasValue && schedule.NextRun.HasValue && schedule.NextRun.Value < schedule.ScheduleStart.Value) ||
-                                    (schedule.ScheduleEnd.HasValue && schedule.NextRun.HasValue && schedule.NextRun.Value > schedule.ScheduleEnd.Value))
-                                continue;
-
-                            if (schedule.NextRun.HasValue && DateTime.Now >= schedule.NextRun && (!String.IsNullOrEmpty(schedule.LastRun) || lastRun <= schedule.NextRun))
+                            schedule.NextRun = nextRun;
+                            if (shouldRun)
                             {
                                 var isDashboard = report.DashboardId > 0;
                                 var itemId = isDashboard ? report.DashboardId : report.ReportId;
 
-                                response = await client.GetAsync($"{apiUrl}/ReportApi/RunScheduledItem?account={accountApiKey}&dataConnect={databaseApiKey}&scheduleId={schedule.Id}&id={itemId}&localRunTime={schedule.NextRun.Value:yyyy-MM-ddTHH:mm:ss}&isDashboard={isDashboard}&clientId={clientId}&dataFilters={schedule.DataFilters}");
-                                response.EnsureSuccessStatusCode();
+                                response = await client.GetAsync($"{apiUrl}/ReportApi/RunScheduledItem?account={accountApiKey}&dataConnect={databaseApiKey}&scheduleId={schedule.Id}&id={itemId}&localRunTime={schedule.NextRun:yyyy-MM-ddTHH:mm:ss}&isDashboard={isDashboard}&clientId={clientId}&dataFilters={schedule.DataFilters}");
+                                response.EnsureSuccessStatusCode();                            
 
                                 content = await response.Content.ReadAsStringAsync();
 
