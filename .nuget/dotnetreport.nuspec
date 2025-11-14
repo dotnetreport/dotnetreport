@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
   <metadata>
     <id>dotnetreport.mvc</id>
-    <version>6.2.0</version>
+    <version>6.2.2</version>
     <authors>Dotnet Report Builder</authors>
     <owners>Dotnet Report Builder</owners>
     <projectUrl>https://dotnetreport.com/</projectUrl>
@@ -63,8 +63,8 @@
     <file src="..\Scripts\leaflet\leaflet.css" target="Content\Scripts\leaflet\leaflet.css" />
     <file src="..\Scripts\leaflet\leaflet.js" target="Content\Scripts\leaflet\leaflet.js" />
     <file src="..\Scripts\leaflet\images\layers.png" target="Content\Scripts\leaflet\images\layers.png" />
-    <file src="..\Scripts\leaflet\images\marker-icon.png" target="Content\leaflet\images\marker-icon.png" />
-    <file src="..\Scripts\leaflet\images\marker-shadow.png" target="Content\leaflet\images\marker-shadow.png" />
+    <file src="..\Scripts\leaflet\images\marker-icon.png" target="Content\Scripts\leaflet\images\marker-icon.png" />
+    <file src="..\Scripts\leaflet\images\marker-shadow.png" target="Content\Scripts\leaflet\images\marker-shadow.png" />
     <file src="..\Scripts\leaflet.heat\leaflet-heat.js" target="Content\Scripts\leaflet\leaflet.heat\leaflet-heat.js" />    
     <file src="..\Scripts\bootstrap-editable.min.js" target="Content\Scripts\bootstrap-editable.min.js" />
     <file src="..\Scripts\knockout.x-editable.min.js" target="Content\Scripts\knockout.x-editable.min.js" />
