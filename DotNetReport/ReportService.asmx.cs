@@ -1,4 +1,6 @@
-﻿using DocumentFormat.OpenXml.Wordprocessing;
+﻿using DocumentFormat.OpenXml.Bibliography;
+using DocumentFormat.OpenXml.Spreadsheet;
+using DocumentFormat.OpenXml.Wordprocessing;
 using Newtonsoft.Json;
 using OfficeOpenXml.FormulaParsing.LexicalAnalysis;
 using ReportBuilder.Web.Models;
@@ -8,6 +10,7 @@ using System.Configuration;
 using System.Data;
 using System.Linq;
 using System.Net.Http;
+using System.Runtime;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web;
@@ -111,12 +114,12 @@ namespace ReportBuilder.WebForms.DotNetReport
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
         public object RunReportApi(DotNetReportApiCall data)
         {
-            return CallReportApi(data.Method, (new JavaScriptSerializer()).Serialize(data));
+            return CallReportApi(data.Method, (new JavaScriptSerializer()).Serialize(data),data.userId);
         }
 
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
-        public object RunReportApi(string method, bool SaveReport, string ReportJson, bool adminMode, bool subtotalMode = false)
+        public object RunReportApi(string method, bool SaveReport, string ReportJson, bool adminMode, bool subtotalMode = false,string userId="")
         {
             return CallReportApi(method, (new JavaScriptSerializer()).Serialize(new DotNetReportApiCall
             {
@@ -124,17 +127,21 @@ namespace ReportBuilder.WebForms.DotNetReport
                 ReportJson = ReportJson,
                 SaveReport = SaveReport,
                 adminMode = adminMode,
-                subtotalMode = subtotalMode
-            }));
+                SubTotalMode = subtotalMode
+            }), userId);
         }
 
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
-        public object CallReportApi(string method, string model)
+        public async Task<object> CallReportApi(string method, string model,string userId = null)
         {
+            var settings = GetSettings();
+            if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
+            {
+                throw new Exception("User context mismatch");
+            }
             using (var client = new HttpClient())
             {
-                var settings = GetSettings();
                 var requestData = new Dictionary<string, object>
                 {
                     { "account", settings.AccountApiToken },
@@ -149,6 +156,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                 };
 
                 var data = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(model);
+                var adminMode = false; var dashboardId = 0; var folderId = 0; var reportId = 0;
                 foreach (var key in data.Keys)
                 {
                     if (key == "dataConnect" && data[key] != null)
@@ -164,7 +172,12 @@ namespace ReportBuilder.WebForms.DotNetReport
                         requestData[key] = data[key];
                     }
                 }
-
+                if (!adminMode)
+                {
+                    if (dashboardId > 0) await ValidateAccess(userId, dashboardId: dashboardId);
+                    if (folderId > 0) await ValidateAccess(userId, folderId: folderId);
+                    if (reportId > 0) await ValidateAccess(userId, reportId: reportId);
+                }
                 var jsonContent = JsonConvert.SerializeObject(requestData);
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
@@ -179,7 +192,7 @@ namespace ReportBuilder.WebForms.DotNetReport
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
         public async Task<DotNetReportResultModel> RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, 
-            bool desc = false, string reportSeries = null, string pivotColumn = null, string pivotFunction = null, string reportData = null, bool subtotalMode = false, bool useAltPivot = false)
+            bool desc = false, string reportSeries = null, string pivotColumn = null, string pivotFunction = null, string reportData = null, bool subtotalMode = false, bool adminMode = false, bool useAltPivot = false)
         {
             var sql = "";
             var sqlCount = "";
@@ -396,7 +409,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                 {
                     ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dtPaged, fields),
                     //Warnings = GetWarnings(sql),
-                    ReportSql = sql,
+                    ReportSql = adminMode ? sql : " ",
                     ReportDebug = Context.Request.Url.Host.Contains("localhost"),
                     Pager = new DotNetReportPagerModel
                     {
@@ -416,7 +429,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                 var model = new DotNetReportResultModel
                 {
                     ReportData = new DotNetReportDataModel(),
-                    ReportSql = sql,
+                    ReportSql = adminMode ? sql : " ",
                     HasError = true,
                     Exception = ex.Message,
                     ReportDebug = Context.Request.Url.Host.Contains("localhost"),
@@ -552,9 +565,13 @@ namespace ReportBuilder.WebForms.DotNetReport
         {
             var pdfBytesList = new List<byte[]>();
             var reports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
-
+            var settings = GetSettings();
             foreach (var report in reports)
             {
+                if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != report.userId)
+                {
+                    throw new Exception("User context mismatch");
+                }
                 report.reportSql = HttpUtility.HtmlDecode(report.reportSql);
                 report.chartData = HttpUtility.UrlDecode(report.chartData)?.Replace(" ", " +");
                 var columns = report.columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(report.columnDetails));
@@ -575,8 +592,13 @@ namespace ReportBuilder.WebForms.DotNetReport
         {
             var excelbyteList = new List<byte[]>();
             var reports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
+            var settings = GetSettings(); 
             foreach (var report in reports)
             {
+                if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != report.userId)
+                {
+                    throw new Exception("User context mismatch");
+                }
                 report.reportSql = HttpUtility.HtmlDecode(report.reportSql);
                 report.chartData = HttpUtility.UrlDecode(report.chartData)?.Replace(" ", " +");
                 var columns = report.columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(report.columnDetails));
@@ -599,8 +621,13 @@ namespace ReportBuilder.WebForms.DotNetReport
         {
             var wordbyteList = new List<byte[]>();
             var ListofReports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
+            var settings = GetSettings();
             foreach (var report in ListofReports)
             {
+                if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != report.userId)
+                {
+                    throw new Exception("User context mismatch");
+                }
                 report.reportSql = HttpUtility.HtmlDecode(report.reportSql);
                 report.chartData = HttpUtility.UrlDecode(report.chartData)?.Replace(" ", " +");
                 var columns = report.columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(report.columnDetails));
@@ -623,20 +650,27 @@ namespace ReportBuilder.WebForms.DotNetReport
             string expandSqls,
             string chartData = null,
             string columnDetails = null,
-            bool includeSubtotal = false,
+            bool includeSubTotal = false,
             bool pivot = false,
             string pivotColumn = null,
             string pivotFunction = null,
             string onlyAndGroupInColumnDetail = null,
-            bool isSubReport = false)
+            bool isSubReport = false,
+            string userId = "")
         {
+            var settings = GetSettings();
+            if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
+            {
+                throw new Exception("User context mismatch");
+            }
             reportSql = HttpUtility.HtmlDecode(reportSql);
+            await ValidateAccess(userId, reportSql);
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
             var columns = string.IsNullOrEmpty(columnDetails) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
             var onlyAndGroupInDetailColumns = string.IsNullOrEmpty(onlyAndGroupInColumnDetail) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(onlyAndGroupInColumnDetail));
 
-            var excel = await DotNetReportHelper.GetExcelFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction, onlyAndGroupInDetailColumns, isSubReport);
+            var excel = await DotNetReportHelper.GetExcelFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubTotal, pivot, pivotColumn, pivotFunction, onlyAndGroupInDetailColumns, isSubReport);
             Context.Response.ClearContent();
 
             Context.Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".xlsx");
@@ -658,8 +692,14 @@ namespace ReportBuilder.WebForms.DotNetReport
             string pivotColumn = null,
             string pivotFunction = null,
             string pageSize = "",
-            string pageOrientation = "")
+            string pageOrientation = "",
+            string userId = "")
         {
+            var settings = GetSettings();
+            if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
+            {
+                throw new Exception("User context mismatch");
+            }
             reportSql = HttpUtility.HtmlDecode(reportSql);
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
@@ -678,8 +718,14 @@ namespace ReportBuilder.WebForms.DotNetReport
             string reportName,
             string expandSqls = null,
             string pivotColumn = null,
-            string pivotFunction = null)
+            string pivotFunction = null,
+            string userId = "")
         {
+            var settings = GetSettings();
+            if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
+            {
+                throw new Exception("User context mismatch");
+            }
             reportSql = HttpUtility.HtmlDecode(reportSql);
             string xml = await DotNetReportHelper.GetXmlFile(reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName), expandSqls, pivotColumn, pivotFunction);
             var data = System.Text.Encoding.UTF8.GetBytes(xml);
@@ -729,8 +775,14 @@ namespace ReportBuilder.WebForms.DotNetReport
            string pivotColumn = null,
            string pivotFunction = null,
            string pageSize = "",
-           string pageOrientation = "")
+           string pageOrientation = "",
+            string userId = "")
         {
+            var settings = GetSettings();
+            if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
+            {
+                throw new Exception("User context mismatch");
+            }
             reportSql = HttpUtility.HtmlDecode(reportSql);
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
@@ -756,8 +808,14 @@ namespace ReportBuilder.WebForms.DotNetReport
             bool includeSubtotal = false,
             bool pivot = false,
             string pivotColumn = null,
-            string pivotFunction = null)
+            string pivotFunction = null,
+            string userId = "")
         {
+            var settings = GetSettings();
+            if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
+            {
+                throw new Exception("User context mismatch");
+            }
             reportSql = HttpUtility.HtmlDecode(reportSql);
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
 
@@ -991,7 +1049,62 @@ namespace ReportBuilder.WebForms.DotNetReport
 
             return databaseConnection.GetSearchProcedure(value, accountKey, dataConnectKey);
         }
+        private class checkAccessModel
+        {
+            public bool hasAccess { get; set; }
+            public string access { get; set; }
+        }
+        private async Task ValidateAccess(string userId, string reportSql = "", int reportId = 0, int dashboardId = 0, int folderId = 0)
+        {
+            var isValid = true;
+            var settings = GetSettings();
+            if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
+            {
+                isValid = false;
+            }
 
+            if (!string.IsNullOrEmpty(reportSql) && reportId <= 0)
+            {
+
+                var sql = DotNetReportHelper.Decrypt(reportSql);
+                if (sql.StartsWith("{\"sql\""))
+                {
+                    var qry = JsonConvert.DeserializeObject<SqlQuery>(sql);
+                    if (qry.reportId > 0)
+                    {
+                        reportId = qry.reportId;
+                    }
+                }
+            }
+            if (reportId > 0 || dashboardId > 0 || folderId > 0)
+            {
+                using (var client = new HttpClient())
+                {
+                    var content = new FormUrlEncodedContent(new[]
+                    {
+                        new KeyValuePair<string, string>("account", settings.AccountApiToken),
+                        new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
+                        new KeyValuePair<string, string>("clientId", settings.ClientId),
+                        new KeyValuePair<string, string>("userId", settings.UserId),
+                        new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
+                        new KeyValuePair<string, string>("reportId", reportId.ToString()),
+                        new KeyValuePair<string, string>("dashboardId", dashboardId.ToString()),
+                        new KeyValuePair<string, string>("folderId", folderId.ToString()),
+                    });
+
+                    var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/CheckReportAccess"), content);
+                    var stringContent = await response.Content.ReadAsStringAsync();
+
+                    var model = JsonConvert.DeserializeObject<checkAccessModel>(stringContent);
+                    isValid = model.hasAccess;
+                }
+            }
+
+            if (!isValid)
+            {
+                throw new Exception("Could not validate access");
+            }
+        }
         private SortedList<string, string> GetTimezones()
         {
             var timeZones = TimeZoneInfo.GetSystemTimeZones();

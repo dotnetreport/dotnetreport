@@ -86,6 +86,19 @@ function ajaxcall(options) {
         options.contentType = 'application/x-www-form-urlencoded';
     }
 
+    var wasJson = false;
+    if (typeof options.data === 'string') {
+        wasJson = true;
+        options.data = JSON.parse(options.data);
+    }
+    options.data = options.data || {};
+    if (window.currentUserId) {
+        options.data.userId = window.currentUserId;
+    }
+    if (wasJson) {
+        options.data = JSON.stringify(options.data);
+    }
+
     var beforeSend = function (x) {
         if (token && !options.url.startsWith("https://dotnetreport.com")) {
             x.setRequestHeader("Authorization", "Bearer " + token);
@@ -133,7 +146,6 @@ function ajaxcall(options) {
 
         return $.ajax(options);
     }
-
     return $.ajax({
         url: options.url,
         type: options.type || "POST",
@@ -146,17 +158,17 @@ function ajaxcall(options) {
         xhr: xhr,
         beforeSend: beforeSend
     }).done(function (data) {
-        if (useProgressBar) {
-            completeProgress();
-        }
-        if ($.unblockUI && !noBlocking) {
-            activeBlockUICount = Math.max(0, activeBlockUICount - 1);
-            if (activeBlockUICount === 0) {
-                $.unblockUI();
+            if (useProgressBar) {
+                completeProgress();
             }
-        }
-        delete options;
-    })
+            if ($.unblockUI && !noBlocking) {
+                activeBlockUICount = Math.max(0, activeBlockUICount - 1);
+                if (activeBlockUICount === 0) {
+                    $.unblockUI();
+                }
+            }
+            delete options;
+        })
         .fail(function (jqxhr, status, error) {
             if (useProgressBar) {
                 hideProgress();
@@ -168,6 +180,7 @@ function ajaxcall(options) {
             handleAjaxError(jqxhr, status, error);
         });
 }
+
 
 function handleAjaxError(jqxhr, status, error) {
     if (jqxhr.responseJSON && jqxhr.responseJSON.d) jqxhr.responseJSON = jqxhr.responseJSON.d;
@@ -294,12 +307,15 @@ ko.bindingHandlers.select2 = {
     init: function (el, valueAccessor, allBindingsAccessor, viewModel) {
         $(el).select2(ko.unwrap(valueAccessor()));
         ko.utils.domNodeDisposal.addDisposeCallback(el, function () {
-            $(el).select2('destroy');
+            if (el && $(el).length && $(el).data('select2')) {
+                $(el).select2('destroy');
+            }
         });
     },
     update: function (el, valueAccessor, allBindingsAccessor, viewModel) {
         var allBindings = allBindingsAccessor();
         var select2 = $(el).data("select2");
+        if (!select2) return;
         if ("value" in allBindings) {
             var newValue = "" + ko.unwrap(allBindings.value);
             if ((allBindings.select2.multiple || el.multiple) && newValue.constructor !== Array) {
@@ -430,6 +446,69 @@ ko.bindingHandlers.sortableColumns = {
                 bindingContext.$parents[2].sortReportHeaderColumn();
             }
         }).disableSelection(); // Prevent text selection while dragging
+    }
+};
+
+ko.bindingHandlers.summernote = {
+    init: function (element, valueAccessor, allBindings) {
+        const observable = valueAccessor();
+
+        const options = {
+            height: 300,
+            popover: {
+                image: [
+                    ['image', ['resizeFull', 'resizeHalf', 'resizeQuarter', 'resizeNone']],
+                    ['float', ['floatLeft', 'floatRight', 'floatNone']],
+                    ['remove', ['removeMedia']]
+                ],
+                link: [
+                    ['link', ['linkDialogShow', 'unlink']]
+                ],
+                table: [
+                    ['add', ['addRowDown', 'addRowUp', 'addColLeft', 'addColRight']],
+                    ['delete', ['deleteRow', 'deleteCol', 'deleteTable']],
+                    ['color', ['bgcolor', 'tablefullwidth']]
+                ]
+            },
+            toolbar: [
+                ['style', ['style']],
+                ['font', ['bold', 'italic', 'underline', 'clear']],
+                ['fontname', ['fontname', 'fontsize']],
+                ['color', ['color']],
+                ['para', ['ul', 'ol', 'paragraph']],
+                ['table', ['table']],
+                ['insert', ['link', 'picture', 'hr']],
+                ['view', ['fullscreen', 'codeview']]
+            ],
+            dialogsInBody: false,
+            tableresize: true,
+            callbacks: {
+                onBlur: function () {
+                    if (ko.isObservable(observable)) {
+                        observable($(element).summernote('code'));
+                    }
+                }
+            }
+        };
+
+        $(element).summernote(options);
+
+        const value = ko.unwrap(observable);
+        $(element).summernote('code', value || "");
+
+        if (ko.isObservable(observable)) {
+            observable.editor = $(element);
+        }
+
+        ko.utils.domNodeDisposal.addDisposeCallback(element, function () {
+            $(element).summernote('destroy');
+        });
+    },
+    update: function (element, valueAccessor) {
+        const value = ko.unwrap(valueAccessor());
+        if ($(element).summernote('code') !== value) {
+            $(element).summernote('code', value || "");
+        }
     }
 };
 
@@ -589,7 +668,9 @@ var manageAccess = function (options) {
             var viewUserRoles = userSettings.newReportViewUserRoles ? userSettings.newReportViewUserRoles.split(',') : [];
 
             access.matchAndSelect(access.users, editUserIds);
+            access.matchAndSelect(access.deleteOnlyUsers, editUserIds);
             access.matchAndSelect(access.userRoles, editUserRoles);
+            access.matchAndSelect(access.deleteOnlyUserRoles, editUserRoles);
             access.matchAndSelect(access.viewOnlyUsers, viewUserIds);
             access.matchAndSelect(access.viewOnlyUserRoles, viewUserRoles);
         }
@@ -1188,6 +1269,7 @@ $.extend($.summernote.plugins, {
                                 if (td.length) {
                                     td.css('background-color', color);
                                 }
+                                context.triggerEvent('change', $editable.html(), $editable);
                             }
                         });
                         colorInput.trigger('click');
@@ -1232,6 +1314,7 @@ $.extend($.summernote.plugins, {
 
                         $(document).on('mouseup.colresize', function () {
                             $(document).off('.colresize');
+                            context.triggerEvent('change', $editable.html(), $editable);
                         });
                     });
                 }
@@ -1260,6 +1343,7 @@ $.extend($.summernote.plugins, {
 
                         $(document).on('mouseup.rowresize', function () {
                             $(document).off('.rowresize');
+                            context.triggerEvent('change', $editable.html(), $editable);
                         });
                     });
                 }
@@ -1294,6 +1378,7 @@ $.extend($.summernote.plugins, {
 
                     $(document).on('mouseup.tableresize', function () {
                         $(document).off('.tableresize');
+                        context.triggerEvent('change', $editable.html(), $editable);
                     });
                 });
             }
@@ -1313,10 +1398,10 @@ $.extend($.summernote.plugins, {
         };
     }
 });
-
 $.extend($.summernote.plugins, {
     'tablefullwidth': function (context) {
         var ui = $.summernote.ui;
+        var $editable = context.layoutInfo.editable;
 
         context.memo('button.tablefullwidth', function () {
             return ui.button({
@@ -1339,6 +1424,7 @@ $.extend($.summernote.plugins, {
                             width: '100%',
                             tableLayout: 'auto'
                         });
+                        context.triggerEvent('change', $editable.html(), $editable);
                     }
                 }
             }).render();

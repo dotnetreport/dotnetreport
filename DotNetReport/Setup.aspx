@@ -1,39 +1,35 @@
 ﻿<%@ Page Title="Report Setup" Language="C#" MasterPageFile="~/DotNetReport/ReportLayout.Master" AutoEventWireup="true" CodeBehind="Setup.aspx.cs" Inherits="ReportBuilder.WebForms.DotNetReport.Setup" Async="true" %>
 
 <asp:Content ID="Content2" ContentPlaceHolderID="head" runat="server">
-    <link href="../Content/bootstrap-editable.css" rel="stylesheet" />    
-    <link href="../Content/tribute.css" rel="stylesheet" />
-    <style type="text/css">
-        .glyphicon-ok:before {
-            content: "\f00c";
-        }
+  <link href="../Content/bootstrap-editable.css" rel="stylesheet" />
+  <link href="../Content/tribute.css" rel="stylesheet" />
+<style type="text/css">
+    .glyphicon-ok:before {
+        content: "\f00c";
+    }
 
-        .glyphicon-remove:before {
-            content: "\f00d";
-        }
+    .glyphicon-remove:before {
+        content: "\f00d";
+    }
 
-        .glyphicon {
-            display: inline-block;
-            font: normal normal normal 14px/1 FontAwesome;
-            font-size: inherit;
-            text-rendering: auto;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
+    .glyphicon {
+        display: inline-block;
+        font: normal normal normal 14px/1 FontAwesome;
+        font-size: inherit;
+        text-rendering: auto;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
 
-        .table-selected rect.main-rect {
-            filter: drop-shadow(3px 3px 5px #999);
-        }
-
-        .column-selected {
-            font-weight: bold;
-        }
-
-        .line-highlight {
-            stroke: #33f !important;
-            stroke-width: 2 !important;
-        }
-    </style>
+    .table-name-label {
+        display: inline-block;
+        max-width: 200px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        vertical-align: middle;
+    }
+</style>
 </asp:Content>
 <asp:Content ID="Content1" ContentPlaceHolderID="scripts" runat="server">    
     <script>$.fn.popover = { Constructor: {} };</script>
@@ -97,7 +93,8 @@
                     apiUrl: '/DotNetReport/ReportService.asmx/CallReportApi',
                     getPreviewFromSqlUrl: '/DotNetReport/ReportService.asmx/GetPreviewFromSql',
                     onlyApi: queryParams.onlyApi !== 'false',
-                    loadSchemaUrl: '/DotNetReport/ReportService.asmx/LoadSetupSchema'
+                    loadSchemaUrl: '/DotNetReport/ReportService.asmx/LoadSetupSchema',
+                    currentUserId: model.CurrentUserId
                 };
 
                 var vm = new manageViewModel(options);
@@ -116,7 +113,7 @@
 
 </asp:Content>
 <asp:Content ID="Content4" ContentPlaceHolderID="body" runat="server">
-    
+ 
 <div>
     <h2>Manage Database</h2>
     <p>
@@ -234,13 +231,13 @@
                                 <h6 class="mt-2 mb-2">Admin Options</h6>
                                 <div class="form-check">
                                     <input type="checkbox" class="form-check-input" id="useClientIdInAdmin" data-bind="checked: useClientIdInAdmin">
-                                    <label class="form-check-label" for="useClientIdInAdmin">Use Client ID in Admin</label>
-                                    <small class="text-muted d-block">Enable this to use client IDs in the admin panel.</small>
+                                    <label class="form-check-label" for="useClientIdInAdmin">Use Client ID in Admin mode</label>
+                                    <small class="text-muted d-block">Enable this to respect client IDs even when in admin mode.</small>
                                 </div>
                                 <div class="form-check">
                                     <input type="checkbox" class="form-check-input" id="useSqlBuilderInAdminMode" data-bind="checked: useSqlBuilderInAdminMode">
                                     <label class="form-check-label" for="useSqlBuilderInAdminMode">Use SQL Builder in Admin Mode</label>
-                                    <small class="text-muted d-block">Allows SQL query builder access in admin mode.</small>
+                                    <small class="text-muted d-block">Allows SQL query builder access <b>only</b> in admin mode.</small>
                                 </div>
                                 <h6 class="mt-3 mb-2">Customization</h6>
                                 <div class="form-check">
@@ -264,6 +261,13 @@
                                     <label class="form-check-label" for="allowUsersToCreateReports">Allow All Users to Create Reports</label>
                                     <small class="text-muted d-block">Permits users to generate and customize reports.</small>
                                 </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: showImportExport">
+                                    <label class="form-check-label">Allow All Users to export/import reports</label>
+                                    <small class="text-muted d-block">
+                                        Allow non admin users to export and import Reports in the system.
+                                    </small>
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <h6 class="mt-2 mb-2">Folder Options</h6>
@@ -285,7 +289,7 @@
                                 <div class="form-check">
                                     <input type="checkbox" class="form-check-input" id="allowUsersToManageFolders" data-bind="checked: allowUsersToManageFolders">
                                     <label class="form-check-label" for="allowUsersToManageFolders">Allow All Users to Manage Folders</label>
-                                    <small class="text-muted d-block">Grants permission to organize and manage folders.</small>
+                                    <small class="text-muted d-block">Grants permission to organize and manage folders without admin mode.</small>
                                 </div>
                                 <h6 class="mt-3 mb-2">Export Options</h6>
                                 <div class="form-check">
@@ -307,7 +311,7 @@
                                     <input type="checkbox" class="form-check-input" data-bind="checked: showPageSize">
                                     <label class="form-check-label">Show Page Size on PDF & Word export</label>
                                     <small class="text-muted d-block">Display document dimensions in exported PDF & Word.</small>
-                                </div>
+                                </div>                               
                             </div>
                         </div>
                         <div class="mt-3">
@@ -365,11 +369,10 @@
 
             <div class="row">
                 <div class="col-12 col-md-4 col-lg-3 border-end" style="height: 100vh; overflow-y: auto;">
-
                     <div class="row">
                         <div data-bind="ifnot: $root.customTableMode">
                             <div class="alert alert-info">
-                                <span data-bind="text: Tables.model().length"></span> Tables/Views
+                                <span data-bind="text: Tables.model().filter(t => !t.CustomTable()).length"></span> Tables/Views
                                 <span data-bind="text: $root.onlyApi() ? 'configured and used' : 'read from database'"></span>
                             </div>
                         </div>
@@ -397,11 +400,11 @@
                         </div>
                     </div>
                     <div class="row mt-3">
-                        <div class="d-flex flex-row align-items-center col-md-12" data-bind="with: pager">
+                        <div class="d-flex flex-column col-md-12" data-bind="with: pager">
                             <div data-bind="template: 'pager-template', data: $data"></div>
+                            <div class="text-muted small mt-0 pt-0" style="padding-left: 3px" data-bind="text: 'Total Records: ' + totalRecords()"></div>
                         </div>
                     </div>
-
                 </div>
 
                 <div class="col-12 col-md-8 col-lg-9" id="tableDetails">
@@ -479,7 +482,7 @@
                                 </div>
                             </div>
 
-                            <div class="list-group" data-bind="sortable: { data: Columns, options: { handle: '.sortable', cursor: 'move' }, afterMove: $root.columnSorted }">
+                            <div class="list-group" data-bind="sortable: { data: Columns, options: { handle: '.sortable', cursor: 'move' }, afterMove: $root.Tables.columnSorted }">
                                 <div class="list-group-item">
                                     <div data-bind="if: $parent.DynamicColumns()">
                                         <span data-bind="html: DisplayName, attr: { title: 'DB field is ' + ColumnName() }"></span>
@@ -509,30 +512,12 @@
             <p>
                 Setup your Database Relations for Dotnet Report to produce dynamic queries
             </p>
-            <button class="btn btn-sm btn-primary" data-bind="click: AddAllRelations">
-                <span class="fa fa-magic"></span> Auto Add Joins
-            </button>
-
-            <button class="btn btn-sm btn-primary" data-bind="click: AddJoin">
-                <span class="fa fa-plus"></span> Add new Join
-            </button>
-
-            <button class="btn btn-sm btn-primary" data-bind="click: SaveJoins">
-                <span class="fa fa-save"></span> Save Joins
-            </button>
-
-            <button class="btn btn-sm btn-primary" data-bind="click: visualizeJoins">
-                <span class="fa fa-arrows-h"></span> Visualize Joins
-            </button>
-
-            <button class="btn btn-sm btn-primary" data-bind="click: DeleteVisibleJoins">
-                <span class="fa fa-trash"></span> Delete Joins
-            </button>
-
-            <button class="btn btn-sm btn-primary" data-bind="click: ExportJoins">
-                <span class="fa fa-download"></span> Export Joins
-            </button>
-
+            <button class="btn btn-sm btn-primary" data-bind="click: AddAllRelations">Auto Add Joins</button>
+            <button class="btn btn-sm btn-primary" data-bind="click: AddJoin">Add new Join</button>&nbsp;
+            <button class="btn btn-sm btn-primary" data-bind="click: SaveJoins">Save Joins</button>&nbsp;
+            <button class="btn btn-sm btn-primary" data-bind="click: visualizeJoins">Visualize Joins</button>&nbsp;
+            <button class="btn btn-sm btn-primary" data-bind="click: DeleteVisibleJoins" title="Delete filtered Joins">Delete Joins</button>&nbsp;
+            <button class="btn btn-sm btn-primary" data-bind="click: ExportJoins" title="Export filtered Joins">Export Joins</button>&nbsp;
             <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadJoinsFileModal" aria-haspopup="true" aria-expanded="false">
                 <span class="fa fa-upload"></span> Import Joins
             </button>
@@ -636,16 +621,25 @@
                             <div class="col-md-2" data-bind="with: OtherTable">
                                 <select class="form-select" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsValue: 'ColumnName', value: $parent.JoinFieldName"></select>
                             </div>
+
                             <div class="col-md-2 text-end">
+                                <span class="badge bg-warning text-dark me-2"
+                                      data-bind="visible: isNew"
+                                      data-bs-toggle="tooltip"
+                                      title="New record added or imported, not saved yet">
+                                    <i class="fa fa-warning"></i> New
+                                </span>
+
                                 <button class="btn btn-secondary btn-sm" data-bind="click: DeleteJoin">Delete</button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="row mt-3">
-                    <div class="d-flex flex-row align-items-center col-md-12" data-bind="with: joinsPager">
+                <div class="row mt-3">                    
+                    <div class="d-flex flex-row align-items-center col-md-12" data-bind="with: joinsPager">                        
                         <div data-bind="template: 'pager-template', data: $data"></div>
+                        <div class="text-muted small mt-0 pt-0" style="padding-left: 3px" data-bind="text: 'Total Records: ' + totalRecords()"></div>
                     </div>
                 </div>
             </div>
@@ -773,7 +767,7 @@
                             <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadFileModal">
                                 <span class="fa fa-upload"></span> Import Reports
                             </button>
-                        </div>
+                        </div>     
                         <div class="mb-2">
                             <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#searchModal">
                                 <span class="fa fa-tasks"></span> Bulk Actions
@@ -850,20 +844,12 @@
                 </div>
                 <div class="tab-pane fade" id="foldersAccess" role="tabpanel" aria-labelledby="folders-tab">
                     <b>Folders Access</b>
-                    <p>You can setup access to individual Folders here</p>                    
-                    <div class="mb-2 d-flex gap-2">
-                        <div class="mb-2">
-                            <button class="btn btn-sm btn-primary" data-bind="click: function() { exportFoldersJson() }">
-                                <span class="fa fa-download"></span> Export Selected Folders Access
-                            </button>
-                        </div>
-                    </div>
+                    <p>You can setup access to individual Folders here</p>
                     <hr />
                     <div data-bind="foreach: Folders" class="list-group">
                         <div class="list-group-item">
                             <div class="d-flex justify-content-between">
                                 <div>
-                                    <input type="checkbox" data-bind="checked: isSelected" />                                    
                                     <a data-bs-toggle="collapse" data-bind="attr: {href: '#folderAccess-' + Id }">
                                         <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: FolderName"></span>
                                     </a>
@@ -1123,6 +1109,9 @@
                                             <option value="Int">Int</option>
                                             <option value="Double">Double</option>
                                             <option value="Json">Json</option>
+                                            <option value="Date">Date Only</option>
+                                            <option value="Time">Time Only</option>
+                                            <option value="Percentage">Percentage</option>
                                         </select>
                                     </div>
                                     <div class="col-md-3 col-sm-3">
@@ -1878,7 +1867,7 @@
     <div class="modal-dialog">
         <div class="modal-content" data-bind="with: ManageTablesJsonFile">
             <div class="modal-header">
-                <h5 class="modal-title" id="uploadTablesFileModalLabel">Import Tables/Views JSON File Upload</h5>
+                <h5 class="modal-title" id="uploadTablesFileModalLabel">Import Tables/Views (Previously Exported)</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -1905,7 +1894,7 @@
     <div class="modal-dialog">
         <div class="modal-content" data-bind="with: ManageJoinsJsonFile">
             <div class="modal-header">
-                <h5 class="modal-title" id="uploadJoinsFileModalLabel">Import Joins JSON File Upload</h5>
+                <h5 class="modal-title" id="uploadJoinsFileModalLabel">Import Joins (Previously Exported)</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -1931,7 +1920,7 @@
     <div class="modal-dialog">
         <div class="modal-content" data-bind="with: ManageStoredProceduresJsonFile">
             <div class="modal-header">
-                <h5 class="modal-title" id="uploadStoredProceduresFileModalLabel">Import Stored Procedures JSON File Upload</h5>
+                <h5 class="modal-title" id="uploadStoredProceduresFileModalLabel">Import Stored Procedures (Previously Exported)</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -1964,10 +1953,12 @@
                     <input type="text" class="form-control" placeholder="Search Reports"
                            data-bind="value: searchQuery, valueUpdate: 'input'">
                     <button class="btn btn-sm btn-outline-primary flex-shrink-0" title="Select all Filtered"
-                            data-bind="click: selectAllFiltered">Select All
+                            data-bind="click: selectAllFiltered">
+                        Select All
                     </button>
                     <button class="btn btn-sm btn-outline-secondary flex-shrink-0" title="Deselect all Filtered"
-                            data-bind="click: deselectAllFiltered">Deselect All
+                            data-bind="click: deselectAllFiltered">
+                        Deselect All
                     </button>
                 </div>
                 <div data-bind="foreach: filteredReportsAndFolders">
@@ -2017,11 +2008,12 @@
                 <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 <button class="btn btn-success" data-bind="click: exportFoldersReportJson">Export Selected</button>
                 <button class="btn btn-primary" data-bind="click: $root.openApplySecurityModal, enable: $root.anyReportSelected">Apply Security to All Selected</button>
+                <button class="btn btn-primary" data-bind="click: $root.deleteSelectedItems, enable: $root.anyReportSelected">Delete All Selected</button>
             </div>
         </div>
     </div>
 </div>
-<div class="modal" id="applySecurityModal" tabindex="-1" aria-hidden="true" >
+<div class="modal" id="applySecurityModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg" data-bind="if: $root.anyReportSelected">
         <div class="modal-content">
             <div class="modal-header">
@@ -2043,19 +2035,34 @@
     <div class="modal-dialog">
         <div class="modal-content" data-bind="with: ManageJsonFile">
             <div class="modal-header">
-                <h5 class="modal-title" id="uploadFileModalLabel">Import JSON File Upload</h5>
+                <h5 class="modal-title" id="uploadFileModalLabel">Import previously Exported Reports</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+
+                <div class="alert alert-info small">
+                    <strong>Instructions:</strong><br />
+                    • Select a <code>.json</code> file previously exported from Dotnet Report.<br />
+                    • The file may include multiple reports and their folders.<br />
+                    • Any missing folders will be created automatically.<br />
+                    • If a report with the same name already exists, you will be prompted to:
+                    <em>Skip</em>, <em>Overwrite</em>, or <em>Make a Copy</em>.<br />
+                    • Once uploaded, all imported reports will be available immediately.
+                </div>
+
                 <div id="dropzone" class="dropzone"
                      data-bind="event: {click: triggerFileInput }"
                      style="border: 2px dashed #007bff; border-radius: 5px; padding: 30px; text-align: center; color: #007bff; cursor: pointer;">
-                    click to select files
+                    Click here to select a JSON file
                 </div>
-                <input type="file" id="fileInputJson" accept=".json" style="display: none;" data-bind="event: { change: handleFileSelect }">
-                <div data-bind="visible: fileName">
-                    <p>Selected File: <span data-bind="text: fileName"></span></p>
+
+                <input type="file" id="fileInputJson" accept=".json" style="display: none;"
+                       data-bind="event: { change: handleFileSelect }">
+
+                <div class="mt-3" data-bind="visible: fileName">
+                    <p><strong>Selected File:</strong> <span data-bind="text: fileName"></span></p>
                 </div>
+
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -2064,4 +2071,5 @@
         </div>
     </div>
 </div>
+
 </asp:Content>
