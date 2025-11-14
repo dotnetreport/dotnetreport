@@ -6099,10 +6099,10 @@ var reportViewModel = function (options) {
 		}
 		setTimeout(function () { self.isDirty(false); }, 500);
 		
-		if (self.ReportMode() == "execute") {
+		if (self.ReportMode() == "execute" || self.ReportMode() == "linked") {
 			if (self.useReportHeader()) {
 				self.headerDesigner.init(true);
-			} 
+			}
 		}
 
 		var filterFieldsOnFly = [];

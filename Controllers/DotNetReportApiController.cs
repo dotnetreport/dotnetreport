@@ -203,7 +203,9 @@ namespace ReportBuilder.Web.Controllers
                     }
                     if (key == "reportId")
                     {
-                        reportId = ((JsonElement)data[key]).GetInt32();
+                        reportId = ((JsonElement)data[key]) is var el && el.ValueKind == JsonValueKind.Number
+                                        ? el.GetInt32()
+                                        : Convert.ToInt32(el.GetString());
                     }
                 }
 
