@@ -6,7 +6,6 @@ using System.Data;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
 using System.Web;
 using System.Web.Mvc;
@@ -144,15 +143,6 @@ namespace ReportBuilder.Web.Controllers
                 throw new Exception("User context mismatch");
             }
             return string.IsNullOrEmpty(method) || string.IsNullOrEmpty(model) ? Json(new { }) : await ExecuteCallReportApi(method, model, userId, settings);
-        }
-
-        private static int GetInt(JsonElement el)
-        {
-            if (el.TryGetInt32(out var i)) return i;
-            if (el.TryGetInt64(out var l)) return Convert.ToInt32(l);
-            if (el.TryGetDouble(out var d)) return Convert.ToInt32(d);
-
-            return Convert.ToInt32(el.ToString());
         }
 
         private async Task<JsonResult> ExecuteCallReportApi(string method, string model, string userId, DotNetReportSettings settings = null)
