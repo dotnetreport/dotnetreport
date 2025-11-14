@@ -1603,6 +1603,7 @@ var reportViewModel = function (options) {
 
 	self.createNewReport = function () {
 		self.clearReport();
+		self.activeDesign(false);
 		self.ReportMode("generate");
 		self.setupDirtyCheck();
 	};
@@ -1639,7 +1640,7 @@ var reportViewModel = function (options) {
 	self.SelectFieldToInsert = ko.observable();
 	self.SelectFieldToInsert.subscribe(function (newValue) {
 		if (!newValue) return;
-		const placeholder = `{{${newValue.selectedFieldName}}}`;
+		const placeholder = `{{${newValue.selectedFieldName()}}}`;
 		if (self.reportHtml.editor) {
 			self.reportHtml.editor.summernote('pasteHTML', placeholder);
 		}
@@ -1649,9 +1650,9 @@ var reportViewModel = function (options) {
 		if (!self.reportHtml.editor) return;
 
 		const rows = self.SelectedFields().map(f =>
-			`<tr data-field="${f.selectedFieldName}">
-            <td><b>${f.selectedFieldName}</b></td>
-            <td>{{${f.selectedFieldName}}}</td>
+			`<tr data-field="${f.selectedFieldName()}">
+            <td><b>${f.selectedFieldName()}</b></td>
+            <td>{{${f.selectedFieldName()}}}</td>
         </tr>`
 		);
 		const table = `<table class="table table-bordered table-sm html-report-table html-report-table-transposed">${rows.join('')}</table>`;
@@ -1662,10 +1663,10 @@ var reportViewModel = function (options) {
 		if (!self.reportHtml.editor) return;
 
 		const headers = self.SelectedFields().map(f =>
-			`<th data-field="${f.selectedFieldName}">${f.selectedFieldName}</th>`
+			`<th data-field="${f.selectedFieldName()}">${f.selectedFieldName()}</th>`
 		).join('');
 		const values = self.SelectedFields().map(f =>
-			`<td data-field="${f.selectedFieldName}">{{${f.selectedFieldName}}}</td>`
+			`<td data-field="${f.selectedFieldName()}">{{${f.selectedFieldName()}}}</td>`
 		).join('');
 		const table = `
         <table class="table table-bordered table-sm html-report-table html-report-table-standard">
@@ -2546,7 +2547,7 @@ var reportViewModel = function (options) {
 					var x = self.setupField(ko.toJS(newValue));
 					x.isJsonColumn = true;
 					x.jsonColumnName = key;
-					x.selectedFieldName += (" > " + key);
+					x.selectedFieldName(x.selectedFieldName() + (" > " + key));
 					x.isSelected = _.find(self.SelectedFields(), function (f) { return f.fieldId == x.fieldId && f.fieldType == 'Json' && f.jsonColumnName == x.jsonColumnName }) != null;
 					return x;
 				});
@@ -4413,7 +4414,7 @@ var reportViewModel = function (options) {
 					const val = ko.unwrap(r.formattedVal || r.Value || '');
 
 					if (selectedField) {
-						const placeholderKey = selectedField.selectedFieldName;
+						const placeholderKey = selectedField.selectedFieldName();
 						renderedHtml = renderedHtml.replaceAll(`{{${placeholderKey}}}`, val);
 					}
 					else {
@@ -5794,7 +5795,8 @@ var reportViewModel = function (options) {
 		if (typeof e.fieldSettings !== 'object' || e.fieldSettings === null) {
 			e.fieldSettings = JSON.parse(e.fieldSettings || "{}");
 		}
-		e.selectedFieldName = ko.observable(e.tableName + " > " + e.fieldName + (e.jsonColumnName ? ' > ' + e.jsonColumnName : ''));		e.selectedFilterName = e.tableName + " > " + (e.fieldLabel || e.fieldName) + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
+		e.selectedFieldName = ko.observable(e.tableName + " > " + e.fieldName + (e.jsonColumnName ? ' > ' + e.jsonColumnName : ''));
+		e.selectedFilterName = e.tableName + " > " + (e.fieldLabel || e.fieldName) + (e.jsonColumnName ? ' > ' + e.jsonColumnName : '');
 		if (e.fieldId === 0 && e.dynamicTableId != null) {
 			e.fieldAggregateWithDrilldown = ['Only in Detail','Max', 'Count'];
 		} else {
@@ -7957,6 +7959,7 @@ var dashboardViewModel = function (options) {
 				report.Folders(self.folders);
 				report.SaveReport(true);
 				self.selectedReport(report);
+				report.activeDesign(false);
 
 				setTimeout(function () {
 					var reportModel = new bootstrap.Modal(document.getElementById('modal-reportbuilder'));
