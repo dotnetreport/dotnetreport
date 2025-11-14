@@ -410,7 +410,7 @@
                             </ul>
                         </li>
                         <li data-bind="visible: ReportType()!='Single'">
-                            <a class="dropdown-item" data-bind="attr: {href: '/DotNetReport?linkedreport=true&noparent=true&reportId=' + ReportID() }" target="_blank">
+                            <a class="dropdown-item" data-bind="attr: {href: '/DotNetReport/Index.aspx?linkedreport=true&noparent=true&reportId=' + ReportID() }" target="_blank">
                                 <span class="fa fa-folder-open"></span> Open Report
                             </a>
                         </li>

@@ -1,8 +1,4 @@
-﻿using DocumentFormat.OpenXml.Bibliography;
-using DocumentFormat.OpenXml.Spreadsheet;
-using DocumentFormat.OpenXml.Wordprocessing;
-using Newtonsoft.Json;
-using OfficeOpenXml.FormulaParsing.LexicalAnalysis;
+﻿using Newtonsoft.Json;
 using ReportBuilder.Web.Models;
 using System;
 using System.Collections.Generic;
@@ -10,7 +6,6 @@ using System.Configuration;
 using System.Data;
 using System.Linq;
 using System.Net.Http;
-using System.Runtime;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web;
@@ -170,6 +165,22 @@ namespace ReportBuilder.WebForms.DotNetReport
                     else if (key != "adminMode" || (key == "adminMode" && settings.CanUseAdminMode))
                     {
                         requestData[key] = data[key];
+                    }
+                    if (key == "adminMode" && settings.CanUseAdminMode)
+                    {
+                        adminMode = data[key];
+                    }
+                    if (key == "dashboardId")
+                    {
+                        dashboardId = Convert.ToInt32(data[key]);
+                    }
+                    if (key == "folderId")
+                    {
+                        folderId = Convert.ToInt32(data[key]);
+                    }
+                    if (key == "reportId")
+                    {
+                        reportId = Convert.ToInt32(data[key]);
                     }
                 }
                 if (!adminMode)
@@ -664,7 +675,6 @@ namespace ReportBuilder.WebForms.DotNetReport
                 throw new Exception("User context mismatch");
             }
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            await ValidateAccess(userId, reportSql);
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
             var columns = string.IsNullOrEmpty(columnDetails) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));

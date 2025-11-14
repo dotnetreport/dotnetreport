@@ -895,7 +895,7 @@ var textQuery = function (options) {
                     text: ''
                 }),
                 userid: options.userId
-            } : null;
+            } : null)
         },
         processResults: function (data) {
             if (data.d) data = data.d;
