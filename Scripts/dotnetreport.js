@@ -584,7 +584,12 @@ function filterGroupViewModel(args) {
 		//	filter.Value(null);
 		//	filter.Value2(null);
 		//});
-
+		filter.Value.subscribe(function (value) {
+			filter.fmtValue(value)
+		})
+		filter.Value2.subscribe(function (value) {
+			filter.fmtValue2(value)
+		})
 		function loadLookupList(fieldId, dataFilters) {
 			if (printMode === true) return;
 			ajaxcall({
@@ -2417,6 +2422,7 @@ var reportViewModel = function (options) {
 			else {
 				e.Operator = ko.observable(match ? match.Operator : '=');
 				e.Value = ko.observable(match ? match.Value : e.ParameterValue);
+				e.fmtValue = ko.observable(match ? match.Value : e.ParameterValue);
 
 				e.Operator.subscribe(function (newValue) {
 					if (newValue == 'is default') {
@@ -2424,7 +2430,9 @@ var reportViewModel = function (options) {
 					}
 				});
 			}
-
+			e.Value.subscribe(function (value) {
+				e.fmtValue(value)
+			})
 			e.Field = {
 				fieldId: e.Id,
 				hasForeignKey: e.ForeignKey,
