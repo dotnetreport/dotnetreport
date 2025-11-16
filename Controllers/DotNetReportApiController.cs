@@ -405,12 +405,41 @@ namespace ReportBuilder.Web.Controllers
 
                         if (!string.IsNullOrEmpty(pivotColumn))
                         {
+                            var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
                             if (!useAltPivot)
                             {
                                 var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dtPagedRun, sql, sqlFields, reportData, pivotColumn, pivotFunction, pageNumber, pageSize, sortBy, desc, subtotalMode);
                                 dtPagedRun = pd.dt;
                                 if (!string.IsNullOrEmpty(pd.sql)) sql = pd.sql;
                                 totalRecords = pd.totalRecords;
+
+                                // Extract original aliases from SQL fields
+                                var sqlAliases = fields
+                                    .Select(f =>
+                                    {
+                                        var parts = f.Split(new[] { " AS " }, StringSplitOptions.RemoveEmptyEntries);
+                                        return parts.Length == 2 ? parts[1].Trim().Trim('[', ']') : "";
+                                    })
+                                    .Where(a => !string.IsNullOrWhiteSpace(a))
+                                    .ToList();
+
+                                // Now map DataTable columns back to SQL aliases
+                                var mapped = dtPagedRun.Columns.Cast<DataColumn>()
+                                    .Select(col =>
+                                    {
+                                        var colName = col.ColumnName;
+                                        var lastPart = colName.Contains("|")
+                                            ? colName.Substring(colName.LastIndexOf("|") + 1)
+                                            : colName;
+
+                                        return sqlAliases.Contains(lastPart)
+                                            ? fields.First(f => f.EndsWith($"[{lastPart}]"))
+                                            : $"__ AS [{colName}]";
+                                    })
+                                    .ToList();
+
+                                fields = mapped;
+
                             }
                             else
                             {
@@ -422,12 +451,12 @@ namespace ReportBuilder.Web.Controllers
                                     var columnorder = DotNetReportHelper.GetuseAltPivotColumnOrder(reportData);
                                     dtPagedRun = DotNetReportHelper.ReorderDataTableColumns(dtPagedRun, columnorder);
                                 }
-                            }
-                            var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
-                            fields = fields
+                                fields = fields
                                 .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
                                 .ToList();
-                            fields.AddRange(dtPagedRun.Columns.Cast<DataColumn>().Skip(fields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
+                                fields.AddRange(dtPagedRun.Columns.Cast<DataColumn>().Skip(fields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
+                            }
+                            
                         }
 
                         dtPaged = dtPagedRun;

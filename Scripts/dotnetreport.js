@@ -3675,7 +3675,12 @@ var reportViewModel = function (options) {
 				self.activeDesignRunning = false;
 				return;
 			}
-
+			var s = self.SelectedFields();
+			var idx = _.map(_.filter(s, f => f.selectedAggregate() == 'Pivot'), f => _.indexOf(s, f));
+			if (idx.length > 1 && _.max(idx) - _.min(idx) + 1 != idx.length) {
+				toastr.error("All Pivot fields must be next to each other.");
+				return;
+			}
 			if (_.filter(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' }).length > 1) {
 				toastr.error("Select only one data field for Pivot.");
 				return;
@@ -4247,6 +4252,7 @@ var reportViewModel = function (options) {
 				r.jsonColumnName = col.jsonColumnName;
 				r.isJsonColumn = col.isJsonColumn;
 				r._backColor = null; r._fontBold = null; r._fontColor = null;
+				r.Column.fieldLabel = col.fieldLabel
 
 				r.formattedVal = ko.computed(function () {
 					if (col.fieldFormat && (col.fieldFormat() === null || col.fieldFormat() == 'Auto')) {
@@ -4657,38 +4663,203 @@ var reportViewModel = function (options) {
 				);
 			}
 		}
+		
+		function computeSpan(node) {
+			let keys = Object.keys(node.children);
+			if (keys.length === 0) {
+				node.colspan = 1;
+				node.rowspan = 1;
+				return 1;
+			}
+
+			let colspan = 0;
+			keys.forEach(k => {
+				colspan += computeSpan(node.children[k]);
+			});
+
+			node.colspan = colspan;
+			node.rowspan = 1;
+			return colspan;
+		}
+		function buildHeaderTree(columns) {
+			let root = { children: {}, depth: 0 };
+
+			columns.forEach(col => {
+				let parts = col.raw.split('|');
+				let node = root;
+				let path = '';
+
+				parts.forEach((p, idx) => {
+					path = path === '' ? p : path + '|' + p;
+					if (!node.children[path]) {
+						node.children[path] = { children: {}, depth: idx + 1 };
+					}
+					node = node.children[path];
+				});
+			});
+
+			return root;
+		}
+
+		function generateHeaderRows(node, level, rows, columns, path = [], groupIndex = -1) {
+			if (!rows[level]) rows[level] = [];
+
+			let keys = Object.keys(node.children);
+
+			keys.forEach((fullKey, idx) => {
+				let child = node.children[fullKey];
+				let parts = fullKey.split('|');
+				let key = parts[parts.length - 1];
+				let nextGroup = (Object.keys(child.children).length > 0 && level === 0) ? idx : groupIndex;
+
+				let col = columns.find(c => c.raw === fullKey) || {};
+				let lbl = col.label && col.label.trim() !== "" ? col.label : key;
+
+				rows[level].push({
+					label: lbl,
+					colspan: child.colspan,
+					rowspan: Object.keys(child.children).length ? 1 : (rows.length - level),
+					group: nextGroup
+				});
+
+				generateHeaderRows(child, level + 1, rows, columns, parts, nextGroup);
+			});
+		}
+
+		function renderPivotHeaders(columns, tableId) {
+			let thead = document.getElementById('report-table-head' + tableId);
+			if (!thead) return;
+
+			columns.forEach(c => {
+				if (!c.label || c.label.indexOf('|') >= 0) {
+					let parts = c.raw.split('|');
+					c.label = parts[parts.length - 1];
+				}
+			});
+
+			const rowFieldCount = columns.findIndex(c => c.raw.indexOf('|') >= 0);
+			const rowFields = columns.slice(0, rowFieldCount);
+			const pivotColumns = columns.slice(rowFieldCount);
+			const firstTotalColumn = pivotColumns.find(c => c.raw.startsWith("Total|"));
+			const tree = buildHeaderTree(pivotColumns);
+			computeSpan(tree);
+
+			let headerRows = [];
+			generateHeaderRows(tree, 0, headerRows, pivotColumns);
+
+			let html = '';
+			html += '<tr>';
+
+			rowFields.forEach(f => {
+				html += `<th rowspan="${headerRows.length}">${f.label}</th>`;
+			});
+
+			headerRows[0].forEach(cell => {
+				let border = cell.label === "Total" ? 'style="border-left:2px solid;"' : '';
+				let cls = cell.group >= 0 ? `class="pivot-group-${cell.group}"` : '';
+				html += `<th ${cls} ${border} colspan="${cell.colspan}" rowspan="${cell.rowspan}">${cell.label}</th>`;
+			});
+
+			html += '</tr>';
+
+			for (let r = 1; r < headerRows.length; r++) {
+				html += '<tr>';
+
+				headerRows[r].forEach(cell => {
+					const isLeafTotalCell =
+						cell.label !== "" &&
+						firstTotalColumn &&
+						firstTotalColumn.raw.endsWith("|" + cell.label);
+
+					let border = isLeafTotalCell ? 'style="border-left:2px solid;"' : '';
+					let cls = cell.group >= 0 ? `class="pivot-group-${cell.group}"` : '';
+
+					html += `<th ${cls} ${border} colspan="${cell.colspan}" rowspan="${cell.rowspan}">${cell.label}</th>`;
+				});
+
+				html += '</tr>';
+			}
+
+			thead.innerHTML = html;
+		}
+
 		function renderTable(data, colspan) {
 			const tableBody = document.getElementById('report-table-body' + self.ReportID());
+			const tableHead = document.getElementById('report-table-head' + self.ReportID());
+
+			if (tableHead && data.length > 0) {
+				const columns = data[0].Items.map(x => {
+					const raw = x.Column.ColumnName;
+					const label = (typeof x.Column.fieldLabel === "function" ? x.Column.fieldLabel() ?? "" : "").trim();
+
+					return {
+						raw: raw,
+						label: label !== "" ? label : raw    
+					};
+				});
+
+				renderPivotHeaders(columns, self.ReportID());
+			}
+
 			if (tableBody) {
 				let rowsHTML = '';
 
-					data.forEach(row => {
-						rowsHTML += '<tr>';
-						row.Items.forEach(item => {
-							let tdStyle = `style="background-color: ${item._backColor ?? item.backColor()};
-						color: ${item._fontColor ?? item.fontColor()}; 
-						font-weight: ${(item.fontBold() || item._fontBold) ? 'bold' : 'normal'}; 
-						text-align: ${item.fieldAlign() ? item.fieldAlign() : (item.Column.IsNumeric ? 'right' : 'left')};
-						width:${(item.fieldWidth() ?? item.fieldWidth)};
-						text-wrap:${(item.fieldWidth() ?? item.fieldWidth) ? 'wrap' : 'nowrap'}"`;
+				const allColumns = data.length > 0
+					? data[0].Items.map(x => x.Column.ColumnName)
+					: [];
 
-							if (item.LinkTo) {
-								rowsHTML +=
-									`<td ${tdStyle}>
-								<a href="${item.LinkTo}" target="_blank"><span>${item.FormattedValue}</span></a>  
+				const firstTotalColumn = allColumns.find(c => c.startsWith("Total|"));
+				const rowTotalCol = "Row Total";
+
+				data.forEach((row, rowIndex) => {
+
+					const isGrandTotalRow =
+						row.Items.some(x => x.Column.ColumnName === rowTotalCol);
+
+					rowsHTML += `<tr${isGrandTotalRow ? ' style="border-top:2px solid #000;"' : ''}>`;
+
+					row.Items.forEach(item => {
+						const colName = item.Column.ColumnName;
+
+						const isColumnTotal = colName.startsWith("Total|");
+						const isFirstTotal = colName === firstTotalColumn;
+						const isRowTotalCell = colName === rowTotalCol;
+
+						let isTotalCell = isColumnTotal || isRowTotalCell;
+
+						let leftBorder = '';
+						if (isFirstTotal) leftBorder = 'border-left:2px solid;';
+
+						let tdStyle = `
+							style="
+								background-color:${item._backColor ?? item.backColor()};
+								color:${item._fontColor ?? item.fontColor()};
+								font-weight:${isTotalCell ? 'bold' : (item.fontBold() || item._fontBold) ? 'bold' : 'normal'};
+								text-align:${item.fieldAlign() ? item.fieldAlign() : (item.Column.IsNumeric ? 'right' : 'left')};
+								width:${ko.unwrap(item.fieldWidth())};
+								text-wrap:${ko.unwrap(item.fieldWidth()) ? 'wrap' : 'nowrap'};
+								${leftBorder}
+							"
+						`;
+
+						if (item.LinkTo) {
+							rowsHTML += `<td ${tdStyle}>
+								<a href="${item.LinkTo}" target="_blank">${item.formattedVal()}</a>
 							</td>`;
-							}
-							else {
-								rowsHTML +=
-									`<td ${tdStyle}>
-								${item.FormattedValue}
-							</td>`;
-							}
-						});
-						rowsHTML += '</tr>';
+						} else {
+							rowsHTML += `<td ${tdStyle}>${item.formattedVal()}</td>`;
+						}
 					});
-				tableBody.innerHTML = rowsHTML ? rowsHTML : '<tr><td colspan="'+colspan+'">No records found</td></tr>';
+					rowsHTML += '</tr>';
+				});
+
+				tableBody.innerHTML = rowsHTML || `<tr><td colspan="${colspan}">No records found</td></tr>`;
+				self.updateTable();
 			}
+		}
+
+		function rowItemsContainGrandTotal(items) {
+			return items.some(x => x.Column.ColumnName === "Row Total");
 		}
 
 		reportResult.ReportData(result.ReportData);
@@ -5201,13 +5372,41 @@ var reportViewModel = function (options) {
 	};
 	self.updateTable = function (clear) {
 		let setting = self.tableSettings();
+
 		_.forEach(self.SelectedFields(), function (f) {
 			if (setting.headerBackColor || clear === true) f.headerBackColor(setting.headerBackColor);
 			if (setting.headerFontColor || clear === true) f.headerFontColor(setting.headerFontColor);
 			if (setting.rowBackColor || clear === true) f.backColor(setting.rowBackColor);
 			if (setting.rowFontColor || clear === true) f.fontColor(setting.rowFontColor);
 		});
-	}
+
+		let tableId = self.ReportID();
+
+		let header = document.getElementById('report-table-head' + tableId);
+		let body = document.getElementById('report-table-body' + tableId);
+
+		if (!header && !body) return;
+
+		let headerBack = setting.headerBackColor || "";
+		let headerFont = setting.headerFontColor || "";
+		let rowBack = setting.rowBackColor || "";
+		let rowFont = setting.rowFontColor || "";
+
+		if (header) {
+			header.querySelectorAll("th").forEach(th => {
+				if (clear === true || headerBack) th.style.backgroundColor = headerBack;
+				if (clear === true || headerFont) th.style.color = headerFont;
+			});
+		}
+
+		if (body) {
+			body.querySelectorAll("td").forEach(td => {
+				if (clear === true || rowBack) td.style.backgroundColor = rowBack;
+				if (clear === true || rowFont) td.style.color = rowFont;
+			});
+		}
+	};
+
 	self.addSeriesColor = function () {
 		var colors = self.chartOptions().seriesColors;
 		var randomColor = "#" + Math.floor(Math.random() * 16777215).toString(16); // Generate random color
@@ -7006,18 +7205,22 @@ var reportViewModel = function (options) {
 	}
 	self.WordPage = new WordPageViewModel(self.downloadWord);
 	self.preparePivotData = function () {
-		var pivotColumn = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot'; });
+		var pivotColumn = _.filter(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot'; });
 		var pivotFunction = '';
-		if (pivotColumn) {
-			var pivotColumnIndex = _.findIndex(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot'; });
-			if (pivotColumnIndex >= 0 && pivotColumnIndex < self.SelectedFields().length - 1) {
-				var nextValue = self.SelectedFields()[pivotColumnIndex + 1];
-				pivotFunction = nextValue.selectedAggregate();
+
+		if (pivotColumn && pivotColumn.length > 0) {
+			var lastPivot = pivotColumn[pivotColumn.length - 1];
+			var lastPivotIndex = _.findIndex(self.SelectedFields(), function (x) { return x.fieldName == lastPivot.fieldName; });
+
+			if (lastPivotIndex >= 0 && lastPivotIndex < self.SelectedFields().length - 1) {
+				var nextValue = self.SelectedFields()[lastPivotIndex + 1];
+				if (nextValue && nextValue.selectedAggregate()) pivotFunction = nextValue.selectedAggregate();
 			}
 		}
+
 		return {
-			pivotColumn: pivotColumn ? pivotColumn.fieldName : '',
-			pivotFunction: pivotColumn && pivotFunction ? pivotFunction : '',
+			pivotColumn: pivotColumn.length ? _.map(pivotColumn, function (x) { return x.fieldName; }).join(',') : '',
+			pivotFunction: pivotFunction,
 		};
 	};
 
