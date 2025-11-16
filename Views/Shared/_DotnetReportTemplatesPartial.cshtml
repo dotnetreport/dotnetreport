@@ -1805,6 +1805,12 @@
                     Include Total Row
                 </label>
             </div>
+            <div class="checkbox" data-bind="visible: ReportType()!='Pivot' && hasPivotColumn()">
+                <label>
+                    <input type="checkbox" data-bind="checked: IncludeColumnTotal" />
+                    Include Total Column
+                </label>
+            </div>
             <div class="checkbox" data-bind="hidden: AggregateReport">
                 <label>
                     <input type="checkbox" data-bind="checked: ShowUniqueRecords" />

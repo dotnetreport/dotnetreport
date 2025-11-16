@@ -958,6 +958,7 @@ var reportViewModel = function (options) {
 	self.ReportSeries = '';
 
 	self.IncludeSubTotal = ko.observable(false);
+	self.IncludeColumnTotal = ko.observable(false);
 	self.ShowUniqueRecords = ko.observable(false);
 	self.ShowExpandOption = ko.observable(false);
 	self.DontExecuteOnRun = ko.observable(false);
@@ -2308,6 +2309,7 @@ var reportViewModel = function (options) {
 		self.SelectedTable(null);
 
 		self.IncludeSubTotal(false);
+		self.IncludeColumnTotal(false);
 		self.EditFiltersOnReport(false);
 		self.ShowUniqueRecords(false);
 		self.ShowExpandOption(false);
@@ -3450,6 +3452,7 @@ var reportViewModel = function (options) {
 				};
 			}),
 			IncludeSubTotals: self.IncludeSubTotal(),
+			IncludeColumnTotals: self.IncludeColumnTotal(),
 			EditFiltersOnReport: self.EditFiltersOnReport(),
 			ShowUniqueRecords: self.ShowUniqueRecords(),
 			ReportSettings: JSON.stringify({
@@ -3831,6 +3834,7 @@ var reportViewModel = function (options) {
 								reportName: self.ReportName(),
 								reportDescription: self.ReportDescription(),
 								includeSubTotal: self.IncludeSubTotal(),
+								includeColumnTotal: self.IncludeColumnTotal(),
 								showUniqueRecords: self.ShowUniqueRecords(),
 								aggregateReport: self.AggregateReport(),
 								showDataWithGraph: self.ShowDataWithGraph(),
@@ -4500,6 +4504,7 @@ var reportViewModel = function (options) {
 						pivotFunction: '',
 						reportData: '',
 						SubTotalMode: false,
+						includeColumnTotal: self.IncludeColumnTotal(),
 						adminMode: self.adminMode(),
 					}),
 					noBlocking: true
@@ -4592,6 +4597,7 @@ var reportViewModel = function (options) {
 					chartData: '',
 					columnDetails: self.getColumnDetails(),
 					includeSubTotals: false,
+					includeColumnTotals: false,
 					pivot: false,
 					pivotColumn: '',
 					pivotFunction: '',
@@ -4918,6 +4924,7 @@ var reportViewModel = function (options) {
 						reportSeries: '',
 						reportData: pivotData.pivotColumn ? JSON.stringify(reportData) : '',
 						SubTotalMode: pivotData.pivotColumn ? true : false,
+						includeColumnTotal: self.IncludeColumnTotal(),
 						pivotColumn: pivotData.pivotColumn,
 						pivotFunction: pivotData.pivotFunction,
 						useAltPivot: self.appSettings.useAltPivot,
@@ -4978,6 +4985,7 @@ var reportViewModel = function (options) {
 				pivotFunction: pivotData.pivotFunction,
 				reportData: pivotData.pivotColumn ? JSON.stringify(reportData) : '',
 				SubTotalMode: false,
+				includeColumnTotal: self.IncludeColumnTotal(),
 				useAltPivot: self.appSettings.useAltPivot,
 				adminMode: self.adminMode(),
 			}),
@@ -6253,6 +6261,7 @@ var reportViewModel = function (options) {
 		self.manageAccess.setupList(self.manageAccess.deleteOnlyUsers, report.DeleteOnlyUserId || '');
 
 		self.IncludeSubTotal(report.IncludeSubTotals);
+		self.IncludeColumnTotal(report.IncludeColumnTotals);
 		self.EditFiltersOnReport(report.EditFiltersOnReport);
 		self.ShowUniqueRecords(report.ShowUniqueRecords);
 		self.OnlyTop(report.OnlyTop);
@@ -7118,6 +7127,7 @@ var reportViewModel = function (options) {
 			chartData: self.ChartData() || '',
 			columnDetails: self.getColumnDetails(),
 			includeSubTotal: self.IncludeSubTotal(),
+			includeColumnTotal: self.IncludeColumnTotal(),
 			pivot: self.ReportType() == 'Pivot',
 			pivotColumn: pivotData.pivotColumn,
 			pivotFunction: pivotData.pivotFunction,
@@ -7171,6 +7181,7 @@ var reportViewModel = function (options) {
 			chartData: self.ChartData() || '',
 			columnDetails: self.getColumnDetails(),
 			includeSubTotal: self.IncludeSubTotal(),
+			includeColumnTotal: self.IncludeColumnTotal(),
 			pivot: self.ReportType() == 'Pivot',
 			pivotColumn: pivotData.pivotColumn,
 			pivotFunction: pivotData.pivotFunction,
@@ -8426,6 +8437,7 @@ var dashboardViewModel = function (options) {
 				chartData: report.ChartData() || '',
 				columnDetails: report.getColumnDetails(),
 				includeSubTotal: report.IncludeSubTotal(),
+				includeColumnTotal: report.IncludeColumnTotal(),
 				pivot: report.ReportType() == 'Pivot',
 				pivotColumn: pivotData.pivotColumn,
 				pivotFunction: pivotData.pivotFunction,
@@ -8492,6 +8504,7 @@ var dashboardViewModel = function (options) {
 				chartData: report.ChartData() || '',
 				columnDetails: report.getColumnDetails(),
 				includeSubTotal: report.IncludeSubTotal(),
+				includeColumnTotal: self.IncludeColumnTotal(),
 				pivot: report.ReportType() == 'Pivot',
 				pivotColumn: pivotData.pivotColumn,
 				pivotFunction: pivotData.pivotFunction,

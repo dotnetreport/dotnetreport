@@ -244,6 +244,7 @@ namespace ReportBuilder.Web.Controllers
             public bool SubTotalMode { get; set; }
             public bool useAltPivot { get; set; }
             public bool adminmode { get; set; }
+            public bool includeColumnTotal { get; set; }
         }
 
         [ValidateAntiForgeryToken]
@@ -262,6 +263,7 @@ namespace ReportBuilder.Web.Controllers
             string pivotFunction = data.pivotFunction;
             string reportData = data.reportData;
             bool subtotalMode = data.SubTotalMode;
+            bool includeColumnTotal = data.includeColumnTotal;
             bool adminmode = data.adminmode;
             var sql = "";
             var sqlCount = "";
@@ -408,7 +410,7 @@ namespace ReportBuilder.Web.Controllers
                             var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
                             if (!useAltPivot)
                             {
-                                var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dtPagedRun, sql, sqlFields, reportData, pivotColumn, pivotFunction, pageNumber, pageSize, sortBy, desc, subtotalMode);
+                                var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dtPagedRun, sql, sqlFields, reportData, pivotColumn, pivotFunction, pageNumber, pageSize, sortBy, desc, subtotalMode, includeColumnTotal);
                                 dtPagedRun = pd.dt;
                                 if (!string.IsNullOrEmpty(pd.sql)) sql = pd.sql;
                                 totalRecords = pd.totalRecords;
