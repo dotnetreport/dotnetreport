@@ -1406,6 +1406,7 @@ var reportViewModel = function (options) {
 
 			options.reportSql = result.reportSql;
 			options.reportConnect = result.connectKey;
+			self.PrepFields(result.report);
 			self.PopulateReport(result.report);
 
 			self.aiMessages.pop();
@@ -6412,6 +6413,29 @@ var reportViewModel = function (options) {
 		self.LoadReport(self.ReportID(), true, '');
 	};
 
+	self.PrepFields = function (report) {
+		_.forEach(report.SelectedFields, function (e) {
+			e = self.setupField(e);
+		});
+
+		_.forEach(report.SelectedFields, function (field) {
+			if (
+				field.fieldId === 0 &&
+				field.tableName === "Custom" &&
+				field.dynamicTableId === null
+			) {
+				if (['Integer', 'Decimal', 'Currency', 'Days', 'Hours', 'Minutes', 'Seconds'].indexOf(field.fieldFormat()) >= 0) {
+					field.fieldType = "Int";
+					field.fieldFilter = ['=', '>', '<', '>=', '<=', 'not equal', 'is blank', 'is not blank'];
+				} else {
+					field.fieldFilter = ['=', 'in', 'not in', 'like', 'not like', 'not equal', 'is blank', 'is not blank'];
+				}
+			}
+		});
+		self.SelectedFields(report.SelectedFields);
+		self.lastPickedField(null);
+	}
+
 	self.LoadReport = function (reportId, filterOnFly, reportSeries, dontBlock, buildSql) {
 		self.SelectedTable(null);
 		self.isFormulaField(false);
@@ -6456,26 +6480,7 @@ var reportViewModel = function (options) {
 				}
 
 			} else {
-				_.forEach(report.SelectedFields, function (e) {
-					e = self.setupField(e);
-				});
-
-				_.forEach(report.SelectedFields,function (field) {
-					if (
-						field.fieldId === 0 &&
-						field.tableName === "Custom" &&
-						field.dynamicTableId === null
-					) {
-						if (['Integer', 'Decimal', 'Currency', 'Days', 'Hours', 'Minutes', 'Seconds'].indexOf(field.fieldFormat()) >= 0) {
-							field.fieldType = "Int";
-							field.fieldFilter = ['=', '>', '<', '>=', '<=', 'not equal', 'is blank', 'is not blank'];
-						} else {
-							field.fieldFilter = ['=', 'in', 'not in', 'like', 'not like', 'not equal', 'is blank', 'is not blank'];
-						}
-					}
-				});
-				self.SelectedFields(report.SelectedFields);
-				self.lastPickedField(null);
+				self.PrepFields(report);
 				return self.PopulateReport(report, filterOnFly, reportSeries);
 			}
 		});

@@ -787,8 +787,8 @@ var textQuery = function (options) {
     }
 
     self.QueryMethods = [
-        { value: 'Sum', key: '<span class="fa fa-flash"></span> Sum of', type: 'Function', searchKey: 'Sum of' },
-        { value: 'Avg', key: '<span class="fa fa-flash"></span> Average of', type: 'Function', searchKey: 'Average of' },
+        //{ value: 'Sum', key: '<span class="fa fa-flash"></span> Sum of', type: 'Function', searchKey: 'Sum of' },
+        //{ value: 'Avg', key: '<span class="fa fa-flash"></span> Average of', type: 'Function', searchKey: 'Average of' },
         //{ value: 'Sum', key: '<span class="fa fa-flash"></span> Total of', type: 'Function', searchKey: 'Total of' },
         //{ value: 'Count', key: '<span class="fa fa-flash"></span> Count of', type: 'Function', searchKey: 'Count of' },
         //{ value: 'Percent', key: '<span class="fa fa-flash"></span> Percentage of', type: 'Function', searchKey: 'Percentage of' },
@@ -798,16 +798,16 @@ var textQuery = function (options) {
     ];
 
     self.FilterMethods = [
-        { value: 'is', key: '<span class="fa fa-filter"></span> is', type: 'Filter', searchKey: 'is equal to' },
-        { value: 'is not', key: '<span class="fa fa-filter"></span> is not', type: 'Filter', searchKey: 'is not equal to' },
+        //{ value: 'is', key: '<span class="fa fa-filter"></span> is', type: 'Filter', searchKey: 'is equal to' },
+        //{ value: 'is not', key: '<span class="fa fa-filter"></span> is not', type: 'Filter', searchKey: 'is not equal to' },
     ];
 
     self.DateFilterMethods = [
         //{ value: 'Today', key: '<span class="fa fa-calendar"></span> for Today', operator: 'range', type: 'DateFilter', searchKey: 'for Today' },
         //{ value: 'Yesterday', key: '<span class="fa fa-calendar"></span> for Yesterday', operator: 'range', type: 'DateFilter', searchKey: 'for Yesterday' },
-        { value: 'This Month', key: '<span class="fa fa-calendar"></span> for This Month', operator: 'range', type: 'DateFilter', searchKey: 'for This Month' },
-        { value: 'Last Month', key: '<span class="fa fa-calendar"></span> for Last Month', operator: 'range', type: 'DateFilter', searchKey: 'for Last Month' },
-        { value: 'This Year', key: '<span class="fa fa-calendar"></span> for This Year', operator: 'range', type: 'DateFilter', searchKey: 'for This Year' },
+        //{ value: 'This Month', key: '<span class="fa fa-calendar"></span> for This Month', operator: 'range', type: 'DateFilter', searchKey: 'for This Month' },
+        //{ value: 'Last Month', key: '<span class="fa fa-calendar"></span> for Last Month', operator: 'range', type: 'DateFilter', searchKey: 'for Last Month' },
+        //{ value: 'This Year', key: '<span class="fa fa-calendar"></span> for This Year', operator: 'range', type: 'DateFilter', searchKey: 'for This Year' },
         //{ value: 'Last Year', key: '<span class="fa fa-calendar"></span> for Last Year', operator: 'range', type: 'DateFilter', searchKey: 'for Last Year' },
     ];
 
