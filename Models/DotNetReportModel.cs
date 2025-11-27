@@ -32,6 +32,7 @@ using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
 using PdfSharp.Pdf.IO;
 using IBM.Data.Db2;
+using Oracle.ManagedDataAccess.Client;
 
 namespace ReportBuilder.Web.Models
 {
@@ -4023,6 +4024,9 @@ namespace ReportBuilder.Web.Models
                     databaseConnection = new PostgresDatabaseConnection();
                     break;
                 case "oracle":
+                    databaseConnection = new OracleDatabaseConnection();
+                    break;
+                case "informix":
                     databaseConnection = new InformixDatabaseConnection();
                     break;
                 default:
@@ -5393,6 +5397,368 @@ namespace ReportBuilder.Web.Models
             return tables;
         }
     }
+    public class OracleDatabaseConnection : IDatabaseConnection
+    {
+        public bool TestConnection(string connectionString)
+        {
+            try
+            {
+                using (var conn = new OracleConnection(connectionString))
+                {
+                    conn.Open();
+                    conn.Close();
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Oracle connection failed: " + ex.Message, ex);
+            }
+        }
+
+        public string CreateConnection(UpdateDbConnectionModel model)
+        {
+            var host = model.dbServer?.Trim();
+            var service = model.dbName?.Trim();
+            var user = model.dbUsername?.Trim();
+            var password = model.dbPassword?.Trim();
+            var port = string.IsNullOrWhiteSpace(model.dbPort) ? "1521" : model.dbPort;
+
+            if (string.IsNullOrEmpty(host))
+                throw new ArgumentException("dbServer is required");
+            if (string.IsNullOrEmpty(service))
+                throw new ArgumentException("dbName is required");
+
+            var conn =
+                $"User Id={user};Password={password};" +
+                $"Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST={host})(PORT={port}))" +
+                $"(CONNECT_DATA=(SERVICE_NAME={service})));";
+
+            return conn;
+        }
+
+        public int GetTotalRecords(string connectionString, string sqlCount, string sql, List<KeyValuePair<string, string>> parameters = null)
+        {
+            try
+            {
+                using (var conn = new OracleConnection(connectionString))
+                {
+                    conn.Open();
+                    using (var cmd = new OracleCommand(sqlCount, conn))
+                    {
+                        AddParameters(cmd, parameters);
+                        var result = cmd.ExecuteScalar();
+                        return Convert.ToInt32(result);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error executing Oracle count query: {ex.Message}", ex);
+            }
+        }
+
+        public DataTable ExecuteQuery(string connectionString, string sql, List<KeyValuePair<string, string>> parameters = null)
+        {
+            var dt = new DataTable();
+            try
+            {
+                using (var conn = new OracleConnection(connectionString))
+                {
+                    conn.Open();
+                    using (var cmd = new OracleCommand(sql, conn))
+                    {
+                        AddParameters(cmd, parameters);
+                        using (var da = new OracleDataAdapter(cmd))
+                        {
+                            da.Fill(dt);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error executing Oracle query: {ex.Message}", ex);
+            }
+            return dt;
+        }
+
+        public DataSet ExecuteDataSetQuery(string connectionString, string sql, List<KeyValuePair<string, string>> parameters = null)
+        {
+            var ds = new DataSet();
+            try
+            {
+                using (var conn = new OracleConnection(connectionString))
+                {
+                    conn.Open();
+                    using (var cmd = new OracleCommand(sql, conn))
+                    {
+                        AddParameters(cmd, parameters);
+                        using (var da = new OracleDataAdapter(cmd))
+                        {
+                            da.Fill(ds);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error executing dataset query: {ex.Message}", ex);
+            }
+            return ds;
+        }
+        public static FieldTypes ConvertToJetDataType(string dbType)
+        {
+            if (string.IsNullOrWhiteSpace(dbType))
+                return FieldTypes.Varchar;
+
+            dbType = dbType.ToLowerInvariant();
+
+            if (dbType.Contains("char") || dbType.Contains("text") || dbType.Contains("clob") || dbType.Contains("lvarchar") || dbType.Contains("varchar"))
+                return FieldTypes.Varchar;
+
+            if (dbType.Contains("int") || dbType.Contains("serial"))
+                return FieldTypes.Int;
+
+            if (dbType.Contains("float") || dbType.Contains("double") || dbType.Contains("decimal") || dbType.Contains("number") || dbType.Contains("money"))
+                return FieldTypes.Double;
+
+            if (dbType.Contains("date") || dbType.Contains("time"))
+                return FieldTypes.DateTime;
+
+            if (dbType.Contains("bool") || dbType.Contains("bit"))
+                return FieldTypes.Boolean;
+
+            if (dbType.Contains("blob") || dbType.Contains("binary"))
+                return FieldTypes.Varchar;
+
+            return FieldTypes.Varchar;
+        }
+
+        public async Task<List<TableViewModel>> GetTables(string type = "TABLE", string? accountKey = null, string? dataConnectKey = null)
+        {
+            var tables = new List<TableViewModel>();
+            var currentTables = new List<TableViewModel>();
+
+            if (!String.IsNullOrEmpty(accountKey) && !String.IsNullOrEmpty(dataConnectKey))
+            {
+                currentTables = await DotNetReportHelper.GetApiTables(accountKey, dataConnectKey, true);
+                currentTables = currentTables.Where(x => !string.IsNullOrEmpty(x.TableName)).ToList();
+            }
+
+            var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey), false);
+            using (var conn = new OracleConnection(connString))
+            {
+                await conn.OpenAsync();
+
+                string sql = type == "VIEW"
+                    ? "SELECT VIEW_NAME AS NAME, NULL AS SCHEMA FROM USER_VIEWS"
+                    : "SELECT TABLE_NAME AS NAME, NULL AS SCHEMA FROM USER_TABLES";
+
+                var tableList = new List<(string TableName, string SchemaName)>();
+
+                using (var cmd = new OracleCommand(sql, conn))
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        tableList.Add((reader.GetString(0), reader.IsDBNull(1) ? "" : reader.GetString(1)));
+                    }
+                }
+
+                foreach (var tbl in tableList)
+                {
+                    var schemaName = tbl.SchemaName;
+                    var tableName = tbl.TableName;
+
+                    var matchTable = currentTables.FirstOrDefault(x =>
+                        x.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase) &&
+                        x.SchemaName.Equals(schemaName, StringComparison.OrdinalIgnoreCase)
+                    );
+
+                    var table = new TableViewModel
+                    {
+                        Id = matchTable != null ? matchTable.Id : 0,
+                        SchemaName = schemaName,
+                        TableName = tableName,
+                        DisplayName = matchTable != null ? matchTable.DisplayName : tableName,
+                        IsView = type == "VIEW",
+                        Selected = matchTable != null,
+                        Columns = new List<ColumnViewModel>(),
+                        AllowedRoles = matchTable != null ? matchTable.AllowedRoles : new List<string>(),
+                        AccountIdField = matchTable != null ? matchTable.AccountIdField : ""
+                    };
+
+                    string colSql =
+                        "SELECT COLUMN_NAME, DATA_TYPE " +
+                        "FROM USER_TAB_COLUMNS " +
+                        "WHERE TABLE_NAME = :tblName " +
+                        "ORDER BY COLUMN_ID";
+
+                    var dtField = new DataTable();
+                    using (var cmd = new OracleCommand(colSql, conn))
+                    {
+                        cmd.Parameters.Add(new OracleParameter("tblName", tableName));
+                        using (var da = new OracleDataAdapter(cmd))
+                        {
+                            da.Fill(dtField);
+                        }
+                    }
+
+                    var idx = 0;
+                    foreach (DataRow dr in dtField.Rows)
+                    {
+                        var colName = dr["COLUMN_NAME"].ToString();
+                        var dataType = dr["DATA_TYPE"].ToString();
+
+                        ColumnViewModel matchColumn = matchTable != null
+                            ? matchTable.Columns.FirstOrDefault(x => x.ColumnName.Equals(colName, StringComparison.OrdinalIgnoreCase))
+                            : null;
+
+                        var column = new ColumnViewModel
+                        {
+                            ColumnName = matchColumn != null ? matchColumn.ColumnName : colName,
+                            DisplayName = matchColumn != null ? matchColumn.DisplayName : colName,
+                            PrimaryKey = matchColumn != null ? matchColumn.PrimaryKey : colName.ToLower().EndsWith("id") && idx == 0,
+                            DisplayOrder = matchColumn != null ? matchColumn.DisplayOrder : idx++,
+                            FieldType = matchColumn != null ? matchColumn.FieldType : ConvertToJetDataType(dataType).ToString(),
+                            AllowedRoles = matchColumn != null ? matchColumn.AllowedRoles : new List<string>()
+                        };
+
+                        if (matchColumn != null)
+                        {
+                            column.ForeignKey = matchColumn.ForeignKey;
+                            column.ForeignJoin = matchColumn.ForeignJoin;
+                            column.ForeignTable = matchColumn.ForeignTable;
+                            column.ForeignKeyField = matchColumn.ForeignKeyField;
+                            column.ForeignValueField = matchColumn.ForeignValueField;
+                            column.Id = matchColumn.Id;
+                            column.DoNotDisplay = matchColumn.DoNotDisplay;
+                            column.DisplayOrder = matchColumn.DisplayOrder;
+                            column.ForceFilter = matchColumn.ForceFilter;
+                            column.ForceFilterForTable = matchColumn.ForceFilterForTable;
+                            column.RestrictedDateRange = matchColumn.RestrictedDateRange;
+                            column.RestrictedStartDate = matchColumn.RestrictedStartDate;
+                            column.RestrictedEndDate = matchColumn.RestrictedEndDate;
+                            column.ForeignParentKey = matchColumn.ForeignParentKey;
+                            column.ForeignParentApplyTo = matchColumn.ForeignParentApplyTo;
+                            column.ForeignParentTable = matchColumn.ForeignParentTable;
+                            column.ForeignParentKeyField = matchColumn.ForeignParentKeyField;
+                            column.ForeignParentValueField = matchColumn.ForeignParentValueField;
+                            column.ForeignParentRequired = matchColumn.ForeignParentRequired;
+                            column.JsonStructure = matchColumn.JsonStructure;
+                            column.ForeignFilterOnly = matchColumn.ForeignFilterOnly;
+                            column.Selected = true;
+                        }
+
+                        table.Columns.Add(column);
+                    }
+
+                    if (matchTable != null)
+                    {
+                        table.Columns.AddRange(matchTable.Columns
+                            .Where(x => !table.Columns.Select(c => c.Id).Contains(x.Id))
+                            .ToList());
+                    }
+
+                    table.Columns = table.Columns.OrderBy(x => x.DisplayOrder).ToList();
+                    tables.Add(table);
+                }
+
+                var notMatchedTables = currentTables
+                    .Where(x => !tables.Select(c => c.Id).Contains(x.Id) && ((type == "TABLE") ? !x.IsView : x.IsView))
+                    .ToList();
+
+                if (notMatchedTables.Any())
+                {
+                    foreach (var notMatchedTable in notMatchedTables)
+                    {
+                        notMatchedTable.Selected = true;
+                        notMatchedTable.Columns = await DotNetReportHelper.GetApiFields(accountKey, dataConnectKey, notMatchedTable.Id);
+                        notMatchedTable.Columns.ForEach(x => x.Selected = true);
+                    }
+                    tables.AddRange(notMatchedTables);
+                }
+
+                conn.Close();
+            }
+
+            return tables;
+        }
+
+        public async Task<TableViewModel> GetSchemaFromSql(string connString, TableViewModel table, string sql, bool dynamicColumns)
+        {
+            using (var conn = new OracleConnection(connString))
+            {
+                await conn.OpenAsync().ConfigureAwait(false);
+
+                using (var cmd = new OracleCommand(sql, conn))
+                {
+                    cmd.CommandType = CommandType.Text;
+
+                    using (var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false))
+                    {
+                        var idx = 0;
+                        DataTable schemaTable = new DataTable();
+
+                        if (dynamicColumns)
+                        {
+                            while (await reader.ReadAsync().ConfigureAwait(false))
+                            {
+                                table.Columns.Add(new ColumnViewModel
+                                {
+                                    ColumnName = Convert.ToString(reader[0]),
+                                    DisplayName = Convert.ToString(reader[0])
+                                });
+                            }
+                        }
+                        else
+                        {
+                            schemaTable = reader.GetSchemaTable();
+                            foreach (DataRow dr in schemaTable.Rows)
+                            {
+                                var colName = dr["ColumnName"].ToString();
+                                var providerType = dr["ProviderType"].ToString();
+
+                                var column = new ColumnViewModel
+                                {
+                                    ColumnName = colName,
+                                    DisplayName = colName,
+                                    PrimaryKey = colName.ToLower().EndsWith("id") && idx == 0,
+                                    DisplayOrder = idx,
+                                    FieldType = ConvertToJetDataType(providerType).ToString(),
+                                    AllowedRoles = new List<string>(),
+                                    Selected = true
+                                };
+
+                                idx++;
+                                table.Columns.Add(column);
+                            }
+                        }
+
+                        table.Columns = table.Columns.OrderBy(x => x.DisplayOrder).ToList();
+                    }
+                }
+            }
+
+            return table;
+        }
+
+        public Task<List<TableViewModel>> GetSearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
+        {
+            return Task.FromResult(new List<TableViewModel>());
+        }
+
+        private void AddParameters(OracleCommand cmd, List<KeyValuePair<string, string>> parameters)
+        {
+            if (parameters == null) return;
+            foreach (var p in parameters)
+            {
+                cmd.Parameters.Add(new OracleParameter(p.Key, p.Value));
+            }
+        }
+    }
+
 
     public class InformixDatabaseConnection : IDatabaseConnection
     {
@@ -5525,67 +5891,247 @@ namespace ReportBuilder.Web.Models
             }
             return ds;
         }
+        public static FieldTypes ConvertToJetDataType(string dbType)
+        {
+            if (string.IsNullOrWhiteSpace(dbType))
+                return FieldTypes.Varchar;
+
+            dbType = dbType.ToLowerInvariant();
+
+            if (dbType.Contains("char") || dbType.Contains("text") || dbType.Contains("clob") || dbType.Contains("lvarchar") || dbType.Contains("varchar"))
+                return FieldTypes.Varchar;
+
+            if (dbType.Contains("int") || dbType.Contains("serial"))
+                return FieldTypes.Int;
+
+            if (dbType.Contains("float") || dbType.Contains("double") || dbType.Contains("decimal") || dbType.Contains("number") || dbType.Contains("money"))
+                return FieldTypes.Double;
+
+            if (dbType.Contains("date") || dbType.Contains("time"))
+                return FieldTypes.DateTime;
+
+            if (dbType.Contains("bool") || dbType.Contains("bit"))
+                return FieldTypes.Boolean;
+
+            if (dbType.Contains("blob") || dbType.Contains("binary"))
+                return FieldTypes.Varchar;
+
+            return FieldTypes.Varchar;
+        }
 
         public async Task<List<TableViewModel>> GetTables(string type = "TABLE", string? accountKey = null, string? dataConnectKey = null)
         {
-            try
+            var tables = new List<TableViewModel>();
+            var currentTables = new List<TableViewModel>();
+
+            if (!String.IsNullOrEmpty(accountKey) && !String.IsNullOrEmpty(dataConnectKey))
             {
-                var tables = new List<TableViewModel>();
-                var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey), false);
+                currentTables = await DotNetReportHelper.GetApiTables(accountKey, dataConnectKey, true);
+                currentTables = currentTables.Where(x => !string.IsNullOrEmpty(x.TableName)).ToList();
+            }
 
-                using (var conn = new DB2Connection(connString))
+            var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey), false);
+
+            using (var conn = new DB2Connection(connString))
+            {
+                await conn.OpenAsync();
+
+                string sql = type == "VIEW"
+                    ? "SELECT tabname, owner FROM systables WHERE tabtype='V'"
+                    : "SELECT tabname, owner FROM systables WHERE tabtype='T' AND tabid > 99";
+
+                var tableList = new List<(string TableName, string SchemaName)>();
+
+                using (var cmd = new DB2Command(sql, conn))
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
-                    await conn.OpenAsync();
-
-                    string sql = type == "VIEW"
-                        ? "SELECT tabname FROM systables WHERE tabtype='V'"
-                        : "SELECT tabname FROM systables WHERE tabtype='T' AND tabid > 99";
-
-                    using (var cmd = new DB2Command(sql, conn))
-                    using (var reader = await cmd.ExecuteReaderAsync())
+                    while (await reader.ReadAsync())
                     {
-                        while (await reader.ReadAsync())
-                        {
-                            tables.Add(new TableViewModel
-                            {
-                                TableName = reader.GetString(0),
-                                DisplayName = reader.GetString(0),
-                                Columns = new List<ColumnViewModel>()
-                            });
-                        }
+                        var tbl = reader.GetString(0);
+                        var schema = reader.IsDBNull(1) ? "" : reader.GetString(1);
+                        tableList.Add((tbl, schema));
                     }
                 }
 
-                return tables;
-            }catch (Exception ex)
-            {
-                throw ex;
+                foreach (var tbl in tableList)
+                {
+                    var schemaName = tbl.SchemaName;
+                    var tableName = tbl.TableName;
+
+                    var matchTable = currentTables.FirstOrDefault(x =>
+                        x.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase) &&
+                        x.SchemaName.Equals(schemaName, StringComparison.OrdinalIgnoreCase)
+                    );
+
+                    var table = new TableViewModel
+                    {
+                        Id = matchTable != null ? matchTable.Id : 0,
+                        SchemaName = schemaName,
+                        TableName = tableName,
+                        DisplayName = matchTable != null ? matchTable.DisplayName : tableName,
+                        IsView = type == "VIEW",
+                        Selected = matchTable != null,
+                        Columns = new List<ColumnViewModel>(),
+                        AllowedRoles = matchTable != null ? matchTable.AllowedRoles : new List<string>(),
+                        AccountIdField = matchTable != null ? matchTable.AccountIdField : ""
+                    };
+
+                    string colSql =
+                        "SELECT c.colname, t.coltype, t.extended_id " +
+                        "FROM syscolumns c " +
+                        "JOIN syscoltype t ON c.coltype = t.coltype " +
+                        "WHERE c.tabid = (SELECT tabid FROM systables WHERE tabname = ? AND owner = ?) " +
+                        "ORDER BY c.colno";
+
+                    var dtField = new DataTable();
+                    using (var cmd = new DB2Command(colSql, conn))
+                    {
+                        cmd.Parameters.Add(new DB2Parameter("", tableName));
+                        cmd.Parameters.Add(new DB2Parameter("", schemaName));
+                        using (var da = new DB2DataAdapter(cmd))
+                        {
+                            da.Fill(dtField);
+                        }
+                    }
+
+                    var idx = 0;
+                    foreach (DataRow dr in dtField.Rows)
+                    {
+                        var colName = dr["colname"].ToString();
+                        var rawType = dr["coltype"].ToString();
+
+                        ColumnViewModel matchColumn = matchTable != null
+                            ? matchTable.Columns.FirstOrDefault(x => x.ColumnName.Equals(colName, StringComparison.OrdinalIgnoreCase))
+                            : null;
+
+                        var column = new ColumnViewModel
+                        {
+                            ColumnName = matchColumn != null ? matchColumn.ColumnName : colName,
+                            DisplayName = matchColumn != null ? matchColumn.DisplayName : colName,
+                            PrimaryKey = matchColumn != null ? matchColumn.PrimaryKey : colName.ToLower().EndsWith("id") && idx == 0,
+                            DisplayOrder = matchColumn != null ? matchColumn.DisplayOrder : idx++,
+                            FieldType = matchColumn != null ? matchColumn.FieldType : ConvertToJetDataType(rawType).ToString(),
+                            AllowedRoles = matchColumn != null ? matchColumn.AllowedRoles : new List<string>()
+                        };
+
+                        if (matchColumn != null)
+                        {
+                            column.ForeignKey = matchColumn.ForeignKey;
+                            column.ForeignJoin = matchColumn.ForeignJoin;
+                            column.ForeignTable = matchColumn.ForeignTable;
+                            column.ForeignKeyField = matchColumn.ForeignKeyField;
+                            column.ForeignValueField = matchColumn.ForeignValueField;
+                            column.Id = matchColumn.Id;
+                            column.DoNotDisplay = matchColumn.DoNotDisplay;
+                            column.DisplayOrder = matchColumn.DisplayOrder;
+                            column.ForceFilter = matchColumn.ForceFilter;
+                            column.ForceFilterForTable = matchColumn.ForceFilterForTable;
+                            column.RestrictedDateRange = matchColumn.RestrictedDateRange;
+                            column.RestrictedStartDate = matchColumn.RestrictedStartDate;
+                            column.RestrictedEndDate = matchColumn.RestrictedEndDate;
+                            column.ForeignParentKey = matchColumn.ForeignParentKey;
+                            column.ForeignParentApplyTo = matchColumn.ForeignParentApplyTo;
+                            column.ForeignParentTable = matchColumn.ForeignParentTable;
+                            column.ForeignParentKeyField = matchColumn.ForeignParentKeyField;
+                            column.ForeignParentValueField = matchColumn.ForeignParentValueField;
+                            column.ForeignParentRequired = matchColumn.ForeignParentRequired;
+                            column.JsonStructure = matchColumn.JsonStructure;
+                            column.ForeignFilterOnly = matchColumn.ForeignFilterOnly;
+                            column.Selected = true;
+                        }
+
+                        table.Columns.Add(column);
+                    }
+
+                    if (matchTable != null)
+                    {
+                        table.Columns.AddRange(
+                            matchTable.Columns
+                                .Where(x => !table.Columns.Select(c => c.Id).Contains(x.Id))
+                        );
+                    }
+
+                    table.Columns = table.Columns.OrderBy(x => x.DisplayOrder).ToList();
+                    tables.Add(table);
+                }
+
+                var notMatchedTables = currentTables
+                    .Where(x => !tables.Select(c => c.Id).Contains(x.Id) &&
+                           ((type == "TABLE") ? !x.IsView : x.IsView))
+                    .ToList();
+
+                if (notMatchedTables.Any())
+                {
+                    foreach (var notMatchedTable in notMatchedTables)
+                    {
+                        notMatchedTable.Selected = true;
+                        notMatchedTable.Columns = await DotNetReportHelper.GetApiFields(accountKey, dataConnectKey, notMatchedTable.Id);
+                        notMatchedTable.Columns.ForEach(x => x.Selected = true);
+                    }
+                    tables.AddRange(notMatchedTables);
+                }
+
+                conn.Close();
             }
+
+            return tables;
         }
 
         public async Task<TableViewModel> GetSchemaFromSql(string connString, TableViewModel table, string sql, bool dynamicColumns)
         {
             using (var conn = new DB2Connection(connString))
             {
-                await conn.OpenAsync();
+                await conn.OpenAsync().ConfigureAwait(false);
+
                 using (var cmd = new DB2Command(sql, conn))
-                using (var reader = await cmd.ExecuteReaderAsync())
                 {
-                    var schema = reader.GetSchemaTable();
-                    int idx = 0;
-                    foreach (DataRow row in schema.Rows)
+                    cmd.CommandType = CommandType.Text;
+
+                    using (var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false))
                     {
-                        table.Columns.Add(new ColumnViewModel
+                        var idx = 0;
+                        DataTable schemaTable = new DataTable();
+
+                        if (dynamicColumns)
                         {
-                            ColumnName = row["ColumnName"].ToString(),
-                            DisplayName = row["ColumnName"].ToString(),
-                            PrimaryKey = idx == 0,
-                            DisplayOrder = idx++,
-                            Selected = true
-                        });
+                            while (await reader.ReadAsync().ConfigureAwait(false))
+                            {
+                                table.Columns.Add(new ColumnViewModel
+                                {
+                                    ColumnName = Convert.ToString(reader[0]),
+                                    DisplayName = Convert.ToString(reader[0])
+                                });
+                            }
+                        }
+                        else
+                        {
+                            schemaTable = reader.GetSchemaTable();
+                            foreach (DataRow dr in schemaTable.Rows)
+                            {
+                                var colName = dr["ColumnName"].ToString();
+                                var providerType = dr["ProviderType"].ToString();
+
+                                var column = new ColumnViewModel
+                                {
+                                    ColumnName = colName,
+                                    DisplayName = colName,
+                                    PrimaryKey = colName.ToLower().EndsWith("id") && idx == 0,
+                                    DisplayOrder = idx,
+                                    FieldType = ConvertToJetDataType(providerType).ToString(),
+                                    AllowedRoles = new List<string>(),
+                                    Selected = true
+                                };
+
+                                idx++;
+                                table.Columns.Add(column);
+                            }
+                        }
+
+                        table.Columns = table.Columns.OrderBy(x => x.DisplayOrder).ToList();
                     }
                 }
             }
+
             return table;
         }
 
