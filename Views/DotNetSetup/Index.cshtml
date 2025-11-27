@@ -1748,6 +1748,19 @@
                         <span data-bs-toggle="tooltip" data-bs-placement="right" class="fa fa-question-circle helptip" title="Use Schema in SQL when building query"></span>
                     </div>
                 </div>
+                <div class="form-group row">
+                    <label class="col-md-3 col-sm-3 col-form-label">Database Type</label>
+                    <div class="col-md-6 col-sm-6">
+                        <select class="form-select" data-bind="value: DatabaseType" required>
+                            <option>MS SQL</option>
+                            <option>MySql</option>
+                            <option>PostgreSQL</option>
+                            <option>Oracle</option>
+                            <option value="OleDB">OleDB/Others</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="form-group row" data-bind="hidden: $root.editingDataConnection">
                     <div class="check-box col-md-12">
                         <label>
