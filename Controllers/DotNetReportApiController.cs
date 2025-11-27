@@ -16,7 +16,7 @@ namespace ReportBuilder.Web.Controllers
     {
         private readonly IConfigurationRoot _configuration;
         public readonly static string _configFileName = "appsettings.dotnetreport.json";
-        public readonly static string dbtype = DbTypes.MS_SQL.ToString().Replace("_", " ");
+        
         public DotNetReportApiController()
         {
             var builder = new ConfigurationBuilder()
@@ -28,6 +28,8 @@ namespace ReportBuilder.Web.Controllers
 
         private DotNetReportSettings GetSettings()
         {
+            DotNetReportHelper.dbtype = DbTypes.MS_SQL.ToString().Replace("_", " ");
+
             var settings = new DotNetReportSettings
             {
                 ApiUrl = _configuration.GetValue<string>("dotNetReport:apiUrl"),
@@ -68,6 +70,7 @@ namespace ReportBuilder.Web.Controllers
             {
                 qry = JsonSerializer.Deserialize<SqlQuery>(sql);
                 sql = qry.sql;
+                DotNetReportHelper.dbtype = qry.dbType;
             }
 
             // Uncomment if you want to restrict max records returned
@@ -81,7 +84,7 @@ namespace ReportBuilder.Web.Controllers
             var dt = new DataTable();
 
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
-            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(DotNetReportHelper.dbtype);
 
             dt = databaseConnection.ExecuteQuery(connectionString, sql, qry.parameters);
 
@@ -173,7 +176,7 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("userIdForFilter", settings.UserIdForFilter),
                     new KeyValuePair<string, string>("userRole", string.Join(",", settings.CurrentUserRole)),
                     new KeyValuePair<string, string>("dataFilters", JsonSerializer.Serialize(settings.DataFilters)),
-                    new KeyValuePair<string, string>("useParameters", dbtype=="MS SQL" ? "true" : "false")
+                    new KeyValuePair<string, string>("useParameters", DotNetReportHelper.dbtype=="MS SQL" ? "true" : "false")
                 };
 
                 var data = JsonSerializer.Deserialize<Dictionary<string, dynamic>>(model);
@@ -290,11 +293,12 @@ namespace ReportBuilder.Web.Controllers
                     {
                         qry = JsonSerializer.Deserialize<SqlQuery>(sql);
                         sql = qry.sql;
+                        DotNetReportHelper.dbtype = qry.dbType;
                     }
                     if (!sql.StartsWith("EXEC"))
                     {
                         var fromIndex = DotNetReportHelper.FindFromIndex(sql);
-                        sqlFields = DotNetReportHelper.SplitSqlColumns(sql, dbtype);
+                        sqlFields = DotNetReportHelper.SplitSqlColumns(sql, DotNetReportHelper.dbtype);
 
                         var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(fromIndex)}".Replace("{FROM}", "FROM");
                         bool hasDistinct = sql.Contains("DISTINCT");
@@ -348,11 +352,11 @@ namespace ReportBuilder.Web.Controllers
 
                         if (!sql.Contains("ORDER BY"))
                         {
-                            if (dbtype == "MS SQL")
+                            if (DotNetReportHelper.dbtype == "MS SQL")
                                 sql += $" ORDER BY {(hasDistinct ? "1" : "NEWID()")} ";
-                            else if (dbtype == "Postgre Sql")
+                            else if (DotNetReportHelper.dbtype == "Postgre Sql")
                                 sql += $" ORDER BY {(hasDistinct ? "1" : "RANDOM()")} ";
-                            else if (dbtype == "MySQL")
+                            else if (DotNetReportHelper.dbtype == "MySQL")
                                 sql += $" ORDER BY {(hasDistinct ? "1" : "RAND()")} ";
                             else
                                 sql += " ORDER BY 1 ";
@@ -360,7 +364,7 @@ namespace ReportBuilder.Web.Controllers
 
                         if (!sql.Contains(" TOP ") && string.IsNullOrEmpty(pivotColumn))
                         {
-                            if (dbtype == "Postgre Sql" || dbtype == "MySQL")
+                            if (DotNetReportHelper.dbtype == "Postgre Sql" || DotNetReportHelper.dbtype == "MySQL")
                                 sql += $" LIMIT {pageSize} OFFSET {(pageNumber - 1) * pageSize}";
                             else
                                 sql += $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
@@ -373,7 +377,7 @@ namespace ReportBuilder.Web.Controllers
                     }
                     // Execute sql
                     var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
-                    IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+                    IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(DotNetReportHelper.dbtype);
 
                     var dtPagedRun = new DataTable();
 
@@ -582,7 +586,7 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("filterValue", filterValue.ToString()),
                     new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
                     new KeyValuePair<string, string>("dataFilters", JsonSerializer.Serialize(settings.DataFilters)),
-                    new KeyValuePair<string, string>("useParameters", dbtype=="MS SQL" ? "true" : "false")
+                    new KeyValuePair<string, string>("useParameters", DotNetReportHelper.dbtype=="MS SQL" ? "true" : "false")
                 });
 
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/RunLinkedReport"), content);
@@ -730,7 +734,7 @@ namespace ReportBuilder.Web.Controllers
                 table.CustomTableSql = data.value;
 
                 var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(data.dataConnectKey), false);
-                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(DotNetReportHelper.dbtype);
                 table = await databaseConnection.GetSchemaFromSql(connString, table, data.value, data.dynamicColumns);
 
                 return new JsonResult(table, new JsonSerializerOptions() { PropertyNamingPolicy = null });
@@ -765,7 +769,7 @@ namespace ReportBuilder.Web.Controllers
                 List<string> sqlFields = new List<string>();
                 // Execute sql
                 var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(data.dataConnectKey), false);
-                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(DotNetReportHelper.dbtype);
                 var dtPaged = databaseConnection.ExecuteQuery(connString, sql);
 
                 var model = new DotNetReportResultModel
@@ -872,7 +876,7 @@ namespace ReportBuilder.Web.Controllers
                 }
 
             var connect = DotNetReportHelper.GetConnection(databaseApiKey);
-            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(DotNetReportHelper.dbtype);
             var tables = new List<TableViewModel>();
             var procedures = new List<TableViewModel>();
             var functions = new List<CustomFunctionModel>();
@@ -926,7 +930,7 @@ namespace ReportBuilder.Web.Controllers
             try
             {
                 string value = data.value; string accountKey = data.accountKey; string dataConnectKey = data.dataConnectKey;
-                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(DotNetReportHelper.dbtype);
 
                 return new JsonResult(await databaseConnection.GetSearchProcedure(value, accountKey, dataConnectKey), new JsonSerializerOptions() { PropertyNamingPolicy = null });
             }

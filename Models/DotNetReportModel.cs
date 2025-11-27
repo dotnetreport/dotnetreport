@@ -128,6 +128,7 @@ namespace ReportBuilder.Web.Models
         public string sql { get; set; } = "";
         public List<KeyValuePair<string, string>> parameters { get; set; } = null;
         public int reportId { get; set; }
+        public string dbType { get; set; }
     }
 
     public class TableViewModel
@@ -245,7 +246,9 @@ namespace ReportBuilder.Web.Models
     {
         MS_SQL,
         MySql,
-        Postgre_Sql
+        Postgre_Sql,
+        Oracle,
+        OleDb
     }
 
     public class ColumnViewModel
@@ -511,7 +514,7 @@ namespace ReportBuilder.Web.Models
     {
         private static readonly IConfigurationRoot _configuration;
         private readonly static string _configFileName = "appsettings.dotnetreport.json";
-        public readonly static string dbtype = DbTypes.MS_SQL.ToString().Replace("_", " ");
+        public static string dbtype = DbTypes.MS_SQL.ToString().Replace("_", " ");
         public static bool useAltPivot = false;
 
 
@@ -2367,6 +2370,7 @@ namespace ReportBuilder.Web.Models
             {
                 qry = JsonConvert.DeserializeObject<SqlQuery>(sql);
                 sql = qry.sql;
+                dbtype = qry.dbType;
             }
             else
             {
