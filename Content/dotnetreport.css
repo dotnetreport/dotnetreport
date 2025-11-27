@@ -1792,3 +1792,17 @@ tfoot tr.sub-total {
         height: auto !important;
         width: 100% !important;
     }
+
+
+/* parent header group border */
+th[class^="pivot-group-"] {
+    border-left: 2px solid #c1c1c1;
+    border-right: 2px solid #c1c1c1;
+}
+
+/* body cell border */
+td[class^="pivot-group-"] {
+    border-left: 2px solid #c1c1c1;
+    border-right: 2px solid #c1c1c1;
+}
+

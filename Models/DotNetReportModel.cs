@@ -129,6 +129,7 @@ namespace ReportBuilder.Web.Models
         public string sql { get; set; } = "";
         public List<KeyValuePair<string, string>> parameters { get; set; } = null;
         public int reportId { get; set; }
+        public string dbType { get; set; }
     }
 
     public class TableViewModel
@@ -245,10 +246,11 @@ namespace ReportBuilder.Web.Models
     public enum DbTypes
     {
         MS_SQL,
-        MySQL,
+        MySql,
         Postgre_Sql,
         Oracle,
-        Informix
+        Informix,
+        OleDb
     }
 
     public class ColumnViewModel
@@ -326,6 +328,8 @@ namespace ReportBuilder.Web.Models
         public bool adminMode { get; set; }
         public bool SubTotalMode { get; set; }
         public string? userId { get; set; }
+        public string? query { get; set; } = "";
+        public string? fieldIds { get; set; } = "";
     }
 
     public class DotNetDasboardReportModel : DotNetReportModel
@@ -512,7 +516,7 @@ namespace ReportBuilder.Web.Models
     {
         private static readonly IConfigurationRoot _configuration;
         private readonly static string _configFileName = "appsettings.dotnetreport.json";
-        public readonly static string dbtype = DbTypes.MS_SQL.ToString().Replace("_", " ");
+        public static string dbtype = DbTypes.MS_SQL.ToString().Replace("_", " ");
         public static bool useAltPivot = false;
 
 
@@ -780,7 +784,7 @@ namespace ReportBuilder.Web.Models
                     case TypeCode.Decimal:
                         return col.ColumnName.Contains("%")
                             ? (Convert.ToDouble(row[col].ToString()) / 100).ToString("P2")
-                            : Convert.ToDouble(row[col].ToString()).ToString("C");
+                            : Convert.ToDouble(row[col].ToString()).ToString();
 
 
                     case TypeCode.Boolean:
@@ -1109,7 +1113,7 @@ namespace ReportBuilder.Web.Models
                     var table = new TableViewModel
                     {
                         Id = item.tableId,
-                        SchemaName = item.schemaName,
+                        SchemaName = item.schemaName == null ? "" : item.schemaName,
                         AccountIdField = item.accountIdField,
                         TableName = item.tableDbName,
                         DisplayName = item.tableName,
@@ -1255,67 +1259,58 @@ namespace ReportBuilder.Web.Models
         {
             if (string.IsNullOrWhiteSpace(sql)) return new List<string>();
             sql = sql.Trim();
+            var selectPart = ""; 
+            var current = new StringBuilder();
+            int parenDepth = 0;
+            bool inSingleQuote = false;
+            bool inDoubleQuote = false;
+            bool inBacktick = false;
+            bool inString = false;
+            var columns = new List<string>();
 
             switch (dbType)
             {
-                case "MS SQL":
-                    if (sql.StartsWith("EXEC", StringComparison.OrdinalIgnoreCase))
-                return new List<string>();
-
-            var fromIndex = FindFromIndex(sql);
-            if (fromIndex < 0) return new List<string>();
-
-            string selectPart = sql.Substring(0, fromIndex).Replace("SELECT", "", StringComparison.OrdinalIgnoreCase).Trim();
-
-            var columns = new List<string>();
-            var current = new StringBuilder();
-            int parenDepth = 0;
-            bool inString = false;
-
-            for (int i = 0; i < selectPart.Length; i++)
-            {
-                char c = selectPart[i];
-
-                if (c == '\'' && (i == 0 || selectPart[i - 1] != '\\'))
-                    inString = !inString;
-
-                if (!inString)
-                {
-                    if (c == '(') parenDepth++;
-                    else if (c == ')') parenDepth--;
-                }
-
-                // Split only when comma is outside parentheses and strings
-                if (c == ',' && parenDepth == 0 && !inString)
-                {
-                    columns.Add(current.ToString().Trim());
-                    current.Clear();
-                }
-                else
-                {
-                    current.Append(c);
-                }
-            }
-
-            if (current.Length > 0)
-                columns.Add(current.ToString().Trim());
-
-            // Cleanup, handle DISTINCT/TOP and ensure alias exists
-            return columns
-                .Select(x => x.StartsWith("DISTINCT ", StringComparison.OrdinalIgnoreCase) ? x.Substring(9) : x)
-                .Select(x => Regex.Replace(x, @"TOP\s+\d+", "", RegexOptions.IgnoreCase))
-                .Where(x => x.Contains(" AS ", StringComparison.OrdinalIgnoreCase))
-                .ToList();
-                case "MySQL":
+                case "MySql":
                     if (sql.StartsWith("CALL", StringComparison.OrdinalIgnoreCase))
                         return new List<string>();
 
                     var fromIndexMy = FindFromIndex(sql);
                     if (fromIndexMy <= 0) return new List<string>();
 
-                    var sqlSplitMySql = sql.Substring(0, sql.IndexOf("FROM")).Replace("SELECT", "").Trim();
-                    return Regex.Split(sqlSplitMySql, "`, (?!`^\\(`*?\\))").Where(x => x != "CONVERT(VARCHAR(3)")
-                        .Select(x => x.EndsWith("`") ? x : x + "`")
+                    selectPart = sql.Substring(0, fromIndexMy)
+                         .Replace("SELECT", "", StringComparison.OrdinalIgnoreCase)
+                         .Trim();
+
+
+                    foreach (char c in selectPart)
+                    {
+                        if (c == '\'' && !inDoubleQuote && !inBacktick)
+                            inSingleQuote = !inSingleQuote;
+                        else if (c == '"' && !inSingleQuote && !inBacktick)
+                            inDoubleQuote = !inDoubleQuote;
+                        else if (c == '`' && !inSingleQuote && !inDoubleQuote)
+                            inBacktick = !inBacktick;
+                        else if (c == '(' && !inSingleQuote && !inDoubleQuote && !inBacktick)
+                            parenDepth++;
+                        else if (c == ')' && !inSingleQuote && !inDoubleQuote && !inBacktick && parenDepth > 0)
+                            parenDepth--;
+                        else if (c == ',' && parenDepth == 0 && !inSingleQuote && !inDoubleQuote && !inBacktick)
+                        {
+                            // split here
+                            columns.Add(current.ToString().Trim());
+                            current.Clear();
+                            continue;
+                        }
+
+                        current.Append(c);
+                    }
+
+                    if (current.Length > 0)
+                        columns.Add(current.ToString().Trim());
+
+                    return columns
+                        .Select(x => x.Trim())
+                        .Select(x => x.StartsWith("DISTINCT ", StringComparison.OrdinalIgnoreCase) ? x.Substring(9).Trim() : x)
                         .ToList();
 
                 case "Postgre Sql":
@@ -1337,8 +1332,53 @@ namespace ReportBuilder.Web.Models
                         .Where(x => Regex.IsMatch(x, "\\s+AS\\s+", RegexOptions.IgnoreCase))
                         .ToList();
 
+                case "MS SQL":
                 default:
-                    return new List<string>();
+                    if (sql.StartsWith("EXEC", StringComparison.OrdinalIgnoreCase))
+                        return new List<string>();
+
+                    var fromIndex = FindFromIndex(sql);
+                    if (fromIndex < 0) return new List<string>();
+
+                    selectPart = sql.Substring(0, fromIndex).Replace("SELECT", "", StringComparison.OrdinalIgnoreCase).Trim();
+
+                    current = new StringBuilder();
+                    parenDepth = 0;
+
+                    for (int i = 0; i < selectPart.Length; i++)
+                    {
+                        char c = selectPart[i];
+
+                        if (c == '\'' && (i == 0 || selectPart[i - 1] != '\\'))
+                            inString = !inString;
+
+                        if (!inString)
+                        {
+                            if (c == '(') parenDepth++;
+                            else if (c == ')') parenDepth--;
+                        }
+
+                        // Split only when comma is outside parentheses and strings
+                        if (c == ',' && parenDepth == 0 && !inString)
+                        {
+                            columns.Add(current.ToString().Trim());
+                            current.Clear();
+                        }
+                        else
+                        {
+                            current.Append(c);
+                        }
+                    }
+
+                    if (current.Length > 0)
+                        columns.Add(current.ToString().Trim());
+
+                    // Cleanup, handle DISTINCT/TOP and ensure alias exists
+                    return columns
+                        .Select(x => x.StartsWith("DISTINCT ", StringComparison.OrdinalIgnoreCase) ? x.Substring(9) : x)
+                        .Select(x => Regex.Replace(x, @"TOP\s+\d+", "", RegexOptions.IgnoreCase))
+                        .Where(x => x.Contains(" AS ", StringComparison.OrdinalIgnoreCase))
+                        .ToList();
             }
         }
 
@@ -1509,19 +1549,47 @@ namespace ReportBuilder.Web.Models
             return dts;
         }
 
-        public async static Task<(DataTable dt, string sql, int totalRecords)> GetPivotTable(IDatabaseConnection databaseConnection, string connectionString, DataTable dt, string sql, List<string> sqlFields, string reportDataJson, string pivotColumn, string pivotFunction, int pageNumber, int pageSize, string sortBy, bool desc, bool returnSubtotal=false)
+        public async static Task<(DataTable dt, string sql, int totalRecords, List<List<string>> headerRows)>
+        GetPivotTable(
+            IDatabaseConnection databaseConnection,
+            string connectionString,
+            DataTable dt,
+            string sql,
+            List<string> sqlFields,
+            string reportDataJson,
+            string pivotColumnList,
+            string pivotFunction,
+            int pageNumber,
+            int pageSize,
+            string sortBy,
+            bool desc,
+            bool returnSubtotal = false,
+            bool includeColumnTotals = false,
+            bool includeRowTotals = false)
         {
-            var pivotColumnOrder = GetPivotColumnOrder(reportDataJson);
             var dts = new DataTable();
-            var drilldownRow = new List<string>();
             if (dt.Rows.Count == 0)
-                return (dts, "", 0);
+                return (dts, "", 0, new List<List<string>>());
+            
+            var pivotColumns = pivotColumnList.Split(',')
+                .Select(pc => pc.Trim())
+                .Where(pc => !string.IsNullOrWhiteSpace(pc))
+                .ToList();
 
+            if (pivotColumns.Count == 0)
+                throw new Exception("Pivot requires at least one pivot column.");
+
+            string pivotColumn = pivotColumns.Last();
+
+            var pivotColumnOrder = GetPivotColumnOrder(reportDataJson);
+
+            // Build drilldown SQL
+            var drilldownRow = new List<string>();
             var dr = dt.Rows[0];
-            int i = 0;
+            var k = 0;
             foreach (DataColumn dc in dt.Columns)
             {
-                var col = sqlFields[i++]; //columns.FirstOrDefault(x => x.fieldName == dc.ColumnName) ?? new ReportHeaderColumn();
+                var col = sqlFields[k++]; //columns.FirstOrDefault(x => x.fieldName == dc.ColumnName) ?? new ReportHeaderColumn();
                 drilldownRow.Add($@"
                     {{
                         ""Value"":""{dr[dc]}"",
@@ -1542,80 +1610,307 @@ namespace ReportBuilder.Web.Models
             var reportData = reportDataJson.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false,\"IsPivotMode\":true");
             var drilldownSql = await RunReportApiCall(reportData);
 
-            if (!string.IsNullOrEmpty(drilldownSql))
+            if (string.IsNullOrEmpty(drilldownSql))
+                return (dts, "", 0, new List<List<string>>());
+
+            var lastWhereIndex = drilldownSql.LastIndexOf("WHERE");
+            var baseQuery = lastWhereIndex > 0 
+                ? drilldownSql.Substring(0, lastWhereIndex) + " " + GetWhereClause(sql)
+                : drilldownSql + " " + GetWhereClause(sql);
+
+            var baseDataTable = databaseConnection.ExecuteQuery(connectionString, baseQuery);
+
+            var monthNames = new List<string>
             {
-                var lastWhereIndex = drilldownSql.LastIndexOf("WHERE");
-                var baseQuery = drilldownSql.Substring(0, lastWhereIndex) + " " + GetWhereClause(sql);
-                var monthNames = new List<string>
+                "january","february","march","april","may","june",
+                "july","august","september","october","november","december"
+            };
+
+            var distinctValues = baseDataTable
+                .AsEnumerable()
+                .Select(row => "[" + Convert.ToString(row[pivotColumn])?.Trim() + "]")
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Where(x => x != "[]" && x.Length <= 128)
+                .OrderBy(x =>
                 {
-                    "january", "february", "march", "april", "may", "june",
-                    "july", "august", "september", "october", "november", "december"
-                };
-                var baseDataTable = databaseConnection.ExecuteQuery(connectionString, baseQuery.Replace("SELECT ", "SELECT "));
-                var distinctValues = baseDataTable
-                    .AsEnumerable()
-                    .Select(row => "[" + Convert.ToString(row[pivotColumn])?.Trim() + "]")
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .Where(x=>x != "[]" && x.Length <=128)
-                    .OrderBy(x =>
-                    {
-                        string lowerTrimmedValue = x.Trim('[', ']').ToLower();
-                        int monthIndex = monthNames.IndexOf(lowerTrimmedValue);
-                        if (monthIndex >= 0)
-                        {
-                            return monthIndex;
-                        }
-                        return int.MaxValue; 
-                    })
-                    .ThenBy(x => x) 
-                    .ToList();
-                distinctValues = (pivotColumnOrder.Count == distinctValues.Count && !pivotColumnOrder.Except(distinctValues).Any()) ? pivotColumnOrder : distinctValues;
+                    string trimmed = x.Trim('[', ']').ToLower();
+                    int idx = monthNames.IndexOf(trimmed);
+                    return idx >= 0 ? idx : int.MaxValue;
+                })
+                .ThenBy(x => x)
+                .ToList();
 
-                int pivotColumnIndex = baseDataTable.Columns[pivotColumn].Ordinal;
-                string nextColumnName = baseDataTable.Columns[pivotColumnIndex + 1].ColumnName;
-                var validFunctions = new[] { "Sum", "Count", "Avg" };
-                pivotFunction = validFunctions.Contains(pivotFunction) ? pivotFunction : "Max";
+            distinctValues = (pivotColumnOrder.Count == distinctValues.Count &&
+                              !pivotColumnOrder.Except(distinctValues).Any())
+                             ? pivotColumnOrder
+                             : distinctValues;
 
-                if (returnSubtotal)
+
+            int pivotColumnIndex = baseDataTable.Columns[pivotColumn].Ordinal;
+            string nextColumnName = baseDataTable.Columns[pivotColumnIndex + 1].ColumnName;
+
+            var validFunctions = new[] { "Sum", "Count", "Avg" };
+            pivotFunction = validFunctions.Contains(pivotFunction) ? pivotFunction : "Max";
+
+            int firstAggIndex = sqlFields.FindIndex(f =>
+            {
+                var u = f.ToUpperInvariant();
+                return u.Contains("COUNT(") ||
+                       u.Contains("COUNT DISTINCT(") ||
+                       u.Contains("SUM(") ||
+                       u.Contains("AVG(") ||
+                       u.Contains("MIN(") ||
+                       u.Contains("MAX(");
+            });
+
+            if (returnSubtotal)
+            {
+                var sqlQryforCount = $@"
+                    SELECT 
+                        {string.Join(", ", distinctValues.Select(v => $"SUM(COALESCE({v}, 0)) AS {v}"))}
+                    FROM (
+                        {baseQuery}
+                    ) src
+                    PIVOT (
+                        COUNT([{nextColumnName}]) 
+                        FOR [{pivotColumn}] IN ({string.Join(", ", distinctValues)})
+                    ) AS pvt;
+                ";
+
+                var countdata = databaseConnection.ExecuteQuery(connectionString, sqlQryforCount);
+                return (countdata, sqlQryforCount, 1, new List<List<string>>());
+            }
+
+            var rowFields = sqlFields.Take(firstAggIndex).ToList();
+            var measureFields = sqlFields.Skip(firstAggIndex).ToList();
+
+            // Extract row-field aliases only
+            var rowFieldAliases = rowFields.Select(r =>
+            {
+                var parts = r.Split(new[] { " AS " }, StringSplitOptions.RemoveEmptyEntries);
+                return parts.Last().Trim().Trim('[', ']');
+            }).ToList();
+
+
+            List<(string AggFunc, string Alias)> measures =
+                new List<(string AggFunc, string Alias)>();
+
+            foreach (var mf in measureFields)
+            {
+                var u = mf.ToUpperInvariant();
+                int asPos = u.LastIndexOf(" AS ");
+
+                string alias = mf.Substring(asPos + 4).Trim().Trim('[', ']');
+
+                int paren = u.IndexOf("(");
+                string func = paren >=0 ? u.Substring(0, paren).Trim() : "MAX"; // COUNT, SUM, etc.
+
+                measures.Add((func, alias));
+            }
+
+            var measureAliases = measures.Select(m => m.Alias).ToList();
+
+            string BuildInnerSelect(string measureAlias)
+            {
+                var projected = new List<string>();
+
+                // aliases of row fields only
+                foreach (var rf in rowFields)
                 {
-                    var sqlQryforCount = $@"
-                        SELECT 
-                            {string.Join(", ", distinctValues.Select(v => $"SUM(COALESCE({v}, 0)) AS {v}"))}
-                        FROM (
-                            {baseQuery}
-                        ) src
-                        PIVOT (
-                            COUNT([{nextColumnName}]) 
-                            FOR [{pivotColumn}] IN ({string.Join(", ", distinctValues)})
-                        ) AS pvt;";
-
-                    var countdata = databaseConnection.ExecuteQuery(connectionString, sqlQryforCount);
-                    return (countdata, sqlQryforCount, 1);
+                    var parts = rf.ToUpperInvariant().Split(new[] { " AS " }, StringSplitOptions.RemoveEmptyEntries);
+                    string alias = parts.Last().Trim().Trim('[', ']');
+                    projected.Add($"[{alias}]");
                 }
-                else
+
+                // pivot axis column
+                projected.Add($"[{pivotColumn}]");
+
+                // measure (already a projected column alias)
+                projected.Add($"[{measureAlias}]");
+
+                return $@"
+                    SELECT {string.Join(", ", projected)}
+                    FROM ({baseQuery}) AS src
+                ";
+            }
+
+            List<string> pivotSubqueries = new List<string>();
+
+            foreach (var m in measures)
+            {
+                string innerSelect = BuildInnerSelect(m.Alias);
+
+                string pivot = $@"
+                    SELECT *
+                    FROM (
+                        {innerSelect}
+                    ) AS x
+                    PIVOT
+                    (
+                        {m.AggFunc} ([{m.Alias}])
+                        FOR [{pivotColumn}] IN ({string.Join(", ", distinctValues)})
+                    ) AS pvt
+                ";
+
+                pivotSubqueries.Add(pivot);
+            }
+
+            StringBuilder selectBuilder = new StringBuilder();
+
+            // row fields
+            foreach (var alias in rowFieldAliases)
+            {
+                selectBuilder.AppendLine($"t0.[{alias}],");
+            }
+
+            // pivot columns (distinctValues) × measures
+            foreach (string dv in distinctValues)
+            {
+                string cleanDv = dv.Trim('[', ']');
+
+                for (int m = 0; m < measureAliases.Count; m++)
                 {
-                    var sqlQry = $@"
-                        SELECT * FROM (
-                            {baseQuery}
-                        ) src
-                        PIVOT (
-                            {pivotFunction} ([{nextColumnName}])
-                            FOR [{pivotColumn}] IN ({string.Join(", ", distinctValues)})
-                        ) AS pvt
-                        ";
-
-                    var sqlCount = $"SELECT COUNT(*) FROM ({sqlQry}) as countQry";
-                    var totalRecords = databaseConnection.GetTotalRecords(connectionString, sqlCount, sql);
-
-                    sqlQry = sqlQry + "\r\n" +
-                        $" ORDER BY {(string.IsNullOrEmpty(sortBy) ? "1" : "1" /*sortBy*/) + (desc ? " DESC" : "")} \r\n" +                     
-                        $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
-                    dts = databaseConnection.ExecuteQuery(connectionString, sqlQry);
-                    return (dts, sqlQry, totalRecords);
+                    string measure = measureAliases[m];
+                    selectBuilder.AppendLine($"t{m}.[{cleanDv}] AS [{cleanDv}|{measure}],");
                 }
             }
 
-            return (dts, "", 0);
+            string selectList = selectBuilder.ToString().TrimEnd(',', '\r', '\n');
+
+            StringBuilder fromBuilder = new StringBuilder();
+
+            // first pivot
+            fromBuilder.AppendLine($"FROM ({pivotSubqueries[0]}) t0");
+
+            // join others
+            for (int i = 1; i < pivotSubqueries.Count; i++)
+            {
+                string alias = $"t{i}";
+                string sub = pivotSubqueries[i].Replace(" AS pvt", $" AS {alias}");
+
+                string joinCond = string.Join(" AND ",
+                    rowFieldAliases.Select(col => $"t0.[{col}] = {alias}.[{col}]")
+                );
+
+                fromBuilder.AppendLine($"INNER JOIN ({sub}) {alias} ON {joinCond}");
+            }
+
+            string fromSql = fromBuilder.ToString();
+
+            string finalPivotSql = $@"
+                SELECT
+                {selectList}
+                {fromSql}
+                ";
+
+            var sqlQry = $@"
+                SELECT * FROM (
+                    {baseQuery}
+                ) src
+                PIVOT (
+                    {pivotFunction} ([{nextColumnName}])
+                    FOR [{pivotColumn}] IN ({string.Join(", ", distinctValues)})
+                ) AS pvt
+            ";
+
+            var sqlCount = $"SELECT COUNT(*) FROM ({sqlQry}) as countQry";
+            var totalRecords = databaseConnection.GetTotalRecords(connectionString, sqlCount, finalPivotSql);
+
+            sqlQry += "\r\n" +
+                $" ORDER BY 1 {(desc ? "DESC" : "")} \r\n" +
+                $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
+
+            dts = databaseConnection.ExecuteQuery(connectionString, finalPivotSql);
+
+            var headerRows = new List<List<string>>();
+            int levels = pivotColumns.Count;
+
+            // Initialize header rows
+            for (int lvl = 0; lvl < levels; lvl++)
+                headerRows.Add(new List<string>());
+
+            // Convert pivot values into multi-level headers
+            foreach (var dv in distinctValues)
+            {
+                string pivotVal = dv.Trim('[', ']');
+
+                var match = baseDataTable.AsEnumerable()
+                    .FirstOrDefault(r => Convert.ToString(r[pivotColumn])?.Trim() == pivotVal);
+
+                if (match == null)
+                {
+                    for (int lvl = 0; lvl < levels; lvl++)
+                        headerRows[lvl].Add("");
+                    continue;
+                }
+
+                for (int lvl = 0; lvl < levels; lvl++)
+                {
+                    string colName = pivotColumns[lvl];
+                    headerRows[lvl].Add(Convert.ToString(match[colName]));
+                }
+            }
+
+            var pivotLeafCols = dts.Columns.Cast<DataColumn>()
+                .Where(c => c.ColumnName.Contains("|"))
+                .ToList();
+
+            var pivotMeasures = pivotLeafCols
+                .Select(c => c.ColumnName.Split('|').Last())
+                .Distinct()
+                .ToList();
+
+            if (includeColumnTotals)
+            {
+                foreach (var m in pivotMeasures)
+                {
+                    string totalCol = $"Total|{m}";
+                    if (!dts.Columns.Contains(totalCol))
+                        dts.Columns.Add(totalCol, typeof(decimal));
+                }
+
+                foreach (DataRow row in dts.Rows)
+                {
+                    foreach (var m in pivotMeasures)
+                    {
+                        string totalCol = $"Total|{m}";
+                        var cols = pivotLeafCols.Where(c => c.ColumnName.EndsWith("|" + m));
+                        decimal sum = 0;
+                        foreach (var c in cols)
+                            sum += decimal.TryParse(row[c]?.ToString(), out var v) ? v : 0;
+                        row[totalCol] = sum;
+                    }
+                }
+            }
+
+            if (includeRowTotals)
+            {
+                var grand = dts.NewRow();
+
+                foreach (var col in pivotLeafCols)
+                {
+                    decimal total = 0;
+                    foreach (DataRow r in dts.Rows)
+                        total += decimal.TryParse(r[col]?.ToString(), out var v) ? v : 0;
+                    grand[col.ColumnName] = total;
+                }
+
+                if (includeColumnTotals)
+                {
+                    foreach (var m in pivotMeasures)
+                    {
+                        string totalCol = $"Total|{m}";
+                        decimal total = 0;
+                        foreach (DataRow r in dts.Rows)
+                            total += decimal.TryParse(r[totalCol]?.ToString(), out var v) ? v : 0;
+                        grand[totalCol] = total;
+                    }
+                }
+
+                dts.Rows.Add(grand);
+            }
+
+            return (dts, sqlQry, totalRecords, headerRows);
         }
 
         public async static Task<DataSet> GetDrillDownDataAlternate(IDatabaseConnection databaseConnection, string connectionString, DataTable dt, List<string> sqlFields, string reportDataJson)
@@ -2077,6 +2372,7 @@ namespace ReportBuilder.Web.Models
             {
                 qry = JsonConvert.DeserializeObject<SqlQuery>(sql);
                 sql = qry.sql;
+                dbtype = qry.dbType;
             }
             else
             {
@@ -2408,9 +2704,29 @@ namespace ReportBuilder.Web.Models
             var document = new PdfDocument();
             int leftMargin = 40;
             int rightMargin = 40;
-            double columnWidth = Math.Max(100, 100f);
+            double minColumnWidth = 100; // minimum column width
+            double maxColumnWidth = 300; // optional max width limit
 
-            double totalWidth = dt.Columns.Count * columnWidth + leftMargin + rightMargin;
+            var tempPage = document.AddPage();
+            var gfxMeasure = XGraphics.FromPdfPage(tempPage);
+            var fontMeasure = new XFont("Arial", 11, XFontStyleEx.Bold);
+            List<double> columnWidths = new List<double>();
+            foreach (DataColumn col in dt.Columns)
+            {
+                string headerText = col.ColumnName;
+                double width = gfxMeasure.MeasureString(headerText, fontMeasure).Width + 10;
+                foreach (DataRow row in dt.Rows.Cast<DataRow>().Take(20)) // sample first 20 rows for width
+                {
+                    var cellText = row[col]?.ToString() ?? "";
+                    double w = gfxMeasure.MeasureString(cellText, fontMeasure).Width + 10;
+                    if (w > width)
+                        width = w;
+                }
+                width = Math.Max(minColumnWidth, Math.Min(width, maxColumnWidth));
+                columnWidths.Add(width);
+            }
+            document.Pages.Remove(tempPage); // remove temp measuring page
+            double totalWidth = columnWidths.Sum() + leftMargin + rightMargin;
             PdfPage page = null;
             XGraphics gfx = null;
             XTextFormatter tfx = null;
@@ -2525,11 +2841,11 @@ namespace ReportBuilder.Web.Models
                     {
                         var columnFormatting = columns.Count > k ? columns[k] : new ReportHeaderColumn();
                         var columnName = !string.IsNullOrEmpty(columnFormatting.fieldLabel) ? columnFormatting.fieldLabel : columnFormatting.fieldName;
-                        rect = new XRect(currentXPosition, currentYPosition, columnWidth, 20);
+                        rect = new XRect(currentXPosition, currentYPosition, columnWidths[k], 20);
                         gfx.DrawRectangle(XPens.LightGray, rect);
                         rect.Inflate(-cellPadding, -cellPadding);
                         tfx.DrawString(columnName ?? "", fontBold, GetBrushWithColor(), rect, XStringFormats.TopLeft);
-                        currentXPosition += (int) columnWidth;
+                        currentXPosition += (int)columnWidths[k];
                     }
 
                     currentYPosition += 20;
@@ -2546,7 +2862,7 @@ namespace ReportBuilder.Web.Models
                         var value = dt.Rows[i][j].ToString();
                         var dc = dt.Columns[j];
                         var tempVal = value;
-                        var lines = WrapText(gfx, tempVal, new XRect(0, 0, columnWidth, 9999), fontNormal, XStringFormats.Center);
+                        var lines = WrapText(gfx, tempVal, new XRect(0, 0, columnWidths[j], 9999), fontNormal, XStringFormats.Center);
                         maxLines = Math.Max(maxLines, lines.Count);
 
                     }
@@ -2565,7 +2881,7 @@ namespace ReportBuilder.Web.Models
                         var dc = dt.Columns[j];
                         var tempVal = GetFormattedValue(dc, dt.Rows[i], null, false);
                         var formatColumn = GetColumnFormatting(dc, columns, ref tempVal);
-                        var lines = WrapText(gfx, tempVal, new XRect(0, 0, columnWidth, 9999), fontNormal, XStringFormats.Center);
+                        var lines = WrapText(gfx, tempVal, new XRect(0, 0, columnWidths[j], 9999), fontNormal, XStringFormats.Center);
                         
                         if (formatColumn.isNumeric && !formatColumn.dontSubTotal)
                         {
@@ -2573,7 +2889,7 @@ namespace ReportBuilder.Web.Models
                                 subTotals[j] += decVal;
                         }
 
-                        rect = new XRect(currentXPosition, currentYPosition, columnWidth, rowHeight);
+                        rect = new XRect(currentXPosition, currentYPosition, columnWidths[j], rowHeight);
                         gfx.DrawRectangle(XPens.WhiteSmoke, rect);
 
                         var horizontalAlignment = XStringFormats.Center;
@@ -2595,7 +2911,7 @@ namespace ReportBuilder.Web.Models
                             yPosition += fontNormal.Height;
                         }
 
-                        currentXPosition += (int) columnWidth;
+                        currentXPosition += (int) columnWidths[j];
                     }
 
                     currentYPosition += rowHeight;
@@ -2611,7 +2927,7 @@ namespace ReportBuilder.Web.Models
                         var dc = dt.Columns[j];
                         var formatColumn = GetColumnFormatting(dc, columns, ref value);
 
-                        rect = new XRect(currentXPosition, currentYPosition, columnWidth, 20);
+                        rect = new XRect(currentXPosition, currentYPosition, columnWidths[j], 20);
                         gfx.DrawRectangle(XPens.LightGray, rect);
 
                         if (formatColumn.isNumeric && !(formatColumn?.dontSubTotal ?? false))
@@ -2623,7 +2939,7 @@ namespace ReportBuilder.Web.Models
                             gfx.DrawString(" ", fontNormal, XBrushes.Black, rect, XStringFormats.Center);
                         }
 
-                        currentXPosition += (int)columnWidth;
+                        currentXPosition += (int)columnWidths[j];
                     }
                 }
 
@@ -4016,16 +4332,19 @@ namespace ReportBuilder.Web.Models
                 // Store the table names in the class scoped array list of table names
                 for (int i = 0; i < schemaTable.Rows.Count; i++)
                 {
-                    var tableName = schemaTable.Rows[i].ItemArray[2].ToString();
+                    var schemaName = schemaTable.Rows[i]["TABLE_SCHEMA"].ToString();
+                    var tableName = schemaTable.Rows[i]["TABLE_NAME"].ToString();
 
                     // see if this table is already in database
-                    var matchTable = currentTables.FirstOrDefault(x => x.TableName.ToLower() == tableName.ToLower());
-                    
+                    var matchTable = currentTables.FirstOrDefault(x =>
+                        x.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase) &&
+                        x.SchemaName.Equals(schemaName, StringComparison.OrdinalIgnoreCase)
+                    );
                     var table = new TableViewModel
                     {
                         Id = matchTable != null ? matchTable.Id : 0,
-                        SchemaName = matchTable != null ? matchTable.SchemaName : schemaTable.Rows[i]["TABLE_SCHEMA"].ToString(),
-                        TableName = matchTable != null ? matchTable.TableName : tableName,
+                        SchemaName = schemaName, 
+                        TableName = tableName,
                         DisplayName = matchTable != null ? matchTable.DisplayName : tableName,
                         IsView = type == "VIEW",
                         Selected = matchTable != null,
@@ -4033,8 +4352,7 @@ namespace ReportBuilder.Web.Models
                         AllowedRoles = matchTable != null ? matchTable.AllowedRoles : new List<string>(),
                         AccountIdField = matchTable != null ? matchTable.AccountIdField : ""
                     };
-
-                    var dtField = conn.GetSchema("Columns", new string[] { null, null, tableName });
+                    var dtField = conn.GetSchema("Columns", new string[] { null, schemaName, tableName });
                     var idx = 0;
 
                     foreach (DataRow dr in dtField.Rows)
@@ -4341,17 +4659,16 @@ namespace ReportBuilder.Web.Models
             }
 
             var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey), false);
-
             using (var conn = new MySqlConnection(connString))
             {
                 await conn.OpenAsync();
 
                 string sql = @"SELECT TABLE_NAME, TABLE_SCHEMA, TABLE_TYPE 
                            FROM INFORMATION_SCHEMA.TABLES 
-                           WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE LIKE CONCAT('%', @type, '%');";
+                           WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = @type";
 
                 var cmd = new MySqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@type", type);
+                cmd.Parameters.AddWithValue("@type", type == "TABLE" ? "BASE TABLE" : type);
 
                 var reader = await cmd.ExecuteReaderAsync();
                 var schemaTables = new DataTable();
@@ -4467,8 +4784,8 @@ namespace ReportBuilder.Web.Models
 
         public async Task<List<TableViewModel>> GetSearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
         {
-            var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey), false);
             var tables = new List<TableViewModel>();
+            var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey), false);
             using var conn = new MySqlConnection(connString);
             await conn.OpenAsync();
 

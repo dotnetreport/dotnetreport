@@ -789,6 +789,7 @@ var manageViewModel = function (options) {
 		Name: ko.observable(),
 		ConnectionKey: ko.observable(),
 		UseSchema: ko.observable(),
+		DatabaseType: ko.observable(),
 		copySchema: ko.observable(false),
 		copyFrom: ko.observable(),
 	}
@@ -805,12 +806,14 @@ var manageViewModel = function (options) {
 		self.newDataConnection.Name(dc.DataConnectName);
 		self.newDataConnection.ConnectionKey(dc.ConnectionKey);
 		self.newDataConnection.UseSchema(dc.UseSchema);
+		self.newDataConnection.DatabaseType(dc.DatabaseType);
 	}
 	self.newDataConnectionModal = function () {
 		self.editingDataConnection(false);
 		self.newDataConnection.Name('');
 		self.newDataConnection.ConnectionKey('');
 		self.newDataConnection.UseSchema(false);
+		self.newDataConnection.DatabaseType('MS SQL');
 	}
 
 	self.updateDataConnection = function () {
@@ -833,6 +836,7 @@ var manageViewModel = function (options) {
 					account: self.keys.AccountApiKey,
 					dataConnect: self.currentConnectionKey(),
 					useSchema: self.newDataConnection.UseSchema(),
+					dbType: self.newDataConnection.DatabaseType(),
 					connectionKey: self.newDataConnection.ConnectionKey(),
 					connectName: self.newDataConnection.Name()
 				})
@@ -842,6 +846,7 @@ var manageViewModel = function (options) {
 			dc.DataConnectName = self.newDataConnection.Name();
 			dc.ConnectionKey = self.newDataConnection.ConnectionKey();
 			dc.UseSchema = self.newDataConnection.UseSchema();
+			dc.DatabaseType = self.newDataConnection.DatabaseType();
 			toastr.success("Data Connection updated successfully");
 			$('#add-connection-modal').modal('hide');
 		});
@@ -870,7 +875,9 @@ var manageViewModel = function (options) {
 					dataConnect: self.newDataConnection.copySchema() ? self.newDataConnection.copyFrom() : self.keys.DatabaseApiKey,
 					newDataConnect: self.newDataConnection.Name(),
 					connectionKey: self.newDataConnection.ConnectionKey(),
-					copySchema: self.newDataConnection.copySchema()
+					copySchema: self.newDataConnection.copySchema(),
+					useSchema: self.newDataConnection.UseSchema(),
+					dbType: self.newDataConnection.DatabaseType()
 				})
 			})
 		}).done(function (result) {
@@ -879,7 +886,8 @@ var manageViewModel = function (options) {
 				DataConnectName: self.newDataConnection.Name(),
 				ConnectionKey: self.newDataConnection.ConnectionKey(),
 				DataConnectGuid: result.DataConnectGuid,
-				UseSchema: result.UseSchema || false
+				UseSchema: result.UseSchema || false,
+				DatabaseType: result.DatabaseType
 			});
 
 			self.newDataConnection.Name('');
@@ -1149,7 +1157,7 @@ var manageViewModel = function (options) {
 			function (x) {
 				return {
 					DataConnectionId: x.DataConnectionId,
-					RelationId: x.Id ? x.Id : x.RelationId,
+					Id: x.Id ? x.Id : x.RelationId, 
 					TableId: x.TableId,
 					TableName: x.JoinTable ? x.JoinTable.DisplayName : null,       
 					JoinedTableId: x.JoinedTableId,
@@ -1667,7 +1675,7 @@ var manageViewModel = function (options) {
 					r.changeAccess = ko.observable(false);
 					r.changeAccess.subscribe(function (x) {
 						if (x) {
-							_.forEach(allReports[0], function (f) {
+							_.forEach(folderReports, function (f) {
 								if (f !== r) {
 									f.changeAccess(false);
 								}
