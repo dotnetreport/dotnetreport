@@ -125,7 +125,7 @@ namespace ReportBuilder.Web.Models
         public string sql { get; set; } = "";
         public List<KeyValuePair<string, string>> parameters { get; set; } = null;
         public int reportId { get; set; }
-        public string dbType { get; set; }
+        public string dbType { get; set; } = "";
     }
 
     public class TableViewModel
@@ -243,11 +243,19 @@ namespace ReportBuilder.Web.Models
     {
         MS_SQL,
         MySql,
-        Postgre_Sql,
+        PostgreSQL,
         Oracle,
         Informix,
         OleDb
     }
+    public static class DbTypesExtensions
+    {
+        public static string ToDbString(this DbTypes db)
+        {
+            return db.ToString().Replace("_", " ");
+        }
+    }
+
 
     public class ColumnViewModel
     {
@@ -1117,9 +1125,9 @@ namespace ReportBuilder.Web.Models
                         Categories= item.tableCategories != null ? ((JArray)item.tableCategories).ToObject<List<dynamic>>().Select(c => new CategoryViewModel { Id = c.CategoryId, Name = c.Name, Description = c.Description }).ToList() : new List<CategoryViewModel>(),
                         DoNotDisplay = item.doNotDisplay,
                         CustomTable = item.customTable,
-                        CustomTableSql = Convert.ToBoolean(item.customTable) == true ? DotNetReportHelper.Decrypt(Convert.ToString(item.customTableSql)) : "",
+                        CustomTableSql = Convert.ToBoolean(item.customTable) == true ? DotNetReportHelper.TryDecrypt(Convert.ToString(item.customTableSql)) : "",
                         DynamicColumns = item.dynamicColumns != null ? Convert.ToBoolean(item.dynamicColumns) : false,
-                        DynamicColumnTranslation = item.dynamicColumns != null && Convert.ToBoolean(item.dynamicColumns) == true ? DotNetReportHelper.Decrypt(Convert.ToString(item.dynamicColumnTranslation)) : "",
+                        DynamicColumnTranslation = item.dynamicColumns != null && Convert.ToBoolean(item.dynamicColumns) == true ? DotNetReportHelper.TryDecrypt(Convert.ToString(item.dynamicColumnTranslation)) : "",
                         DynamicValuesTableId = item.dynamicValuesTableId != null ? Convert.ToInt32(item.dynamicValuesTableId) : null,
                         Columns = new List<ColumnViewModel>(),
                         Selected = true
@@ -1309,7 +1317,7 @@ namespace ReportBuilder.Web.Models
                         .Select(x => x.StartsWith("DISTINCT ", StringComparison.OrdinalIgnoreCase) ? x.Substring(9).Trim() : x)
                         .ToList();
 
-                case "Postgre Sql":
+                case "PostgreSQL":
                     if (sql.StartsWith("CALL", StringComparison.OrdinalIgnoreCase))
                         return new List<string>();
 
@@ -3598,6 +3606,18 @@ namespace ReportBuilder.Web.Models
             return xml;
         }
 
+        public static string TryDecrypt(string sql)
+        {
+            try
+            {
+                return DotNetReportHelper.Decrypt(sql);
+            }
+            catch (Exception ex)
+            {
+                return sql;
+            }
+        }
+
         /// <summary>
         /// Method to Deycrypt encrypted sql statement. PLESE DO NOT CHANGE THIS METHOD
         /// </summary>
@@ -4015,7 +4035,7 @@ namespace ReportBuilder.Web.Models
                 case "mysql":
                     databaseConnection = new MySqlDatabaseConnection();
                     break;
-                case "postgre sql":
+                case "PostgreSQL":
                     databaseConnection = new PostgresDatabaseConnection();
                     break;
                 case "oracle":

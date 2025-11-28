@@ -28,7 +28,7 @@ namespace ReportBuilder.Web.Controllers
 
         private DotNetReportSettings GetSettings()
         {
-            DotNetReportHelper.dbtype = DbTypes.MS_SQL.ToString().Replace("_", " ");
+            DotNetReportHelper.dbtype = DbTypes.MS_SQL.ToDbString();
 
             var settings = new DotNetReportSettings
             {
@@ -317,12 +317,24 @@ namespace ReportBuilder.Web.Controllers
                                 fromClause = fromClause.Substring(0, orderByIndex).Trim();
                             }
 
-                            sqlCount = $"SELECT COUNT(*) FROM (SELECT DISTINCT {distinctColumns} {fromClause}) AS countQry";
+                            if (DotNetReportHelper.dbtype == "Oracle")
+                                sqlCount = "SELECT COUNT(*) FROM (SELECT DISTINCT " + distinctColumns + " " + fromClause + ") countQry";
+                            else
+                                sqlCount = "SELECT COUNT(*) FROM (SELECT DISTINCT " + distinctColumns + " " + fromClause + ") AS countQry";
                         }
                         else
                         {
-                            sqlCount = $"SELECT COUNT(*) FROM ({(sqlFrom.Contains("ORDER BY", StringComparison.OrdinalIgnoreCase) ? sqlFrom.Substring(0, sqlFrom.LastIndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase)) : sqlFrom)}) AS countQry";
+                            string inner =
+                                sqlFrom.Contains("ORDER BY", StringComparison.OrdinalIgnoreCase)
+                                ? sqlFrom.Substring(0, sqlFrom.LastIndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase))
+                                : sqlFrom;
+
+                            if (DotNetReportHelper.dbtype == "Oracle")
+                                sqlCount = "SELECT COUNT(*) FROM (" + inner + ") countQry";
+                            else
+                                sqlCount = "SELECT COUNT(*) FROM (" + inner + ") AS countQry";
                         }
+
                         if (!String.IsNullOrEmpty(sortBy))
                         {
                             if (sortBy.StartsWith("DATENAME(MONTH, "))
@@ -354,20 +366,30 @@ namespace ReportBuilder.Web.Controllers
                         {
                             if (DotNetReportHelper.dbtype == "MS SQL")
                                 sql += $" ORDER BY {(hasDistinct ? "1" : "NEWID()")} ";
-                            else if (DotNetReportHelper.dbtype == "Postgre Sql")
+                            else if (DotNetReportHelper.dbtype == "PostgreSQL")
                                 sql += $" ORDER BY {(hasDistinct ? "1" : "RANDOM()")} ";
                             else if (DotNetReportHelper.dbtype == "MySQL")
                                 sql += $" ORDER BY {(hasDistinct ? "1" : "RAND()")} ";
+                            else if (DotNetReportHelper.dbtype == "Oracle")
+                                sql += $" ORDER BY {(hasDistinct ? "1" : "DBMS_RANDOM.VALUE")} ";
                             else
                                 sql += " ORDER BY 1 ";
                         }
 
                         if (!sql.Contains(" TOP ") && string.IsNullOrEmpty(pivotColumn))
                         {
-                            if (DotNetReportHelper.dbtype == "Postgre Sql" || DotNetReportHelper.dbtype == "MySQL")
+                            if (DotNetReportHelper.dbtype == "PostgreSQL" || DotNetReportHelper.dbtype == "MySQL")
+                            {
                                 sql += $" LIMIT {pageSize} OFFSET {(pageNumber - 1) * pageSize}";
-                            else
+                            }
+                            else if (DotNetReportHelper.dbtype == "Oracle")
+                            {
                                 sql += $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
+                            }
+                            else
+                            {
+                                sql += $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
+                            }
                         }
 
                         if (sql.Contains("__jsonc__"))
@@ -698,18 +720,7 @@ namespace ReportBuilder.Web.Controllers
                 newReportEditUserRoles,
                 newReportViewUserRoles
             });
-        }
-
-        private static string TryDecrypt(string sql)
-        {
-            try
-            {
-                return DotNetReportHelper.Decrypt(sql);
-            } catch (Exception ex)
-            {
-                return sql;
-            }
-        }
+        }        
 
         [ValidateAntiForgeryToken]
         [HttpPost]
@@ -725,7 +736,7 @@ namespace ReportBuilder.Web.Controllers
                     Selected = true
                 };
 
-                data.value = TryDecrypt(data.value);
+                data.value = DotNetReportHelper.TryDecrypt(data.value);
 
                 if (string.IsNullOrEmpty(data.value) || !data.value.StartsWith("SELECT ", StringComparison.OrdinalIgnoreCase))
                 {
@@ -762,7 +773,7 @@ namespace ReportBuilder.Web.Controllers
                 {
                     throw new Exception("Query not found");
                 }
-                sql = TryDecrypt(HttpUtility.HtmlDecode(reportSql));
+                sql = DotNetReportHelper.TryDecrypt(HttpUtility.HtmlDecode(reportSql));
                 sql = ConvertTopQuery(sql, DotNetReportHelper.dbtype);
                 List<string> fields = new List<string>();
                 List<string> sqlFields = new List<string>();
@@ -808,6 +819,21 @@ namespace ReportBuilder.Web.Controllers
                 return sql;
             if (dbtype.Equals("MS SQL", StringComparison.OrdinalIgnoreCase))
                 return sql;
+            switch (dbtype)
+            {
+                case "MySQL":
+                    sql = sql.Replace("[", "`").Replace("]", "`");
+                    break;
+
+                case "PostgreSQL":
+                    sql = sql.Replace("[", "\"").Replace("]", "\"");
+                    break;
+
+                case "Oracle":
+                    sql = sql.Replace("[", "").Replace("]", "");
+                    break;
+            }
+
             if (sql.Contains("TOP", StringComparison.OrdinalIgnoreCase))
             {
                 var m = System.Text.RegularExpressions.Regex.Match(sql, @"TOP\s+(\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
@@ -817,7 +843,7 @@ namespace ReportBuilder.Web.Controllers
                     sql = System.Text.RegularExpressions.Regex.Replace(sql, @"TOP\s+\d+", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
                     sql = System.Text.RegularExpressions.Regex.Replace(sql, @"\[(.*?)\]", "`$1`").Trim();
                     if (dbtype.Equals("MySQL", StringComparison.OrdinalIgnoreCase) ||
-                        dbtype.Equals("Postgre Sql", StringComparison.OrdinalIgnoreCase))
+                        dbtype.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase))
                     {
                         sql = sql.TrimEnd(';') + $" LIMIT {top};";
                     }
