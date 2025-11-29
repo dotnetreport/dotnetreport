@@ -2347,6 +2347,7 @@ var reportViewModel = function (options) {
 		self.queryPrompt = "";
 		self.isDirty(false);
 		self.clearTableSettings();
+		self.clearKpiSettings();
 		self.subReports([]);
 		self.clearManageAccess();	
 	};
@@ -3426,7 +3427,6 @@ var reportViewModel = function (options) {
 		return groups;
 	};
 	self.BuildReportData = function (drilldown, isComparison, index) {
-
 		drilldown = _.compact(_.map(drilldown || [], function (x) {
 			if (x.isJsonColumn || x.isRuleSet || x.Column.FormatType == 'Csv' || x.Column.FormatType == 'Json' || x.Value.indexOf('/>') >= 0 || x.Column.SqlField == '__') return;
 			return x;
@@ -3480,7 +3480,8 @@ var reportViewModel = function (options) {
 				cardView: self.cardView(),
 				dontGroupCustom: self.dontGroupCustom(),
 				subReports: self.subReports(),
-				tableSettings: self.tableSettings()
+				tableSettings: self.tableSettings(),
+				kpiSettings: ko.toJS(self.kpiSettings())
 			}),
 			OnlyTop: drilldown.length > 0 ? null : (self.maxRecords() ? self.OnlyTop() : null),
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : self.AggregateReport(),
@@ -4464,6 +4465,13 @@ var reportViewModel = function (options) {
 			if (nextValue === 0) return null; // Avoid division by zero
 			return (((currentValue - nextValue) / nextValue) * 100).toFixed(1);
 		};
+		if (self.kpiSettings() && Object.keys(self.kpiSettings()).length > 0) {
+			result.ReportData.FontSize = ko.observable(self.kpiSettings().fontSize() + "px");
+			result.ReportData.Alignment = ko.observable(self.kpiSettings()?.alignment());
+		} else {
+			result.ReportData.FontSize = ko.observable("48px");
+			result.ReportData.Alignment = ko.observable("center");
+		}
 		_.forEach(result.ReportData.Rows, function (e, idx) {
 			e.DrillDownData = ko.observable(null);
 			e.pager = new pagerViewModel({ pageSize: self.DefaultPageSize() });
@@ -5125,7 +5133,50 @@ var reportViewModel = function (options) {
 
 		legend.addTo(map);
 	}
-
+	self.showKpiSettings = ko.observable(false);
+	self.kpiSettings = ko.observable({
+		fontSize: ko.observable(48),
+		alignment: ko.observable("center"),
+		fontColor: ko.observable("#000000"),
+		positiveColor: ko.observable("#28a745"),
+		negativeColor: ko.observable("#dc3545")
+	});
+	self.toggleKpiSettings = function () {
+		self.showKpiSettings(!self.showKpiSettings());
+	};
+	self.updateKpi = function () {
+		var result = self.ReportResult().ReportData();
+		if (result) {
+			result.FontSize(self.kpiSettings().fontSize() + "px");
+			result.Alignment(self.kpiSettings().alignment());
+			result.FontColor(self.kpiSettings().fontColor());
+			result.PositiveColor(self.kpiSettings().positiveColor());
+			result.NegativeColor(self.kpiSettings().negativeColor());
+		}
+	};
+	self.kpiSettings().fontSize.subscribe(function (newVal) {
+		self.updateKpi();
+	});
+	self.kpiSettings().alignment.subscribe(function (newVal) {
+		self.updateKpi();
+	});
+	self.kpiSettings().fontColor.subscribe(function (newVal) {
+		self.updateKpi();
+	});
+	self.kpiSettings().positiveColor.subscribe(function (newVal) {
+		self.updateKpi();
+	});
+	self.kpiSettings().negativeColor.subscribe(function (newVal) {
+		self.updateKpi();
+	});
+	self.clearKpiSettings = function () {
+		self.kpiSettings().fontSize(48);
+		self.kpiSettings().alignment("center");
+		self.kpiSettings().fontColor("#000000");//black
+		self.kpiSettings().positiveColor("#28a745");//green
+		self.kpiSettings().negativeColor("#dc3545");//red
+		self.updateKpi();
+	};
 	self.chartOptions = ko.observable({
 		title: self.ReportName(),
 		animation: {
@@ -6092,6 +6143,14 @@ var reportViewModel = function (options) {
 		};
 		if (reportSettings.chartOptions) self.chartOptions(reportSettings.chartOptions);
 		if (reportSettings.tableSettings) self.tableSettings(reportSettings.tableSettings);
+		if (reportSettings.kpiSettings && Object.keys(reportSettings.kpiSettings).length > 0) {
+			var kpisetting = reportSettings.kpiSettings;
+			self.kpiSettings().fontSize(kpisetting.fontSize);
+			self.kpiSettings().alignment(kpisetting.alignment);
+			self.kpiSettings().fontColor(kpisetting.fontColor);
+			self.kpiSettings().positiveColor(kpisetting.positiveColor);
+			self.kpiSettings().negativeColor(kpisetting.negativeColor);
+		}
 		self.noHeaderRow(reportSettings.noHeaderRow);
 		self.noDashboardBorders(reportSettings.noDashboardBorders);
 		self.showPriorInKpi(reportSettings.showPriorInKpi);
