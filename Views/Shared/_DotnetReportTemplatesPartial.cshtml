@@ -202,7 +202,7 @@
 
         <div data-bind="if: Rows.length > 0">
             <div data-bind="with: $parent.rows[0].Items[0]">
-                <span data-bind="html: formattedVal"></span>
+                <span data-bind="html: $parent.formatKpiValue(Value)"></span>
 
                 <!-- ko if: $parent.Rows.length > 1 ? ($parents[$parents.length-2].showPriorInKpi != undefined ? $parents[$parents.length-2].showPriorInKpi() : $parents[$parents.length-1].showPriorInKpi()) : false -->
                 <span data-bind="style: {'color': $parent.calculateRate() > 0 ? $parent.PositiveColor : $parent.NegativeColor, 'font-size': '24px'}">
@@ -271,6 +271,32 @@
                                data-bind="value: kpiSettings().positiveColor,valueUpdate: 'change', event: { change: updateKpi }"/> +
                         <input type="color" class="color-picker"
                                data-bind="value: kpiSettings().negativeColor,valueUpdate: 'change', event: { change: updateKpi }"/> -
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Number Format</label>
+                        <select class="form-select form-select-sm"
+                                data-bind="value: kpiSettings().numberFormat,valueUpdate:'change', event:{ change:updateKpi }">
+                            <option value="number">Normal Number</option>
+                            <option value="money">Money ($)</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Short Format</label>
+                        <select class="form-select form-select-sm"
+                                data-bind="value: kpiSettings().shortFormat,valueUpdate:'change',event:{ change:updateKpi }">
+                            <option value="none">None</option>
+                            <option value="thousand">Thousands (K)</option>
+                            <option value="million">Millions (M)</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Currency Symbol</label>
+                        <select class="form-select form-select-sm"
+                                data-bind="value: kpiSettings().currencySymbol,valueUpdate:'change',event:{ change:updateKpi }">
+                            <option value="$">$ - Dollar</option>
+                            <option value="€">€ - Euro</option>
+                            <option value="£">£ - Pound</option>
+                        </select>
                     </div>
                     <div class="d-flex justify-content-end">
                         <button class="btn btn-sm btn-outline-secondary"
