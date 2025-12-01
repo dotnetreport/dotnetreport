@@ -395,7 +395,7 @@ namespace ReportBuilder.Web.Models
                                 DisplayName = param.ParameterName,
                                 ParameterValue = param.Value != null ? param.Value.ToString() : "",
                                 ParamterDataTypeOleDbTypeInteger = Convert.ToInt32(param.OleDbType),
-                                ParamterDataTypeOleDbType = param.OleDbType,
+                                ParamterDataTypeOleDbType = param.OleDbType.ToString(),
                                 ParameterDataTypeString = DotNetReportHelper.GetType(ConvertToJetDataType(Convert.ToInt32(param.OleDbType))).Name
                             };
                             if (parameter.ParameterDataTypeString.StartsWith("Int")) parameter.ParameterDataTypeString = "Int";

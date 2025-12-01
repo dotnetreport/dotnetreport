@@ -11,7 +11,6 @@ using PdfSharp.Pdf;
 using PuppeteerSharp;
 using PuppeteerSharp.Media;
 using System.Data;
-using System.Data.OleDb;
 using System.Drawing;
 using System.Net;
 using System.Security.Cryptography;
@@ -168,7 +167,7 @@ namespace ReportBuilder.Web.Models
         public string ParameterValue { get; set; }
         public string ParameterDataTypeString { get; set; }
         public Type ParameterDataTypeCLR { get; set; }
-        public OleDbType ParamterDataTypeOleDbType { get; set; } = OleDbType.VarChar;
+        public string ParamterDataTypeOleDbType { get; set; } = "VarChar";
         public int ParamterDataTypeOleDbTypeInteger { get; set; } = 0;
         public bool Required { get; set; }
         public bool ForeignKey { get; set; }
@@ -1497,62 +1496,7 @@ namespace ReportBuilder.Web.Models
             var modifiedSql = sql.Substring(0, whereIndex) + where + sql.Substring(nextClauseIndex);
             return modifiedSql;
         }
-
-        public async static Task<DataSet> GetDrillDownData(OleDbConnection conn, DataTable dt, List<string> sqlFields, string reportDataJson)
-        {
-            var drilldownRow = new List<string>();
-            var dr = dt.Rows[0];
-            int i = 0;
-            foreach (DataColumn dc in dt.Columns)
-            {
-                var col = sqlFields[i++]; //columns.FirstOrDefault(x => x.fieldName == dc.ColumnName) ?? new ReportHeaderColumn();
-                drilldownRow.Add($@"
-                                    {{
-                                        ""Value"":""{dr[dc]}"",
-                                        ""FormattedValue"":""{dr[dc]}"",
-                                        ""LabelValue"":""'{dr[dc]}'"",
-                                        ""NumericValue"":null,
-                                        ""Column"":{{
-                                            ""SqlField"":""{col.Substring(0, col.LastIndexOf(" AS "))}"",
-                                            ""ColumnName"":""{dc.ColumnName}"",
-                                            ""DataType"":""{dc.DataType.ToString()}"",
-                                            ""IsNumeric"":{(dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal" ? "true" : "false")},
-                                            ""FormatType"":""""
-                                        }}
-                                     }}
-                                ");
-            }
-
-            var reportData = reportDataJson.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false,\"IsPivotMode\":true");
-            var drilldownSql = await RunReportApiCall(reportData);
-
-            var dts = new DataSet();
-            var combinedSqls = "";
-            if (!string.IsNullOrEmpty(drilldownSql))
-            {
-                foreach (DataRow ddr in dt.Rows)
-                {
-                    i = 0;
-                    var filteredSql = drilldownSql;
-                    foreach (DataColumn dc in dt.Columns)
-                    {
-                        var value = ddr[dc].ToString().Replace("'", "''");
-                        filteredSql = filteredSql.Replace($"<{dc.ColumnName}>", value);
-                    }
-
-                    combinedSqls += filteredSql += ";\n";
-                }
-
-                using (var cmd = new OleDbCommand(combinedSqls, conn))
-                using (var adp = new OleDbDataAdapter(cmd))
-                {
-                    adp.Fill(dts);
-                }
-            }
-
-            return dts;
-        }
-
+        
         public async static Task<(DataTable dt, string sql, int totalRecords, List<List<string>> headerRows)>
         GetPivotTable(
             IDatabaseConnection databaseConnection,
@@ -3364,6 +3308,20 @@ namespace ReportBuilder.Web.Models
                     });
 
                     formPosted = true;
+                };
+                page.Console += (sender, e) =>
+                {
+                    Console.WriteLine("[Console Error] " + e.Message);
+                };
+
+                page.PageError += (sender, error) =>
+                {
+                    Console.WriteLine("[Page Error] " + error.Message);
+                };
+
+                page.RequestFailed += (sender, e) =>
+                {
+                    Console.WriteLine($"[Request Failed] {e.Request.Url} - {e.Request.FailureText}");
                 };
 
                 await page.GoToAsync(printUrl, new NavigationOptions
