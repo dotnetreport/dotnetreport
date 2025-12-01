@@ -562,7 +562,7 @@ namespace ReportBuilder.Web.Models
             };
         }
 
-        public static async Task<string> GetConnectionString(ConnectViewModel connect, bool addOledbProvider = true)
+        public static async Task<string> GetConnectionString(ConnectViewModel connect, bool addOledbProvider = false)
         {
             if (connect.AccountApiKey == "Your Account API Key" || string.IsNullOrEmpty(connect.AccountApiKey) || string.IsNullOrEmpty(connect.DatabaseApiKey))
                 return "";
