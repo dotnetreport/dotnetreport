@@ -278,29 +278,12 @@
                     </div>
                     <div class="mb-2">
                         <label class="form-label small">Number Format</label>
-                        <div class="form-check">
-            <input class="form-check-input" type="radio"
-                   name="numFormat"
-                   value="number"
-                   data-bind="checked: kpiSettings().numberFormat, event:{ change:updateKpi }">
-            <label class="form-check-label small">Normal Number</label>
-        </div>
-                        <div class="form-check">
-            <input class="form-check-input" type="radio"
-                   name="numFormat"
-                   value="money"
-                   data-bind="checked: kpiSettings().numberFormat, event:{ change:updateKpi }">
-            <label class="form-check-label small">Money</label>
-        </div>
-                        <!-- ⭐ NEW: Custom Format Option -->
-                        <div class="form-check">
-            <input class="form-check-input" type="radio"
-                   name="numFormat"
-                   value="custom"
-                   data-bind="checked: kpiSettings().numberFormat, event:{ change:updateKpi }">
-            <label class="form-check-label small">Custom Format</label>
-        </div>
-                        <!-- ⭐ Custom Format Textbox (visible only when selected) -->
+                        <select class="form-select form-select-sm"
+                                data-bind="value: kpiSettings().numberFormat, valueUpdate: 'change', event: { change: updateKpi }">
+                            <option value="number">Normal Number</option>
+                            <option value="money">Money</option>
+                            <option value="custom">Custom Format</option>
+                        </select>
                         <input type="text"
                                class="form-control form-control-sm mt-2"
                                placeholder="e.g. #,###.00"
