@@ -4468,19 +4468,23 @@ var reportViewModel = function (options) {
 		result.ReportData.formatKpiValue = function (value) {
 			let settings = self.kpiSettings();
 			let v = Number(value);
-			let symbol = settings.currencySymbol();   
+			let symbol = settings.currencySymbol();
+			let pattern = settings.customFormat();
+			if (settings.numberFormat() === "custom" && pattern) {
+				return applyCustomFormat(v, pattern);
+			}
 			if (settings.shortFormat() === "thousand") {
 				v = v / 1000;
-				return symbol + " " + v.toLocaleString() + "K";  
+				return symbol + " " + v.toLocaleString() + "K";
 			}
 			if (settings.shortFormat() === "million") {
 				v = v / 1000000;
-				return symbol + " " + v.toLocaleString() + "M";   
+				return symbol + " " + v.toLocaleString() + "M";
 			}
 			if (settings.numberFormat() === "money") {
-				return symbol + " " + v.toLocaleString();         
+				return symbol + " " + v.toLocaleString();
 			}
-			return v.toLocaleString();                           
+			return v.toLocaleString();
 		};
 
 		if (self.kpiSettings() && Object.keys(self.kpiSettings()).length > 0) {
@@ -5165,8 +5169,20 @@ var reportViewModel = function (options) {
 		negativeColor: ko.observable("#dc3545"),
 		numberFormat: ko.observable("number"),   // number | money
 		shortFormat: ko.observable("none"),      // none | thousand | million
-		currencySymbol: ko.observable("$") 
+		currencySymbol: ko.observable("$"),
+		customFormat: ko.observable(null)
 	});
+	function applyCustomFormat(value, pattern) {
+		let decimals = 0;
+		if (pattern.indexOf(".") >= 0) {
+			decimals = pattern.split(".")[1].length;
+		}
+		let fixed = Number(value).toFixed(decimals);
+		let parts = fixed.split(".");
+		parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+		return parts.join(".");
+	}
+
 	self.toggleKpiSettings = function () {
 		self.showKpiSettings(!self.showKpiSettings());
 	};
@@ -5211,6 +5227,9 @@ var reportViewModel = function (options) {
 	self.kpiSettings().currencySymbol.subscribe(function (newVal) {
 		self.updateKpi();
 	});
+	self.kpiSettings().customFormat.subscribe(function (newVal) {
+		self.updateKpi();
+	});
 	self.clearKpiSettings = function () {
 		self.kpiSettings().fontSize(48);
 		self.kpiSettings().alignment("center");
@@ -5221,6 +5240,7 @@ var reportViewModel = function (options) {
 		self.kpiSettings().numberFormat("number");
 		self.kpiSettings().shortFormat("none");
 		self.kpiSettings().currencySymbol("$");
+		self.kpiSettings().customFormat(null);
 		self.updateKpi();
 	};
 	self.chartOptions = ko.observable({

@@ -278,11 +278,36 @@
                     </div>
                     <div class="mb-2">
                         <label class="form-label small">Number Format</label>
-                        <select class="form-select form-select-sm"
-                                data-bind="value: kpiSettings().numberFormat,valueUpdate:'change', event:{ change:updateKpi }">
-                            <option value="number">Normal Number</option>
-                            <option value="money">Money ($)</option>
-                        </select>
+                        <div class="form-check">
+            <input class="form-check-input" type="radio"
+                   name="numFormat"
+                   value="number"
+                   data-bind="checked: kpiSettings().numberFormat, event:{ change:updateKpi }">
+            <label class="form-check-label small">Normal Number</label>
+        </div>
+                        <div class="form-check">
+            <input class="form-check-input" type="radio"
+                   name="numFormat"
+                   value="money"
+                   data-bind="checked: kpiSettings().numberFormat, event:{ change:updateKpi }">
+            <label class="form-check-label small">Money</label>
+        </div>
+                        <!-- ⭐ NEW: Custom Format Option -->
+                        <div class="form-check">
+            <input class="form-check-input" type="radio"
+                   name="numFormat"
+                   value="custom"
+                   data-bind="checked: kpiSettings().numberFormat, event:{ change:updateKpi }">
+            <label class="form-check-label small">Custom Format</label>
+        </div>
+                        <!-- ⭐ Custom Format Textbox (visible only when selected) -->
+                        <input type="text"
+                               class="form-control form-control-sm mt-2"
+                               placeholder="e.g. #,###.00"
+                               data-bind="value: kpiSettings().customFormat,
+                                          visible: kpiSettings().numberFormat() === 'custom',
+                                          valueUpdate:'input',
+                                          event:{ input:updateKpi }">
                     </div>
                     <div class="mb-2">
                         <label class="form-label small">Short Format</label>
