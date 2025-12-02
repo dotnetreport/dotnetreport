@@ -197,7 +197,7 @@
 </script>
 
 <script type="text/html" id="report-widget">
-    <div data-bind="style: { 'font-size': (FontSize ? FontSize : '48px'),'text-align': Alignment ? Alignment : 'center','color': FontColor ? FontColor : '#000000' }" style="width: 100%;">
+    <div data-bind="style: { 'font-size': (FontSize ? FontSize : '48px'),'text-align': Alignment ? Alignment : 'center','color': FontColor ? FontColor : '#000000','background-color':BackColor ? BackColor : '#fff' }" style="width: 100%;">
         <span data-bind="visible: Rows.length < 1" title="No data found">/</span>
 
         <div data-bind="if: Rows.length > 0">
@@ -225,7 +225,7 @@
                 data-bind="click: toggleKpiSettings()" title="KPI Settings">
             <i class="fa fa-cog"></i>
         </button>
-        <div class="chart-settings-panel border p-2 shadow-sm bg-light"
+        <div class="kpi-settings-panel border p-2 shadow-sm bg-light"
              data-bind="visible: showKpiSettings">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <button class="btn btn-sm btn-close" data-bind="click: toggleKpiSettings()"></button>
@@ -261,9 +261,13 @@
                         </select>
                     </div>
                     <div class="mb-2">
-                        <label class="form-label small">Font Color</label><br />
+                        <label class="form-label small">Font Color</label>&nbsp;&nbsp;&nbsp;&nbsp;
+                        <label class="form-label small">Back Color</label><br />
                         <input type="color" class="color-picker"
                                data-bind="value: kpiSettings().fontColor, valueUpdate: 'change',event: { change: updateKpi }"/>
+                               &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                        <input type="color" class="color-picker"
+                               data-bind="value: kpiSettings().backColor, valueUpdate: 'change',event: { change: updateKpi }"/>
                     </div>
                     <div class="mb-2">
                         <label class="form-label small">Rate Color (+ / -)</label><br />

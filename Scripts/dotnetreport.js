@@ -4487,6 +4487,7 @@ var reportViewModel = function (options) {
 			result.ReportData.FontSize = ko.observable(self.kpiSettings()?.fontSize() + "px");
 			result.ReportData.Alignment = ko.observable(self.kpiSettings()?.alignment());
 			result.ReportData.FontColor = ko.observable(self.kpiSettings()?.fontColor());
+			result.ReportData.BackColor = ko.observable(self.kpiSettings()?.backColor());
 			result.ReportData.PositiveColor = ko.observable(self.kpiSettings()?.positiveColor());
 			result.ReportData.NegativeColor = ko.observable(self.kpiSettings()?.negativeColor());
 			result.ReportData.NumberFormat = ko.observable(self.kpiSettings()?.numberFormat());
@@ -5159,6 +5160,7 @@ var reportViewModel = function (options) {
 		fontSize: ko.observable(48),
 		alignment: ko.observable("center"),
 		fontColor: ko.observable("#000000"),
+		backColor: ko.observable("#fffff"),
 		positiveColor: ko.observable("#28a745"),
 		negativeColor: ko.observable("#dc3545"),
 		numberFormat: ko.observable("number"),   // number | money
@@ -5174,6 +5176,7 @@ var reportViewModel = function (options) {
 			result.FontSize(self.kpiSettings().fontSize() + "px");
 			result.Alignment(self.kpiSettings().alignment());
 			result.FontColor(self.kpiSettings().fontColor());
+			result.BackColor(self.kpiSettings().backColor());
 			result.PositiveColor(self.kpiSettings().positiveColor());
 			result.NegativeColor(self.kpiSettings().negativeColor());
 			result.NumberFormat(self.kpiSettings().numberFormat());
@@ -5188,6 +5191,9 @@ var reportViewModel = function (options) {
 		self.updateKpi();
 	});
 	self.kpiSettings().fontColor.subscribe(function (newVal) {
+		self.updateKpi();
+	});
+	self.kpiSettings().backColor.subscribe(function (newVal) {
 		self.updateKpi();
 	});
 	self.kpiSettings().positiveColor.subscribe(function (newVal) {
@@ -5209,6 +5215,7 @@ var reportViewModel = function (options) {
 		self.kpiSettings().fontSize(48);
 		self.kpiSettings().alignment("center");
 		self.kpiSettings().fontColor("#000000");//black
+		self.kpiSettings().backColor("#fff");//white
 		self.kpiSettings().positiveColor("#28a745");//green
 		self.kpiSettings().negativeColor("#dc3545");//red
 		self.kpiSettings().numberFormat("number");
@@ -6187,6 +6194,7 @@ var reportViewModel = function (options) {
 			self.kpiSettings().fontSize(kpisetting.fontSize);
 			self.kpiSettings().alignment(kpisetting.alignment);
 			self.kpiSettings().fontColor(kpisetting.fontColor);
+			self.kpiSettings().backColor(kpisetting.backColor);
 			self.kpiSettings().positiveColor(kpisetting.positiveColor);
 			self.kpiSettings().negativeColor(kpisetting.negativeColor);
 			self.kpiSettings().numberFormat(kpisetting.numberFormat);
