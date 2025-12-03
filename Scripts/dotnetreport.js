@@ -1577,7 +1577,6 @@ var reportViewModel = function (options) {
 	});
 
 	self.adminMode.subscribe(function (newValue) {
-
 		if (self.ReportMode() != "dashboard" && self.ReportMode() != "subreport" && !self.inInit) {
 			self.loadFolders().done(function () {
 				self.LoadAllSavedReports();
@@ -2136,6 +2135,7 @@ var reportViewModel = function (options) {
 
 								const importReport = function (action) {
 									const reportview = new reportViewModel(options);
+									reportview.adminMode(self.adminMode()) 
 									report.data = report.data || {};
 									report.data.FolderID = folderId;
 
