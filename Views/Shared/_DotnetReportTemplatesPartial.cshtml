@@ -197,15 +197,15 @@
 </script>
 
 <script type="text/html" id="report-widget">
-    <div style="text-align: center; width: 100%;font-size: 48px">
+    <div data-bind="style: { 'font-size': (FontSize ? FontSize : '48px'),'text-align': Alignment ? Alignment : 'center','color': FontColor ? FontColor : '#000000','background-color':BackColor ? BackColor : '#fff' }" style="width: 100%;">
         <span data-bind="visible: Rows.length < 1" title="No data found">/</span>
 
         <div data-bind="if: Rows.length > 0">
             <div data-bind="with: $parent.rows[0].Items[0]">
-                <span data-bind="html: formattedVal"></span>
+                <span data-bind="html: $parent.formatKpiValue(Value)"></span>
 
                 <!-- ko if: $parent.Rows.length > 1 ? ($parents[$parents.length-2].showPriorInKpi != undefined ? $parents[$parents.length-2].showPriorInKpi() : $parents[$parents.length-1].showPriorInKpi()) : false -->
-                <span data-bind="style: {'color': $parent.calculateRate() > 0 ? 'green' : 'red', 'font-size': '24px'}">
+                <span data-bind="style: {'color': $parent.calculateRate() > 0 ? $parent.PositiveColor : $parent.NegativeColor, 'font-size': '24px'}">
                     <span data-bind="html: $parent.calculateRate() + '%'"></span>
                 </span>
 
@@ -219,7 +219,108 @@
     </div>
 
 </script>
-
+<script type="text/html" id="kpi-settings">
+    <div class="chart-container pull-right">
+        <button class="btn btn-light btn-sm d-flex align-items-center mt-2 chart-settings-btn"
+                data-bind="click: toggleKpiSettings()" title="KPI Settings">
+            <i class="fa fa-cog"></i>
+        </button>
+        <div class="kpi-settings-panel border p-2 shadow-sm bg-light"
+             data-bind="visible: showKpiSettings">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <button class="btn btn-sm btn-close" data-bind="click: toggleKpiSettings()"></button>
+                <h6 class="mb-0">KPI Settings</h6>
+            </div>
+            <ul class="nav nav-tabs nav-sm mb-2 small">
+                <li class="nav-item">
+                    <a class="nav-link active"
+                       data-bs-toggle="tab"
+                       data-bind="attr: { href: '#kpiTab-' + ReportID() }">
+                        KPI
+                    </a>
+                </li>
+            </ul>
+            <div class="tab-content small">
+                <!-- KPI Tab -->
+                <div class="tab-pane fade show active"
+                     data-bind="attr: { id: 'kpiTab-' + ReportID() }">
+                    <div class="mb-2">
+                        <label class="form-label small">Font Size</label>
+                        <input type="number"
+                               class="form-control form-control-sm"
+                               min="10" max="100"
+                               data-bind="value: kpiSettings().fontSize, valueUpdate: 'input', event: { input: updateKpi }">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Alignment</label>
+                        <select class="form-select form-select-sm"
+                                data-bind="value: kpiSettings().alignment, valueUpdate: 'change', event: { change: updateKpi }">
+                            <option value="left">Left</option>
+                            <option value="center">Center</option>
+                            <option value="right">Right</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Font Color</label>&nbsp;&nbsp;&nbsp;&nbsp;
+                        <label class="form-label small">Back Color</label><br />
+                        <input type="color" class="color-picker"
+                               data-bind="value: kpiSettings().fontColor, valueUpdate: 'change',event: { change: updateKpi }"/>
+                               &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                        <input type="color" class="color-picker"
+                               data-bind="value: kpiSettings().backColor, valueUpdate: 'change',event: { change: updateKpi }"/>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Rate Color (+ / -)</label><br />
+                        <input type="color" class="color-picker"
+                               data-bind="value: kpiSettings().positiveColor,valueUpdate: 'change', event: { change: updateKpi }"/> +
+                        <input type="color" class="color-picker"
+                               data-bind="value: kpiSettings().negativeColor,valueUpdate: 'change', event: { change: updateKpi }"/> -
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Number Format</label>
+                        <select class="form-select form-select-sm"
+                                data-bind="value: kpiSettings().numberFormat, valueUpdate: 'change', event: { change: updateKpi }">
+                            <option value="number">Normal Number</option>
+                            <option value="money">Money</option>
+                            <option value="custom">Custom Format</option>
+                        </select>
+                        <input type="text"
+                               class="form-control form-control-sm mt-2"
+                               placeholder="e.g. #,###.00"
+                               data-bind="value: kpiSettings().customFormat,
+                                          visible: kpiSettings().numberFormat() === 'custom',
+                                          valueUpdate:'input',
+                                          event:{ input:updateKpi }">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Short Format</label>
+                        <select class="form-select form-select-sm"
+                                data-bind="value: kpiSettings().shortFormat,valueUpdate:'change',event:{ change:updateKpi }">
+                            <option value="none">None</option>
+                            <option value="thousand">Thousands (K)</option>
+                            <option value="million">Millions (M)</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Currency Symbol</label>
+                        <select class="form-select form-select-sm"
+                                data-bind="value: kpiSettings().currencySymbol,valueUpdate:'change',event:{ change:updateKpi }">
+                            <option value="$">$ - Dollar</option>
+                            <option value="€">€ - Euro</option>
+                            <option value="£">£ - Pound</option>
+                        </select>
+                    </div>
+                    <div class="d-flex justify-content-end">
+                        <button class="btn btn-sm btn-outline-secondary"
+                                data-bind="click: clearKpiSettings">
+                            Clear
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</script>
 <script type="text/html" id="report-column">
     <!-- ko foreach: Items -->
     <td data-bind="hidden: outerGroup, style: {'background-color': _backColor ?? backColor(), 'color': _fontColor ?? fontColor(), 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': fieldAlign() ? fieldAlign() : (Column.IsNumeric ? 'right' : 'left')}">
@@ -484,6 +585,9 @@
         <div data-bind="template: {name: 'report-table', data: $parent.ReportData }"></div>
         <!-- /ko -->
         <!-- ko if: $parents[1].ReportType() == 'Single'-->
+        <div data-bind="if: $parents[1].ReportType()!='Html' && $parents[1].ReportType()=='Single'">
+            <div data-bind="template: {name: 'kpi-settings', data: $parents[1] }"></div>
+        </div>
         <div data-bind="template: {name: 'report-widget', data: $parent.ReportData }"></div>
         <!-- /ko -->
         <!-- /ko -->

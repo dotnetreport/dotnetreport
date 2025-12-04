@@ -4317,9 +4317,10 @@ namespace ReportBuilder.Web.Models
                     var table = new TableViewModel
                     {
                         Id = matchTable != null ? matchTable.Id : 0,
-                        SchemaName = schemaName, 
+                        SchemaName = schemaName,
                         TableName = tableName,
                         DisplayName = matchTable != null ? matchTable.DisplayName : tableName,
+                        Categories = matchTable?.Categories ?? new List<CategoryViewModel>(),
                         IsView = type == "VIEW",
                         Selected = matchTable != null,
                         Columns = new List<ColumnViewModel>(),

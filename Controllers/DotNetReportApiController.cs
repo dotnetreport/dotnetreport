@@ -4,6 +4,7 @@ using ReportBuilder.Web.Models;
 using System.Data;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Web;
 using JsonConvert = Newtonsoft.Json.JsonConvert;
 
@@ -283,7 +284,7 @@ namespace ReportBuilder.Web.Controllers
                 var allSqls = reportSql.Split(new string[] { "%2C", "," }, StringSplitOptions.RemoveEmptyEntries);
                 var dtPaged = new DataTable();
                 var dtCols = 0;
-
+                bool hasTop = false;
                 List<string> fields = new List<string>();
                 List<string> sqlFields = new List<string>();
                 for (int i = 0; i < allSqls.Length; i++)
@@ -375,8 +376,8 @@ namespace ReportBuilder.Web.Controllers
                             else
                                 sql += " ORDER BY 1 ";
                         }
-
-                        if (!sql.Contains(" TOP ") && string.IsNullOrEmpty(pivotColumn))
+                        hasTop = sql.IndexOf(" TOP ", StringComparison.OrdinalIgnoreCase) >= 0;
+                        if (!hasTop && string.IsNullOrEmpty(pivotColumn))
                         {
                             if (DotNetReportHelper.dbtype == "PostgreSQL" || DotNetReportHelper.dbtype == "MySQL")
                             {
@@ -391,7 +392,7 @@ namespace ReportBuilder.Web.Controllers
                                 sql += $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
                             }
                         }
-
+                       
                         if (sql.Contains("__jsonc__"))
                             sql = sql.Replace("__jsonc__", "");
 
@@ -553,7 +554,14 @@ namespace ReportBuilder.Web.Controllers
                 {
                     dtPaged = dtPaged.AsEnumerable().Skip((pageNumber - 1) * pageSize).Take(pageSize).CopyToDataTable();
                 }
-
+                if (hasTop && string.IsNullOrEmpty(pivotColumn))
+                {
+                    var match = Regex.Match(sql, @"TOP\s+(\d+)", RegexOptions.IgnoreCase);
+                    if (match.Success)
+                    {
+                        totalRecords = int.Parse(match.Groups[1].Value);
+                    }
+                }
                 var model = new DotNetReportResultModel
                 {
                     ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dtPaged, fields),
