@@ -1578,7 +1578,6 @@ var reportViewModel = function (options) {
 	});
 
 	self.adminMode.subscribe(function (newValue) {
-
 		if (self.ReportMode() != "dashboard" && self.ReportMode() != "subreport" && !self.inInit) {
 			self.loadFolders().done(function () {
 				self.LoadAllSavedReports();
@@ -2137,6 +2136,7 @@ var reportViewModel = function (options) {
 
 								const importReport = function (action) {
 									const reportview = new reportViewModel(options);
+									reportview.adminMode(self.adminMode()) 
 									report.data = report.data || {};
 									report.data.FolderID = folderId;
 
@@ -4478,25 +4478,30 @@ var reportViewModel = function (options) {
 		result.ReportData.formatKpiValue = function (value) {
 			let settings = self.kpiSettings();
 			let v = Number(value);
-			let symbol = settings.currencySymbol();   
+			let symbol = settings.currencySymbol();
+			let pattern = settings.customFormat();
+			if (settings.numberFormat() === "custom" && pattern) {
+				return applyCustomFormat(v, pattern);
+			}
 			if (settings.shortFormat() === "thousand") {
 				v = v / 1000;
-				return symbol + " " + v.toLocaleString() + "K";  
+				return symbol + " " + v.toLocaleString() + "K";
 			}
 			if (settings.shortFormat() === "million") {
 				v = v / 1000000;
-				return symbol + " " + v.toLocaleString() + "M";   
+				return symbol + " " + v.toLocaleString() + "M";
 			}
 			if (settings.numberFormat() === "money") {
-				return symbol + " " + v.toLocaleString();         
+				return symbol + " " + v.toLocaleString();
 			}
-			return v.toLocaleString();                           
+			return v.toLocaleString();
 		};
 
 		if (self.kpiSettings() && Object.keys(self.kpiSettings()).length > 0) {
 			result.ReportData.FontSize = ko.observable(self.kpiSettings()?.fontSize() + "px");
 			result.ReportData.Alignment = ko.observable(self.kpiSettings()?.alignment());
 			result.ReportData.FontColor = ko.observable(self.kpiSettings()?.fontColor());
+			result.ReportData.BackColor = ko.observable(self.kpiSettings()?.backColor());
 			result.ReportData.PositiveColor = ko.observable(self.kpiSettings()?.positiveColor());
 			result.ReportData.NegativeColor = ko.observable(self.kpiSettings()?.negativeColor());
 			result.ReportData.NumberFormat = ko.observable(self.kpiSettings()?.numberFormat());
@@ -5338,12 +5343,25 @@ var reportViewModel = function (options) {
 		fontSize: ko.observable(48),
 		alignment: ko.observable("center"),
 		fontColor: ko.observable("#000000"),
+		backColor: ko.observable("#fffff"),
 		positiveColor: ko.observable("#28a745"),
 		negativeColor: ko.observable("#dc3545"),
 		numberFormat: ko.observable("number"),   // number | money
 		shortFormat: ko.observable("none"),      // none | thousand | million
-		currencySymbol: ko.observable("$") 
+		currencySymbol: ko.observable("$"),
+		customFormat: ko.observable(null)
 	});
+	function applyCustomFormat(value, pattern) {
+		let decimals = 0;
+		if (pattern.indexOf(".") >= 0) {
+			decimals = pattern.split(".")[1].length;
+		}
+		let fixed = Number(value).toFixed(decimals);
+		let parts = fixed.split(".");
+		parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+		return parts.join(".");
+	}
+
 	self.toggleKpiSettings = function () {
 		self.showKpiSettings(!self.showKpiSettings());
 	};
@@ -5353,6 +5371,7 @@ var reportViewModel = function (options) {
 			result.FontSize(self.kpiSettings().fontSize() + "px");
 			result.Alignment(self.kpiSettings().alignment());
 			result.FontColor(self.kpiSettings().fontColor());
+			result.BackColor(self.kpiSettings().backColor());
 			result.PositiveColor(self.kpiSettings().positiveColor());
 			result.NegativeColor(self.kpiSettings().negativeColor());
 			result.NumberFormat(self.kpiSettings().numberFormat());
@@ -5367,6 +5386,9 @@ var reportViewModel = function (options) {
 		self.updateKpi();
 	});
 	self.kpiSettings().fontColor.subscribe(function (newVal) {
+		self.updateKpi();
+	});
+	self.kpiSettings().backColor.subscribe(function (newVal) {
 		self.updateKpi();
 	});
 	self.kpiSettings().positiveColor.subscribe(function (newVal) {
@@ -5384,15 +5406,20 @@ var reportViewModel = function (options) {
 	self.kpiSettings().currencySymbol.subscribe(function (newVal) {
 		self.updateKpi();
 	});
+	self.kpiSettings().customFormat.subscribe(function (newVal) {
+		self.updateKpi();
+	});
 	self.clearKpiSettings = function () {
 		self.kpiSettings().fontSize(48);
 		self.kpiSettings().alignment("center");
 		self.kpiSettings().fontColor("#000000");//black
+		self.kpiSettings().backColor("#fff");//white
 		self.kpiSettings().positiveColor("#28a745");//green
 		self.kpiSettings().negativeColor("#dc3545");//red
 		self.kpiSettings().numberFormat("number");
 		self.kpiSettings().shortFormat("none");
 		self.kpiSettings().currencySymbol("$");
+		self.kpiSettings().customFormat(null);
 		self.updateKpi();
 	};
 	self.chartOptions = ko.observable({
@@ -6395,6 +6422,7 @@ var reportViewModel = function (options) {
 			self.kpiSettings().fontSize(kpisetting.fontSize);
 			self.kpiSettings().alignment(kpisetting.alignment);
 			self.kpiSettings().fontColor(kpisetting.fontColor);
+			self.kpiSettings().backColor(kpisetting.backColor);
 			self.kpiSettings().positiveColor(kpisetting.positiveColor);
 			self.kpiSettings().negativeColor(kpisetting.negativeColor);
 			self.kpiSettings().numberFormat(kpisetting.numberFormat);
