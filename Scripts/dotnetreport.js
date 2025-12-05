@@ -1823,7 +1823,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.setupSettingsDirtyCheck = function () {
-		var setingsTabs = $('#chartTab-' + self.ReportID() + ', #tableTab-' + self.ReportID());
+		var setingsTabs = $('#chartTab-' + self.ReportID() + ', #tableTab-' + self.ReportID() + ', #kpiTab-' + self.ReportID());
 
 		setingsTabs 
 			.off("change click", "input, select, .form-select, .form-control, .btn, .list-group-item")

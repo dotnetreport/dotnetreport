@@ -444,7 +444,7 @@
                     <a class="btn btn-link" data-bind="visible: CanEdit() && CanSaveReports() && isDirty(), click: SaveWithoutRun">
                         <span class="fa fa-save"></span>
                     </a>                    
-                    <a class="btn btn-link" data-bind="click: toggleExpand"><span class="fa" data-bind="css: {'fa-expand': !isExpanded(), 'fa-minus': isExpanded() }, visible: ReportType() != 'Single' && !noDashboardBorders()"></span></a>
+                    <a class="btn btn-link" data-bind="visible:ReportType() != 'Single',click: toggleExpand"><span class="fa" data-bind="css: {'fa-expand': !isExpanded(), 'fa-minus': isExpanded() }, visible: ReportType() != 'Single' && !noDashboardBorders()"></span></a>
                 </div>
                 <div data-bind="visible: $parent.arrangeDashboard">
                     <div class="pull-right" data-bind="if: ReportType()!='Single' && ReportType()!='Html' && CanEdit()">
