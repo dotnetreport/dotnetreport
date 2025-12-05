@@ -5408,30 +5408,6 @@ var reportViewModel = function (options) {
 	self.kpiSettings().alignment.subscribe(function (newVal) {
 		self.updateKpi();
 	});
-	self.kpiSettings().fontColor.subscribe(function (newVal) {
-		self.updateKpi();
-	});
-	self.kpiSettings().backColor.subscribe(function (newVal) {
-		self.updateKpi();
-	});
-	self.kpiSettings().positiveColor.subscribe(function (newVal) {
-		self.updateKpi();
-	});
-	self.kpiSettings().negativeColor.subscribe(function (newVal) {
-		self.updateKpi();
-	});
-	self.kpiSettings().numberFormat.subscribe(function (newVal) {
-		self.updateKpi();
-	});
-	self.kpiSettings().shortFormat.subscribe(function (newVal) {
-		self.updateKpi();
-	});
-	self.kpiSettings().currencySymbol.subscribe(function (newVal) {
-		self.updateKpi();
-	});
-	self.kpiSettings().customFormat.subscribe(function (newVal) {
-		self.updateKpi();
-	});
 	self.clearKpiSettings = function () {
 		self.kpiSettings().fontSize(48);
 		self.kpiSettings().alignment("center");
