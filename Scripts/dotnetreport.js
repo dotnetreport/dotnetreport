@@ -8193,7 +8193,13 @@ var dashboardViewModel = function (options) {
 			x.DrawChart();
 		});
 	};
-
+	self.getCardBackground = function (item) {
+		if (!item) return "";
+		if (item.ReportType() == "Single" && item.ReportResult()?.ReportData()?.BackColor) {
+			return item.ReportResult()?.ReportData()?.BackColor;
+		}
+		return "";
+	};
 	self.selectedReport = ko.observable(null);
 	self.skipGridRefresh = false;
 	function hasNewReportWidget() {
