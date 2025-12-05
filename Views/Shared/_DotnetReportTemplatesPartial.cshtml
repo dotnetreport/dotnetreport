@@ -249,12 +249,12 @@
                         <input type="number"
                                class="form-control form-control-sm"
                                min="10" max="100"
-                               data-bind="value: kpiSettings().fontSize, valueUpdate: 'input', event: { input: updateKpi }">
+                               data-bind="value: kpiSettings().fontSize, event: { input: updateKpi }">
                     </div>
                     <div class="mb-2">
                         <label class="form-label small">Alignment</label>
                         <select class="form-select form-select-sm"
-                                data-bind="value: kpiSettings().alignment, valueUpdate: 'change', event: { change: updateKpi }">
+                                data-bind="value: kpiSettings().alignment, event: { change: updateKpi }">
                             <option value="left">Left</option>
                             <option value="center">Center</option>
                             <option value="right">Right</option>
@@ -264,22 +264,22 @@
                         <label class="form-label small">Font Color</label>&nbsp;&nbsp;&nbsp;&nbsp;
                         <label class="form-label small">Back Color</label><br />
                         <input type="color" class="color-picker"
-                               data-bind="value: kpiSettings().fontColor, valueUpdate: 'change',event: { change: updateKpi }"/>
+                               data-bind="value: kpiSettings().fontColor,event: { change: updateKpi }"/>
                                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                         <input type="color" class="color-picker"
-                               data-bind="value: kpiSettings().backColor, valueUpdate: 'change',event: { change: updateKpi }"/>
+                               data-bind="value: kpiSettings().backColor,event: { change: updateKpi }"/>
                     </div>
-                    <div class="mb-2">
+                    <div data-bind="visible:showPriorInKpi()" class="mb-2">
                         <label class="form-label small">Rate Color (+ / -)</label><br />
                         <input type="color" class="color-picker"
-                               data-bind="value: kpiSettings().positiveColor,valueUpdate: 'change', event: { change: updateKpi }"/> +
+                               data-bind="value: kpiSettings().positiveColor, event: { change: updateKpi }"/> +
                         <input type="color" class="color-picker"
-                               data-bind="value: kpiSettings().negativeColor,valueUpdate: 'change', event: { change: updateKpi }"/> -
+                               data-bind="value: kpiSettings().negativeColor, event: { change: updateKpi }"/> -
                     </div>
                     <div class="mb-2">
                         <label class="form-label small">Number Format</label>
                         <select class="form-select form-select-sm"
-                                data-bind="value: kpiSettings().numberFormat, valueUpdate: 'change', event: { change: updateKpi }">
+                                data-bind="value: kpiSettings().numberFormat, event: { change: updateKpi }">
                             <option value="number">Normal Number</option>
                             <option value="money">Money</option>
                             <option value="custom">Custom Format</option>
@@ -295,19 +295,22 @@
                     <div class="mb-2">
                         <label class="form-label small">Short Format</label>
                         <select class="form-select form-select-sm"
-                                data-bind="value: kpiSettings().shortFormat,valueUpdate:'change',event:{ change:updateKpi }">
+                                data-bind="value: kpiSettings().shortFormat,event:{ change:updateKpi }">
                             <option value="none">None</option>
+                            <option value="auto">Auto</option>
                             <option value="thousand">Thousands (K)</option>
                             <option value="million">Millions (M)</option>
+                            <option value="billion">Billions (B)</option>
                         </select>
                     </div>
                     <div class="mb-2">
                         <label class="form-label small">Currency Symbol</label>
                         <select class="form-select form-select-sm"
-                                data-bind="value: kpiSettings().currencySymbol,valueUpdate:'change',event:{ change:updateKpi }">
-                            <option value="$">$ - Dollar</option>
-                            <option value="€">€ - Euro</option>
-                            <option value="£">£ - Pound</option>
+                                data-bind="value: kpiSettings().currencySymbol,event:{ change:updateKpi }">
+                            <option value="$">USD ($)</option>
+                            <option value="€">Euro (€)</option>
+                            <option value="£">Pound (£)</option>
+                            <option value="Rs">Rupee (Rs)</option>
                         </select>
                     </div>
                     <div class="d-flex justify-content-end">
@@ -586,9 +589,6 @@
         <div data-bind="template: {name: 'report-table', data: $parent.ReportData }"></div>
         <!-- /ko -->
         <!-- ko if: $parents[1].ReportType() == 'Single'-->
-        <div data-bind="if: $parents[1].ReportType()!='Html' && $parents[1].ReportType()=='Single'">
-            <div data-bind="template: {name: 'kpi-settings', data: $parents[1] }"></div>
-        </div>
         <div data-bind="template: {name: 'report-widget', data: $parent.ReportData }"></div>
         <!-- /ko -->
         <!-- /ko -->

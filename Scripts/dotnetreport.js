@@ -1824,7 +1824,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.setupSettingsDirtyCheck = function () {
-		var setingsTabs = $('#chartTab-' + self.ReportID() + ', #tableTab-' + self.ReportID());
+		var setingsTabs = $('#chartTab-' + self.ReportID() + ', #tableTab-' + self.ReportID() + ', #kpiTab-' + self.ReportID());
 
 		setingsTabs 
 			.off("change click", "input, select, .form-select, .form-control, .btn, .list-group-item")
@@ -4490,6 +4490,19 @@ var reportViewModel = function (options) {
 			if (settings.numberFormat() === "custom" && pattern) {
 				return applyCustomFormat(v, pattern);
 			}
+			if (settings.shortFormat() === "auto") {
+				let absValue = Math.abs(v);
+				if (absValue >= 1_000_000_000) {   // Billions
+					return symbol + " " + (v / 1_000_000_000).toLocaleString() + "B";
+				}
+				if (absValue >= 1_000_000) {       // Millions
+					return symbol + " " + (v / 1_000_000).toLocaleString() + "M";
+				}
+				if (absValue >= 1_000) {           // Thousands
+					return symbol + " " + (v / 1_000).toLocaleString() + "K";
+				}
+				return symbol + " " + v.toLocaleString();
+			}
 			if (settings.shortFormat() === "thousand") {
 				v = v / 1000;
 				return symbol + " " + v.toLocaleString() + "K";
@@ -4497,6 +4510,10 @@ var reportViewModel = function (options) {
 			if (settings.shortFormat() === "million") {
 				v = v / 1000000;
 				return symbol + " " + v.toLocaleString() + "M";
+			}
+			if (settings.shortFormat() === "billion") {
+				v = v / 1000000000;
+				return symbol + " " + v.toLocaleString() + "B";
 			}
 			if (settings.numberFormat() === "money") {
 				return symbol + " " + v.toLocaleString();
@@ -5390,30 +5407,6 @@ var reportViewModel = function (options) {
 		self.updateKpi();
 	});
 	self.kpiSettings().alignment.subscribe(function (newVal) {
-		self.updateKpi();
-	});
-	self.kpiSettings().fontColor.subscribe(function (newVal) {
-		self.updateKpi();
-	});
-	self.kpiSettings().backColor.subscribe(function (newVal) {
-		self.updateKpi();
-	});
-	self.kpiSettings().positiveColor.subscribe(function (newVal) {
-		self.updateKpi();
-	});
-	self.kpiSettings().negativeColor.subscribe(function (newVal) {
-		self.updateKpi();
-	});
-	self.kpiSettings().numberFormat.subscribe(function (newVal) {
-		self.updateKpi();
-	});
-	self.kpiSettings().shortFormat.subscribe(function (newVal) {
-		self.updateKpi();
-	});
-	self.kpiSettings().currencySymbol.subscribe(function (newVal) {
-		self.updateKpi();
-	});
-	self.kpiSettings().customFormat.subscribe(function (newVal) {
 		self.updateKpi();
 	});
 	self.clearKpiSettings = function () {
@@ -8181,7 +8174,13 @@ var dashboardViewModel = function (options) {
 			x.DrawChart();
 		});
 	};
-
+	self.getCardBackground = function (item) {
+		if (!item) return "";
+		if (item.ReportType() == "Single" && item.ReportResult()?.ReportData()?.BackColor) {
+			return item.ReportResult()?.ReportData()?.BackColor;
+		}
+		return "";
+	};
 	self.selectedReport = ko.observable(null);
 	self.skipGridRefresh = false;
 	function hasNewReportWidget() {
