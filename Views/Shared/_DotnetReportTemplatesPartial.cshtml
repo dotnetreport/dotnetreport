@@ -269,7 +269,7 @@
                         <input type="color" class="color-picker"
                                data-bind="value: kpiSettings().backColor, valueUpdate: 'change',event: { change: updateKpi }"/>
                     </div>
-                    <div class="mb-2">
+                    <div data-bind="visible:showPriorInKpi()" class="mb-2">
                         <label class="form-label small">Rate Color (+ / -)</label><br />
                         <input type="color" class="color-picker"
                                data-bind="value: kpiSettings().positiveColor,valueUpdate: 'change', event: { change: updateKpi }"/> +
