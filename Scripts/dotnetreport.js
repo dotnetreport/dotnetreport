@@ -3138,7 +3138,7 @@ var reportViewModel = function (options) {
 	});
 
 	self.useRenderTable = ko.computed(function () {
-		return (self.ReportType() == 'List' || self.ShowExpandOption() || (self.hasPivotColumn() && !self.appSettings.useAltPivot)) && self.subReports().length <= 0;
+		return (self.ReportType() == 'List' || self.ShowExpandOption() || (self.hasPivotColumn() && !self.appSettings.useAltPivot)) && self.subReports().length <= 0 && self.outerGroupData().length <= 0;
 	})
 
 	self.dateFields = ko.computed(function () {
@@ -3538,7 +3538,8 @@ var reportViewModel = function (options) {
 						seriesType: x.seriesType(),
 						formulaType: x.formulaType,
 						functionConfig: x.functionConfig,
-						customSqlField: x.customSqlField 
+						customSqlField: x.customSqlField,
+						outerGroup: x.outerGroup()
 					}),
 					DrillDataFormat: x.drillDataFormat(),
 					FieldAlign: x.fieldAlign(),
@@ -3657,7 +3658,6 @@ var reportViewModel = function (options) {
 
 	self.RunReport = function (saveOnly, skipValidation, dashboardRun, importJson, previewOnly) {
 		self.ReportResult().HasError(false);
-		self.OuterGroupColumns([]);
 		saveOnly = saveOnly === true ? true : false;
 		skipValidation = skipValidation === true ? true : false;
 		self.setFlyFilters();
@@ -3869,7 +3869,6 @@ var reportViewModel = function (options) {
 		reportResult.ReportDebug(result.ReportDebug);
 		reportResult.ReportSql(beautifySql(result.ReportSql, true));
 		self.ReportSeries = reportSeries;
-		self.OuterGroupColumns([]);
 		if (result.HasError || previewOnly === true) return;
 		function isContained(src, dst) {
 			return typeof src === 'string' && typeof dst === 'string' && dst.includes(src);
@@ -3980,7 +3979,7 @@ var reportViewModel = function (options) {
 				e.isJsonColumn = col.fieldType == 'Json';
 				e.functionConfig = col.functionConfig;
 				e.customSqlField = col.customSqlField;
-				e.outerGroup = ko.observable(false);
+				e.outerGroup = col.outerGroup || ko.observable(false);
 				e.colIndex = i;
 				e.pagerIndex = function ($parents) {
 					return $parents[1].pager ? 1
@@ -3988,9 +3987,11 @@ var reportViewModel = function (options) {
 				}
 
 				e.toggleOuterGroup = function () {
-					e.outerGroup(!e.outerGroup());
+					e.outerGroup(!e.outerGroup());			
+				}
 
-					if (e.outerGroup()) {
+				e.outerGroup.subscribe(function (newValue) {
+					if (newValue) {
 						self.OuterGroupColumns.push({
 							fieldId: col.fieldId,
 							fieldName: col.fieldName,
@@ -4004,16 +4005,21 @@ var reportViewModel = function (options) {
 								col.selectedAggregate = ko.observable("Group");
 							}
 						});
-						col.selectedAggregate = ko.observable("Outer Group");
+					} else {
+						const entry = self.OuterGroupColumns().find(x => x.fieldId === col.fieldId);
+						if (entry && typeof entry.remove === "function") {
+							entry.remove();
+						}
 					}
-				}
+				});
 
 				e.setupFieldOptions = function () {
 					col.setupFieldOptions();
 				}
 
-				if (col.selectedAggregate && col.selectedAggregate() == 'Outer Group' && !_.find(self.OuterGroupColumns(), {fieldId: e.fieldId})) {
-					e.toggleOuterGroup()
+				if (col._outerGroup || (col.selectedAggregate && col.selectedAggregate() == 'Outer Group' && !_.find(self.OuterGroupColumns(), {fieldId: e.fieldId}))) {
+					e.outerGroup(false);
+					e.toggleOuterGroup();
 				}
 			});
 		}
@@ -4828,7 +4834,7 @@ var reportViewModel = function (options) {
 			const tableBody = document.getElementById('report-table-body' + self.ReportID());
 			const tableHead = document.getElementById('report-table-head' + self.ReportID());
 
-			if (tableHead && data.length > 0) {
+			if (tableHead && data.length > 0 && self.hasPivotColumn()) {
 				const columns = data[0].Items.map(x => {
 					const raw = x.Column.ColumnName;
 					const label = (typeof x.Column.fieldLabel === "function" ? x.Column.fieldLabel() ?? "" : "").trim();
@@ -6171,6 +6177,8 @@ var reportViewModel = function (options) {
 		e.jsonColumnName = e.jsonColumnName;
 		e.isJsonColumn = e.jsonColumnName ? true : false;
 		e.uiId = generateUniqueId();
+		e._outerGroup = e.fieldSettings.outerGroup
+		e.outerGroup = ko.observable(e.fieldSettings.outerGroup == true);
 
 		e.applyAllHeaderFontColor = ko.observable(false);
 		e.applyAllHeaderBackColor = ko.observable(false);
@@ -6205,12 +6213,7 @@ var reportViewModel = function (options) {
 			e.disabled(!e.disabled());
 		}
 
-		e.checkOuterGroup = ko.observable(e.aggregateFunction == 'Outer Group');
-		e.checkOuterGroup.subscribe(function (newValue) {
-			e.selectedAggregate(newValue ? 'Outer Group' : null);
-			self.AggregateReport(true);
-		});
-
+		
 		var formulaItems = [];
 		_.forEach(e.formulaItems || [], function (e) {
 			formulaItems.push(new formulaFieldViewModel({
