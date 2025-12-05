@@ -446,8 +446,13 @@
                     </a>                    
                     <a class="btn btn-link" data-bind="click: toggleExpand"><span class="fa" data-bind="css: {'fa-expand': !isExpanded(), 'fa-minus': isExpanded() }, visible: ReportType() != 'Single' && !noDashboardBorders()"></span></a>
                 </div>
-                <div class="pull-right" data-bind="if: ReportType()!='Single' && ReportType()!='Html' && CanEdit()">
-                    <div data-bind="template: 'chart-settings', data: $data"></div>
+                <div data-bind="visible: $parent.arrangeDashboard">
+                    <div class="pull-right" data-bind="if: ReportType()!='Single' && ReportType()!='Html' && CanEdit()">
+                        <div data-bind="template: 'chart-settings', data: $data"></div>
+                    </div>
+                    <div data-bind="if:ReportType() == 'Single' && CanEdit()">
+                        <div data-bind="template: {name: 'kpi-settings', data: $data }"></div>
+                    </div>
                 </div>
             </div>
             <div data-bind="if: activeDesign()">

@@ -586,9 +586,6 @@
         <div data-bind="template: {name: 'report-table', data: $parent.ReportData }"></div>
         <!-- /ko -->
         <!-- ko if: $parents[1].ReportType() == 'Single'-->
-        <div data-bind="if: $parents[1].ReportType()!='Html' && $parents[1].ReportType()=='Single'">
-            <div data-bind="template: {name: 'kpi-settings', data: $parents[1] }"></div>
-        </div>
         <div data-bind="template: {name: 'report-widget', data: $parent.ReportData }"></div>
         <!-- /ko -->
         <!-- /ko -->
