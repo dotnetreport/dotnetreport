@@ -4489,6 +4489,19 @@ var reportViewModel = function (options) {
 			if (settings.numberFormat() === "custom" && pattern) {
 				return applyCustomFormat(v, pattern);
 			}
+			if (settings.shortFormat() === "auto") {
+				let absValue = Math.abs(v);
+				if (absValue >= 1_000_000_000) {   // Billions
+					return symbol + " " + (v / 1_000_000_000).toLocaleString() + "B";
+				}
+				if (absValue >= 1_000_000) {       // Millions
+					return symbol + " " + (v / 1_000_000).toLocaleString() + "M";
+				}
+				if (absValue >= 1_000) {           // Thousands
+					return symbol + " " + (v / 1_000).toLocaleString() + "K";
+				}
+				return symbol + " " + v.toLocaleString();
+			}
 			if (settings.shortFormat() === "thousand") {
 				v = v / 1000;
 				return symbol + " " + v.toLocaleString() + "K";
@@ -4496,6 +4509,10 @@ var reportViewModel = function (options) {
 			if (settings.shortFormat() === "million") {
 				v = v / 1000000;
 				return symbol + " " + v.toLocaleString() + "M";
+			}
+			if (settings.shortFormat() === "billion") {
+				v = v / 1000000000;
+				return symbol + " " + v.toLocaleString() + "B";
 			}
 			if (settings.numberFormat() === "money") {
 				return symbol + " " + v.toLocaleString();
