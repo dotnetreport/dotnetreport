@@ -578,7 +578,8 @@
 
     <div data-bind="foreach: outerGroupData">
         <!-- ko if: rows.length > 0 || ($parent.outerGroupData && $parent.outerGroupData().length == 1) -->
-        <h6 data-bind="html: display"></h6>
+        <br />
+        <h6 style="font-weight: bold;" data-bind="html: display"></h6>
         <div class="" style="padding-top: 5px;"></div>
 
         <!-- ko if: $parents[1].ReportType() != 'Single'-->
@@ -1206,6 +1207,16 @@
                             <input type="text" class="form-control" data-bind="value: fieldWidth" />
                         </div>
                     </div>
+                    <div class="form-group row">
+                        <div class="col-sm-12">
+                            <div class="checkbox pull-left" >
+                                <label>
+                                    <input type="checkbox" data-bind="checked: outerGroup" />
+                                    <b>Outer Group</b> - Use this field as a group heading
+                                </label>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <br />
                 <div class="card card-body">
@@ -1358,17 +1369,7 @@
                         </div>
                     </div>
                 </div>
-                <br />
-                <div class="form-group row" data-bind="if: $parents[1].useStoredProc()">
-                    <div class="col-sm-12">
-                        <div class="checkbox pull-left" style="padding-top: 5px;">
-                            <label>
-                                <input type="checkbox" data-bind="checked: checkOuterGroup" />
-                                Outer Group
-                            </label>
-                        </div>
-                    </div>
-                </div>
+                <br />                
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-danger" data-bind="click: cancelFieldOptions">Cancel</button>
