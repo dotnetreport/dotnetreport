@@ -294,7 +294,7 @@ namespace ReportBuilder.Web.Controllers
                     {
                         qry = JsonSerializer.Deserialize<SqlQuery>(sql);
                         sql = qry.sql;
-                        DotNetReportHelper.dbtype = qry.dbType;
+                        if (!string.IsNullOrEmpty(qry.dbType)) DotNetReportHelper.dbtype = qry.dbType;
                     }
                     if (!sql.StartsWith("EXEC"))
                     {
@@ -915,6 +915,27 @@ namespace ReportBuilder.Web.Controllers
             }
 
             return warning;
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> BuildDynamicFunctions()
+        {
+            try
+            {
+                var settings = GetSettings();
+                var functions = await DotNetReportHelper.GetApiFunctions();
+                var compiledType = DynamicCodeRunner.BuildAssembly(functions);
+
+                return Ok(new { success = true });
+            }
+            catch (Exception ex)
+            {               
+                return BadRequest(new
+                {
+                    success = false,
+                    errorMessage = ex.Message
+                });
+            }
         }
 
         //[Authorize(Roles="Administrator")]

@@ -466,7 +466,7 @@ function WordPageViewModel(downloadWord) {
 function DesignerViewModel() {
 	var self = this;
 	self.activePanel = ko.observable('');
-	self.exclusivePanels = ['sortPanel', 'customFieldPanel', 'settingsPanel', 'accessPanel', 'htmlPanel', 'subReportsPanel', 'htmlReportPanel', 'schedulePanel'];
+	self.exclusivePanels = ['sortPanel', 'customFieldPanel', 'customFunctionPanel', 'jsonFieldsPanel', 'settingsPanel', 'accessPanel', 'htmlPanel', 'subReportsPanel', 'htmlReportPanel', 'schedulePanel'];
 
 	self.togglePanel = function (panelId) {
 		if (panelId === 'dataPanel' || panelId === 'selectedPanel') {
@@ -2736,7 +2736,7 @@ var reportViewModel = function (options) {
 	self.customSqlField.selectedSqlFunction.subscribe(function (value) {
 		if (value == 'Other') {
 			setTimeout(function () {
-				self.textQuery.setupHints();
+				self.textQuery.setupHints();				
 			}, 500);
 		}
 	});

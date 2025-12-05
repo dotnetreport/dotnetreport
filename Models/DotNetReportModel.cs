@@ -1132,13 +1132,20 @@ namespace ReportBuilder.Web.Models
                     {
                         if (table.DynamicColumns)
                         {
-                            var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey));
-                            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection();
-
-                            var dt = databaseConnection.ExecuteQuery(connString, table.CustomTableSql);
-                            foreach (DataRow dr in dt.Rows)
+                            try
                             {
-                                table.Columns.Add(new ColumnViewModel { ColumnName = Convert.ToString(dr[0]), DisplayName = Convert.ToString(dr[0]) });
+                                var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey));
+                                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(DotNetReportHelper.dbtype);
+
+                                var dt = databaseConnection.ExecuteQuery(connString, table.CustomTableSql);
+                                foreach (DataRow dr in dt.Rows)
+                                {
+                                    table.Columns.Add(new ColumnViewModel { ColumnName = Convert.ToString(dr[0]), DisplayName = Convert.ToString(dr[0]) });
+                                }
+                            } 
+                            catch(Exception ex)
+                            {
+                                Console.Write(ex.Message);
                             }
                         }
                         else
@@ -1996,7 +2003,9 @@ namespace ReportBuilder.Web.Models
 
             Regex regex = new Regex(@"/\*\|(.*?)\|\*/[^,]+AS\s+\[([^\]]+)\]");
             var matches = regex.Matches(sql);
-
+            
+            object result = "";
+            
             foreach (Match match in matches)
             {
                 string functionCall = match.Groups[1].Value;
@@ -2016,33 +2025,41 @@ namespace ReportBuilder.Web.Models
                 var functionCalls = new List<string>();
                 foreach (DataRow row in dataTable.Rows)
                 {
-                    string modifiedFunctionCall = functionCall;
-
-                    // Iterate over all columns that end with "__prm__"
-                    foreach (DataColumn column in dataTable.Columns.Cast<DataColumn>().Where(c => c.ColumnName.EndsWith("__prm__")))
+                    try
                     {
-                        string paramName = "{" + column.ColumnName.Replace("__prm__", "") + "}";
+                        string modifiedFunctionCall = functionCall;
 
-                        if (modifiedFunctionCall.Contains(paramName))
+                        // Iterate over all columns that end with "__prm__"
+                        foreach (DataColumn column in dataTable.Columns.Cast<DataColumn>().Where(c => c.ColumnName.EndsWith("__prm__")))
                         {
-                            string valueReplacement = row[column].ToString();
-                            // Check if the datatype is numeric
-                            if (column.DataType == typeof(int) || column.DataType == typeof(decimal) || column.DataType == typeof(double) || column.DataType == typeof(long))
+                            string paramName = "{" + column.ColumnName.Replace("__prm__", "") + "}";
+
+                            if (modifiedFunctionCall.Contains(paramName))
                             {
-                                modifiedFunctionCall = modifiedFunctionCall.Replace(paramName, valueReplacement);
-                            }
-                            else
-                            {
-                                modifiedFunctionCall = modifiedFunctionCall.Replace(paramName, "\"" + valueReplacement + "\"");
+                                string valueReplacement = row[column].ToString();
+                                // Check if the datatype is numeric
+                                if (column.DataType == typeof(int) || column.DataType == typeof(decimal) || column.DataType == typeof(double) || column.DataType == typeof(long))
+                                {
+                                    modifiedFunctionCall = modifiedFunctionCall.Replace(paramName, valueReplacement);
+                                }
+                                else
+                                {
+                                    modifiedFunctionCall = modifiedFunctionCall.Replace(paramName, "\"" + valueReplacement + "\"");
+                                }
                             }
                         }
-                    }
 
-                    //var result = await DynamicCodeRunner.RunCode(modifiedFunctionCall + ";");
-                    //if (columnIndex != -1)
-                    //{
-                    //    row[columnIndex] = result;
-                    //}
+                        result = DynamicCodeRunner.RunCode(modifiedFunctionCall + ";");
+                    }
+                    catch (Exception ex)
+                    {
+                        result = ex.Message;
+                    }
+                    if (columnIndex != -1)
+                    {
+                        dataTable.Columns[columnIndex].ReadOnly = false;
+                        row[columnIndex] = result;
+                    }
                 }
             }
 
@@ -2308,7 +2325,7 @@ namespace ReportBuilder.Web.Models
         }
 
 
-        private static (DataTable dt, SqlQuery qry, List<string> sqlFields) GetDataTable(string reportSql, string connectKey)
+        private async static Task<(DataTable dt, SqlQuery qry, List<string> sqlFields)> GetDataTable(string reportSql, string connectKey)
         {
             var qry = new SqlQuery();
             var sql = Decrypt(reportSql);
@@ -2328,7 +2345,8 @@ namespace ReportBuilder.Web.Models
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
             var dt = databaseConnection.ExecuteQuery(connectionString, sql, qry.parameters);
-            
+            dt = await DotNetReportHelper.ExecuteCustomFunction(dt, sql);
+
             return (dt, qry, sqlFields);
         }
 
@@ -2337,7 +2355,7 @@ namespace ReportBuilder.Web.Models
         {
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
-            var data = GetDataTable(reportSql, connectKey);
+            var data = await GetDataTable(reportSql, connectKey);
 
             var qry = data.qry;
             var sqlFields = data.sqlFields;
@@ -2595,7 +2613,7 @@ namespace ReportBuilder.Web.Models
 
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
-            var data = GetDataTable(reportSql, connectKey);
+            var data = await GetDataTable(reportSql, connectKey);
 
             var qry = data.qry;
             var sqlFields = data.sqlFields;
@@ -3229,7 +3247,7 @@ namespace ReportBuilder.Web.Models
             {
                 var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
                 IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
-                var data = GetDataTable(reportSql, connectKey);
+                var data = await GetDataTable(reportSql, connectKey);
 
                 var qry = data.qry;
                 var sqlFields = data.sqlFields;
@@ -3526,7 +3544,7 @@ namespace ReportBuilder.Web.Models
         public static async Task<string> GetXmlFile(string reportSql, string connectKey, string reportName, string expandSqls = null, string pivotColumn = null, string pivotFunction = null)
         {           
             var ds = new DataSet();
-            var data = GetDataTable(reportSql, connectKey);
+            var data = await GetDataTable(reportSql, connectKey);
             var dt = data.dt;
             RemoveColumnsBySubstring(dt, "__prm__");
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);

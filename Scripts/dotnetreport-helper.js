@@ -175,7 +175,7 @@ function ajaxcall(options) {
 function handleAjaxError(jqxhr, status, error) {
     if (jqxhr.responseJSON && jqxhr.responseJSON.d) jqxhr.responseJSON = jqxhr.responseJSON.d;
     if (jqxhr.responseJSON && jqxhr.responseJSON.Result && jqxhr.responseJSON.Result.Message) jqxhr.responseJSON = jqxhr.responseJSON.Result;
-    var msg = jqxhr.responseJSON && jqxhr.responseJSON.Message ? "\n" + jqxhr.responseJSON.Message : "";
+    var msg = jqxhr.responseJSON ? "\n" + (jqxhr.responseJSON.Message || jqxhr.responseJSON.message || jqxhr.responseJSON.errorMessage || "") : "";
 
     switch (error) {
         case "Conflict":
@@ -396,6 +396,44 @@ ko.bindingHandlers.highlightedText = {
         }
 
         element.innerHTML = value.replace(regex, getReplacement);
+    }
+};
+
+ko.bindingHandlers.tableSortable = {
+    init: function (element, valueAccessor) {
+        const options = valueAccessor();
+
+        $(element).sortable({
+            cursor: "move",
+            placeholder: options.placeholder || "sortable-placeholder",
+            handle: options.handle || null,
+            helper: function (e, tr) {
+                const $originals = tr.children();
+                const $helper = tr.clone();
+                $helper.children().each(function (index) {
+                    $(this).width($originals.eq(index).width());
+                });
+                return $helper;
+            },
+            update: function (e, ui) {
+                const item = ko.dataFor(ui.item[0]);
+                const array = ko.unwrap(options.data);
+
+                const oldIndex = ui.item.data("oldIndex");
+                const newIndex = ui.item.index();
+
+                if (oldIndex !== newIndex) {
+                    array.splice(oldIndex, 1);
+                    array.splice(newIndex, 0, item);
+                    if (typeof options.afterMove === "function") {
+                        options.afterMove({ item, oldIndex, newIndex });
+                    }
+                }
+            },
+            start: function (e, ui) {
+                ui.item.data("oldIndex", ui.item.index());
+            }
+        });
     }
 };
 

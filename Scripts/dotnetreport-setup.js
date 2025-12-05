@@ -3146,7 +3146,7 @@ var customFunctionManageModel = function (options, keys) {
 		self.selectedFunction(functionModel);
 		setTimeout(function () {
 			if (codeEditor) {
-				codeEditor.toTextArea(); 
+				codeEditor.toTextArea();
 			}
 			// Create a new CodeMirror instance
 			codeEditor = CodeMirror.fromTextArea(document.getElementById("codeEditor"), {
@@ -3158,7 +3158,7 @@ var customFunctionManageModel = function (options, keys) {
 				},
 				gutters: ["CodeMirror-lint-markers"], // Add gutters for lint markers
 			});
-			codeEditor.setValue(functionModel.code()); 
+			codeEditor.setValue(functionModel.code());
 		}, 500);
 	};
 
@@ -3175,7 +3175,7 @@ var customFunctionManageModel = function (options, keys) {
 
 		if (!self.selectedFunction().name()) {
 			toastr.error("Function name is required");
-			valid=false;
+			valid = false;
 		}
 
 		var existingFunctionIndex = self.functions().findIndex(function (func) {
@@ -3187,9 +3187,11 @@ var customFunctionManageModel = function (options, keys) {
 			valid = false;
 		}
 		// Validate parameters
-		var parameterErrors = [];
+		var parameterErrors = []; var i = 1;
 		self.selectedFunction().parameters().forEach(function (param) {
 			var errors = param.validate();
+			param.OrderBy = i++;
+			param.required(param.required() === false ? false : true);
 			if (errors.length > 0) {
 				parameterErrors = parameterErrors.concat(errors);
 			}
@@ -3213,7 +3215,7 @@ var customFunctionManageModel = function (options, keys) {
 				toastr.error("JavaScript Error: " + error.reason + " on line " + error.line);
 				valid = false;
 			}
-		} 
+		}
 
 		if (!valid) {
 			return;
@@ -3251,12 +3253,26 @@ var customFunctionManageModel = function (options, keys) {
 				self.functions.push(self.selectedFunction());
 			}
 
-			toastr.success('Function saved successfully');
-			self.selectedFunction(null);
+			self.buildCustomFunctions().done(function () {
+				toastr.success('Function saved successfully');
+				self.selectedFunction(null);
+			});
 		});
 	};
 
+	self.buildCustomFunctions = function () {
+		return ajaxcall({
+			url: options.buildDynamicFunctionsUrl,
+			type: 'POST'
+		}).done(function (result) {
+			if (!result) {
+				toastr.error('Error building Functions: ' + result.Message);
+				return false;
+			}
 
+			toastr.success('Functions built successfully');
+		});
+	}
 	self.deleteFunction = function (functionModel) {
 		bootbox.confirm("Are you sure you want to delete this function?", function (result) {
 			if (result) {
@@ -3272,11 +3288,13 @@ var customFunctionManageModel = function (options, keys) {
 						})
 					})
 				}).done(function () {
-					toastr.success("Deleted Function " + functionModel.name());		
+					toastr.success("Deleted Function " + functionModel.name());
 					self.functions.remove(functionModel);
 					if (self.selectedFunction() === functionModel) {
 						self.selectedFunction(null);
-					}								
+					}
+
+					self.buildCustomFunctions();
 				});
 			}
 		});
@@ -3307,7 +3325,7 @@ var customFunctionParameterModel = function (options, parentParameters) {
 	self.displayName = ko.observable(options.DisplayName || '').extend({ required: true });
 	self.description = ko.observable(options.Description || '');
 	self.datatype = ko.observable(options.DataType || 'object');
-	self.required = ko.observable(options.Required || true);
+	self.required = ko.observable(options.Required);
 	self.isValid = ko.observable(true);
 	self.errorMessage = ko.observable();
 

@@ -1506,7 +1506,7 @@
         </div>
         <div class="pull-right">
             <a href="#" class="btn btn-secondary btn-sm" title="Add Custom Field using Formula" data-bind="hidden: isFunctionField() || useStoredProc(), click: cancelFormulaField, text: isFormulaField()? 'Cancel': 'Custom Field', css: {'btn-primary': !isFormulaField(), 'btn-danger': isFormulaField}"></a>
-            <a href="#" class="btn btn-secondary btn-sm" title="Add Custom Field using Function" data-bind="hidden: true || isFormulaField() || useStoredProc(), click: function(){designFunctionField()}, text: isFunctionField()? 'Cancel': 'Function Field', css: {'btn-primary': !isFunctionField(), 'btn-danger': isFunctionField}"></a>
+            <a href="#" class="btn btn-secondary btn-sm" title="Add Custom Field using Function" data-bind="hidden: isFormulaField() || useStoredProc(), click: function(){designFunctionField()}, text: isFunctionField()? 'Cancel': 'Function Field', css: {'btn-primary': !isFunctionField(), 'btn-danger': isFunctionField}"></a>
         </div>
     </div>
     <div class="clearfix"></div>
@@ -2008,6 +2008,80 @@
     </div>
 </script>
 
+<script type="text/html" id="json-field-picker">
+    <div data-bind="if: lastPickedField() && lastPickedField().fieldType == 'Json'">
+        <br />
+        <div class="card">
+            <div class="card-header">
+                <h6>Select Data Fields from <span data-bind="text: lastPickedField().fieldName"></span></h6>
+            </div>
+            <div class="card-body">
+                <div class="row container-fluid" data-bind="foreach: jsonFields">
+                    <div class="col-md-3 col-sm-4 col-xs-6 list-group">
+                        <div class="list-group-item">
+                            <div class="checkbox">
+                                <label>
+                                    <input type="checkbox" data-bind="checkedInArray: {array: $parent.SelectedFields, value: $data}">
+                                    <span data-bind="text: jsonColumnName"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</script>
+
+<script type="text/html" id="custom-function-designer">
+
+    <div class="row">
+        <div class="col-md-12" data-bind="visible: isFunctionField()">
+            <div class="alert alert-info">
+                You are now creating a Customized Field using Functions available.
+            </div>
+        </div>
+    </div>
+
+    <div class="form-group row">
+        <label class="col-sm-2 control-label">Field Label</label>
+        <div class="col-sm-10">
+            <input type="text" class="form-control form-control-sm" data-bind="value: formulaFieldLabel" required placeholder="Custom Field Label" />
+        </div>
+    </div>
+    <div class="form-group row">
+        <label class="col-sm-2 control-label">Data Format</label>
+        <div class="col-sm-10">
+            <select class="form-select form-control-sm" data-bind="value: formulaDataFormat" required>
+                <option>String</option>
+                <option>Integer</option>
+                <option>Decimal</option>
+                <option>Currency</option>
+                <option>Date</option>
+                <option value="DateTime">Date and Time</option>
+            </select>
+        </div>
+    </div>
+    <div class="form-group row" data-bind="visible: formulaDataFormat() == 'Decimal' || formulaDataFormat() == 'Currency'">
+        <label class="col-sm-2 control-label">Round to Decimal Places</label>
+        <div class="col-sm-10">
+            <input type="number" class="form-control" data-bind="value: formulaDecimalPlaces" placeholder="Choose Decimal places (leave blank to not use rounding)" title="Choose Decimal places (leave blank to not use rounding)" />
+        </div>
+    </div>
+
+    <div>
+        Define your Function:
+        <textarea id="function-code"></textarea>
+    </div>
+    <div class="form-group row" >
+        <div class="col-md-12 pull-right">
+            <hr />
+            <a href="#" class="btn btn-primary btn-sm" title="Save Custom Function Field" data-bind="click: saveFunctionField, visible: isFunctionField">Save</a>
+            <a href="#" class="btn btn-sm" title="Custom Field using Function" data-bind="click: function(){isFunctionField(!isFunctionField())}, text: isFunctionField() ? 'Cancel': 'Function', css: {'btn-primary': !isFunctionField(), 'btn-danger': isFunctionField}"></a>
+        </div>
+    </div>
+</script>
+
 <script type="text/html" id="custom-field-designer">
     <div>
         <div class="row">
@@ -2119,11 +2193,11 @@
                     <div class="mb-3">
                         <label class="form-label">Select Data Operation:</label>
                         <select class="form-select" data-bind="select2: {
-                dropdownParent: $root.activeDesign() ? $('#choose-data-design') : $('#choose-data-card'),
-                placeholder: 'Select Function...',
-                data: availableFunctionsGrouped(),
-                templateResult: templateResult
-            }, value: selectedSqlFunction"></select>
+                            dropdownParent: $root.activeDesign() ? $('#choose-data-design') : $('#choose-data-card'),
+                            placeholder: 'Select Function...',
+                            data: availableFunctionsGrouped(),
+                            templateResult: templateResult
+                        }, value: selectedSqlFunction"></select>
                     </div>
 
                     <div class="mb-3" data-bind="hidden: isConditionalFunction() || selectedSqlFunction() == 'Other'">
@@ -2285,6 +2359,10 @@
             </div>
         </div>
 
+        <div class="card flex-fill expandable-panel" id="jsonFieldsPanel" data-bind="visible: lastPickedField() && lastPickedField().fieldType == 'Json'">
+            <div class="card-body" data-bind="template: 'json-field-picker'"></div>
+        </div>
+
         <!-- Custom Field -->
         <div class="card flex-fill expandable-panel" id="customFieldPanel" data-bind="visible: isFormulaField">
             <div class="card-header p-1">
@@ -2294,13 +2372,24 @@
                 <div data-bind="template: 'custom-field-designer', data: $data"></div>
             </div>
         </div>
+
+        <div class="card flex-fill expandable-panel" id="customFunctionPanel" data-bind="visible: isFunctionField">
+            <div class="card-header p-1">
+            <i class="fa fa-magic"></i> Function Field
+            </div>
+            <div class="card-body p-1 custom-field-design" style="max-height: 400px; overflow-y: auto; overflow-x: hidden;" data-bind="if: isFunctionField">
+                <div data-bind="template: 'custom-function-designer', data: $data"></div>
+            </div>
+        </div>
+
         <!-- Field Options Panel -->
         <div id="fieldOptionsPanel" class="card p-2 mt-2 collapse">
         <!-- dynamic field settings load here -->
         </div>
+
         <!-- Filters -->
         <div class="card flex-fill expandable-panel" id="filtersPanel"
-             data-bind="css:{'collapsed-vertical': panels.isCollapsed('filtersPanel')}, hidden: isFormulaField">
+             data-bind="css:{'collapsed-vertical': panels.isCollapsed('filtersPanel')}">
           <div class="card-header p-1" data-bind="click:function(){panels.togglePanel('filtersPanel')}">
             <i class="fa fa-filter"></i> Filters
           </div>
@@ -2312,7 +2401,7 @@
 
         <!-- Sort -->
         <div class="card flex-fill expandable-panel" id="sortPanel"
-             data-bind="css:{'collapsed-vertical': panels.isCollapsed('sortPanel')}, hidden: useStoredProc() || isFormulaField()">
+             data-bind="css:{'collapsed-vertical': panels.isCollapsed('sortPanel')}, hidden: useStoredProc()">
           <div class="card-header p-1" data-bind="click:function(){panels.togglePanel('sortPanel')}">
             <i class="fa fa-sort"></i> Sort
           </div>
@@ -2323,7 +2412,7 @@
 
         <!-- Settings -->
         <div class="card flex-fill expandable-panel" id="settingsPanel"
-             data-bind="css:{'collapsed-vertical': panels.isCollapsed('settingsPanel')}, hidden: isFormulaField">
+             data-bind="css:{'collapsed-vertical': panels.isCollapsed('settingsPanel')}">
           <div class="card-header p-1" data-bind="click:function(){panels.togglePanel('settingsPanel')}">
             <i class="fa fa-gear"></i>Options
           </div>
@@ -2513,95 +2602,30 @@
                                 <div data-bind="template: 'designer-choose-visual'"></div>
                             </div>
                         </div>
-                        <div>
-                            <div data-bind="if: isFunctionField" class="custom-field-design">
-                                <br />
-                                <br />
-                                <div class="card">
-                                    <div class="card-body">
-                                        <div class="row">
-                                            <div class="col-md-12 pull-right">
-                                                <a href="#" class="btn btn-primary btn-sm" title="Save Custom Function Field" data-bind="click: saveFunctionField, visible: isFunctionField">Save</a>
-                                                <a href="#" class="btn btn-sm" title="Custom Field using Function" data-bind="click: function(){isFunctionField(!isFunctionField())}, text: isFunctionField()? 'Cancel': 'Function', css: {'btn-primary': !isFunctionField(), 'btn-danger': isFunctionField}"></a>
-                                            </div>
-                                            <div class="col-md-12 padded-div" data-bind="visible: isFunctionField()">
-                                                <div class="alert alert-info">
-                                                    You are now creating a Customized Field using Functions available.
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div class="form-group row">
-                                            <label class="col-sm-2 control-label">Field Label</label>
-                                            <div class="col-sm-10">
-                                                <input type="text" class="form-control form-control-sm" data-bind="value: formulaFieldLabel" required placeholder="Custom Field Label" />
-                                            </div>
-                                        </div>
-                                        <div class="form-group row">
-                                            <label class="col-sm-2 control-label">Data Format</label>
-                                            <div class="col-sm-10">
-                                                <select class="form-select form-control-sm" data-bind="value: formulaDataFormat" required>
-                                                    <option>String</option>
-                                                    <option>Integer</option>
-                                                    <option>Decimal</option>
-                                                    <option>Currency</option>
-                                                    <option>Date</option>
-                                                    <option value="DateTime">Date and Time</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="form-group row" data-bind="visible: formulaDataFormat() == 'Decimal' || formulaDataFormat() == 'Currency'">
-                                            <label class="col-sm-2 control-label">Round to Decimal Places</label>
-                                            <div class="col-sm-10">
-                                                <input type="number" class="form-control" data-bind="value: formulaDecimalPlaces" placeholder="Choose Decimal places (leave blank to not use rounding)" title="Choose Decimal places (leave blank to not use rounding)" />
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            Define your Function:
-                                            <textarea id="function-code"></textarea>
-                                        </div>
-                                    </div>
+                        <div id="customFunctionSection" data-bind="if: isFunctionField" class="custom-field-design">
+                            <br />
+                            <div class="card">
+                                <div class="card-header">
+                                    <b>Build Custom Field</b>
                                 </div>
-                                <div class="clearfix"></div>
-                            </div>
-
-                            <div data-bind="if: lastPickedField() && lastPickedField().fieldType == 'Json'">
-                                <br />
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h6>Select Data Fields from <span data-bind="text: lastPickedField().fieldName"></span></h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="row container-fluid" data-bind="foreach: jsonFields">
-                                            <div class="col-md-3 col-sm-4 col-xs-6 list-group">
-                                                <div class="list-group-item">
-                                                    <div class="checkbox">
-                                                        <label>
-                                                            <input type="checkbox" data-bind="checkedInArray: {array: $parent.SelectedFields, value: $data}">
-                                                            <span data-bind="text: jsonColumnName"></span>
-                                                        </label>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                                <div class="card-body" data-bind="template: 'custom-function-designer'">
                                 </div>
                             </div>
-
-                            <div id="customFieldSection" data-bind="if: isFormulaField" class="custom-field-design">
-                                <br />
-                                <br />
-                                <div class="card">
-                                    <div class="card-header">
-                                        <b>Build Custom Field</b>
-                                    </div>
-                                    <div class="card-body" data-bind="template: 'custom-field-designer'">
-
-                                    </div>
+                            <div class="clearfix"></div>
+                        </div>
+                        <div data-bind="template: 'json-field-picker'">
+                        </div>
+                        <div id="customFieldSection" data-bind="if: isFormulaField" class="custom-field-design">
+                            <br />
+                            <div class="card">
+                                <div class="card-header">
+                                    <b>Build Custom Field</b>
                                 </div>
-                                <div class="clearfix"></div>
+                                <div class="card-body" data-bind="template: 'custom-field-designer'">
+
+                                </div>
                             </div>
+                            <div class="clearfix"></div>
                         </div>
                         <br />
                         <div class="card card-body">
