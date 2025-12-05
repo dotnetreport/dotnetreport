@@ -294,7 +294,8 @@ namespace ReportBuilder.Web.Controllers
                     {
                         qry = JsonSerializer.Deserialize<SqlQuery>(sql);
                         sql = qry.sql;
-                        DotNetReportHelper.dbtype = qry.dbType;
+                        if (!string.IsNullOrEmpty(qry.dbType))
+                            DotNetReportHelper.dbtype = qry.dbType;
                     }
                     if (!sql.StartsWith("EXEC"))
                     {

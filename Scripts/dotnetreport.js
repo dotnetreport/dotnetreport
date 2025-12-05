@@ -3138,7 +3138,7 @@ var reportViewModel = function (options) {
 	});
 
 	self.useRenderTable = ko.computed(function () {
-		return (self.ReportType() == 'List' || self.ShowExpandOption() || (self.hasPivotColumn() && !self.appSettings.useAltPivot)) && self.subReports().length <= 0 && self.outerGroupData().length <= 0;
+		return (self.ReportType() == 'List' || self.ShowExpandOption() || (self.hasPivotColumn() && !self.appSettings.useAltPivot)) && self.subReports().length <= 0 && self.OuterGroupColumns().length <= 0;
 	})
 
 	self.dateFields = ko.computed(function () {
