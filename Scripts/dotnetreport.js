@@ -3037,6 +3037,17 @@ var reportViewModel = function (options) {
 		self.clearFormulaField();
 		self.isFormulaField(false);
 	};
+	self.duplicateFormulaField = function (field) {
+		if (!field) {
+			toastr.error("No formula field selected");
+			return;
+		}
+		var copyfield = ko.toJS(field);
+		copyfield.fieldName = "Copy - " + copyfield.fieldName;
+		var duplicatedField = self.setupField(copyfield);
+		self.SelectedFields.push(duplicatedField);
+		toastr.success("Formula field duplicated successfully!");
+	};
 	function setFieldFilters(field) {
 		const isNumericOrDate = isNumericOrDateField(field.fieldFormat);
 		field.fieldType = isNumericOrDate ? "Int" : field.fieldType;
@@ -6214,6 +6225,9 @@ var reportViewModel = function (options) {
 			self.additionalAggregateOptions(e, e.fieldFormat());
 			e.editFormulaField = function () {
 				self.editFormulaField(e);
+			}
+			e.duplicateFormulaField = function () {
+				self.duplicateFormulaField(e);
 			}
 		}
 
