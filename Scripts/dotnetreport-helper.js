@@ -760,7 +760,7 @@ function beautifySql(sql, htmlMode = true) {
         if (htmlMode) {
             // Add spaces around keywords
             keywords.forEach(keyword => {
-                sql = sql.replace(new RegExp('\\b' + keyword + '\\b', 'gi'), '<span class="keyword">' + keyword + '</span> ');
+                sql = sql.replace(new RegExp('\\b' + keyword + '\\b', 'gi'), '<span class="keyword">' + keyword + '</span>');
             });
         }
 

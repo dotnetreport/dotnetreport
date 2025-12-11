@@ -3038,6 +3038,17 @@ var reportViewModel = function (options) {
 		self.clearFormulaField();
 		self.isFormulaField(false);
 	};
+	self.duplicateFormulaField = function (field) {
+		if (!field) {
+			toastr.error("No formula field selected");
+			return;
+		}
+		var copyfield = ko.toJS(field);
+		copyfield.fieldName = "Copy - " + copyfield.fieldName;
+		var duplicatedField = self.setupField(copyfield);
+		self.SelectedFields.push(duplicatedField);
+		toastr.success("Formula field duplicated successfully!");
+	};
 	function setFieldFilters(field) {
 		const isNumericOrDate = isNumericOrDateField(field.fieldFormat);
 		field.fieldType = isNumericOrDate ? "Int" : field.fieldType;
@@ -4490,32 +4501,20 @@ var reportViewModel = function (options) {
 			if (settings.numberFormat() === "custom" && pattern) {
 				return applyCustomFormat(v, pattern);
 			}
-			if (settings.shortFormat() === "auto") {
-				let absValue = Math.abs(v);
-				if (absValue >= 1_000_000_000) {   // Billions
-					return symbol + " " + (v / 1_000_000_000).toLocaleString() + "B";
-				}
-				if (absValue >= 1_000_000) {       // Millions
-					return symbol + " " + (v / 1_000_000).toLocaleString() + "M";
-				}
-				if (absValue >= 1_000) {           // Thousands
-					return symbol + " " + (v / 1_000).toLocaleString() + "K";
-				}
-				return symbol + " " + v.toLocaleString();
-			}
+			const useCurrency = settings.numberFormat() === "currency";
 			if (settings.shortFormat() === "thousand") {
 				v = v / 1000;
-				return symbol + " " + v.toLocaleString() + "K";
+				return (useCurrency ? (symbol + " ") : "") + v.toLocaleString() + "K";
 			}
 			if (settings.shortFormat() === "million") {
 				v = v / 1000000;
-				return symbol + " " + v.toLocaleString() + "M";
+				return (useCurrency ? (symbol + " ") : "") + v.toLocaleString() + "M";
 			}
 			if (settings.shortFormat() === "billion") {
 				v = v / 1000000000;
-				return symbol + " " + v.toLocaleString() + "B";
+				return (useCurrency ? (symbol + " ") : "") + v.toLocaleString() + "B";
 			}
-			if (settings.numberFormat() === "money") {
+			if (useCurrency) {
 				return symbol + " " + v.toLocaleString();
 			}
 			return v.toLocaleString();
@@ -6227,6 +6226,9 @@ var reportViewModel = function (options) {
 			self.additionalAggregateOptions(e, e.fieldFormat());
 			e.editFormulaField = function () {
 				self.editFormulaField(e);
+			}
+			e.duplicateFormulaField = function () {
+				self.duplicateFormulaField(e);
 			}
 		}
 

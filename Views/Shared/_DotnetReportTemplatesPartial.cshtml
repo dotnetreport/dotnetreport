@@ -280,8 +280,8 @@
                         <label class="form-label small">Number Format</label>
                         <select class="form-select form-select-sm"
                                 data-bind="value: kpiSettings().numberFormat, event: { change: updateKpi }">
-                            <option value="number">Normal Number</option>
-                            <option value="money">Money</option>
+                            <option value="number">Number</option>
+                            <option value="currency">Currency</option>
                             <option value="custom">Custom Format</option>
                         </select>
                         <input type="text"
@@ -292,18 +292,7 @@
                                           valueUpdate:'input',
                                           event:{ input:updateKpi }">
                     </div>
-                    <div class="mb-2">
-                        <label class="form-label small">Short Format</label>
-                        <select class="form-select form-select-sm"
-                                data-bind="value: kpiSettings().shortFormat,event:{ change:updateKpi }">
-                            <option value="none">None</option>
-                            <option value="auto">Auto</option>
-                            <option value="thousand">Thousands (K)</option>
-                            <option value="million">Millions (M)</option>
-                            <option value="billion">Billions (B)</option>
-                        </select>
-                    </div>
-                    <div class="mb-2">
+                    <div data-bind ="visible: kpiSettings().numberFormat() === 'currency'" class="mb-2">
                         <label class="form-label small">Currency Symbol</label>
                         <select class="form-select form-select-sm"
                                 data-bind="value: kpiSettings().currencySymbol,event:{ change:updateKpi }">
@@ -311,6 +300,16 @@
                             <option value="€">Euro (€)</option>
                             <option value="£">Pound (£)</option>
                             <option value="Rs">Rupee (Rs)</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Short Format</label>
+                        <select class="form-select form-select-sm"
+                                data-bind="value: kpiSettings().shortFormat,event:{ change:updateKpi }">
+                            <option value="none">None</option>
+                            <option value="thousand">Thousands (K)</option>
+                            <option value="million">Millions (M)</option>
+                            <option value="billion">Billions (B)</option>
                         </select>
                     </div>
                     <div class="d-flex justify-content-end">
@@ -1785,6 +1784,11 @@
                     <div class="pull-right" style="padding-right: 10px;" data-bind="if: isFormulaField">
                         <span class="button-box no-padding" tabindex="0" data-bind="click: editFormulaField">
                             <span class="fa fa-pencil" aria-hidden="true" title="Edit Formula Field"></span>
+                        </span>
+                    </div>
+                    <div class="pull-right" style="padding-right: 10px;" data-bind="if: isFormulaField">
+                        <span class="button-box no-padding" tabindex="0" data-bind="click: duplicateFormulaField">
+                            <span class="fa fa-copy" aria-hidden="true" title="Duplicate Formula Field"></span>
                         </span>
                     </div>
                 </div>
