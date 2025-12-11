@@ -351,7 +351,7 @@
 
 <div class="grid-stack" data-bind="foreach: reports" style="display: none;">
     <div class="grid-stack-item" data-bind="attr: {'gs-x': x, 'gs-y': y, 'gs-w': width, 'gs-h': height, 'gs-auto-position': true, 'gs-id': ReportID}">
-        <div class="card" data-bind="attr: {class: 'card ' + panelStyle + ' grid-stack-item-content'}, css: { expanded: isExpanded }, style: { border: noDashboardBorders() ? 'none' : '', 'box-shadow': noDashboardBorders() ? 'none' : '' }" style="overflow-y: hidden;">
+        <div class="card" data-bind="attr: {class: 'card ' + panelStyle + ' grid-stack-item-content'}, css: { expanded: isExpanded }, style: { border: noDashboardBorders() ? 'none' : '', 'box-shadow': noDashboardBorders() ? 'none' : '','background-color': $parent.getCardBackground($data) }" style="overflow-y: hidden;">
             <div class="padded-div" style="padding-bottom: 0; margin-bottom: 0;">
                 <div class="pull-left">
                     <button type="button" class="btn" data-bs-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
@@ -443,17 +443,22 @@
                     </span>
                     <a class="btn btn-link" data-bind="visible: CanEdit() && CanSaveReports() && isDirty(), click: SaveWithoutRun">
                         <span class="fa fa-save"></span>
-                    </a>
-                    <a class="btn btn-link" data-bind="click: toggleExpand"><span class="fa" data-bind="css: {'fa-expand': !isExpanded(), 'fa-minus': isExpanded() }, visible: ReportType() != 'Single' && !noDashboardBorders()"></span></a>
+                    </a>                    
+                    <a class="btn btn-link" data-bind="visible:ReportType() != 'Single',click: toggleExpand"><span class="fa" data-bind="css: {'fa-expand': !isExpanded(), 'fa-minus': isExpanded() }, visible: ReportType() != 'Single' && !noDashboardBorders()"></span></a>
+                </div>
+                <div data-bind="visible: $parent.arrangeDashboard">
+                    <div class="pull-right" data-bind="if: ReportType()!='Single' && ReportType()!='Html' && CanEdit()">
+                        <div data-bind="template: 'chart-settings', data: $data"></div>
+                    </div>
+                    <div data-bind="if:ReportType() == 'Single' && CanEdit()">
+                        <div data-bind="template: {name: 'kpi-settings', data: $data }"></div>
+                    </div>
                 </div>
             </div>
             <div data-bind="if: activeDesign()">
                 <div data-bind="template: 'report-designer-compact'"></div>
             </div>
-            <div class="card-body list-overflow-auto" style="padding-top: 0; margin-top: 0;">
-                <div data-bind="if: ReportType()!='Single' && ReportType()!='Html' && CanEdit()">
-                    <div data-bind="template: 'chart-settings', data: $data"></div>
-                </div>
+            <div class="card-body list-overflow-auto" style="padding-top: 0; margin-top: 0;">                
                 <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
                 <div data-bind="template: {name: 'fly-filter-template'}, visible: showFlyFilters"></div>
                 <div data-bind="with: ReportResult" class="small">
