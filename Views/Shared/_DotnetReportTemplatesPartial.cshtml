@@ -2314,7 +2314,7 @@
                 data-bind="click: toggleAiChat, visible: appSettings.usePromptBuilder">
             <i class="fa fa-comment fa-lg"></i>
           </button>
-          <button type="button" class="btn btn-sm btn-light" data-bind="visible: ReportID(), click: function() {activeDesign(false);}" title="Close">
+          <button type="button" class="btn btn-sm btn-light" data-bind="visible: ReportID(), click: function() {activeDesign(false); if (isExpanded) isExpanded(false);}" title="Close">
             <i class="fa fa-times"></i> Close Designer
           </button>
         </div>
