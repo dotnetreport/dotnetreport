@@ -3885,6 +3885,9 @@ var reportViewModel = function (options) {
 			return typeof src === 'string' && typeof dst === 'string' && dst.includes(src);
 		}
 		function matchColumnName(src, dst, dbSrc, dbDst, agg) {
+			if (dst && dst.includes("|")) {
+				dst = dst.split("|").pop().trim();
+			}
 			if (src == dst) return true;
 			if (dbSrc && dbDst && dbSrc == dbDst) return true;
 
