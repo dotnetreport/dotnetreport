@@ -432,6 +432,10 @@ namespace ReportBuilder.Web.Models
         public bool isJsonColumn { get; set; }
         public string aggregateFunction { get; set; }
         public LinkFieldItem LinkFieldItem { get; set; }
+        public string headerFontColor { get; set; }
+        public string headerBackColor { get; set; }
+        public string fontColor { get; set; }
+        public string backColor { get; set; }
     }
     public class LinkFieldItem
     {
@@ -933,7 +937,33 @@ namespace ReportBuilder.Web.Models
                         ws.Cells[dt.Rows.Count + rowstart + 1, i].Style.Font.Bold = true;
                     }
                 }
-
+                if (formatColumn != null)
+                {
+                    var headerCell = ws.Cells[rowstart, i];
+                    if (!string.IsNullOrEmpty(formatColumn.headerFontColor))
+                        headerCell.Style.Font.Color.SetColor(ColorTranslator.FromHtml(formatColumn.headerFontColor));
+                    if (!string.IsNullOrEmpty(formatColumn.headerBackColor))
+                    {
+                        headerCell.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                        headerCell.Style.Fill.BackgroundColor.SetColor(ColorTranslator.FromHtml(formatColumn.headerBackColor));
+                    }
+                    int increment = rowstart == 3 ? 1 : 0;
+                    for (int rowIndex = 0; rowIndex < dt.Rows.Count; rowIndex++)
+                    {
+                        var cellValue = dt.Rows[rowIndex][dc.ColumnName]?.ToString();
+                        if (!string.IsNullOrEmpty(cellValue))
+                        {
+                            var cell = ws.Cells[rowIndex + rowstart + increment, i];
+                            if (!string.IsNullOrEmpty(formatColumn.fontColor))
+                                cell.Style.Font.Color.SetColor(ColorTranslator.FromHtml(formatColumn.fontColor));
+                            if (!string.IsNullOrEmpty(formatColumn.backColor))
+                            {
+                                cell.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                                cell.Style.Fill.BackgroundColor.SetColor(ColorTranslator.FromHtml(formatColumn.backColor));
+                            }
+                        }
+                    }
+                }
                 if (formatColumn != null && formatColumn?.LinkFieldItem != null && formatColumn?.LinkFieldItem.LinkToUrl != null)
                 {
                     for (int rowIndex = 0; rowIndex < dt.Rows.Count; rowIndex++)
@@ -1348,43 +1378,41 @@ namespace ReportBuilder.Web.Models
 
                     selectPart = sql.Substring(0, fromIndex).Replace("SELECT", "", StringComparison.OrdinalIgnoreCase).Trim();
 
-                    current = new StringBuilder();
-                    parenDepth = 0;
+                    var cols = new List<string>();
+                    var sb = new StringBuilder();
+                    inString = false; bool inComment = false;
+                    int depth = 0;
 
                     for (int i = 0; i < selectPart.Length; i++)
                     {
-                        char c = selectPart[i];
+                        char c = selectPart[i], n = i + 1 < selectPart.Length ? selectPart[i + 1] : '\0';
 
-                        if (c == '\'' && (i == 0 || selectPart[i - 1] != '\\'))
-                            inString = !inString;
+                        if (!inString && !inComment && c == '/' && n == '*') { inComment = true; i++; continue; }
+                        if (inComment && c == '*' && n == '/') { inComment = false; i++; continue; }
+                        if (inComment) continue;
 
-                        if (!inString)
+                        if (c == '\'' && (i == 0 || selectPart[i - 1] != '\\')) inString = !inString;
+
+                        if (!inString) { if (c == '(') depth++; else if (c == ')') depth--; }
+
+                        if (c == ',' && depth == 0 && !inString)
                         {
-                            if (c == '(') parenDepth++;
-                            else if (c == ')') parenDepth--;
+                            cols.Add(sb.ToString().Trim());
+                            sb.Clear();
+                            continue;
                         }
 
-                        // Split only when comma is outside parentheses and strings
-                        if (c == ',' && parenDepth == 0 && !inString)
-                        {
-                            columns.Add(current.ToString().Trim());
-                            current.Clear();
-                        }
-                        else
-                        {
-                            current.Append(c);
-                        }
+                        sb.Append(c);
                     }
 
-                    if (current.Length > 0)
-                        columns.Add(current.ToString().Trim());
+                    if (sb.Length > 0) cols.Add(sb.ToString().Trim());
 
-                    // Cleanup, handle DISTINCT/TOP and ensure alias exists
-                    return columns
-                        .Select(x => x.StartsWith("DISTINCT ", StringComparison.OrdinalIgnoreCase) ? x.Substring(9) : x)
+                    return cols
+                        .Select(x => x.StartsWith("DISTINCT ", StringComparison.OrdinalIgnoreCase) ? x[9..] : x)
                         .Select(x => Regex.Replace(x, @"TOP\s+\d+", "", RegexOptions.IgnoreCase))
                         .Where(x => x.Contains(" AS ", StringComparison.OrdinalIgnoreCase))
                         .ToList();
+
             }
         }
 
@@ -2333,7 +2361,7 @@ namespace ReportBuilder.Web.Models
             {
                 qry = JsonConvert.DeserializeObject<SqlQuery>(sql);
                 sql = qry.sql;
-                dbtype = qry.dbType;
+                if (!string.IsNullOrEmpty(qry.dbType)) dbtype = qry.dbType;
             }
             else
             {

@@ -1747,8 +1747,18 @@
                         </span>
                     </div>-->
                     <div class="pull-right" style="padding-right: 10px;" data-bind="visible: $parent.ReportType()!='Pivot'">
-                        <span class="button-box no-padding" tabindex="0" data-bind="click: toggleDisable, css: {active: disabled()==true}">
-                            <span class="fa fa-close" aria-hidden="true" title="Do not include in Report"></span>
+                        <span class="button-box no-padding" tabindex="0" data-bind="click: toggleDisable">
+                            <span data-bind="
+                                css: {
+                                    'fa': true,
+                                    'fa-close': disabled(),
+                                    'fa-check': !disabled(),
+                                    'text-danger': disabled()
+                                },
+                                attr: {
+                                    title: disabled() ? 'Excluded from the Report' : 'Included in the Report'
+                                }
+                            " aria-hidden="true"></span>
                         </span>
                     </div>
                     <div class="pull-right" style="padding-right: 10px;" data-bind="visible: $parent.ReportType()!='Pivot' && $parent.ReportType()!='List' && !$parent.useStoredProc()">
