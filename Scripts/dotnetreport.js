@@ -7822,7 +7822,6 @@ var dashboardViewModel = function (options) {
 	self.isDirty = ko.observable(false);
 	self.lineSeparators = ko.observableArray([]);
 	self.textWidgets = ko.observableArray([]);
-	self.isWidget = ko.observable(false);
 	$(document).on('shown.bs.modal', '.modal', function () {
 		self.isModalOpen(true);
 	});
@@ -7944,29 +7943,18 @@ var dashboardViewModel = function (options) {
 							height: r.Height,
 							color: widget.color,
 							thickness: widget.thickness
-						});
-					} else {
-						self.addLineSeparator({
-							id: widgetId,
+						},true);
+					}
+					else if (widget && widget.type === 'text') {
+						self.addTextWidget({
+							id: widgetId,      
 							x: r.X,
 							y: r.Y,
 							width: r.Width,
 							height: r.Height,
-							color: null,
-							thickness: null
-						});
+							text: widget.text || ''
+						},true);
 					}
-
-					//else if (widget.type === 'text') {
-					//	self.addTextWidget({
-					//		id: widgetId,      
-					//		x: r.X,
-					//		y: r.Y,
-					//		width: r.Width,
-					//		height: r.Height,
-					//		text: widget.text || ''
-					//	});
-					//}
 				}
 			});
 
@@ -8035,6 +8023,7 @@ var dashboardViewModel = function (options) {
 	self.selectDashboard.subscribe(function (newValue) {
 		if (newValue != self.currentDashboard().id) {
 			self.lineSeparators([]);
+			self.textWidgets([]);
 			self.loadDashboard(newValue);
 		}
 	});
@@ -8146,24 +8135,11 @@ var dashboardViewModel = function (options) {
 		}
 
 		var list = '';
-		if (self.isWidget()) {
-			_.forEach(self.reports(), function (r) {
-				if (r.ReportID() && r.ReportID() > 0) {
-					list += (list ? ',' : '') + r.ReportID();
-				}
+		_.forEach(self.reportsAndFolders(), function (f) {
+			_.forEach(f.reports, function (r) {
+				if (r.selected()) list += (list ? ',' : '') + r.reportId;
 			});
-			self.isWidget(false);
-		} else {
-			_.forEach(self.reportsAndFolders(), function (f) {
-				_.forEach(f.reports, function (r) {
-					if (r.selected()) list += (list ? ',' : '') + r.reportId;
-				});
-			});
-		}
-		var sepCount = self.lineSeparators().length;
-		for (var i = 0; i < sepCount; i++) {
-			list += (list ? ',' : '') + '0';
-		}
+		});
 		var model = {
 			id: self.dashboard.Id() || 0,
 			name: self.dashboard.Name(),
@@ -8504,36 +8480,40 @@ var dashboardViewModel = function (options) {
 	}
 
 	self.loadDashboardReports(options.reports, true);
-
-	self.updatePosition = function (item) {
-		if (!item || !item.id || self.skipGridRefresh || item.id === 'undefined') return;
-		const isWidget = item.type !== 'report';
-		const reportId = isWidget ? 0 : parseInt(item.id);
-		const widgetSettings = {
+	self.buildWidgetSettings = function (item) {
+		const settings = {
 			WidgetId: item.id,
 			gridChartHeight: item.h,
 			gridChartWidth: item.w,
 			expandedChartHeight: item.h,
 			expandedChartWidth: item.w,
-			Widget: null 
+			Widget: null
 		};
-		if (isWidget) {
-			const sep = self.lineSeparators().find(s => s.id === item.id);
-			if (sep) {
-				widgetSettings.Widget = {
-					type: 'separator',
-					color: ko.unwrap(sep.color),
-					thickness: ko.unwrap(sep.thickness)
-				};
-			}
-			const text = self.textWidgets().find(t => t.id === item.id);
-			if (text) {
-				widgetSettings.Widget={
-					type: 'text',
-					text: ko.unwrap(text.text)
-				};
-			}
+		const sep = self.lineSeparators().find(s => s.id === item.id);
+		if (sep) {
+			settings.Widget = {
+				type: 'separator',
+				color: ko.unwrap(sep.color),
+				thickness: ko.unwrap(sep.thickness)
+			};
+			return settings;
 		}
+		const text = self.textWidgets()?.find(t => t.id === item.id);
+		if (text) {
+			settings.Widget = {
+				type: 'text',
+				text: ko.unwrap(text.text)
+			};
+			return settings;
+		}
+		return settings;
+	};
+
+	self.updatePosition = function (item) {
+		if (!item || !item.id || self.skipGridRefresh || item.id === 'undefined') return;
+		const isWidget = item.type !== 'report';
+		const reportId = isWidget ? 0 : parseInt(item.id);
+		const widgetSettings = self.buildWidgetSettings(item);
 		ajaxcall({
 			url: options.apiUrl,
 			noBlocking: true,
@@ -8552,6 +8532,40 @@ var dashboardViewModel = function (options) {
 			}
 		});
 	};
+	self.deleteDashboardWidget = function (widgetId) {
+		if (!widgetId) return $.Deferred().reject();
+		return ajaxcall({
+			url: options.apiUrl,
+			noBlocking: true,
+			data: {
+				method: '/ReportApi/DeleteDashboardWidget',
+				model: JSON.stringify({
+					dashboardId: self.currentDashboard().id,
+					widgetId: widgetId,
+					adminMode: self.adminMode()
+				})
+			}
+		});
+	};
+	self.addDashboardWidget = function (item) {
+		if (!item.id) return $.Deferred().reject();
+		const widgetSettings = self.buildWidgetSettings(item);
+		return ajaxcall({
+			url: options.apiUrl,
+			noBlocking: true,
+			data: {
+				method: '/ReportApi/AddDashboardWidget',
+				model: JSON.stringify({
+					dashboardId: self.currentDashboard().id,
+					x: item.x,
+					y: item.y,
+					width: item.w,
+					height: item.h,
+					widgetSettings: JSON.stringify(widgetSettings),
+				})
+			}
+		});
+	};
 	self.ExecuteReport = function () {
 		self.executingReport = true;
 		self.RunReport();
@@ -8563,53 +8577,56 @@ var dashboardViewModel = function (options) {
 	self.PrintDashboard = function () {
 		window.print();
 	};
-	self.addLineSeparator = function (data) {
-		const sep = {
-			id: data?.id ,
+	self.addLineSeparator = function (data, isload) {
+		data = data || {};
+		const widget = {
+			id: data.id || WidgetUniqueId('sep'),
 			color: ko.observable(data?.color || '#999'),
 			thickness: ko.observable(data?.thickness || 2),
-			x: data?.x ?? 0,
-			y: data?.y ?? 0,
-			width: data?.width ?? 12,
-			height: data?.height ?? 1,
+			x: data.x || 0,
+			y: data.y || 0,
+			width: data.width || 12,
+			height: data.height || 1,
 			deleteSeparator: function () {
 				const itemId = this.id;
-				self.lineSeparators.remove(function (s) {
-					return s.id === itemId;
+				self.deleteDashboardWidget(itemId).done(function () {
+					self.lineSeparators.remove(function (s) {
+						return s.id === itemId;
+					});
+					refreshGrid(self.reports(), false);
 				});
-				refreshGrid(self.reports(), false);
 			}
 		};
-		self.lineSeparators.push(sep);
-		refreshGrid(self.reports(), false);
-		if (data?.width == undefined && data.height == undefined) {
-			self.isWidget(true);
-            self.saveDashboard();
+		self.lineSeparators.push(widget);
+		if (isload !== true) {
+			self.addDashboardWidget({ id: widget.id, x: widget.x, y: widget.y, w: widget.width, h: widget.height, });
 		}
+		refreshGrid(self.reports(), false);
 	};
-	self.addTextWidget = function (data) {
+	self.addTextWidget = function (data, isload) {
 		data = data || {};
-		const textwidget = {
-			id: data.id ,
+		const widget = {
+			id: data.id || WidgetUniqueId('text'),
 			text: ko.observable(data.text || '<p>Enter text...</p>'),
 			x: data.x || 0,
 			y: data.y || 0,
 			width: data.width || 4,
 			height: data.height || 1,
 			deleteText: function () {
-				const id = this.id;
-				self.textWidgets.remove(function (s) {
-					return s.id === itemId;
+				const itemId = this.id;
+				self.deleteDashboardWidget(itemId).done(function () {
+					self.textWidgets.remove(function (s) {
+						return s.id === itemId;
+					});
+					refreshGrid(self.reports(), false);
 				});
-				refreshGrid(self.reports(), false);
 			}
 		}
-		self.textWidgets.push(textwidget);
-		refreshGrid(self.reports(), false);
-		if (data?.width == undefined && data.height == undefined) {
-			self.isWidget(true);
-			//self.saveDashboard();
+		self.textWidgets.push(widget);
+		if (isload !== true) {
+			self.addDashboardWidget({ id: widget.id, x: widget.x, y: widget.y, w: widget.width, h: widget.height, });
 		}
+		refreshGrid(self.reports(), false);
 	};
 
 	self.dashboardItems = ko.computed(function () {
