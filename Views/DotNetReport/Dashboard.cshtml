@@ -538,10 +538,31 @@
 <script type="text/html" id="text-widget-template">
     <div class="grid-stack-item-content position-relative p-2" data-bind="css: { card: $root.arrangeDashboard }">
         <div data-bind="html: decodeURIComponent(text())"></div>
-        <div data-bind="visible: $root.arrangeDashboard"class="position-absolute" style="top:3px; right:0; z-index:2000;">
-            <button class="btn btn-sm btn-light" data-bind="click: $root.openTextEditor">
-                <i class="fa fa-edit"></i>
-            </button>
+        <div class="position-absolute" style="top:3px; right:4px; z-index:2000;" data-bind="visible: $root.arrangeDashboard">
+            <div class="dropdown">
+                <button class="btn btn-sm btn-light"
+                        type="button"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false">
+                    <i class="fa fa-ellipsis-v"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                        <button class="dropdown-item"
+                                data-bind="click: $root.openTextEditor">
+                            <i class="fa fa-edit me-2"></i>
+                            Edit
+                        </button>
+                    </li>
+                    <li>
+                        <button class="dropdown-item text-danger"
+                                data-bind="click: deleteText">
+                            <i class="fa fa-trash me-2"></i>
+                            Delete
+                        </button>
+                    </li>
+                </ul>
+            </div>
         </div>
     </div>
 </script>
