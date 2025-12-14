@@ -195,6 +195,12 @@
                             <span>Add Line Separator</span>
                         </button>
                     </li>
+                    <li>
+                        <button class="dropdown-item" data-bind="click: addTextWidget">
+                            <i class="fa fa-font"></i>
+                            <span>Add Text</span>
+                        </button>
+                    </li>
                 </ul>
             </div>
             <div class="dropdown">
@@ -494,9 +500,13 @@
     </div>
     <!-- /ko -->
     <!-- ko if: type === 'separator' -->
-    <!-- Line Separator -->
     <div class="grid-stack-item" data-bind="attr: {'gs-x': x, 'gs-y': y, 'gs-w': width, 'gs-h': height, 'gs-auto-position': true, 'gs-id': id,'data-type':'separator'}">
     <div data-bind="template: { name: 'line-separator-template', data: $data }"></div>
+    </div>
+    <!-- /ko -->
+    <!-- ko if: type === 'text' -->
+    <div class="grid-stack-item" data-bind="attr: {'gs-x': x, 'gs-y': y, 'gs-w': width, 'gs-h': height, 'gs-auto-position': true, 'gs-id': id,'data-type':'text'}">
+        <div data-bind="template:{name:'text-widget-template', data:$data}"></div>
     </div>
     <!-- /ko -->
     <!-- /ko -->
@@ -522,6 +532,16 @@
                     <button class="btn btn-sm btn-danger w-100" data-bind="click: deleteSeparator">Delete</button>
                 </li>
             </ul>
+        </div>
+    </div>
+</script>
+<script type="text/html" id="text-widget-template">
+    <div class="grid-stack-item-content position-relative p-2" data-bind="css: { card: $root.arrangeDashboard }">
+        <div data-bind="html: text"></div>
+        <div data-bind="visible: $root.arrangeDashboard"class="position-absolute" style="top:3px; right:0; z-index:2000;">
+            <button class="btn btn-sm btn-light" data-bind="click: $root.openTextEditor">
+                <i class="fa fa-edit"></i>
+            </button>
         </div>
     </div>
 </script>
@@ -561,4 +581,23 @@
 </div>
 <div class="modal" id="exportAllPdfOptionsModal" tabindex="-1" aria-labelledby="exportAllPdfOptionsModalLabel" aria-hidden="true" data-bind="with: dashboard">
     <div data-bind="template: { name: 'pdf-options-template', data: $data  }"></div>
+</div>
+<div class="modal" id="textWidgetModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Text</h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <textarea id="textEditor"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" data-bind="click: saveTextWidget">
+                    Save
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
