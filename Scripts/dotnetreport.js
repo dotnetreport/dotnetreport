@@ -8607,7 +8607,7 @@ var dashboardViewModel = function (options) {
 		data = data || {};
 		const widget = {
 			id: data.id || WidgetUniqueId('text'),
-			text: ko.observable(data.text || '<p>Enter text...</p>'),
+			text: ko.observable(data.text || encodeURIComponent('<p>Enter text...</p>')),
 			x: data.x || 0,
 			y: data.y || 0,
 			width: data.width || 4,
@@ -8648,13 +8648,15 @@ var dashboardViewModel = function (options) {
 		$('#textEditor').summernote({
 			height: 200
 		});
-		$('#textEditor').summernote('code', item.text());
+		const decoded = decodeURIComponent(item.text() || '');
+		$('#textEditor').summernote('code', decoded);
 		$('#textWidgetModal').modal('show');
 	};
 	self.saveTextWidget = function () {
-		const content = $('#textEditor').summernote('code');
+		const html = $('#textEditor').summernote('code');
+		const encoded = encodeURIComponent(html);
 		if (self.currentTextWidget()) {
-			self.currentTextWidget().text(content);
+			self.currentTextWidget().text(encoded);
 		}
 		$('#textWidgetModal').modal('hide');
 	};

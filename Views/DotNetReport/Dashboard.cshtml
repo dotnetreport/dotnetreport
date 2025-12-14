@@ -537,7 +537,7 @@
 </script>
 <script type="text/html" id="text-widget-template">
     <div class="grid-stack-item-content position-relative p-2" data-bind="css: { card: $root.arrangeDashboard }">
-        <div data-bind="html: text"></div>
+        <div data-bind="html: decodeURIComponent(text())"></div>
         <div data-bind="visible: $root.arrangeDashboard"class="position-absolute" style="top:3px; right:0; z-index:2000;">
             <button class="btn btn-sm btn-light" data-bind="click: $root.openTextEditor">
                 <i class="fa fa-edit"></i>
