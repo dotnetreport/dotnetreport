@@ -101,6 +101,9 @@
 
                                 grid.on('change', function (event, items) {
                                     items.forEach(function (x) {
+                                        const el = x.el;
+                                        const type = el.getAttribute("data-type"); 
+                                        x.type = type;   
                                         vm.updatePosition(x);
                                     });
                                 });
@@ -184,6 +187,12 @@
                         <button class="dropdown-item" data-bind="click: RefreshAllReports">
                             <i class="fa fa-refresh"></i>
                             <span>Refresh</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="dropdown-item" data-bind="click: addLineSeparator">
+                            <i class="fa fa-minus"></i>
+                            <span>Add Line Separator</span>
                         </button>
                     </li>
                 </ul>
@@ -349,8 +358,10 @@
 </div>
 
 
-<div class="grid-stack" data-bind="foreach: reports" style="display: none;">
-    <div class="grid-stack-item" data-bind="attr: {'gs-x': x, 'gs-y': y, 'gs-w': width, 'gs-h': height, 'gs-auto-position': true, 'gs-id': ReportID}">
+<div class="grid-stack" style="display: none;">
+    <!-- ko foreach: dashboardItems -->
+    <!-- ko if: type === 'report' -->
+    <div class="grid-stack-item" data-bind="attr: {'gs-x': x, 'gs-y': y, 'gs-w': width, 'gs-h': height, 'gs-auto-position': true, 'gs-id': ReportID,'data-type':'report'}">
         <div class="card" data-bind="attr: {class: 'card ' + panelStyle + ' grid-stack-item-content'}, css: { expanded: isExpanded }, style: { border: noDashboardBorders() ? 'none' : '', 'box-shadow': noDashboardBorders() ? 'none' : '','background-color': $parent.getCardBackground($data) }" style="overflow-y: hidden;">
             <div class="padded-div" style="padding-bottom: 0; margin-bottom: 0;">
                 <div class="pull-left">
@@ -480,9 +491,40 @@
                 </div>
             </div>
         </div>
-
     </div>
+    <!-- /ko -->
+    <!-- ko if: type === 'separator' -->
+    <!-- Line Separator -->
+    <div class="grid-stack-item" data-bind="attr: {'gs-x': x, 'gs-y': y, 'gs-w': width, 'gs-h': height, 'gs-auto-position': true, 'gs-id': id,'data-type':'separator'}">
+    <div data-bind="template: { name: 'line-separator-template', data: $data }"></div>
+    </div>
+    <!-- /ko -->
+    <!-- /ko -->
 </div>
+<script type="text/html" id="line-separator-template">
+    <div class="grid-stack-item-content position-relative p-2" data-bind="css: { card: $root.arrangeDashboard }">
+        <hr data-bind="style: { borderTop: thickness() + 'px solid ' + color() }" class="m-0">
+        <div data-bind="visible: $root.arrangeDashboard" class="dropdown position-absolute" style="top:-5px; right:0; z-index:2000;">
+            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="dropdown">
+                <i class="fa fa-ellipsis-v"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end p-2">
+                <li>
+                    <label>Color:</label>
+                    <input type="color" data-bind="value: color">
+                </li>
+                <li>
+                    <label>Thickness:</label>
+                    <input type="number" min="1" max="10" data-bind="value: thickness" style="width:50px">
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <button class="btn btn-sm btn-danger w-100" data-bind="click: deleteSeparator">Delete</button>
+                </li>
+            </ul>
+        </div>
+    </div>
+</script>
 
 <!-- Report Builder -->
 <div class="modal modal-fullscreen" id="modal-reportbuilder" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="padding-right: 0px !important;" data-bind="with: selectedReport">

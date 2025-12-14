@@ -7820,6 +7820,8 @@ var dashboardViewModel = function (options) {
 	});
 	self.isModalOpen = ko.observable(false);
 	self.isDirty = ko.observable(false);
+	self.lineSeparators = ko.observableArray([]);
+	self.isWidget = ko.observable(false);
 	$(document).on('shown.bs.modal', '.modal', function () {
 		self.isModalOpen(true);
 	});
@@ -7920,7 +7922,42 @@ var dashboardViewModel = function (options) {
 			if (reportsData.d) reportsData = reportsData.d;
 			var reports = [];
 			_.forEach(reportsData, function (r) {
-				reports.push({ reportSql: r.ReportSql, reportId: r.ReportId, reportFilter: r.ReportFilter, connectKey: r.ConnectKey, x: r.X, y: r.Y, width: r.Width, height: r.Height });
+				if (r.IsWidget === false && r.ReportId > 0) {
+					reports.push({ reportSql: r.ReportSql, reportId: r.ReportId, reportFilter: r.ReportFilter, connectKey: r.ConnectKey, x: r.X, y: r.Y, width: r.Width, height: r.Height });
+				}
+				else {
+					let settings = {};
+					try {
+						settings = r.WidgetSettings ? JSON.parse(r.WidgetSettings): {};
+					} catch (e) {
+						settings = {};
+					}
+					const widgets = settings.widgets || [];
+					const separators = widgets.filter(w => w.type === 'separator');
+					if (separators.length === 0) {
+						self.addLineSeparator({
+							id: r.Id,
+							x: r.X,
+							y: r.Y,
+							width: r.Width,
+							height: r.Height,
+							color: null,
+							thickness: null
+						});
+						return;
+					}
+					separators.forEach(sep => {
+							self.addLineSeparator({
+								id: sep.id,
+								x: r.X,
+								y: r.Y,
+								width: r.Width,
+								height: r.Height,
+								color: sep.color,
+								thickness: sep.thickness
+							});
+						});
+				}
 			});
 
 			var currentDash = dashboardId > 0
@@ -7987,6 +8024,7 @@ var dashboardViewModel = function (options) {
 
 	self.selectDashboard.subscribe(function (newValue) {
 		if (newValue != self.currentDashboard().id) {
+			self.lineSeparators([]);
 			self.loadDashboard(newValue);
 		}
 	});
@@ -8098,12 +8136,24 @@ var dashboardViewModel = function (options) {
 		}
 
 		var list = '';
-		_.forEach(self.reportsAndFolders(), function (f) {
-			_.forEach(f.reports, function (r) {
-				if (r.selected()) list += (list ? ',' : '') + r.reportId;
+		if (self.isWidget()) {
+			_.forEach(self.reports(), function (r) {
+				if (r.ReportID() && r.ReportID() > 0) {
+					list += (list ? ',' : '') + r.ReportID();
+				}
 			});
-		});
-
+			self.isWidget(false);
+		} else {
+			_.forEach(self.reportsAndFolders(), function (f) {
+				_.forEach(f.reports, function (r) {
+					if (r.selected()) list += (list ? ',' : '') + r.reportId;
+				});
+			});
+		}
+		var sepCount = self.lineSeparators().length;
+		for (var i = 0; i < sepCount; i++) {
+			list += (list ? ',' : '') + '0';
+		}
 		var model = {
 			id: self.dashboard.Id() || 0,
 			name: self.dashboard.Name(),
@@ -8136,6 +8186,7 @@ var dashboardViewModel = function (options) {
 			toastr.success("Dashboard saved successfully");
 			$('#add-dashboard-modal').modal('hide');
 			setTimeout(function () {
+				self.lineSeparators([]);
 				self.loadDashboard(result.id);
 			}, 500);
 		});
@@ -8208,19 +8259,22 @@ var dashboardViewModel = function (options) {
 		let i = 0;
 
 		gridItems.forEach(item => {
-			const x = parseInt(item.getAttribute('gs-x'));
-			const y = parseInt(item.getAttribute('gs-y'));
-			const width = parseInt(item.getAttribute('gs-w'));
-			const height = parseInt(item.getAttribute('gs-h'));
-			const id = reports[i].reportId || reports[i].ReportID() || 0;
-			i++;
-			item.setAttribute('gs-id', id);
-			item.setAttribute('gs-x', x);
-			item.setAttribute('gs-y', y);
-			item.setAttribute('gs-w', width);
-			item.setAttribute('gs-h', height);
-
-			grid.makeWidget(item);
+				const x = parseInt(item.getAttribute('gs-x'));
+				const y = parseInt(item.getAttribute('gs-y'));
+				const width = parseInt(item.getAttribute('gs-w'));
+				const height = parseInt(item.getAttribute('gs-h'));
+				const id = item.getAttribute('gs-id');
+				console.log('Refreshing widget id:', id)
+				//const id = reports[i]?.reportId || reports[i]?.ReportID() || 0;
+				i++;
+				var data_type = id>0?'report':'separator';
+				item.setAttribute('gs-id', id);
+				item.setAttribute('gs-x', x);
+				item.setAttribute('gs-y', y);
+				item.setAttribute('gs-w', width);
+				item.setAttribute('gs-h', height);
+				item.setAttribute('data-type', data_type)
+				grid.makeWidget(item);
 		});
 
 		if (!self.arrangeDashboard()) {
@@ -8443,6 +8497,35 @@ var dashboardViewModel = function (options) {
 
 	self.updatePosition = function (item) {
 		if (!item || !item.id || self.skipGridRefresh || item.id == 'undefined') return;
+		const isWidget = item.type != 'report';
+		const reportId = isWidget ? 0 : parseInt(item.id);
+		const widgetSettings = {
+			gridChartHeight: item.h,
+			gridChartWidth: item.w,
+			expandedChartHeight: item.h,
+			expandedChartWidth: item.w,
+			widgets: []
+		};
+		if (isWidget) {
+			const sep = self.lineSeparators().find(s => s.id == item.id);
+			if (sep) {
+				widgetSettings.widgets.push({
+					type: 'separator',
+					id: sep.id,
+					color: ko.unwrap(sep.color),
+					thickness: ko.unwrap(sep.thickness)
+				});
+			}
+			// ---------- TEXT (future ready) ----------
+			//const txt = self.textWidgets ? self.textWidgets().find(t => t.id === item.id) : null;
+			//if (txt) {
+			//	widgetSettings.widgets.push({
+			//		type: 'text',
+			//		id: txt.id,
+			//		text: ko.unwrap(txt.text)
+			//	});
+			//}
+		}
 		ajaxcall({
 			url: options.apiUrl,
 			noBlocking: true,
@@ -8454,13 +8537,8 @@ var dashboardViewModel = function (options) {
 					width: item.w,
 					height: item.h,
 					dashboardId: self.currentDashboard().id,
-					reportId: parseInt(item.id),
-					widgetSettings: JSON.stringify({
-						gridChartHeight: item.h,
-						gridChartWidth: item.w,
-						expandedChartHeight: item.h,
-						expandedChartWidth: item.w
-					}),
+					reportId: reportId,
+					widgetSettings: JSON.stringify(widgetSettings),
 					adminMode: self.adminMode()
 				})
 			}
@@ -8477,7 +8555,41 @@ var dashboardViewModel = function (options) {
 	self.PrintDashboard = function () {
 		window.print();
 	};
+	self.addLineSeparator = function (data) {
+		const sep = {
+			id: data?.id || WidgetUniqueId('sep'),
+			color: ko.observable(data?.color || '#999'),
+			thickness: ko.observable(data?.thickness || 2),
+			x: data?.x ?? 0,
+			y: data?.y ?? 0,
+			width: data?.width ?? 12,
+			height: data?.height ?? 1,
+			deleteSeparator: function () {
+				const itemId = this.id;
+				self.lineSeparators.remove(function (s) {
+					return s.id === itemId;
+				});
+				refreshGrid(self.reports(), false);
+			}
+		};
+		self.lineSeparators.push(sep);
+		refreshGrid(self.reports(), false);
+		if (data?.width == undefined && data.height == undefined) {
+			self.isWidget(true);
+            self.saveDashboard();
+		}
+	};
 
+	self.dashboardItems = ko.computed(function () {
+		const items = [];
+		self.reports().forEach(r => {
+			items.push(Object.assign({}, r, { type: 'report' }));
+		});
+		self.lineSeparators().forEach(s => {
+			items.push(Object.assign({}, s, { type: 'separator' }));
+		});
+		return items;
+	});
 
 	self.ExportAllPdfReportsWithPageOption = function () {
 		if (self.dashboard.PdfPage) {
@@ -8739,6 +8851,7 @@ var dashboardViewModel = function (options) {
 		if (typeof event !== "undefined" && event.type === "click") {			
 			self.init().done(function () {
 				self.getDashboards();
+				self.lineSeparators([]);
 				self.loadDashboard(self.selectDashboard());
 			})
 		}
