@@ -8252,13 +8252,11 @@ var dashboardViewModel = function (options) {
 				const id = item.getAttribute('gs-id');
 				//const id = reports[i]?.reportId || reports[i]?.ReportID() || 0;
 				i++;
-				var data_type = id>0?'report':'separator';
 				item.setAttribute('gs-id', id);
 				item.setAttribute('gs-x', x);
 				item.setAttribute('gs-y', y);
 				item.setAttribute('gs-w', width);
 				item.setAttribute('gs-h', height);
-				item.setAttribute('data-type', data_type)
 				grid.makeWidget(item);
 		});
 
@@ -8638,6 +8636,10 @@ var dashboardViewModel = function (options) {
 		});
 		self.textWidgets().forEach(t => {
 			items.push(Object.assign({}, t, { type: 'text' }));
+		});
+		items.sort(function (a, b) {
+			if (a.y !== b.y) return a.y - b.y;   // pehle row
+			return a.x - b.x;                    // phir column
 		});
 		return items;
 	});
