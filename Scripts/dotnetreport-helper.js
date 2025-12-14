@@ -744,6 +744,9 @@ var manageAccess = function (options) {
 function generateUniqueId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 }
+function WidgetUniqueId(prefix) {
+    return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 9);
+}
 
 function beautifySql(sql, htmlMode = true) {
     sql = sql.replace("{FROM}", "FROM");

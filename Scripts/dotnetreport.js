@@ -7828,6 +7828,8 @@ var dashboardViewModel = function (options) {
 	});
 	self.isModalOpen = ko.observable(false);
 	self.isDirty = ko.observable(false);
+	self.lineSeparators = ko.observableArray([]);
+	self.textWidgets = ko.observableArray([]);
 	$(document).on('shown.bs.modal', '.modal', function () {
 		self.isModalOpen(true);
 	});
@@ -7928,7 +7930,40 @@ var dashboardViewModel = function (options) {
 			if (reportsData.d) reportsData = reportsData.d;
 			var reports = [];
 			_.forEach(reportsData, function (r) {
-				reports.push({ reportSql: r.ReportSql, reportId: r.ReportId, reportFilter: r.ReportFilter, connectKey: r.ConnectKey, x: r.X, y: r.Y, width: r.Width, height: r.Height });
+				if (r.IsWidget === false && r.ReportId > 0) {
+					reports.push({ reportSql: r.ReportSql, reportId: r.ReportId, reportFilter: r.ReportFilter, connectKey: r.ConnectKey, x: r.X, y: r.Y, width: r.Width, height: r.Height });
+				}
+				else {
+					let settings = {};
+					try {
+						settings = r.WidgetSettings ? JSON.parse(r.WidgetSettings) : {};
+					} catch (e) {
+						settings = {};
+					}
+					const widgetId = settings.WidgetId || r.Id;
+					const widget = settings.Widget;
+					if (widget && widget.type === 'separator') {
+						self.addLineSeparator({
+							id: widgetId,
+							x: r.X,
+							y: r.Y,
+							width: r.Width,
+							height: r.Height,
+							color: widget.color,
+							thickness: widget.thickness
+						},true);
+					}
+					else if (widget && widget.type === 'text') {
+						self.addTextWidget({
+							id: widgetId,      
+							x: r.X,
+							y: r.Y,
+							width: r.Width,
+							height: r.Height,
+							text: widget.text || ''
+						},true);
+					}
+				}
 			});
 
 			var currentDash = dashboardId > 0
@@ -7995,6 +8030,8 @@ var dashboardViewModel = function (options) {
 
 	self.selectDashboard.subscribe(function (newValue) {
 		if (newValue != self.currentDashboard().id) {
+			self.lineSeparators([]);
+			self.textWidgets([]);
 			self.loadDashboard(newValue);
 		}
 	});
@@ -8111,7 +8148,6 @@ var dashboardViewModel = function (options) {
 				if (r.selected()) list += (list ? ',' : '') + r.reportId;
 			});
 		});
-
 		var model = {
 			id: self.dashboard.Id() || 0,
 			name: self.dashboard.Name(),
@@ -8144,6 +8180,7 @@ var dashboardViewModel = function (options) {
 			toastr.success("Dashboard saved successfully");
 			$('#add-dashboard-modal').modal('hide');
 			setTimeout(function () {
+				self.lineSeparators([]);
 				self.loadDashboard(result.id);
 			}, 500);
 		});
@@ -8216,19 +8253,19 @@ var dashboardViewModel = function (options) {
 		let i = 0;
 
 		gridItems.forEach(item => {
-			const x = parseInt(item.getAttribute('gs-x'));
-			const y = parseInt(item.getAttribute('gs-y'));
-			const width = parseInt(item.getAttribute('gs-w'));
-			const height = parseInt(item.getAttribute('gs-h'));
-			const id = reports[i].reportId || reports[i].ReportID() || 0;
-			i++;
-			item.setAttribute('gs-id', id);
-			item.setAttribute('gs-x', x);
-			item.setAttribute('gs-y', y);
-			item.setAttribute('gs-w', width);
-			item.setAttribute('gs-h', height);
-
-			grid.makeWidget(item);
+				const x = parseInt(item.getAttribute('gs-x'));
+				const y = parseInt(item.getAttribute('gs-y'));
+				const width = parseInt(item.getAttribute('gs-w'));
+				const height = parseInt(item.getAttribute('gs-h'));
+				const id = item.getAttribute('gs-id');
+				//const id = reports[i]?.reportId || reports[i]?.ReportID() || 0;
+				i++;
+				item.setAttribute('gs-id', id);
+				item.setAttribute('gs-x', x);
+				item.setAttribute('gs-y', y);
+				item.setAttribute('gs-w', width);
+				item.setAttribute('gs-h', height);
+				grid.makeWidget(item);
 		});
 
 		if (!self.arrangeDashboard()) {
@@ -8448,9 +8485,40 @@ var dashboardViewModel = function (options) {
 	}
 
 	self.loadDashboardReports(options.reports, true);
+	self.buildWidgetSettings = function (item) {
+		const settings = {
+			WidgetId: item.id,
+			gridChartHeight: item.h,
+			gridChartWidth: item.w,
+			expandedChartHeight: item.h,
+			expandedChartWidth: item.w,
+			Widget: null
+		};
+		const sep = self.lineSeparators().find(s => s.id === item.id);
+		if (sep) {
+			settings.Widget = {
+				type: 'separator',
+				color: ko.unwrap(sep.color),
+				thickness: ko.unwrap(sep.thickness)
+			};
+			return settings;
+		}
+		const text = self.textWidgets()?.find(t => t.id === item.id);
+		if (text) {
+			settings.Widget = {
+				type: 'text',
+				text: ko.unwrap(text.text)
+			};
+			return settings;
+		}
+		return settings;
+	};
 
 	self.updatePosition = function (item) {
-		if (!item || !item.id || self.skipGridRefresh || item.id == 'undefined') return;
+		if (!item || !item.id || self.skipGridRefresh || item.id === 'undefined') return;
+		const isWidget = item.type !== 'report';
+		const reportId = isWidget ? 0 : parseInt(item.id);
+		const widgetSettings = self.buildWidgetSettings(item);
 		ajaxcall({
 			url: options.apiUrl,
 			noBlocking: true,
@@ -8462,14 +8530,43 @@ var dashboardViewModel = function (options) {
 					width: item.w,
 					height: item.h,
 					dashboardId: self.currentDashboard().id,
-					reportId: parseInt(item.id),
-					widgetSettings: JSON.stringify({
-						gridChartHeight: item.h,
-						gridChartWidth: item.w,
-						expandedChartHeight: item.h,
-						expandedChartWidth: item.w
-					}),
+					reportId: reportId,
+					widgetSettings: JSON.stringify(widgetSettings),
 					adminMode: self.adminMode()
+				})
+			}
+		});
+	};
+	self.deleteDashboardWidget = function (widgetId) {
+		if (!widgetId) return $.Deferred().reject();
+		return ajaxcall({
+			url: options.apiUrl,
+			noBlocking: true,
+			data: {
+				method: '/ReportApi/DeleteDashboardWidget',
+				model: JSON.stringify({
+					dashboardId: self.currentDashboard().id,
+					widgetId: widgetId,
+					adminMode: self.adminMode()
+				})
+			}
+		});
+	};
+	self.addDashboardWidget = function (item) {
+		if (!item.id) return $.Deferred().reject();
+		const widgetSettings = self.buildWidgetSettings(item);
+		return ajaxcall({
+			url: options.apiUrl,
+			noBlocking: true,
+			data: {
+				method: '/ReportApi/AddDashboardWidget',
+				model: JSON.stringify({
+					dashboardId: self.currentDashboard().id,
+					x: item.x,
+					y: item.y,
+					width: item.w,
+					height: item.h,
+					widgetSettings: JSON.stringify(widgetSettings),
 				})
 			}
 		});
@@ -8485,7 +8582,93 @@ var dashboardViewModel = function (options) {
 	self.PrintDashboard = function () {
 		window.print();
 	};
+	self.addLineSeparator = function (data, isload) {
+		data = data || {};
+		const widget = {
+			id: data.id || WidgetUniqueId('sep'),
+			color: ko.observable(data?.color || '#999'),
+			thickness: ko.observable(data?.thickness || 2),
+			x: data.x || 0,
+			y: data.y || 0,
+			width: data.width || 12,
+			height: data.height || 1,
+			deleteSeparator: function () {
+				const itemId = this.id;
+				self.deleteDashboardWidget(itemId).done(function () {
+					self.lineSeparators.remove(function (s) {
+						return s.id === itemId;
+					});
+					refreshGrid(self.reports(), false);
+				});
+			}
+		};
+		self.lineSeparators.push(widget);
+		if (isload !== true) {
+			self.addDashboardWidget({ id: widget.id, x: widget.x, y: widget.y, w: widget.width, h: widget.height, });
+		}
+		refreshGrid(self.reports(), false);
+	};
+	self.addTextWidget = function (data, isload) {
+		data = data || {};
+		const widget = {
+			id: data.id || WidgetUniqueId('text'),
+			text: ko.observable(data.text || encodeURIComponent('<p>Enter text...</p>')),
+			x: data.x || 0,
+			y: data.y || 0,
+			width: data.width || 4,
+			height: data.height || 1,
+			deleteText: function () {
+				const itemId = this.id;
+				self.deleteDashboardWidget(itemId).done(function () {
+					self.textWidgets.remove(function (s) {
+						return s.id === itemId;
+					});
+					refreshGrid(self.reports(), false);
+				});
+			}
+		}
+		self.textWidgets.push(widget);
+		if (isload !== true) {
+			self.addDashboardWidget({ id: widget.id, x: widget.x, y: widget.y, w: widget.width, h: widget.height, });
+		}
+		refreshGrid(self.reports(), false);
+	};
 
+	self.dashboardItems = ko.computed(function () {
+		const items = [];
+		self.reports().forEach(r => {
+			items.push(Object.assign({}, r, { type: 'report' }));
+		});
+		self.lineSeparators().forEach(s => {
+			items.push(Object.assign({}, s, { type: 'separator' }));
+		});
+		self.textWidgets().forEach(t => {
+			items.push(Object.assign({}, t, { type: 'text' }));
+		});
+		items.sort(function (a, b) {
+			if (a.y !== b.y) return a.y - b.y;   // pehle row
+			return a.x - b.x;                    // phir column
+		});
+		return items;
+	});
+	self.currentTextWidget = ko.observable(null);
+	self.openTextEditor = function (item) {
+		self.currentTextWidget(item);
+		$('#textEditor').summernote({
+			height: 200
+		});
+		const decoded = decodeURIComponent(item.text() || '');
+		$('#textEditor').summernote('code', decoded);
+		$('#textWidgetModal').modal('show');
+	};
+	self.saveTextWidget = function () {
+		const html = $('#textEditor').summernote('code');
+		const encoded = encodeURIComponent(html);
+		if (self.currentTextWidget()) {
+			self.currentTextWidget().text(encoded);
+		}
+		$('#textWidgetModal').modal('hide');
+	};
 
 	self.ExportAllPdfReportsWithPageOption = function () {
 		if (self.dashboard.PdfPage) {
@@ -8747,6 +8930,7 @@ var dashboardViewModel = function (options) {
 		if (typeof event !== "undefined" && event.type === "click") {			
 			self.init().done(function () {
 				self.getDashboards();
+				self.lineSeparators([]);
 				self.loadDashboard(self.selectDashboard());
 			})
 		}
