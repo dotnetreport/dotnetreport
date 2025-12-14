@@ -8250,7 +8250,6 @@ var dashboardViewModel = function (options) {
 				const width = parseInt(item.getAttribute('gs-w'));
 				const height = parseInt(item.getAttribute('gs-h'));
 				const id = item.getAttribute('gs-id');
-				console.log('Refreshing widget id:', id)
 				//const id = reports[i]?.reportId || reports[i]?.ReportID() || 0;
 				i++;
 				var data_type = id>0?'report':'separator';
