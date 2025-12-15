@@ -1434,7 +1434,8 @@ var reportViewModel = function (options) {
 		dontWordExport: false,
 		usePromptBuilder: ko.observable(true),
 		showPageSize: false,
-		showImportExport: ko.observable(false)
+		showImportExport: ko.observable(false),
+		useFunctions: ko.observable(false),
 	};
 	self.appSettings = options && options.appSettings ? options.appSettings : self.appSettings;
 	self.runQuery = function (useAi) {
@@ -2722,6 +2723,12 @@ var reportViewModel = function (options) {
 			codeEditor = null;
 			self.isFunctionField(true);
 			codeEditor = new functionEditor(options);
+			setTimeout(function () {
+				var target = document.getElementById("customFunctionSection");
+				if (target) {
+					target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				}
+			}, 300); // delay ensures DOM is updated
 		}
 	}
 
@@ -7113,6 +7120,7 @@ var reportViewModel = function (options) {
 			self.appSettings.usePromptBuilder(x.usePromptBuilder !== false ? true : false);
 			self.appSettings.showPageSize = x.showPageSize;
 			self.appSettings.showImportExport(x.showImportExport);
+			self.appSettings.useFunctions(x.useFunctions);
 		});
 	}
 
@@ -7865,7 +7873,8 @@ var dashboardViewModel = function (options) {
 		dontWordExport: false,
 		usePromptBuilder: true,
 		showPageSize: false,
-		showImportExport: false
+		showImportExport: false,
+		useFunctions: false 
 	};
 
 	self.loadAppSettings = function () {
@@ -7895,6 +7904,7 @@ var dashboardViewModel = function (options) {
 			self.appSettings.usePromptBuilder = x.usePromptBuilder;
 			self.appSettings.showPageSize = x.showPageSize;
 			self.appSettings.showImportExport = x.showImportExport;
+			self.appSettings.useFunctions = x.useFunctions;
 		});
 	}
 

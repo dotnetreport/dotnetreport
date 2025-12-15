@@ -1447,47 +1447,47 @@
             <span class="fa fa-2x fa-list-alt"></span>
             <p>List</p>
         </button>
-        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Summary'); }, css: { active: ReportType()=='Summary' }">
+        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Summary'); }, css: { active: ReportType()=='Summary',disabled: isFunctionField() }">
             <span class="fa fa-2x fa-table"></span>
             <p>Summary</p>
         </button>
-        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Bar'); }, css: { active: ReportType()=='Bar' }">
+        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Bar'); }, css: { active: ReportType()=='Bar',disabled: isFunctionField() }">
             <span class="fa fa-2x fa-bar-chart"></span>
             <p>Bar</p>
         </button>
-        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Pie'); }, css: { active: ReportType()=='Pie' }">
+        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Pie'); }, css: { active: ReportType()=='Pie',disabled: isFunctionField() }">
             <span class="fa fa-2x fa-pie-chart"></span>
             <p>Pie</p>
         </button>
-        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Line'); }, css: { active: ReportType()=='Line' }">
+        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Line'); }, css: { active: ReportType()=='Line',disabled: isFunctionField() }">
             <span class="fa fa-2x fa-line-chart"></span>
             <p>Line</p>
         </button>
-        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Combo'); }, css: { active: ReportType()=='Combo' }">
+        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Combo'); }, css: { active: ReportType()=='Combo',disabled: isFunctionField() }">
             <span class="fa fa-2x fa-signal"></span>
             <p>Combo</p>
         </button>
-        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Html'); }, css: { active: ReportType()=='Html' }">
+        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Html'); }, css: { active: ReportType()=='Html',disabled: isFunctionField() }">
             <span class="fa fa-2x fa-code"></span>
             <p>Custom</p>
         </button>
-        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Map'); }, css: { active: ReportType().indexOf('Map')==0 }">
+        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Map'); }, css: { active: ReportType().indexOf('Map')==0,disabled: isFunctionField() }">
             <span class="fa fa-2x fa-globe"></span>
             <p>Map</p>
         </button>
-        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('HeatMap'); }, css: { active: ReportType().indexOf('HeatMap')==0 }">
+        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('HeatMap'); }, css: { active: ReportType().indexOf('HeatMap')==0,disabled: isFunctionField() }">
             <span class="fa fa-2x fa-map"></span>
             <p>HeatMap</p>
         </button>
-        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Single'); }, css: { active: ReportType()=='Single' }">
+        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Single'); }, css: { active: ReportType()=='Single',disabled: isFunctionField() }">
             <span class="fa fa-2x fa-window-maximize"></span>
             <p>KPI</p>
         </button>
-        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Treemap'); }, css: { active: ReportType()=='Treemap' }">
+        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Treemap'); }, css: { active: ReportType()=='Treemap',disabled: isFunctionField() }">
             <span class="fa fa-2x fa-window-restore"></span>
             <p>Treemap</p>
         </button>
-        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Pivot'); }, css: { active: ReportType()=='Pivot' }">
+        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Pivot'); }, css: { active: ReportType()=='Pivot',disabled: isFunctionField() }">
             <span class="fa fa-2x fa-random"></span>
             <p>Transpose</p>
         </button>
@@ -1506,7 +1506,7 @@
         </div>
         <div class="pull-right">
             <a href="#" class="btn btn-secondary btn-sm" title="Add Custom Field using Formula" data-bind="hidden: isFunctionField() || useStoredProc(), click: cancelFormulaField, text: isFormulaField()? 'Cancel': 'Custom Field', css: {'btn-primary': !isFormulaField(), 'btn-danger': isFormulaField}"></a>
-            <a href="#" class="btn btn-secondary btn-sm" title="Add Custom Field using Function" data-bind="hidden: isFormulaField() || useStoredProc(), click: function(){designFunctionField()}, text: isFunctionField()? 'Cancel': 'Function Field', css: {'btn-primary': !isFunctionField(), 'btn-danger': isFunctionField}"></a>
+            <a href="#" class="btn btn-secondary btn-sm" title="Add Custom Field using Function" data-bind="hidden:isFormulaField() || useStoredProc() || !appSettings.useFunctions || ReportType() !== 'List' , click: function(){designFunctionField()}, text: isFunctionField()? 'Cancel': 'Function Field', css: {'btn-primary': !isFunctionField(), 'btn-danger': isFunctionField}"></a>
         </div>
     </div>
     <div class="clearfix"></div>
@@ -2617,7 +2617,7 @@
                                 <div data-bind="template: 'designer-choose-visual'"></div>
                             </div>
                         </div>
-                        <div id="customFunctionSection" data-bind="if: isFunctionField" class="custom-field-design">
+                        <div id="customFunctionSection" data-bind="if: isFunctionField() && ReportType() === 'List'" class="custom-field-design">
                             <br />
                             <div class="card">
                                 <div class="card-header">

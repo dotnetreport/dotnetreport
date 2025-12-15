@@ -2955,7 +2955,9 @@ var settingPageViewModel = function (options) {
 	self.usePromptBuilder = ko.observable(true);
 	self.showPageSize = ko.observable(false);
 	self.showImportExport = ko.observable(false);
-
+	self.licenseType = ko.observable(null);
+	self.isEnterprise = ko.observable(false);
+	self.useFunctions = ko.observable(false);
 	self.appThemes = ko.observableArray([
 		{ name: 'Default', value: 'default' },
 		{ name: 'Dark', value: 'dark' },
@@ -3033,7 +3035,8 @@ var settingPageViewModel = function (options) {
 							dontWordExport: self.dontWordExport(),
 							usePromptBuilder: self.usePromptBuilder(),
 							showPageSize: self.showPageSize(),
-							showImportExport: self.showImportExport()
+							showImportExport: self.showImportExport(),
+							useFunctions: self.isEnterprise() ? self.useFunctions() : false
 						})
 					})
 				})
@@ -3052,6 +3055,9 @@ var settingPageViewModel = function (options) {
 		};
 
 	}
+	self.canAddFunction = ko.computed(function () {
+		return self.isEnterprise() && self.useFunctions();
+	});
 	self.getAppSettings = function () {
 
 		return ajaxcall({
@@ -3090,7 +3096,13 @@ var settingPageViewModel = function (options) {
 				self.usePromptBuilder(settings.usePromptBuilder === false ? false : true);
 				self.showPageSize(settings.showPageSize);
 				self.showImportExport(settings.showImportExport);
-;
+				self.licenseType(settings.licenseType || settings.license || '');
+				self.isEnterprise(self.licenseType() && self.licenseType().toLowerCase() === 'enterprise');
+				if (self.isEnterprise()) {
+					self.useFunctions(settings.useFunctions === true);
+				} else {
+					self.useFunctions(false);
+				}			
 				//// Optionally, you can manually trigger change event for select elements
 				$('#themeSelect').trigger('change');
 				$('#timezoneSelect').trigger('change');
