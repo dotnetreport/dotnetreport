@@ -7911,7 +7911,8 @@ var dashboardViewModel = function (options) {
 	self.selectDashboard = ko.observable(currentDash.id);
 	self.isOverlap = ko.observable(false);
 	self.loadDashboard = function (dashboardId) {
-		ajaxcall({
+		self.arrangeDashboard(false);
+		return ajaxcall({
 			url: options.loadSavedDashbordUrl,
 			data: { id: dashboardId, adminMode: self.adminMode(), applyClientInAdmin: self.appSettings.useClientIdInAdmin }
 		}).done(function (reportsData) {
@@ -8021,7 +8022,7 @@ var dashboardViewModel = function (options) {
 	}
 
 	self.selectDashboard.subscribe(function (newValue) {
-		if (newValue != self.currentDashboard().id) {
+		if (newValue != self.currentDashboard().id) {			
 			self.lineSeparators([]);
 			self.textWidgets([]);
 			self.loadDashboard(newValue);
@@ -8253,10 +8254,10 @@ var dashboardViewModel = function (options) {
 				//const id = reports[i]?.reportId || reports[i]?.ReportID() || 0;
 				i++;
 				item.setAttribute('gs-id', id);
-				item.setAttribute('gs-x', x);
-				item.setAttribute('gs-y', y);
-				item.setAttribute('gs-w', width);
-				item.setAttribute('gs-h', height);
+				item.setAttribute('gs-x', x || 0);
+				item.setAttribute('gs-y', y || 0);
+				item.setAttribute('gs-w', width || 1);
+				item.setAttribute('gs-h', height || 1);
 				grid.makeWidget(item);
 		});
 
@@ -8476,7 +8477,6 @@ var dashboardViewModel = function (options) {
 		self.adminMode(true);
 	}
 
-	self.loadDashboardReports(options.reports, true);
 	self.buildWidgetSettings = function (item) {
 		const settings = {
 			WidgetId: item.id,
@@ -8507,7 +8507,7 @@ var dashboardViewModel = function (options) {
 	};
 
 	self.updatePosition = function (item) {
-		if (!item || !item.id || self.skipGridRefresh || item.id === 'undefined') return;
+		if (!item || !item.id || self.skipGridRefresh || item.id === 'undefined' || !self.arrangeDashboard()) return;
 		const isWidget = item.type !== 'report';
 		const reportId = isWidget ? 0 : parseInt(item.id);
 		const widgetSettings = self.buildWidgetSettings(item);
@@ -8559,6 +8559,7 @@ var dashboardViewModel = function (options) {
 					width: item.w,
 					height: item.h,
 					widgetSettings: JSON.stringify(widgetSettings),
+					adminMode: self.adminMode()
 				})
 			}
 		});
@@ -8638,8 +8639,8 @@ var dashboardViewModel = function (options) {
 			items.push(Object.assign({}, t, { type: 'text' }));
 		});
 		items.sort(function (a, b) {
-			if (a.y !== b.y) return a.y - b.y;   // pehle row
-			return a.x - b.x;                    // phir column
+			if (a.y !== b.y) return a.y - b.y; 
+			return a.x - b.x;                  
 		});
 		return items;
 	});
