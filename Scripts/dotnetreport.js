@@ -2915,14 +2915,27 @@ var reportViewModel = function (options) {
 		}).done(function (result) {
 			if (result.d) result = result.d;
 			result = result.processed;
-			var field = self.getEmptyFormulaField();
-			field.functionId = result.FunctionId;
-			field.functionName = result.FunctionName;
-			result.input = input;
-			field.fieldSettings = { functionConfig: result };
-			self.SelectedFields.push(self.setupField(field));
+			let field = self.currentFormulaField();
+			if (field != null && field != undefined) {
+				field.functionId = result.FunctionId;
+				field.functionName = result.FunctionName;
+				field.fieldName = self.formulaFieldLabel();
+				field.fieldFormat(self.formulaDataFormat());
+				field.decimalPlaces(self.formulaDecimalPlaces());
+				result.input = input;
+				field.fieldSettings = { functionConfig: result };
+				self.SelectedFields.valueHasMutated();
+				self.currentFormulaField(null);
+			} else {
+				var formulafield = self.getEmptyFormulaField();
+				formulafield.functionId = result.FunctionId;
+				formulafield.functionName = result.FunctionName;
+				result.input = input;
+				formulafield.fieldSettings = { functionConfig: result };
+				self.SelectedFields.push(self.setupField(formulafield));
+			}
+			self.clearFormulaField();
 			self.selectedFunction(null);
-
 			self.isFunctionField(false);
 		});		
 	}
