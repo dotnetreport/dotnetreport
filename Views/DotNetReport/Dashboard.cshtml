@@ -48,42 +48,36 @@
 
                 var dashboardId = parseInt(queryParams.id || 0);
                 if (!dashboardId && dashboards.length > 0) { dashboardId = dashboards[0].id; }
-
-                ajaxcall({ url: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")' + '?id=' + dashboardId + '&adminMode=' + adminMode, noBlocking: true }).done(function (reportsData) {
-                    _.forEach(reportsData, function (r) {
-                        reports.push({ reportSql: r.ReportSql, reportId: r.ReportId, reportFilter: r.ReportFilter, connectKey: r.ConnectKey, x: r.X, y: r.Y, width: r.Width, height: r.Height });
+                ajaxcall({ url: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")', noBlocking: true }).done(function (data) {
+                    var vm = new dashboardViewModel({
+                        runReportUrl: "@Url.Action("Report")",
+                        execReportUrl: "@Url.Action("RunReport", "DotNetReportApi")",
+                        runLinkReportUrl: "@Url.Action("RunReportLink", "DotNetReportApi")",
+                        reportWizard: $("#filter-panel"),
+                        lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
+                        apiUrl: "@Url.Action("CallReportApi", "DotNetReportApi")",
+                        runReportApiUrl: "@Url.Action("RunReportApi", "DotNetReportApi")",
+                        getSchemaFromSql: '@Url.Action("GetSchemaFromSql", "DotNetReportApi")',
+                        reportMode: "execute",
+                        reportWizard: $("#modal-reportbuilder"),
+                        linkModal: $("#linkModal"),
+                        fieldOptionsModal: $("#fieldOptionsModal"),
+                        dashboards: dashboards,
+                        userSettings: data,
+                        users: data.users,
+                        userRoles: data.userRoles,
+                        allowAdmin: data.allowAdminMode,
+                        dataFilters: data.dataFilters,
+                        dashboardId: dashboardId,
+                        runExportUrl: "/api/DotnetReportApi/",
+                        printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, Context.Request.Scheme)",
+                        loadSavedDashbordUrl: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")',
+                        getDashbordsUrl: '@Url.Action("GetDashboards", "DotNetReportApi")',
+                        getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")'
                     });
 
-                    ajaxcall({ url: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")', noBlocking: true }).done(function (data) {
-                        var vm = new dashboardViewModel({
-                            runReportUrl: "@Url.Action("Report")",
-                            execReportUrl: "@Url.Action("RunReport", "DotNetReportApi")",
-                            runLinkReportUrl: "@Url.Action("RunReportLink", "DotNetReportApi")",
-                            reportWizard: $("#filter-panel"),
-                            lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
-                            apiUrl: "@Url.Action("CallReportApi", "DotNetReportApi")",
-                            runReportApiUrl: "@Url.Action("RunReportApi", "DotNetReportApi")",
-                            getSchemaFromSql: '@Url.Action("GetSchemaFromSql", "DotNetReportApi")',
-                            reportMode: "execute",
-                            reportWizard: $("#modal-reportbuilder"),
-                            linkModal: $("#linkModal"),
-                            fieldOptionsModal: $("#fieldOptionsModal"),
-                            reports: reports,
-                            dashboards: dashboards,
-                            userSettings: data,
-                            users: data.users,
-                            userRoles: data.userRoles,
-                            allowAdmin: data.allowAdminMode,
-                            dataFilters: data.dataFilters,
-                            dashboardId: dashboardId,
-                            runExportUrl: "/api/DotnetReportApi/",
-                            printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, Context.Request.Scheme)",
-                            loadSavedDashbordUrl: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")',
-                            getDashbordsUrl: '@Url.Action("GetDashboards", "DotNetReportApi")',
-                            getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")'
-                        });
-
-                        vm.init().done(function () {
+                    vm.init().done(function () {
+                        vm.loadDashboard(dashboardId).done(function() {
                             if ($.unblockUI) {
                                 $.unblockUI();
                             }
@@ -100,6 +94,7 @@
                                 });
 
                                 grid.on('change', function (event, items) {
+                                    if (!vm.arrangeDashboard()) return;
                                     items.forEach(function (x) {
                                         const el = x.el;
                                         const type = el.getAttribute("data-type"); 
