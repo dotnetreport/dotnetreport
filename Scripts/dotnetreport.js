@@ -2839,7 +2839,13 @@ var reportViewModel = function (options) {
 	};
 
 	self.selectedFieldsCanFilter = ko.computed(function () {
-		return self.SelectedFields();
+		return self.SelectedFields().filter(function (field) {
+			return !(
+				field.fieldSettings &&
+				field.fieldSettings.functionConfig &&
+				Object.keys(field.fieldSettings.functionConfig).length > 0
+			);
+		});
 	});
 
 	self.clearFormulaField = function () {
