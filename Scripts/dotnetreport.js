@@ -2837,7 +2837,14 @@ var reportViewModel = function (options) {
 			}
 		};
 	};
-
+	self.hasFunctionField = ko.computed(function () {
+		var selectedHasFunction = self.SelectedFields().some(function (field) {
+			return field.fieldSettings &&
+				field.fieldSettings.functionConfig &&
+				Object.keys(field.fieldSettings.functionConfig).length > 0;
+		});
+		return selectedHasFunction || self.isFunctionField();
+	});
 	self.selectedFieldsCanFilter = ko.computed(function () {
 		return self.SelectedFields().filter(function (field) {
 			return !(
