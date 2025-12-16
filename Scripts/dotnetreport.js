@@ -8218,6 +8218,7 @@ var dashboardViewModel = function (options) {
 			$('#add-dashboard-modal').modal('hide');
 			setTimeout(function () {
 				self.lineSeparators([]);
+				self.textWidgets([]);
 				self.loadDashboard(result.id);
 			}, 500);
 		});
@@ -8556,9 +8557,10 @@ var dashboardViewModel = function (options) {
 		const reportId = isWidget ? 0 : parseInt(item.id);
 		const widgetSettings = self.buildWidgetSettings(item);
 		ajaxcall({
-			url: options.apiUrl,
+			url: options.apiUrl.replace('CallReportApi', 'CallPostReportApi'),
 			noBlocking: true,
-			data: {
+			type: 'POST',
+			data: JSON.stringify({
 				method: '/ReportApi/UpdateDashboardReportPosition',
 				model: JSON.stringify({
 					x: item.x,
@@ -8570,7 +8572,7 @@ var dashboardViewModel = function (options) {
 					widgetSettings: JSON.stringify(widgetSettings),
 					adminMode: self.adminMode()
 				})
-			}
+			})
 		});
 	};
 	self.deleteDashboardWidget = function (widgetId) {
@@ -8968,6 +8970,7 @@ var dashboardViewModel = function (options) {
 			self.init().done(function () {
 				self.getDashboards();
 				self.lineSeparators([]);
+				self.textWidgets([]);
 				self.loadDashboard(self.selectDashboard());
 			})
 		}
