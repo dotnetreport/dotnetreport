@@ -8624,7 +8624,6 @@ var dashboardViewModel = function (options) {
 	self.onWidgetChange = function (data) {
 		if (!data || !data.id) return;
 		self.updatePosition(data);
-		console.log('Widget ', data);
 	};
 
 	self.addLineSeparator = function (data, isload) {
@@ -8711,6 +8710,7 @@ var dashboardViewModel = function (options) {
 		const encoded = encodeURIComponent(html);
 		if (self.currentTextWidget()) {
 			self.currentTextWidget().text(encoded);
+			self.onWidgetChange(self.currentTextWidget());
 		}
 		$('#textWidgetModal').modal('hide');
 	};
