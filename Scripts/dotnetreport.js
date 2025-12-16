@@ -8525,10 +8525,10 @@ var dashboardViewModel = function (options) {
 	self.buildWidgetSettings = function (item) {
 		const settings = {
 			WidgetId: item.id,
-			gridChartHeight: item.h,
-			gridChartWidth: item.w,
-			expandedChartHeight: item.h,
-			expandedChartWidth: item.w,
+			gridChartHeight: item.h || item.height,
+			gridChartWidth: item.w || item.width,
+			expandedChartHeight: item.h || item.height,
+			expandedChartWidth: item.w || item.width,
 			Widget: null
 		};
 		const sep = self.lineSeparators().find(s => s.id === item.id);
@@ -8565,8 +8565,8 @@ var dashboardViewModel = function (options) {
 				model: JSON.stringify({
 					x: item.x,
 					y: item.y,
-					width: item.w,
-					height: item.h,
+					width: item.w || item.width,
+					height: item.h || item.height,
 					dashboardId: self.currentDashboard().id,
 					reportId: reportId,
 					widgetSettings: JSON.stringify(widgetSettings),
@@ -8621,6 +8621,12 @@ var dashboardViewModel = function (options) {
 	self.PrintDashboard = function () {
 		window.print();
 	};
+	self.onWidgetChange = function (data) {
+		if (!data || !data.id) return;
+		self.updatePosition(data);
+		console.log('Widget ', data);
+	};
+
 	self.addLineSeparator = function (data, isload) {
 		data = data || {};
 		const widget = {

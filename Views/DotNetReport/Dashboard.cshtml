@@ -516,7 +516,7 @@
                <ul class="dropdown-menu dropdown-menu-end p-2 bg-light small">
                     <li class="d-flex align-items-center gap-2 mb-2">
                         <label class="form-label small mb-0">Line Color</label>
-                        <input type="color" class="color-picker" data-bind="value: color">
+                        <input type="color" class="color-picker" data-bind="value: color,valueUpdate: 'input',event: { change: () => $root.onWidgetChange($data)}">
                     </li>
 
                     <li class="d-flex align-items-center gap-2 mb-2">
@@ -524,7 +524,7 @@
                         <input type="number"
                                min="1"
                                max="10"
-                               data-bind="value: thickness"
+                               data-bind="value: thickness,valueUpdate: 'input',event: { change: () => $root.onWidgetChange($data)}"
                                class="form-control form-control-sm"
                                style="width:50px">
                     </li>
