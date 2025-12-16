@@ -9001,7 +9001,7 @@ var dashboardViewModel = function (options) {
 				self.getDashboards();
 				self.lineSeparators([]);
 				self.textWidgets([]);
-				self.loadDashboard(self.selectDashboard());
+				//self.loadDashboard(self.selectDashboard());
 			})
 		}
 	});
