@@ -8696,7 +8696,22 @@ var dashboardViewModel = function (options) {
 		return items;
 	});
 	self.currentTextWidget = ko.observable(null);
+	self.textModalMode = ko.observable('add'); // add | edit
+	self.textModalTitle = ko.observable('Add Text');
+	self.openAddTextModal = function () {
+		self.textModalMode('add');
+		self.textModalTitle('Add Text');
+		self.currentTextWidget(null);
+		$('#textEditor').summernote({
+			height: 200
+		});
+		const decoded = decodeURIComponent('<p>Enter Text Here</p>');
+		$('#textEditor').summernote('code', decoded);
+		$('#textWidgetModal').modal('show');
+	};
 	self.openTextEditor = function (item) {
+		self.textModalMode('edit');
+		self.textModalTitle('Edit Text');
 		self.currentTextWidget(item);
 		$('#textEditor').summernote({
 			height: 200
@@ -8707,8 +8722,17 @@ var dashboardViewModel = function (options) {
 	};
 	self.saveTextWidget = function () {
 		const html = $('#textEditor').summernote('code');
+		if (!html || html === '<p><br></p>') {
+			$('#textWidgetModal').modal('hide');
+			return;
+		}
 		const encoded = encodeURIComponent(html);
-		if (self.currentTextWidget()) {
+		if (self.textModalMode() === 'add') {
+			self.addTextWidget({
+				text: encoded
+			});
+		}
+		if (self.textModalMode() === 'edit' && self.currentTextWidget()) {
 			self.currentTextWidget().text(encoded);
 			self.onWidgetChange(self.currentTextWidget());
 		}

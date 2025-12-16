@@ -191,7 +191,7 @@
                         </button>
                     </li>
                     <li>
-                        <button class="dropdown-item" data-bind="click: addTextWidget">
+                        <button class="dropdown-item" data-bind="click: openAddTextModal">
                             <i class="fa fa-font"></i>
                             <span>Add Text</span>
                         </button>
@@ -611,7 +611,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Edit Text</h5>
+                <h5 class="modal-title" data-bind="text: textModalTitle"></h5>
                 <button class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
