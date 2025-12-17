@@ -1125,7 +1125,7 @@ namespace ReportBuilder.Web.Models
                 }
             }
 
-            return -1;
+            return sql.Length;
         }
 
         public static async Task<List<TableViewModel>> GetApiTables(string accountKey, string dataConnectKey, bool loadColumns = false)

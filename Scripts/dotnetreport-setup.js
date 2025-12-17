@@ -3265,9 +3265,10 @@ var customFunctionManageModel = function (options, keys) {
 				self.functions.push(self.selectedFunction());
 			}
 
+			toastr.success('Function saved successfully');
+
 			self.buildCustomFunctions().done(function () {
-				toastr.success('Function saved successfully');
-				self.selectedFunction(null);
+				
 			});
 		});
 	};

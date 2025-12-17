@@ -924,7 +924,7 @@ namespace ReportBuilder.Web.Controllers
             {
                 var settings = GetSettings();
                 var functions = await DotNetReportHelper.GetApiFunctions();
-                var compiledType = DynamicCodeRunner.BuildAssembly(functions);
+                DynamicCodeRunner.BuildAssembly(functions);
 
                 return Ok(new { success = true });
             }

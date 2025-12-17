@@ -76,12 +76,11 @@ namespace ReportBuilder.Web.Models
             return method.Invoke(null, parameters);  // Null because it's a static class
         }
 
-        public static Type BuildAssembly(List<CustomFunctionModel> functions)
+        public static void BuildAssembly(List<CustomFunctionModel> functions)
         {
             string outputPath = Path.Combine(AppContext.BaseDirectory, "DynamicAssembly.dll");
-            string typeName = "DynamicAssembly.DynamicClass";
-            string sourceCode = GenerateExecutableCode(functions);
 
+            string sourceCode = GenerateExecutableCode(functions);
             var syntaxTree = CSharpSyntaxTree.ParseText(sourceCode);
 
             var references = AppDomain.CurrentDomain
@@ -100,21 +99,21 @@ namespace ReportBuilder.Web.Models
             if (File.Exists(outputPath))
                 File.Delete(outputPath);
 
-            var emitResult = compilation.Emit(outputPath);
-
-            if (!emitResult.Success)
+            using (var fs = new FileStream(outputPath, FileMode.CreateNew, FileAccess.Write, FileShare.ReadWrite))
             {
-                var errors = emitResult.Diagnostics
-                    .Where(d => d.Severity == DiagnosticSeverity.Error)
-                    .Select(d => $"Error: {d.GetMessage()}")
-                    .ToList();
+                var emitResult = compilation.Emit(fs);
 
-                throw new Exception(string.Join(",", errors));
-            }
+                if (!emitResult.Success)
+                {
+                    var errors = emitResult.Diagnostics
+                        .Where(d => d.Severity == DiagnosticSeverity.Error)
+                        .Select(d => d.GetMessage());
 
-            var assembly = Assembly.LoadFrom(outputPath);
-            var type = assembly.GetType(typeName);
-            return type;
+                    throw new Exception(string.Join(Environment.NewLine, errors));
+                }
+
+                fs.Flush(true);
+            } 
         }
 
 

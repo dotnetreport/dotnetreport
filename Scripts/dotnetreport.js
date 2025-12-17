@@ -3568,7 +3568,6 @@ var reportViewModel = function (options) {
 							ParameterId: f.parameterId()
 						};
 					}),
-					FunctionId: x.functionId(),
 					LinkField: x.linkField(),
 					LinkFieldItem: x.linkField() ? x.linkFieldItem.toJs() : null,
 					FieldLabel: x.fieldLabel(),
