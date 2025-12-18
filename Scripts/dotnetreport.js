@@ -4981,7 +4981,7 @@ var reportViewModel = function (options) {
 			google.charts.setOnLoadCallback(self.DrawChart);
 		}
 
-		if (self.IncludeSubTotal()) {
+		if (self.IncludeSubTotal() && self.hasPivotColumn()==false) {
 			ajaxcall({
 				url: options.runReportApiUrl,
 				type: "POST",
@@ -5076,7 +5076,7 @@ var reportViewModel = function (options) {
 				pivotColumn: pivotData.pivotColumn,
 				pivotFunction: pivotData.pivotFunction,
 				reportData: pivotData.pivotColumn ? JSON.stringify(reportData) : '',
-				SubTotalMode: false,
+				SubTotalMode: self.hasPivotColumn() ? self.IncludeSubTotal() :false,
 				includeColumnTotal: self.IncludeColumnTotal(),
 				useAltPivot: self.appSettings.useAltPivot,
 				adminMode: self.adminMode(),
