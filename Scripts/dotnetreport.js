@@ -3497,7 +3497,6 @@ var reportViewModel = function (options) {
 				};
 			}),
 			IncludeSubTotals: self.IncludeSubTotal(),
-			IncludeColumnTotals: self.IncludeColumnTotal(),
 			EditFiltersOnReport: self.EditFiltersOnReport(),
 			ShowUniqueRecords: self.ShowUniqueRecords(),
 			ReportSettings: JSON.stringify({
@@ -3529,7 +3528,8 @@ var reportViewModel = function (options) {
 				dontGroupCustom: self.dontGroupCustom(),
 				subReports: self.subReports(),
 				tableSettings: self.tableSettings(),
-				kpiSettings: ko.toJS(self.kpiSettings())
+				kpiSettings: ko.toJS(self.kpiSettings()),
+				includeColumnTotal: self.IncludeColumnTotal(),
 			}),
 			OnlyTop: drilldown.length > 0 ? null : (self.maxRecords() ? self.OnlyTop() : null),
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : self.AggregateReport(),
@@ -6412,7 +6412,6 @@ var reportViewModel = function (options) {
 		self.manageAccess.setupList(self.manageAccess.deleteOnlyUsers, report.DeleteOnlyUserId || '');
 
 		self.IncludeSubTotal(report.IncludeSubTotals);
-		self.IncludeColumnTotal(report.IncludeColumnTotals);
 		self.EditFiltersOnReport(report.EditFiltersOnReport);
 		self.ShowUniqueRecords(report.ShowUniqueRecords);
 		self.OnlyTop(report.OnlyTop);
@@ -6463,6 +6462,7 @@ var reportViewModel = function (options) {
 			self.kpiSettings().shortFormat(kpisetting.shortFormat);
 			self.kpiSettings().currencySymbol(kpisetting.currencySymbol);
 		}
+		self.IncludeColumnTotal(reportSettings.includeColumnTotal);
 		self.noHeaderRow(reportSettings.noHeaderRow);
 		self.noDashboardBorders(reportSettings.noDashboardBorders);
 		self.showPriorInKpi(reportSettings.showPriorInKpi);
