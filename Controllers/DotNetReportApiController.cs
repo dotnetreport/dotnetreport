@@ -1127,6 +1127,8 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] bool debug = false,
             [FromForm] string pageSize = "",
             [FromForm] string pageOrientation = "",
+            [FromForm] bool includeSubTotal = false,
+            [FromForm] bool includeColumnTotal = false,
             [FromForm] string userId = "")
         {
 
@@ -1138,7 +1140,7 @@ namespace ReportBuilder.Web.Controllers
                 await ValidateAccess(userId, reportSql);
             }
             var pdf = await DotNetReportHelper.GetPdfFile(HttpUtility.UrlDecode(printUrl), reportId, reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName),
-                                settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), JsonConvert.SerializeObject(settings.DataFilters), expandAll, expandSqls, pivotColumn, pivotFunction, false, debug, pageSize, pageOrientation);
+                                settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), JsonConvert.SerializeObject(settings.DataFilters), expandAll, expandSqls, pivotColumn, pivotFunction, false, debug, pageSize, pageOrientation,includeSubTotal,includeColumnTotal);
 
             return File(pdf, "application/pdf", reportName + ".pdf");
         }
@@ -1257,7 +1259,7 @@ namespace ReportBuilder.Web.Controllers
             foreach (var report in reports)
             {
                 var pdf = await DotNetReportHelper.GetPdfFile(report.printUrl, report.reportId, HttpUtility.HtmlDecode(report.reportSql), HttpUtility.UrlDecode(report.connectKey), HttpUtility.UrlDecode(report.reportName), settings.UserId,
-                    settings.ClientId, string.Join(",", settings.CurrentUserRole), JsonConvert.SerializeObject(settings.DataFilters), report.expandAll, report.expandSqls, report.pivotColumn, report.pivotFunction,pageSize:report.pageSize,pageOrientation:report.pageOrientation);
+                    settings.ClientId, string.Join(",", settings.CurrentUserRole), JsonConvert.SerializeObject(settings.DataFilters), report.expandAll, report.expandSqls, report.pivotColumn, report.pivotFunction,pageSize:report.pageSize,pageOrientation:report.pageOrientation,subTotalMode:report.includeSubTotal,includeColumnTotal:report.includeColumnTotal);
                 pdfBytesList.Add(pdf);
             }
             var combinedPdf = DotNetReportHelper.GetCombinePdfFile(pdfBytesList);

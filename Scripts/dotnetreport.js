@@ -7329,7 +7329,9 @@ var reportViewModel = function (options) {
 			pivotFunction: pivotData.pivotFunction,
 			debug: debug === true ? true : false,
 			pageSize: pageSize,
-			pageOrientation: pageOrientation
+			pageOrientation: pageOrientation,
+			includeSubTotal: self.IncludeSubTotal(),
+            includeColumnTotal:self.IncludeColumnTotal()
 		}, 'pdf');
 	}
 	self.PdfPage = new PdfPageViewModel(self.appSettings, self.downloadPdf, self.downloadPdfAlt);
@@ -8769,7 +8771,9 @@ var dashboardViewModel = function (options) {
 				pivotColumn: pivotData.pivotColumn,
 				pivotFunction: pivotData.pivotFunction,
 				pageSize: pageSize,
-				pageOrientation: pageOrientation
+				pageOrientation: pageOrientation,
+				includeSubTotal: report.IncludeSubTotal(),
+				includeColumnTotal: report.IncludeColumnTotal(),
 			});
 		});
 		reports[0]?.downloadExport("DownloadAllPdf", {
