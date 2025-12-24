@@ -390,7 +390,7 @@ function PdfPageViewModel(appSettings, downloadPdf, downloadPdfAlt) {
 	self.download = function () {
 		const selectedSize = self.selectedPageSize();
 		const selectedOrientation = self.selectedPageOrientation();
-		if (appSettings?.useAltPdf) {
+		if (ko.unwrap(appSettings?.useAltPdf)) {
 			downloadPdfAlt(selectedSize, selectedOrientation);
 		} else {
 			downloadPdf(self.isDebug, selectedSize, selectedOrientation);
@@ -1428,7 +1428,7 @@ var reportViewModel = function (options) {
 		noFolders: false,
 		noDefaultFolder: false,
 		showEmptyFolders: false,
-		useAltPdf: false,
+		useAltPdf: ko.observable(false),
 		useAltPivot: false,
 		dontXmlExport: false,
 		dontWordExport: false,
@@ -7138,7 +7138,7 @@ var reportViewModel = function (options) {
 			self.appSettings.noFolders = x.noFolders;
 			self.appSettings.noDefaultFolder = x.noDefaultFolder;
 			self.appSettings.showEmptyFolders = x.showEmptyFolders;
-			self.appSettings.useAltPdf = x.useAltPdf;
+			self.appSettings.useAltPdf(x.useAltPdf);
 			self.appSettings.useAltPivot = x.useAltPivot === true;
 			self.appSettings.dontXmlExport = x.dontXmlExport;
 			self.appSettings.dontWordExport = x.dontWordExport;
