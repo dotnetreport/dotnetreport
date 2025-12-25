@@ -369,7 +369,7 @@ namespace ReportBuilder.Web.Controllers
                                 sql += $" ORDER BY {(hasDistinct ? "1" : "NEWID()")} ";
                             else if (DotNetReportHelper.dbtype == "PostgreSQL")
                                 sql += $" ORDER BY {(hasDistinct ? "1" : "RANDOM()")} ";
-                            else if (DotNetReportHelper.dbtype == "MySQL")
+                            else if (DotNetReportHelper.dbtype == "MySql")
                                 sql += $" ORDER BY {(hasDistinct ? "1" : "RAND()")} ";
                             else if (DotNetReportHelper.dbtype == "Oracle")
                                 sql += $" ORDER BY {(hasDistinct ? "1" : "DBMS_RANDOM.VALUE")} ";
@@ -379,7 +379,7 @@ namespace ReportBuilder.Web.Controllers
                         hasTop = sql.IndexOf(" TOP ", StringComparison.OrdinalIgnoreCase) >= 0;
                         if (!hasTop && string.IsNullOrEmpty(pivotColumn))
                         {
-                            if (DotNetReportHelper.dbtype == "PostgreSQL" || DotNetReportHelper.dbtype == "MySQL")
+                            if (DotNetReportHelper.dbtype == "PostgreSQL" || DotNetReportHelper.dbtype == "MySql")
                             {
                                 sql += $" LIMIT {pageSize} OFFSET {(pageNumber - 1) * pageSize}";
                             }
@@ -829,7 +829,7 @@ namespace ReportBuilder.Web.Controllers
                 return sql;
             switch (dbtype)
             {
-                case "MySQL":
+                case "MySql":
                     sql = sql.Replace("[", "`").Replace("]", "`");
                     break;
 
@@ -850,7 +850,7 @@ namespace ReportBuilder.Web.Controllers
                     var top = m.Groups[1].Value;
                     sql = System.Text.RegularExpressions.Regex.Replace(sql, @"TOP\s+\d+", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
                     sql = System.Text.RegularExpressions.Regex.Replace(sql, @"\[(.*?)\]", "`$1`").Trim();
-                    if (dbtype.Equals("MySQL", StringComparison.OrdinalIgnoreCase) ||
+                    if (dbtype.Equals("MySql", StringComparison.OrdinalIgnoreCase) ||
                         dbtype.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase))
                     {
                         sql = sql.TrimEnd(';') + $" LIMIT {top};";

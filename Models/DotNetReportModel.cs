@@ -4036,7 +4036,7 @@ namespace ReportBuilder.Web.Models
                 case "mysql":
                     databaseConnection = new MySqlDatabaseConnection();
                     break;
-                case "PostgreSQL":
+                case "postgresql":
                     databaseConnection = new PostgresDatabaseConnection();
                     break;
                 case "oracle":
