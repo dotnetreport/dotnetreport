@@ -4528,8 +4528,9 @@ var reportViewModel = function (options) {
 			if (nextValue === 0) return null; // Avoid division by zero
 			return (((currentValue - nextValue) / nextValue) * 100).toFixed(1);
 		};
-		result.ReportData.formatKpiValue = function (value) {
+		result.ReportData.formatKpiValue = function (value, formattedVal) {
 			let settings = self.kpiSettings();
+			if (isNaN(value)) return formattedVal;
 			let v = Number(value);
 			let symbol = settings.currencySymbol();
 			let pattern = settings.customFormat();
@@ -8596,9 +8597,10 @@ var dashboardViewModel = function (options) {
 		if (!item.id) return $.Deferred().reject();
 		const widgetSettings = self.buildWidgetSettings(item);
 		return ajaxcall({
-			url: options.apiUrl,
+			url: options.apiUrl.replace('CallReportApi', 'CallPostReportApi'),
 			noBlocking: true,
-			data: {
+			type: 'POST',
+			data: JSON.stringify({
 				method: '/ReportApi/AddDashboardWidget',
 				model: JSON.stringify({
 					dashboardId: self.currentDashboard().id,
@@ -8609,7 +8611,7 @@ var dashboardViewModel = function (options) {
 					widgetSettings: JSON.stringify(widgetSettings),
 					adminMode: self.adminMode()
 				})
-			}
+			})
 		});
 	};
 	self.ExecuteReport = function () {
