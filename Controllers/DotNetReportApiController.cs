@@ -1031,7 +1031,7 @@ namespace ReportBuilder.Web.Controllers
         {
             var isValid = true;
             var settings = GetSettings();
-            if (adminMode && settings.CanUseAdminMode) return;
+            if ((adminMode && settings.CanUseAdminMode) || (string.IsNullOrEmpty(settings.UserId) && !settings.CurrentUserRole.Any())) return;
             if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
             {
                 isValid = false;
@@ -1137,7 +1137,7 @@ namespace ReportBuilder.Web.Controllers
             reportSql = HttpUtility.HtmlDecode(reportSql);
             if (!adminMode)
             {
-                await ValidateAccess(userId, reportSql);
+                await ValidateAccess(userId, reportSql, adminMode: adminMode);
             }
             var pdf = await DotNetReportHelper.GetPdfFile(HttpUtility.UrlDecode(printUrl), reportId, reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName),
                                 settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), JsonConvert.SerializeObject(settings.DataFilters), expandAll, expandSqls, pivotColumn, pivotFunction, false, debug, pageSize, pageOrientation,includeSubTotal,includeColumnTotal);

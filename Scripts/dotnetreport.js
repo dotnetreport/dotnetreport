@@ -7331,7 +7331,8 @@ var reportViewModel = function (options) {
 			pageSize: pageSize,
 			pageOrientation: pageOrientation,
 			includeSubTotal: self.IncludeSubTotal(),
-            includeColumnTotal:self.IncludeColumnTotal()
+			includeColumnTotal: self.IncludeColumnTotal(),
+			adminMode: self.adminMode()
 		}, 'pdf');
 	}
 	self.PdfPage = new PdfPageViewModel(self.appSettings, self.downloadPdf, self.downloadPdfAlt);
@@ -9004,7 +9005,7 @@ var dashboardViewModel = function (options) {
 				self.getDashboards();
 				self.lineSeparators([]);
 				self.textWidgets([]);
-				//self.loadDashboard(self.selectDashboard());
+				self.loadDashboard(self.selectDashboard());
 			})
 		}
 	});
