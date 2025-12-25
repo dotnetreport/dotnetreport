@@ -1,7 +1,10 @@
 ﻿using DocumentFormat.OpenXml;
 using System.Data;
 using Microsoft.CodeAnalysis;
-using IBM.Data.Db2;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Linq;
 
 namespace ReportBuilder.Web.Models
 {
@@ -11,7 +14,7 @@ namespace ReportBuilder.Web.Models
         {
             try
             {
-                using (var conn = new DB2Connection(connectionString))
+                using (var conn = new iDB2Connection(connectionString))
                 {
                     conn.Open();
                     conn.Close();
@@ -164,7 +167,7 @@ namespace ReportBuilder.Web.Models
             return FieldTypes.Varchar;
         }
 
-        public async Task<List<TableViewModel>> GetTables(string type = "TABLE", string? accountKey = null, string? dataConnectKey = null)
+        public async Task<List<TableViewModel>> GetTables(string type = "TABLE", string accountKey = null, string dataConnectKey = null)
         {
             var tables = new List<TableViewModel>();
             var currentTables = new List<TableViewModel>();

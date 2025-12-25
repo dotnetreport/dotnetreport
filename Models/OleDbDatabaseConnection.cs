@@ -2,6 +2,10 @@
 using System.Data;
 using System.Data.OleDb;
 using Microsoft.CodeAnalysis;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Linq;
 
 namespace ReportBuilder.Web.Models
 {
@@ -191,7 +195,7 @@ namespace ReportBuilder.Web.Models
             }
         }
 
-        public async Task<List<TableViewModel>> GetTables(string type = "TABLE", string? accountKey = null, string? dataConnectKey = null)
+        public async Task<List<TableViewModel>> GetTables(string type = "TABLE", string accountKey = null, string dataConnectKey = null)
         {
             var tables = new List<TableViewModel>();
 

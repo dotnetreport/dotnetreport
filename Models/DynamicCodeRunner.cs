@@ -1,6 +1,10 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using System;
+using System.Collections.Generic;
 using System.Data;
+using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 
@@ -40,7 +44,7 @@ namespace ReportBuilder.Web.Models
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
             );
 
-            using var ms = new MemoryStream();
+            var ms = new MemoryStream();
             var emitResult = compilation.Emit(ms);
 
             if (!emitResult.Success)
@@ -59,7 +63,7 @@ namespace ReportBuilder.Web.Models
             var func = (Func<object>)Delegate.CreateDelegate(typeof(Func<object>), method);
 
             _compiledCache[code] = func;
-
+            ms.Dispose();
             return func();
         }
 

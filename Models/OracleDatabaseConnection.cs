@@ -2,7 +2,10 @@
 using System.Data;
 using Microsoft.CodeAnalysis;
 using Oracle.ManagedDataAccess.Client;
-
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Linq;
 namespace ReportBuilder.Web.Models
 {
     public class OracleDatabaseConnection : IDatabaseConnection
@@ -143,7 +146,7 @@ namespace ReportBuilder.Web.Models
             return FieldTypes.Varchar;
         }
 
-        public async Task<List<TableViewModel>> GetTables(string type = "TABLE", string? accountKey = null, string? dataConnectKey = null)
+        public async Task<List<TableViewModel>> GetTables(string type = "TABLE", string accountKey = null, string dataConnectKey = null)
         {
             var tables = new List<TableViewModel>();
             var currentTables = new List<TableViewModel>();
