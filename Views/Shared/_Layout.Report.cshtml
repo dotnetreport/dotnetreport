@@ -42,8 +42,9 @@
         <!--########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
     </div>
 
-    @Html.Partial("_DotnetReportTemplatesPartial")
-    @Html.Partial("_DotnetReportJsLibrariesPartial")
+    @await Html.PartialAsync("_DotnetReportTemplatesPartial")
+    @await Html.PartialAsync("_DotnetReportJsLibrariesPartial")
+    @await Html.PartialAsync("_DotnetReportCodeMirrorLibrariesPartial")
 
     @RenderSection("scripts", required: false)
 </body>

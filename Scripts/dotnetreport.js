@@ -390,7 +390,7 @@ function PdfPageViewModel(appSettings, downloadPdf, downloadPdfAlt) {
 	self.download = function () {
 		const selectedSize = self.selectedPageSize();
 		const selectedOrientation = self.selectedPageOrientation();
-		if (appSettings?.useAltPdf) {
+		if (ko.unwrap(appSettings?.useAltPdf)) {
 			downloadPdfAlt(selectedSize, selectedOrientation);
 		} else {
 			downloadPdf(self.isDebug, selectedSize, selectedOrientation);
@@ -466,7 +466,7 @@ function WordPageViewModel(downloadWord) {
 function DesignerViewModel() {
 	var self = this;
 	self.activePanel = ko.observable('');
-	self.exclusivePanels = ['sortPanel', 'customFieldPanel', 'settingsPanel', 'accessPanel', 'htmlPanel', 'subReportsPanel', 'htmlReportPanel', 'schedulePanel'];
+	self.exclusivePanels = ['sortPanel', 'customFieldPanel', 'customFunctionPanel', 'jsonFieldsPanel', 'settingsPanel', 'accessPanel', 'htmlPanel', 'subReportsPanel', 'htmlReportPanel', 'schedulePanel'];
 
 	self.togglePanel = function (panelId) {
 		if (panelId === 'dataPanel' || panelId === 'selectedPanel') {
@@ -584,7 +584,12 @@ function filterGroupViewModel(args) {
 		//	filter.Value(null);
 		//	filter.Value2(null);
 		//});
-
+		filter.Value.subscribe(function (value) {
+			filter.fmtValue(value)
+		})
+		filter.Value2.subscribe(function (value) {
+			filter.fmtValue2(value)
+		})
 		function loadLookupList(fieldId, dataFilters) {
 			if (printMode === true) return;
 			ajaxcall({
@@ -953,6 +958,7 @@ var reportViewModel = function (options) {
 	self.ReportSeries = '';
 
 	self.IncludeSubTotal = ko.observable(false);
+	self.IncludeColumnTotal = ko.observable(false);
 	self.ShowUniqueRecords = ko.observable(false);
 	self.ShowExpandOption = ko.observable(false);
 	self.DontExecuteOnRun = ko.observable(false);
@@ -1400,6 +1406,7 @@ var reportViewModel = function (options) {
 
 			options.reportSql = result.reportSql;
 			options.reportConnect = result.connectKey;
+			self.PrepFields(result.report);
 			self.PopulateReport(result.report);
 
 			self.aiMessages.pop();
@@ -1421,13 +1428,14 @@ var reportViewModel = function (options) {
 		noFolders: false,
 		noDefaultFolder: false,
 		showEmptyFolders: false,
-		useAltPdf: false,
+		useAltPdf: ko.observable(false),
 		useAltPivot: false,
 		dontXmlExport: false,
 		dontWordExport: false,
 		usePromptBuilder: ko.observable(true),
 		showPageSize: false,
-		showImportExport: ko.observable(false)
+		showImportExport: ko.observable(false),
+		useFunctions: ko.observable(false),
 	};
 	self.appSettings = options && options.appSettings ? options.appSettings : self.appSettings;
 	self.runQuery = function (useAi) {
@@ -1572,7 +1580,6 @@ var reportViewModel = function (options) {
 	});
 
 	self.adminMode.subscribe(function (newValue) {
-
 		if (self.ReportMode() != "dashboard" && self.ReportMode() != "subreport" && !self.inInit) {
 			self.loadFolders().done(function () {
 				self.LoadAllSavedReports();
@@ -1818,7 +1825,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.setupSettingsDirtyCheck = function () {
-		var setingsTabs = $('#chartTab-' + self.ReportID() + ', #tableTab-' + self.ReportID());
+		var setingsTabs = $('#chartTab-' + self.ReportID() + ', #tableTab-' + self.ReportID() + ', #kpiTab-' + self.ReportID());
 
 		setingsTabs 
 			.off("change click", "input, select, .form-select, .form-control, .btn, .list-group-item")
@@ -2131,6 +2138,7 @@ var reportViewModel = function (options) {
 
 								const importReport = function (action) {
 									const reportview = new reportViewModel(options);
+									reportview.adminMode(self.adminMode()) 
 									report.data = report.data || {};
 									report.data.FolderID = folderId;
 
@@ -2303,6 +2311,7 @@ var reportViewModel = function (options) {
 		self.SelectedTable(null);
 
 		self.IncludeSubTotal(false);
+		self.IncludeColumnTotal(false);
 		self.EditFiltersOnReport(false);
 		self.ShowUniqueRecords(false);
 		self.ShowExpandOption(false);
@@ -2342,6 +2351,7 @@ var reportViewModel = function (options) {
 		self.queryPrompt = "";
 		self.isDirty(false);
 		self.clearTableSettings();
+		self.clearKpiSettings();
 		self.subReports([]);
 		self.clearManageAccess();	
 	};
@@ -2417,6 +2427,7 @@ var reportViewModel = function (options) {
 			else {
 				e.Operator = ko.observable(match ? match.Operator : '=');
 				e.Value = ko.observable(match ? match.Value : e.ParameterValue);
+				e.fmtValue = ko.observable(match ? match.Value : e.ParameterValue);
 
 				e.Operator.subscribe(function (newValue) {
 					if (newValue == 'is default') {
@@ -2424,7 +2435,9 @@ var reportViewModel = function (options) {
 					}
 				});
 			}
-
+			e.Value.subscribe(function (value) {
+				e.fmtValue(value)
+			})
 			e.Field = {
 				fieldId: e.Id,
 				hasForeignKey: e.ForeignKey,
@@ -2710,6 +2723,12 @@ var reportViewModel = function (options) {
 			codeEditor = null;
 			self.isFunctionField(true);
 			codeEditor = new functionEditor(options);
+			setTimeout(function () {
+				var target = document.getElementById("customFunctionSection");
+				if (target) {
+					target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				}
+			}, 300); // delay ensures DOM is updated
 		}
 	}
 
@@ -2724,7 +2743,7 @@ var reportViewModel = function (options) {
 	self.customSqlField.selectedSqlFunction.subscribe(function (value) {
 		if (value == 'Other') {
 			setTimeout(function () {
-				self.textQuery.setupHints();
+				self.textQuery.setupHints();				
 			}, 500);
 		}
 	});
@@ -2818,9 +2837,22 @@ var reportViewModel = function (options) {
 			}
 		};
 	};
-
+	self.hasFunctionField = ko.computed(function () {
+		var selectedHasFunction = self.SelectedFields().some(function (field) {
+			return field.fieldSettings &&
+				field.fieldSettings.functionConfig &&
+				Object.keys(field.fieldSettings.functionConfig).length > 0;
+		});
+		return selectedHasFunction || self.isFunctionField();
+	});
 	self.selectedFieldsCanFilter = ko.computed(function () {
-		return self.SelectedFields();
+		return self.SelectedFields().filter(function (field) {
+			return !(
+				field.fieldSettings &&
+				field.fieldSettings.functionConfig &&
+				Object.keys(field.fieldSettings.functionConfig).length > 0
+			);
+		});
 	});
 
 	self.clearFormulaField = function () {
@@ -2883,14 +2915,27 @@ var reportViewModel = function (options) {
 		}).done(function (result) {
 			if (result.d) result = result.d;
 			result = result.processed;
-			var field = self.getEmptyFormulaField();
-			field.functionId = result.FunctionId;
-			field.functionName = result.FunctionName;
-			result.input = input;
-			field.fieldSettings = { functionConfig: result };
-			self.SelectedFields.push(self.setupField(field));
+			let field = self.currentFormulaField();
+			if (field != null && field != undefined) {
+				field.functionId = result.FunctionId;
+				field.functionName = result.FunctionName;
+				field.fieldName = self.formulaFieldLabel();
+				field.fieldFormat(self.formulaDataFormat());
+				field.decimalPlaces(self.formulaDecimalPlaces());
+				result.input = input;
+				field.fieldSettings = { functionConfig: result };
+				self.SelectedFields.valueHasMutated();
+				self.currentFormulaField(null);
+			} else {
+				var formulafield = self.getEmptyFormulaField();
+				formulafield.functionId = result.FunctionId;
+				formulafield.functionName = result.FunctionName;
+				result.input = input;
+				formulafield.fieldSettings = { functionConfig: result };
+				self.SelectedFields.push(self.setupField(formulafield));
+			}
+			self.clearFormulaField();
 			self.selectedFunction(null);
-
 			self.isFunctionField(false);
 		});		
 	}
@@ -3026,6 +3071,17 @@ var reportViewModel = function (options) {
 		self.clearFormulaField();
 		self.isFormulaField(false);
 	};
+	self.duplicateFormulaField = function (field) {
+		if (!field) {
+			toastr.error("No formula field selected");
+			return;
+		}
+		var copyfield = ko.toJS(field);
+		copyfield.fieldName = "Copy - " + copyfield.fieldName;
+		var duplicatedField = self.setupField(copyfield);
+		self.SelectedFields.push(duplicatedField);
+		toastr.success("Formula field duplicated successfully!");
+	};
 	function setFieldFilters(field) {
 		const isNumericOrDate = isNumericOrDateField(field.fieldFormat);
 		field.fieldType = isNumericOrDate ? "Int" : field.fieldType;
@@ -3126,7 +3182,7 @@ var reportViewModel = function (options) {
 	});
 
 	self.useRenderTable = ko.computed(function () {
-		return (self.ReportType() == 'List' || self.ShowExpandOption() || (self.hasPivotColumn() && !self.appSettings.useAltPivot)) && self.subReports().length <= 0;
+		return (self.ReportType() == 'List' || self.ShowExpandOption() || (self.hasPivotColumn() && !self.appSettings.useAltPivot)) && self.subReports().length <= 0 && self.OuterGroupColumns().length <= 0;
 	})
 
 	self.dateFields = ko.computed(function () {
@@ -3418,7 +3474,6 @@ var reportViewModel = function (options) {
 		return groups;
 	};
 	self.BuildReportData = function (drilldown, isComparison, index) {
-
 		drilldown = _.compact(_.map(drilldown || [], function (x) {
 			if (x.isJsonColumn || x.isRuleSet || x.Column.FormatType == 'Csv' || x.Column.FormatType == 'Json' || x.Value.indexOf('/>') >= 0 || x.Column.SqlField == '__') return;
 			return x;
@@ -3472,7 +3527,9 @@ var reportViewModel = function (options) {
 				cardView: self.cardView(),
 				dontGroupCustom: self.dontGroupCustom(),
 				subReports: self.subReports(),
-				tableSettings: self.tableSettings()
+				tableSettings: self.tableSettings(),
+				kpiSettings: ko.toJS(self.kpiSettings()),
+				includeColumnTotal: self.IncludeColumnTotal(),
 			}),
 			OnlyTop: drilldown.length > 0 ? null : (self.maxRecords() ? self.OnlyTop() : null),
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : self.AggregateReport(),
@@ -3511,7 +3568,6 @@ var reportViewModel = function (options) {
 							ParameterId: f.parameterId()
 						};
 					}),
-					FunctionId: x.functionId(),
 					LinkField: x.linkField(),
 					LinkFieldItem: x.linkField() ? x.linkFieldItem.toJs() : null,
 					FieldLabel: x.fieldLabel(),
@@ -3525,7 +3581,8 @@ var reportViewModel = function (options) {
 						seriesType: x.seriesType(),
 						formulaType: x.formulaType,
 						functionConfig: x.functionConfig,
-						customSqlField: x.customSqlField 
+						customSqlField: x.customSqlField,
+						outerGroup: x.outerGroup()
 					}),
 					DrillDataFormat: x.drillDataFormat(),
 					FieldAlign: x.fieldAlign(),
@@ -3644,7 +3701,6 @@ var reportViewModel = function (options) {
 
 	self.RunReport = function (saveOnly, skipValidation, dashboardRun, importJson, previewOnly) {
 		self.ReportResult().HasError(false);
-		self.OuterGroupColumns([]);
 		saveOnly = saveOnly === true ? true : false;
 		skipValidation = skipValidation === true ? true : false;
 		self.setFlyFilters();
@@ -3667,7 +3723,12 @@ var reportViewModel = function (options) {
 				self.activeDesignRunning = false;
 				return;
 			}
-
+			var s = self.SelectedFields();
+			var idx = _.map(_.filter(s, f => f.selectedAggregate() == 'Pivot'), f => _.indexOf(s, f));
+			if (idx.length > 1 && _.max(idx) - _.min(idx) + 1 != idx.length) {
+				toastr.error("All Pivot fields must be next to each other.");
+				return;
+			}
 			if (_.filter(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' }).length > 1) {
 				toastr.error("Select only one data field for Pivot.");
 				return;
@@ -3818,6 +3879,7 @@ var reportViewModel = function (options) {
 								reportName: self.ReportName(),
 								reportDescription: self.ReportDescription(),
 								includeSubTotal: self.IncludeSubTotal(),
+								includeColumnTotal: self.IncludeColumnTotal(),
 								showUniqueRecords: self.ShowUniqueRecords(),
 								aggregateReport: self.AggregateReport(),
 								showDataWithGraph: self.ShowDataWithGraph(),
@@ -3850,12 +3912,14 @@ var reportViewModel = function (options) {
 		reportResult.ReportDebug(result.ReportDebug);
 		reportResult.ReportSql(beautifySql(result.ReportSql, true));
 		self.ReportSeries = reportSeries;
-		self.OuterGroupColumns([]);
 		if (result.HasError || previewOnly === true) return;
 		function isContained(src, dst) {
 			return typeof src === 'string' && typeof dst === 'string' && dst.includes(src);
 		}
 		function matchColumnName(src, dst, dbSrc, dbDst, agg) {
+			if (dst && dst.includes("|")) {
+				dst = dst.split("|").pop().trim();
+			}
 			if (src == dst) return true;
 			if (dbSrc && dbDst && dbSrc == dbDst) return true;
 
@@ -3961,7 +4025,7 @@ var reportViewModel = function (options) {
 				e.isJsonColumn = col.fieldType == 'Json';
 				e.functionConfig = col.functionConfig;
 				e.customSqlField = col.customSqlField;
-				e.outerGroup = ko.observable(false);
+				e.outerGroup = col.outerGroup || ko.observable(false);
 				e.colIndex = i;
 				e.pagerIndex = function ($parents) {
 					return $parents[1].pager ? 1
@@ -3969,9 +4033,11 @@ var reportViewModel = function (options) {
 				}
 
 				e.toggleOuterGroup = function () {
-					e.outerGroup(!e.outerGroup());
+					e.outerGroup(!e.outerGroup());			
+				}
 
-					if (e.outerGroup()) {
+				e.outerGroup.subscribe(function (newValue) {
+					if (newValue) {
 						self.OuterGroupColumns.push({
 							fieldId: col.fieldId,
 							fieldName: col.fieldName,
@@ -3985,16 +4051,21 @@ var reportViewModel = function (options) {
 								col.selectedAggregate = ko.observable("Group");
 							}
 						});
-						col.selectedAggregate = ko.observable("Outer Group");
+					} else {
+						const entry = self.OuterGroupColumns().find(x => x.fieldId === col.fieldId);
+						if (entry && typeof entry.remove === "function") {
+							entry.remove();
+						}
 					}
-				}
+				});
 
 				e.setupFieldOptions = function () {
 					col.setupFieldOptions();
 				}
 
-				if (col.selectedAggregate && col.selectedAggregate() == 'Outer Group' && !_.find(self.OuterGroupColumns(), {fieldId: e.fieldId})) {
-					e.toggleOuterGroup()
+				if (col._outerGroup || (col.selectedAggregate && col.selectedAggregate() == 'Outer Group' && !_.find(self.OuterGroupColumns(), {fieldId: e.fieldId}))) {
+					e.outerGroup(false);
+					e.toggleOuterGroup();
 				}
 			});
 		}
@@ -4239,6 +4310,7 @@ var reportViewModel = function (options) {
 				r.jsonColumnName = col.jsonColumnName;
 				r.isJsonColumn = col.isJsonColumn;
 				r._backColor = null; r._fontBold = null; r._fontColor = null;
+				r.Column.fieldLabel = col.fieldLabel
 
 				r.formattedVal = ko.computed(function () {
 					if (col.fieldFormat && (col.fieldFormat() === null || col.fieldFormat() == 'Auto')) {
@@ -4456,6 +4528,45 @@ var reportViewModel = function (options) {
 			if (nextValue === 0) return null; // Avoid division by zero
 			return (((currentValue - nextValue) / nextValue) * 100).toFixed(1);
 		};
+		result.ReportData.formatKpiValue = function (value, formattedVal) {
+			let settings = self.kpiSettings();
+			if (isNaN(value)) return formattedVal;
+			let v = Number(value);
+			let symbol = settings.currencySymbol();
+			let pattern = settings.customFormat();
+			if (settings.numberFormat() === "custom" && pattern) {
+				return applyCustomFormat(v, pattern);
+			}
+			const useCurrency = settings.numberFormat() === "currency";
+			if (settings.shortFormat() === "thousand") {
+				v = v / 1000;
+				return (useCurrency ? (symbol + " ") : "") + v.toLocaleString() + "K";
+			}
+			if (settings.shortFormat() === "million") {
+				v = v / 1000000;
+				return (useCurrency ? (symbol + " ") : "") + v.toLocaleString() + "M";
+			}
+			if (settings.shortFormat() === "billion") {
+				v = v / 1000000000;
+				return (useCurrency ? (symbol + " ") : "") + v.toLocaleString() + "B";
+			}
+			if (useCurrency) {
+				return symbol + " " + v.toLocaleString();
+			}
+			return v.toLocaleString();
+		};
+
+		if (self.kpiSettings() && Object.keys(self.kpiSettings()).length > 0) {
+			result.ReportData.FontSize = ko.observable(self.kpiSettings()?.fontSize() + "px");
+			result.ReportData.Alignment = ko.observable(self.kpiSettings()?.alignment());
+			result.ReportData.FontColor = ko.observable(self.kpiSettings()?.fontColor());
+			result.ReportData.BackColor = ko.observable(self.kpiSettings()?.backColor());
+			result.ReportData.PositiveColor = ko.observable(self.kpiSettings()?.positiveColor());
+			result.ReportData.NegativeColor = ko.observable(self.kpiSettings()?.negativeColor());
+			result.ReportData.NumberFormat = ko.observable(self.kpiSettings()?.numberFormat());
+			result.ReportData.ShortFormat = ko.observable(self.kpiSettings()?.shortFormat());
+			result.ReportData.CurrencySymbol = ko.observable(self.kpiSettings()?.currencySymbol());
+		}
 		_.forEach(result.ReportData.Rows, function (e, idx) {
 			e.DrillDownData = ko.observable(null);
 			e.pager = new pagerViewModel({ pageSize: self.DefaultPageSize() });
@@ -4486,6 +4597,7 @@ var reportViewModel = function (options) {
 						pivotFunction: '',
 						reportData: '',
 						SubTotalMode: false,
+						includeColumnTotal: self.IncludeColumnTotal(),
 						adminMode: self.adminMode(),
 					}),
 					noBlocking: true
@@ -4578,6 +4690,7 @@ var reportViewModel = function (options) {
 					chartData: '',
 					columnDetails: self.getColumnDetails(),
 					includeSubTotals: false,
+					includeColumnTotals: false,
 					pivot: false,
 					pivotColumn: '',
 					pivotFunction: '',
@@ -4649,38 +4762,203 @@ var reportViewModel = function (options) {
 				);
 			}
 		}
+		
+		function computeSpan(node) {
+			let keys = Object.keys(node.children);
+			if (keys.length === 0) {
+				node.colspan = 1;
+				node.rowspan = 1;
+				return 1;
+			}
+
+			let colspan = 0;
+			keys.forEach(k => {
+				colspan += computeSpan(node.children[k]);
+			});
+
+			node.colspan = colspan;
+			node.rowspan = 1;
+			return colspan;
+		}
+		function buildHeaderTree(columns) {
+			let root = { children: {}, depth: 0 };
+
+			columns.forEach(col => {
+				let parts = col.raw.split('|');
+				let node = root;
+				let path = '';
+
+				parts.forEach((p, idx) => {
+					path = path === '' ? p : path + '|' + p;
+					if (!node.children[path]) {
+						node.children[path] = { children: {}, depth: idx + 1 };
+					}
+					node = node.children[path];
+				});
+			});
+
+			return root;
+		}
+
+		function generateHeaderRows(node, level, rows, columns, path = [], groupIndex = -1) {
+			if (!rows[level]) rows[level] = [];
+
+			let keys = Object.keys(node.children);
+
+			keys.forEach((fullKey, idx) => {
+				let child = node.children[fullKey];
+				let parts = fullKey.split('|');
+				let key = parts[parts.length - 1];
+				let nextGroup = (Object.keys(child.children).length > 0 && level === 0) ? idx : groupIndex;
+
+				let col = columns.find(c => c.raw === fullKey) || {};
+				let lbl = col.label && col.label.trim() !== "" ? col.label : key;
+
+				rows[level].push({
+					label: lbl,
+					colspan: child.colspan,
+					rowspan: Object.keys(child.children).length ? 1 : (rows.length - level),
+					group: nextGroup
+				});
+
+				generateHeaderRows(child, level + 1, rows, columns, parts, nextGroup);
+			});
+		}
+
+		function renderPivotHeaders(columns, tableId) {
+			let thead = document.getElementById('report-table-head' + tableId);
+			if (!thead) return;
+
+			columns.forEach(c => {
+				if (!c.label || c.label.indexOf('|') >= 0) {
+					let parts = c.raw.split('|');
+					c.label = parts[parts.length - 1];
+				}
+			});
+
+			const rowFieldCount = columns.findIndex(c => c.raw.indexOf('|') >= 0);
+			const rowFields = columns.slice(0, rowFieldCount);
+			const pivotColumns = columns.slice(rowFieldCount);
+			const firstTotalColumn = pivotColumns.find(c => c.raw.startsWith("Total|"));
+			const tree = buildHeaderTree(pivotColumns);
+			computeSpan(tree);
+
+			let headerRows = [];
+			generateHeaderRows(tree, 0, headerRows, pivotColumns);
+
+			let html = '';
+			html += '<tr>';
+
+			rowFields.forEach(f => {
+				html += `<th rowspan="${headerRows.length}">${f.label}</th>`;
+			});
+
+			headerRows[0].forEach(cell => {
+				let border = cell.label === "Total" ? 'style="border-left:2px solid;"' : '';
+				let cls = cell.group >= 0 ? `class="pivot-group-${cell.group}"` : '';
+				html += `<th ${cls} ${border} colspan="${cell.colspan}" rowspan="${cell.rowspan}">${cell.label}</th>`;
+			});
+
+			html += '</tr>';
+
+			for (let r = 1; r < headerRows.length; r++) {
+				html += '<tr>';
+
+				headerRows[r].forEach(cell => {
+					const isLeafTotalCell =
+						cell.label !== "" &&
+						firstTotalColumn &&
+						firstTotalColumn.raw.endsWith("|" + cell.label);
+
+					let border = isLeafTotalCell ? 'style="border-left:2px solid;"' : '';
+					let cls = cell.group >= 0 ? `class="pivot-group-${cell.group}"` : '';
+
+					html += `<th ${cls} ${border} colspan="${cell.colspan}" rowspan="${cell.rowspan}">${cell.label}</th>`;
+				});
+
+				html += '</tr>';
+			}
+
+			thead.innerHTML = html;
+		}
+
 		function renderTable(data, colspan) {
 			const tableBody = document.getElementById('report-table-body' + self.ReportID());
+			const tableHead = document.getElementById('report-table-head' + self.ReportID());
+
+			if (tableHead && data.length > 0 && self.hasPivotColumn()) {
+				const columns = data[0].Items.map(x => {
+					const raw = x.Column.ColumnName;
+					const label = (typeof x.Column.fieldLabel === "function" ? x.Column.fieldLabel() ?? "" : "").trim();
+
+					return {
+						raw: raw,
+						label: label !== "" ? label : raw    
+					};
+				});
+
+				renderPivotHeaders(columns, self.ReportID());
+			}
+
 			if (tableBody) {
 				let rowsHTML = '';
 
-					data.forEach(row => {
-						rowsHTML += '<tr>';
-						row.Items.forEach(item => {
-							let tdStyle = `style="background-color: ${item._backColor ?? item.backColor()};
-						color: ${item._fontColor ?? item.fontColor()}; 
-						font-weight: ${(item.fontBold() || item._fontBold) ? 'bold' : 'normal'}; 
-						text-align: ${item.fieldAlign() ? item.fieldAlign() : (item.Column.IsNumeric ? 'right' : 'left')};
-						width:${(item.fieldWidth() ?? item.fieldWidth)};
-						text-wrap:${(item.fieldWidth() ?? item.fieldWidth) ? 'wrap' : 'nowrap'}"`;
+				const allColumns = data.length > 0
+					? data[0].Items.map(x => x.Column.ColumnName)
+					: [];
 
-							if (item.LinkTo) {
-								rowsHTML +=
-									`<td ${tdStyle}>
-								<a href="${item.LinkTo}" target="_blank"><span>${item.FormattedValue}</span></a>  
+				const firstTotalColumn = allColumns.find(c => c.startsWith("Total|"));
+				const rowTotalCol = "Row Total";
+
+				data.forEach((row, rowIndex) => {
+
+					const isGrandTotalRow =
+						row.Items.some(x => x.Column.ColumnName === rowTotalCol);
+
+					rowsHTML += `<tr${isGrandTotalRow ? ' style="border-top:2px solid #000;"' : ''}>`;
+
+					row.Items.forEach(item => {
+						const colName = item.Column.ColumnName;
+
+						const isColumnTotal = colName.startsWith("Total|");
+						const isFirstTotal = colName === firstTotalColumn;
+						const isRowTotalCell = colName === rowTotalCol;
+
+						let isTotalCell = isColumnTotal || isRowTotalCell;
+
+						let leftBorder = '';
+						if (isFirstTotal) leftBorder = 'border-left:2px solid;';
+
+						let tdStyle = `
+							style="
+								background-color:${item._backColor ?? item.backColor()};
+								color:${item._fontColor ?? item.fontColor()};
+								font-weight:${isTotalCell ? 'bold' : (item.fontBold() || item._fontBold) ? 'bold' : 'normal'};
+								text-align:${item.fieldAlign() ? item.fieldAlign() : (item.Column.IsNumeric ? 'right' : 'left')};
+								width:${ko.unwrap(item.fieldWidth())};
+								text-wrap:${ko.unwrap(item.fieldWidth()) ? 'wrap' : 'nowrap'};
+								${leftBorder}
+							"
+						`;
+
+						if (item.LinkTo) {
+							rowsHTML += `<td ${tdStyle}>
+								<a href="${item.LinkTo}" target="_blank">${item.formattedVal()}</a>
 							</td>`;
-							}
-							else {
-								rowsHTML +=
-									`<td ${tdStyle}>
-								${item.FormattedValue}
-							</td>`;
-							}
-						});
-						rowsHTML += '</tr>';
+						} else {
+							rowsHTML += `<td ${tdStyle}>${item.formattedVal()}</td>`;
+						}
 					});
-				tableBody.innerHTML = rowsHTML ? rowsHTML : '<tr><td colspan="'+colspan+'">No records found</td></tr>';
+					rowsHTML += '</tr>';
+				});
+
+				tableBody.innerHTML = rowsHTML || `<tr><td colspan="${colspan}">No records found</td></tr>`;
+				self.updateTable();
 			}
+		}
+
+		function rowItemsContainGrandTotal(items) {
+			return items.some(x => x.Column.ColumnName === "Row Total");
 		}
 
 		reportResult.ReportData(result.ReportData);
@@ -4704,7 +4982,7 @@ var reportViewModel = function (options) {
 			google.charts.setOnLoadCallback(self.DrawChart);
 		}
 
-		if (self.IncludeSubTotal()) {
+		if (self.IncludeSubTotal() && self.hasPivotColumn()==false) {
 			ajaxcall({
 				url: options.runReportApiUrl,
 				type: "POST",
@@ -4739,6 +5017,7 @@ var reportViewModel = function (options) {
 						reportSeries: '',
 						reportData: pivotData.pivotColumn ? JSON.stringify(reportData) : '',
 						SubTotalMode: pivotData.pivotColumn ? true : false,
+						includeColumnTotal: self.IncludeColumnTotal(),
 						pivotColumn: pivotData.pivotColumn,
 						pivotFunction: pivotData.pivotFunction,
 						useAltPivot: self.appSettings.useAltPivot,
@@ -4798,7 +5077,8 @@ var reportViewModel = function (options) {
 				pivotColumn: pivotData.pivotColumn,
 				pivotFunction: pivotData.pivotFunction,
 				reportData: pivotData.pivotColumn ? JSON.stringify(reportData) : '',
-				SubTotalMode: false,
+				SubTotalMode: self.hasPivotColumn() ? self.IncludeSubTotal() :false,
+				includeColumnTotal: self.IncludeColumnTotal(),
 				useAltPivot: self.appSettings.useAltPivot,
 				adminMode: self.adminMode(),
 			}),
@@ -5117,7 +5397,66 @@ var reportViewModel = function (options) {
 
 		legend.addTo(map);
 	}
+	self.showKpiSettings = ko.observable(false);
+	self.kpiSettings = ko.observable({
+		fontSize: ko.observable(48),
+		alignment: ko.observable("center"),
+		fontColor: ko.observable("#000000"),
+		backColor: ko.observable("#fffff"),
+		positiveColor: ko.observable("#28a745"),
+		negativeColor: ko.observable("#dc3545"),
+		numberFormat: ko.observable("number"),   // number | money
+		shortFormat: ko.observable("none"),      // none | thousand | million
+		currencySymbol: ko.observable("$"),
+		customFormat: ko.observable(null)
+	});
+	function applyCustomFormat(value, pattern) {
+		let decimals = 0;
+		if (pattern.indexOf(".") >= 0) {
+			decimals = pattern.split(".")[1].length;
+		}
+		let fixed = Number(value).toFixed(decimals);
+		let parts = fixed.split(".");
+		parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+		return parts.join(".");
+	}
 
+	self.toggleKpiSettings = function () {
+		self.showKpiSettings(!self.showKpiSettings());
+	};
+	self.updateKpi = function () {
+		var result = self.ReportResult().ReportData();
+		if (result) {
+			result.FontSize(self.kpiSettings().fontSize() + "px");
+			result.Alignment(self.kpiSettings().alignment());
+			result.FontColor(self.kpiSettings().fontColor());
+			result.BackColor(self.kpiSettings().backColor());
+			result.PositiveColor(self.kpiSettings().positiveColor());
+			result.NegativeColor(self.kpiSettings().negativeColor());
+			result.NumberFormat(self.kpiSettings().numberFormat());
+			result.ShortFormat(self.kpiSettings().shortFormat());
+			result.CurrencySymbol(self.kpiSettings().currencySymbol());
+		}
+	};
+	self.kpiSettings().fontSize.subscribe(function (newVal) {
+		self.updateKpi();
+	});
+	self.kpiSettings().alignment.subscribe(function (newVal) {
+		self.updateKpi();
+	});
+	self.clearKpiSettings = function () {
+		self.kpiSettings().fontSize(48);
+		self.kpiSettings().alignment("center");
+		self.kpiSettings().fontColor("#000000");//black
+		self.kpiSettings().backColor("#fff");//white
+		self.kpiSettings().positiveColor("#28a745");//green
+		self.kpiSettings().negativeColor("#dc3545");//red
+		self.kpiSettings().numberFormat("number");
+		self.kpiSettings().shortFormat("none");
+		self.kpiSettings().currencySymbol("$");
+		self.kpiSettings().customFormat(null);
+		self.updateKpi();
+	};
 	self.chartOptions = ko.observable({
 		title: self.ReportName(),
 		animation: {
@@ -5193,13 +5532,41 @@ var reportViewModel = function (options) {
 	};
 	self.updateTable = function (clear) {
 		let setting = self.tableSettings();
+
 		_.forEach(self.SelectedFields(), function (f) {
 			if (setting.headerBackColor || clear === true) f.headerBackColor(setting.headerBackColor);
 			if (setting.headerFontColor || clear === true) f.headerFontColor(setting.headerFontColor);
 			if (setting.rowBackColor || clear === true) f.backColor(setting.rowBackColor);
 			if (setting.rowFontColor || clear === true) f.fontColor(setting.rowFontColor);
 		});
-	}
+
+		let tableId = self.ReportID();
+
+		let header = document.getElementById('report-table-head' + tableId);
+		let body = document.getElementById('report-table-body' + tableId);
+
+		if (!header && !body) return;
+
+		let headerBack = setting.headerBackColor || "";
+		let headerFont = setting.headerFontColor || "";
+		let rowBack = setting.rowBackColor || "";
+		let rowFont = setting.rowFontColor || "";
+
+		if (header) {
+			header.querySelectorAll("th").forEach(th => {
+				if (clear === true || headerBack) th.style.backgroundColor = headerBack;
+				if (clear === true || headerFont) th.style.color = headerFont;
+			});
+		}
+
+		if (body) {
+			body.querySelectorAll("td").forEach(td => {
+				if (clear === true || rowBack) td.style.backgroundColor = rowBack;
+				if (clear === true || rowFont) td.style.color = rowFont;
+			});
+		}
+	};
+
 	self.addSeriesColor = function () {
 		var colors = self.chartOptions().seriesColors;
 		var randomColor = "#" + Math.floor(Math.random() * 16777215).toString(16); // Generate random color
@@ -5838,6 +6205,8 @@ var reportViewModel = function (options) {
 		e.jsonColumnName = e.jsonColumnName;
 		e.isJsonColumn = e.jsonColumnName ? true : false;
 		e.uiId = generateUniqueId();
+		e._outerGroup = e.fieldSettings.outerGroup
+		e.outerGroup = ko.observable(e.fieldSettings.outerGroup == true);
 
 		e.applyAllHeaderFontColor = ko.observable(false);
 		e.applyAllHeaderBackColor = ko.observable(false);
@@ -5872,12 +6241,7 @@ var reportViewModel = function (options) {
 			e.disabled(!e.disabled());
 		}
 
-		e.checkOuterGroup = ko.observable(e.aggregateFunction == 'Outer Group');
-		e.checkOuterGroup.subscribe(function (newValue) {
-			e.selectedAggregate(newValue ? 'Outer Group' : null);
-			self.AggregateReport(true);
-		});
-
+		
 		var formulaItems = [];
 		_.forEach(e.formulaItems || [], function (e) {
 			formulaItems.push(new formulaFieldViewModel({
@@ -5898,6 +6262,9 @@ var reportViewModel = function (options) {
 			self.additionalAggregateOptions(e, e.fieldFormat());
 			e.editFormulaField = function () {
 				self.editFormulaField(e);
+			}
+			e.duplicateFormulaField = function () {
+				self.duplicateFormulaField(e);
 			}
 		}
 
@@ -6084,6 +6451,19 @@ var reportViewModel = function (options) {
 		};
 		if (reportSettings.chartOptions) self.chartOptions(reportSettings.chartOptions);
 		if (reportSettings.tableSettings) self.tableSettings(reportSettings.tableSettings);
+		if (reportSettings.kpiSettings && Object.keys(reportSettings.kpiSettings).length > 0) {
+			var kpisetting = reportSettings.kpiSettings;
+			self.kpiSettings().fontSize(kpisetting.fontSize);
+			self.kpiSettings().alignment(kpisetting.alignment);
+			self.kpiSettings().fontColor(kpisetting.fontColor);
+			self.kpiSettings().backColor(kpisetting.backColor);
+			self.kpiSettings().positiveColor(kpisetting.positiveColor);
+			self.kpiSettings().negativeColor(kpisetting.negativeColor);
+			self.kpiSettings().numberFormat(kpisetting.numberFormat);
+			self.kpiSettings().shortFormat(kpisetting.shortFormat);
+			self.kpiSettings().currencySymbol(kpisetting.currencySymbol);
+		}
+		self.IncludeColumnTotal(reportSettings.includeColumnTotal);
 		self.noHeaderRow(reportSettings.noHeaderRow);
 		self.noDashboardBorders(reportSettings.noDashboardBorders);
 		self.showPriorInKpi(reportSettings.showPriorInKpi);
@@ -6196,6 +6576,29 @@ var reportViewModel = function (options) {
 		self.LoadReport(self.ReportID(), true, '');
 	};
 
+	self.PrepFields = function (report) {
+		_.forEach(report.SelectedFields, function (e) {
+			e = self.setupField(e);
+		});
+
+		_.forEach(report.SelectedFields, function (field) {
+			if (
+				field.fieldId === 0 &&
+				field.tableName === "Custom" &&
+				field.dynamicTableId === null
+			) {
+				if (['Integer', 'Decimal', 'Currency', 'Days', 'Hours', 'Minutes', 'Seconds'].indexOf(field.fieldFormat()) >= 0) {
+					field.fieldType = "Int";
+					field.fieldFilter = ['=', '>', '<', '>=', '<=', 'not equal', 'is blank', 'is not blank'];
+				} else {
+					field.fieldFilter = ['=', 'in', 'not in', 'like', 'not like', 'not equal', 'is blank', 'is not blank'];
+				}
+			}
+		});
+		self.SelectedFields(report.SelectedFields);
+		self.lastPickedField(null);
+	}
+
 	self.LoadReport = function (reportId, filterOnFly, reportSeries, dontBlock, buildSql) {
 		self.SelectedTable(null);
 		self.isFormulaField(false);
@@ -6240,26 +6643,7 @@ var reportViewModel = function (options) {
 				}
 
 			} else {
-				_.forEach(report.SelectedFields, function (e) {
-					e = self.setupField(e);
-				});
-
-				_.forEach(report.SelectedFields,function (field) {
-					if (
-						field.fieldId === 0 &&
-						field.tableName === "Custom" &&
-						field.dynamicTableId === null
-					) {
-						if (['Integer', 'Decimal', 'Currency', 'Days', 'Hours', 'Minutes', 'Seconds'].indexOf(field.fieldFormat()) >= 0) {
-							field.fieldType = "Int";
-							field.fieldFilter = ['=', '>', '<', '>=', '<=', 'not equal', 'is blank', 'is not blank'];
-						} else {
-							field.fieldFilter = ['=', 'in', 'not in', 'like', 'not like', 'not equal', 'is blank', 'is not blank'];
-						}
-					}
-				});
-				self.SelectedFields(report.SelectedFields);
-				self.lastPickedField(null);
+				self.PrepFields(report);
 				return self.PopulateReport(report, filterOnFly, reportSeries);
 			}
 		});
@@ -6755,13 +7139,14 @@ var reportViewModel = function (options) {
 			self.appSettings.noFolders = x.noFolders;
 			self.appSettings.noDefaultFolder = x.noDefaultFolder;
 			self.appSettings.showEmptyFolders = x.showEmptyFolders;
-			self.appSettings.useAltPdf = x.useAltPdf;
+			self.appSettings.useAltPdf(x.useAltPdf);
 			self.appSettings.useAltPivot = x.useAltPivot === true;
 			self.appSettings.dontXmlExport = x.dontXmlExport;
 			self.appSettings.dontWordExport = x.dontWordExport;
 			self.appSettings.usePromptBuilder(x.usePromptBuilder !== false ? true : false);
 			self.appSettings.showPageSize = x.showPageSize;
 			self.appSettings.showImportExport(x.showImportExport);
+			self.appSettings.useFunctions(x.useFunctions);
 		});
 	}
 
@@ -6911,6 +7296,7 @@ var reportViewModel = function (options) {
 			chartData: self.ChartData() || '',
 			columnDetails: self.getColumnDetails(),
 			includeSubTotal: self.IncludeSubTotal(),
+			includeColumnTotal: self.IncludeColumnTotal(),
 			pivot: self.ReportType() == 'Pivot',
 			pivotColumn: pivotData.pivotColumn,
 			pivotFunction: pivotData.pivotFunction,
@@ -6944,7 +7330,10 @@ var reportViewModel = function (options) {
 			pivotFunction: pivotData.pivotFunction,
 			debug: debug === true ? true : false,
 			pageSize: pageSize,
-			pageOrientation: pageOrientation
+			pageOrientation: pageOrientation,
+			includeSubTotal: self.IncludeSubTotal(),
+			includeColumnTotal: self.IncludeColumnTotal(),
+			adminMode: self.adminMode()
 		}, 'pdf');
 	}
 	self.PdfPage = new PdfPageViewModel(self.appSettings, self.downloadPdf, self.downloadPdfAlt);
@@ -6964,6 +7353,7 @@ var reportViewModel = function (options) {
 			chartData: self.ChartData() || '',
 			columnDetails: self.getColumnDetails(),
 			includeSubTotal: self.IncludeSubTotal(),
+			includeColumnTotal: self.IncludeColumnTotal(),
 			pivot: self.ReportType() == 'Pivot',
 			pivotColumn: pivotData.pivotColumn,
 			pivotFunction: pivotData.pivotFunction,
@@ -6998,18 +7388,22 @@ var reportViewModel = function (options) {
 	}
 	self.WordPage = new WordPageViewModel(self.downloadWord);
 	self.preparePivotData = function () {
-		var pivotColumn = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot'; });
+		var pivotColumn = _.filter(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot'; });
 		var pivotFunction = '';
-		if (pivotColumn) {
-			var pivotColumnIndex = _.findIndex(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot'; });
-			if (pivotColumnIndex >= 0 && pivotColumnIndex < self.SelectedFields().length - 1) {
-				var nextValue = self.SelectedFields()[pivotColumnIndex + 1];
-				pivotFunction = nextValue.selectedAggregate();
+
+		if (pivotColumn && pivotColumn.length > 0) {
+			var lastPivot = pivotColumn[pivotColumn.length - 1];
+			var lastPivotIndex = _.findIndex(self.SelectedFields(), function (x) { return x.fieldName == lastPivot.fieldName; });
+
+			if (lastPivotIndex >= 0 && lastPivotIndex < self.SelectedFields().length - 1) {
+				var nextValue = self.SelectedFields()[lastPivotIndex + 1];
+				if (nextValue && nextValue.selectedAggregate()) pivotFunction = nextValue.selectedAggregate();
 			}
 		}
+
 		return {
-			pivotColumn: pivotColumn ? pivotColumn.fieldName : '',
-			pivotFunction: pivotColumn && pivotFunction ? pivotFunction : '',
+			pivotColumn: pivotColumn.length ? _.map(pivotColumn, function (x) { return x.fieldName; }).join(',') : '',
+			pivotFunction: pivotFunction,
 		};
 	};
 
@@ -7471,6 +7865,8 @@ var dashboardViewModel = function (options) {
 	});
 	self.isModalOpen = ko.observable(false);
 	self.isDirty = ko.observable(false);
+	self.lineSeparators = ko.observableArray([]);
+	self.textWidgets = ko.observableArray([]);
 	$(document).on('shown.bs.modal', '.modal', function () {
 		self.isModalOpen(true);
 	});
@@ -7506,7 +7902,8 @@ var dashboardViewModel = function (options) {
 		dontWordExport: false,
 		usePromptBuilder: true,
 		showPageSize: false,
-		showImportExport: false
+		showImportExport: false,
+		useFunctions: false 
 	};
 
 	self.loadAppSettings = function () {
@@ -7536,6 +7933,7 @@ var dashboardViewModel = function (options) {
 			self.appSettings.usePromptBuilder = x.usePromptBuilder;
 			self.appSettings.showPageSize = x.showPageSize;
 			self.appSettings.showImportExport = x.showImportExport;
+			self.appSettings.useFunctions = x.useFunctions;
 		});
 	}
 
@@ -7560,7 +7958,8 @@ var dashboardViewModel = function (options) {
 	self.selectDashboard = ko.observable(currentDash.id);
 	self.isOverlap = ko.observable(false);
 	self.loadDashboard = function (dashboardId) {
-		ajaxcall({
+		self.arrangeDashboard(false);
+		return ajaxcall({
 			url: options.loadSavedDashbordUrl,
 			data: { id: dashboardId, adminMode: self.adminMode(), applyClientInAdmin: self.appSettings.useClientIdInAdmin }
 		}).done(function (reportsData) {
@@ -7571,7 +7970,40 @@ var dashboardViewModel = function (options) {
 			if (reportsData.d) reportsData = reportsData.d;
 			var reports = [];
 			_.forEach(reportsData, function (r) {
-				reports.push({ reportSql: r.ReportSql, reportId: r.ReportId, reportFilter: r.ReportFilter, connectKey: r.ConnectKey, x: r.X, y: r.Y, width: r.Width, height: r.Height });
+				if (r.IsWidget === false && r.ReportId > 0) {
+					reports.push({ reportSql: r.ReportSql, reportId: r.ReportId, reportFilter: r.ReportFilter, connectKey: r.ConnectKey, x: r.X, y: r.Y, width: r.Width, height: r.Height });
+				}
+				else {
+					let settings = {};
+					try {
+						settings = r.WidgetSettings ? JSON.parse(r.WidgetSettings) : {};
+					} catch (e) {
+						settings = {};
+					}
+					const widgetId = settings.WidgetId || r.Id;
+					const widget = settings.Widget;
+					if (widget && widget.type === 'separator') {
+						self.addLineSeparator({
+							id: widgetId,
+							x: r.X,
+							y: r.Y,
+							width: r.Width,
+							height: r.Height,
+							color: widget.color,
+							thickness: widget.thickness
+						},true);
+					}
+					else if (widget && widget.type === 'text') {
+						self.addTextWidget({
+							id: widgetId,      
+							x: r.X,
+							y: r.Y,
+							width: r.Width,
+							height: r.Height,
+							text: widget.text || ''
+						},true);
+					}
+				}
 			});
 
 			var currentDash = dashboardId > 0
@@ -7637,7 +8069,9 @@ var dashboardViewModel = function (options) {
 	}
 
 	self.selectDashboard.subscribe(function (newValue) {
-		if (newValue != self.currentDashboard().id) {
+		if (newValue != self.currentDashboard().id) {			
+			self.lineSeparators([]);
+			self.textWidgets([]);
 			self.loadDashboard(newValue);
 		}
 	});
@@ -7754,7 +8188,6 @@ var dashboardViewModel = function (options) {
 				if (r.selected()) list += (list ? ',' : '') + r.reportId;
 			});
 		});
-
 		var model = {
 			id: self.dashboard.Id() || 0,
 			name: self.dashboard.Name(),
@@ -7787,6 +8220,8 @@ var dashboardViewModel = function (options) {
 			toastr.success("Dashboard saved successfully");
 			$('#add-dashboard-modal').modal('hide');
 			setTimeout(function () {
+				self.lineSeparators([]);
+				self.textWidgets([]);
 				self.loadDashboard(result.id);
 			}, 500);
 		});
@@ -7822,7 +8257,13 @@ var dashboardViewModel = function (options) {
 			x.DrawChart();
 		});
 	};
-
+	self.getCardBackground = function (item) {
+		if (!item) return "";
+		if (item.ReportType() == "Single" && item.ReportResult()?.ReportData()?.BackColor) {
+			return item.ReportResult()?.ReportData()?.BackColor;
+		}
+		return "";
+	};
 	self.selectedReport = ko.observable(null);
 	self.skipGridRefresh = false;
 	function hasNewReportWidget() {
@@ -7853,19 +8294,19 @@ var dashboardViewModel = function (options) {
 		let i = 0;
 
 		gridItems.forEach(item => {
-			const x = parseInt(item.getAttribute('gs-x'));
-			const y = parseInt(item.getAttribute('gs-y'));
-			const width = parseInt(item.getAttribute('gs-w'));
-			const height = parseInt(item.getAttribute('gs-h'));
-			const id = reports[i].reportId || reports[i].ReportID() || 0;
-			i++;
-			item.setAttribute('gs-id', id);
-			item.setAttribute('gs-x', x);
-			item.setAttribute('gs-y', y);
-			item.setAttribute('gs-w', width);
-			item.setAttribute('gs-h', height);
-
-			grid.makeWidget(item);
+				const x = parseInt(item.getAttribute('gs-x'));
+				const y = parseInt(item.getAttribute('gs-y'));
+				const width = parseInt(item.getAttribute('gs-w'));
+				const height = parseInt(item.getAttribute('gs-h'));
+				const id = item.getAttribute('gs-id');
+				//const id = reports[i]?.reportId || reports[i]?.ReportID() || 0;
+				i++;
+				item.setAttribute('gs-id', id);
+				item.setAttribute('gs-x', x || 0);
+				item.setAttribute('gs-y', y || 0);
+				item.setAttribute('gs-w', width || 1);
+				item.setAttribute('gs-h', height || 1);
+				grid.makeWidget(item);
 		});
 
 		if (!self.arrangeDashboard()) {
@@ -8084,31 +8525,93 @@ var dashboardViewModel = function (options) {
 		self.adminMode(true);
 	}
 
-	self.loadDashboardReports(options.reports, true);
+	self.buildWidgetSettings = function (item) {
+		const settings = {
+			WidgetId: item.id,
+			gridChartHeight: item.h || item.height,
+			gridChartWidth: item.w || item.width,
+			expandedChartHeight: item.h || item.height,
+			expandedChartWidth: item.w || item.width,
+			Widget: null
+		};
+		const sep = self.lineSeparators().find(s => s.id === item.id);
+		if (sep) {
+			settings.Widget = {
+				type: 'separator',
+				color: ko.unwrap(sep.color),
+				thickness: ko.unwrap(sep.thickness)
+			};
+			return settings;
+		}
+		const text = self.textWidgets()?.find(t => t.id === item.id);
+		if (text) {
+			settings.Widget = {
+				type: 'text',
+				text: ko.unwrap(text.text)
+			};
+			return settings;
+		}
+		return settings;
+	};
 
 	self.updatePosition = function (item) {
-		if (!item || !item.id || self.skipGridRefresh || item.id == 'undefined') return;
+		if (!item || !item.id || self.skipGridRefresh || item.id === 'undefined' || !self.arrangeDashboard()) return;
+		const isWidget = item.type !== 'report';
+		const reportId = isWidget ? 0 : parseInt(item.id);
+		const widgetSettings = self.buildWidgetSettings(item);
 		ajaxcall({
-			url: options.apiUrl,
+			url: options.apiUrl.replace('CallReportApi', 'CallPostReportApi'),
 			noBlocking: true,
-			data: {
+			type: 'POST',
+			data: JSON.stringify({
 				method: '/ReportApi/UpdateDashboardReportPosition',
 				model: JSON.stringify({
 					x: item.x,
 					y: item.y,
-					width: item.w,
-					height: item.h,
+					width: item.w || item.width,
+					height: item.h || item.height,
 					dashboardId: self.currentDashboard().id,
-					reportId: parseInt(item.id),
-					widgetSettings: JSON.stringify({
-						gridChartHeight: item.h,
-						gridChartWidth: item.w,
-						expandedChartHeight: item.h,
-						expandedChartWidth: item.w
-					}),
+					reportId: reportId,
+					widgetSettings: JSON.stringify(widgetSettings),
+					adminMode: self.adminMode()
+				})
+			})
+		});
+	};
+	self.deleteDashboardWidget = function (widgetId) {
+		if (!widgetId) return $.Deferred().reject();
+		return ajaxcall({
+			url: options.apiUrl,
+			noBlocking: true,
+			data: {
+				method: '/ReportApi/DeleteDashboardWidget',
+				model: JSON.stringify({
+					dashboardId: self.currentDashboard().id,
+					widgetId: widgetId,
 					adminMode: self.adminMode()
 				})
 			}
+		});
+	};
+	self.addDashboardWidget = function (item) {
+		if (!item.id) return $.Deferred().reject();
+		const widgetSettings = self.buildWidgetSettings(item);
+		return ajaxcall({
+			url: options.apiUrl.replace('CallReportApi', 'CallPostReportApi'),
+			noBlocking: true,
+			type: 'POST',
+			data: JSON.stringify({
+				method: '/ReportApi/AddDashboardWidget',
+				model: JSON.stringify({
+					dashboardId: self.currentDashboard().id,
+					x: item.x,
+					y: item.y,
+					width: item.w,
+					height: item.h,
+					widgetSettings: JSON.stringify(widgetSettings),
+					adminMode: self.adminMode()
+				})
+			})
 		});
 	};
 	self.ExecuteReport = function () {
@@ -8122,7 +8625,123 @@ var dashboardViewModel = function (options) {
 	self.PrintDashboard = function () {
 		window.print();
 	};
+	self.onWidgetChange = function (data) {
+		if (!data || !data.id) return;
+		self.updatePosition(data);
+	};
 
+	self.addLineSeparator = function (data, isload) {
+		data = data || {};
+		const widget = {
+			id: data.id || WidgetUniqueId('sep'),
+			color: ko.observable(data?.color || '#999'),
+			thickness: ko.observable(data?.thickness || 2),
+			x: data.x || 0,
+			y: data.y || 0,
+			width: data.width || 12,
+			height: data.height || 1,
+			deleteSeparator: function () {
+				const itemId = this.id;
+				self.deleteDashboardWidget(itemId).done(function () {
+					self.lineSeparators.remove(function (s) {
+						return s.id === itemId;
+					});
+					refreshGrid(self.reports(), false);
+				});
+			}
+		};
+		self.lineSeparators.push(widget);
+		if (isload !== true) {
+			self.addDashboardWidget({ id: widget.id, x: widget.x, y: widget.y, w: widget.width, h: widget.height, });
+		}
+		refreshGrid(self.reports(), false);
+	};
+	self.addTextWidget = function (data, isload) {
+		data = data || {};
+		const widget = {
+			id: data.id || WidgetUniqueId('text'),
+			text: ko.observable(data.text || encodeURIComponent('<p>Enter text...</p>')),
+			x: data.x || 0,
+			y: data.y || 0,
+			width: data.width || 4,
+			height: data.height || 1,
+			deleteText: function () {
+				const itemId = this.id;
+				self.deleteDashboardWidget(itemId).done(function () {
+					self.textWidgets.remove(function (s) {
+						return s.id === itemId;
+					});
+					refreshGrid(self.reports(), false);
+				});
+			}
+		}
+		self.textWidgets.push(widget);
+		if (isload !== true) {
+			self.addDashboardWidget({ id: widget.id, x: widget.x, y: widget.y, w: widget.width, h: widget.height, });
+		}
+		refreshGrid(self.reports(), false);
+	};
+
+	self.dashboardItems = ko.computed(function () {
+		const items = [];
+		self.reports().forEach(r => {
+			items.push(Object.assign({}, r, { type: 'report' }));
+		});
+		self.lineSeparators().forEach(s => {
+			items.push(Object.assign({}, s, { type: 'separator' }));
+		});
+		self.textWidgets().forEach(t => {
+			items.push(Object.assign({}, t, { type: 'text' }));
+		});
+		items.sort(function (a, b) {
+			if (a.y !== b.y) return a.y - b.y; 
+			return a.x - b.x;                  
+		});
+		return items;
+	});
+	self.currentTextWidget = ko.observable(null);
+	self.textModalMode = ko.observable('add'); // add | edit
+	self.textModalTitle = ko.observable('Add Text');
+	self.openAddTextModal = function () {
+		self.textModalMode('add');
+		self.textModalTitle('Add Text');
+		self.currentTextWidget(null);
+		$('#textEditor').summernote({
+			height: 200
+		});
+		const decoded = decodeURIComponent('<p>Enter Text Here</p>');
+		$('#textEditor').summernote('code', decoded);
+		$('#textWidgetModal').modal('show');
+	};
+	self.openTextEditor = function (item) {
+		self.textModalMode('edit');
+		self.textModalTitle('Edit Text');
+		self.currentTextWidget(item);
+		$('#textEditor').summernote({
+			height: 200
+		});
+		const decoded = decodeURIComponent(item.text() || '');
+		$('#textEditor').summernote('code', decoded);
+		$('#textWidgetModal').modal('show');
+	};
+	self.saveTextWidget = function () {
+		const html = $('#textEditor').summernote('code');
+		if (!html || html === '<p><br></p>') {
+			$('#textWidgetModal').modal('hide');
+			return;
+		}
+		const encoded = encodeURIComponent(html);
+		if (self.textModalMode() === 'add') {
+			self.addTextWidget({
+				text: encoded
+			});
+		}
+		if (self.textModalMode() === 'edit' && self.currentTextWidget()) {
+			self.currentTextWidget().text(encoded);
+			self.onWidgetChange(self.currentTextWidget());
+		}
+		$('#textWidgetModal').modal('hide');
+	};
 
 	self.ExportAllPdfReportsWithPageOption = function () {
 		if (self.dashboard.PdfPage) {
@@ -8155,7 +8774,9 @@ var dashboardViewModel = function (options) {
 				pivotColumn: pivotData.pivotColumn,
 				pivotFunction: pivotData.pivotFunction,
 				pageSize: pageSize,
-				pageOrientation: pageOrientation
+				pageOrientation: pageOrientation,
+				includeSubTotal: report.IncludeSubTotal(),
+				includeColumnTotal: report.IncludeColumnTotal(),
 			});
 		});
 		reports[0]?.downloadExport("DownloadAllPdf", {
@@ -8217,6 +8838,7 @@ var dashboardViewModel = function (options) {
 				chartData: report.ChartData() || '',
 				columnDetails: report.getColumnDetails(),
 				includeSubTotal: report.IncludeSubTotal(),
+				includeColumnTotal: report.IncludeColumnTotal(),
 				pivot: report.ReportType() == 'Pivot',
 				pivotColumn: pivotData.pivotColumn,
 				pivotFunction: pivotData.pivotFunction,
@@ -8283,6 +8905,7 @@ var dashboardViewModel = function (options) {
 				chartData: report.ChartData() || '',
 				columnDetails: report.getColumnDetails(),
 				includeSubTotal: report.IncludeSubTotal(),
+				includeColumnTotal: self.IncludeColumnTotal(),
 				pivot: report.ReportType() == 'Pivot',
 				pivotColumn: pivotData.pivotColumn,
 				pivotFunction: pivotData.pivotFunction,
@@ -8384,6 +9007,8 @@ var dashboardViewModel = function (options) {
 		if (typeof event !== "undefined" && event.type === "click") {			
 			self.init().done(function () {
 				self.getDashboards();
+				self.lineSeparators([]);
+				self.textWidgets([]);
 				self.loadDashboard(self.selectDashboard());
 			})
 		}
