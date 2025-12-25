@@ -572,27 +572,55 @@ namespace ReportBuilder.Web.Models
 
                 foreach (var dv in distinctValues)
                 {
-                    foreach (int lvl in Enumerable.Range(0, levels))
-                        headerRows[lvl].Add(dv);
+                    string pivotVal = dv
+                        .Trim('[', ']')
+                        .Trim('`'); // MySQL safety
+
+                    var match = baseDataTable.AsEnumerable()
+                        .FirstOrDefault(r =>
+                            Convert.ToString(r[pivotColumn])?.Trim() == pivotVal
+                        );
+
+                    if (match == null)
+                    {
+                        for (int lvl = 0; lvl < levels; lvl++)
+                            headerRows[lvl].Add("");
+                        continue;
+                    }
+
+                    for (int lvl = 0; lvl < levels; lvl++)
+                    {
+                        string colName = pivotColumns[lvl];
+                        headerRows[lvl].Add(Convert.ToString(match[colName]));
+                    }
                 }
+                var pivotLeafCols = dts.Columns.Cast<DataColumn>()
+                    .Where(c => c.ColumnName.Contains("|"))
+                    .ToList();
+                var pivotMeasures = pivotLeafCols
+                    .Select(c => c.ColumnName.Split('|').Last())
+                    .Distinct()
+                    .ToList();
                 if (includeColumnTotals)
                 {
-                    foreach (var m in measures)
+                    foreach (var m in pivotMeasures)
                     {
-                        string totalCol = $"Total|{m.Alias}";
+                        string totalCol = $"Total|{m}";
                         if (!dts.Columns.Contains(totalCol))
                             dts.Columns.Add(totalCol, typeof(decimal));
                     }
 
                     foreach (DataRow row in dts.Rows)
                     {
-                        foreach (var m in measures)
+                        foreach (var m in pivotMeasures)
                         {
-                            string totalCol = $"Total|{m.Alias}";
+                            string totalCol = $"Total|{m}";
                             decimal sum = 0;
-                            foreach (DataColumn c in dts.Columns)
-                                if (c.ColumnName.EndsWith("|" + m.Alias))
-                                    sum += decimal.TryParse(row[c]?.ToString(), out var v) ? v : 0;
+
+                            foreach (var c in pivotLeafCols.Where(c => c.ColumnName.EndsWith("|" + m)))
+                            {
+                                sum += decimal.TryParse(row[c]?.ToString(), out var v) ? v : 0;
+                            }
                             row[totalCol] = sum;
                         }
                     }
@@ -600,13 +628,33 @@ namespace ReportBuilder.Web.Models
                 if (includeRowTotals)
                 {
                     var grand = dts.NewRow();
-                    foreach (DataColumn c in dts.Columns)
+
+                    foreach (var col in pivotLeafCols)
                     {
                         decimal total = 0;
                         foreach (DataRow r in dts.Rows)
-                            total += decimal.TryParse(r[c]?.ToString(), out var v) ? v : 0;
-                        grand[c.ColumnName] = total;
+                        {
+                            total += decimal.TryParse(r[col]?.ToString(), out var v) ? v : 0;
+                        }
+                        grand[col.ColumnName] = total;
                     }
+
+                    if (includeColumnTotals)
+                    {
+                        foreach (var m in pivotMeasures)
+                        {
+                            string totalCol = $"Total|{m}";
+                            decimal total = 0;
+
+                            foreach (DataRow r in dts.Rows)
+                            {
+                                total += decimal.TryParse(r[totalCol]?.ToString(), out var v) ? v : 0;
+                            }
+
+                            grand[totalCol] = total;
+                        }
+                    }
+
                     dts.Rows.Add(grand);
                 }
                 return (dts, finalPivotSql, totalRecords, headerRows);

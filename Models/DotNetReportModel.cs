@@ -2921,7 +2921,7 @@ namespace ReportBuilder.Web.Models
                 {
                     if (!useAltPivot)
                     {
-                        var pd = await databaseConnection.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false, false, subTotalMode, includeColumnTotal);
+                        var pd = await databaseConnection.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false, false, includeColumnTotal, subTotalMode);
                         dt = pd.dt;
                         if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
                     }
