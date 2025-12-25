@@ -471,5 +471,10 @@ namespace ReportBuilder.Web.Models
                 cmd.Parameters.Add(new OracleParameter(p.Key, p.Value));
             }
         }
+
+        public Task<(DataTable dt, string sql, int totalRecords, List<List<string>> headerRows)> GetPivotTable(IDatabaseConnection databaseConnection, string connectionString, DataTable dt, string sql, List<string> sqlFields, string reportDataJson, string pivotColumnList, string pivotFunction, int pageNumber, int pageSize, string sortBy, bool desc, bool returnSubtotal = false, bool includeColumnTotals = false, bool includeRowTotals = false)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

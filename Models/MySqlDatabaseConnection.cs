@@ -405,5 +405,212 @@ namespace ReportBuilder.Web.Models
             return tables;
         }
 
+        public async Task<(DataTable dt, string sql, int totalRecords, List<List<string>> headerRows)> GetPivotTable(IDatabaseConnection databaseConnection, string connectionString, DataTable dt, string sql, List<string> sqlFields, string reportDataJson, string pivotColumnList, string pivotFunction, int pageNumber, int pageSize, string sortBy, bool desc, bool returnSubtotal = false, bool includeColumnTotals = false, bool includeRowTotals = false)
+        {
+            {
+                var dts = new DataTable();
+                if (dt.Rows.Count == 0)
+                    return (dts, "", 0, new List<List<string>>());
+
+                var pivotColumns = pivotColumnList.Split(',')
+                    .Select(pc => pc.Trim())
+                    .Where(pc => !string.IsNullOrWhiteSpace(pc))
+                    .ToList();
+
+                if (pivotColumns.Count == 0)
+                    throw new Exception("Pivot requires at least one pivot column.");
+
+                string pivotColumn = pivotColumns.Last();
+                var pivotColumnOrder = DotNetReportHelper.GetPivotColumnOrder(reportDataJson);
+
+                // Build drilldown SQL
+                var drilldownRow = new List<string>();
+                var dr = dt.Rows[0];
+                var k = 0;
+                foreach (DataColumn dc in dt.Columns)
+                {
+                    var col = sqlFields[k++];
+                    drilldownRow.Add($@"
+            {{
+                ""Value"":""{dr[dc]}"",
+                ""FormattedValue"":""{dr[dc]}"",
+                ""LabelValue"":""'{dr[dc]}'"",
+                ""NumericValue"":null,
+                ""Column"":{{
+                    ""SqlField"":""{col.Substring(0, col.LastIndexOf(" AS "))}"",
+                    ""ColumnName"":""{dc.ColumnName}"",
+                    ""DataType"":""{dc.DataType.ToString()}"",
+                    ""IsNumeric"":{(dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal" ? "true" : "false")},
+                    ""FormatType"":""""
+                }}
+            }}
+        ");
+                }
+
+                var reportData = reportDataJson.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false,\"IsPivotMode\":true");
+                var drilldownSql = await DotNetReportHelper.RunReportApiCall(reportData);
+
+                if (string.IsNullOrEmpty(drilldownSql))
+                    return (dts, "", 0, new List<List<string>>());
+
+                var lastWhereIndex = drilldownSql.LastIndexOf("WHERE");
+                var baseQuery = lastWhereIndex > 0
+                    ? drilldownSql.Substring(0, lastWhereIndex) + " " + DotNetReportHelper.GetWhereClause(sql)
+                    : drilldownSql + " " + DotNetReportHelper.GetWhereClause(sql);
+
+                var baseDataTable = databaseConnection.ExecuteQuery(connectionString, baseQuery);
+
+                var monthNames = new List<string>
+                    {
+                        "january","february","march","april","may","june",
+                        "july","august","september","october","november","december"
+                    };
+
+                var distinctValues = baseDataTable
+                    .AsEnumerable()
+                    .Select(row => Convert.ToString(row[pivotColumn])?.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Where(x => !string.IsNullOrEmpty(x) && x.Length <= 128)
+                    .OrderBy(x =>
+                    {
+                        string trimmed = x.ToLower();
+                        int idx = monthNames.IndexOf(trimmed);
+                        return idx >= 0 ? idx : int.MaxValue;
+                    })
+                    .ThenBy(x => x)
+                    .ToList();
+
+                distinctValues = (pivotColumnOrder.Count == distinctValues.Count &&
+                                  !pivotColumnOrder.Except(distinctValues).Any())
+                                 ? pivotColumnOrder
+                                 : distinctValues;
+
+                int pivotColumnIndex = baseDataTable.Columns[pivotColumn].Ordinal;
+                string nextColumnName = baseDataTable.Columns[pivotColumnIndex + 1].ColumnName;
+
+                var validFunctions = new[] { "Sum", "Count", "Avg" };
+                pivotFunction = validFunctions.Contains(pivotFunction) ? pivotFunction : "Max";
+
+                int firstAggIndex = sqlFields.FindIndex(f =>
+                {
+                    var u = f.ToUpperInvariant();
+                    return u.Contains("COUNT(") ||
+                           u.Contains("COUNT DISTINCT(") ||
+                           u.Contains("SUM(") ||
+                           u.Contains("AVG(") ||
+                           u.Contains("MIN(") ||
+                           u.Contains("MAX(");
+                });
+
+                var rowFields = sqlFields.Take(firstAggIndex).ToList();
+                var measureFields = sqlFields.Skip(firstAggIndex).ToList();
+
+                var rowFieldAliases = rowFields.Select(r =>
+                {
+                    var parts = r.Split(new[] { " AS " }, StringSplitOptions.RemoveEmptyEntries);
+                    return parts.Last().Trim();
+                }).ToList();
+
+                List<(string AggFunc, string Alias)> measures = new List<(string AggFunc, string Alias)>();
+                foreach (var mf in measureFields)
+                {
+                    var u = mf.ToUpperInvariant();
+                    int asPos = u.LastIndexOf(" AS ");
+                    string alias = mf.Substring(asPos + 4).Trim();
+                    int paren = u.IndexOf("(");
+                    string func = paren >= 0 ? u.Substring(0, paren).Trim() : "MAX";
+                    measures.Add((func, alias));
+                }
+                var selectCols = new List<string>();
+                foreach (var rf in rowFieldAliases)
+                {
+                    string col = rf.Trim('`'); // already backticks remove kar dein
+                    selectCols.Add($"`{col}`");
+                }
+
+                foreach (var dv in distinctValues)
+                {
+                    string pivotVal = dv.Replace("`", "");
+                    foreach (var m in measures)
+                    {
+                        string measureCol = m.Alias.Trim('`'); // already backticks remove
+                        selectCols.Add($@"
+                        SUM(
+                            CASE
+                                WHEN `{pivotColumn}` = '{pivotVal}'
+                                THEN `{measureCol}`
+                                ELSE 0
+                            END
+                        ) AS `{pivotVal}|{measureCol}`");
+                    }
+                }
+
+                string finalPivotSql = $@"
+                        SELECT
+                        {string.Join(",\n", selectCols)}
+                        FROM ({baseQuery}) src
+                        GROUP BY
+                        {string.Join(", ", rowFieldAliases)}
+                        ORDER BY 1 {(desc ? "DESC" : "")}
+                        LIMIT {pageSize} OFFSET {(pageNumber - 1) * pageSize};
+                        ";
+
+                string sqlCount = $@"
+                        SELECT COUNT(*) FROM (
+                            SELECT {string.Join(", ", rowFieldAliases)}
+                            FROM ({baseQuery}) src
+                            GROUP BY {string.Join(", ", rowFieldAliases)}
+                        ) cnt;
+                        ";
+
+                int totalRecords = databaseConnection.GetTotalRecords(connectionString, sqlCount, finalPivotSql);
+                dts = databaseConnection.ExecuteQuery(connectionString, finalPivotSql);
+                var headerRows = new List<List<string>>();
+                int levels = pivotColumns.Count;
+                for (int lvl = 0; lvl < levels; lvl++)
+                    headerRows.Add(new List<string>());
+
+                foreach (var dv in distinctValues)
+                {
+                    foreach (int lvl in Enumerable.Range(0, levels))
+                        headerRows[lvl].Add(dv);
+                }
+                if (includeColumnTotals)
+                {
+                    foreach (var m in measures)
+                    {
+                        string totalCol = $"Total|{m.Alias}";
+                        if (!dts.Columns.Contains(totalCol))
+                            dts.Columns.Add(totalCol, typeof(decimal));
+                    }
+
+                    foreach (DataRow row in dts.Rows)
+                    {
+                        foreach (var m in measures)
+                        {
+                            string totalCol = $"Total|{m.Alias}";
+                            decimal sum = 0;
+                            foreach (DataColumn c in dts.Columns)
+                                if (c.ColumnName.EndsWith("|" + m.Alias))
+                                    sum += decimal.TryParse(row[c]?.ToString(), out var v) ? v : 0;
+                            row[totalCol] = sum;
+                        }
+                    }
+                }
+                if (includeRowTotals)
+                {
+                    var grand = dts.NewRow();
+                    foreach (DataColumn c in dts.Columns)
+                    {
+                        decimal total = 0;
+                        foreach (DataRow r in dts.Rows)
+                            total += decimal.TryParse(r[c]?.ToString(), out var v) ? v : 0;
+                        grand[c.ColumnName] = total;
+                    }
+                    dts.Rows.Add(grand);
+                }
+                return (dts, finalPivotSql, totalRecords, headerRows);
+            }
+        }
     }
 }

@@ -29,7 +29,7 @@ namespace ReportBuilder.Web.Controllers
 
         private DotNetReportSettings GetSettings()
         {
-            DotNetReportHelper.dbtype = DbTypes.MS_SQL.ToDbString();
+            DotNetReportHelper.dbtype = DbTypes.MySQL.ToDbString();
 
             var settings = new DotNetReportSettings
             {
@@ -406,7 +406,14 @@ namespace ReportBuilder.Web.Controllers
 
                     if (!string.IsNullOrEmpty(pivotColumn) && !useAltPivot)
                     {
-                        sql = sql.Remove(sql.IndexOf("SELECT "), "SELECT ".Length).Insert(sql.IndexOf("SELECT "), "SELECT TOP 1 ");
+                        if (DotNetReportHelper.dbtype == "MySQL")
+                        {
+                            sql += " LIMIT 1";
+                        }
+                        else 
+                        {
+                            sql = sql.Remove(sql.IndexOf("SELECT "), "SELECT ".Length).Insert(sql.IndexOf("SELECT "), "SELECT TOP 1 ");
+                        }
                     }
                     else
                     {
@@ -437,7 +444,7 @@ namespace ReportBuilder.Web.Controllers
                             var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
                             if (!useAltPivot)
                             {
-                                var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dtPagedRun, sql, sqlFields, reportData, pivotColumn, pivotFunction, pageNumber, pageSize, sortBy, desc, false, includeColumnTotal, subtotalMode);
+                                var pd = await databaseConnection.GetPivotTable(databaseConnection, connectionString, dtPagedRun, sql, sqlFields, reportData, pivotColumn, pivotFunction, pageNumber, pageSize, sortBy, desc, false, includeColumnTotal, subtotalMode);
                                 dtPagedRun = pd.dt;
                                 if (!string.IsNullOrEmpty(pd.sql)) sql = pd.sql;
                                 totalRecords = pd.totalRecords;
