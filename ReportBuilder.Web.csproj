@@ -560,11 +560,11 @@
     <Compile Include="Jobs\DotNetReportJob.cs" />
     <Compile Include="Models\DotNetReportModel.cs" />
     <Compile Include="Models\DynamicCodeRunner.cs" />
-    <Compile Include="Models\InformixDatabaseConnection.cs" />
     <Compile Include="Models\MySqlDatabaseConnection.cs" />
     <Compile Include="Models\OleDbDatabaseConnection.cs" />
     <Compile Include="Models\OracleDatabaseConnection.cs" />
     <Compile Include="Models\PostgresDatabaseConnection.cs" />
+    <Compile Include="Models\InformixDatabaseConnection.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -597,6 +597,7 @@
     <Content Include="Views\shared\_DotnetReportHeaderPartial.cshtml" />
     <Content Include="Views\shared\_DotnetReportJsLibrariesPartial.cshtml" />
     <Content Include="Views\shared\_DotnetReportTemplatesPartial.cshtml" />
+    <Content Include="Views\shared\_DotnetReportCodeMirrorLibrariesPartial.cshtml" />
     <Content Include="Scripts\jquery-3.7.1.slim.min.map" />
     <Content Include="Scripts\jquery-3.7.1.min.map" />
     <Content Include="Views\DotNetReport\Query.cshtml" />

@@ -41,10 +41,9 @@
         <p>Ad Hoc Reporting and Dashboard powered by <a href="http://www.dotNetReport.com" target="_blank">dotnetreport</a>. Copyright © www.dotnetreport.com.</p>
         <!--########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
     </div>
-
-    @await Html.PartialAsync("_DotnetReportTemplatesPartial")
-    @await Html.PartialAsync("_DotnetReportJsLibrariesPartial")
-    @await Html.PartialAsync("_DotnetReportCodeMirrorLibrariesPartial")
+    @Html.Partial("_DotnetReportTemplatesPartial")
+    @Html.Partial("_DotnetReportJsLibrariesPartial")
+    @Html.Partial("_DotnetReportCodeMirrorLibrariesPartial")
 
     @RenderSection("scripts", required: false)
 </body>
