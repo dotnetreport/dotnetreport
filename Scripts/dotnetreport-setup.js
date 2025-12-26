@@ -45,6 +45,9 @@ var manageViewModel = function (options) {
 				ajaxcall({ url: options.loadSchemaUrl + '?databaseApiKey=' + self.currentConnectionKey() + '&onlyApi=false' }).done(function (model) {
 					self.onlyApi(false);
 					self.Tables.refresh(model);
+					self.LoadJoins();
+					self.LoadCategories();
+					self.activeTable(null)
 				});
 			}
 		});
@@ -816,6 +819,7 @@ var manageViewModel = function (options) {
 		Name: ko.observable(),
 		ConnectionKey: ko.observable(),
 		UseSchema: ko.observable(),
+		DatabaseType: ko.observable(),
 		copySchema: ko.observable(false),
 		copyFrom: ko.observable(),
 	}
@@ -832,12 +836,14 @@ var manageViewModel = function (options) {
 		self.newDataConnection.Name(dc.DataConnectName);
 		self.newDataConnection.ConnectionKey(dc.ConnectionKey);
 		self.newDataConnection.UseSchema(dc.UseSchema);
+		self.newDataConnection.DatabaseType(dc.DatabaseType);
 	}
 	self.newDataConnectionModal = function () {
 		self.editingDataConnection(false);
 		self.newDataConnection.Name('');
 		self.newDataConnection.ConnectionKey('');
 		self.newDataConnection.UseSchema(false);
+		self.newDataConnection.DatabaseType('MS SQL');
 	}
 
 	self.updateDataConnection = function () {
@@ -860,6 +866,7 @@ var manageViewModel = function (options) {
 					account: self.keys.AccountApiKey,
 					dataConnect: self.currentConnectionKey(),
 					useSchema: self.newDataConnection.UseSchema(),
+					dbType: self.newDataConnection.DatabaseType(),
 					connectionKey: self.newDataConnection.ConnectionKey(),
 					connectName: self.newDataConnection.Name()
 				})
@@ -869,6 +876,7 @@ var manageViewModel = function (options) {
 			dc.DataConnectName = self.newDataConnection.Name();
 			dc.ConnectionKey = self.newDataConnection.ConnectionKey();
 			dc.UseSchema = self.newDataConnection.UseSchema();
+			dc.DatabaseType = self.newDataConnection.DatabaseType();
 			toastr.success("Data Connection updated successfully");
 			$('#add-connection-modal').modal('hide');
 		});
@@ -897,7 +905,9 @@ var manageViewModel = function (options) {
 					dataConnect: self.newDataConnection.copySchema() ? self.newDataConnection.copyFrom() : self.keys.DatabaseApiKey,
 					newDataConnect: self.newDataConnection.Name(),
 					connectionKey: self.newDataConnection.ConnectionKey(),
-					copySchema: self.newDataConnection.copySchema()
+					copySchema: self.newDataConnection.copySchema(),
+					useSchema: self.newDataConnection.UseSchema(),
+					dbType: self.newDataConnection.DatabaseType()
 				})
 			})
 		}).done(function (result) {
@@ -906,7 +916,8 @@ var manageViewModel = function (options) {
 				DataConnectName: self.newDataConnection.Name(),
 				ConnectionKey: self.newDataConnection.ConnectionKey(),
 				DataConnectGuid: result.DataConnectGuid,
-				UseSchema: result.UseSchema || false
+				UseSchema: result.UseSchema || false,
+				DatabaseType: result.DatabaseType
 			});
 
 			self.newDataConnection.Name('');
@@ -1176,7 +1187,7 @@ var manageViewModel = function (options) {
 			function (x) {
 				return {
 					DataConnectionId: x.DataConnectionId,
-					RelationId: x.Id ? x.Id : x.RelationId,
+					Id: x.Id ? x.Id : x.RelationId, 
 					TableId: x.TableId,
 					TableName: x.JoinTable ? x.JoinTable.DisplayName : null,       
 					JoinedTableId: x.JoinedTableId,
@@ -1694,7 +1705,7 @@ var manageViewModel = function (options) {
 					r.changeAccess = ko.observable(false);
 					r.changeAccess.subscribe(function (x) {
 						if (x) {
-							_.forEach(allReports[0], function (f) {
+							_.forEach(folderReports, function (f) {
 								if (f !== r) {
 									f.changeAccess(false);
 								}
@@ -3468,7 +3479,9 @@ var settingPageViewModel = function (options) {
 	self.usePromptBuilder = ko.observable(true);
 	self.showPageSize = ko.observable(false);
 	self.showImportExport = ko.observable(false);
-
+	self.licenseType = ko.observable(null);
+	self.isEnterprise = ko.observable(false);
+	self.useFunctions = ko.observable(false);
 	self.appThemes = ko.observableArray([
 		{ name: 'Default', value: 'default' },
 		{ name: 'Dark', value: 'dark' },
@@ -3599,7 +3612,8 @@ var settingPageViewModel = function (options) {
 							dontWordExport: self.dontWordExport(),
 							usePromptBuilder: self.usePromptBuilder(),
 							showPageSize: self.showPageSize(),
-							showImportExport: self.showImportExport()
+							showImportExport: self.showImportExport(),
+							useFunctions: self.isEnterprise() ? self.useFunctions() : false
 						})
 					})
 				})
@@ -3618,6 +3632,9 @@ var settingPageViewModel = function (options) {
 		};
 
 	}
+	self.canAddFunction = ko.computed(function () {
+		return self.isEnterprise() && self.useFunctions();
+	});
 	self.getAppSettings = function () {
 
 		return ajaxcall({
@@ -3646,7 +3663,13 @@ var settingPageViewModel = function (options) {
 				self.usePromptBuilder(settings.usePromptBuilder === false ? false : true);
 				self.showPageSize(settings.showPageSize);
 				self.showImportExport(settings.showImportExport);
-;
+				self.licenseType(settings.licenseType || settings.license || '');
+				self.isEnterprise(self.licenseType() && self.licenseType().toLowerCase() === 'enterprise');
+				if (self.isEnterprise()) {
+					self.useFunctions(settings.useFunctions === true);
+				} else {
+					self.useFunctions(false);
+				}			
 				//// Optionally, you can manually trigger change event for select elements
 				$('#themeSelect').trigger('change');
 				$('#timezoneSelect').trigger('change');
@@ -3704,7 +3727,7 @@ var customFunctionManageModel = function (options, keys) {
 		self.selectedFunction(functionModel);
 		setTimeout(function () {
 			if (codeEditor) {
-				codeEditor.toTextArea(); 
+				codeEditor.toTextArea();
 			}
 			// Create a new CodeMirror instance
 			codeEditor = CodeMirror.fromTextArea(document.getElementById("codeEditor"), {
@@ -3716,7 +3739,7 @@ var customFunctionManageModel = function (options, keys) {
 				},
 				gutters: ["CodeMirror-lint-markers"], // Add gutters for lint markers
 			});
-			codeEditor.setValue(functionModel.code()); 
+			codeEditor.setValue(functionModel.code());
 		}, 500);
 	};
 
@@ -3733,7 +3756,7 @@ var customFunctionManageModel = function (options, keys) {
 
 		if (!self.selectedFunction().name()) {
 			toastr.error("Function name is required");
-			valid=false;
+			valid = false;
 		}
 
 		var existingFunctionIndex = self.functions().findIndex(function (func) {
@@ -3745,9 +3768,11 @@ var customFunctionManageModel = function (options, keys) {
 			valid = false;
 		}
 		// Validate parameters
-		var parameterErrors = [];
+		var parameterErrors = []; var i = 1;
 		self.selectedFunction().parameters().forEach(function (param) {
 			var errors = param.validate();
+			param.OrderBy = i++;
+			param.required(param.required() === false ? false : true);
 			if (errors.length > 0) {
 				parameterErrors = parameterErrors.concat(errors);
 			}
@@ -3771,7 +3796,7 @@ var customFunctionManageModel = function (options, keys) {
 				toastr.error("JavaScript Error: " + error.reason + " on line " + error.line);
 				valid = false;
 			}
-		} 
+		}
 
 		if (!valid) {
 			return;
@@ -3810,11 +3835,26 @@ var customFunctionManageModel = function (options, keys) {
 			}
 
 			toastr.success('Function saved successfully');
-			self.selectedFunction(null);
+
+			self.buildCustomFunctions().done(function () {
+				
+			});
 		});
 	};
 
+	self.buildCustomFunctions = function () {
+		return ajaxcall({
+			url: options.buildDynamicFunctionsUrl,
+			type: 'POST'
+		}).done(function (result) {
+			if (!result) {
+				toastr.error('Error building Functions: ' + result.Message);
+				return false;
+			}
 
+			toastr.success('Functions built successfully');
+		});
+	}
 	self.deleteFunction = function (functionModel) {
 		bootbox.confirm("Are you sure you want to delete this function?", function (result) {
 			if (result) {
@@ -3830,11 +3870,13 @@ var customFunctionManageModel = function (options, keys) {
 						})
 					})
 				}).done(function () {
-					toastr.success("Deleted Function " + functionModel.name());		
+					toastr.success("Deleted Function " + functionModel.name());
 					self.functions.remove(functionModel);
 					if (self.selectedFunction() === functionModel) {
 						self.selectedFunction(null);
-					}								
+					}
+
+					self.buildCustomFunctions();
 				});
 			}
 		});
@@ -3865,7 +3907,7 @@ var customFunctionParameterModel = function (options, parentParameters) {
 	self.displayName = ko.observable(options.DisplayName || '').extend({ required: true });
 	self.description = ko.observable(options.Description || '');
 	self.datatype = ko.observable(options.DataType || 'object');
-	self.required = ko.observable(options.Required || true);
+	self.required = ko.observable(options.Required);
 	self.isValid = ko.observable(true);
 	self.errorMessage = ko.observable();
 

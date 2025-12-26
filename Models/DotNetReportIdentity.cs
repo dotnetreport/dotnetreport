@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Data.SqlClient;
+using System.Data.SqlClient;
 using Microsoft.Extensions.Caching.Memory;
 using ReportBuilder.Web.Controllers;
 using System.ComponentModel.DataAnnotations;

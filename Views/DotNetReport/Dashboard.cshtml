@@ -48,42 +48,36 @@
 
                 var dashboardId = parseInt(queryParams.id || 0);
                 if (!dashboardId && dashboards.length > 0) { dashboardId = dashboards[0].id; }
-
-                ajaxcall({ url: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")' + '?id=' + dashboardId + '&adminMode=' + adminMode, noBlocking: true }).done(function (reportsData) {
-                    _.forEach(reportsData, function (r) {
-                        reports.push({ reportSql: r.ReportSql, reportId: r.ReportId, reportFilter: r.ReportFilter, connectKey: r.ConnectKey, x: r.X, y: r.Y, width: r.Width, height: r.Height });
+                ajaxcall({ url: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")', noBlocking: true }).done(function (data) {
+                    var vm = new dashboardViewModel({
+                        runReportUrl: "@Url.Action("Report")",
+                        execReportUrl: "@Url.Action("RunReport", "DotNetReportApi")",
+                        runLinkReportUrl: "@Url.Action("RunReportLink", "DotNetReportApi")",
+                        reportWizard: $("#filter-panel"),
+                        lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
+                        apiUrl: "@Url.Action("CallReportApi", "DotNetReportApi")",
+                        runReportApiUrl: "@Url.Action("RunReportApi", "DotNetReportApi")",
+                        getSchemaFromSql: '@Url.Action("GetSchemaFromSql", "DotNetReportApi")',
+                        reportMode: "execute",
+                        reportWizard: $("#modal-reportbuilder"),
+                        linkModal: $("#linkModal"),
+                        fieldOptionsModal: $("#fieldOptionsModal"),
+                        dashboards: dashboards,
+                        userSettings: data,
+                        users: data.users,
+                        userRoles: data.userRoles,
+                        allowAdmin: data.allowAdminMode,
+                        dataFilters: data.dataFilters,
+                        dashboardId: dashboardId,
+                        runExportUrl: "/api/DotnetReportApi/",
+                        printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, Context.Request.Scheme)",
+                        loadSavedDashbordUrl: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")',
+                        getDashbordsUrl: '@Url.Action("GetDashboards", "DotNetReportApi")',
+                        getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")'
                     });
 
-                    ajaxcall({ url: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")', noBlocking: true }).done(function (data) {
-                        var vm = new dashboardViewModel({
-                            runReportUrl: "@Url.Action("Report")",
-                            execReportUrl: "@Url.Action("RunReport", "DotNetReportApi")",
-                            runLinkReportUrl: "@Url.Action("RunReportLink", "DotNetReportApi")",
-                            reportWizard: $("#filter-panel"),
-                            lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
-                            apiUrl: "@Url.Action("CallReportApi", "DotNetReportApi")",
-                            runReportApiUrl: "@Url.Action("RunReportApi", "DotNetReportApi")",
-                            getSchemaFromSql: '@Url.Action("GetSchemaFromSql", "DotNetReportApi")',
-                            reportMode: "execute",
-                            reportWizard: $("#modal-reportbuilder"),
-                            linkModal: $("#linkModal"),
-                            fieldOptionsModal: $("#fieldOptionsModal"),
-                            reports: reports,
-                            dashboards: dashboards,
-                            userSettings: data,
-                            users: data.users,
-                            userRoles: data.userRoles,
-                            allowAdmin: data.allowAdminMode,
-                            dataFilters: data.dataFilters,
-                            dashboardId: dashboardId,
-                            runExportUrl: "/api/DotnetReportApi/",
-                            printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, Context.Request.Scheme)",
-                            loadSavedDashbordUrl: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")',
-                            getDashbordsUrl: '@Url.Action("GetDashboards", "DotNetReportApi")',
-                            getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")'
-                        });
-
-                        vm.init().done(function () {
+                    vm.init().done(function () {
+                        vm.loadDashboard(dashboardId).done(function() {
                             if ($.unblockUI) {
                                 $.unblockUI();
                             }
@@ -100,7 +94,11 @@
                                 });
 
                                 grid.on('change', function (event, items) {
+                                    if (!vm.arrangeDashboard()) return;
                                     items.forEach(function (x) {
+                                        const el = x.el;
+                                        const type = el.getAttribute("data-type"); 
+                                        x.type = type;   
                                         vm.updatePosition(x);
                                     });
                                 });
@@ -184,6 +182,18 @@
                         <button class="dropdown-item" data-bind="click: RefreshAllReports">
                             <i class="fa fa-refresh"></i>
                             <span>Refresh</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="dropdown-item" data-bind="click: addLineSeparator">
+                            <i class="fa fa-minus"></i>
+                            <span>Add Line Separator</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="dropdown-item" data-bind="click: openAddTextModal">
+                            <i class="fa fa-font"></i>
+                            <span>Add Text</span>
                         </button>
                     </li>
                 </ul>
@@ -350,9 +360,11 @@
 </div>
 
 
-<div class="grid-stack" data-bind="foreach: reports" style="display: none;">
-    <div class="grid-stack-item" data-bind="attr: {'gs-x': x, 'gs-y': y, 'gs-w': width, 'gs-h': height, 'gs-auto-position': true, 'gs-id': ReportID}">
-        <div class="card" data-bind="attr: {class: 'card ' + panelStyle + ' grid-stack-item-content'}, css: { expanded: isExpanded }, style: { border: noDashboardBorders() ? 'none' : '', 'box-shadow': noDashboardBorders() ? 'none' : '' }" style="overflow-y: hidden;">
+<div class="grid-stack" style="display: none;">
+    <!-- ko foreach: dashboardItems -->
+    <!-- ko if: type === 'report' -->
+    <div class="grid-stack-item" data-bind="attr: {'gs-x': x, 'gs-y': y, 'gs-w': width, 'gs-h': height, 'gs-id': ReportID,'data-type':'report'}">
+        <div class="card" data-bind="attr: {class: 'card ' + panelStyle + ' grid-stack-item-content'}, css: { expanded: isExpanded }, style: { border: noDashboardBorders() ? 'none' : '', 'box-shadow': noDashboardBorders() ? 'none' : '','background-color': $parent.getCardBackground($data) }" style="overflow-y: hidden;">
             <div class="padded-div" style="padding-bottom: 0; margin-bottom: 0;">
                 <div class="pull-left">
                     <button type="button" class="btn" data-bs-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
@@ -444,17 +456,22 @@
                     </span>
                     <a class="btn btn-link" data-bind="visible: CanEdit() && CanSaveReports() && isDirty(), click: SaveWithoutRun">
                         <span class="fa fa-save"></span>
-                    </a>
-                    <a class="btn btn-link" data-bind="click: toggleExpand"><span class="fa" data-bind="css: {'fa-expand': !isExpanded(), 'fa-minus': isExpanded() }, visible: ReportType() != 'Single' && !noDashboardBorders()"></span></a>
+                    </a>                    
+                    <a class="btn btn-link" data-bind="visible:ReportType() != 'Single',click: toggleExpand"><span class="fa" data-bind="css: {'fa-expand': !isExpanded(), 'fa-minus': isExpanded() }, visible: ReportType() != 'Single' && !noDashboardBorders()"></span></a>
+                </div>
+                <div data-bind="visible: $parent.arrangeDashboard">
+                    <div class="pull-right" data-bind="if: ReportType()!='Single' && ReportType()!='Html' && CanEdit()">
+                        <div data-bind="template: 'chart-settings', data: $data"></div>
+                    </div>
+                    <div data-bind="if:ReportType() == 'Single' && CanEdit()">
+                        <div data-bind="template: {name: 'kpi-settings', data: $data }"></div>
+                    </div>
                 </div>
             </div>
             <div data-bind="if: activeDesign()">
                 <div data-bind="template: 'report-designer-compact'"></div>
             </div>
-            <div class="card-body list-overflow-auto" style="padding-top: 0; margin-top: 0;">
-                <div data-bind="if: ReportType()!='Single' && ReportType()!='Html' && CanEdit()">
-                    <div data-bind="template: 'chart-settings', data: $data"></div>
-                </div>
+            <div class="card-body list-overflow-auto" style="padding-top: 0; margin-top: 0;">                
                 <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
                 <div data-bind="template: {name: 'fly-filter-template'}, visible: showFlyFilters"></div>
                 <div data-bind="with: ReportResult" class="small">
@@ -476,9 +493,84 @@
                 </div>
             </div>
         </div>
-
     </div>
+    <!-- /ko -->
+    <!-- ko if: type === 'separator' -->
+    <div class="grid-stack-item" data-bind="attr: {'gs-x': x, 'gs-y': y, 'gs-w': width, 'gs-h': height, 'gs-id': id,'data-type':'separator'}">
+    <div data-bind="template: { name: 'line-separator-template', data: $data }"></div>
+    </div>
+    <!-- /ko -->
+    <!-- ko if: type === 'text' -->
+    <div class="grid-stack-item" data-bind="attr: {'gs-x': x, 'gs-y': y, 'gs-w': width, 'gs-h': height,'gs-id': id,'data-type':'text'}">
+        <div data-bind="template:{name:'text-widget-template', data:$data}"></div>
+    </div>
+    <!-- /ko -->
+    <!-- /ko -->
 </div>
+<script type="text/html" id="line-separator-template">
+    <div class="grid-stack-item-content position-relative p-2" data-bind="css: { card: $root.arrangeDashboard }">
+        <hr data-bind="style: { borderTop: thickness() + 'px solid ' + color() }" class="m-0">
+        <div data-bind="visible: $root.arrangeDashboard" class="dropdown position-absolute" style="top:-5px; right:0; z-index:2000;">
+            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="dropdown">
+                <i class="fa fa-ellipsis-v"></i>
+            </button>
+               <ul class="dropdown-menu dropdown-menu-end p-2 bg-light small">
+                    <li class="d-flex align-items-center gap-2 mb-2">
+                        <label class="form-label small mb-0">Line Color</label>
+                        <input type="color" class="color-picker" data-bind="value: color,valueUpdate: 'input',event: { change: () => $root.onWidgetChange($data)}">
+                    </li>
+
+                    <li class="d-flex align-items-center gap-2 mb-2">
+                        <label class="mb-0">Thickness</label>
+                        <input type="number"
+                               min="1"
+                               max="10"
+                               data-bind="value: thickness,valueUpdate: 'input',event: { change: () => $root.onWidgetChange($data)}"
+                               class="form-control form-control-sm"
+                               style="width:50px">
+                    </li>
+
+                    <li>
+                        <button class="dropdown-item text-danger" data-bind="click: deleteSeparator">
+                            <i class="fa fa-trash me-2"></i>
+                            Delete
+                        </button>
+                    </li>
+                </ul>
+        </div>
+    </div>
+</script>
+<script type="text/html" id="text-widget-template">
+    <div class="grid-stack-item-content position-relative p-2" data-bind="css: { card: $root.arrangeDashboard }">
+        <div data-bind="html: decodeURIComponent(text())"></div>
+        <div class="position-absolute" style="top:3px; right:4px; z-index:2000;" data-bind="visible: $root.arrangeDashboard">
+            <div class="dropdown">
+                <button class="btn btn-sm btn-light"
+                        type="button"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false">
+                    <i class="fa fa-ellipsis-v"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                        <button class="dropdown-item"
+                                data-bind="click: $root.openTextEditor">
+                            <i class="fa fa-edit me-2"></i>
+                            Edit
+                        </button>
+                    </li>
+                    <li>
+                        <button class="dropdown-item text-danger"
+                                data-bind="click: deleteText">
+                            <i class="fa fa-trash me-2"></i>
+                            Delete
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</script>
 
 <!-- Report Builder -->
 <div class="modal modal-fullscreen" id="modal-reportbuilder" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="padding-right: 0px !important;" data-bind="with: selectedReport">
@@ -515,4 +607,23 @@
 </div>
 <div class="modal" id="exportAllPdfOptionsModal" tabindex="-1" aria-labelledby="exportAllPdfOptionsModalLabel" aria-hidden="true" data-bind="with: dashboard">
     <div data-bind="template: { name: 'pdf-options-template', data: $data  }"></div>
+</div>
+<div class="modal" id="textWidgetModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" data-bind="text: textModalTitle"></h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <textarea id="textEditor"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" data-bind="click: saveTextWidget">
+                    Save
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
