@@ -69,6 +69,9 @@
     <Reference Include="DocumentFormat.OpenXml.Framework, Version=3.1.1.0, Culture=neutral, PublicKeyToken=8fb06cb64d019a17, processorArchitecture=MSIL">
       <HintPath>packages\DocumentFormat.OpenXml.Framework.3.1.1\lib\net46\DocumentFormat.OpenXml.Framework.dll</HintPath>
     </Reference>
+    <Reference Include="DynamicExpresso.Core, Version=2.19.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\DynamicExpresso.Core.2.19.2\lib\netstandard2.0\DynamicExpresso.Core.dll</HintPath>
+    </Reference>
     <Reference Include="EPPlus, Version=4.5.3.2, Culture=neutral, PublicKeyToken=ea159fdaa78159a1, processorArchitecture=MSIL">
       <HintPath>packages\EPPlus.4.5.3.2\lib\net40\EPPlus.dll</HintPath>
     </Reference>
@@ -562,9 +565,9 @@
     <Compile Include="Models\DynamicCodeRunner.cs" />
     <Compile Include="Models\MySqlDatabaseConnection.cs" />
     <Compile Include="Models\OleDbDatabaseConnection.cs" />
-    <Compile Include="Models\OracleDatabaseConnection.cs" />
+    <!-- <Compile Include="Models\OracleDatabaseConnection.cs" />
     <Compile Include="Models\PostgresDatabaseConnection.cs" />
-    <Compile Include="Models\InformixDatabaseConnection.cs" />
+    <Compile Include="Models\InformixDatabaseConnection.cs" /> -->
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

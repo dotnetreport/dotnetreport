@@ -84,53 +84,54 @@
                             getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")'
                         });
 
-                    vm.init().done(function () {
-                        vm.loadDashboard(dashboardId).done(function() {
-                            if ($.unblockUI) {
-                                $.unblockUI();
-                            }
-                            ko.applyBindings(vm);
-                            setTimeout(() => {
-                                $('.grid-stack').show();
-                                const grid = GridStack.init({
-                                    cellHeight: 60,
-                                    margin: 10,
-                                    resizable: {
-                                        handles: 'se, sw, ne, nw, n, e, s, w'
-                                    },
-                                    oneColumnSize: 768
-                                });
-
-                                grid.on('change', function (event, items) {
-                                    if (!vm.arrangeDashboard()) return;
-                                    items.forEach(function (x) {
-                                        const el = x.el;
-                                        const type = el.getAttribute("data-type"); 
-                                        x.type = type;   
-                                        vm.updatePosition(x);
-                                    });
-                                });
-
-                                grid.on('resizestop', function (event, el) {
-                                    const e = el.querySelector('.report-chart');
-                                    if (e) {
-                                        vm.drawChart();
-                                    }
-                                });
-
+                        vm.init().done(function () {
+                            vm.loadDashboard(dashboardId).done(function () {
+                                if ($.unblockUI) {
+                                    $.unblockUI();
+                                }
+                                ko.applyBindings(vm);
                                 setTimeout(() => {
-                                    vm.drawChart();
-                                    grid.enableMove(false);
-                                    grid.enableResize(false);
-                                    vm.gridResponsive();
-                                }, 1000);
-                            }, 10);
+                                    $('.grid-stack').show();
+                                    const grid = GridStack.init({
+                                        cellHeight: 60,
+                                        margin: 10,
+                                        resizable: {
+                                            handles: 'se, sw, ne, nw, n, e, s, w'
+                                        },
+                                        oneColumnSize: 768
+                                    });
 
-                        });
+                                    grid.on('change', function (event, items) {
+                                        if (!vm.arrangeDashboard()) return;
+                                        items.forEach(function (x) {
+                                            const el = x.el;
+                                            const type = el.getAttribute("data-type");
+                                            x.type = type;
+                                            vm.updatePosition(x);
+                                        });
+                                    });
 
-                        window.addEventListener('resize', function () {                            
-                            vm.gridResponsive();
-                            vm.drawChart();
+                                    grid.on('resizestop', function (event, el) {
+                                        const e = el.querySelector('.report-chart');
+                                        if (e) {
+                                            vm.drawChart();
+                                        }
+                                    });
+
+                                    setTimeout(() => {
+                                        vm.drawChart();
+                                        grid.enableMove(false);
+                                        grid.enableResize(false);
+                                        vm.gridResponsive();
+                                    }, 1000);
+                                }, 10);
+
+                            });
+
+                            window.addEventListener('resize', function () {
+                                vm.gridResponsive();
+                                vm.drawChart();
+                            });
                         });
                     });
                 });

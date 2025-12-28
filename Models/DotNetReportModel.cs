@@ -4083,15 +4083,15 @@ namespace ReportBuilder.Web.Models
                 case "mysql":
                     databaseConnection = new MySqlDatabaseConnection();
                     break;
-                case "PostgreSQL":
-                    databaseConnection = new PostgresDatabaseConnection();
-                    break;
-                case "oracle":
-                    databaseConnection = new OracleDatabaseConnection();
-                    break;
-                case "informix":
-                    databaseConnection = new InformixDatabaseConnection();
-                    break;
+                //case "PostgreSQL":
+                //    databaseConnection = new PostgresDatabaseConnection();
+                //    break;
+                //case "oracle":
+                //    databaseConnection = new OracleDatabaseConnection();
+                //    break;
+                //case "informix":
+                //    databaseConnection = new InformixDatabaseConnection();
+                //    break;
                 default:
                     databaseConnection = new OleDbDatabaseConnection();
                     break;
