@@ -5,9 +5,12 @@ using System.Data.SqlClient;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using OfficeOpenXml;
+using PdfSharp;
 using PdfSharp.Drawing;
 using PdfSharp.Drawing.Layout;
 using PdfSharp.Pdf;
+using PuppeteerSharp;
+using PuppeteerSharp.Media;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -20,17 +23,18 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Web;
+using System.Reflection;
+using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using System.Net.Http;
 using A = DocumentFormat.OpenXml.Drawing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
-using System.Data.SqlClient;
-using System.Web;
-using PuppeteerSharp;
-using PuppeteerSharp.Media;
+using static ReportBuilder.Web.Controllers.DotNetReportApiController;
+using ReportBuilder.Web.Models;
 using PdfSharp.Pdf.IO;
-using System.Collections.Concurrent;
+using System.Data.SqlClient;
 
 namespace ReportBuilder.Web.Models
 {
@@ -3318,7 +3322,7 @@ namespace ReportBuilder.Web.Models
 
             var file = Task.Run(async () =>
             {
-                var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = true, ExecutablePath = executablePath });
+                var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = !debug, ExecutablePath = executablePath });
                 var page = await browser.NewPageAsync();
                 await page.SetRequestInterceptionAsync(true);
 

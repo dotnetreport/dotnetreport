@@ -808,14 +808,14 @@ namespace ReportBuilder.WebForms.DotNetReport
             return sql;
         }
         [WebMethod(EnableSession = true)]
-        public void DownloadAllPdf(string reportdata)
+        public async Task DownloadAllPdf(string reportdata)
         {
             var pdfBytesList = new List<byte[]>();
             var settings = GetSettings();
             var reports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
             foreach (var report in reports)
             {
-                var pdf = DotNetReportHelper.GetPdfFile(report.printUrl, report.reportId, HttpUtility.HtmlDecode(report.reportSql), HttpUtility.UrlDecode(report.connectKey), HttpUtility.UrlDecode(report.reportName), settings.UserId,
+                var pdf =await  DotNetReportHelper.GetPdfFile(report.printUrl, report.reportId, HttpUtility.HtmlDecode(report.reportSql), HttpUtility.UrlDecode(report.connectKey), HttpUtility.UrlDecode(report.reportName), settings.UserId,
                     settings.ClientId, string.Join(",", settings.CurrentUserRole), JsonConvert.SerializeObject(settings.DataFilters), report.expandAll, report.expandSqls, report.pivotColumn, report.pivotFunction, pageSize: report.pageSize, pageOrientation: report.pageOrientation, subTotalMode: report.includeSubTotal, includeColumnTotal: report.includeColumnTotal);
                 pdfBytesList.Add(pdf);
             }
@@ -1035,8 +1035,8 @@ namespace ReportBuilder.WebForms.DotNetReport
             {
                 await ValidateAccess(userId, reportSql, adminMode: adminMode);
             }
-            var pdf = DotNetReportHelper.GetPdfFile(HttpUtility.UrlDecode(printUrl), reportId, reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName),
-                                settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), JsonConvert.SerializeObject(settings.DataFilters), expandAll, expandSqls, pivotColumn, pivotFunction, false, debug, pageSize, pageOrientation);
+            var pdf = await DotNetReportHelper.GetPdfFile(HttpUtility.UrlDecode(printUrl), reportId, reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName),
+                                settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), JsonConvert.SerializeObject(settings.DataFilters), expandAll, expandSqls, pivotColumn, pivotFunction, false, debug, pageSize, pageOrientation, includeSubTotal, includeColumnTotal);
 
             Context.Response.AddHeader("content-disposition", "attachment; filename=" + reportName + ".pdf");
             Context.Response.ContentType = "application/pdf";
