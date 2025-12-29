@@ -115,8 +115,10 @@ namespace ReportBuilder.Web.Jobs
             if (!String.IsNullOrEmpty(timeZoneId))
             {
                 TimeZoneInfo timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
-                // Convert last run to user's local time zone
-                lastRun = TimeZoneInfo.ConvertTime(lastRun, timeZoneInfo);
+                // Convert last run to user's local time zone if it actually came from DB
+                if (!string.IsNullOrEmpty(lastRunFromDb))
+                    lastRun = TimeZoneInfo.ConvertTime(lastRun, timeZoneInfo);
+
                 nextRun = chron.GetTimeAfter(lastRun);
             }
             var _nextRun = (nextRun.HasValue ? nextRun.Value.ToLocalTime().DateTime : (DateTime?)null);
