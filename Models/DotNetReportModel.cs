@@ -1,6 +1,7 @@
 ﻿using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
+using System.Data.SqlClient;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using OfficeOpenXml;
@@ -131,6 +132,7 @@ namespace ReportBuilder.Web.Models
         public string sql { get; set; } = "";
         public List<KeyValuePair<string, string>> parameters { get; set; } = null;
         public int reportId { get; set; }
+        public string dbType { get; set; } = "";
     }
 
     public class TableViewModel
@@ -173,7 +175,7 @@ namespace ReportBuilder.Web.Models
         public string ParameterValue { get; set; }
         public string ParameterDataTypeString { get; set; }
         public Type ParameterDataTypeCLR { get; set; }
-        public OleDbType ParamterDataTypeOleDbType { get; set; } = OleDbType.VarChar;
+        public string ParamterDataTypeOleDbType { get; set; } = "VarChar";
         public int ParamterDataTypeOleDbTypeInteger { get; set; } = 0;
         public bool Required { get; set; }
         public bool ForeignKey { get; set; }
@@ -248,8 +250,19 @@ namespace ReportBuilder.Web.Models
     {
         MS_SQL,
         MySql,
-        Postgre_Sql
+        PostgreSQL,
+        Oracle,
+        Informix,
+        OleDb
     }
+    public static class DbTypesExtensions
+    {
+        public static string ToDbString(this DbTypes db)
+        {
+            return db.ToString().Replace("_", " ");
+        }
+    }
+
 
     public class ColumnViewModel
     {
@@ -431,6 +444,10 @@ namespace ReportBuilder.Web.Models
         public bool isJsonColumn { get; set; }
         public string aggregateFunction { get; set; }
         public LinkFieldItem LinkFieldItem { get; set; }
+        public string headerFontColor { get; set; }
+        public string headerBackColor { get; set; }
+        public string fontColor { get; set; }
+        public string backColor { get; set; }
     }
     public class LinkFieldItem
     {
@@ -463,6 +480,7 @@ namespace ReportBuilder.Web.Models
         public string columnDetails { get; set; }
         public string onlyAndGroupInColumnDetail { get; set; }
         public bool includeSubTotal { get; set; }
+        public bool includeColumnTotal { get; set; }
         public bool pivot { get; set; }
     }
     public interface IDnrDataConnection
@@ -505,7 +523,7 @@ namespace ReportBuilder.Web.Models
     public static class DotNetReportHelper
     {
         private readonly static string _configFileName = "appsettings.dotnetreport.json";
-        public readonly static string dbtype = DbTypes.MS_SQL.ToString().Replace("_", " ");
+        public static string dbtype = DbTypes.MS_SQL.ToString().Replace("_", " ");
         public static bool useAltPivot = false;
 
         public static string GetConnectionString(string key, bool addOledbProvider = false)
@@ -536,7 +554,7 @@ namespace ReportBuilder.Web.Models
             };
         }
 
-        public static async Task<string> GetConnectionString(ConnectViewModel connect, bool addOledbProvider = true)
+        public static async Task<string> GetConnectionString(ConnectViewModel connect, bool addOledbProvider = false)
         {
             if (connect.AccountApiKey == "Your Account API Key" || string.IsNullOrEmpty(connect.AccountApiKey) || string.IsNullOrEmpty(connect.DatabaseApiKey))
                 return "";
@@ -911,7 +929,33 @@ namespace ReportBuilder.Web.Models
                         ws.Cells[dt.Rows.Count + rowstart + 1, i].Style.Font.Bold = true;
                     }
                 }
-
+                if (formatColumn != null)
+                {
+                    var headerCell = ws.Cells[rowstart, i];
+                    if (!string.IsNullOrEmpty(formatColumn.headerFontColor))
+                        headerCell.Style.Font.Color.SetColor(ColorTranslator.FromHtml(formatColumn.headerFontColor));
+                    if (!string.IsNullOrEmpty(formatColumn.headerBackColor))
+                    {
+                        headerCell.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                        headerCell.Style.Fill.BackgroundColor.SetColor(ColorTranslator.FromHtml(formatColumn.headerBackColor));
+                    }
+                    int increment = rowstart == 3 ? 1 : 0;
+                    for (int rowIndex = 0; rowIndex < dt.Rows.Count; rowIndex++)
+                    {
+                        var cellValue = dt.Rows[rowIndex][dc.ColumnName]?.ToString();
+                        if (!string.IsNullOrEmpty(cellValue))
+                        {
+                            var cell = ws.Cells[rowIndex + rowstart + increment, i];
+                            if (!string.IsNullOrEmpty(formatColumn.fontColor))
+                                cell.Style.Font.Color.SetColor(ColorTranslator.FromHtml(formatColumn.fontColor));
+                            if (!string.IsNullOrEmpty(formatColumn.backColor))
+                            {
+                                cell.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                                cell.Style.Fill.BackgroundColor.SetColor(ColorTranslator.FromHtml(formatColumn.backColor));
+                            }
+                        }
+                    }
+                }
                 if (formatColumn != null && formatColumn?.LinkFieldItem != null && formatColumn?.LinkFieldItem.LinkToUrl != null)
                 {
                     for (int rowIndex = 0; rowIndex < dt.Rows.Count; rowIndex++)
@@ -1073,7 +1117,7 @@ namespace ReportBuilder.Web.Models
                 }
             }
 
-            return -1;
+            return sql.Length;
         }
 
         public static async Task<List<TableViewModel>> GetApiTables(string accountKey, string dataConnectKey, bool loadColumns = false)
@@ -1098,9 +1142,9 @@ namespace ReportBuilder.Web.Models
                         Categories= item.tableCategories != null ? ((JArray)item.tableCategories).ToObject<List<dynamic>>().Select(c => new CategoryViewModel { Id = c.CategoryId, Name = c.Name, Description = c.Description }).ToList() : new List<CategoryViewModel>(),
                         DoNotDisplay = item.doNotDisplay,
                         CustomTable = item.customTable,
-                        CustomTableSql = Convert.ToBoolean(item.customTable) == true ? DotNetReportHelper.Decrypt(Convert.ToString(item.customTableSql)) : "",
+                        CustomTableSql = Convert.ToBoolean(item.customTable) == true ? DotNetReportHelper.TryDecrypt(Convert.ToString(item.customTableSql)) : "",
                         DynamicColumns = item.dynamicColumns != null ? Convert.ToBoolean(item.dynamicColumns) : false,
-                        DynamicColumnTranslation = item.dynamicColumns != null && Convert.ToBoolean(item.dynamicColumns) == true ? DotNetReportHelper.Decrypt(Convert.ToString(item.dynamicColumnTranslation)) : "",
+                        DynamicColumnTranslation = item.dynamicColumns != null && Convert.ToBoolean(item.dynamicColumns) == true ? DotNetReportHelper.TryDecrypt(Convert.ToString(item.dynamicColumnTranslation)) : "",
                         DynamicValuesTableId = item.dynamicValuesTableId != null ? Convert.ToInt32(item.dynamicValuesTableId) : null,
                         Columns = new List<ColumnViewModel>(),
                         Selected = true
@@ -1110,13 +1154,20 @@ namespace ReportBuilder.Web.Models
                     {
                         if (table.DynamicColumns)
                         {
-                            var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey));
-                            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection();
-
-                            var dt = databaseConnection.ExecuteQuery(connString, table.CustomTableSql);
-                            foreach (DataRow dr in dt.Rows)
+                            try
                             {
-                                table.Columns.Add(new ColumnViewModel { ColumnName = Convert.ToString(dr[0]), DisplayName = Convert.ToString(dr[0]) });
+                                var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey));
+                                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(DotNetReportHelper.dbtype);
+
+                                var dt = databaseConnection.ExecuteQuery(connString, table.CustomTableSql);
+                                foreach (DataRow dr in dt.Rows)
+                                {
+                                    table.Columns.Add(new ColumnViewModel { ColumnName = Convert.ToString(dr[0]), DisplayName = Convert.ToString(dr[0]) });
+                                }
+                            } 
+                            catch(Exception ex)
+                            {
+                                Console.Write(ex.Message);
                             }
                         }
                         else
@@ -1290,7 +1341,7 @@ namespace ReportBuilder.Web.Models
                         .Select(x => x.StartsWith("DISTINCT ", StringComparison.OrdinalIgnoreCase) ? x.Substring(9).Trim() : x)
                         .ToList();
 
-                case "Postgre Sql":
+                case "PostgreSQL":
                     if (sql.StartsWith("CALL", StringComparison.OrdinalIgnoreCase))
                         return new List<string>();
 
@@ -1319,43 +1370,41 @@ namespace ReportBuilder.Web.Models
 
                     selectPart = sql.Substring(0, fromIndex).Replace("SELECT", "").Trim();
 
-                    current = new StringBuilder();
-                    parenDepth = 0;
+                    var cols = new List<string>();
+                    var sb = new StringBuilder();
+                    inString = false; bool inComment = false;
+                    int depth = 0;
 
                     for (int i = 0; i < selectPart.Length; i++)
                     {
-                        char c = selectPart[i];
+                        char c = selectPart[i], n = i + 1 < selectPart.Length ? selectPart[i + 1] : '\0';
 
-                        if (c == '\'' && (i == 0 || selectPart[i - 1] != '\\'))
-                            inString = !inString;
+                        if (!inString && !inComment && c == '/' && n == '*') { inComment = true; i++; continue; }
+                        if (inComment && c == '*' && n == '/') { inComment = false; i++; continue; }
+                        if (inComment) continue;
 
-                        if (!inString)
+                        if (c == '\'' && (i == 0 || selectPart[i - 1] != '\\')) inString = !inString;
+
+                        if (!inString) { if (c == '(') depth++; else if (c == ')') depth--; }
+
+                        if (c == ',' && depth == 0 && !inString)
                         {
-                            if (c == '(') parenDepth++;
-                            else if (c == ')') parenDepth--;
+                            cols.Add(sb.ToString().Trim());
+                            sb.Clear();
+                            continue;
                         }
 
-                        // Split only when comma is outside parentheses and strings
-                        if (c == ',' && parenDepth == 0 && !inString)
-                        {
-                            columns.Add(current.ToString().Trim());
-                            current.Clear();
-                        }
-                        else
-                        {
-                            current.Append(c);
-                        }
+                        sb.Append(c);
                     }
 
-                    if (current.Length > 0)
-                        columns.Add(current.ToString().Trim());
+                    if (sb.Length > 0) cols.Add(sb.ToString().Trim());
 
-                    // Cleanup, handle DISTINCT/TOP and ensure alias exists
-                    return columns
+                    return cols
                         .Select(x => x.StartsWith("DISTINCT ", StringComparison.OrdinalIgnoreCase) ? x.Substring(9) : x)
                         .Select(x => Regex.Replace(x, @"TOP\s+\d+", "", RegexOptions.IgnoreCase))
                         .Where(x => x.Contains(" AS "))
                         .ToList();
+
             }
         }
 
@@ -1471,6 +1520,7 @@ namespace ReportBuilder.Web.Models
             return modifiedSql;
         }
 
+        
         public async static Task<DataSet> GetDrillDownData(OleDbConnection conn, DataTable dt, List<string> sqlFields, string reportDataJson)
         {
             var drilldownRow = new List<string>();
@@ -1526,19 +1576,47 @@ namespace ReportBuilder.Web.Models
             return dts;
         }
 
-        public async static Task<(DataTable dt, string sql, int totalRecords)> GetPivotTable(IDatabaseConnection databaseConnection, string connectionString, DataTable dt, string sql, List<string> sqlFields, string reportDataJson, string pivotColumn, string pivotFunction, int pageNumber, int pageSize, string sortBy, bool desc, bool returnSubtotal = false)
+        public async static Task<(DataTable dt, string sql, int totalRecords, List<List<string>> headerRows)>
+        GetPivotTable(
+            IDatabaseConnection databaseConnection,
+            string connectionString,
+            DataTable dt,
+            string sql,
+            List<string> sqlFields,
+            string reportDataJson,
+            string pivotColumnList,
+            string pivotFunction,
+            int pageNumber,
+            int pageSize,
+            string sortBy,
+            bool desc,
+            bool returnSubtotal = false,
+            bool includeColumnTotals = false,
+            bool includeRowTotals = false)
         {
-            var pivotColumnOrder = GetPivotColumnOrder(reportDataJson);
             var dts = new DataTable();
-            var drilldownRow = new List<string>();
             if (dt.Rows.Count == 0)
-                return (dts, "", 0);
+                return (dts, "", 0, new List<List<string>>());
 
+            var pivotColumns = pivotColumnList.Split(',')
+                .Select(pc => pc.Trim())
+                .Where(pc => !string.IsNullOrWhiteSpace(pc))
+                .ToList();
+
+            if (pivotColumns.Count == 0)
+                throw new Exception("Pivot requires at least one pivot column.");
+
+            string pivotColumn = pivotColumns.Last();
+
+            var pivotColumnOrder = DotNetReportHelper.GetPivotColumnOrder(reportDataJson);
+
+            // Build drilldown SQL
+            var drilldownRow = new List<string>();
             var dr = dt.Rows[0];
-            int i = 0;
+            var k = 0;
             foreach (DataColumn dc in dt.Columns)
             {
-                var col = sqlFields[i++]; //columns.FirstOrDefault(x => x.fieldName == dc.ColumnName) ?? new ReportHeaderColumn();
+                var col = sqlFields[k++]; //columns.FirstOrDefault(x => x.fieldName == dc.ColumnName) ?? new ReportHeaderColumn();
                 drilldownRow.Add($@"
                     {{
                         ""Value"":""{dr[dc]}"",
@@ -1557,82 +1635,309 @@ namespace ReportBuilder.Web.Models
             }
 
             var reportData = reportDataJson.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false,\"IsPivotMode\":true");
-            var drilldownSql = await RunReportApiCall(reportData);
+            var drilldownSql = await DotNetReportHelper.RunReportApiCall(reportData);
 
-            if (!string.IsNullOrEmpty(drilldownSql))
+            if (string.IsNullOrEmpty(drilldownSql))
+                return (dts, "", 0, new List<List<string>>());
+
+            var lastWhereIndex = drilldownSql.LastIndexOf("WHERE");
+            var baseQuery = lastWhereIndex > 0
+                ? drilldownSql.Substring(0, lastWhereIndex) + " " + DotNetReportHelper.GetWhereClause(sql)
+                : drilldownSql + " " + DotNetReportHelper.GetWhereClause(sql);
+
+            var baseDataTable = databaseConnection.ExecuteQuery(connectionString, baseQuery);
+
+            var monthNames = new List<string>
             {
-                var lastWhereIndex = drilldownSql.LastIndexOf("WHERE");
-                var baseQuery = drilldownSql.Substring(0, lastWhereIndex) + " " + GetWhereClause(sql);
-                var monthNames = new List<string>
+                "january","february","march","april","may","june",
+                "july","august","september","october","november","december"
+            };
+
+            var distinctValues = baseDataTable
+                .AsEnumerable()
+                .Select(row => "[" + Convert.ToString(row[pivotColumn])?.Trim() + "]")
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Where(x => x != "[]" && x.Length <= 128)
+                .OrderBy(x =>
                 {
-                    "january", "february", "march", "april", "may", "june",
-                    "july", "august", "september", "october", "november", "december"
-                };
-                var baseDataTable = databaseConnection.ExecuteQuery(connectionString, baseQuery.Replace("SELECT ", "SELECT "));
-                var distinctValues = baseDataTable
-                    .AsEnumerable()
-                    .Select(row => "[" + Convert.ToString(row[pivotColumn])?.Trim() + "]")
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .Where(x => x != "[]" && x.Length <= 128)
-                    .OrderBy(x =>
-                    {
-                        string lowerTrimmedValue = x.Trim('[', ']').ToLower();
-                        int monthIndex = monthNames.IndexOf(lowerTrimmedValue);
-                        if (monthIndex >= 0)
-                        {
-                            return monthIndex;
-                        }
-                        return int.MaxValue;
-                    })
-                    .ThenBy(x => x)
-                    .ToList();
-                distinctValues = (pivotColumnOrder.Count == distinctValues.Count && !pivotColumnOrder.Except(distinctValues).Any()) ? pivotColumnOrder : distinctValues;
+                    string trimmed = x.Trim('[', ']').ToLower();
+                    int idx = monthNames.IndexOf(trimmed);
+                    return idx >= 0 ? idx : int.MaxValue;
+                })
+                .ThenBy(x => x)
+                .ToList();
 
-                int pivotColumnIndex = baseDataTable.Columns[pivotColumn].Ordinal;
-                string nextColumnName = baseDataTable.Columns[pivotColumnIndex + 1].ColumnName;
-                var validFunctions = new[] { "Sum", "Count", "Avg" };
-                pivotFunction = validFunctions.Contains(pivotFunction) ? pivotFunction : "Max";
+            distinctValues = (pivotColumnOrder.Count == distinctValues.Count &&
+                              !pivotColumnOrder.Except(distinctValues).Any())
+                             ? pivotColumnOrder
+                             : distinctValues;
 
-                if (returnSubtotal)
+
+            int pivotColumnIndex = baseDataTable.Columns[pivotColumn].Ordinal;
+            string nextColumnName = baseDataTable.Columns[pivotColumnIndex + 1].ColumnName;
+
+            var validFunctions = new[] { "Sum", "Count", "Avg" };
+            pivotFunction = validFunctions.Contains(pivotFunction) ? pivotFunction : "Max";
+
+            int firstAggIndex = sqlFields.FindIndex(f =>
+            {
+                var u = f.ToUpperInvariant();
+                return u.Contains("COUNT(") ||
+                       u.Contains("COUNT DISTINCT(") ||
+                       u.Contains("SUM(") ||
+                       u.Contains("AVG(") ||
+                       u.Contains("MIN(") ||
+                       u.Contains("MAX(");
+            });
+
+            if (returnSubtotal)
+            {
+                var sqlQryforCount = $@"
+                    SELECT 
+                        {string.Join(", ", distinctValues.Select(v => $"SUM(COALESCE({v}, 0)) AS {v}"))}
+                    FROM (
+                        {baseQuery}
+                    ) src
+                    PIVOT (
+                        COUNT([{nextColumnName}]) 
+                        FOR [{pivotColumn}] IN ({string.Join(", ", distinctValues)})
+                    ) AS pvt;
+                ";
+
+                var countdata = databaseConnection.ExecuteQuery(connectionString, sqlQryforCount);
+                return (countdata, sqlQryforCount, 1, new List<List<string>>());
+            }
+
+            var rowFields = sqlFields.Take(firstAggIndex).ToList();
+            var measureFields = sqlFields.Skip(firstAggIndex).ToList();
+
+            // Extract row-field aliases only
+            var rowFieldAliases = rowFields.Select(r =>
+            {
+                var parts = r.Split(new[] { " AS " }, StringSplitOptions.RemoveEmptyEntries);
+                return parts.Last().Trim().Trim('[', ']');
+            }).ToList();
+
+
+            List<(string AggFunc, string Alias)> measures =
+                new List<(string AggFunc, string Alias)>();
+
+            foreach (var mf in measureFields)
+            {
+                var u = mf.ToUpperInvariant();
+                int asPos = u.LastIndexOf(" AS ");
+
+                string alias = mf.Substring(asPos + 4).Trim().Trim('[', ']');
+
+                int paren = u.IndexOf("(");
+                string func = paren >= 0 ? u.Substring(0, paren).Trim() : "MAX"; // COUNT, SUM, etc.
+
+                measures.Add((func, alias));
+            }
+
+            var measureAliases = measures.Select(m => m.Alias).ToList();
+
+            string BuildInnerSelect(string measureAlias)
+            {
+                var projected = new List<string>();
+
+                // aliases of row fields only
+                foreach (var rf in rowFields)
                 {
-                    var sqlQryforCount = $@"
-                        SELECT 
-                            {string.Join(", ", distinctValues.Select(v => $"SUM(COALESCE({v}, 0)) AS {v}"))}
-                        FROM (
-                            {baseQuery}
-                        ) src
-                        PIVOT (
-                            COUNT([{nextColumnName}]) 
-                            FOR [{pivotColumn}] IN ({string.Join(", ", distinctValues)})
-                        ) AS pvt;";
-
-                    var countdata = databaseConnection.ExecuteQuery(connectionString, sqlQryforCount);
-                    return (countdata, sqlQryforCount, 1);
+                    var parts = rf.ToUpperInvariant().Split(new[] { " AS " }, StringSplitOptions.RemoveEmptyEntries);
+                    string alias = parts.Last().Trim().Trim('[', ']');
+                    projected.Add($"[{alias}]");
                 }
-                else
+
+                // pivot axis column
+                projected.Add($"[{pivotColumn}]");
+
+                // measure (already a projected column alias)
+                projected.Add($"[{measureAlias}]");
+
+                return $@"
+                    SELECT {string.Join(", ", projected)}
+                    FROM ({baseQuery}) AS src
+                ";
+            }
+
+            List<string> pivotSubqueries = new List<string>();
+
+            foreach (var m in measures)
+            {
+                string innerSelect = BuildInnerSelect(m.Alias);
+
+                string pivot = $@"
+                    SELECT *
+                    FROM (
+                        {innerSelect}
+                    ) AS x
+                    PIVOT
+                    (
+                        {m.AggFunc} ([{m.Alias}])
+                        FOR [{pivotColumn}] IN ({string.Join(", ", distinctValues)})
+                    ) AS pvt
+                ";
+
+                pivotSubqueries.Add(pivot);
+            }
+
+            StringBuilder selectBuilder = new StringBuilder();
+
+            // row fields
+            foreach (var alias in rowFieldAliases)
+            {
+                selectBuilder.AppendLine($"t0.[{alias}],");
+            }
+
+            // pivot columns (distinctValues) × measures
+            foreach (string dv in distinctValues)
+            {
+                string cleanDv = dv.Trim('[', ']');
+
+                for (int m = 0; m < measureAliases.Count; m++)
                 {
-                    var sqlQry = $@"
-                        SELECT * FROM (
-                            {baseQuery}
-                        ) src
-                        PIVOT (
-                            {pivotFunction} ([{nextColumnName}])
-                            FOR [{pivotColumn}] IN ({string.Join(", ", distinctValues)})
-                        ) AS pvt
-                        ";
-
-                    var sqlCount = $"SELECT COUNT(*) FROM ({sqlQry}) as countQry";
-                    var totalRecords = databaseConnection.GetTotalRecords(connectionString, sqlCount, sql);
-
-                    sqlQry = sqlQry + "\r\n" +
-                        $" ORDER BY {(string.IsNullOrEmpty(sortBy) ? "1" : "1" /*sortBy*/) + (desc ? " DESC" : "")} \r\n" +
-                        $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
-                    dts = databaseConnection.ExecuteQuery(connectionString, sqlQry);
-                    return (dts, sqlQry, totalRecords);
+                    string measure = measureAliases[m];
+                    selectBuilder.AppendLine($"t{m}.[{cleanDv}] AS [{cleanDv}|{measure}],");
                 }
             }
 
-            return (dts, "", 0);
+            string selectList = selectBuilder.ToString().TrimEnd(',', '\r', '\n');
+
+            StringBuilder fromBuilder = new StringBuilder();
+
+            // first pivot
+            fromBuilder.AppendLine($"FROM ({pivotSubqueries[0]}) t0");
+
+            // join others
+            for (int i = 1; i < pivotSubqueries.Count; i++)
+            {
+                string alias = $"t{i}";
+                string sub = pivotSubqueries[i].Replace(" AS pvt", $" AS {alias}");
+
+                string joinCond = string.Join(" AND ",
+                    rowFieldAliases.Select(col => $"t0.[{col}] = {alias}.[{col}]")
+                );
+
+                fromBuilder.AppendLine($"INNER JOIN ({sub}) {alias} ON {joinCond}");
+            }
+
+            string fromSql = fromBuilder.ToString();
+
+            string finalPivotSql = $@"
+                SELECT
+                {selectList}
+                {fromSql}
+                ";
+
+            var sqlQry = $@"
+                SELECT * FROM (
+                    {baseQuery}
+                ) src
+                PIVOT (
+                    {pivotFunction} ([{nextColumnName}])
+                    FOR [{pivotColumn}] IN ({string.Join(", ", distinctValues)})
+                ) AS pvt
+            ";
+
+            var sqlCount = $"SELECT COUNT(*) FROM ({sqlQry}) as countQry";
+            var totalRecords = databaseConnection.GetTotalRecords(connectionString, sqlCount, finalPivotSql);
+
+            sqlQry += "\r\n" +
+                $" ORDER BY 1 {(desc ? "DESC" : "")} \r\n" +
+                $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
+
+            dts = databaseConnection.ExecuteQuery(connectionString, finalPivotSql);
+
+            var headerRows = new List<List<string>>();
+            int levels = pivotColumns.Count;
+
+            // Initialize header rows
+            for (int lvl = 0; lvl < levels; lvl++)
+                headerRows.Add(new List<string>());
+
+            // Convert pivot values into multi-level headers
+            foreach (var dv in distinctValues)
+            {
+                string pivotVal = dv.Trim('[', ']');
+
+                var match = baseDataTable.AsEnumerable()
+                    .FirstOrDefault(r => Convert.ToString(r[pivotColumn])?.Trim() == pivotVal);
+
+                if (match == null)
+                {
+                    for (int lvl = 0; lvl < levels; lvl++)
+                        headerRows[lvl].Add("");
+                    continue;
+                }
+
+                for (int lvl = 0; lvl < levels; lvl++)
+                {
+                    string colName = pivotColumns[lvl];
+                    headerRows[lvl].Add(Convert.ToString(match[colName]));
+                }
+            }
+
+            var pivotLeafCols = dts.Columns.Cast<DataColumn>()
+                .Where(c => c.ColumnName.Contains("|"))
+                .ToList();
+
+            var pivotMeasures = pivotLeafCols
+                .Select(c => c.ColumnName.Split('|').Last())
+                .Distinct()
+                .ToList();
+
+            if (includeColumnTotals)
+            {
+                foreach (var m in pivotMeasures)
+                {
+                    string totalCol = $"Total|{m}";
+                    if (!dts.Columns.Contains(totalCol))
+                        dts.Columns.Add(totalCol, typeof(decimal));
+                }
+
+                foreach (DataRow row in dts.Rows)
+                {
+                    foreach (var m in pivotMeasures)
+                    {
+                        string totalCol = $"Total|{m}";
+                        var cols = pivotLeafCols.Where(c => c.ColumnName.EndsWith("|" + m));
+                        decimal sum = 0;
+                        foreach (var c in cols)
+                            sum += decimal.TryParse(row[c]?.ToString(), out var v) ? v : 0;
+                        row[totalCol] = sum;
+                    }
+                }
+            }
+
+            if (includeRowTotals)
+            {
+                var grand = dts.NewRow();
+
+                foreach (var col in pivotLeafCols)
+                {
+                    decimal total = 0;
+                    foreach (DataRow r in dts.Rows)
+                        total += decimal.TryParse(r[col]?.ToString(), out var v) ? v : 0;
+                    grand[col.ColumnName] = total;
+                }
+
+                if (includeColumnTotals)
+                {
+                    foreach (var m in pivotMeasures)
+                    {
+                        string totalCol = $"Total|{m}";
+                        decimal total = 0;
+                        foreach (DataRow r in dts.Rows)
+                            total += decimal.TryParse(r[totalCol]?.ToString(), out var v) ? v : 0;
+                        grand[totalCol] = total;
+                    }
+                }
+
+                dts.Rows.Add(grand);
+            }
+
+            return (dts, sqlQry, totalRecords, headerRows);
         }
 
         public async static Task<DataSet> GetDrillDownDataAlternate(IDatabaseConnection databaseConnection, string connectionString, DataTable dt, List<string> sqlFields, string reportDataJson)
@@ -1774,7 +2079,9 @@ namespace ReportBuilder.Web.Models
 
             Regex regex = new Regex(@"/\*\|(.*?)\|\*/[^,]+AS\s+\[([^\]]+)\]");
             var matches = regex.Matches(sql);
-
+            
+            object result = "";
+            
             foreach (Match match in matches)
             {
                 string functionCall = match.Groups[1].Value;
@@ -1794,33 +2101,41 @@ namespace ReportBuilder.Web.Models
                 var functionCalls = new List<string>();
                 foreach (DataRow row in dataTable.Rows)
                 {
-                    string modifiedFunctionCall = functionCall;
-
-                    // Iterate over all columns that end with "__prm__"
-                    foreach (DataColumn column in dataTable.Columns.Cast<DataColumn>().Where(c => c.ColumnName.EndsWith("__prm__")))
+                    try
                     {
-                        string paramName = "{" + column.ColumnName.Replace("__prm__", "") + "}";
+                        string modifiedFunctionCall = functionCall;
 
-                        if (modifiedFunctionCall.Contains(paramName))
+                        // Iterate over all columns that end with "__prm__"
+                        foreach (DataColumn column in dataTable.Columns.Cast<DataColumn>().Where(c => c.ColumnName.EndsWith("__prm__")))
                         {
-                            string valueReplacement = row[column].ToString();
-                            // Check if the datatype is numeric
-                            if (column.DataType == typeof(int) || column.DataType == typeof(decimal) || column.DataType == typeof(double) || column.DataType == typeof(long))
+                            string paramName = "{" + column.ColumnName.Replace("__prm__", "") + "}";
+
+                            if (modifiedFunctionCall.Contains(paramName))
                             {
-                                modifiedFunctionCall = modifiedFunctionCall.Replace(paramName, valueReplacement);
-                            }
-                            else
-                            {
-                                modifiedFunctionCall = modifiedFunctionCall.Replace(paramName, "\"" + valueReplacement + "\"");
+                                string valueReplacement = row[column].ToString();
+                                // Check if the datatype is numeric
+                                if (column.DataType == typeof(int) || column.DataType == typeof(decimal) || column.DataType == typeof(double) || column.DataType == typeof(long))
+                                {
+                                    modifiedFunctionCall = modifiedFunctionCall.Replace(paramName, valueReplacement);
+                                }
+                                else
+                                {
+                                    modifiedFunctionCall = modifiedFunctionCall.Replace(paramName, "\"" + valueReplacement + "\"");
+                                }
                             }
                         }
-                    }
 
-                    //var result = await DynamicCodeRunner.RunCode(modifiedFunctionCall + ";");
-                    //if (columnIndex != -1)
-                    //{
-                    //    row[columnIndex] = result;
-                    //}
+                        result = DynamicCodeRunner.RunCode(modifiedFunctionCall + ";");
+                    }
+                    catch (Exception ex)
+                    {
+                        result = ex.Message;
+                    }
+                    if (columnIndex != -1)
+                    {
+                        dataTable.Columns[columnIndex].ReadOnly = false;
+                        row[columnIndex] = result;
+                    }
                 }
             }
 
@@ -2086,7 +2401,7 @@ namespace ReportBuilder.Web.Models
         }
 
 
-        private static (DataTable dt, SqlQuery qry, List<string> sqlFields) GetDataTable(string reportSql, string connectKey)
+        private async static Task<(DataTable dt, SqlQuery qry, List<string> sqlFields)> GetDataTable(string reportSql, string connectKey)
         {
             var qry = new SqlQuery();
             var sql = Decrypt(reportSql);
@@ -2094,6 +2409,7 @@ namespace ReportBuilder.Web.Models
             {
                 qry = JsonConvert.DeserializeObject<SqlQuery>(sql);
                 sql = qry.sql;
+                if (!string.IsNullOrEmpty(qry.dbType)) dbtype = qry.dbType;
             }
             else
             {
@@ -2105,7 +2421,8 @@ namespace ReportBuilder.Web.Models
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
             var dt = databaseConnection.ExecuteQuery(connectionString, sql, qry.parameters);
-            
+            dt = await DotNetReportHelper.ExecuteCustomFunction(dt, sql);
+
             return (dt, qry, sqlFields);
         }
 
@@ -2114,7 +2431,7 @@ namespace ReportBuilder.Web.Models
         {
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
-            var data = GetDataTable(reportSql, connectKey);
+            var data = await GetDataTable(reportSql, connectKey);
 
             var qry = data.qry;
             var sqlFields = data.sqlFields;
@@ -2372,7 +2689,7 @@ namespace ReportBuilder.Web.Models
 
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
-            var data = GetDataTable(reportSql, connectKey);
+            var data = await GetDataTable(reportSql, connectKey);
 
             var qry = data.qry;
             var sqlFields = data.sqlFields;
@@ -2840,7 +3157,10 @@ namespace ReportBuilder.Web.Models
                                 {
                                     if (formatColumn.isNumeric && !(formatColumn?.dontSubTotal ?? false))
                                     {
-                                        subTotals[i] += Convert.ToDecimal(row[column.ColumnName]);
+                                        if (row[column.ColumnName] != DBNull.Value && !string.IsNullOrWhiteSpace(value?.ToString()))
+                                        {
+                                            subTotals[i] += Convert.ToDecimal(row[column.ColumnName]);
+                                        }
                                     }
                                 }
                                 Run run = new Run(new Text(value));
@@ -2987,7 +3307,7 @@ namespace ReportBuilder.Web.Models
         }
         public async static Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
                       string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false, string expandSqls = null,
-                      string pivotColumn = null, string pivotFunction = null, bool imageOnly = false, bool debug = false,string pageSize="",string pageOrientation="")
+                      string pivotColumn = null, string pivotFunction = null, bool imageOnly = false, bool debug = false,string pageSize="",string pageOrientation="",bool subTotalMode=false,bool includeColumnTotal=false)
         {
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
             await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
@@ -3006,7 +3326,7 @@ namespace ReportBuilder.Web.Models
             {
                 var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
                 IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
-                var data = GetDataTable(reportSql, connectKey);
+                var data = await GetDataTable(reportSql, connectKey);
 
                 var qry = data.qry;
                 var sqlFields = data.sqlFields;
@@ -3016,7 +3336,7 @@ namespace ReportBuilder.Web.Models
                 {
                     if (!useAltPivot)
                     {
-                        var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
+                        var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false,false, subTotalMode, includeColumnTotal);
                         dt = pd.dt;
                         if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
                     }
@@ -3081,6 +3401,20 @@ namespace ReportBuilder.Web.Models
                     });
 
                     formPosted = true;
+                };
+                page.Console += (sender, e) =>
+                {
+                    Console.WriteLine("[Console Error] " + e.Message);
+                };
+
+                page.PageError += (sender, error) =>
+                {
+                    Console.WriteLine("[Page Error] " + error.Message);
+                };
+
+                page.RequestFailed += (sender, e) =>
+                {
+                    Console.WriteLine($"[Request Failed] {e.Request.Url} - {e.Request.FailureText}");
                 };
 
                 await page.GoToAsync(printUrl, new NavigationOptions
@@ -3289,7 +3623,7 @@ namespace ReportBuilder.Web.Models
         public static async Task<string> GetXmlFile(string reportSql, string connectKey, string reportName, string expandSqls = null, string pivotColumn = null, string pivotFunction = null)
         {
             var ds = new DataSet();
-            var data = GetDataTable(reportSql, connectKey);
+            var data = await GetDataTable(reportSql, connectKey);
             var dt = data.dt;
             RemoveColumnsBySubstring(dt, "__prm__");
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
@@ -3321,6 +3655,18 @@ namespace ReportBuilder.Web.Models
             dt.TableName = "item";
             var xml = ds.GetXml();
             return xml;
+        }
+
+        public static string TryDecrypt(string sql)
+        {
+            try
+            {
+                return DotNetReportHelper.Decrypt(sql);
+            }
+            catch (Exception ex)
+            {
+                return sql;
+            }
         }
 
         /// <summary>
@@ -3737,6 +4083,18 @@ namespace ReportBuilder.Web.Models
                 case "ms sql":
                     databaseConnection = new SqlServerDatabaseConnection();
                     break;
+                case "mysql":
+                    databaseConnection = new MySqlDatabaseConnection();
+                    break;
+                //case "PostgreSQL":
+                //    databaseConnection = new PostgresDatabaseConnection();
+                //    break;
+                //case "oracle":
+                //    databaseConnection = new OracleDatabaseConnection();
+                //    break;
+                //case "informix":
+                //    databaseConnection = new InformixDatabaseConnection();
+                //    break;
                 default:
                     databaseConnection = new OleDbDatabaseConnection();
                     break;
@@ -3759,6 +4117,7 @@ namespace ReportBuilder.Web.Models
         Task<List<TableViewModel>> GetSearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null);
 
     }
+
     public class SqlServerDatabaseConnection : IDatabaseConnection
     {
         public bool TestConnection(string connectionString)
@@ -3885,6 +4244,7 @@ namespace ReportBuilder.Web.Models
             }
             return table;
         }
+
         private bool IsAllowedSql(string input)
         {
             if (string.IsNullOrWhiteSpace(input)) return false;
@@ -3911,7 +4271,6 @@ namespace ReportBuilder.Web.Models
 
             return true;
         }
-
 
         public DataTable ExecuteQuery(string connectionString, string sql, List<KeyValuePair<string, string>> parameters = null)
         {
@@ -4055,9 +4414,10 @@ namespace ReportBuilder.Web.Models
                     var table = new TableViewModel
                     {
                         Id = matchTable != null ? matchTable.Id : 0,
-                        SchemaName = schemaName, 
+                        SchemaName = schemaName,
                         TableName = tableName,
                         DisplayName = matchTable != null ? matchTable.DisplayName : tableName,
+                        Categories = matchTable?.Categories ?? new List<CategoryViewModel>(),
                         IsView = type == "VIEW",
                         Selected = matchTable != null,
                         Columns = new List<ColumnViewModel>(),
@@ -4228,441 +4588,6 @@ namespace ReportBuilder.Web.Models
 
     }
 
-    public class OleDbDatabaseConnection : IDatabaseConnection
-    {
-        public bool TestConnection(string connectionString)
-        {
-            using (OleDbConnection conn = new OleDbConnection(connectionString))
-            {
-                try
-                {
-                    //Test Connection
-                    conn.Open();
-                    conn.Close();
-                    return true;
-                }
-                catch (Exception ex)
-                {
-                    throw ex;
-                }
-            }
-        }
-
-        public string CreateConnection(UpdateDbConnectionModel model)
-        {
-            OleDbConnectionStringBuilder OleDbConnectionStringBuilder = new OleDbConnectionStringBuilder();
-
-            // Set other OleDb connection properties
-            OleDbConnectionStringBuilder.Provider = model.providerName;
-            OleDbConnectionStringBuilder.DataSource = model.dbServer;
-            OleDbConnectionStringBuilder.Add("Initial Catalog", model.dbName);
-            if (model.dbAuthType.ToLower() == "username")
-            {
-                OleDbConnectionStringBuilder.Add("User ID", model.dbUsername);
-                OleDbConnectionStringBuilder.Add("Password", model.dbPassword);
-            }
-            else
-            {
-                OleDbConnectionStringBuilder.Add("Integrated Security", "SSPI");
-            }
-
-            return OleDbConnectionStringBuilder.ConnectionString;
-        }
-
-        public int GetTotalRecords(string connectionString, string sqlCount, string sql, List<KeyValuePair<string, string>> parameters = null)
-        {
-            int totalRecords = 0;
-
-            try
-            {
-                using (OleDbConnection conn = new OleDbConnection(connectionString))
-                {
-                    conn.Open();
-
-                    using (OleDbCommand command = new OleDbCommand(sqlCount, conn))
-                    {
-                        if (!sql.StartsWith("EXEC")) totalRecords = Math.Max(totalRecords, (int)command.ExecuteScalar());
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                // Handle exception (log, rethrow, etc.)
-                throw new Exception($"Error executing OleDb query for total records: {ex.Message}", ex);
-            }
-
-            return totalRecords;
-        }
-
-        public DataTable ExecuteQuery(string connectionString, string sql, List<KeyValuePair<string, string>> parameters = null)
-        {
-            DataTable dataTable = new DataTable();
-
-            try
-            {
-                using (OleDbConnection conn = new OleDbConnection(connectionString))
-                {
-                    conn.Open();
-
-                    using (OleDbCommand command = new OleDbCommand(sql, conn))
-                    {
-                        if (parameters != null)
-                        {
-                            parameters.ForEach(x => command.Parameters.Add(new OleDbParameter(x.Key, x.Value)));
-                        }
-                        using (OleDbDataAdapter adapter = new OleDbDataAdapter(command))
-                        {
-                            adapter.Fill(dataTable);
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                // Handle exception (log, rethrow, etc.)
-                throw new Exception($"Error executing OleDb query: {ex.Message}", ex);
-            }
-
-            return dataTable;
-        }
-        public DataSet ExecuteDataSetQuery(string connectionString, string combinedSqls, List<KeyValuePair<string, string>> parameters = null)
-        {
-            var dts = new DataSet();
-            try
-            {
-                using (var conn = new OleDbConnection(connectionString))
-                using (var cmd = new OleDbCommand(combinedSqls, conn))
-                using (var adp = new OleDbDataAdapter(cmd))
-                {
-                    if (parameters != null)
-                    {
-                        parameters.ForEach(x => cmd.Parameters.Add(new OleDbParameter(x.Key, x.Value)));
-                    }
-                    adp.Fill(dts);
-                }
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Error executing SQL query: {ex.Message}", ex);
-            }
-            return dts;
-        }
-
-        public static FieldTypes ConvertToJetDataType(int oleDbDataType)
-        {
-            switch (((OleDbType)oleDbDataType))
-            {
-                case OleDbType.LongVarChar:
-                    return FieldTypes.Varchar; // "varchar";
-                case OleDbType.BigInt:
-                    return FieldTypes.Int; // "int";       // In Jet this is 32 bit while bigint is 64 bits
-                case OleDbType.Binary:
-                case OleDbType.LongVarBinary:
-                    return FieldTypes.Varchar; // "binary";
-                case OleDbType.Boolean:
-                    return FieldTypes.Boolean; // "bit";
-                case OleDbType.Char:
-                    return FieldTypes.Varchar; // "char";
-                case OleDbType.Currency:
-                    return FieldTypes.Money; // "decimal";
-                case OleDbType.DBDate:
-                case OleDbType.Date:
-                case OleDbType.DBTimeStamp:
-                    return FieldTypes.DateTime; // "datetime";
-                case OleDbType.Decimal:
-                case OleDbType.Numeric:
-                    return FieldTypes.Double; // "decimal";
-                case OleDbType.Double:
-                    return FieldTypes.Double; // "double";
-                case OleDbType.Integer:
-                    return FieldTypes.Int; // "int";
-                case OleDbType.Single:
-                    return FieldTypes.Int; // "single";
-                case OleDbType.SmallInt:
-                    return FieldTypes.Int; // "smallint";
-                case OleDbType.TinyInt:
-                    return FieldTypes.Int; // "smallint";  // Signed byte not handled by jet so we need 16 bits
-                case OleDbType.UnsignedTinyInt:
-                    return FieldTypes.Int; // "byte";
-                case OleDbType.VarBinary:
-                    return FieldTypes.Varchar; // "varbinary";
-                case OleDbType.VarChar:
-                    return FieldTypes.Varchar; // "varchar";
-                case OleDbType.BSTR:
-                case OleDbType.Variant:
-                case OleDbType.VarWChar:
-                case OleDbType.VarNumeric:
-                case OleDbType.Error:
-                case OleDbType.WChar:
-                case OleDbType.DBTime:
-                case OleDbType.Empty:
-                case OleDbType.Filetime:
-                case OleDbType.Guid:
-                case OleDbType.IDispatch:
-                case OleDbType.IUnknown:
-                case OleDbType.UnsignedBigInt:
-                case OleDbType.UnsignedInt:
-                case OleDbType.UnsignedSmallInt:
-                case OleDbType.PropVariant:
-                default:
-                    return FieldTypes.Varchar; // 
-                    //throw new ArgumentException(string.Format("The data type {0} is not handled by Jet. Did you retrieve this from Jet?", ((OleDbType)oleDbDataType)));
-            }
-        }
-
-        public async Task<List<TableViewModel>> GetTables(string type = "TABLE", string accountKey = null, string dataConnectKey = null)
-        {
-            var tables = new List<TableViewModel>();
-
-            var currentTables = new List<TableViewModel>();
-
-            if (!String.IsNullOrEmpty(accountKey) && !String.IsNullOrEmpty(dataConnectKey))
-            {
-                currentTables = await DotNetReportHelper.GetApiTables(accountKey, dataConnectKey, true);
-                currentTables = currentTables.Where(x => !string.IsNullOrEmpty(x.TableName)).ToList();
-            }
-
-            var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey));
-            using (OleDbConnection conn = new OleDbConnection(connString))
-            {
-                // open the connection to the database 
-                conn.Open();
-
-                // Get the Tables
-                var schemaTable = conn.GetOleDbSchemaTable(OleDbSchemaGuid.Tables, new Object[] { null, null, null, type });
-
-                // Store the table names in the class scoped array list of table names
-                for (int i = 0; i < schemaTable.Rows.Count; i++)
-                {
-                    var tableName = schemaTable.Rows[i].ItemArray[2].ToString();
-
-                    // see if this table is already in database
-                    var matchTable = currentTables.FirstOrDefault(x => x.TableName.ToLower() == tableName.ToLower());
-
-                    var table = new TableViewModel
-                    {
-                        Id = matchTable != null ? matchTable.Id : 0,
-                        SchemaName = matchTable != null ? matchTable.SchemaName : schemaTable.Rows[i]["TABLE_SCHEMA"].ToString(),
-                        TableName = matchTable != null ? matchTable.TableName : tableName,
-                        DisplayName = matchTable != null ? matchTable.DisplayName : tableName,
-                        IsView = type == "VIEW",
-                        Selected = matchTable != null,
-                        Columns = new List<ColumnViewModel>(),
-                        AllowedRoles = matchTable != null ? matchTable.AllowedRoles : new List<string>(),
-                        AccountIdField = matchTable != null ? matchTable.AccountIdField : ""
-                    };
-
-                    var dtField = conn.GetOleDbSchemaTable(OleDbSchemaGuid.Columns, new object[] { null, null, tableName });
-                    var idx = 0;
-
-                    foreach (DataRow dr in dtField.Rows)
-                    {
-                        ColumnViewModel matchColumn = matchTable != null ? matchTable.Columns.FirstOrDefault(x => x.ColumnName.ToLower() == dr["COLUMN_NAME"].ToString().ToLower()) : null;
-                        var column = new ColumnViewModel
-                        {
-                            ColumnName = matchColumn != null ? matchColumn.ColumnName : dr["COLUMN_NAME"].ToString(),
-                            DisplayName = matchColumn != null ? matchColumn.DisplayName : dr["COLUMN_NAME"].ToString(),
-                            PrimaryKey = matchColumn != null ? matchColumn.PrimaryKey : dr["COLUMN_NAME"].ToString().ToLower().EndsWith("id") && idx == 0,
-                            DisplayOrder = matchColumn != null ? matchColumn.DisplayOrder : idx,
-                            FieldType = matchColumn != null ? matchColumn.FieldType : ConvertToJetDataType((int)dr["DATA_TYPE"]).ToString(),
-                            AllowedRoles = matchColumn != null ? matchColumn.AllowedRoles : new List<string>()
-                        };
-
-                        if (matchColumn != null)
-                        {
-                            column.ForeignKey = matchColumn.ForeignKey;
-                            column.ForeignJoin = matchColumn.ForeignJoin;
-                            column.ForeignTable = matchColumn.ForeignTable;
-                            column.ForeignKeyField = matchColumn.ForeignKeyField;
-                            column.ForeignValueField = matchColumn.ForeignValueField;
-                            column.Id = matchColumn.Id;
-                            column.DoNotDisplay = matchColumn.DoNotDisplay;
-                            column.DisplayOrder = matchColumn.DisplayOrder;
-                            column.ForceFilter = matchColumn.ForceFilter;
-                            column.ForceFilterForTable = matchColumn.ForceFilterForTable;
-                            column.RestrictedDateRange = matchColumn.RestrictedDateRange;
-                            column.RestrictedStartDate = matchColumn.RestrictedStartDate;
-                            column.RestrictedEndDate = matchColumn.RestrictedEndDate;
-                            column.ForeignParentKey = matchColumn.ForeignParentKey;
-                            column.ForeignParentApplyTo = matchColumn.ForeignParentApplyTo;
-                            column.ForeignParentTable = matchColumn.ForeignParentTable;
-                            column.ForeignParentKeyField = matchColumn.ForeignParentKeyField;
-                            column.ForeignParentValueField = matchColumn.ForeignParentValueField;
-                            column.ForeignParentRequired = matchColumn.ForeignParentRequired;
-                            column.JsonStructure = matchColumn.JsonStructure;
-                            column.ForeignFilterOnly = matchColumn.ForeignFilterOnly;
-
-                            column.Selected = true;
-                        }
-
-                        idx++;
-                        table.Columns.Add(column);
-                    }
-
-                    // add columns not in db, but in dotnet report
-                    if (matchTable != null)
-                    {
-                        table.Columns.AddRange(matchTable.Columns.Where(x => !table.Columns.Select(c => c.Id).Contains(x.Id)).ToList());
-                    }
-
-                    table.Columns = table.Columns.OrderBy(x => x.DisplayOrder).ToList();
-                    tables.Add(table);
-                }
-
-                // add tables not in db, but in dotnet report
-                var notMatchedTables = currentTables.Where(x => !tables.Select(c => c.Id).Contains(x.Id) && ((type == "TABLE") ? !x.IsView : x.IsView)).ToList();
-                if (notMatchedTables.Any())
-                {
-                    foreach (var notMatchedTable in notMatchedTables)
-                    {
-                        notMatchedTable.Selected = true;
-                        notMatchedTable.Columns = await DotNetReportHelper.GetApiFields(accountKey, dataConnectKey, notMatchedTable.Id);
-                        notMatchedTable.Columns.ForEach(x => x.Selected = true);
-                    }
-                    tables.AddRange(notMatchedTables);
-                }
-                conn.Close();
-                conn.Dispose();
-            }
-
-            return tables;
-        }
-        public async Task<TableViewModel> GetSchemaFromSql(string connString, TableViewModel table, string sql, bool dynamicColumns)
-        {
-            using (OleDbConnection conn = new OleDbConnection(connString))
-            {
-                // open the connection to the database 
-                conn.Open();
-                OleDbCommand cmd = new OleDbCommand(sql, conn);
-                cmd.CommandType = CommandType.Text;
-                using (OleDbDataReader reader = cmd.ExecuteReader())
-                {
-                    var idx = 0;
-                    // Get the column metadata using schema.ini file
-                    DataTable schemaTable = new DataTable();
-
-                    if (dynamicColumns)
-                    {
-                        while (reader.Read())
-                        {
-                            table.Columns.Add(new ColumnViewModel { ColumnName = Convert.ToString(reader[0]), DisplayName = Convert.ToString(reader[0]) });
-                        }
-                    }
-                    else
-                    {
-                        schemaTable = reader.GetSchemaTable();
-                        foreach (DataRow dr in schemaTable.Rows)
-                        {
-                            var column = new ColumnViewModel
-                            {
-                                ColumnName = dr["ColumnName"].ToString(),
-                                DisplayName = dr["ColumnName"].ToString(),
-                                PrimaryKey = dr["ColumnName"].ToString().ToLower().EndsWith("id") && idx == 0,
-                                DisplayOrder = idx,
-                                FieldType = ConvertToJetDataType((int)dr["ProviderType"]).ToString(),
-                                AllowedRoles = new List<string>(),
-                                Selected = true
-                            };
-
-                            idx++;
-                            table.Columns.Add(column);
-                        }
-                    }
-                    table.Columns = table.Columns.OrderBy(x => x.DisplayOrder).ToList();
-                }
-
-                return table;
-            }
-        }
-
-        public async Task<List<TableViewModel>> GetSearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null)
-        {
-            var tables = new List<TableViewModel>();
-            var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey));
-            using (OleDbConnection conn = new OleDbConnection(connString))
-            {
-                // open the connection to the database 
-                conn.Open();
-                string spQuery = "SELECT ROUTINE_NAME, ROUTINE_DEFINITION, ROUTINE_SCHEMA FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_NAME LIKE ? AND ROUTINE_TYPE = 'PROCEDURE'";
-                OleDbCommand cmd = new OleDbCommand(spQuery, conn);
-                cmd.CommandType = CommandType.Text;
-                cmd.Parameters.Add(new OleDbParameter("?", $"%{value}%"));
-                DataTable dtProcedures = new DataTable();
-                dtProcedures.Load(cmd.ExecuteReader());
-                int count = 1;
-
-                if (dtProcedures.Rows.Count == 0)
-                {
-                    throw new Exception($"No stored procs found matching {value}");
-                }
-                foreach (DataRow dr in dtProcedures.Rows)
-                {
-                    var procName = dr["ROUTINE_NAME"].ToString();
-                    var procSchema = dr["ROUTINE_SCHEMA"].ToString();
-                    cmd = new OleDbCommand(procName, conn);
-                    cmd.CommandType = CommandType.StoredProcedure;
-                    // Get the parameters.
-                    OleDbCommandBuilder.DeriveParameters(cmd);
-                    List<ParameterViewModel> parameterViewModels = new List<ParameterViewModel>();
-                    foreach (OleDbParameter param in cmd.Parameters)
-                    {
-                        if (param.Direction == ParameterDirection.Input)
-                        {
-                            var parameter = new ParameterViewModel
-                            {
-                                ParameterName = param.ParameterName,
-                                DisplayName = param.ParameterName,
-                                ParameterValue = param.Value != null ? param.Value.ToString() : "",
-                                ParamterDataTypeOleDbTypeInteger = Convert.ToInt32(param.OleDbType),
-                                ParamterDataTypeOleDbType = param.OleDbType,
-                                ParameterDataTypeString = DotNetReportHelper.GetType(ConvertToJetDataType(Convert.ToInt32(param.OleDbType))).Name
-                            };
-                            if (parameter.ParameterDataTypeString.StartsWith("Int")) parameter.ParameterDataTypeString = "Int";
-                            parameterViewModels.Add(parameter);
-                        }
-                    }
-                    DataTable dt = new DataTable();
-                    cmd = new OleDbCommand($"[{procSchema}].[{procName}]", conn);
-                    cmd.CommandType = CommandType.StoredProcedure;
-                    foreach (var data in parameterViewModels)
-                    {
-                        cmd.Parameters.Add(new OleDbParameter { Value = DBNull.Value, ParameterName = data.ParameterName, Direction = ParameterDirection.Input, IsNullable = true });
-                    }
-                    OleDbDataReader reader = cmd.ExecuteReader();
-                    dt = reader.GetSchemaTable();
-
-                    if (dt == null) continue;
-
-                    // Store the table names in the class scoped array list of table names
-                    List<ColumnViewModel> columnViewModels = new List<ColumnViewModel>();
-                    for (int i = 0; i < dt.Rows.Count; i++)
-                    {
-                        var column = new ColumnViewModel
-                        {
-                            ColumnName = dt.Rows[i].ItemArray[0].ToString(),
-                            DisplayName = dt.Rows[i].ItemArray[0].ToString(),
-                            FieldType = ConvertToJetDataType((int)dt.Rows[i]["ProviderType"]).ToString(),
-                            AllowedRoles = new List<string>()
-                        };
-                        columnViewModels.Add(column);
-                    }
-                    tables.Add(new TableViewModel
-                    {
-                        TableName = procName,
-                        SchemaName = dr["ROUTINE_SCHEMA"].ToString(),
-                        DisplayName = procName,
-                        Parameters = parameterViewModels,
-                        Columns = columnViewModels,
-                        AllowedRoles = new List<string>()
-                    });
-                    count++;
-                }
-                conn.Close();
-                conn.Dispose();
-            }
-            return tables;
-        }
-    }
     public static class ExportSessionStore
     {
         private static readonly ConcurrentDictionary<string, DotNetReportSettings> _sessions = new ConcurrentDictionary<string, DotNetReportSettings>();
