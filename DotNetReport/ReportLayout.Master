@@ -293,14 +293,14 @@
 </script>
 <script type="text/html" id="kpi-settings">
     <div class="chart-container pull-right">
-        <button class="btn btn-light btn-sm d-flex align-items-center mt-2 chart-settings-btn"
+        <button type="button" class="btn btn-light btn-sm d-flex align-items-center mt-2 chart-settings-btn"
                 data-bind="click: toggleKpiSettings()" title="KPI Settings">
             <i class="fa fa-cog"></i>
         </button>
         <div class="kpi-settings-panel border p-2 shadow-sm bg-light"
              data-bind="visible: showKpiSettings">
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <button class="btn btn-sm btn-close" data-bind="click: toggleKpiSettings()"></button>
+                <button type="button" class="btn btn-sm btn-close" data-bind="click: toggleKpiSettings()"></button>
                 <h6 class="mb-0">KPI Settings</h6>
             </div>
             <ul class="nav nav-tabs nav-sm mb-2 small">
