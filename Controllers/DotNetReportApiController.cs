@@ -901,7 +901,7 @@ namespace ReportBuilder.Web.Controllers
             {
                 var settings = GetSettings();
                 var functions = await DotNetReportHelper.GetApiFunctions();
-                DynamicCodeRunner.BuildAssembly(functions);
+                //DynamicCodeRunner.BuildAssembly(functions);
                 return Json(new
                 {
                      success = true,

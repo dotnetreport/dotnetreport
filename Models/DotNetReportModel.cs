@@ -5,7 +5,6 @@ using System.Data.SqlClient;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using OfficeOpenXml;
-using PdfSharp;
 using PdfSharp.Drawing;
 using PdfSharp.Drawing.Layout;
 using PdfSharp.Pdf;
@@ -15,7 +14,6 @@ using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
-using System.Data.OleDb;
 using System.Drawing;
 using System.Net;
 using System.IO;
@@ -24,16 +22,13 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
-using System.Reflection;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using System.Net.Http;
 using A = DocumentFormat.OpenXml.Drawing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
-using ReportBuilder.Web.Models;
 using PdfSharp.Pdf.IO;
-using System.Data.SqlClient;
 
 namespace ReportBuilder.Web.Models
 {
@@ -1518,63 +1513,7 @@ namespace ReportBuilder.Web.Models
             var modifiedSql = sql.Substring(0, whereIndex) + where + sql.Substring(nextClauseIndex);
             return modifiedSql;
         }
-
-        
-        public async static Task<DataSet> GetDrillDownData(OleDbConnection conn, DataTable dt, List<string> sqlFields, string reportDataJson)
-        {
-            var drilldownRow = new List<string>();
-            var dr = dt.Rows[0];
-            int i = 0;
-            foreach (DataColumn dc in dt.Columns)
-            {
-                var col = sqlFields[i++]; //columns.FirstOrDefault(x => x.fieldName == dc.ColumnName) ?? new ReportHeaderColumn();
-                drilldownRow.Add($@"
-                                    {{
-                                        ""Value"":""{dr[dc]}"",
-                                        ""FormattedValue"":""{dr[dc]}"",
-                                        ""LabelValue"":""'{dr[dc]}'"",
-                                        ""NumericValue"":null,
-                                        ""Column"":{{
-                                            ""SqlField"":""{col.Substring(0, col.LastIndexOf(" AS "))}"",
-                                            ""ColumnName"":""{dc.ColumnName}"",
-                                            ""DataType"":""{dc.DataType.ToString()}"",
-                                            ""IsNumeric"":{(dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal" ? "true" : "false")},
-                                            ""FormatType"":""""
-                                        }}
-                                     }}
-                                ");
-            }
-
-            var reportData = reportDataJson.Replace("\"DrillDownRow\":[]", $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]").Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false,\"IsPivotMode\":true");
-            var drilldownSql = await RunReportApiCall(reportData);
-
-            var dts = new DataSet();
-            var combinedSqls = "";
-            if (!string.IsNullOrEmpty(drilldownSql))
-            {
-                foreach (DataRow ddr in dt.Rows)
-                {
-                    i = 0;
-                    var filteredSql = drilldownSql;
-                    foreach (DataColumn dc in dt.Columns)
-                    {
-                        var value = ddr[dc].ToString().Replace("'", "''");
-                        filteredSql = filteredSql.Replace($"<{dc.ColumnName}>", value);
-                    }
-
-                    combinedSqls += filteredSql += ";\n";
-                }
-
-                using (var cmd = new OleDbCommand(combinedSqls, conn))
-                using (var adp = new OleDbDataAdapter(cmd))
-                {
-                    adp.Fill(dts);
-                }
-            }
-
-            return dts;
-        }
-
+               
         public async static Task<(DataTable dt, string sql, int totalRecords, List<List<string>> headerRows)>
         GetPivotTable(
             IDatabaseConnection databaseConnection,
@@ -2124,7 +2063,7 @@ namespace ReportBuilder.Web.Models
                             }
                         }
 
-                        result = DynamicCodeRunner.RunCode(modifiedFunctionCall + ";");
+                        //result = DynamicCodeRunner.RunCode(modifiedFunctionCall + ";");
                     }
                     catch (Exception ex)
                     {
@@ -4076,34 +4015,33 @@ namespace ReportBuilder.Web.Models
     {
         public static IDatabaseConnection GetConnection(string dbtype = "")
         {
-            IDatabaseConnection databaseConnection;
+            IDatabaseConnection databaseConnection = new SqlServerDatabaseConnection();
             switch (dbtype.ToLower())
             {
                 case "ms sql":
                     databaseConnection = new SqlServerDatabaseConnection();
                     break;
                 case "mysql":
-                    databaseConnection = new MySqlDatabaseConnection();
+                    //databaseConnection = new MySqlDatabaseConnection();
                     break;
-                //case "PostgreSQL":
-                //    databaseConnection = new PostgresDatabaseConnection();
-                //    break;
-                //case "oracle":
-                //    databaseConnection = new OracleDatabaseConnection();
-                //    break;
-                //case "informix":
-                //    databaseConnection = new InformixDatabaseConnection();
-                //    break;
+                case "postgresql":
+                    //databaseConnection = new PostgresDatabaseConnection();
+                    break;
+                case "oracle":
+                    //databaseConnection = new OracleDatabaseConnection();
+                    break;
+                case "informix":
+                    //databaseConnection = new InformixDatabaseConnection();
+                    break;
                 default:
-                    databaseConnection = new OleDbDatabaseConnection();
+                    //databaseConnection = new OleDbDatabaseConnection();
                     break;
             }
 
             return databaseConnection;
         }
-
-
     }
+
     public interface IDatabaseConnection
     {
         bool TestConnection(string connectionString);
