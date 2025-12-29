@@ -249,9 +249,11 @@
     <script type="text/html" id="report-table">
         <div class="table-responsive">
             <table class="table table-hover table-condensed" data-bind="attr: {class: 'table table-striped table-hover table-condensed ' + $parents[2].selectedStyle()}">
-                <thead style="position: sticky; top: -1px; z-index: 2;" data-bind="if: !$parents[2].noHeaderRow()">
+                <thead style="position: sticky; top: -1px; z-index: 2;" data-bind="if: !$parents[2].noHeaderRow(), attr: {id: 'report-table-head' + $parents[2].ReportID()}">
                     <tr class="no-highlight" data-bind="sortableColumns: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight',selectedFields: $parents[2].SelectedFields }">
-
+                        <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !IsDrillDown() && !CanExpandOption() && (!$parents[2].hasPivotColumn() || ($parents[2].hasPivotColumn() && $parents[2].appSettings.useAltPivot)) -->
+                        <th style="width: 30px; border-left: 1px solid;" data-bind="style: {'background-color': Columns[0].headerBackColor}"></th>
+                        <!-- /ko -->
                         <!-- ko template: 'report-column-header', data: $data -->
                         <!-- /ko-->
                     </tr>
@@ -263,9 +265,14 @@
                         </td>
                     </tr>
 
-                    <!-- ko if: !$parents[2].hasPivotColumn() && (!$parents[2].ShowExpandOption() || $parents[2].ReportType() == 'List') -->
+                    <!-- ko if: !$parents[2].useRenderTable() -->
                     <!-- ko foreach: $parent.rows  -->
                     <tr>
+                        <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() && !$parent.CanExpandOption() && $parentContext.$parentContext.$parentContext.$parent.ReportType() != 'Single' -->
+                            <td style="width: 30px; vertical-align: middle;" data-bind="style: {'background-color': Items[0]._backColor ?? Items[0].backColor(), 'color': Items[0]._fontColor ?? Items[0].fontColor()}">
+                                <a href="#" data-bind="click: function(){ toggle(); }"><span class="fa" data-bind="css: {'fa-plus': !isExpanded(), 'fa-minus': isExpanded()}"></span></a>
+                            </td>
+                        <!-- /ko -->
                         <!-- ko template: 'report-column', data: $data -->
                         <!-- /ko-->
                     </tr>
@@ -308,6 +315,9 @@
                 <!-- ko if: $parentContext.$parent.SubTotals().length == 1 && $parentContext.$parentContext.$parent.OuterGroupColumns().length == 0 -->
                 <tfoot data-bind="foreach: $parentContext.$parent.SubTotals">
                     <tr class="sub-total">
+                        <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() && !$parent.CanExpandOption() -->
+                            <td></td>
+                        <!-- /ko -->
                         <!-- ko foreach: Items -->
                         <!-- ko if: Value != 'NA' && Value != 'NaN' && !outerGroup() -->
                         <td data-bind="style: {'background-color': _backColor ?? backColor(), 'color': _fontColor ?? fontColor(), 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': fieldAlign() ? fieldAlign() : 'right'}">

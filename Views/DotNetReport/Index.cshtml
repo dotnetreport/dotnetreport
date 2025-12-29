@@ -75,7 +75,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
 
                     <div class="collapse navbar-collapse" id="navbarSupportedContent">
                         <ul class="navbar-nav mr-auto">
-                            <li class="nav-item dropdown" data-bind="visible: (CanSaveReports() && appSettings.usePromptBuilder()) || adminMode()">
+                            <li class="nav-item dropdown" data-bind="visible: SelectedFolder() ? SelectedFolder().canEdit : (CanSaveReports() || adminMode())">
                                 <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                     <span class="fa fa-plus"></span> New Report
                                 </a>
@@ -83,11 +83,6 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <a class="dropdown-item" href="#" data-bind="click: createNewReport" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder"><i class="fa fa-sliders"></i> Use Standard Designer</a>
                                     <a class="dropdown-item" href="#" data-bind="click: createNewReportAi"><i class="fa fa-bolt"></i> Use Smarter Designer</a>
                                 </div>
-                            </li>
-                            <li class="nav-item active" data-bind="visible: (SelectedFolder() ? SelectedFolder().canEdit : (CanSaveReports() || adminMode())) && !appSettings.usePromptBuilder()">
-                                <a href="#" class="nav-link" data-bind="click: createNewReport" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
-                                    <span class="fa fa-plus"></span> New Report
-                                </a>
                             </li>
                             <li class="nav-item" data-bind="visible: CanManageFolders() || adminMode()">
                                 <a href="#" class="nav-link" data-bind="click: ManageFolder.newFolder">
@@ -305,8 +300,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                             <span class="sr-only"></span>
                                                         </button>
                                                         <div class="dropdown-menu dropdown-menu-right">
-                                                            <a class="dropdown-item" href="#" data-bind="click: function() {exportReport('pdf');}">
-                                                                <span class="fa fa-file-excel-o"></span> Download PDF
+                                                            <a class="dropdown-item" href="#" data-bind="click: function() { exportReport($root.appSettings.useAltPdf ? 'pdfalt' : 'pdf');}">
+                                                                <span class="fa fa-file-pdf-o"></span> Download PDF
                                                             </a>
                                                             <a class="dropdown-item" href="#" data-bind="click: function() {exportReport('excel');}">
                                                                 <span class="fa fa-file-excel-o"></span> Download Excel
@@ -467,8 +462,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                                 <a class="dropdown-item dropdown-toggle" href="#">Export</a>
                                                                 <ul class="dropdown-menu">
                                                                     <li>
-                                                                        <a class="dropdown-item" href="#" data-bind="click: function() {exportReport('pdf');}">
-                                                                            <span class="fa fa-file-excel-o"></span> Download PDF
+                                                                        <a class="dropdown-item" href="#" data-bind="click: function() {exportReport($root.appSettings.useAltPdf ? 'pdfalt' : 'pdf');}">
+                                                                            <span class="fa fa-file-pdf-o"></span> Download PDF
                                                                         </a>
                                                                     </li>
                                                                     <li>
@@ -543,7 +538,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 </button>
                                 <div class="dropdown-menu">
                                     <a class="dropdown-item" href="#"
-                                       data-bind="click: function(){ SaveReport(true); }"
+                                       data-bind="click: function(){ SaveReport(true); activeDesign(false); }"
                                        data-bs-toggle="modal"
                                        data-bs-target="#modal-reportbuilder">
                                         <i class="fa fa-sliders"></i> Edit with Standard Designer
@@ -579,7 +574,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             <i class="fa fa-file-pdf-o"></i> Pdf
                                         </a>
                                     </li>
-                                    <li data-bind="visible: adminMode() && !appSettings.useAltPdf">
+                                    <li data-bind="visible: adminMode() && !appSettings.useAltPdf()">
                                         <a href="#" class="dropdown-item" data-bind="click: appSettings.showPageSize
                                               ? function() { PdfPage.isDebug = true; $('#pdfOptionsModal').modal('show'); }
                                               : function() { downloadPdf(true); }">
@@ -633,68 +628,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
             </div>
             <div class="card-body">
                 <div data-bind="if: activeDesign()">
-                    <div data-bind="if: ReportID() <= 0">
-                        <ul class="nav nav-tabs" id="designTabs" role="tablist">                            
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link active" id="designer-tab" data-bs-toggle="tab" data-bs-target="#designer" type="button" role="tab">
-                                    Report Designer
-                                </button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="nl-tab" data-bs-toggle="tab" data-bs-target="#nl" type="button" role="tab">
-                                    Use Prompt<span title="This feature is still in Beta release. You can turn it off from settings" style="font-size: 10pt; padding: 5px; max-width: 350px; white-space: normal; margin-bottom: 0;">
-                                        <i class="fa fa-info-circle"></i>
-                                    </span>
-                                </button>
-                            </li>
-                        </ul>
-
-                        <div class="tab-content mt-3">
-                            <div class="tab-pane fade show active" id="designer" role="tabpanel" aria-labelledby="designer-tab">
-                                <div data-bind="template: 'report-designer-compact', data: $root"></div>
-                            </div>
-                            <div class="tab-pane fade" id="nl" role="tabpanel" aria-labelledby="nl-tab">
-                                <div class="card">
-                                    <div class="card-body">
-                                        <p>
-                                            What would you like to know? Type a <b>natural language prompt</b> below to ask questions about your data.<br>
-                                            Use <b>Auto Complete</b> suggestions to guide your query — the AI will convert your prompt into a Dotnet Report that you can then preview, design, save and reuse.
-                                        </p>
-
-                                        <p id="query-input" class="query-input">
-                                            Show me&nbsp;
-                                        </p>
-
-                                        <p>
-                                            <button data-bind="click: function() {runQuery(false);}" class="btn btn-primary btn-sm">
-                                                <span class="fa fa-magic"></span> Process with AI
-                                            </button>
-
-                                            <button data-bind="click: function() {resetQuery(true, false);}" class="btn btn-secondary btn-sm">
-                                                <span class="fa fa-undo"></span> Start Over
-                                            </button>
-
-                                            <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: adminMode">
-                                                <span class="fa fa-code"></span> View Code
-                                            </button>
-
-                                            <button class="btn btn-secondary btn-sm" data-bind="visible: CanSaveReports(), click: SaveWithoutRun">
-                                                <span class="fa fa-save"></span> Save Report
-                                            </button>
-
-                                            <button data-bind="click: openDesigner" class="btn btn-secondary btn-sm">
-                                                <span class="fa fa-pencil"></span> Design/Save Report
-                                            </button>
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div data-bind="if: ReportID() > 0">
-                        <div data-bind="template: 'report-designer-compact', data: $root"></div>
-                    </div>
+                    <div data-bind="template: 'report-designer-compact', data: $root"></div>
                 </div>
 
                 <div data-bind="with: ReportResult" class="report-view">
@@ -798,6 +732,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         <div class="report-inner bg-white">
                                             <div data-bind="if: $root.CanEdit() && ReportType()!='Html' && ReportType()!='Single'">
                                                 <div data-bind="template: 'chart-settings', data: $data"></div>
+                                            </div>
+                                            <div data-bind="if: $root.CanEdit() && ReportType()=='Single'">
+                                                <div data-bind="template: 'kpi-settings', data: $data"></div>
                                             </div>
                                             <div data-bind="visible: headerDesigner.UseReportHeader">
                                                 <div id="report-header" width="900" height="120" data-bind="html: headerDesigner.headerHtml"></div>
