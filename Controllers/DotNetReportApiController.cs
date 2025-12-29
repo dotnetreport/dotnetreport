@@ -1264,7 +1264,7 @@ namespace ReportBuilder.Web.Controllers
             string xml = await DotNetReportHelper.GetXmlFile(reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName), expandSqls, pivotColumn, pivotFunction);
             var data = System.Text.Encoding.UTF8.GetBytes(xml);
             Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".xml");
-            Response.ContentType = "application/xml";
+            Response.ContentType = "application/octet-stream";
             Response.Write(xml);
             Response.End();
 

@@ -8905,7 +8905,7 @@ var dashboardViewModel = function (options) {
 				chartData: report.ChartData() || '',
 				columnDetails: report.getColumnDetails(),
 				includeSubTotal: report.IncludeSubTotal(),
-				includeColumnTotal: self.IncludeColumnTotal(),
+				includeColumnTotal: report.IncludeColumnTotal(),
 				pivot: report.ReportType() == 'Pivot',
 				pivotColumn: pivotData.pivotColumn,
 				pivotFunction: pivotData.pivotFunction,
