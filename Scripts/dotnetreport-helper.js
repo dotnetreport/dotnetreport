@@ -158,17 +158,17 @@ function ajaxcall(options) {
         xhr: xhr,
         beforeSend: beforeSend
     }).done(function (data) {
-            if (useProgressBar) {
-                completeProgress();
+        if (useProgressBar) {
+            completeProgress();
+        }
+        if ($.unblockUI && !noBlocking) {
+            activeBlockUICount = Math.max(0, activeBlockUICount - 1);
+            if (activeBlockUICount === 0) {
+                $.unblockUI();
             }
-            if ($.unblockUI && !noBlocking) {
-                activeBlockUICount = Math.max(0, activeBlockUICount - 1);
-                if (activeBlockUICount === 0) {
-                    $.unblockUI();
-                }
-            }
-            delete options;
-        })
+        }
+        delete options;
+    })
         .fail(function (jqxhr, status, error) {
             if (useProgressBar) {
                 hideProgress();
@@ -185,7 +185,7 @@ function ajaxcall(options) {
 function handleAjaxError(jqxhr, status, error) {
     if (jqxhr.responseJSON && jqxhr.responseJSON.d) jqxhr.responseJSON = jqxhr.responseJSON.d;
     if (jqxhr.responseJSON && jqxhr.responseJSON.Result && jqxhr.responseJSON.Result.Message) jqxhr.responseJSON = jqxhr.responseJSON.Result;
-    var msg = jqxhr.responseJSON && jqxhr.responseJSON.Message ? "\n" + jqxhr.responseJSON.Message : "";
+    var msg = jqxhr.responseJSON ? "\n" + (jqxhr.responseJSON.Message || jqxhr.responseJSON.message || jqxhr.responseJSON.errorMessage || "") : "";
 
     switch (error) {
         case "Conflict":
@@ -406,6 +406,44 @@ ko.bindingHandlers.highlightedText = {
         }
 
         element.innerHTML = value.replace(regex, getReplacement);
+    }
+};
+
+ko.bindingHandlers.tableSortable = {
+    init: function (element, valueAccessor) {
+        const options = valueAccessor();
+
+        $(element).sortable({
+            cursor: "move",
+            placeholder: options.placeholder || "sortable-placeholder",
+            handle: options.handle || null,
+            helper: function (e, tr) {
+                const $originals = tr.children();
+                const $helper = tr.clone();
+                $helper.children().each(function (index) {
+                    $(this).width($originals.eq(index).width());
+                });
+                return $helper;
+            },
+            update: function (e, ui) {
+                const item = ko.dataFor(ui.item[0]);
+                const array = ko.unwrap(options.data);
+
+                const oldIndex = ui.item.data("oldIndex");
+                const newIndex = ui.item.index();
+
+                if (oldIndex !== newIndex) {
+                    array.splice(oldIndex, 1);
+                    array.splice(newIndex, 0, item);
+                    if (typeof options.afterMove === "function") {
+                        options.afterMove({ item, oldIndex, newIndex });
+                    }
+                }
+            },
+            start: function (e, ui) {
+                ui.item.data("oldIndex", ui.item.index());
+            }
+        });
     }
 };
 
@@ -716,6 +754,9 @@ var manageAccess = function (options) {
 function generateUniqueId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 }
+function WidgetUniqueId(prefix) {
+    return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 9);
+}
 
 function beautifySql(sql, htmlMode = true) {
     sql = sql.replace("{FROM}", "FROM");
@@ -732,7 +773,7 @@ function beautifySql(sql, htmlMode = true) {
         if (htmlMode) {
             // Add spaces around keywords
             keywords.forEach(keyword => {
-                sql = sql.replace(new RegExp('\\b' + keyword + '\\b', 'gi'), '<span class="keyword">' + keyword + '</span> ');
+                sql = sql.replace(new RegExp('\\b' + keyword + '\\b', 'gi'), '<span class="keyword">' + keyword + '</span>');
             });
         }
 
@@ -797,8 +838,8 @@ var textQuery = function (options) {
     }
 
     self.QueryMethods = [
-        { value: 'Sum', key: '<span class="fa fa-flash"></span> Sum of', type: 'Function', searchKey: 'Sum of' },
-        { value: 'Avg', key: '<span class="fa fa-flash"></span> Average of', type: 'Function', searchKey: 'Average of' },
+        //{ value: 'Sum', key: '<span class="fa fa-flash"></span> Sum of', type: 'Function', searchKey: 'Sum of' },
+        //{ value: 'Avg', key: '<span class="fa fa-flash"></span> Average of', type: 'Function', searchKey: 'Average of' },
         //{ value: 'Sum', key: '<span class="fa fa-flash"></span> Total of', type: 'Function', searchKey: 'Total of' },
         //{ value: 'Count', key: '<span class="fa fa-flash"></span> Count of', type: 'Function', searchKey: 'Count of' },
         //{ value: 'Percent', key: '<span class="fa fa-flash"></span> Percentage of', type: 'Function', searchKey: 'Percentage of' },
@@ -808,16 +849,16 @@ var textQuery = function (options) {
     ];
 
     self.FilterMethods = [
-        { value: 'is', key: '<span class="fa fa-filter"></span> is', type: 'Filter', searchKey: 'is equal to' },
-        { value: 'is not', key: '<span class="fa fa-filter"></span> is not', type: 'Filter', searchKey: 'is not equal to' },
+        //{ value: 'is', key: '<span class="fa fa-filter"></span> is', type: 'Filter', searchKey: 'is equal to' },
+        //{ value: 'is not', key: '<span class="fa fa-filter"></span> is not', type: 'Filter', searchKey: 'is not equal to' },
     ];
 
     self.DateFilterMethods = [
         //{ value: 'Today', key: '<span class="fa fa-calendar"></span> for Today', operator: 'range', type: 'DateFilter', searchKey: 'for Today' },
         //{ value: 'Yesterday', key: '<span class="fa fa-calendar"></span> for Yesterday', operator: 'range', type: 'DateFilter', searchKey: 'for Yesterday' },
-        { value: 'This Month', key: '<span class="fa fa-calendar"></span> for This Month', operator: 'range', type: 'DateFilter', searchKey: 'for This Month' },
-        { value: 'Last Month', key: '<span class="fa fa-calendar"></span> for Last Month', operator: 'range', type: 'DateFilter', searchKey: 'for Last Month' },
-        { value: 'This Year', key: '<span class="fa fa-calendar"></span> for This Year', operator: 'range', type: 'DateFilter', searchKey: 'for This Year' },
+        //{ value: 'This Month', key: '<span class="fa fa-calendar"></span> for This Month', operator: 'range', type: 'DateFilter', searchKey: 'for This Month' },
+        //{ value: 'Last Month', key: '<span class="fa fa-calendar"></span> for Last Month', operator: 'range', type: 'DateFilter', searchKey: 'for Last Month' },
+        //{ value: 'This Year', key: '<span class="fa fa-calendar"></span> for This Year', operator: 'range', type: 'DateFilter', searchKey: 'for This Year' },
         //{ value: 'Last Year', key: '<span class="fa fa-calendar"></span> for Last Year', operator: 'range', type: 'DateFilter', searchKey: 'for Last Year' },
     ];
 
@@ -895,7 +936,7 @@ var textQuery = function (options) {
                     text: ''
                 }),
                 userid: options.userId
-            } : null)
+            } : {});
         },
         processResults: function (data) {
             if (data.d) data = data.d;

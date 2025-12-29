@@ -56,6 +56,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
 </asp:Content>
 
 <asp:Content ID="Content2" ContentPlaceHolderID="body" runat="server">
+
 <div class="container-fluid">
     <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
 
@@ -575,7 +576,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             <i class="fa fa-file-pdf-o"></i> Pdf
                                         </a>
                                     </li>
-                                    <li data-bind="visible: adminMode() && !appSettings.useAltPdf">
+                                    <li data-bind="visible: adminMode() && !appSettings.useAltPdf()">
                                         <a href="#" class="dropdown-item" data-bind="click: appSettings.showPageSize
                                               ? function() { PdfPage.isDebug = true; $('#pdfOptionsModal').modal('show'); }
                                               : function() { downloadPdf(true); }">
@@ -733,6 +734,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         <div class="report-inner bg-white">
                                             <div data-bind="if: $root.CanEdit() && ReportType()!='Html' && ReportType()!='Single'">
                                                 <div data-bind="template: 'chart-settings', data: $data"></div>
+                                            </div>
+                                            <div data-bind="if: $root.CanEdit() && ReportType()=='Single'">
+                                                <div data-bind="template: 'kpi-settings', data: $data"></div>
                                             </div>
                                             <div data-bind="visible: headerDesigner.UseReportHeader">
                                                 <div id="report-header" width="900" height="120" data-bind="html: headerDesigner.headerHtml"></div>
