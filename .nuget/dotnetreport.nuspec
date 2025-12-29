@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
   <metadata>
     <id>dotnetreport.mvc</id>
-    <version>6.2.2</version>
+    <version>6.2.3</version>
     <authors>Dotnet Report Builder</authors>
     <owners>Dotnet Report Builder</owners>
     <projectUrl>https://dotnetreport.com/</projectUrl>
