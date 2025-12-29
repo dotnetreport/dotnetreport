@@ -3157,7 +3157,10 @@ namespace ReportBuilder.Web.Models
                                 {
                                     if (formatColumn.isNumeric && !(formatColumn?.dontSubTotal ?? false))
                                     {
-                                        subTotals[i] += Convert.ToDecimal(row[column.ColumnName]);
+                                        if (row[column.ColumnName] != DBNull.Value && !string.IsNullOrWhiteSpace(value?.ToString()))
+                                        {
+                                            subTotals[i] += Convert.ToDecimal(row[column.ColumnName]);
+                                        }
                                     }
                                 }
                                 Run run = new Run(new Text(value));
