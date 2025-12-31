@@ -131,7 +131,8 @@ gulp.task("npm-pack", function () {
 
 });
 
-gulp.task("scripts", function () {
+gulp.task("scripts", function (done) {
+	const tasks = [];
 
 	for (const prop in deps) {
 
