@@ -728,7 +728,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 </div>
                                 <div class="report-canvas" data-bind="hidden: DontExecuteOnRun() && !reportRan()">
                                     <div class="report-container bg-light">
-                                        <div class="report-inner bg-white">
+                                           <div class="report-inner" data-bind="style: { backgroundColor: ReportResult()?.ReportData()?.BackColor || null },
+                                               css: { 'bg-white': !ReportResult()?.ReportData()?.BackColor }">
                                             <div data-bind="if: $root.CanEdit() && ReportType()!='Html' && ReportType()!='Single'">
                                                 <div data-bind="template: 'chart-settings', data: $data"></div>
                                             </div>

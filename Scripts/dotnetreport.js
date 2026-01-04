@@ -4558,7 +4558,7 @@ var reportViewModel = function (options) {
 			return v.toLocaleString();
 		};
 
-		if (self.kpiSettings() && Object.keys(self.kpiSettings()).length > 0) {
+		if (self.ReportType() == 'Single' && self.kpiSettings() && Object.keys(self.kpiSettings()).length > 0) {
 			result.ReportData.FontSize = ko.observable(self.kpiSettings()?.fontSize() + "px");
 			result.ReportData.Alignment = ko.observable(self.kpiSettings()?.alignment());
 			result.ReportData.FontColor = ko.observable(self.kpiSettings()?.fontColor());
@@ -4568,6 +4568,8 @@ var reportViewModel = function (options) {
 			result.ReportData.NumberFormat = ko.observable(self.kpiSettings()?.numberFormat());
 			result.ReportData.ShortFormat = ko.observable(self.kpiSettings()?.shortFormat());
 			result.ReportData.CurrencySymbol = ko.observable(self.kpiSettings()?.currencySymbol());
+		} else {
+			result.ReportData.BackColor = ko.observable(self.tableSettings().backColor);
 		}
 		_.forEach(result.ReportData.Rows, function (e, idx) {
 			e.DrillDownData = ko.observable(null);
@@ -5507,7 +5509,8 @@ var reportViewModel = function (options) {
 		altRowBackColor: null,
 		altRowFontColor: null,
 		border: null,
-		borderColor: null
+		borderColor: null,
+		backColor: null
 	});
 	self.showSettings = ko.observable(false);
 	self.showTableSettings = ko.observable(false);
@@ -5520,6 +5523,8 @@ var reportViewModel = function (options) {
 		self.tableSettings().altRowFontColor=null;
 		self.tableSettings().border = null;
 		self.tableSettings().borderColor = null;
+		self.tableSettings().backColor = null;
+		self.ReportResult()?.ReportData()?.BackColor(null);
 		let inputs = document.querySelectorAll('#tbl-color-picker-' + self.ReportID());
 		inputs.forEach(function (inp) {
 			inp.value = null;   
@@ -5566,6 +5571,10 @@ var reportViewModel = function (options) {
 				if (clear === true || rowBack) td.style.backgroundColor = rowBack;
 				if (clear === true || rowFont) td.style.color = rowFont;
 			});
+		}
+		if (setting.backColor) {
+			var result = self.ReportResult().ReportData();
+			result.BackColor(setting.backColor);
 		}
 	};
 
@@ -8261,7 +8270,7 @@ var dashboardViewModel = function (options) {
 	};
 	self.getCardBackground = function (item) {
 		if (!item) return "";
-		if (item.ReportType() == "Single" && item.ReportResult()?.ReportData()?.BackColor) {
+		if (item.ReportResult()?.ReportData()?.BackColor) {
 			return item.ReportResult()?.ReportData()?.BackColor;
 		}
 		return "";

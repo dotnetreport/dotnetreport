@@ -2948,6 +2948,11 @@
                                 Clear
                             </button>
                         </div>
+                        <div class="mb-2 col-6" >
+                            <label class="form-label small">Back Color</label><br />
+                            <input type="color" class="color-picker"
+                               data-bind="attr: { id: 'tbl-color-picker-' + ReportID()},value: tableSettings().backColor, event: { change: updateTable }"/>
+                        </div>
                     </div>
                 </div>
             </div>
