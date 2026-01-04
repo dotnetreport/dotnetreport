@@ -1210,6 +1210,7 @@ var reportViewModel = function (options) {
 		{ value: '$', display: 'USD ($)' },
 		{ value: '€', display: 'EUR (€)' },
 		{ value: '£', display: 'Pound (£)' },
+		{ value: '₹', display: 'Indian Rupee (₹)' },
 		{ value: 'Rs', display: 'Rupee (Rs)' }
 	];
 	self.dateFormatTypes = ['Date', 'Date and Time', 'Time'];
@@ -4343,6 +4344,7 @@ var reportViewModel = function (options) {
 						switch (col.currencyFormat()) {
 							case '€': r.FormattedValue = '€' + r.FormattedValue; break;
 							case '£': r.FormattedValue = '£' + r.FormattedValue; break;
+							case '₹': r.FormattedValue = '₹' + r.FormattedValue; break;
 							case 'Rs': r.FormattedValue = 'Rs' + r.FormattedValue; break;
 							default: r.FormattedValue = '$' + r.FormattedValue; break;
 						}
