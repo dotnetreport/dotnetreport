@@ -5414,6 +5414,7 @@ var reportViewModel = function (options) {
 		currencySymbol: ko.observable("$"),
 		customFormat: ko.observable(null)
 	});
+	window.copiedKpiFormatGlobal = ko.observable(null);
 	function applyCustomFormat(value, pattern) {
 		let decimals = 0;
 		if (pattern.indexOf(".") >= 0) {
@@ -5440,6 +5441,40 @@ var reportViewModel = function (options) {
 			result.NumberFormat(self.kpiSettings().numberFormat());
 			result.ShortFormat(self.kpiSettings().shortFormat());
 			result.CurrencySymbol(self.kpiSettings().currencySymbol());
+		}
+	};
+	self.copyKpiFormat = function () {
+		window.copiedKpiFormatGlobal({
+			fontSize: self.kpiSettings().fontSize(),
+			alignment: self.kpiSettings().alignment(),
+			fontColor: self.kpiSettings().fontColor(),
+			backColor: self.kpiSettings().backColor(),
+			positiveColor: self.kpiSettings().positiveColor(),
+			negativeColor: self.kpiSettings().negativeColor(),
+			numberFormat: self.kpiSettings().numberFormat(),
+			shortFormat: self.kpiSettings().shortFormat(),
+			currencySymbol: self.kpiSettings().currencySymbol(),
+			customFormat: self.kpiSettings().customFormat()
+		});
+		toastr.success("KPI format copied!");
+	};
+	self.pasteKpiFormat = function () {
+		var format = window.copiedKpiFormatGlobal();
+		if (format) {
+			self.kpiSettings().fontSize(format.fontSize);
+			self.kpiSettings().alignment(format.alignment);
+			self.kpiSettings().fontColor(format.fontColor);
+			self.kpiSettings().backColor(format.backColor);
+			self.kpiSettings().positiveColor(format.positiveColor);
+			self.kpiSettings().negativeColor(format.negativeColor);
+			self.kpiSettings().numberFormat(format.numberFormat);
+			self.kpiSettings().shortFormat(format.shortFormat);
+			self.kpiSettings().currencySymbol(format.currencySymbol);
+			self.kpiSettings().customFormat(format.customFormat);
+			self.updateKpi();
+			toastr.success("KPI format pasted!");
+		} else {
+			toastr.error("No KPI format copied yet.");
 		}
 	};
 	self.kpiSettings().fontSize.subscribe(function (newVal) {
