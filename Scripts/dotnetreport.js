@@ -5566,6 +5566,19 @@ var reportViewModel = function (options) {
 		});
 		self.updateTable(true);
 	};
+	self.copyTableFormat = function () {
+		window.copiedTableFormat = { ...ko.toJS(self.tableSettings()) };
+		toastr.success("Table format copied!");
+	};
+	self.pasteTableFormat = function () {
+		if (window.copiedTableFormat) {
+			self.tableSettings(window.copiedTableFormat);
+			self.updateTable(true);
+			toastr.success("Table format pasted!");
+		} else {
+			toastr.error("No table format copied yet.");
+		}
+	};
 	self.toggleChartSettings = function () {
 		self.showSettings(!self.showSettings());
 	}; 

@@ -2953,15 +2953,25 @@
                             <input type="color" class="color-picker"
                                data-bind="value: tableSettings().borderColor, event: { change: updateTable }"/>
                         </div>
-                        <div class="mb-2 col-6 d-flex align-items-end">
-                             <button class="btn btn-sm small btn-outline-secondary" data-bind="click: clearTableSettings">
-                                Clear
-                            </button>
-                        </div>
-                        <div class="mb-2 col-6" >
+                         <div class="mb-2 col-6">
                             <label class="form-label small">Back Color</label><br />
                             <input type="color" class="color-picker"
                                data-bind="attr: { id: 'tbl-color-picker-' + ReportID()},value: tableSettings().backColor, event: { change: updateTable }"/>
+                        </div>
+                        <div class="mb-2 col-6 d-flex align-items-end">
+                            <button class="btn btn-sm small btn-outline-secondary" data-bind="click: clearTableSettings">
+                                Clear
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="mb-2 col-12 d-flex align-items-end">
+                            <button class="btn btn-sm small btn-outline-primary ms-2" data-bind="click: copyTableFormat">
+                                Copy Format
+                            </button>
+                            <button class="btn btn-sm small btn-outline-success ms-2" data-bind="click: pasteTableFormat">
+                                Paste Format
+                            </button>
                         </div>
                     </div>
                 </div>
