@@ -6796,9 +6796,15 @@ var reportViewModel = function (options) {
 				};
 
 				e.exportReport = function (format) {
-					self.ReportMode('export-' + format);
-					e.runReport();
-				}
+					e.loadReportColumns().done(function (columns) {
+						self.columnDetails([]);
+						_.forEach(columns, function (e, i) {
+							self.columnDetails.push(ko.toJS(e));
+						});
+						self.ReportMode('export-' + format);
+						e.runReport();
+					})
+				};
 
 				e.runReport = function () {
 					self.reportRan(false);
@@ -6807,7 +6813,20 @@ var reportViewModel = function (options) {
 					e.runMode = true;
 					e.openReport();
 				};
-
+				e.loadReportColumns = function () {
+					return ajaxcall({
+						url: options.apiUrl,
+						data: {
+							method: "/ReportApi/LoadReportColumnDetails",
+							model: JSON.stringify({
+								reportId: e.reportId,
+								adminMode: self.adminMode(),
+								userIdForSchedule: self.userIdForSchedule
+							})
+						},
+						noBlocking: true
+					});
+				}
 				e.hasDrilldown = ["List", "Pivot", "Treemap"].indexOf(e.reportType) < 0;
 				e.deleteReport = function () {
 					bootbox.confirm("Are you sure you would like to Delete this Report?", function (r) {
