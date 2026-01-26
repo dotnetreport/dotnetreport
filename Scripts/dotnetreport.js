@@ -1452,6 +1452,7 @@ var reportViewModel = function (options) {
 		showImportExport: ko.observable(false),
 		useFunctions: ko.observable(false),
 		canCopyReport: ko.observable(true),
+		showScheduling: ko.observable(false),
 	};
 	self.appSettings = options && options.appSettings ? options.appSettings : self.appSettings;
 	self.runQuery = function (useAi) {
@@ -7241,6 +7242,7 @@ var reportViewModel = function (options) {
 			self.appSettings.showImportExport(x.showImportExport);
 			self.appSettings.canCopyReport(x.canCopyReport);
 			self.appSettings.useFunctions(x.useFunctions);
+			self.appSettings.showScheduling(x.showScheduling);
 		});
 	}
 
@@ -7998,7 +8000,8 @@ var dashboardViewModel = function (options) {
 		showPageSize: false,
 		showImportExport: false,
 		canCopyReport: true,
-		useFunctions: false 
+		useFunctions: false,
+		showScheduling: false
 	};
 
 	self.loadAppSettings = function () {
@@ -8030,6 +8033,7 @@ var dashboardViewModel = function (options) {
 			self.appSettings.showImportExport = x.showImportExport;
 			self.appSettings.canCopyReport = x.canCopyReport;
 			self.appSettings.useFunctions = x.useFunctions;
+			self.appSettings.showScheduling = x.showScheduling;
 		});
 	}
 

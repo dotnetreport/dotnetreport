@@ -2959,6 +2959,8 @@ var settingPageViewModel = function (options) {
 	self.isEnterprise = ko.observable(false);
 	self.canCopyReport = ko.observable(true);
 	self.useFunctions = ko.observable(false);
+	self.showScheduling = ko.observable(true);
+
 	self.appThemes = ko.observableArray([
 		{ name: 'Default', value: 'default' },
 		{ name: 'Dark', value: 'dark' },
@@ -3038,7 +3040,8 @@ var settingPageViewModel = function (options) {
 							showPageSize: self.showPageSize(),
 							showImportExport: self.showImportExport(),
 							canCopyReport: self.canCopyReport(),
-							useFunctions: self.isEnterprise() ? self.useFunctions() : false
+							useFunctions: self.isEnterprise() ? self.useFunctions() : false,
+							showScheduling: self.showScheduling()
 						})
 					})
 				})
@@ -3106,6 +3109,8 @@ var settingPageViewModel = function (options) {
 				} else {
 					self.useFunctions(false);
 				}			
+				self.showScheduling(settings.showScheduling);
+;
 				//// Optionally, you can manually trigger change event for select elements
 				$('#themeSelect').trigger('change');
 				$('#timezoneSelect').trigger('change');

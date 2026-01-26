@@ -266,9 +266,16 @@
                                 </div>
                                 <div class="form-check">
                                     <input type="checkbox" class="form-check-input" data-bind="checked: canCopyReport">
-                                    <label class="form-check-label">Allow User to copy reports</label>
+                                    <label class="form-check-label">Always allow users to copy reports</label>
                                     <small class="text-muted d-block">
                                         Allow users with View Only access to copy Reports in the system.
+                                    </small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: showScheduling">
+                                    <label class="form-check-label">Hide Report/Dashboard Scheduling</label>
+                                    <small class="text-muted d-block">
+                                        Removes scheduling in reports and dashboard, select only if you don't want to use scheduling feature.
                                     </small>
                                 </div>
                             </div>

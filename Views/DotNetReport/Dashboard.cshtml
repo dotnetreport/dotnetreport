@@ -341,7 +341,7 @@
                     </div>
 
                 </div>
-                <div class="card card-body mb-3">
+                <div data-bind="visible:!$parent.appSettings.showScheduling" class="card card-body mb-3">
                     <h5><i class="fa fa-hourglass"></i>&nbsp;Choose Schedule</h5>
                     <div data-bind="template: {name: 'report-schedule'}"></div>
                 </div>

@@ -2717,7 +2717,7 @@
                             <div data-bind="template: 'designer-sort'"></div>
                         </div>
                         <br />
-                        <div data-bind="visible: SaveReport" class="card card-body">
+                        <div data-bind="visible: SaveReport && !appSettings.showScheduling()" class="card card-body">
                             <h5><span class="fa fa-hourglass"></span>&nbsp;Choose Schedule</h5>
 
                             <div style="padding: 10px 10px" data-bind="if: SaveReport">
