@@ -8275,6 +8275,9 @@ var dashboardViewModel = function (options) {
 			var currentdashboard = _.find(self.dashboards(), { id: self.dashboard.Id() });
 			if (currentdashboard) {
 				currentdashboard.selectedReports = list;
+				currentdashboard.name = self.dashboard.Name();
+				currentdashboard.description = self.dashboard.Description();
+
 			};
 			toastr.success("Dashboard saved successfully");
 			$('#add-dashboard-modal').modal('hide');
