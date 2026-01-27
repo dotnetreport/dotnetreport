@@ -1210,6 +1210,7 @@ var reportViewModel = function (options) {
 		{ value: '$', display: 'USD ($)' },
 		{ value: '€', display: 'EUR (€)' },
 		{ value: '£', display: 'Pound (£)' },
+		{ value: '₹', display: 'Indian Rupee (₹)' },
 		{ value: 'Rs', display: 'Rupee (Rs)' }
 	];
 	self.dateFormatTypes = ['Date', 'Date and Time', 'Time'];
@@ -1436,6 +1437,7 @@ var reportViewModel = function (options) {
 		showPageSize: false,
 		showImportExport: ko.observable(false),
 		useFunctions: ko.observable(false),
+		canCopyReport: ko.observable(true),
 	};
 	self.appSettings = options && options.appSettings ? options.appSettings : self.appSettings;
 	self.runQuery = function (useAi) {
@@ -4343,6 +4345,7 @@ var reportViewModel = function (options) {
 						switch (col.currencyFormat()) {
 							case '€': r.FormattedValue = '€' + r.FormattedValue; break;
 							case '£': r.FormattedValue = '£' + r.FormattedValue; break;
+							case '₹': r.FormattedValue = '₹' + r.FormattedValue; break;
 							case 'Rs': r.FormattedValue = 'Rs' + r.FormattedValue; break;
 							default: r.FormattedValue = '$' + r.FormattedValue; break;
 						}
@@ -4556,7 +4559,7 @@ var reportViewModel = function (options) {
 			return v.toLocaleString();
 		};
 
-		if (self.kpiSettings() && Object.keys(self.kpiSettings()).length > 0) {
+		if (self.ReportType() == 'Single' && self.kpiSettings() && Object.keys(self.kpiSettings()).length > 0) {
 			result.ReportData.FontSize = ko.observable(self.kpiSettings()?.fontSize() + "px");
 			result.ReportData.Alignment = ko.observable(self.kpiSettings()?.alignment());
 			result.ReportData.FontColor = ko.observable(self.kpiSettings()?.fontColor());
@@ -4566,6 +4569,8 @@ var reportViewModel = function (options) {
 			result.ReportData.NumberFormat = ko.observable(self.kpiSettings()?.numberFormat());
 			result.ReportData.ShortFormat = ko.observable(self.kpiSettings()?.shortFormat());
 			result.ReportData.CurrencySymbol = ko.observable(self.kpiSettings()?.currencySymbol());
+		} else {
+			result.ReportData.BackColor = ko.observable(self.tableSettings().backColor);
 		}
 		_.forEach(result.ReportData.Rows, function (e, idx) {
 			e.DrillDownData = ko.observable(null);
@@ -5410,6 +5415,7 @@ var reportViewModel = function (options) {
 		currencySymbol: ko.observable("$"),
 		customFormat: ko.observable(null)
 	});
+	window.copiedKpiFormatGlobal = ko.observable(null);
 	function applyCustomFormat(value, pattern) {
 		let decimals = 0;
 		if (pattern.indexOf(".") >= 0) {
@@ -5436,6 +5442,40 @@ var reportViewModel = function (options) {
 			result.NumberFormat(self.kpiSettings().numberFormat());
 			result.ShortFormat(self.kpiSettings().shortFormat());
 			result.CurrencySymbol(self.kpiSettings().currencySymbol());
+		}
+	};
+	self.copyKpiFormat = function () {
+		window.copiedKpiFormatGlobal({
+			fontSize: self.kpiSettings().fontSize(),
+			alignment: self.kpiSettings().alignment(),
+			fontColor: self.kpiSettings().fontColor(),
+			backColor: self.kpiSettings().backColor(),
+			positiveColor: self.kpiSettings().positiveColor(),
+			negativeColor: self.kpiSettings().negativeColor(),
+			numberFormat: self.kpiSettings().numberFormat(),
+			shortFormat: self.kpiSettings().shortFormat(),
+			currencySymbol: self.kpiSettings().currencySymbol(),
+			customFormat: self.kpiSettings().customFormat()
+		});
+		toastr.success("KPI format copied!");
+	};
+	self.pasteKpiFormat = function () {
+		var format = window.copiedKpiFormatGlobal();
+		if (format) {
+			self.kpiSettings().fontSize(format.fontSize);
+			self.kpiSettings().alignment(format.alignment);
+			self.kpiSettings().fontColor(format.fontColor);
+			self.kpiSettings().backColor(format.backColor);
+			self.kpiSettings().positiveColor(format.positiveColor);
+			self.kpiSettings().negativeColor(format.negativeColor);
+			self.kpiSettings().numberFormat(format.numberFormat);
+			self.kpiSettings().shortFormat(format.shortFormat);
+			self.kpiSettings().currencySymbol(format.currencySymbol);
+			self.kpiSettings().customFormat(format.customFormat);
+			self.updateKpi();
+			toastr.success("KPI format pasted!");
+		} else {
+			toastr.error("No KPI format copied yet.");
 		}
 	};
 	self.kpiSettings().fontSize.subscribe(function (newVal) {
@@ -5505,7 +5545,8 @@ var reportViewModel = function (options) {
 		altRowBackColor: null,
 		altRowFontColor: null,
 		border: null,
-		borderColor: null
+		borderColor: null,
+		backColor: null
 	});
 	self.showSettings = ko.observable(false);
 	self.showTableSettings = ko.observable(false);
@@ -5518,11 +5559,26 @@ var reportViewModel = function (options) {
 		self.tableSettings().altRowFontColor=null;
 		self.tableSettings().border = null;
 		self.tableSettings().borderColor = null;
+		self.tableSettings().backColor = null;
+		self.ReportResult()?.ReportData()?.BackColor(null);
 		let inputs = document.querySelectorAll('#tbl-color-picker-' + self.ReportID());
 		inputs.forEach(function (inp) {
 			inp.value = null;   
 		});
 		self.updateTable(true);
+	};
+	self.copyTableFormat = function () {
+		window.copiedTableFormat = { ...ko.toJS(self.tableSettings()) };
+		toastr.success("Table format copied!");
+	};
+	self.pasteTableFormat = function () {
+		if (window.copiedTableFormat) {
+			self.tableSettings(window.copiedTableFormat);
+			self.updateTable(true);
+			toastr.success("Table format pasted!");
+		} else {
+			toastr.error("No table format copied yet.");
+		}
 	};
 	self.toggleChartSettings = function () {
 		self.showSettings(!self.showSettings());
@@ -5564,6 +5620,10 @@ var reportViewModel = function (options) {
 				if (clear === true || rowBack) td.style.backgroundColor = rowBack;
 				if (clear === true || rowFont) td.style.color = rowFont;
 			});
+		}
+		if (setting.backColor) {
+			var result = self.ReportResult().ReportData();
+			result.BackColor(setting.backColor);
 		}
 	};
 
@@ -6694,7 +6754,7 @@ var reportViewModel = function (options) {
 				};
 
 				e.copyReport = function () {
-					if (!e.canEdit) {
+					if (!self.appSettings.canCopyReport()) {
 						options.reportWizard.modal('hide');
 						toastr.error('No access to copy report');
 						return;
@@ -7146,6 +7206,7 @@ var reportViewModel = function (options) {
 			self.appSettings.usePromptBuilder(x.usePromptBuilder !== false ? true : false);
 			self.appSettings.showPageSize = x.showPageSize;
 			self.appSettings.showImportExport(x.showImportExport);
+			self.appSettings.canCopyReport(x.canCopyReport);
 			self.appSettings.useFunctions(x.useFunctions);
 		});
 	}
@@ -7903,6 +7964,7 @@ var dashboardViewModel = function (options) {
 		usePromptBuilder: true,
 		showPageSize: false,
 		showImportExport: false,
+		canCopyReport: true,
 		useFunctions: false 
 	};
 
@@ -7933,6 +7995,7 @@ var dashboardViewModel = function (options) {
 			self.appSettings.usePromptBuilder = x.usePromptBuilder;
 			self.appSettings.showPageSize = x.showPageSize;
 			self.appSettings.showImportExport = x.showImportExport;
+			self.appSettings.canCopyReport = x.canCopyReport;
 			self.appSettings.useFunctions = x.useFunctions;
 		});
 	}
@@ -8216,6 +8279,9 @@ var dashboardViewModel = function (options) {
 			var currentdashboard = _.find(self.dashboards(), { id: self.dashboard.Id() });
 			if (currentdashboard) {
 				currentdashboard.selectedReports = list;
+				currentdashboard.name = self.dashboard.Name();
+				currentdashboard.description = self.dashboard.Description();
+
 			};
 			toastr.success("Dashboard saved successfully");
 			$('#add-dashboard-modal').modal('hide');
@@ -8259,7 +8325,7 @@ var dashboardViewModel = function (options) {
 	};
 	self.getCardBackground = function (item) {
 		if (!item) return "";
-		if (item.ReportType() == "Single" && item.ReportResult()?.ReportData()?.BackColor) {
+		if (item.ReportResult()?.ReportData()?.BackColor) {
 			return item.ReportResult()?.ReportData()?.BackColor;
 		}
 		return "";
