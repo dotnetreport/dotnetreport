@@ -1437,6 +1437,7 @@ var reportViewModel = function (options) {
 		showPageSize: false,
 		showImportExport: ko.observable(false),
 		useFunctions: ko.observable(false),
+		canCopyReport: ko.observable(true),
 	};
 	self.appSettings = options && options.appSettings ? options.appSettings : self.appSettings;
 	self.runQuery = function (useAi) {
@@ -6753,7 +6754,7 @@ var reportViewModel = function (options) {
 				};
 
 				e.copyReport = function () {
-					if (!e.canEdit) {
+					if (!self.appSettings.canCopyReport()) {
 						options.reportWizard.modal('hide');
 						toastr.error('No access to copy report');
 						return;
@@ -7205,6 +7206,7 @@ var reportViewModel = function (options) {
 			self.appSettings.usePromptBuilder(x.usePromptBuilder !== false ? true : false);
 			self.appSettings.showPageSize = x.showPageSize;
 			self.appSettings.showImportExport(x.showImportExport);
+			self.appSettings.canCopyReport(x.canCopyReport);
 			self.appSettings.useFunctions(x.useFunctions);
 		});
 	}
@@ -7962,6 +7964,7 @@ var dashboardViewModel = function (options) {
 		usePromptBuilder: true,
 		showPageSize: false,
 		showImportExport: false,
+		canCopyReport: true,
 		useFunctions: false 
 	};
 
@@ -7992,6 +7995,7 @@ var dashboardViewModel = function (options) {
 			self.appSettings.usePromptBuilder = x.usePromptBuilder;
 			self.appSettings.showPageSize = x.showPageSize;
 			self.appSettings.showImportExport = x.showImportExport;
+			self.appSettings.canCopyReport = x.canCopyReport;
 			self.appSettings.useFunctions = x.useFunctions;
 		});
 	}

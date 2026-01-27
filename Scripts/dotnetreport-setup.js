@@ -2957,6 +2957,7 @@ var settingPageViewModel = function (options) {
 	self.showImportExport = ko.observable(false);
 	self.licenseType = ko.observable(null);
 	self.isEnterprise = ko.observable(false);
+	self.canCopyReport = ko.observable(true);
 	self.useFunctions = ko.observable(false);
 	self.appThemes = ko.observableArray([
 		{ name: 'Default', value: 'default' },
@@ -3036,6 +3037,7 @@ var settingPageViewModel = function (options) {
 							usePromptBuilder: self.usePromptBuilder(),
 							showPageSize: self.showPageSize(),
 							showImportExport: self.showImportExport(),
+							canCopyReport: self.canCopyReport(),
 							useFunctions: self.isEnterprise() ? self.useFunctions() : false
 						})
 					})
@@ -3096,6 +3098,7 @@ var settingPageViewModel = function (options) {
 				self.usePromptBuilder(settings.usePromptBuilder === false ? false : true);
 				self.showPageSize(settings.showPageSize);
 				self.showImportExport(settings.showImportExport);
+				self.canCopyReport(settings.canCopyReport);
 				self.licenseType(settings.licenseType || settings.license || '');
 				self.isEnterprise(self.licenseType() && self.licenseType().toLowerCase() === 'enterprise');
 				if (self.isEnterprise()) {
