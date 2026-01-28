@@ -6725,7 +6725,7 @@ var reportViewModel = function (options) {
 				e.runMode = false;
 				e.isSelected = ko.observable(false);
 				e.openReport = function () {			
-					if (!e.canEdit && !e.runMode) {
+					if (!e.runMode && !e.canEdit && !self.appSettings.canCopyReport()) {
 						options.reportWizard.modal('hide');
 						toastr.error('No access to edit report');
 						return;
@@ -6736,7 +6736,7 @@ var reportViewModel = function (options) {
 					var saveReportFlag = self.SaveReport();
 					// Load report
 					return self.LoadReport(e.reportId).done(function () {
-						if (!self.CanEdit() && !e.runMode) {
+						if (!self.CanEdit() && !self.appSettings.canCopyReport() && !e.runMode) {
 							options.reportWizard.modal('hide');
 							toastr.error('No access to edit report');
 							return;
@@ -6754,13 +6754,13 @@ var reportViewModel = function (options) {
 				};
 
 				e.copyReport = function () {
-					if (!self.appSettings.canCopyReport()) {
+					if (!e.canEdit && !self.appSettings.canCopyReport()) {
 						options.reportWizard.modal('hide');
 						toastr.error('No access to copy report');
 						return;
 					}
 					e.openReport().done(function () {
-						if (!self.CanEdit()) {
+						if (!self.CanEdit() && !self.appSettings.canCopyReport()) {
 							options.reportWizard.modal('hide');
 							toastr.error('No access to copy report');
 							return;
