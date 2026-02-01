@@ -3613,7 +3613,9 @@ var reportViewModel = function (options) {
 					FieldConditionOp: x.fieldConditionOp(),
 					FieldConditionVal: JSON.stringify(x.fieldConditionVal),
 					JsonColumnName: x.isJsonColumn && x.jsonColumnName ? x.jsonColumnName : '',
-					DynamicTableId: x.dynamicTableId
+					DynamicTableId: x.dynamicTableId,
+					FieldName: x.fieldDbName ?? x.fieldName,
+					TableName: x.tableName
 				};
 			}),
 			Schedule: self.scheduleBuilder.toJs(),

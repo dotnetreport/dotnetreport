@@ -1361,7 +1361,7 @@ var manageViewModel = function (options) {
 										if (!success) {
 											self.Tables.model.remove(newTable);
 										}
-										resolve(); 
+										resolve();
 									})
 									.catch(() => resolve());
 							};
@@ -1373,7 +1373,7 @@ var manageViewModel = function (options) {
 										processAndSave();
 									} else {
 										toastr.info('Upload canceled for ' + tableName + '.');
-										resolve(); 
+										resolve();
 									}
 								});
 							} else {
@@ -2417,13 +2417,36 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 			});
 		}
 
-		t.exportTableJson = function () {
-			var e = ko.mapping.toJS(t, {
-				'ignore': ["saveTable", "JoinTable", "ForeignJoinTable"]
+		self.exportTablesJson = function (customOnly) {
+			const inCategory = t => customOnly ? t.CustomTable() : !t.CustomTable();
+			const all = self.model().filter(inCategory);
+			const filtered = self.filteredTables().filter(inCategory);
+			const selected = filtered.filter(t => t.Selected());
+
+			if (!selected.length) return toastr.warning('No tables to export.');
+
+			const msg = (filtered.length < all.length
+				? `Only filtered tables (${filtered.length} of ${all.length}) will be exported.`
+				: `All ${all.length} tables will be exported.`);
+
+			bootbox.confirm({
+				title: "Confirm Export Tables",
+				message: msg,
+				buttons: {
+					cancel: { label: 'Cancel', className: 'btn-secondary' },
+					confirm: { label: 'Export', className: 'btn-primary' }
+				},
+				callback: ok => {
+					if (!ok) return;
+					const exportList = selected.map(t => ko.mapping.toJS(t, {
+						ignore: ["saveTable", "JoinTable", "ForeignJoinTable"]
+					}));
+					downloadJson(JSON.stringify(exportList, null, 2),
+						customOnly ? 'CustomTables.json' : 'Tables.json', 'application/json');
+					toastr.success('Table schema exported.');
+				}
 			});
-			var exportJson = JSON.stringify(e, null,2)
-			downloadJson(exportJson, e.TableName + (e.IsView ? ' (View)' : '') + '.json', 'application/json');
-		}
+		};
 
 		t.previewTable = function (apiKey, dbKey) {
 			previewData(null);
