@@ -541,16 +541,30 @@ function filterGroupViewModel(args) {
 			e.Value1 = filterValue;
 			e.Operator = "=";
 		}
-
+		function isDateTimeByMappings(val, mappings) {
+			if (typeof val !== 'string') return false;
+			if (!/\d{2}:\d{2}$/.test(val)) return false;
+			const datePart = val.split(' ')[0];
+			const formatRegexMap = {
+				'mm/dd/yy': /^\d{2}\/\d{2}\/\d{4}$/,
+				'dd/mm/yy': /^\d{2}\/\d{2}\/\d{4}$/,
+				'yy/mm/dd': /^\d{4}\/\d{2}\/\d{2}$/,
+				'dd.mm.yy': /^\d{2}\.\d{2}\.\d{4}$/
+			};
+			return Object.values(mappings).some(fmt => {
+				const regex = formatRegexMap[fmt];
+				return regex && regex.test(datePart);
+			});
+		}
 		if (e.Value1) {
-			if (typeof e.Value1 === 'string' && e.Operator !== 'range') {
+			if (isDateTimeByMappings(e.Value1, self.dateFormatMappings) && e.Operator !== 'range') {
 				[datePart1, timePart1] = e.Value1.split(" ");
 				e.Value1 = datePart1;
 			}
 			lookupList.push({ id: e.Value1, text: e.Value1 });
 		}
 		if (e.Value2) {
-			if (typeof e.Value2 === 'string' && e.Operator !== 'range') {
+			if (isDateTimeByMappings(e.Value2, self.dateFormatMappings) && e.Operator !== 'range') {
 				[datePart2, timePart2] = e.Value2.split(" ");
 				e.Value2 = datePart2;
 			}
