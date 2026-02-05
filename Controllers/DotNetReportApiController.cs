@@ -76,9 +76,23 @@ namespace ReportBuilder.Web.Controllers
 
             // Uncomment if you want to restrict max records returned
             sql = sql.Substring(0, 0) + "SELECT DISTINCT TOP 500 " + sql.Substring(0 + "SELECT ".Length);
+            string token = model.token;
+            string lastToken = "";
             if (sql.Contains("{{token}}"))
             {
-                sql = sql.Replace("{{token}}", $"'%{model.token}%'");
+                token = Uri.UnescapeDataString(token);
+                if (!string.IsNullOrWhiteSpace(token))
+                {
+                    var parts = token
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries);
+
+                    if (parts.Length > 0)
+                    {
+                        lastToken = parts[parts.Length - 1].Trim();
+                    }
+                }
+                lastToken = lastToken.Replace("'", "");
+                sql = sql.Replace("{{token}}", $"'%{lastToken}%'");
             }
             sql = ConvertTopQuery(sql, DotNetReportHelper.dbtype);
             var json = new StringBuilder();
