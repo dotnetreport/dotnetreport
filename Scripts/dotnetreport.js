@@ -599,7 +599,16 @@ function filterGroupViewModel(args) {
 		//	filter.Value2(null);
 		//});
 		filter.Value.subscribe(function (value) {
-			filter.fmtValue(value)
+			filter.fmtValue(value);
+			var valueIn = [];
+			if ((filter.Operator() === 'in' || filter.Operator() === 'not in') && value) {
+				valueIn = value
+					.split(',')                 // split first
+					.map(v => v.trim())
+					.map(v => v.replace(/^'+|'+$/g, '')) // remove edge quotes only
+					.filter(v => v.length);     // remove empty
+			}
+			filter.ValueIn(valueIn);
 		})
 		filter.Value2.subscribe(function (value) {
 			filter.fmtValue2(value)
