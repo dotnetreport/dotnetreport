@@ -4410,7 +4410,13 @@ var reportViewModel = function (options) {
 
 						switch (operation) {
 							case '=':
-								conditionTrue = value == compareTo;
+								if (dataIsDate) {
+									conditionTrue =
+										dataIsDate.getTime() ==
+										parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || 'United States']).getTime();
+								} else {
+									conditionTrue = value == compareTo;
+								}
 								break;
 							case 'in':
 								var compareArray = typeof compareTo === "string" ? compareTo.split(",") : [compareTo];
@@ -4508,15 +4514,29 @@ var reportViewModel = function (options) {
 
 					return r.FormattedValue;
 				});
+				function formatValue(val, r) {
+					let style = '';
+					if (r._backColor) {
+						style += `background-color:${r._backColor};`;
+					}
+					if (r._fontColor) {
+						style += `color:${r._fontColor};`;
+					}
+					if (r._fontBold) {
+						style += `font-weight:bold;`;
+					}
+					if (!style) return val;
+					return `<span style="${style}">${val}</span>`;
+				}
 
 				if (self.ReportType()=='Html' && columns[i]) {
 					const col = columns[i];
 					const selectedField = ko.utils.arrayFirst(self.SelectedFields(), f => f.dbField === col.SqlField || f.fieldId == col.fieldId || col.SqlField.indexOf('(' + f.dbField + ')') > 0);
 					const val = ko.unwrap(r.formattedVal || r.Value || '');
-
+					const formattedVal = formatValue(val, r);
 					if (selectedField) {
 						const placeholderKey = selectedField.selectedFieldName();
-						renderedHtml = renderedHtml.replaceAll(`{{${placeholderKey}}}`, val);
+						renderedHtml = renderedHtml.replaceAll(`{{${placeholderKey}}}`, formattedVal);
 					}
 					else {
 						let tableName = 'Custom';
@@ -4527,7 +4547,7 @@ var reportViewModel = function (options) {
 							}
 						}
 						const placeholderKey = `${tableName} > ${col.fieldName}`.trim();
-						renderedHtml = renderedHtml.replaceAll(`{{${placeholderKey}}}`, val);
+						renderedHtml = renderedHtml.replaceAll(`{{${placeholderKey}}}`, formattedVal);
 					}
 
 				}
