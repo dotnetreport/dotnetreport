@@ -1639,6 +1639,7 @@ var reportViewModel = function (options) {
 		self.activeDesign(false);
 		self.ReportMode("generate");
 		self.setupDirtyCheck();
+		self.currentUserManageAccess();
 	};
 
 	self.createNewReportAi = function () {
@@ -2381,6 +2382,15 @@ var reportViewModel = function (options) {
 		self.subReports([]);
 		self.clearManageAccess();	
 	};
+	self.currentUserManageAccess = function () {
+		self.manageAccess.clientId('');
+		self.manageAccess.setupList(self.manageAccess.users, self.currentUserId || '');
+		self.manageAccess.setupList(self.manageAccess.userRoles, self.currentUserRole || '');
+		self.manageAccess.setupList(self.manageAccess.viewOnlyUserRoles, self.currentUserRole ||'');
+		self.manageAccess.setupList(self.manageAccess.viewOnlyUsers, self.currentUserId || '');
+		self.manageAccess.setupList(self.manageAccess.deleteOnlyUserRoles, self.currentUserRole ||'');
+		self.manageAccess.setupList(self.manageAccess.deleteOnlyUsers, self.currentUserId || '');
+	}
 	self.clearManageAccess = function () {
 		self.manageAccess.clientId('');
 		self.manageAccess.setupList(self.manageAccess.users, '');
