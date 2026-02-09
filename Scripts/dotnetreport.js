@@ -2385,11 +2385,11 @@ var reportViewModel = function (options) {
 	self.currentUserManageAccess = function () {
 		self.manageAccess.clientId('');
 		self.manageAccess.setupList(self.manageAccess.users, self.currentUserId || '');
-		self.manageAccess.setupList(self.manageAccess.userRoles, self.currentUserRole || '');
-		self.manageAccess.setupList(self.manageAccess.viewOnlyUserRoles, self.currentUserRole ||'');
-		self.manageAccess.setupList(self.manageAccess.viewOnlyUsers, self.currentUserId || '');
-		self.manageAccess.setupList(self.manageAccess.deleteOnlyUserRoles, self.currentUserRole ||'');
-		self.manageAccess.setupList(self.manageAccess.deleteOnlyUsers, self.currentUserId || '');
+		self.manageAccess.setupList(self.manageAccess.userRoles, '');
+		self.manageAccess.setupList(self.manageAccess.viewOnlyUserRoles, '');
+		self.manageAccess.setupList(self.manageAccess.viewOnlyUsers, '');
+		self.manageAccess.setupList(self.manageAccess.deleteOnlyUserRoles,'');
+		self.manageAccess.setupList(self.manageAccess.deleteOnlyUsers, '');
 	}
 	self.clearManageAccess = function () {
 		self.manageAccess.clientId('');
