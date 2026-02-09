@@ -2377,7 +2377,7 @@ var reportViewModel = function (options) {
 		self.queryPrompt = "";
 		self.isDirty(false);
 		self.clearTableSettings();
-		self.clearKpiSettings();
+		self.clearKpiSettings(true);
 		self.subReports([]);
 		self.clearManageAccess();	
 	};
@@ -5476,18 +5476,20 @@ var reportViewModel = function (options) {
 	self.toggleKpiSettings = function () {
 		self.showKpiSettings(!self.showKpiSettings());
 	};
-	self.updateKpi = function () {
-		var result = self.ReportResult().ReportData();
-		if (result) {
-			result.FontSize(self.kpiSettings().fontSize() + "px");
-			result.Alignment(self.kpiSettings().alignment());
-			result.FontColor(self.kpiSettings().fontColor());
-			result.BackColor(self.kpiSettings().backColor());
-			result.PositiveColor(self.kpiSettings().positiveColor());
-			result.NegativeColor(self.kpiSettings().negativeColor());
-			result.NumberFormat(self.kpiSettings().numberFormat());
-			result.ShortFormat(self.kpiSettings().shortFormat());
-			result.CurrencySymbol(self.kpiSettings().currencySymbol());
+	self.updateKpi = function (clear) {
+		if (clear != true) {
+			var result = self.ReportResult().ReportData();
+			if (result) {
+				result.FontSize(self.kpiSettings().fontSize() + "px");
+				result.Alignment(self.kpiSettings().alignment());
+				result.FontColor(self.kpiSettings().fontColor());
+				result.BackColor(self.kpiSettings().backColor());
+				result.PositiveColor(self.kpiSettings().positiveColor());
+				result.NegativeColor(self.kpiSettings().negativeColor());
+				result.NumberFormat(self.kpiSettings().numberFormat());
+				result.ShortFormat(self.kpiSettings().shortFormat());
+				result.CurrencySymbol(self.kpiSettings().currencySymbol());
+			}
 		}
 	};
 	self.copyKpiFormat = function () {
@@ -5530,7 +5532,7 @@ var reportViewModel = function (options) {
 	self.kpiSettings().alignment.subscribe(function (newVal) {
 		self.updateKpi();
 	});
-	self.clearKpiSettings = function () {
+	self.clearKpiSettings = function (clear) {
 		self.kpiSettings().fontSize(48);
 		self.kpiSettings().alignment("center");
 		self.kpiSettings().fontColor("#000000");//black
@@ -5541,7 +5543,7 @@ var reportViewModel = function (options) {
 		self.kpiSettings().shortFormat("none");
 		self.kpiSettings().currencySymbol("$");
 		self.kpiSettings().customFormat(null);
-		self.updateKpi();
+		self.updateKpi(clear);
 	};
 	self.chartOptions = ko.observable({
 		title: self.ReportName(),
