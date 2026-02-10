@@ -3461,7 +3461,7 @@ namespace ReportBuilder.Web.Models
                     {
                         await page.SetViewportAsync(new ViewPortOptions { Width = width });
                         await page.AddStyleTagAsync(new AddTagOptions { Content = "@page {size: landscape }" });
-                        pdfOptions.Width = $"{width}px";
+                        pdfOptions.Width = $"{width+100}px";
                         pdfOptions.MarginOptions.Right = "0.5in";
                     }
                 }
