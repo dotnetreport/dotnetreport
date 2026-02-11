@@ -7472,7 +7472,10 @@ var reportViewModel = function (options) {
 			pageOrientation: pageOrientation,
 			includeSubTotal: self.IncludeSubTotal(),
 			includeColumnTotal: self.IncludeColumnTotal(),
-			adminMode: self.adminMode()
+			adminMode: self.adminMode(),
+			isSubreport: self.subReports().length > 0,
+			pageNumber: self.pager.currentPage(),
+            currentPageSize: self.pager.pageSize()
 		}, 'pdf');
 	}
 	self.PdfPage = new PdfPageViewModel(self.appSettings, self.downloadPdf, self.downloadPdfAlt);

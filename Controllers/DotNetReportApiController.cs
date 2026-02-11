@@ -1143,7 +1143,10 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string pageOrientation = "",
             [FromForm] bool includeSubTotal = false,
             [FromForm] bool includeColumnTotal = false,
-            [FromForm] string userId = "")
+            [FromForm] string userId = "",
+            [FromForm] bool isSubreport = false,
+            [FromForm] int pageNumber=1,
+            [FromForm] int currentPageSize = 1)
         {
 
             var settings = GetSettings();
@@ -1154,7 +1157,7 @@ namespace ReportBuilder.Web.Controllers
                 await ValidateAccess(userId, reportSql, adminMode: adminMode);
             }
             var pdf = await DotNetReportHelper.GetPdfFile(HttpUtility.UrlDecode(printUrl), reportId, reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName),
-                                settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), JsonConvert.SerializeObject(settings.DataFilters), expandAll, expandSqls, pivotColumn, pivotFunction, false, debug, pageSize, pageOrientation,includeSubTotal,includeColumnTotal);
+                                settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), JsonConvert.SerializeObject(settings.DataFilters), expandAll, expandSqls, pivotColumn, pivotFunction, false, debug, pageSize, pageOrientation,includeSubTotal,includeColumnTotal,isSubreport,pageNumber,currentPageSize);
 
             return File(pdf, "application/pdf", reportName + ".pdf");
         }
