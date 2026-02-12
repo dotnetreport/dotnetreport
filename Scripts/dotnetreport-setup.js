@@ -1446,51 +1446,47 @@ var manageViewModel = function (options) {
 			}
 			let addedJoins = [];
 			const reader = new FileReader();
-
 			reader.onload = function (event) {
 				try {
 					const joins = JSON.parse(event.target.result);
+					const allTables = self.Tables.model();
 
-					joins.forEach(newItem => {
-						let existingItem = self.Joins().find(item =>
-							item.TableId() === newItem.TableId &&
-							item.JoinedTableId() === newItem.JoinedTableId
+					const getTableByName = name =>
+						allTables.find(t =>
+							ko.unwrap(t.DisplayName) === name ||
+							ko.unwrap(t.TableName) === name
 						);
 
-						// If no ID match, try match by table names
-						//if (!existingItem && newItem.TableName && newItem.JoinedTableName) {
-						//	existingItem = self.Joins().find(item =>
-						//		item.JoinTable().DisplayName === newItem.TableName &&
-						//		item.OtherTable().DisplayName === newItem.JoinedTableName &&
-						//		item.JoinFieldName() === newItem.JoinFieldName &&
-						//		item.FieldName() === newItem.FieldName
-						//	);
-						//}
+					joins.forEach(newItem => {
+
+						// Always resolve table by NAME (ignore incoming Id)
+						let table = getTableByName(newItem.TableName);
+						let joinedTable = getTableByName(newItem.JoinedTableName);
+
+						if (!table || !joinedTable) {
+							toastr.warning(`Skipping join: table not found (${newItem.TableName} or ${newItem.JoinedTableName})`);
+							return;
+						}
+
+						// Assign correct IDs from current schema
+						newItem.TableId = ko.unwrap(table.Id);
+						newItem.JoinedTableId = ko.unwrap(joinedTable.Id);
+
+						// Check existing join by table + fields (NOT Id)
+						let existingItem = self.Joins().find(item =>
+							item.JoinTable().DisplayName() === newItem.TableName &&
+							item.OtherTable().DisplayName() === newItem.JoinedTableName &&
+							item.JoinFieldName() === newItem.JoinFieldName &&
+							item.FieldName() === newItem.FieldName
+						);
 
 						if (existingItem) {
 							if (newItem.JoinType) existingItem.JoinType(newItem.JoinType);
 							if (newItem.Alias) existingItem.Alias(newItem.Alias);
 							if (newItem.Relationship) existingItem.Relationship(newItem.Relationship);
+
 							existingItem.isNew = true;
 						} else {
-							const allTables = self.Tables.model();
-							const getTableById = id => allTables.find(t => ko.unwrap(t.Id) === id);
-							//const getTableByName = name => allTables.find(t => ko.unwrap(t.DisplayName) === name || ko.unwrap(t.TableName) === name);
-
-							let table = getTableById(newItem.TableId) ;
-							let joinedTable = getTableById(newItem.JoinedTableId);
-
-							//let table = getTableById(newItem.TableId) || (newItem.TableName ? getTableByName(newItem.TableName) : null);
-							//let joinedTable = getTableById(newItem.JoinedTableId) || (newItem.JoinedTableName ? getTableByName(newItem.JoinedTableName) : null);
-
-							if (!table || !joinedTable) {
-								toastr.warning(`Skipping join: could not find table "${newItem.TableName}" or "${newItem.JoinedTableName}" in this schema.`);
-								return;
-							}
-
-							newItem.TableId = ko.unwrap(table.Id);
-							newItem.JoinedTableId = ko.unwrap(joinedTable.Id);
-
 							const added = self.setupJoin(newItem);
 							added.isNew = true;
 							self.Joins.push(added);
@@ -1498,16 +1494,12 @@ var manageViewModel = function (options) {
 						}
 					});
 
-					// Don't auto save 
-					// self.SaveJoins();
 					self.isDirty(true);
-
 					toastr.success('Joins imported in view. Please click "Save Joins" to apply.');
 					$('#uploadJoinsFileModal').modal('hide');
 					clearFileInput('joinsFileInputJson');
 
 				} catch (e) {
-					addedJoins.forEach(j => self.Joins.remove(j));
 					toastr.error('Invalid JSON file: ' + e.message);
 					clearFileInput('joinsFileInputJson');
 				}
