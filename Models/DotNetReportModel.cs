@@ -3257,7 +3257,9 @@ namespace ReportBuilder.Web.Models
         }
         public async static Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
                       string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false, string expandSqls = null,
-                      string pivotColumn = null, string pivotFunction = null, bool imageOnly = false, bool debug = false,string pageSize="",string pageOrientation="",bool subTotalMode=false,bool includeColumnTotal=false)
+                      string pivotColumn = null, string pivotFunction = null, bool imageOnly = false, bool debug = false,string pageSize="",string pageOrientation="",bool subTotalMode=false,bool includeColumnTotal=false, bool isSubreport = false,
+        int pageNumber = 1,
+        int currentPageSize = 1)
         {
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
             await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
@@ -3301,7 +3303,15 @@ namespace ReportBuilder.Web.Models
                         .ToList();
                     sqlFields.AddRange(dt.Columns.Cast<DataColumn>().Skip(sqlFields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
                 }
-
+                if (isSubreport)
+                {
+                    int skip = (pageNumber - 1) * currentPageSize;
+                    var pagedRows = dt.AsEnumerable().Skip(skip).Take(currentPageSize);
+                    if (pagedRows.Any())
+                        dt = pagedRows.CopyToDataTable();
+                    else
+                        dt = dt.Clone(); 
+                }
                 var model = new DotNetReportResultModel
                 {
                     ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dt, sqlFields, false),
@@ -3310,9 +3320,9 @@ namespace ReportBuilder.Web.Models
                     ReportDebug = false,
                     Pager = new DotNetReportPagerModel
                     {
-                        CurrentPage = 1,
+                        CurrentPage = pageNumber,
                         PageSize = 100000,
-                        TotalRecords = dt.Rows.Count,
+                        TotalRecords = isSubreport ? currentPageSize : dt.Rows.Count,
                         TotalPages = 1
                     }
                 };
@@ -3324,8 +3334,8 @@ namespace ReportBuilder.Web.Models
                 formData.AppendLine($"<input name=\"reportSql\" value=\"{HttpUtility.HtmlEncode(reportSql)}\" />");
                 formData.AppendLine($"<input name=\"connectKey\" value=\"{HttpUtility.HtmlEncode(connectKey)}\" />");
                 formData.AppendLine($"<input name=\"reportId\" value=\"{reportId}\" />");
-                formData.AppendLine($"<input name=\"pageNumber\" value=\"1\" />");
-                formData.AppendLine($"<input name=\"pageSize\" value=\"99999\" />");
+                formData.AppendLine($"<input name=\"pageNumber\" value=\"{pageNumber}\" />");
+                formData.AppendLine($"<input name=\"pageSize\" value=\"{(isSubreport ? currentPageSize : 99999)}\" />");
                 formData.AppendLine($"<input name=\"userId\" value=\"{userId}\" />");
                 formData.AppendLine($"<input name=\"clientId\" value=\"{clientId}\" />");
                 formData.AppendLine($"<input name=\"currentUserRole\" value=\"{currentUserRole}\" />");
