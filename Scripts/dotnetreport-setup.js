@@ -1454,20 +1454,18 @@ var manageViewModel = function (options) {
 					joins.forEach(newItem => {
 						let existingItem = self.Joins().find(item =>
 							item.TableId() === newItem.TableId &&
-							item.JoinedTableId() === newItem.JoinedTableId &&
-							item.JoinFieldName() === newItem.JoinFieldName &&
-							item.FieldName() === newItem.FieldName
+							item.JoinedTableId() === newItem.JoinedTableId
 						);
 
 						// If no ID match, try match by table names
-						if (!existingItem && newItem.TableName && newItem.JoinedTableName) {
-							existingItem = self.Joins().find(item =>
-								item.JoinTable().DisplayName === newItem.TableName &&
-								item.OtherTable().DisplayName === newItem.JoinedTableName &&
-								item.JoinFieldName() === newItem.JoinFieldName &&
-								item.FieldName() === newItem.FieldName
-							);
-						}
+						//if (!existingItem && newItem.TableName && newItem.JoinedTableName) {
+						//	existingItem = self.Joins().find(item =>
+						//		item.JoinTable().DisplayName === newItem.TableName &&
+						//		item.OtherTable().DisplayName === newItem.JoinedTableName &&
+						//		item.JoinFieldName() === newItem.JoinFieldName &&
+						//		item.FieldName() === newItem.FieldName
+						//	);
+						//}
 
 						if (existingItem) {
 							if (newItem.JoinType) existingItem.JoinType(newItem.JoinType);
@@ -1477,10 +1475,13 @@ var manageViewModel = function (options) {
 						} else {
 							const allTables = self.Tables.model();
 							const getTableById = id => allTables.find(t => ko.unwrap(t.Id) === id);
-							const getTableByName = name => allTables.find(t => ko.unwrap(t.DisplayName) === name || ko.unwrap(t.TableName) === name);
+							//const getTableByName = name => allTables.find(t => ko.unwrap(t.DisplayName) === name || ko.unwrap(t.TableName) === name);
 
-							let table = getTableById(newItem.TableId) || (newItem.TableName ? getTableByName(newItem.TableName) : null);
-							let joinedTable = getTableById(newItem.JoinedTableId) || (newItem.JoinedTableName ? getTableByName(newItem.JoinedTableName) : null);
+							let table = getTableById(newItem.TableId) ;
+							let joinedTable = getTableById(newItem.JoinedTableId);
+
+							//let table = getTableById(newItem.TableId) || (newItem.TableName ? getTableByName(newItem.TableName) : null);
+							//let joinedTable = getTableById(newItem.JoinedTableId) || (newItem.JoinedTableName ? getTableByName(newItem.JoinedTableName) : null);
 
 							if (!table || !joinedTable) {
 								toastr.warning(`Skipping join: could not find table "${newItem.TableName}" or "${newItem.JoinedTableName}" in this schema.`);

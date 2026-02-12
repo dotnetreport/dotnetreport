@@ -1279,7 +1279,8 @@ window.toastr = (function () {
     return {
         success: (msg) => show(msg, 'success'),
         error: (msg) => show(msg, 'danger'),
-        info: (msg) => show(msg, 'info')
+        info: (msg) => show(msg, 'info'),
+        warning: (msg) => show(msg, 'warning')
     };
 })();
 
