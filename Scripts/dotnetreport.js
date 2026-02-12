@@ -301,8 +301,8 @@ function scheduleBuilder(userId, getTimeZonesUrl,appSettings) {
 		};
 
 		self.selectedOption(data.SelectedOption);
-		self.selectedDays(data.SelectedDays.split(','));
-		self.selectedMonths(data.SelectedMonths.split(','));
+		self.selectedDays((data.SelectedDays || '').split(','));
+		self.selectedMonths((data.SelectedMonths || '').split(','));
 
 		if (self.selectedOption() == 'once') {
 			self.selectedDate(data.SelectedDates);
