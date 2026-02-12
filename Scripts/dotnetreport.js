@@ -719,7 +719,24 @@ function filterGroupViewModel(args) {
 					txtqry.setupLookup(newField, filter);
 				}, 1000);				
 			}
-
+			if (newField && newField.fieldId === 0 &&newField.tableName === "Custom" && newField.dynamicTableId === null) {
+				if (['Percentage', 'Number', 'Decimal', 'Currency', 'Days', 'Hours', 'Minutes', 'Seconds'].indexOf(newField.fieldFormat()) >= 0 || ['Int', 'Decimal'].indexOf(newField.fieldType) >= 0) {
+					newField.fieldType = "Int";
+					newField.fieldFilter = ['=', '>', '<', '>=', '<=', 'in', 'not in', 'not equal', 'between', 'is blank', 'is not blank'];
+				} 
+				else if (['Date', 'Date and Time', 'Time'].indexOf(newField.fieldFormat()) >= 0 || ['Date', 'DateTime'].indexOf(newField.fieldType) >= 0) {
+					if (newField.fieldFormat() === 'Date') {
+						newField.fieldType = 'Date';
+					}
+					else if (newField.fieldFormat() === 'Date and Time' || newField.fieldFormat() === 'Time') {
+						newField.fieldType = 'DateTime';
+					}
+					newField.fieldFilter = ['=', '>', '<', '>=', '<=', 'not equal', 'between', 'range', 'is blank', 'is not blank'];
+				} else {
+					newField.fieldType = newField.fieldType || "Varchar";
+					newField.fieldFilter = ['=', 'in', 'not in', 'like', 'not like', 'not equal', 'is blank', 'is not blank'];
+				}
+			}
 			if (newField && newField.restrictedDateRange && newField.fieldType == 'DateTime') {
 				// apply date range selection
 				filter.Value.subscribe(function (newValue) {
@@ -6699,20 +6716,6 @@ var reportViewModel = function (options) {
 			e = self.setupField(e);
 		});
 
-		_.forEach(report.SelectedFields, function (field) {
-			if (
-				field.fieldId === 0 &&
-				field.tableName === "Custom" &&
-				field.dynamicTableId === null
-			) {
-				if (['Integer', 'Decimal', 'Currency', 'Days', 'Hours', 'Minutes', 'Seconds'].indexOf(field.fieldFormat()) >= 0) {
-					field.fieldType = "Int";
-					field.fieldFilter = ['=', '>', '<', '>=', '<=', 'not equal', 'is blank', 'is not blank'];
-				} else {
-					field.fieldFilter = ['=', 'in', 'not in', 'like', 'not like', 'not equal', 'is blank', 'is not blank'];
-				}
-			}
-		});
 		self.SelectedFields(report.SelectedFields);
 		self.lastPickedField(null);
 	}
