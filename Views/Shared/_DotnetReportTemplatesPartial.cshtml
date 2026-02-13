@@ -314,19 +314,20 @@
                         </select>
                     </div>
                     <div class="d-flex justify-content-end mb-2">
-                        <button class="btn btn-sm btn-outline-primary me-2"
-                                data-bind="click: copyKpiFormat">
-                            Copy Format
+                        <button class="btn btn-sm"
+                                data-bind="click: copyKpiFormat"
+                                title="Copy Format">
+                            <i class="fa fa-copy"></i>
                         </button>
-                        <button class="btn btn-sm btn-outline-success"
-                                data-bind="click: pasteKpiFormat">
-                            Paste Format
+                        <button class="btn btn-sm"
+                                data-bind="click: pasteKpiFormat"
+                                title="Paste Format">
+                            <i class="fa fa-paste"></i>
                         </button>
-                    </div>
-                    <div class="d-flex justify-content-end">
-                        <button class="btn btn-sm btn-outline-secondary"
-                                data-bind="click: clearKpiSettings">
-                            Clear
+                         <button class="btn btn-sm"
+                                data-bind="click: clearKpiSettings"
+                                title="Clear">
+                                <i class="fa fa-close"></i>
                         </button>
                     </div>
                 </div>
@@ -2961,21 +2962,22 @@
                                data-bind="attr: { id: 'tbl-color-picker-' + ReportID()},value: tableSettings().backColor, event: { change: updateTable }"/>
                         </div>
                         <div class="mb-2 col-6 d-flex align-items-end">
-                            <button class="btn btn-sm small btn-outline-secondary" data-bind="click: clearTableSettings">
-                                Clear
+                            <button class="btn btn-sm small"
+                                    data-bind="click: copyTableFormat"
+                                    title="Copy Format">
+                                <i class="fa fa-copy"></i>
+                            </button>
+                            <button class="btn btn-sm small"
+                                    data-bind="click: pasteTableFormat"
+                                    title="Paste Format">
+                                <i class="fa fa-paste"></i>
+                            </button>
+                            <button class="btn btn-sm small" data-bind="click: clearTableSettings"
+                                title="Clear">
+                                <i class="fa fa-close"></i>
                             </button>
                         </div>
-                    </div>
-                    <div class="form-group row">
-                        <div class="mb-2 col-12 d-flex align-items-end">
-                            <button class="btn btn-sm small btn-outline-primary ms-2" data-bind="click: copyTableFormat">
-                                Copy Format
-                            </button>
-                            <button class="btn btn-sm small btn-outline-success ms-2" data-bind="click: pasteTableFormat">
-                                Paste Format
-                            </button>
-                        </div>
-                    </div>
+                    </div>                    
                 </div>
             </div>
         </div>
