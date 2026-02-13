@@ -4349,6 +4349,7 @@ var reportViewModel = function (options) {
 							report.adminMode(self.adminMode());
 							report.LoadReport(linkItem.LinkedToReportId, true, '', true, false);
 
+						report._subReportOrder = _.findIndex(self.subReports(), sr => sr.fieldId === col.fieldId);
 							subreportsRan.push(report);
 						});
 					}
@@ -4780,10 +4781,15 @@ var reportViewModel = function (options) {
 			if (self.useStoredProc()) {
 				e.Items = _.filter(e.Items, function (x) { return _.includes(validFieldNames, x.Column.SqlField); });
 			}
-			e.subReportsRan = ko.observableArray([]);
+			var subReportsRanUnsorted = ko.observableArray([]);
+			e.subReportsRan = ko.computed(function() {
+				return subReportsRanUnsorted().slice().sort(function(a, b) {
+					return (a._subReportOrder || 0) - (b._subReportOrder || 0);
+				});
+			});
 			e.Items.__isFirstRow = idx === 0;
 			e.Items.__isLastRow = idx === result.ReportData.Rows.length - 1;
-			e.renderedHtml = processRow(e.Items, result.ReportData.Columns, e.subReportsRan);
+			e.renderedHtml = processRow(e.Items, result.ReportData.Columns, subReportsRanUnsorted);
 		});
 
 		if (result.ReportData.Rows.length > 0 && self.ReportType() == 'Html') {
