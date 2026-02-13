@@ -2188,7 +2188,7 @@ var manageViewModel = function (options) {
 									lookupListUrl: options.lookupListUrl,
 									userSettings: { currentUserId: options.currentUserId }
 								});
-								reportview.adminMode = ko.observable(true);
+								reportview.adminMode(true);
 								report.data = report.data || {};
 								report.data.FolderID = folderId;
 
