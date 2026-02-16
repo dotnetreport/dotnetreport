@@ -1,7 +1,7 @@
 ﻿using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using OfficeOpenXml;
@@ -4481,7 +4481,7 @@ namespace ReportBuilder.Web.Models
                 {
                     var procName = dr["ROUTINE_NAME"].ToString();
                     var procSchema = dr["ROUTINE_SCHEMA"].ToString();
-                    using (cmd = new SqlCommand(procName, conn))
+                    using (cmd = new SqlCommand($"[{procSchema}].[{procName}]", conn))
                     {
                         cmd.CommandType = CommandType.StoredProcedure;
                         // Get the parameters.
