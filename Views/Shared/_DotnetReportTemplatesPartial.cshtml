@@ -1680,7 +1680,7 @@
             <div class="form-group row small">
             <div class="col-6">
                 <label>Default Series Type</label>
-                <select class="form-select form-select-sm" data-bind="options: seriesTypes, value: comboChartType"></select>
+                <select class="form-select form-select-sm" data-bind="options: seriesTypes, optionsText: 'label', optionsValue: 'value', value: comboChartType"></select>
             </div>
             </div>
         </div>
@@ -2847,10 +2847,11 @@
                     <div class="d-flex justify-content-between mb-1">
                         <div>
                             <label class="form-label small">Legend Position</label>
-                            <select class="form-select form-select-sm" data-bind="value: chartOptions().legendPosition, event: { change: updateChart }">
-                                <option value="right">Right</option>
+                            <select class="form-select form-select-sm" data-bind="value: chartOptions().legendPosition, event: { change: function(data, $event) { updateLegend($event.target.value); } }">
                                 <option value="top">Top</option>
+                                <option value="right">Right</option>
                                 <option value="bottom">Bottom</option>
+                                <option value="left">Left</option>
                                 <option value="none">None</option>
                             </select>
                         </div>
