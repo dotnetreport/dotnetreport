@@ -1,4 +1,4 @@
-﻿/// dotnet Report Builder view model v6.1.1
+/// dotnet Report Builder view model v6.1.1
 /// License must be purchased for commercial use
 /// 2025 (c) www.dotnetreport.com
 
@@ -1754,12 +1754,12 @@ var reportViewModel = function (options) {
 
 	self.selectedSubReport.subscribe(function (newVal) {
 		if (newVal) {
-			if (!self.subReports().some(r => r.fieldId === newVal.fieldId)) {
+			if (!self.subReports().some(r => r.fieldId === newVal.fieldId && r.reportId === newVal.reportId)) {
 				self.subReports.push(newVal);
 			} else {
 				toastr.error('Sub Report was already added');
 			}
-			self.selectedSubReport(null); 
+			self.selectedSubReport(null);
 		}
 	});
 
@@ -1802,13 +1802,8 @@ var reportViewModel = function (options) {
 	});
 
 	self.linkedReportFields.subscribe(function (newList) {
-		const validFieldIds = newList.map(r => r.fieldId);
-		self.subReports.remove(r => !validFieldIds.includes(r.fieldId));
-	});
-
-	self.linkedReportFields.subscribe(function (newList) {
-		const validFieldIds = newList.map(f => f.fieldId);
-		self.subReports.remove(sr => !validFieldIds.includes(sr.fieldId));
+		const validKeys = newList.map(r => `${r.fieldId}_${r.reportId}`);
+		self.subReports.remove(r => !validKeys.includes(`${r.fieldId || 0}_${r.reportId}`));
 	});
 
 
@@ -4318,7 +4313,7 @@ var reportViewModel = function (options) {
 					}
 					r.LinkTo = link;
 
-					if (self.subReports().find(sr => sr.fieldId === col.fieldId)) {
+					if (self.subReports().find(sr => (sr.fieldId || 0) == col.fieldId && sr.reportId == linkItem.LinkedToReportId)) {
 						// run sub report
 						ajaxcall({
 							url: options.runLinkReportUrl,
@@ -4358,7 +4353,7 @@ var reportViewModel = function (options) {
 							report.adminMode(self.adminMode());
 							report.LoadReport(linkItem.LinkedToReportId, true, '', true, false);
 
-						report._subReportOrder = _.findIndex(self.subReports(), sr => sr.fieldId === col.fieldId);
+						report._subReportOrder = _.findIndex(self.subReports(), sr => (sr.fieldId || 0) == col.fieldId && sr.reportId == linkItem.LinkedToReportId);
 							subreportsRan.push(report);
 						});
 					}
