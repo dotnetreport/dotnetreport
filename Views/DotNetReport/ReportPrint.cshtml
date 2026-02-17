@@ -120,7 +120,7 @@
           <div data-bind="foreach: subReportsRan">
               <div class="">
                   <div class="" style="padding-bottom: 20px;" >
-                      <h2 class="pull-left" data-bind="text: ReportName"></h2>
+                      <h2 data-bind="text: ReportName"></h2>
 
                       <div class="clearfix"></div>
                       <div class="list-overflow-auto" style="padding-top: 0; margin-top: 0;">
@@ -340,7 +340,7 @@
                         <div data-bind="foreach: subReportsRan">
                             <div class="">
                                 <div class="" style="padding-bottom: 20px;" >
-                                    <h2 class="pull-left" data-bind="text: ReportName"></h2>
+                                    <h2 data-bind="text: ReportName"></h2>
 
                                     <div class="clearfix"></div>
                                     <div class="list-overflow-auto" style="padding-top: 0; margin-top: 0;">
@@ -463,11 +463,51 @@
         vm.pager.pageSize(10000);
         vm.adminMode(true);
         ko.applyBindings(vm);
+
+        function checkReportsLoaded() {
+            var allReportsLoaded = true;
+
+            if (vm.ReportResult && vm.ReportResult() && vm.ReportResult().ReportData) {
+                var reportData = vm.ReportResult().ReportData;
+
+                if (reportData && reportData() && reportData().Rows) {
+                    var rows = ko.unwrap(reportData().Rows);
+
+                    _.forEach(rows, function(row) {
+                        if (row.subReportsRan) {
+                            var subReports = ko.unwrap(row.subReportsRan);
+                            _.forEach(subReports, function(subReport) {
+                                if (subReport.ReportResult && subReport.ReportResult()) {
+                                    if (!subReport.ReportResult().ReportData || !subReport.ReportResult().ReportData()) {
+                                        allReportsLoaded = false;
+                                    }
+                                } else {
+                                    allReportsLoaded = false;
+                                }
+                            });
+                        }
+                    });
+                }
+            }
+
+            return allReportsLoaded;
+        }
+
+        var checkInterval;
+        function showReportWhenReady() {
+            if (checkReportsLoaded()) {
+                $('.report-inner').show();
+                if (checkInterval) {
+                    clearInterval(checkInterval);
+                }
+            }
+        }
+
         vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {
             if (vm.useReportHeader()) {
                 vm.headerDesigner.init();
             }
-            
+
             if (vm.useStoredProc()) {
                 setTimeout(function(){
                     vm.printReport();
@@ -476,13 +516,14 @@
                 vm.printReport();
             }
 
-            setTimeout(function () {
-                $('.report-inner').show();
-            }, 1500);
+            checkInterval = setInterval(showReportWhenReady, 500);
 
             setTimeout(function () {
-                    $('.report-inner').show();
-            }, 15000);
+                $('.report-inner').show();
+                if (checkInterval) {
+                    clearInterval(checkInterval);
+                }
+            }, 1000);
         });
 
         $(window).resize(function(){
