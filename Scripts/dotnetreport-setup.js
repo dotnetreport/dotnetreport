@@ -1923,6 +1923,15 @@ var manageViewModel = function (options) {
 	self.exportFoldersReportJson = async function () {
 		const selectedReports = [];
 
+		const allReports = _.flatMap(self.reportsAndFolders(), function (folder) {
+			return _.map(folder.reports, function (r) {
+				return {
+					reportId: r.reportId,
+					reportName: r.reportName
+				};
+			});
+		});
+
 		await Promise.all(_.map(self.reportsAndFolders(), async function (folder) {
 			const selectedInFolder = _.filter(folder.reports, function (r) {
 				return r.isSelected && r.isSelected();
@@ -1935,9 +1944,10 @@ var manageViewModel = function (options) {
 						runReportApiUrl: options.runReportApiUrl,
 						reportWizard: options.reportWizard,
 						lookupListUrl: options.lookupListUrl,
-						userSettings: { currentUserId: options.currentUserId }
+						userSettings: { currentUserId: options.currentUserId },
+						savedReports: allReports
 					});
-					reportview.adminMode = ko.observable(true);
+					reportview.adminMode(true);
 
 					const response = await reportview.LoadReport(r.reportId, true, '', true, false);
 					const reportData = response && response.UseStoredProc === false

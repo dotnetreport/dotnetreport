@@ -17,7 +17,7 @@ function formulaFieldViewModel(args) {
 	self.parameterId = ko.observable(args.parameterId);
 }
 
-function linkFieldViewModel(args, options, adminMode) {
+function linkFieldViewModel(args, options, adminMode, savedReports) {
 	args = args || {};
 	var self = this;
 
@@ -27,6 +27,14 @@ function linkFieldViewModel(args, options, adminMode) {
 	self.allFields = ko.observableArray([]);
 	self.LinksToReport = ko.observable(args.LinksToReport || false);
 	self.LinkedToReportId = ko.observable();
+	self.LinkedReportName = ko.computed(function () {
+		var reportId = self.LinkedToReportId();
+		if (reportId && savedReports) {
+			var report = _.find(savedReports(), { reportId: reportId });
+			return report ? report.reportName : '';
+		}
+		return '';
+	});
 	self.SendAsFilterParameter = ko.observable(args.SendAsFilterParameter || false);
 	self.SelectedFilterId = ko.observable(args.SelectedFilterId);
 
@@ -38,6 +46,7 @@ function linkFieldViewModel(args, options, adminMode) {
 		return {
 			LinksToReport: self.LinksToReport(),
 			LinkedToReportId: self.LinkedToReportId(),
+			LinkedReportName: self.LinkedReportName(),
 			SendAsFilterParameter: self.SendAsFilterParameter(),
 			SelectedFilterId: self.SelectedFilterId(),
 			LinkToUrl: self.LinkToUrl(),
@@ -1093,7 +1102,7 @@ var reportViewModel = function (options) {
 
 	self.ReportMode = ko.observable(options.reportMode || "start");
 	self.Folders = ko.observableArray();
-	self.SavedReports = ko.observableArray([]);
+	self.SavedReports = ko.observableArray(options.savedReports || []);
 	self.SelectedFolder = ko.observable(null); // Folder selected in start
 	self.CanSaveReports = ko.observable(true);
 	self.CanManageFolders = ko.observable(true);
@@ -6317,7 +6326,7 @@ var reportViewModel = function (options) {
 		e.dontSubTotal = ko.observable(e.dontSubTotal);
 		e.hideInDetail = ko.observable(e.hideInDetail);
 		e.linkField = ko.observable(e.linkField);
-		e.linkFieldItem = new linkFieldViewModel(e.linkFieldItem, options, self.adminMode);
+		e.linkFieldItem = new linkFieldViewModel(e.linkFieldItem, options, self.adminMode, self.SavedReports);
 		e.isFormulaField = ko.observable(e.isFormulaField);
 		e.functionId = ko.observable(e.functionId);
 		e.functionConfig = e.fieldSettings.functionConfig || {};
@@ -7569,6 +7578,7 @@ var reportViewModel = function (options) {
 		}
 
 		const reportsWithData = [];
+		options.savedReports = self.SavedReports();
 
 		await Promise.all(_.map(selectedReports, async function (r) {
 			try {
