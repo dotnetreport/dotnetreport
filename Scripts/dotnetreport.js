@@ -1665,7 +1665,7 @@ var reportViewModel = function (options) {
 		self.activeDesign(false);
 		self.ReportMode("generate");
 		self.setupDirtyCheck();
-		self.currentUserManageAccess();
+		self.manageAccess.applyDefaultSettings();
 	};
 
 	self.createNewReportAi = function () {
@@ -1673,7 +1673,8 @@ var reportViewModel = function (options) {
 		self.activeDesign(true);
 		self.ReportMode("design");
 		self.clearAiChat(true);
-		self.activeDesignRunning = false;
+		self.activeDesignRunning = false;		
+		self.manageAccess.applyDefaultSettings();
 	}
 
 	self.editReportAi = function () {
@@ -8254,14 +8255,8 @@ var dashboardViewModel = function (options) {
 		$("#add-dash-name").removeClass("is-invalid");
 		self.dashboard.Id(0);
 		self.dashboard.Name('');
-		self.dashboard.Description('');
-		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.users, '');
-		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.userRoles, '');
-		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.viewOnlyUserRoles, '');
-		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.viewOnlyUsers, '');
-		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.deleteOnlyUserRoles, '');
-		self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.deleteOnlyUsers, '');
-		self.dashboard.manageAccess.clientId('');
+		self.dashboard.Description('');		
+		self.dashboard.manageAccess.applyDefaultSettings();
 		self.dashboard.scheduleBuilder.clear();
 		_.forEach(self.reportsAndFolders(), function (f) {
 			_.forEach(f.reports, function (r) {
@@ -8378,8 +8373,15 @@ var dashboardViewModel = function (options) {
 				currentdashboard.selectedReports = list;
 				currentdashboard.name = self.dashboard.Name();
 				currentdashboard.description = self.dashboard.Description();
+				currentdashboard.userId = self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.users);
+				currentdashboard.viewOnlyUserId = self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.viewOnlyUsers);
+				currentdashboard.deleteOnlyUserId = self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.deleteOnlyUsers);
+				currentdashboard.userRoles = self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.userRoles);
+				currentdashboard.viewOnlyUserRoles = self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.viewOnlyUserRoles);
+				currentdashboard.deleteOnlyUserRoles = self.dashboard.manageAccess.getAsList(self.dashboard.manageAccess.deleteOnlyUserRoles);
+				currentdashboard.clientId = self.dashboard.manageAccess.clientId();
+			}
 
-			};
 			toastr.success("Dashboard saved successfully");
 			$('#add-dashboard-modal').modal('hide');
 			setTimeout(function () {

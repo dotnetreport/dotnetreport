@@ -645,17 +645,15 @@ function pagerViewModel(args) {
 }
 
 var manageAccess = function (options) {
+    var buildList = function (array) { return _.map(array || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x, category: x.category || null }; }) };
     var access = {
         clientId: ko.observable(),
-        groupedUsers: ko.observableArray(),
-        groupedViewOnlyUsers: ko.observableArray(),
-        groupedDeleteOnlyUsers: ko.observableArray(),
-        users: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x,category: x.category || null }; }),
-        userRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
-        viewOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x, category: x.category || null }; }),
-        viewOnlyUserRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
-        deleteOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x,category: x.category || null }; }),
-        deleteOnlyUserRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
+        users: ko.observableArray(buildList(options.users)),
+        userRoles: ko.observableArray(buildList(options.userRoles)),
+        viewOnlyUsers: ko.observableArray(buildList(options.users)),
+        viewOnlyUserRoles: ko.observableArray(buildList(options.userRoles)),
+        deleteOnlyUsers: ko.observableArray(buildList(options.users)),
+        deleteOnlyUserRoles: ko.observableArray(buildList(options.userRoles)),
         showManageUsers: ko.observable(false),
         showViewUsers: ko.observable(false),
         showDeleteUsers: ko.observable(false),
@@ -670,16 +668,52 @@ var manageAccess = function (options) {
         toggleDeleteRoles: function () { this.showDeleteRoles(!this.showDeleteRoles()); },
         getAsList: function (x) {
             var list = '';
-            _.forEach(x, function (e) { if (e.selected()) list += (list ? ',' : '') + e.value(); });
+            _.forEach(x(), function (e) { if (e.selected()) list += (list ? ',' : '') + e.value(); });
             return list;
         },
         setupList: function (x, value) {
-            _.forEach(x, function (e) { if (value.indexOf(e.value()) >= 0) e.selected(true); else e.selected(false); });
+            _.forEach(x(), function (e) { e.selected(false); });
+
+            var valueArray = value ? value.split(',').filter(function(v) { return v.trim(); }) : [];
+
+            _.forEach(valueArray, function (id) {
+                var existingItem = _.find(x(), function (e) { return e.value() === id; });
+
+                if (existingItem) {
+                    existingItem.selected(true);
+                } else {
+                    var newItem = {
+                        selected: ko.observable(true),
+                        value: ko.observable(id),
+                        text: id,
+                        category: null
+                    };
+                    x.push(newItem);
+                }
+            });
         },
         matchAndSelect: function (items, ids) {
-            _.forEach(items, function (item) {
+            _.forEach(items(), function (item) {
                 if (ids.indexOf(item.value()) >= 0) {
                     item.selected(true);
+                }
+            });
+        },
+        addMissingAndSelect: function (items, ids, category) {
+            _.forEach(items(), function (e) { e.selected(false); });
+            _.forEach(ids, function (id) {
+                var existingItem = _.find(items(), function (item) { return item.value() === id; });
+
+                if (!existingItem) {
+                    var newItem = {
+                        selected: ko.observable(true),
+                        value: ko.observable(id),
+                        text: id,
+                        category: category || null
+                    };
+                    items.push(newItem);
+                } else {
+                    existingItem.selected(true);
                 }
             });
         },
@@ -695,49 +729,59 @@ var manageAccess = function (options) {
             var editUserRoles = userSettings.newReportEditUserRoles ? userSettings.newReportEditUserRoles.split(',') : [];
             var viewUserRoles = userSettings.newReportViewUserRoles ? userSettings.newReportViewUserRoles.split(',') : [];
 
-            access.matchAndSelect(access.users, editUserIds);
-            access.matchAndSelect(access.deleteOnlyUsers, editUserIds);
-            access.matchAndSelect(access.userRoles, editUserRoles);
-            access.matchAndSelect(access.deleteOnlyUserRoles, editUserRoles);
-            access.matchAndSelect(access.viewOnlyUsers, viewUserIds);
-            access.matchAndSelect(access.viewOnlyUserRoles, viewUserRoles);
+            access.addMissingAndSelect(access.users, editUserIds);
+            access.addMissingAndSelect(access.deleteOnlyUsers, editUserIds);
+            access.addMissingAndSelect(access.userRoles, editUserRoles);
+            access.addMissingAndSelect(access.deleteOnlyUserRoles, editUserRoles);
+            access.addMissingAndSelect(access.viewOnlyUsers, viewUserIds);
+            access.addMissingAndSelect(access.viewOnlyUserRoles, viewUserRoles);
         }
     }
 
     access.applyDefaultSettings();
-    var hasCategory = access.users.some(function (u) { return u.category; });
-    if (hasCategory) {
-        var groupedUsers = _.groupBy(access.users, 'category');
-        access.groupedUsers(
-            Object.keys(groupedUsers).map(function (cat) {
-                return {
-                    category: cat || 'Uncategorized',
-                    show: ko.observable(false),
-                    users: ko.observableArray(groupedUsers[cat])
-                };
-            })
-        );
-        var groupedViewOnlyUsers = _.groupBy(access.viewOnlyUsers, 'category');
-        access.groupedViewOnlyUsers(
-            Object.keys(groupedViewOnlyUsers).map(function (cat) {
-                return {
-                    category: cat || 'Uncategorized',
-                    show: ko.observable(false),
-                    viewOnlyUsers: ko.observableArray(groupedViewOnlyUsers[cat])
-                };
-            })
-        );
-        var groupedDeleteOnlyUsers = _.groupBy(access.deleteOnlyUsers, 'category');
-        access.groupedDeleteOnlyUsers(
-            Object.keys(groupedDeleteOnlyUsers).map(function (cat) {
-                return {
-                    category: cat || 'Uncategorized',
-                    show: ko.observable(false),
-                    deleteOnlyUsers: ko.observableArray(groupedDeleteOnlyUsers[cat])
-                };
-            })
-        );
-    }
+
+    access.groupedUsers = ko.computed(function () {
+        var hasCategory = access.users().some(function (u) { return u.category; });
+        if (!hasCategory) return [];
+
+        var groupedUsers = _.groupBy(access.users(), 'category');
+        return Object.keys(groupedUsers).map(function (cat) {
+            return {
+                category: cat || 'Uncategorized',
+                show: ko.observable(false),
+                users: ko.observableArray(groupedUsers[cat])
+            };
+        });
+    });
+
+    access.groupedViewOnlyUsers = ko.computed(function () {
+        var hasCategory = access.viewOnlyUsers().some(function (u) { return u.category; });
+        if (!hasCategory) return [];
+
+        var groupedViewOnlyUsers = _.groupBy(access.viewOnlyUsers(), 'category');
+        return Object.keys(groupedViewOnlyUsers).map(function (cat) {
+            return {
+                category: cat || 'Uncategorized',
+                show: ko.observable(false),
+                viewOnlyUsers: ko.observableArray(groupedViewOnlyUsers[cat])
+            };
+        });
+    });
+
+    access.groupedDeleteOnlyUsers = ko.computed(function () {
+        var hasCategory = access.deleteOnlyUsers().some(function (u) { return u.category; });
+        if (!hasCategory) return [];
+
+        var groupedDeleteOnlyUsers = _.groupBy(access.deleteOnlyUsers(), 'category');
+        return Object.keys(groupedDeleteOnlyUsers).map(function (cat) {
+            return {
+                category: cat || 'Uncategorized',
+                show: ko.observable(false),
+                deleteOnlyUsers: ko.observableArray(groupedDeleteOnlyUsers[cat])
+            };
+        });
+    });
+
     return access;
 };
 

@@ -662,7 +662,7 @@
                     </div>
                     <!-- /ko -->
                     <!-- /ko -->
-                    <!-- ko if: groupedUsers().length == 0 && users.length > 0 -->
+                    <!-- ko if: groupedUsers().length == 0 && users().length > 0 -->
                     <!-- ko foreach: users -->
                     <div class="pull-left">
                         <div class="checkbox">
@@ -673,7 +673,7 @@
                     </div>
                     <!-- /ko -->
                     <!-- /ko -->
-                    <div data-bind="if: groupedUsers().length == 0 && users.length == 0">
+                    <div data-bind="if: groupedUsers().length == 0 && users().length == 0">
                         Users list not populated or not applicable
                     </div>
                 </div>
@@ -700,7 +700,7 @@
                     </div>
                     <!-- /ko -->
                     <!-- /ko -->
-                    <!-- ko if: groupedViewOnlyUsers().length == 0 && viewOnlyUsers.length > 0 -->
+                    <!-- ko if: groupedViewOnlyUsers().length == 0 && viewOnlyUsers().length > 0 -->
                     <!-- ko foreach: viewOnlyUsers -->
                     <div class="pull-left">
                         <div class="checkbox">
@@ -711,7 +711,7 @@
                     </div>
                     <!-- /ko -->
                     <!-- /ko -->
-                    <div data-bind="if: groupedViewOnlyUsers().length == 0 && users.length == 0">
+                    <div data-bind="if: groupedViewOnlyUsers().length == 0 && viewOnlyUsers().length == 0">
                         Users list not populated or not applicable
                     </div>
                 </div>
@@ -739,7 +739,7 @@
                     </div>
                     <!-- /ko -->
                     <!-- /ko -->
-                    <!-- ko if: groupedDeleteOnlyUsers().length == 0 && deleteOnlyUsers.length > 0 -->
+                    <!-- ko if: groupedDeleteOnlyUsers().length == 0 && deleteOnlyUsers().length > 0 -->
                     <!-- ko foreach: deleteOnlyUsers -->
                         <div class="pull-left">
                             <div class="checkbox">
@@ -750,7 +750,7 @@
                         </div>
                         <!-- /ko -->
                         <!-- /ko -->
-                        <div data-bind="if: groupedDeleteOnlyUsers().length == 0 &&  users.length == 0">
+                        <div data-bind="if: groupedDeleteOnlyUsers().length == 0 && deleteOnlyUsers().length == 0">
                             Users list not populated or not applicable
                         </div>
                     </div>
@@ -769,7 +769,7 @@
                         </div>
                     </div>
                     <!-- /ko -->
-                    <div data-bind="if: userRoles.length == 0">
+                    <div data-bind="if: userRoles().length == 0">
                         User Roles list not populated or not applicable
                     </div>
                 </div>
@@ -785,7 +785,7 @@
                         </div>
                     </div>
                     <!-- /ko -->
-                    <div data-bind="if: userRoles.length == 0">
+                    <div data-bind="if: viewOnlyUserRoles().length == 0">
                         User Roles list not populated or not applicable
                     </div>
                 </div>
@@ -801,7 +801,7 @@
                             </div>
                         </div>
                         <!-- /ko -->
-                        <div data-bind="if: userRoles.length == 0">
+                        <div data-bind="if: deleteOnlyUserRoles().length == 0">
                             User Roles list not populated or not applicable
                         </div>
                     </div>
