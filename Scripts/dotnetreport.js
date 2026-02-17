@@ -2242,7 +2242,86 @@ var reportViewModel = function (options) {
 
 			reader.readAsText(file);
 		}
-	}; 
+	};
+
+	// Schedule Report Modal
+	self.scheduleReportModal = {
+		reportId: ko.observable(null),
+		reportName: ko.observable(''),
+		saveSchedule: function () {
+			var scheduleData = self.scheduleBuilder.toJs();
+
+			// If schedule is unchecked, confirm removal
+			if (!scheduleData) {
+				bootbox.confirm("Are you sure you want to remove the schedule for this report?", function (r) {
+					if (r) {
+						ajaxcall({
+							url: options.apiUrl,
+							data: {
+								method: "/ReportApi/DeleteReportSchedule",
+								model: JSON.stringify({
+									reportId: self.scheduleReportModal.reportId(),
+									userId: self.userIdForSchedule									
+								})
+							}
+						}).done(function (result) {
+							toastr.success('Schedule removed successfully');
+							$('#modal-schedule-report').modal('hide');
+						}).fail(function (err) {
+							toastr.error('Failed to remove schedule');
+						});
+					}
+				});
+				return;
+			}
+
+			// Save the schedule
+			ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/SaveReportSchedule",
+					model: JSON.stringify({
+						reportId: self.scheduleReportModal.reportId(),
+						userId: self.userIdForSchedule,
+						scheduleData: JSON.stringify(scheduleData)
+					})
+				}
+			}).done(function (result) {
+				toastr.success('Schedule saved successfully');
+				$('#modal-schedule-report').modal('hide');
+			}).fail(function (err) {
+				toastr.error('Failed to save schedule');
+			});
+		}
+	};
+
+	self.openScheduleModal = function (report) {
+		self.scheduleReportModal.reportId(report.reportId);
+		self.scheduleReportModal.reportName(report.reportName);
+
+		// Load existing schedule for this report and user
+		ajaxcall({
+			url: options.apiUrl,
+			data: {
+				method: "/ReportApi/GetReportSchedule",
+				model: JSON.stringify({
+					reportId: report.reportId,
+					userId: self.userIdForSchedule
+				})
+			},
+			noBlocking: true
+		}).done(function (result) {
+			if (result.d) { result = result.d; }
+			if (result.result) { result = result.result; }
+
+			// Load the schedule data into the scheduleBuilder
+			self.scheduleBuilder.fromJs(result);
+		}).fail(function () {
+			// If no schedule exists, reset to defaults
+			self.scheduleBuilder.fromJs(null);
+		});
+	};
+
 	self.reportsInFolder = ko.computed(function () {
 		if (self.SelectedFolder() == null) {
 			return [];
