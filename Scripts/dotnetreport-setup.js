@@ -2191,6 +2191,7 @@ var manageViewModel = function (options) {
 								reportview.adminMode(true);
 								report.data = report.data || {};
 								report.data.FolderID = folderId;
+								report.data.checkFields = true;
 
 								if (existingReport && action === 'overwrite') {
 									report.data.ReportID = existingReport.reportId;
@@ -2217,9 +2218,7 @@ var manageViewModel = function (options) {
 						});
 
 						$.when.apply($, allPromises).done(function () {
-							self.loadReportsAndFolder().done(function () {
-								toastr.success('Reports imported successfully!');
-							});
+							self.loadReportsAndFolder();
 						});
 					});
 

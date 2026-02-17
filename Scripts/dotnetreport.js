@@ -2185,6 +2185,7 @@ var reportViewModel = function (options) {
 									reportview.adminMode(self.adminMode()) 
 									report.data = report.data || {};
 									report.data.FolderID = folderId;
+									report.data.checkFields = true;
 
 									if (existingReport && action === 'overwrite') {
 										report.data.ReportID = existingReport.reportId;
@@ -2214,7 +2215,6 @@ var reportViewModel = function (options) {
 								setTimeout(function () {
 									self.loadFolders().done(function () {
 										self.LoadAllSavedReports();
-										toastr.success('Reports imported successfully!');
 									});
 								}, 1000);
 							});
@@ -3858,7 +3858,7 @@ var reportViewModel = function (options) {
 						if (previewOnly !== true && (self.SaveReport() || saveOnly)) {
 							if (saveOnly && !saveAlertFlag) {
 								saveAlertFlag = true;
-								toastr.success("Report Saved");
+								toastr.success(importJson ? ((importJson.ReportName ?? 'Report') + ' Imported') : ((self.ReportName() ?? 'Report') + ' Saved'));
 								self.allSqlQueries("");
 								self.LoadAllSavedReports(true);
 							}
