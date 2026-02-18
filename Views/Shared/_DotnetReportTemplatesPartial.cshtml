@@ -1710,13 +1710,20 @@
 
         <div data-bind="visible: ReportType()=='Map'" class="card card-body">
             <div class="alert alert-info small py-1 mb-2">
-            <span class="fa fa-lightbulb-o"></span>&nbsp;For Map Graph, the first field below has to be a Region, like a Country.
+            <span class="fa fa-lightbulb-o"></span>&nbsp;For Map Graph, the first field below has to be a Region name (e.g. Country) or use Latitude/Longitude columns for marker mode.
             </div>
             <div class="form-group row small">
             <label class="col-sm-3 control-label">Map Display</label>
             <div class="col-sm-5">
                 <select class="form-select form-select-sm" data-bind="options: mapRegions, value: mapRegion"></select>
             </div>
+            </div>
+            <div class="form-group row small" data-bind="visible: mapRegion() == 'Other'">
+            <label class="col-sm-3 control-label">Region Name</label>
+            <div class="col-sm-5">
+                <input type="text" class="form-control form-control-sm" placeholder="e.g. Texas, United Kingdom, Australia" data-bind="value: otherMapRegion, valueUpdate: 'input'" />
+            </div>
+            <div class="col-sm-4 small text-muted pt-1">Enter any country, state, or region name</div>
             </div>
         </div>
     </div>

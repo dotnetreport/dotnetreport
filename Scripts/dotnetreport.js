@@ -981,7 +981,8 @@ var reportViewModel = function (options) {
 	self.ReportName = ko.observable();
 	self.ReportType = ko.observable("List");
 	self.mapRegion = ko.observable('');
-	self.mapRegions = ['World', 'US States', 'US Metro', 'North America'];
+	self.mapRegions = ['World', 'US States', 'North America', 'Other'];
+	self.otherMapRegion = ko.observable('');
 	self.ReportDescription = ko.observable();
 	self.FolderID = ko.observable();
 	self.ReportID = ko.observable();
@@ -3684,7 +3685,7 @@ var reportViewModel = function (options) {
 					Descending: x.sortDesc()
 				};
 			}),
-			ReportType: self.ReportType() == 'Map' && self.mapRegion() ? self.ReportType() + '|' + self.mapRegion() : self.ReportType(),
+			ReportType: self.ReportType() == 'Map' && self.mapRegion() ? self.ReportType() + '|' + (self.mapRegion() == 'Other' && self.otherMapRegion() ? 'Other:' + self.otherMapRegion() : self.mapRegion()) : self.ReportType(),
 			UseStoredProc: self.useStoredProc(),
 			StoredProcId: self.useStoredProc() ? self.SelectedProc().Id : null,
 			GroupFunctionList: _.map(self.SelectedFields(), function (x) {
@@ -6241,35 +6242,189 @@ var reportViewModel = function (options) {
 			});
 		}
 
-		//if (self.ReportType() == "Map") {
-		//	chart = new google.visualization.GeoChart(chartDiv);
-		//	// Refer to for full list of regions https://developers.google.com/chart/interactive/docs/gallery/geochart#Continent_Hierarchy
-		//	if (self.mapRegion() == 'US States') {
-		//		chartOptions.displayMode = 'regions';
-		//		chartOptions.region = 'US';
-		//		chartOptions.resolution = 'provinces';
-		//	}
-		//	if (self.mapRegion() == 'US Metro') {
-		//		chartOptions.displayMode = 'regions';
-		//		chartOptions.region = 'US';
-		//		chartOptions.resolution = 'metros';
-		//	}
-		//	if (self.mapRegion() == 'North America') {
-		//		chartOptions.displayMode = 'regions';
-		//		chartOptions.region = '021';
-		//	}
-		//	if (self.mapRegion() == 'Florida') {
-		//		chartOptions.displayMode = 'regions';
-		//		chartOptions.region = 'US-FL';
-		//		chartOptions.resolution = 'provinces';
-		//	}
+		if (self.ReportType() == "Map") {
+			var mapRegion = self.mapRegion() || 'World';
+			var otherRegion = self.otherMapRegion() || '';
 
-		//	if (isLatLongMap) {
-		//		chartOptions.displayMode = 'markers';
-		//		chartOptions.showTooltip = true;
-		//		chartOptions.showInfoWindow = true;
-		//	}
-		//}
+			// Pure GeoJSON sources — no external library needed
+			var GEOJSON_URLS = {
+				'world': 'https://cdn.jsdelivr.net/gh/apache/echarts-website@asf-site/examples/data/asset/geo/world.json',
+				'USA': 'https://cdn.jsdelivr.net/gh/apache/echarts-website@asf-site/examples/data/asset/geo/USA.json'
+			};
+
+			// Resolve map config by region selection
+			var mapName, geoCenter, geoZoom, geoJsonUrl;
+			if (mapRegion == 'US States') {
+				mapName = 'USA';
+				geoCenter = [-98, 38];
+				geoZoom = 1.2;
+				geoJsonUrl = GEOJSON_URLS['USA'];
+			} else if (mapRegion == 'North America') {
+				mapName = 'world';
+				geoCenter = [-100, 55];
+				geoZoom = 2.5;
+				geoJsonUrl = GEOJSON_URLS['world'];
+			} else if (mapRegion == 'Other' && otherRegion) {
+				mapName = 'other_' + otherRegion.toLowerCase().replace(/\s+/g, '_');
+				geoCenter = null;
+				geoZoom = 1;
+				geoJsonUrl = null; // fetched via Nominatim
+			} else {
+				// World (default)
+				mapName = 'world';
+				geoCenter = null;
+				geoZoom = 1.2;
+				geoJsonUrl = GEOJSON_URLS['world'];
+			}
+
+			var colors = self.colorScheme().length ? self.colorScheme() : ['#e0f3f8', '#abd9e9', '#74add1', '#4575b4', '#313695'];
+
+			function renderEChartsMap(registeredMapName) {
+				var mapOption;
+
+				if (isLatLongMap) {
+					// Scatter/marker mode using lat/long columns
+					var scatterData = [];
+					_.forEach(reportData.Rows, function (row) {
+						if (!row.Items || row.Items.length < 2) return;
+						var lat = parseFloat(row.Items[0].Value);
+						var lon = parseFloat(row.Items[1].Value);
+						if (isNaN(lat) || isNaN(lon)) return;
+						var label = row.Items.length > 2 ? (row.Items[2].FormattedValue || row.Items[2].Value || '') : '';
+						var val = row.Items.length > 3 ? parseFloat(row.Items[3].Value) : 1;
+						scatterData.push({ name: label, value: [lon, lat, isNaN(val) ? 1 : val] });
+					});
+
+					mapOption = {
+						backgroundColor: chartOptions.backgroundColor || '#fff',
+						title: chartOptions.title ? { text: chartOptions.title, textStyle: { fontSize: chartOptions.fontSize, color: chartOptions.fontColor } } : null,
+						tooltip: { trigger: 'item', formatter: function (p) { return p.name + (p.value[2] !== undefined ? ': ' + p.value[2] : ''); } },
+						geo: {
+							map: registeredMapName,
+							roam: true,
+							center: geoCenter || undefined,
+							zoom: geoZoom || 1,
+							itemStyle: { areaColor: '#e7e8ea', borderColor: '#aaa' },
+							emphasis: { itemStyle: { areaColor: '#a5dff9' } }
+						},
+						series: [{
+							type: 'scatter',
+							coordinateSystem: 'geo',
+							data: scatterData,
+							symbolSize: function (val) { return Math.max(6, Math.min(30, Math.sqrt(Math.abs(val[2])) * 3)); },
+							itemStyle: { color: colors[3] || '#4575b4', opacity: 0.8 },
+							emphasis: { itemStyle: { color: colors[4] || '#313695' } }
+						}]
+					};
+				} else {
+					// Choropleth mode — first column is region name, second is value
+					var regionData = [];
+					var minVal = Infinity, maxVal = -Infinity;
+					_.forEach(reportData.Rows, function (row) {
+						if (!row.Items || row.Items.length < 2) return;
+						var regionName = row.Items[0].FormattedValue || row.Items[0].Value || '';
+						var val = parseFloat(row.Items[1].Value);
+						if (isNaN(val)) val = 0;
+						if (val < minVal) minVal = val;
+						if (val > maxVal) maxVal = val;
+						regionData.push({ name: regionName, value: val });
+					});
+					if (!isFinite(minVal)) minVal = 0;
+					if (!isFinite(maxVal)) maxVal = 1;
+
+					var seriesLabel = reportData.Columns.length > 1
+						? (reportData.Columns[1].fieldLabel ? reportData.Columns[1].fieldLabel() : reportData.Columns[1].ColumnName)
+						: '';
+
+					mapOption = {
+						backgroundColor: chartOptions.backgroundColor || '#fff',
+						title: chartOptions.title ? { text: chartOptions.title, textStyle: { fontSize: chartOptions.fontSize, color: chartOptions.fontColor } } : null,
+						tooltip: {
+							trigger: 'item',
+							formatter: function (p) {
+								return p.name + ': ' + (p.value !== undefined && !isNaN(p.value) ? p.value : 'N/A');
+							}
+						},
+						visualMap: {
+							min: minVal,
+							max: maxVal,
+							text: [String(maxVal), String(minVal)],
+							realtime: false,
+							calculable: true,
+							inRange: { color: colors.length >= 2 ? colors : ['#e0f3f8', '#313695'] }
+						},
+						series: [{
+							name: seriesLabel,
+							type: 'map',
+							map: registeredMapName,
+							roam: true,
+							center: geoCenter || undefined,
+							zoom: geoZoom || 1,
+							data: regionData,
+							emphasis: { label: { show: true } }
+						}]
+					};
+				}
+
+				chart.setOption(mapOption);
+				chart.resize();
+
+				chart.off('finished');
+				chart.on('finished', function () {
+					var img = chart.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: chartOptions.backgroundColor || '#fff' });
+					self.ChartData(img);
+					window.chartImageUrl = img;
+				});
+			}
+
+			// Fetch pure GeoJSON, register with ECharts, then render.
+			// Caches via echarts.getMap() so subsequent renders skip the fetch.
+			function fetchAndRenderMap(mName, url, nominatimQuery) {
+				// Already registered — render immediately without re-fetching
+				if (echarts.getMap(mName)) {
+					renderEChartsMap(mName);
+					return;
+				}
+
+				if (nominatimQuery) {
+					// 'Other' region — query Nominatim for boundary polygon GeoJSON
+					$.ajax({
+						url: 'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(nominatimQuery) + '&format=json&limit=1&polygon_geojson=1',
+						type: 'GET',
+						success: function (result) {
+							if (result && result.length > 0 && result[0].geojson) {
+								var geojson = result[0].geojson;
+								var featureCollection = geojson.type === 'FeatureCollection' ? geojson : {
+									type: 'FeatureCollection',
+									features: [{ type: 'Feature', geometry: geojson, properties: { name: nominatimQuery } }]
+								};
+								echarts.registerMap(mName, { geoJSON: featureCollection });
+								renderEChartsMap(mName);
+							} else {
+								toastr.error('Could not find map data for: ' + nominatimQuery);
+							}
+						},
+						error: function () { toastr.error('Failed to load map data for: ' + nominatimQuery); }
+					});
+					return;
+				}
+
+				// Fetch pure GeoJSON and register directly — no conversion needed
+				$.ajax({
+					url: url,
+					type: 'GET',
+					dataType: 'json',
+					success: function (geoJson) {
+						echarts.registerMap(mName, { geoJSON: geoJson });
+						renderEChartsMap(mName);
+					},
+					error: function () { toastr.error('Failed to load map data.'); }
+				});
+			}
+
+			fetchAndRenderMap(mapName, geoJsonUrl, mapRegion == 'Other' ? otherRegion : null);
+			return;
+		}
 
 		if (self.ReportType() == 'Treemap') {
 
@@ -6777,11 +6932,18 @@ var reportViewModel = function (options) {
 
 		self.ReportID(report.ReportID);
 		self.mapRegion('');
+		self.otherMapRegion('');
 		if (report.ReportType.indexOf('Map') == 0) {
 			self.ReportType('Map');
 			var reportTokens = report.ReportType.split('|');
 			if (reportTokens.length > 1) {
-				self.mapRegion(reportTokens[1]);
+				var regionToken = reportTokens[1];
+				if (regionToken.indexOf('Other:') === 0) {
+					self.mapRegion('Other');
+					self.otherMapRegion(regionToken.substring(6));
+				} else {
+					self.mapRegion(regionToken);
+				}
 			}
 		} else {
 			self.ReportType(report.ReportType);
