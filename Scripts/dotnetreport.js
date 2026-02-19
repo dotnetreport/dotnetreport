@@ -775,7 +775,7 @@ function filterGroupViewModel(args) {
 				});
 			}
 		});
-		if (e.FieldId == 0) {
+		if (e.FieldId == 0 || e.FieldId == undefined) {
 			field(args.parent.FindCustomField());
 			if (field()) field().uiId = generateUniqueId();
 		}
@@ -4570,7 +4570,26 @@ var reportViewModel = function (options) {
 
 				if (self.ReportType()=='Html' && columns[i]) {
 					const col = columns[i];
-					const selectedField = ko.utils.arrayFirst(self.SelectedFields(), f => f.dbField === col.SqlField || f.fieldId == col.fieldId || col.SqlField.indexOf('(' + f.dbField + ')') > 0);
+					const selectedField = ko.utils.arrayFirst(self.SelectedFields(), f => {
+						if (
+							f.fieldId != null &&
+							col.fieldId != null &&
+							f.fieldId !== 0 &&
+							col.fieldId !== 0
+						) {
+							return f.fieldId === col.fieldId;
+						}
+						if (f.dbField && col.SqlField) {
+							return (
+								f.dbField === col.SqlField ||
+								col.SqlField.includes(`(${f.dbField})`)
+							);
+						}
+						if (f.fieldName && col.ColumnName) {
+							return f.fieldName === col.ColumnName;
+						}
+						return false;
+					});
 					const val = ko.unwrap(r.formattedVal || r.Value || '');
 					const formattedVal = formatValue(val, r);
 					if (selectedField) {

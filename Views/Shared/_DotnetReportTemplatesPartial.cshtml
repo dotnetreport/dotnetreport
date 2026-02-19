@@ -1226,6 +1226,7 @@
                     </div>
                 </div>
                 <br />
+                <div data-bind="visible:$parent.ReportType() !='Html'">
                 <div class="card card-body">
                     <div class="form-row align-items-center">
                         <div class="col-auto">
@@ -1314,6 +1315,7 @@
                             </button>
                         </div>
                     </div>
+                </div>
                 </div>
                 <div class="padded-div">
                     <button class="btn btn-sm btn-primary" data-bind="click: function() {addConditionalFormatSetting(null)}">Add Conditional Formatting</button>
