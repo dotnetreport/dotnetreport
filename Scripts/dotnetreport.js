@@ -1041,15 +1041,17 @@ var reportViewModel = function (options) {
 	self.panels = new DesignerViewModel();
 	self.selectMode = ko.observable(false);
 
-	$(document).on('shown.bs.modal', '.modal', function () {
-		self.isModalOpen(true);
+	$(document).on('shown.bs.modal', '.modal', function (e) {
+		if (options.reportWizard && options.reportWizard.is(e.target)) {
+			self.isModalOpen(true);
+		}
 	});
 
-	$(document).on('hidden.bs.modal', '.modal', function () {
-		const anyOpen = $('.modal.show').length > 0;
-		self.isModalOpen(anyOpen);
+	$(document).on('hidden.bs.modal', '.modal', function (e) {
+		if (options.reportWizard && options.reportWizard.is(e.target)) {
+			self.isModalOpen(false);
+		}
 	});
-
 
 	self.activeDesign.subscribe(function (newValue) {
 		if (newValue) {
@@ -1859,6 +1861,10 @@ var reportViewModel = function (options) {
 			"change",
 			"input, select, .form-select, .form-control, .btn, .list-group-item",
 			function () {
+				if (options.reportMode === "dashboard") {
+					var activeId = options.reportWizard.data('report-id');
+					if (activeId != null && activeId != self.ReportID()) return;
+				}
 				self.reportChanged();
 			}
 		);
@@ -8117,6 +8123,9 @@ var dashboardViewModel = function (options) {
 	};
 	self.currentDashboard = ko.observable(currentDash);
 	self.selectDashboard = ko.observable(currentDash.id);
+	self.hasDashboard = ko.computed(function () {
+		return self.currentDashboard() && self.currentDashboard().id > 0;
+	});
 	self.isOverlap = ko.observable(false);
 	self.loadDashboard = function (dashboardId) {
 		self.arrangeDashboard(false);
@@ -8438,11 +8447,18 @@ var dashboardViewModel = function (options) {
 		const grid = document.querySelector('.grid-stack')?.gridstack;
 		if (!grid) return;
 
-		const zeroWidgets = document.querySelectorAll('.grid-stack-item[gs-id="0"]');
+		const zeroWidgets = document.querySelectorAll('.grid-stack-item[gs-id="null"]');
 		zeroWidgets.forEach(widget => {
 			grid.removeWidget(widget);
 		});
+
+		self.reports.remove(function (r) { return r.ReportID() == 0; });
+		self.RefreshAllReports();
 	}
+
+	self.removeNewReport = function () {
+		removeNewReportWidget();
+	};
 
 	function refreshGrid(reports, skipGridRefresh) {
 		if (skipGridRefresh === true) {
@@ -8553,6 +8569,7 @@ var dashboardViewModel = function (options) {
 				report.Folders(self.folders);
 				report.SaveReport(false);
 				self.selectedReport(report);
+				if (options.reportWizard) options.reportWizard.data('report-id', report.ReportID());
 				report.activeDesign(true);
 				report.isExpanded(true);
 			});
@@ -8565,6 +8582,7 @@ var dashboardViewModel = function (options) {
 				report.Folders(self.folders);
 				report.SaveReport(true);
 				self.selectedReport(report);
+				if (options.reportWizard) options.reportWizard.data('report-id', report.ReportID());
 				report.activeDesign(false);
 
 				setTimeout(function () {
@@ -8614,6 +8632,23 @@ var dashboardViewModel = function (options) {
 			report.openReport();
 		}
 	}
+
+	self.cancelNewReport = function (report) {
+		if (report && !report.ReportID()) {
+			report.activeDesign(false);
+			self.reports.remove(report);
+			removeNewReportWidget();
+			refreshGrid(self.reports(), false);
+			self.RefreshAllReports();
+		}
+	};
+
+	$('#modal-reportbuilder').on('hidden.bs.modal', function () {
+		var report = self.selectedReport();
+		if (report && !report.ReportID()) {
+			self.cancelNewReport(report);
+		}
+	});
 
 	self.loadDashboardReports = function (reports, skipGridRefresh) {
 		self.reports([]);
