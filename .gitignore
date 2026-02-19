@@ -188,6 +188,7 @@ GeneratedArtifacts/
 _Pvt_Extensions/
 ModelManifest.xml
 /.vs
+/.claude
 /App_Data
 /wwwroot
 /package-lock.json
