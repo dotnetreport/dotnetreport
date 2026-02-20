@@ -1078,7 +1078,13 @@ var reportViewModel = function (options) {
 			self.RunReport(false, true);
 		}
 	}
-
+	self.sortFolders = function () {
+		var sorted = _.sortBy(self.Folders(), function (f) {
+			return (f.FolderName || '').toLowerCase();
+		});
+		self.Folders(sorted);  
+		self.allFolders = sorted;
+	};
 	self.FilterGroups.subscribe(function (newArray) {
 		if (newArray && newArray.length == 0) {
 			self.FilterGroups.push(new filterGroupViewModel({ isRoot: true, parent: self, options: options }));
@@ -2003,6 +2009,7 @@ var reportViewModel = function (options) {
 					folderToSave.canDelete = true;
 					folderToSave.isSelected = ko.observable(false);	
 					self.Folders.push(folderToSave);
+					self.sortFolders();
 					toastr.success(folderToSave.FolderName + " added");
 				}
 				else {
@@ -2014,6 +2021,7 @@ var reportViewModel = function (options) {
 					self.Folders.push(folderToSave);
 					self.allFolders = self.Folders();
 					self.SelectedFolder(null);
+					self.sortFolders();
 					toastr.success(folderToSave.FolderName + " updated");
 				}
 				$("#folderModal").modal("hide");
