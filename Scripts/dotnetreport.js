@@ -4563,13 +4563,18 @@ var reportViewModel = function (options) {
 				});
 				function formatValue(val, r) {
 					let style = '';
-					if (r._backColor) {
-						style += `background-color:${r._backColor};`;
+					const bgColor = r._backColor || (ko.isObservable(r.backColor) ? r.backColor() : null);
+					if (bgColor) {
+						style += `background-color:${bgColor};`;
 					}
-					if (r._fontColor) {
-						style += `color:${r._fontColor};`;
+					const fontColor = r._fontColor || (ko.isObservable(r.fontColor) ? r.fontColor() : null);
+					if (fontColor) {
+						style += `color:${fontColor};`;
 					}
-					if (r._fontBold) {
+					const isBold = r._fontBold !== undefined
+						? r._fontBold
+						: (ko.isObservable(r.fontBold) ? r.fontBold() : false);
+					if (isBold) {
 						style += `font-weight:bold;`;
 					}
 					if (!style) return val;
