@@ -2322,8 +2322,16 @@ var reportViewModel = function (options) {
 	self.searchReports.subscribe(function (x) {
 		if (x) {
 			var term = x.toLowerCase();
+
 			self.foldersInSearch(_.filter(self.Folders(), function (folder) {
-				return folder.FolderName.toLowerCase().indexOf(term) >= 0;
+				return folder.FolderName.toLowerCase().indexOf(term) >= 0
+					|| (folder.UserId && folder.UserId.toLowerCase().indexOf(term) >= 0)
+					|| (folder.ViewOnlyUserId && folder.ViewOnlyUserId.toLowerCase().indexOf(term) >= 0)
+					|| (folder.DeleteOnlyUserId && folder.DeleteOnlyUserId.toLowerCase().indexOf(term) >= 0)
+					|| (folder.UserRoles && folder.UserRoles.toLowerCase().indexOf(term) >= 0)
+					|| (folder.ViewOnlyUserRoles && folder.ViewOnlyUserRoles.toLowerCase().indexOf(term) >= 0)
+					|| (folder.DeleteOnlyUserRoles && folder.DeleteOnlyUserRoles.toLowerCase().indexOf(term) >= 0)
+					|| (folder.ClientId && folder.ClientId.toString().toLowerCase().indexOf(term) >= 0);
 			}));
 
 			ajaxcall({
@@ -2338,6 +2346,24 @@ var reportViewModel = function (options) {
 			}).done(function (reports) {
 				self.reportsInSearch([]);
 				if (reports.d) { reports = reports.d; }
+
+				// supplement API results with client-side access field matches
+				_.each(self.SavedReports(), function (report) {
+					var alreadyMatched = _.find(reports, function (r) { return r.reportId == report.reportId; });
+					if (!alreadyMatched) {
+						var accessMatch = (report.userId && report.userId.toLowerCase().indexOf(term) >= 0)
+							|| (report.viewOnlyUserId && report.viewOnlyUserId.toLowerCase().indexOf(term) >= 0)
+							|| (report.deleteOnlyUserId && report.deleteOnlyUserId.toLowerCase().indexOf(term) >= 0)
+							|| (report.userRole && report.userRole.toLowerCase().indexOf(term) >= 0)
+							|| (report.viewOnlyUserRole && report.viewOnlyUserRole.toLowerCase().indexOf(term) >= 0)
+							|| (report.deleteOnlyUserRole && report.deleteOnlyUserRole.toLowerCase().indexOf(term) >= 0)
+							|| (report.clientId && report.clientId.toString().toLowerCase().indexOf(term) >= 0);
+						if (accessMatch) {
+							reports.push({ reportId: report.reportId, message: '' });
+						}
+					}
+				});
+
 				if (reports.length > 0) {
 					self.reportsInSearch(_.filter(self.SavedReports(), function (x) {
 						var match = _.find(reports, function (y) {

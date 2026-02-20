@@ -208,8 +208,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <span class="desc" data-bind="text: FolderName"></span>
                                     <div data-bind="visible: $root.adminMode" style="font-size: 0.75em; margin-top: 4px;" onclick="event.stopPropagation()">
                                         <span class="badge text-bg-info text-white" data-bind="text: UserId ? UserId : 'Any User'"></span>
-                                        <span class="badge text-bg-info text-white" data-bind="text: UserRoles ? UserRoles : 'Any Role'"></span>                                        
-                                    </div>
+                                        <span class="badge text-bg-info text-white" data-bind="text: UserRoles ? UserRoles : 'Any Role'"></span>
+                                    </div>                                    
                                 </li>
                             </ul>
                         </div>
@@ -395,16 +395,36 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             <div data-bind="visible: !SelectedFolder() && !searchReports()">
                                 <div class="container-fluid">
                                     <div class="row fw-bold border-bottom py-2 w-100">
-                                        <div class="col-md-6">Name</div>
+                                        <div class="col-md-5">Name</div>
+                                        <div class="col-md-1"></div>
                                         <div class="col-md-6" data-bind="visible: adminMode">Access Control</div>
                                     </div>
-                                    <div class="folder-list" data-bind="foreach: Folders">
-                                        <div class="row clickable py-2 border-bottom align-items-center w-100" data-bind="click: function(){ $parent.SelectedFolder($data); }">
-                                            <div class="col-md-6 d-flex align-items-center">
+                                    <div class="" data-bind="foreach: Folders">
+                                        <div class="row py-2 border-bottom align-items-center w-100" >
+                                            <div class="col-md-5 d-flex align-items-center clickable" data-bind="click: function(){ $parent.SelectedFolder($data); }">
                                                 <span data-bind="visible: $root.selectMode, click: function(d,e){ isSelected(!isSelected()); e.stopPropagation(); },
                                                     css: isSelected() ? 'fa fa-check-square text-primary me-2' : 'fa fa-square-o me-2'"></span>
                                                 <span class="fa fa-folder text-secondary me-2"></span>
                                                 <span data-bind="text: FolderName"></span>
+                                            </div>
+                                            <div class="col-md-1" onclick="event.stopPropagation()">
+                                                <div class="dropdown" data-bind="visible: ($root.CanManageFolders() || $root.adminMode()) && (canEdit || canDelete || $root.adminMode())">
+                                                    <button class="btn btn-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                        <span class="fa fa-ellipsis-h"></span>
+                                                    </button>
+                                                    <ul class="dropdown-menu">
+                                                        <li>
+                                                            <a class="dropdown-item" href="#" data-bind="click: function(){ $parent.SelectedFolder($data); $parent.ManageFolder.editFolder(); }, visible: canEdit || $root.adminMode()">
+                                                                <span class="fa fa-edit"></span> Edit Folder
+                                                            </a>
+                                                        </li>
+                                                        <li>
+                                                            <a class="dropdown-item text-danger" href="#" data-bind="click: function(){ $parent.SelectedFolder($data); $parent.ManageFolder.deleteFolder(); }, visible: canDelete || $root.adminMode()">
+                                                                <span class="fa fa-trash"></span> Delete Folder
+                                                            </a>
+                                                        </li>
+                                                    </ul>
+                                                </div>
                                             </div>
                                             <div class="col-md-6" data-bind="visible: $parent.adminMode">
                                                 <div class="d-flex flex-wrap gap-1 align-items-center">
