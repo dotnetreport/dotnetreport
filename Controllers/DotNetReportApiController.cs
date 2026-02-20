@@ -611,6 +611,47 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> RunReportLinkUnAuth(int reportId, int? filterId = null, string filterValue = "", bool adminMode = false, string exportId = "")
+        {
+            var model = new DotNetReportModel();
+            var settings = ExportSessionStore.Get(exportId);
+            if (settings == null)
+                return Unauthorized();
+
+            settings.ApiUrl = _configuration.GetValue<string>("dotNetReport:apiUrl");
+            settings.AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken");
+            settings.DataConnectApiToken = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken");
+            settings.CanUseAdminMode = true;
+
+            using (var client = new HttpClient())
+            {
+                var content = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("account", settings.AccountApiToken),
+                    new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
+                    new KeyValuePair<string, string>("clientId", settings.ClientId),
+                    new KeyValuePair<string, string>("userId", settings.UserId),
+                    new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
+                    new KeyValuePair<string, string>("reportId", reportId.ToString()),
+                    new KeyValuePair<string, string>("filterId", filterId.HasValue ? filterId.ToString() : ""),
+                    new KeyValuePair<string, string>("filterValue", filterValue.ToString()),
+                    new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
+                    new KeyValuePair<string, string>("dataFilters", JsonSerializer.Serialize(settings.DataFilters)),
+                    new KeyValuePair<string, string>("useParameters", DotNetReportHelper.dbtype=="MS SQL" ? "true" : "false")
+                });
+
+                var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/RunLinkedReport"), content);
+                var stringContent = await response.Content.ReadAsStringAsync();
+
+                model = JsonSerializer.Deserialize<DotNetReportModel>(stringContent);
+
+            }
+
+            return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+        }
+
+        [HttpGet]
         public async Task<IActionResult> RunReportLink(int reportId, int? filterId = null, string filterValue = "", bool adminMode = false)
         {
             var model = new DotNetReportModel();
