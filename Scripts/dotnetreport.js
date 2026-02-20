@@ -1078,7 +1078,13 @@ var reportViewModel = function (options) {
 			self.RunReport(false, true);
 		}
 	}
-
+	self.sortFolders = function () {
+		var sorted = _.sortBy(self.Folders(), function (f) {
+			return (f.FolderName || '').toLowerCase();
+		});
+		self.Folders(sorted);  
+		self.allFolders = sorted;
+	};
 	self.FilterGroups.subscribe(function (newArray) {
 		if (newArray && newArray.length == 0) {
 			self.FilterGroups.push(new filterGroupViewModel({ isRoot: true, parent: self, options: options }));
@@ -2003,6 +2009,7 @@ var reportViewModel = function (options) {
 					folderToSave.canDelete = true;
 					folderToSave.isSelected = ko.observable(false);	
 					self.Folders.push(folderToSave);
+					self.sortFolders();
 					toastr.success(folderToSave.FolderName + " added");
 				}
 				else {
@@ -2014,6 +2021,7 @@ var reportViewModel = function (options) {
 					self.Folders.push(folderToSave);
 					self.allFolders = self.Folders();
 					self.SelectedFolder(null);
+					self.sortFolders();
 					toastr.success(folderToSave.FolderName + " updated");
 				}
 				$("#folderModal").modal("hide");
@@ -4588,13 +4596,18 @@ var reportViewModel = function (options) {
 				});
 				function formatValue(val, r) {
 					let style = '';
-					if (r._backColor) {
-						style += `background-color:${r._backColor};`;
+					const bgColor = r._backColor || (ko.isObservable(r.backColor) ? r.backColor() : null);
+					if (bgColor) {
+						style += `background-color:${bgColor};`;
 					}
-					if (r._fontColor) {
-						style += `color:${r._fontColor};`;
+					const fontColor = r._fontColor || (ko.isObservable(r.fontColor) ? r.fontColor() : null);
+					if (fontColor) {
+						style += `color:${fontColor};`;
 					}
-					if (r._fontBold) {
+					const isBold = r._fontBold !== undefined
+						? r._fontBold
+						: (ko.isObservable(r.fontBold) ? r.fontBold() : false);
+					if (isBold) {
 						style += `font-weight:bold;`;
 					}
 					if (!style) return val;
