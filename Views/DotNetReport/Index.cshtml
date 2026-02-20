@@ -206,6 +206,10 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                           css: isSelected() ? 'fa fa-check-square text-primary me-2' : 'fa fa-square-o me-2'"></span>
                                     <span class="fa fa-3x fa-folder text-secondary"></span>
                                     <span class="desc" data-bind="text: FolderName"></span>
+                                    <div data-bind="visible: $root.adminMode" style="font-size: 0.75em; margin-top: 4px;" onclick="event.stopPropagation()">
+                                        <span class="badge text-bg-info text-white" data-bind="text: UserId ? UserId : 'Any User'"></span>
+                                        <span class="badge text-bg-info text-white" data-bind="text: UserRoles ? UserRoles : 'Any Role'"></span>                                        
+                                    </div>
                                 </li>
                             </ul>
                         </div>
@@ -222,8 +226,40 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <div data-bind="if: SelectedFolder()!=null && reportsInFolder().length==0">
                                     This folder is empty.
                                 </div>
-                                <div data-bind="if: searchReports() && reportsInSearch().length==0">
-                                    No Reports found matching your Search
+                                <div data-bind="if: searchReports() && reportsInSearch().length==0 && foldersInSearch().length==0">
+                                    No results found matching your search.
+                                </div>
+                                <!-- Folder search results (icon view) -->
+                                <div data-bind="if: searchReports() && foldersInSearch().length > 0">
+                                    <div class="mt-1 mb-1"><strong><span class="fa fa-folder"></span> Matching Folders</strong></div>
+                                    <ul class="folder-list" data-bind="foreach: foldersInSearch">
+                                        <li data-bind="click: function(){ $parent.SelectedFolder($data); $parent.searchReports(''); }">
+                                            <span class="fa fa-3x fa-folder text-secondary"></span>
+                                            <span class="desc" data-bind="highlightedText: { text: FolderName, highlight: $parent.searchReports, css: 'highlight' }"></span>
+                                            <div data-bind="visible: $root.adminMode" style="font-size: 0.75em; margin-top: 4px;" onclick="event.stopPropagation()">
+                                                <div class="d-flex flex-wrap gap-1">
+                                                    <span class="badge bg-info text-white" title="Manage Users" data-bind="text: UserId ? '👤 ' + UserId : '👤 Any User'"></span>
+                                                    <!-- ko if: ViewOnlyUserId -->
+                                                    <span class="badge bg-info text-white border" title="View only Users" data-bind="text: '👁 ' + ViewOnlyUserId"></span>
+                                                    <!-- /ko -->
+                                                    <!-- ko if: DeleteOnlyUserId -->
+                                                    <span class="badge bg-info text-white border" title="Delete only Users" data-bind="text: '🗑 ' + DeleteOnlyUserId"></span>
+                                                    <!-- /ko -->
+                                                    <span class="badge bg-info text-white" title="Manage Roles" data-bind="text: '🔑 ' + (UserRoles ? UserRoles : 'Any Role')"></span>
+                                                    <!-- ko if: ViewOnlyUserRoles -->
+                                                    <span class="badge bg-info text-white border" title="View only Roles" data-bind="text: '👁 ' + ViewOnlyUserRoles"></span>
+                                                    <!-- /ko -->
+                                                    <!-- ko if: DeleteOnlyUserRoles -->
+                                                    <span class="badge bg-info text-white border" title="Delete only Roles" data-bind="text: '🗑 ' + DeleteOnlyUserRoles"></span>
+                                                    <!-- /ko -->
+                                                    <!-- ko if: ClientId -->
+                                                    <span class="badge bg-info text-white" title="Client" data-bind="text: '🏢 ' + ClientId"></span>
+                                                    <!-- /ko -->
+                                                </div>
+                                            </div>
+                                        </li>
+                                    </ul>
+                                    <hr />
                                 </div>
                                 <div class="list-group" data-bind="foreach: searchReports() ? reportsInSearch() : reportsInFolder()">
                                     <div class="list-group-item">
@@ -247,36 +283,26 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                     </span>
                                                 </p>
                                                 <div data-bind="if: $parent.adminMode">
-                                                    <div class="small">
-                                                        <b>Report Access</b><br />
-                                                        Manage by User <span class="badge text-bg-info text-white" data-bind="text: userId ? userId : 'Any User'"></span>
-                                                        <br />
-                                                        View only by User <span class="badge text-bg-info text-white" data-bind="text: (viewOnlyUserId ? viewOnlyUserId : (userId ? userId : 'Any User'))"></span>
-                                                        <br />
-                                                        <div data-bind="if: deleteOnlyUserId">
-                                                            Delete only by User <span class="badge text-bg-info text-white" data-bind="text: deleteOnlyUserId"></span>
-                                                            <br />
-                                                        </div>
-                                                        <div data-bind="if: userRole">
-                                                            Manage by Role <span class="badge text-bg-info text-white" data-bind="text: userRole ? userRole : 'No Role'"></span>
-                                                            <br />
-                                                        </div>
-                                                        <div data-bind="if: viewOnlyUserRole">
-                                                            View only by Role <span class="badge text-bg-info text-white" data-bind="text: viewOnlyUserRole ? viewOnlyUserRole : 'Any Role'"></span>
-                                                            <br />
-                                                        </div>
-                                                        <div data-bind="if: deleteOnlyUserRole">
-                                                            Delete only by Role <span class="badge text-bg-info text-white" data-bind="text: deleteOnlyUserRole ? deleteOnlyUserRole : 'Same as Manage'"></span>
-                                                            <br />
-                                                        </div>
-                                                        <div data-bind="if: clientId">
-                                                            For Client <span class="label label-info" data-bind="text: clientId ? clientId : 'Any'"></span>
-                                                            <br />
-                                                        </div>
-                                                        <div>
-                                                            Direct Link to Run Report: <a data-bind="attr: {href: '/DotNetReport/?linkedreport=true&noparent=true&reportId=' + reportId }" target="_blank"><span class="fa fa-link"></span></a>
-                                                            &nbsp;<a href="#" data-bind="click: navigator.clipboard.writeText(window.location.href + '?linkedreport=true&noparent=true&reportId=' + reportId )"><span class="fa fa-copy" title="Click to Copy Link"></span></a>
-                                                        </div>
+                                                    <div class="d-flex flex-wrap gap-1 align-items-center mt-1">
+                                                        <span class="badge bg-info text-white" title="Manage Users" data-bind="text: userId ? '👤 ' + userId : '👤 Any User'"></span>
+                                                        <!-- ko if: viewOnlyUserId -->
+                                                        <span class="badge bg-info text-white border" title="View only Users" data-bind="text: '👁 ' + viewOnlyUserId"></span>
+                                                        <!-- /ko -->
+                                                        <!-- ko if: deleteOnlyUserId -->
+                                                        <span class="badge bg-info text-white border" title="Delete only Users" data-bind="text: '🗑 ' + deleteOnlyUserId"></span>
+                                                        <!-- /ko -->
+                                                        <span class="badge bg-info text-white" title="Manage Roles" data-bind="text: '🔑 ' + (userRole ? userRole : 'Any Role')"></span>                                                        
+                                                        <!-- ko if: viewOnlyUserRole -->
+                                                        <span class="badge bg-info text-white border" title="View only Roles" data-bind="text: '👁 ' + viewOnlyUserRole"></span>
+                                                        <!-- /ko -->
+                                                        <!-- ko if: deleteOnlyUserRole -->
+                                                        <span class="badge bg-info text-white border" title="Delete only Roles" data-bind="text: '🗑 ' + deleteOnlyUserRole"></span>
+                                                        <!-- /ko -->
+                                                        <!-- ko if: clientId -->
+                                                        <span class="badge bg-info text-white" title="Client" data-bind="text: '🏢 ' + clientId"></span>
+                                                        <!-- /ko -->
+                                                        <a data-bind="attr: {href: '/DotNetReport/?linkedreport=true&noparent=true&reportId=' + reportId }" target="_blank" title="Direct Link"><span class="fa fa-link"></span></a>
+                                                        <a href="#" data-bind="click: function() { navigator && navigator.clipboard && navigator.clipboard.writeText('/DotNetReport?linkedreport=true&noparent=true&reportId=' + reportId) }" title="Copy Link"><span class="fa fa-copy"></span></a>
                                                     </div>
                                                 </div>
                                             </div>
@@ -370,7 +396,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <div class="container-fluid">
                                     <div class="row fw-bold border-bottom py-2 w-100">
                                         <div class="col-md-6">Name</div>
-                                        <div class="col-md-6 text-end" data-bind="visible: adminMode">Access Control</div>
+                                        <div class="col-md-6" data-bind="visible: adminMode">Access Control</div>
                                     </div>
                                     <div class="folder-list" data-bind="foreach: Folders">
                                         <div class="row clickable py-2 border-bottom align-items-center w-100" data-bind="click: function(){ $parent.SelectedFolder($data); }">
@@ -380,9 +406,26 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 <span class="fa fa-folder text-secondary me-2"></span>
                                                 <span data-bind="text: FolderName"></span>
                                             </div>
-                                            <div class="col-md-6 text-end" data-bind="visible: $parent.adminMode">
-                                                <!--<div class="badge bg-info text-white" data-bind="text: userId ? userId : 'Any User'"></div>
-                                                    <div class="badge bg-info text-white" data-bind="text: userRole ? userRole : 'No Role'"></div>-->
+                                            <div class="col-md-6" data-bind="visible: $parent.adminMode">
+                                                <div class="d-flex flex-wrap gap-1 align-items-center">
+                                                    <span class="badge bg-info text-white" title="Manage Users" data-bind="text: UserId ? '👤 ' + UserId : '👤 Any User'"></span>
+                                                    <!-- ko if: ViewOnlyUserId -->
+                                                    <span class="badge bg-info text-white border" title="View only Users" data-bind="text: '👁 ' + ViewOnlyUserId"></span>
+                                                    <!-- /ko -->
+                                                    <!-- ko if: DeleteOnlyUserId -->
+                                                    <span class="badge bg-info text-white border" title="Delete only Users" data-bind="text: '🗑 ' + DeleteOnlyUserId"></span>
+                                                    <!-- /ko -->
+                                                    <span class="badge bg-info text-white" title="Manage Roles" data-bind="text: '🔑 ' + (UserRoles ? UserRoles : 'Any Role')"></span>
+                                                    <!-- ko if: ViewOnlyUserRoles -->
+                                                    <span class="badge bg-info text-white border" title="View only Roles" data-bind="text: '👁 ' + ViewOnlyUserRoles"></span>
+                                                    <!-- /ko -->
+                                                    <!-- ko if: DeleteOnlyUserRoles -->
+                                                    <span class="badge bg-info text-white border" title="Delete only Roles" data-bind="text: '🗑 ' + DeleteOnlyUserRoles"></span>
+                                                    <!-- /ko -->
+                                                    <!-- ko if: ClientId -->
+                                                    <span class="badge bg-info text-white" data-bind="text: '🏢 ' + ClientId"></span>
+                                                    <!-- /ko -->
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -395,8 +438,45 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         <p class="text-muted">This folder is empty.</p>
                                     </div>
 
-                                    <div data-bind="if: searchReports() && reportsInSearch().length==0">
-                                        <p class="text-center text-muted">No reports found matching your search.</p>
+                                    <div data-bind="if: searchReports() && reportsInSearch().length==0 && foldersInSearch().length==0">
+                                        <p class="text-center text-muted">No results found matching your search.</p>
+                                    </div>
+                                    <!-- Folder search results (list view) -->
+                                    <div data-bind="if: searchReports() && foldersInSearch().length > 0">
+                                        <div class="row fw-bold py-1 border-bottom mt-2 w-100">
+                                            <div class="col-md-6"><span class="fa fa-folder"></span> Matching Folders</div>
+                                            <div class="col-md-6" data-bind="visible: $root.adminMode">Access</div>
+                                        </div>
+                                        <div data-bind="foreach: foldersInSearch">
+                                            <div class="row border-bottom py-2 align-items-center w-100">
+                                                <div class="col-md-6 d-flex align-items-center">
+                                                    <span class="fa fa-folder text-secondary me-2"></span>
+                                                    <a href="#" data-bind="click: function(){ $parent.SelectedFolder($data); $parent.searchReports(''); }, highlightedText: { text: FolderName, highlight: $parent.searchReports, css: 'highlight' }" style="cursor: pointer"></a>
+                                                </div>
+                                                <div class="col-md-6" data-bind="visible: $root.adminMode">
+                                                    <div class="small text-muted d-flex flex-wrap gap-1 align-items-center">
+                                                        <span class="badge bg-info text-white" title="Manage Users" data-bind="text: UserId ? '👤 ' + UserId : '👤 Any User'"></span>
+                                                        <!-- ko if: ViewOnlyUserId -->
+                                                        <span class="badge bg-info text-white border" title="View only Users" data-bind="text: '👁 ' + ViewOnlyUserId"></span>
+                                                        <!-- /ko -->
+                                                        <!-- ko if: DeleteOnlyUserId -->
+                                                        <span class="badge bg-info text-white border" title="Delete only Users" data-bind="text: '🗑 ' + DeleteOnlyUserId"></span>
+                                                        <!-- /ko -->
+                                                        <span class="badge bg-info text-white" title="Manage Roles" data-bind="text: '🔑 ' + (UserRoles ? UserRoles : 'Any Role')"></span>
+                                                        <!-- ko if: ViewOnlyUserRoles -->
+                                                        <span class="badge bg-info text-white border" title="View only Roles" data-bind="text: '👁 ' + ViewOnlyUserRoles"></span>
+                                                        <!-- /ko -->
+                                                        <!-- ko if: DeleteOnlyUserRoles -->
+                                                        <span class="badge bg-info text-white border" title="Delete only Roles" data-bind="text: '🗑 ' + DeleteOnlyUserRoles"></span>
+                                                        <!-- /ko -->
+                                                        <!-- ko if: ClientId -->
+                                                        <span class="badge bg-info text-white" title="Client" data-bind="text: '🏢 ' + ClientId"></span>
+                                                        <!-- /ko -->
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mb-2"></div>
                                     </div>
                                     <div data-bind="if: reportsInFolder().length > 0 || reportsInSearch().length > 0">
                                         <div class="row fw-bold border-bottom py-2 w-100">
@@ -481,11 +561,27 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                     </div>
 
                                                 </div>
-                                                <div class="col-md-2" data-bind="text: folderName, visible: $parent.searchReports()"></div>
-                                                <div class="col-md-2"></div>
-                                                <div class="col-md-2" data-bind="visible: $parent.adminMode">
-                                                    <div class="badge bg-info text-white" data-bind="text: userId ? userId : 'Any User'"></div>
-                                                    <div class="badge bg-info text-white" data-bind="text: userRole ? userRole : 'No Role'"></div>
+                                                <div class="col-md-2" data-bind="text: folderName, visible: $parent.searchReports()"></div>                                                
+                                                <div class="col-md-4" data-bind="visible: $parent.adminMode">
+                                                    <div class="d-flex flex-wrap gap-1 align-items-center mt-1">
+                                                        <span class="badge bg-info text-white" title="Manage Users" data-bind="text: userId ? '👤 ' + userId : '👤 Any User'"></span>
+                                                        <!-- ko if: viewOnlyUserId -->
+                                                        <span class="badge bg-info text-white border" title="View only Users" data-bind="text: '👁 ' + viewOnlyUserId"></span>
+                                                        <!-- /ko -->
+                                                        <!-- ko if: deleteOnlyUserId -->
+                                                        <span class="badge bg-info text-white border" title="Delete only Users" data-bind="text: '🗑 ' + deleteOnlyUserId"></span>
+                                                        <!-- /ko -->
+                                                        <span class="badge bg-info text-white" title="Manage Roles" data-bind="text: '🔑 ' + (userRole ? userRole : 'Any Role')"></span>
+                                                        <!-- ko if: viewOnlyUserRole -->
+                                                        <span class="badge bg-info text-white border" title="View only Roles" data-bind="text: '👁 ' + viewOnlyUserRole"></span>
+                                                        <!-- /ko -->
+                                                        <!-- ko if: deleteOnlyUserRole -->
+                                                        <span class="badge bg-info text-white border" title="Delete only Roles" data-bind="text: '🗑 ' + deleteOnlyUserRole"></span>
+                                                        <!-- /ko -->
+                                                        <!-- ko if: clientId -->
+                                                        <span class="badge bg-info text-white" title="Client" data-bind="text: '🏢 ' + clientId"></span>
+                                                        <!-- /ko -->
+                                                    </div>
                                                 </div>
                                                 <div class="col-md-1" data-bind="visible: $parent.adminMode">
                                                     <a data-bind="attr: {href: '/DotNetReport?linkedreport=true&noparent=true&reportId=' + reportId }" target="_blank"><span class="fa fa-link"></span></a>

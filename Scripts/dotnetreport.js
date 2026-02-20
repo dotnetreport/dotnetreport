@@ -2313,6 +2313,7 @@ var reportViewModel = function (options) {
 	});
 
 	self.reportsInSearch = ko.observableArray([]);
+	self.foldersInSearch = ko.observableArray([]);
 
 	self.searchForReports = function () {
 		self.searchReports($('#search-input').text());
@@ -2320,6 +2321,11 @@ var reportViewModel = function (options) {
 
 	self.searchReports.subscribe(function (x) {
 		if (x) {
+			var term = x.toLowerCase();
+			self.foldersInSearch(_.filter(self.Folders(), function (folder) {
+				return folder.FolderName.toLowerCase().indexOf(term) >= 0;
+			}));
+
 			ajaxcall({
 				url: options.apiUrl,
 				data: {
@@ -2345,6 +2351,7 @@ var reportViewModel = function (options) {
 			});
 		}
 		else {
+			self.foldersInSearch([]);
 			self.reportsInSearch().forEach(x => x.message = '');
 		}
 	});
