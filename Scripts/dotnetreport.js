@@ -1601,28 +1601,33 @@ var reportViewModel = function (options) {
 
 	self.textQuery.searchFields.selectedOption.subscribe(function (newValue) {
 		if (newValue) {
-			if (!_.find(self.SelectedFields(), function (x) { return x.fieldId == parseInt(newValue); })) {
-				ajaxcall({
-					url: options.apiUrl,
-					data: {
-						method: "/ReportApi/GetFieldsByIds",
-						model: JSON.stringify({
-							fieldIds: newValue
-						})
-					}
-				}).done(function (result) {
-					if (result.d) result = result.d;
+			ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/GetFieldsByIds",
+					model: JSON.stringify({
+						fieldIds: newValue
+					})
+				}
+			}).done(function (result) {
+				if (result.d) result = result.d;
+				var field = self.setupField(result[0]);
+				if (self.isFormulaField()) {
+					// Custom field mode: add to formulaFields instead of SelectedFields
+					self.formulaFields.push(field);
+				} else {
+					if (_.find(self.SelectedFields(), function (x) { return x.fieldId == parseInt(newValue); })) return;
 					const tableId = result[0].tableId;
-					const joinIds = self.joinIds(); 
-					const isJoinRequiredButMissing =  joinIds && joinIds.size > 0 ? !joinIds.has(tableId) && tableId: false;
+					const joinIds = self.joinIds();
+					const isJoinRequiredButMissing = joinIds && joinIds.size > 0 ? !joinIds.has(tableId) && tableId : false;
 					if (isJoinRequiredButMissing) {
 						toastr.error(`Cannot use table as joins do not exist ${result[0].tableName} > ${result[0].fieldName}`);
 						return;
 					}
-					self.SelectedFields.push(self.setupField(result[0]));
-					self.textQuery.searchFields.selectedOption(null);
-				});
-			}
+					self.SelectedFields.push(field);
+				}
+				self.textQuery.searchFields.selectedOption(null);
+			});
 		}
 	});
 

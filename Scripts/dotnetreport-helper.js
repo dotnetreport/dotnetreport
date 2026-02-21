@@ -1131,9 +1131,30 @@ var textQuery = function (options) {
         return tributeAttributes;
     }
 
+     self.patchTributeForSpaces = function (tribute) {
+        tribute.allowSpaces = true;
+        tribute.range.getLastWordInText = function (text) {
+            return text.replace(/\u00A0/g, ' ').trim();
+        };
+        tribute.range.getTextPrecedingCurrentSelection = function () {
+            var element = this.tribute.current.element;
+            if (!element) return '';
+            if (element.nodeName === 'INPUT' || element.nodeName === 'TEXTAREA') {
+                var start = element.selectionStart;
+                return element.value ? element.value.substring(0, start) : '';
+            }
+            var sel = window.getSelection();
+            if (!sel || sel.rangeCount === 0) return '';
+            var range = sel.getRangeAt(0).cloneRange();
+            range.setStart(element, 0);
+            return range.toString();
+        };
+    }
+
     self.setupHints = function () {
         var tributeAttributes = self.getTributeAttributes({ concatFilterAndQuery: false, wrapText: true });
         var tribute = new Tribute(tributeAttributes);
+        self.patchTributeForSpaces(tribute);
 
         var hintInputs = document.querySelectorAll(".hint-input");
         hintInputs.forEach(function (inputElement) {
@@ -1163,6 +1184,7 @@ var textQuery = function (options) {
 
         var tributeAttributes = self.getTributeAttributes({ concatFilterAndQuery: true });
         var tribute = new Tribute(tributeAttributes);
+        self.patchTributeForSpaces(tribute);
         tribute.attach(inputEl);
 
         inputEl.addEventListener("tribute-replaced", function (e) {
@@ -1243,6 +1265,7 @@ var textQuery = function (options) {
     self.setupLookup = function (field, filter) {
         var tributeAttributes = self.getTributeAttributes({ searchLookupFilter: true });
         var tribute = new Tribute(tributeAttributes);
+        self.patchTributeForSpaces(tribute);
         var prefixes = ['C', 'F', 'M', 'P'];
         var filterInputs = [];
         prefixes.forEach(function (p) {
