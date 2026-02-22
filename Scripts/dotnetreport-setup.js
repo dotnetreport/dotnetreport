@@ -2332,7 +2332,6 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 		t.editTableColumn = ko.observable();
 		t.addNewColumn = function () {
 			var activetable = activeTable();
-			console.log(activeTable())
 			var newCol = new ColumnModel({
 				ColumnId: 0,
 				ColumnName: '',
@@ -2366,6 +2365,7 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 			const columns = [];
 
 			ko.utils.arrayForEach(t.Columns(), function (col) {
+				col.isNew = false;
 				if (col.Id() > 0 && col.Selected()) {
 					columns.push(col);
 				}
@@ -2488,32 +2488,30 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 			});
 		}
 
-		self.exportTablesJson = function (customOnly) {
-			const inCategory = t => customOnly ? t.CustomTable() : !t.CustomTable();
-			const all = self.model().filter(inCategory);
-			const filtered = self.filteredTables().filter(inCategory);
-			const selected = filtered.filter(t => t.Selected());
+		t.exportTableJson = function () {
 
-			if (!selected.length) return toastr.warning('No tables to export.');
-
-			const msg = (filtered.length < all.length
-				? `Only filtered tables (${filtered.length} of ${all.length}) will be exported.`
-				: `All ${all.length} tables will be exported.`);
+			if (!t) return toastr.warning('No table to export.');
 
 			bootbox.confirm({
-				title: "Confirm Export Tables",
-				message: msg,
+				title: "Confirm Export Table",
+				message: `Export table "${t.TableName ? t.TableName() : ''}"?`,
 				buttons: {
 					cancel: { label: 'Cancel', className: 'btn-secondary' },
 					confirm: { label: 'Export', className: 'btn-primary' }
 				},
-				callback: ok => {
+				callback: function (ok) {
 					if (!ok) return;
-					const exportList = selected.map(t => ko.mapping.toJS(t, {
+
+					const exportObj = ko.mapping.toJS(t, {
 						ignore: ["saveTable", "JoinTable", "ForeignJoinTable"]
-					}));
-					downloadJson(JSON.stringify(exportList, null, 2),
-						customOnly ? 'CustomTables.json' : 'Tables.json', 'application/json');
+					});
+
+					downloadJson(
+						JSON.stringify(exportObj, null, 2),
+						`${t.TableName ? t.TableName() : 'Table'}.json`,
+						'application/json'
+					);
+
 					toastr.success('Table schema exported.');
 				}
 			});
