@@ -728,7 +728,8 @@ function filterGroupViewModel(args) {
 					txtqry.setupLookup(newField, filter);
 				}, 1000);				
 			}
-			if (newField && newField.fieldId === 0 &&newField.tableName === "Custom" && newField.dynamicTableId === null) {
+			if (newField && newField.fieldId === 0 && newField.tableName === "Custom" && newField.dynamicTableId === null) {
+				if (newField.fieldFormat()) newField.fieldType = '';
 				if (['Percentage', 'Number', 'Decimal', 'Currency', 'Days', 'Hours', 'Minutes', 'Seconds'].indexOf(newField.fieldFormat()) >= 0 || ['Int', 'Decimal'].indexOf(newField.fieldType) >= 0) {
 					newField.fieldType = "Int";
 					newField.fieldFilter = ['=', '>', '<', '>=', '<=', 'in', 'not in', 'not equal', 'between', 'is blank', 'is not blank'];
@@ -776,7 +777,7 @@ function filterGroupViewModel(args) {
 			}
 		});
 		if (e.FieldId == 0 || e.FieldId == undefined) {
-			field(args.parent.FindCustomField());
+			field(args.parent.FindCustomField(e.fieldName));
 			if (field()) field().uiId = generateUniqueId();
 		}
 		else if (e.FieldId) {
@@ -3430,9 +3431,9 @@ var reportViewModel = function (options) {
 					||	(x.tableName == 'Custom' && fieldSettings.IsCustomField && x.fieldName == fieldSettings.CustomFieldName);
 		})[0];
 	};
-	self.FindCustomField = function () {
+	self.FindCustomField = function (fieldName) {
 		return _.filter(self.SelectedFields(), function (x) {
-			return (x.tableName == 'Custom');
+			return (x.tableName == 'Custom' && x.fieldName == fieldName);
 		})[0];
 	};
 	self.SaveWithoutRun = function () {
@@ -6446,7 +6447,9 @@ var reportViewModel = function (options) {
 				Value2: f.value2 || '',
 				Valuetime: f.valuetime || '',
 				Valuetime2: f.valuetime2 || '',
-				IsConditionalFilter:true
+				IsConditionalFilter: true,
+				fieldName: e.fieldName,
+				fieldFormat: e.fieldFormat()
 			});
 			e.fieldCondtionalFormats.push({
 				fontColor: ko.observable(f.fontColor || ''),
