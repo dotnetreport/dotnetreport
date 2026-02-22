@@ -2328,7 +2328,7 @@
           <button type="button" class="btn btn-sm btn-light" data-bind="visible: ReportID(), click: function() {activeDesign(false); if (isExpanded) isExpanded(false);}" title="Close">
             <i class="fa fa-times"></i> Close Designer
           </button>
-          <button type="button" class="btn btn-sm btn-danger" data-bind="visible: !ReportID(), click: function() { if ($parent.removeNewReport) $parent.removeNewReport(); }" title="Cancel new report">
+          <button type="button" class="btn btn-sm btn-danger" data-bind="visible: !ReportID(), click: function() { if (ReportMode()=='dashboard') $parent.removeNewReport(); else cancelCreateReport(); }" title="Cancel new report">
             <i class="fa fa-times"></i> Cancel
           </button>
         </div>
