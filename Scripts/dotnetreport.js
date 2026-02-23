@@ -777,7 +777,8 @@ function filterGroupViewModel(args) {
 			}
 		});
 		if (e.FieldId == 0 || e.FieldId == undefined) {
-			field(args.parent.FindCustomField(e.fieldName));
+			var customFieldName = e.fieldName || (e.FilterSettings ? JSON.parse(e.FilterSettings).CustomFieldName : null);
+			field(args.parent.FindCustomField(customFieldName));
 			if (field()) field().uiId = generateUniqueId();
 		}
 		else if (e.FieldId) {
@@ -2825,6 +2826,7 @@ var reportViewModel = function (options) {
 	self.formulaDecimalPlaces = ko.observable();
 	self.selectedFunction = ko.observable();
 	self.currentFormulaField = ko.observable(null);
+	self._formulaIsDateField = ko.observable(false);
 	var codeEditor;
 	self.designFunctionField = function () {
 		if (self.isFunctionField()) {
@@ -2860,6 +2862,7 @@ var reportViewModel = function (options) {
 	});
 
 	self.formulaOnlyHasDateFields = ko.computed(function () {
+		if (self.formulaType() === 'sql' && self._formulaIsDateField()) return true;
 		var allFields = self.formulaFields();
 		if (allFields.length <= 0) return false;
 
@@ -2879,7 +2882,7 @@ var reportViewModel = function (options) {
 		var result = self.formulaOnlyHasDateFields();
 		if (_formulaDateFormat && result) { self.formulaDataFormat(_formulaDateFormat); _formulaDateFormat = ''; }
 		if (result && ['Days', 'Hours', 'Minutes', 'Seconds'].indexOf(self.formulaDataFormat()) < 0) self.formulaDataFormat('Days');
-		if (!result && ['String', 'Integer', 'Double', 'Decimal', 'Currency'].indexOf(self.formulaDataFormat()) < 0) self.formulaDataFormat('String');
+		if (!result && ['Days', 'Hours', 'Minutes', 'Seconds'].indexOf(self.formulaDataFormat()) >= 0) self.formulaDataFormat('String');
 	});
 
 	self.formulaHasConstantValue = ko.computed(function () {
@@ -2967,6 +2970,7 @@ var reportViewModel = function (options) {
 	});
 
 	self.clearFormulaField = function () {
+		self._formulaIsDateField(false);
 		self.formulaFields([]);
 		self.formulaFieldLabel('');
 		self.formulaDataFormat('String');
@@ -3031,6 +3035,9 @@ var reportViewModel = function (options) {
 				field.functionId = result.FunctionId;
 				field.functionName = result.FunctionName;
 				field.fieldName = self.formulaFieldLabel();
+				if (ko.isObservable(field.selectedFieldName)) {
+					field.selectedFieldName(field.tableName + " > " + field.fieldName);
+				}
 				field.fieldFormat(self.formulaDataFormat());
 				field.decimalPlaces(self.formulaDecimalPlaces());
 				result.input = input;
@@ -3052,6 +3059,7 @@ var reportViewModel = function (options) {
 	}
 
 	var _formulaDateFormat = "";
+	var _originalFieldFormat = "";
 	self.editFormulaField = function (field) {
 		if (field.fieldSettings && field.fieldSettings.functionConfig && Object.keys(field.fieldSettings.functionConfig).length > 0) {
 			self.designFunctionField();
@@ -3065,7 +3073,9 @@ var reportViewModel = function (options) {
 		self.formulaType(field.formulaType);
 		self.formulaFieldLabel(field.fieldName);
 		self.formulaDataFormat(field.fieldFormat());
-		_formulaDateFormat = ['Days', 'Hours', 'Minutes', 'Seconds'].indexOf(field.fieldFormat()) ? field.fieldFormat() : "";
+		_originalFieldFormat = field.fieldFormat();
+		_formulaDateFormat = ['Days', 'Hours', 'Minutes', 'Seconds'].includes(field.fieldFormat()) ? field.fieldFormat() : "";
+		self._formulaIsDateField(['Days', 'Hours', 'Minutes', 'Seconds'].includes(field.fieldFormat()));
 		self.formulaDecimalPlaces(field.decimalPlaces());
 		self.formulaFields([]);
 		self.CustomChooseFields([]);
@@ -3153,7 +3163,15 @@ var reportViewModel = function (options) {
 		let field = self.currentFormulaField();
 		if (field!=null && field !=undefined) {
 			field.fieldName = self.formulaFieldLabel();
-			field.fieldFormat(self.formulaDataFormat());
+			if (ko.isObservable(field.selectedFieldName)) {
+				field.selectedFieldName(field.tableName + " > " + field.fieldName);
+			}
+			var _selectableFormats = ['String', 'Integer', 'Decimal', 'Currency', 'Days', 'Hours', 'Minutes', 'Seconds'];
+			var _formatToSave = (_originalFieldFormat && !_selectableFormats.includes(_originalFieldFormat))
+				? _originalFieldFormat
+				: self.formulaDataFormat();
+			field.fieldFormat(_formatToSave);
+			_originalFieldFormat = "";
 			field.decimalPlaces(self.formulaDecimalPlaces());
 			field.formulaType = self.formulaType();
 			var formulaItems = [];
