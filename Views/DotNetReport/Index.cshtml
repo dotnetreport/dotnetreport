@@ -238,23 +238,13 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             <span class="desc" data-bind="highlightedText: { text: FolderName, highlight: $parent.searchReports, css: 'highlight' }"></span>
                                             <div data-bind="visible: $root.adminMode" style="font-size: 0.75em; margin-top: 4px;" onclick="event.stopPropagation()">
                                                 <div class="d-flex flex-wrap gap-1">
-                                                    <span class="badge bg-info text-white" title="Manage Users" data-bind="text: UserId ? '👤 ' + UserId : '👤 Any User'"></span>
-                                                    <!-- ko if: ViewOnlyUserId -->
-                                                    <span class="badge bg-info text-white border" title="View only Users" data-bind="text: '👁 ' + ViewOnlyUserId"></span>
-                                                    <!-- /ko -->
-                                                    <!-- ko if: DeleteOnlyUserId -->
-                                                    <span class="badge bg-info text-white border" title="Delete only Users" data-bind="text: '🗑 ' + DeleteOnlyUserId"></span>
-                                                    <!-- /ko -->
-                                                    <span class="badge bg-info text-white" title="Manage Roles" data-bind="text: '🔑 ' + (UserRoles ? UserRoles : 'Any Role')"></span>
-                                                    <!-- ko if: ViewOnlyUserRoles -->
-                                                    <span class="badge bg-info text-white border" title="View only Roles" data-bind="text: '👁 ' + ViewOnlyUserRoles"></span>
-                                                    <!-- /ko -->
-                                                    <!-- ko if: DeleteOnlyUserRoles -->
-                                                    <span class="badge bg-info text-white border" title="Delete only Roles" data-bind="text: '🗑 ' + DeleteOnlyUserRoles"></span>
-                                                    <!-- /ko -->
-                                                    <!-- ko if: ClientId -->
-                                                    <span class="badge bg-info text-white" title="Client" data-bind="text: '🏢 ' + ClientId"></span>
-                                                    <!-- /ko -->
+                                                    <span class="badge bg-info text-white" title="Manage Users" data-bind="text: UserId ? '👤 ' + UserId : '👤 Any User'"> </span>
+                                                    <span class="badge bg-info text-white border" title="View only Users" data-bind="visible: ViewOnlyUserId"> 👁 <span data-bind="text: ViewOnlyUserId"></span> </span>
+                                                    <span class="badge bg-info text-white border" title="Delete only Users" data-bind="visible: DeleteOnlyUserId"> 🗑 <span data-bind="text: DeleteOnlyUserId"></span> </span>
+                                                    <span class="badge bg-info text-white" title="Manage Roles" data-bind="text: '🔑 ' + (UserRoles ? UserRoles : 'Any Role')"> </span>
+                                                    <span class="badge bg-info text-white border" title="View only Roles" data-bind="visible: ViewOnlyUserRoles"> 👁 <span data-bind="text: ViewOnlyUserRoles"></span> </span>
+                                                    <span class="badge bg-info text-white border" title="Delete only Roles" data-bind="visible: DeleteOnlyUserRoles"> 🗑 <span data-bind="text: DeleteOnlyUserRoles"></span> </span>
+                                                    <span class="badge bg-info text-white" title="Client" data-bind="visible: ClientId"> 🏢 <span data-bind="text: ClientId"></span> </span>
                                                 </div>
                                             </div>
                                         </li>
@@ -284,23 +274,13 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 </p>
                                                 <div data-bind="if: $parent.adminMode">
                                                     <div class="d-flex flex-wrap gap-1 align-items-center mt-1">
-                                                        <span class="badge bg-info text-white" title="Manage Users" data-bind="text: userId ? '👤 ' + userId : '👤 Any User'"></span>
-                                                        <!-- ko if: viewOnlyUserId -->
-                                                        <span class="badge bg-info text-white border" title="View only Users" data-bind="text: '👁 ' + viewOnlyUserId"></span>
-                                                        <!-- /ko -->
-                                                        <!-- ko if: deleteOnlyUserId -->
-                                                        <span class="badge bg-info text-white border" title="Delete only Users" data-bind="text: '🗑 ' + deleteOnlyUserId"></span>
-                                                        <!-- /ko -->
-                                                        <span class="badge bg-info text-white" title="Manage Roles" data-bind="text: '🔑 ' + (userRole ? userRole : 'Any Role')"></span>                                                        
-                                                        <!-- ko if: viewOnlyUserRole -->
-                                                        <span class="badge bg-info text-white border" title="View only Roles" data-bind="text: '👁 ' + viewOnlyUserRole"></span>
-                                                        <!-- /ko -->
-                                                        <!-- ko if: deleteOnlyUserRole -->
-                                                        <span class="badge bg-info text-white border" title="Delete only Roles" data-bind="text: '🗑 ' + deleteOnlyUserRole"></span>
-                                                        <!-- /ko -->
-                                                        <!-- ko if: clientId -->
-                                                        <span class="badge bg-info text-white" title="Client" data-bind="text: '🏢 ' + clientId"></span>
-                                                        <!-- /ko -->
+                                                        <span class="badge bg-info text-white" title="Manage Users" data-bind="text: userId ? '👤 ' + userId : '👤 Any User'"> </span>
+                                                        <span class="badge bg-info text-white border" title="View only Users" data-bind="visible: viewOnlyUserId"> 👁 <span data-bind="text: viewOnlyUserId"></span> </span>
+                                                        <span class="badge bg-info text-white border" title="Delete only Users" data-bind="visible: deleteOnlyUserId"> 🗑 <span data-bind="text: deleteOnlyUserId"></span> </span>
+                                                        <span class="badge bg-info text-white" title="Manage Roles" data-bind="text: '🔑 ' + (userRole ? userRole : 'Any Role')"> </span>
+                                                        <span class="badge bg-info text-white border" title="View only Roles" data-bind="visible: viewOnlyUserRole"> 👁 <span data-bind="text: viewOnlyUserRole"></span> </span>
+                                                        <span class="badge bg-info text-white border" title="Delete only Roles" data-bind="visible: deleteOnlyUserRole"> 🗑 <span data-bind="text: deleteOnlyUserRole"></span> </span>
+                                                        <span class="badge bg-info text-white" title="Client" data-bind="visible: clientId"> 🏢 <span data-bind="text: clientId"></span> </span>
                                                         <a data-bind="attr: {href: '/DotNetReport/?linkedreport=true&noparent=true&reportId=' + reportId }" target="_blank" title="Direct Link"><span class="fa fa-link"></span></a>
                                                         <a href="#" data-bind="click: function() { navigator && navigator.clipboard && navigator.clipboard.writeText('/DotNetReport?linkedreport=true&noparent=true&reportId=' + reportId) }" title="Copy Link"><span class="fa fa-copy"></span></a>
                                                     </div>
@@ -428,23 +408,13 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             </div>
                                             <div class="col-md-6" data-bind="visible: $parent.adminMode">
                                                 <div class="d-flex flex-wrap gap-1 align-items-center">
-                                                    <span class="badge bg-info text-white" title="Manage Users" data-bind="text: UserId ? '👤 ' + UserId : '👤 Any User'"></span>
-                                                    <!-- ko if: ViewOnlyUserId -->
-                                                    <span class="badge bg-info text-white border" title="View only Users" data-bind="text: '👁 ' + ViewOnlyUserId"></span>
-                                                    <!-- /ko -->
-                                                    <!-- ko if: DeleteOnlyUserId -->
-                                                    <span class="badge bg-info text-white border" title="Delete only Users" data-bind="text: '🗑 ' + DeleteOnlyUserId"></span>
-                                                    <!-- /ko -->
-                                                    <span class="badge bg-info text-white" title="Manage Roles" data-bind="text: '🔑 ' + (UserRoles ? UserRoles : 'Any Role')"></span>
-                                                    <!-- ko if: ViewOnlyUserRoles -->
-                                                    <span class="badge bg-info text-white border" title="View only Roles" data-bind="text: '👁 ' + ViewOnlyUserRoles"></span>
-                                                    <!-- /ko -->
-                                                    <!-- ko if: DeleteOnlyUserRoles -->
-                                                    <span class="badge bg-info text-white border" title="Delete only Roles" data-bind="text: '🗑 ' + DeleteOnlyUserRoles"></span>
-                                                    <!-- /ko -->
-                                                    <!-- ko if: ClientId -->
-                                                    <span class="badge bg-info text-white" data-bind="text: '🏢 ' + ClientId"></span>
-                                                    <!-- /ko -->
+                                                    <span class="badge bg-info text-white" title="Manage Users" data-bind="text: UserId ? '👤 ' + UserId : '👤 Any User'"> </span>
+                                                    <span class="badge bg-info text-white border" title="View only Users" data-bind="visible: ViewOnlyUserId"> 👁 <span data-bind="text: ViewOnlyUserId"></span> </span>
+                                                    <span class="badge bg-info text-white border" title="Delete only Users" data-bind="visible: DeleteOnlyUserId"> 🗑 <span data-bind="text: DeleteOnlyUserId"></span> </span>
+                                                    <span class="badge bg-info text-white" title="Manage Roles" data-bind="text: '🔑 ' + (UserRoles ? UserRoles : 'Any Role')"> </span>
+                                                    <span class="badge bg-info text-white border" title="View only Roles" data-bind="visible: ViewOnlyUserRoles"> 👁 <span data-bind="text: ViewOnlyUserRoles"></span> </span>
+                                                    <span class="badge bg-info text-white border" title="Delete only Roles" data-bind="visible: DeleteOnlyUserRoles"> 🗑 <span data-bind="text: DeleteOnlyUserRoles"></span> </span>
+                                                    <span class="badge bg-info text-white" title="Client" data-bind="visible: ClientId"> 🏢 <span data-bind="text: ClientId"></span> </span>
                                                 </div>
                                             </div>
                                         </div>
@@ -475,23 +445,13 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 </div>
                                                 <div class="col-md-6" data-bind="visible: $root.adminMode">
                                                     <div class="small text-muted d-flex flex-wrap gap-1 align-items-center">
-                                                        <span class="badge bg-info text-white" title="Manage Users" data-bind="text: UserId ? '👤 ' + UserId : '👤 Any User'"></span>
-                                                        <!-- ko if: ViewOnlyUserId -->
-                                                        <span class="badge bg-info text-white border" title="View only Users" data-bind="text: '👁 ' + ViewOnlyUserId"></span>
-                                                        <!-- /ko -->
-                                                        <!-- ko if: DeleteOnlyUserId -->
-                                                        <span class="badge bg-info text-white border" title="Delete only Users" data-bind="text: '🗑 ' + DeleteOnlyUserId"></span>
-                                                        <!-- /ko -->
-                                                        <span class="badge bg-info text-white" title="Manage Roles" data-bind="text: '🔑 ' + (UserRoles ? UserRoles : 'Any Role')"></span>
-                                                        <!-- ko if: ViewOnlyUserRoles -->
-                                                        <span class="badge bg-info text-white border" title="View only Roles" data-bind="text: '👁 ' + ViewOnlyUserRoles"></span>
-                                                        <!-- /ko -->
-                                                        <!-- ko if: DeleteOnlyUserRoles -->
-                                                        <span class="badge bg-info text-white border" title="Delete only Roles" data-bind="text: '🗑 ' + DeleteOnlyUserRoles"></span>
-                                                        <!-- /ko -->
-                                                        <!-- ko if: ClientId -->
-                                                        <span class="badge bg-info text-white" title="Client" data-bind="text: '🏢 ' + ClientId"></span>
-                                                        <!-- /ko -->
+                                                        <span class="badge bg-info text-white" title="Manage Users" data-bind="text: UserId ? '👤 ' + UserId : '👤 Any User'"> </span>
+                                                        <span class="badge bg-info text-white border" title="View only Users" data-bind="visible: ViewOnlyUserId"> 👁 <span data-bind="text: ViewOnlyUserId"></span> </span>
+                                                        <span class="badge bg-info text-white border" title="Delete only Users" data-bind="visible: DeleteOnlyUserId"> 🗑 <span data-bind="text: DeleteOnlyUserId"></span> </span>
+                                                        <span class="badge bg-info text-white" title="Manage Roles" data-bind="text: '🔑 ' + (UserRoles ? UserRoles : 'Any Role')"> </span>
+                                                        <span class="badge bg-info text-white border" title="View only Roles" data-bind="visible: ViewOnlyUserRoles"> 👁 <span data-bind="text: ViewOnlyUserRoles"></span> </span>
+                                                        <span class="badge bg-info text-white border" title="Delete only Roles" data-bind="visible: DeleteOnlyUserRoles"> 🗑 <span data-bind="text: DeleteOnlyUserRoles"></span> </span>
+                                                        <span class="badge bg-info text-white" title="Client" data-bind="visible: ClientId"> 🏢 <span data-bind="text: ClientId"></span> </span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -584,23 +544,13 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 <div class="col-md-2" data-bind="text: folderName, visible: $parent.searchReports()"></div>                                                
                                                 <div class="col-md-4" data-bind="visible: $parent.adminMode">
                                                     <div class="d-flex flex-wrap gap-1 align-items-center mt-1">
-                                                        <span class="badge bg-info text-white" title="Manage Users" data-bind="text: userId ? '👤 ' + userId : '👤 Any User'"></span>
-                                                        <!-- ko if: viewOnlyUserId -->
-                                                        <span class="badge bg-info text-white border" title="View only Users" data-bind="text: '👁 ' + viewOnlyUserId"></span>
-                                                        <!-- /ko -->
-                                                        <!-- ko if: deleteOnlyUserId -->
-                                                        <span class="badge bg-info text-white border" title="Delete only Users" data-bind="text: '🗑 ' + deleteOnlyUserId"></span>
-                                                        <!-- /ko -->
-                                                        <span class="badge bg-info text-white" title="Manage Roles" data-bind="text: '🔑 ' + (userRole ? userRole : 'Any Role')"></span>
-                                                        <!-- ko if: viewOnlyUserRole -->
-                                                        <span class="badge bg-info text-white border" title="View only Roles" data-bind="text: '👁 ' + viewOnlyUserRole"></span>
-                                                        <!-- /ko -->
-                                                        <!-- ko if: deleteOnlyUserRole -->
-                                                        <span class="badge bg-info text-white border" title="Delete only Roles" data-bind="text: '🗑 ' + deleteOnlyUserRole"></span>
-                                                        <!-- /ko -->
-                                                        <!-- ko if: clientId -->
-                                                        <span class="badge bg-info text-white" title="Client" data-bind="text: '🏢 ' + clientId"></span>
-                                                        <!-- /ko -->
+                                                        <span class="badge bg-info text-white" title="Manage Users" data-bind="text: userId ? '👤 ' + userId : '👤 Any User'"> </span>
+                                                        <span class="badge bg-info text-white border" title="View only Users" data-bind="visible: viewOnlyUserId"> 👁 <span data-bind="text: viewOnlyUserId"></span> </span>
+                                                        <span class="badge bg-info text-white border" title="Delete only Users" data-bind="visible: deleteOnlyUserId"> 🗑 <span data-bind="text: deleteOnlyUserId"></span> </span>
+                                                        <span class="badge bg-info text-white" title="Manage Roles" data-bind="text: '🔑 ' + (userRole ? userRole : 'Any Role')"> </span>
+                                                        <span class="badge bg-info text-white border" title="View only Roles" data-bind="visible: viewOnlyUserRole"> 👁 <span data-bind="text: viewOnlyUserRole"></span> </span>
+                                                        <span class="badge bg-info text-white border" title="Delete only Roles" data-bind="visible: deleteOnlyUserRole"> 🗑 <span data-bind="text: deleteOnlyUserRole"></span> </span>
+                                                        <span class="badge bg-info text-white" title="Client" data-bind="visible: clientId"> 🏢 <span data-bind="text: clientId"></span> </span>
                                                     </div>
                                                 </div>
                                                 <div class="col-md-1" data-bind="visible: $parent.adminMode">
