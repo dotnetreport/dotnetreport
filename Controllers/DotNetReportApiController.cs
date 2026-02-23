@@ -44,8 +44,8 @@ namespace ReportBuilder.Web.Controllers
             settings.UserName = "";
             settings.CurrentUserRole = new List<string>(); // Populate your current authenticated user's roles
 
-            settings.Users = new List<dynamic>(); // Populate all your application's user, ex  { "Jane", "John" } or { new { id="1", text="Jane" }, new { id="2", text="John" }}
-            settings.UserRoles = new List<string>(); // Populate all your application's user roles, ex  { "Admin", "Normal" }       
+            settings.Users = new List<dynamic>() { }; // Populate all your application's user, ex  { "Jane", "John" } or { new { id="1", text="Jane" }, new { id="2", text="John" }}
+            settings.UserRoles = new List<string>() { }; // Populate all your application's user roles, ex  { "Admin", "Normal" }       
             settings.CanUseAdminMode = true; // Set to true only if current user can use Admin mode to setup reports, dashboard and schema
             settings.DataFilters = new { }; // add global data filters to apply as needed https://dotnetreport.com/kb/docs/advance-topics/global-filters/
 
@@ -76,9 +76,23 @@ namespace ReportBuilder.Web.Controllers
 
             // Uncomment if you want to restrict max records returned
             sql = sql.Substring(0, 0) + "SELECT DISTINCT TOP 500 " + sql.Substring(0 + "SELECT ".Length);
+            string token = model.token;
+            string lastToken = "";
             if (sql.Contains("{{token}}"))
             {
-                sql = sql.Replace("{{token}}", $"'%{model.token}%'");
+                token = Uri.UnescapeDataString(token);
+                if (!string.IsNullOrWhiteSpace(token))
+                {
+                    var parts = token
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries);
+
+                    if (parts.Length > 0)
+                    {
+                        lastToken = parts[parts.Length - 1].Trim();
+                    }
+                }
+                lastToken = lastToken.Replace("'", "");
+                sql = sql.Replace("{{token}}", $"'%{lastToken}%'");
             }
             sql = ConvertTopQuery(sql, DotNetReportHelper.dbtype);
             var json = new StringBuilder();
@@ -594,6 +608,47 @@ namespace ReportBuilder.Web.Controllers
 
                 return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
             }
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> RunReportLinkUnAuth(int reportId, int? filterId = null, string filterValue = "", bool adminMode = false, string exportId = "")
+        {
+            var model = new DotNetReportModel();
+            var settings = ExportSessionStore.Get(exportId);
+            if (settings == null)
+                return Unauthorized();
+
+            settings.ApiUrl = _configuration.GetValue<string>("dotNetReport:apiUrl");
+            settings.AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken");
+            settings.DataConnectApiToken = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken");
+            settings.CanUseAdminMode = true;
+
+            using (var client = new HttpClient())
+            {
+                var content = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("account", settings.AccountApiToken),
+                    new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
+                    new KeyValuePair<string, string>("clientId", settings.ClientId),
+                    new KeyValuePair<string, string>("userId", settings.UserId),
+                    new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
+                    new KeyValuePair<string, string>("reportId", reportId.ToString()),
+                    new KeyValuePair<string, string>("filterId", filterId.HasValue ? filterId.ToString() : ""),
+                    new KeyValuePair<string, string>("filterValue", filterValue.ToString()),
+                    new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
+                    new KeyValuePair<string, string>("dataFilters", JsonSerializer.Serialize(settings.DataFilters)),
+                    new KeyValuePair<string, string>("useParameters", DotNetReportHelper.dbtype=="MS SQL" ? "true" : "false")
+                });
+
+                var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/RunLinkedReport"), content);
+                var stringContent = await response.Content.ReadAsStringAsync();
+
+                model = JsonSerializer.Deserialize<DotNetReportModel>(stringContent);
+
+            }
+
+            return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
         }
 
         [HttpGet]
@@ -1129,7 +1184,10 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string pageOrientation = "",
             [FromForm] bool includeSubTotal = false,
             [FromForm] bool includeColumnTotal = false,
-            [FromForm] string userId = "")
+            [FromForm] string userId = "",
+            [FromForm] bool isSubreport = false,
+            [FromForm] int pageNumber=1,
+            [FromForm] int currentPageSize = 1)
         {
 
             var settings = GetSettings();
@@ -1140,7 +1198,7 @@ namespace ReportBuilder.Web.Controllers
                 await ValidateAccess(userId, reportSql, adminMode: adminMode);
             }
             var pdf = await DotNetReportHelper.GetPdfFile(HttpUtility.UrlDecode(printUrl), reportId, reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName),
-                                settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), JsonConvert.SerializeObject(settings.DataFilters), expandAll, expandSqls, pivotColumn, pivotFunction, false, debug, pageSize, pageOrientation,includeSubTotal,includeColumnTotal);
+                                settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), JsonConvert.SerializeObject(settings.DataFilters), expandAll, expandSqls, pivotColumn, pivotFunction, false, debug, pageSize, pageOrientation,includeSubTotal,includeColumnTotal,isSubreport,pageNumber,currentPageSize);
 
             return File(pdf, "application/pdf", reportName + ".pdf");
         }

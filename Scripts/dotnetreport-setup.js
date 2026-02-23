@@ -1361,7 +1361,7 @@ var manageViewModel = function (options) {
 										if (!success) {
 											self.Tables.model.remove(newTable);
 										}
-										resolve(); 
+										resolve();
 									})
 									.catch(() => resolve());
 							};
@@ -1373,7 +1373,7 @@ var manageViewModel = function (options) {
 										processAndSave();
 									} else {
 										toastr.info('Upload canceled for ' + tableName + '.');
-										resolve(); 
+										resolve();
 									}
 								});
 							} else {
@@ -1446,50 +1446,47 @@ var manageViewModel = function (options) {
 			}
 			let addedJoins = [];
 			const reader = new FileReader();
-
 			reader.onload = function (event) {
 				try {
 					const joins = JSON.parse(event.target.result);
+					const allTables = self.Tables.model();
+
+					const getTableByName = name =>
+						allTables.find(t =>
+							ko.unwrap(t.DisplayName) === name ||
+							ko.unwrap(t.TableName) === name
+						);
 
 					joins.forEach(newItem => {
+
+						// Always resolve table by NAME (ignore incoming Id)
+						let table = getTableByName(newItem.TableName);
+						let joinedTable = getTableByName(newItem.JoinedTableName);
+
+						if (!table || !joinedTable) {
+							toastr.warning(`Skipping join: table not found (${newItem.TableName} or ${newItem.JoinedTableName})`);
+							return;
+						}
+
+						// Assign correct IDs from current schema
+						newItem.TableId = ko.unwrap(table.Id);
+						newItem.JoinedTableId = ko.unwrap(joinedTable.Id);
+
+						// Check existing join by table + fields (NOT Id)
 						let existingItem = self.Joins().find(item =>
-							item.TableId() === newItem.TableId &&
-							item.JoinedTableId() === newItem.JoinedTableId &&
+							item.JoinTable().DisplayName() === newItem.TableName &&
+							item.OtherTable().DisplayName() === newItem.JoinedTableName &&
 							item.JoinFieldName() === newItem.JoinFieldName &&
 							item.FieldName() === newItem.FieldName
 						);
-
-						// If no ID match, try match by table names
-						if (!existingItem && newItem.TableName && newItem.JoinedTableName) {
-							existingItem = self.Joins().find(item =>
-								item.JoinTable().DisplayName === newItem.TableName &&
-								item.OtherTable().DisplayName === newItem.JoinedTableName &&
-								item.JoinFieldName() === newItem.JoinFieldName &&
-								item.FieldName() === newItem.FieldName
-							);
-						}
 
 						if (existingItem) {
 							if (newItem.JoinType) existingItem.JoinType(newItem.JoinType);
 							if (newItem.Alias) existingItem.Alias(newItem.Alias);
 							if (newItem.Relationship) existingItem.Relationship(newItem.Relationship);
+
 							existingItem.isNew = true;
 						} else {
-							const allTables = self.Tables.model();
-							const getTableById = id => allTables.find(t => ko.unwrap(t.Id) === id);
-							const getTableByName = name => allTables.find(t => ko.unwrap(t.DisplayName) === name || ko.unwrap(t.TableName) === name);
-
-							let table = getTableById(newItem.TableId) || (newItem.TableName ? getTableByName(newItem.TableName) : null);
-							let joinedTable = getTableById(newItem.JoinedTableId) || (newItem.JoinedTableName ? getTableByName(newItem.JoinedTableName) : null);
-
-							if (!table || !joinedTable) {
-								toastr.warning(`Skipping join: could not find table "${newItem.TableName}" or "${newItem.JoinedTableName}" in this schema.`);
-								return;
-							}
-
-							newItem.TableId = ko.unwrap(table.Id);
-							newItem.JoinedTableId = ko.unwrap(joinedTable.Id);
-
 							const added = self.setupJoin(newItem);
 							added.isNew = true;
 							self.Joins.push(added);
@@ -1497,16 +1494,12 @@ var manageViewModel = function (options) {
 						}
 					});
 
-					// Don't auto save 
-					// self.SaveJoins();
 					self.isDirty(true);
-
 					toastr.success('Joins imported in view. Please click "Save Joins" to apply.');
 					$('#uploadJoinsFileModal').modal('hide');
 					clearFileInput('joinsFileInputJson');
 
 				} catch (e) {
-					addedJoins.forEach(j => self.Joins.remove(j));
 					toastr.error('Invalid JSON file: ' + e.message);
 					clearFileInput('joinsFileInputJson');
 				}
@@ -1930,6 +1923,15 @@ var manageViewModel = function (options) {
 	self.exportFoldersReportJson = async function () {
 		const selectedReports = [];
 
+		const allReports = _.flatMap(self.reportsAndFolders(), function (folder) {
+			return _.map(folder.reports, function (r) {
+				return {
+					reportId: r.reportId,
+					reportName: r.reportName
+				};
+			});
+		});
+
 		await Promise.all(_.map(self.reportsAndFolders(), async function (folder) {
 			const selectedInFolder = _.filter(folder.reports, function (r) {
 				return r.isSelected && r.isSelected();
@@ -1942,9 +1944,10 @@ var manageViewModel = function (options) {
 						runReportApiUrl: options.runReportApiUrl,
 						reportWizard: options.reportWizard,
 						lookupListUrl: options.lookupListUrl,
-						userSettings: { currentUserId: options.currentUserId }
+						userSettings: { currentUserId: options.currentUserId },
+						savedReports: allReports
 					});
-					reportview.adminMode = ko.observable(true);
+					reportview.adminMode(true);
 
 					const response = await reportview.LoadReport(r.reportId, true, '', true, false);
 					const reportData = response && response.UseStoredProc === false
@@ -2195,9 +2198,10 @@ var manageViewModel = function (options) {
 									lookupListUrl: options.lookupListUrl,
 									userSettings: { currentUserId: options.currentUserId }
 								});
-								reportview.adminMode = ko.observable(true);
+								reportview.adminMode(true);
 								report.data = report.data || {};
 								report.data.FolderID = folderId;
+								report.data.checkFields = true;
 
 								if (existingReport && action === 'overwrite') {
 									report.data.ReportID = existingReport.reportId;
@@ -2224,9 +2228,7 @@ var manageViewModel = function (options) {
 						});
 
 						$.when.apply($, allPromises).done(function () {
-							self.loadReportsAndFolder().done(function () {
-								toastr.success('Reports imported successfully!');
-							});
+							self.loadReportsAndFolder();
 						});
 					});
 
@@ -2285,16 +2287,85 @@ var manageViewModel = function (options) {
 		});
 	};
 }
+var ColumnModel = function (data) {
+	var self = this;
+	data = data || {};
+
+	self.Id = ko.observable(data.Id || 0);
+	self.ColumnName = ko.observable(data.ColumnName || '');
+	self.DisplayName = ko.observable(data.DisplayName || '');
+	self.Selected = ko.observable(
+		data.Selected !== undefined ? data.Selected : true
+	);
+	self.DisplayOrder = ko.observable(data.DisplayOrder || 0);
+	self.FieldType = ko.observable(data.FieldType || 'Varchar');
+	self.PrimaryKey = ko.observable(data.PrimaryKey || false);
+	self.ForeignKey = ko.observable(data.ForeignKey || false);
+	self.AccountIdField = ko.observable(data.AccountIdField || false);
+	self.DoNotDisplay = ko.observable(data.DoNotDisplay || false);
+	self.ForeignTable = ko.observable(data.ForeignTable || null);
+	self.ForeignJoin = ko.observable(data.ForeignJoin || 'Inner');
+	self.ForeignKeyField = ko.observable(data.ForeignKeyField || null);
+	self.ForeignValueField = ko.observable(data.ForeignValueField || null);
+	self.ForeignFilterOnly = ko.observable(data.ForeignFilterOnly || false);
+	self.ForceFilter = ko.observable(data.ForceFilter || false);
+	self.ForceFilterForTable = ko.observable(data.ForceFilterForTable || false);
+	self.RestrictedDateRange = ko.observable(data.RestrictedDateRange || null);
+	self.RestrictedStartDate = ko.observable(data.RestrictedStartDate || null);
+	self.RestrictedEndDate = ko.observable(data.RestrictedEndDate || null);
+	self.AllowedRoles = ko.observableArray(data.AllowedRoles || []);
+	self.ForeignParentKey = ko.observable(data.ForeignParentKey || false);
+	self.ForeignParentTable = ko.observable(data.ForeignParentTable || null);
+	self.ForeignParentApplyTo = ko.observable(data.ForeignParentApplyTo || null);
+	self.ForeignParentKeyField = ko.observable(data.ForeignParentKeyField || null);
+	self.ForeignParentValueField = ko.observable(data.ForeignParentValueField || null);
+	self.ForeignParentRequired = ko.observable(data.ForeignParentRequired || false);
+	self.JsonStructure = ko.observable(data.JsonStructure || null);
+	self.isNew = ko.observable(self.Id() === 0);
+};
 
 var tablesViewModel = function (options, keys, previewData, activeTable) {
 	var self = this;
 	self.model = ko.mapping.fromJS(_.sortBy(options.model.Tables, ['TableName']));
-
+	
 	self.processTable = function (t) {
+		t.editTableColumn = ko.observable();
+		t.addNewColumn = function () {
+			var activetable = activeTable();
+			var newCol = new ColumnModel({
+				ColumnId: 0,
+				ColumnName: '',
+				DisplayName: '',
+				FieldType: 'Varchar'
+			});
+			ko.contextFor(document.getElementById('column-modal')).$data.selectColumn(newCol,false)
+			$('#column-modal').modal('show');
+		};
+		t.saveColumn = function () {
+			var col = t.editTableColumn();
+			var table = activeTable();
+			if (!col.ColumnName()) {
+				alert("Column Name is required");
+				return;
+			}
+			var duplicate = table.Columns().some(c =>
+				c.ColumnName().toLowerCase() === col.ColumnName().toLowerCase()
+			);
+			if (duplicate && col.isNew()) {
+				alert("Column already exists");
+				return;
+			}
+			if (col.isNew()) {
+				table.Columns.push(col);
+				col.isNew(false);
+			}
+			$('#column-modal').modal('hide');
+		};
 		t.availableColumns = ko.computed(function () {
 			const columns = [];
 
 			ko.utils.arrayForEach(t.Columns(), function (col) {
+				col.isNew = false;
 				if (col.Id() > 0 && col.Selected()) {
 					columns.push(col);
 				}
@@ -2418,12 +2489,33 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 		}
 
 		t.exportTableJson = function () {
-			var e = ko.mapping.toJS(t, {
-				'ignore': ["saveTable", "JoinTable", "ForeignJoinTable"]
+
+			if (!t) return toastr.warning('No table to export.');
+
+			bootbox.confirm({
+				title: "Confirm Export Table",
+				message: `Export table "${t.TableName ? t.TableName() : ''}"?`,
+				buttons: {
+					cancel: { label: 'Cancel', className: 'btn-secondary' },
+					confirm: { label: 'Export', className: 'btn-primary' }
+				},
+				callback: function (ok) {
+					if (!ok) return;
+
+					const exportObj = ko.mapping.toJS(t, {
+						ignore: ["saveTable", "JoinTable", "ForeignJoinTable"]
+					});
+
+					downloadJson(
+						JSON.stringify(exportObj, null, 2),
+						`${t.TableName ? t.TableName() : 'Table'}.json`,
+						'application/json'
+					);
+
+					toastr.success('Table schema exported.');
+				}
 			});
-			var exportJson = JSON.stringify(e, null,2)
-			downloadJson(exportJson, e.TableName + (e.IsView ? ' (View)' : '') + '.json', 'application/json');
-		}
+		};
 
 		t.previewTable = function (apiKey, dbKey) {
 			previewData(null);
@@ -2959,6 +3051,8 @@ var settingPageViewModel = function (options) {
 	self.isEnterprise = ko.observable(false);
 	self.canCopyReport = ko.observable(true);
 	self.useFunctions = ko.observable(false);
+	self.showScheduling = ko.observable(true);
+
 	self.appThemes = ko.observableArray([
 		{ name: 'Default', value: 'default' },
 		{ name: 'Dark', value: 'dark' },
@@ -3038,7 +3132,8 @@ var settingPageViewModel = function (options) {
 							showPageSize: self.showPageSize(),
 							showImportExport: self.showImportExport(),
 							canCopyReport: self.canCopyReport(),
-							useFunctions: self.isEnterprise() ? self.useFunctions() : false
+							useFunctions: self.isEnterprise() ? self.useFunctions() : false,
+							showScheduling: self.showScheduling()
 						})
 					})
 				})
@@ -3106,6 +3201,8 @@ var settingPageViewModel = function (options) {
 				} else {
 					self.useFunctions(false);
 				}			
+				self.showScheduling(settings.showScheduling);
+;
 				//// Optionally, you can manually trigger change event for select elements
 				$('#themeSelect').trigger('change');
 				$('#timezoneSelect').trigger('change');
