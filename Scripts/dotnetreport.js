@@ -1,4 +1,4 @@
-/// dotnet Report Builder view model v6.1.1
+/// dotnet Report Builder view model v6.2.4
 /// License must be purchased for commercial use
 /// 2025 (c) www.dotnetreport.com
 
@@ -2826,7 +2826,6 @@ var reportViewModel = function (options) {
 	self.formulaDecimalPlaces = ko.observable();
 	self.selectedFunction = ko.observable();
 	self.currentFormulaField = ko.observable(null);
-	self._formulaIsDateField = ko.observable(false);
 	var codeEditor;
 	self.designFunctionField = function () {
 		if (self.isFunctionField()) {
@@ -2862,7 +2861,7 @@ var reportViewModel = function (options) {
 	});
 
 	self.formulaOnlyHasDateFields = ko.computed(function () {
-		if (self.formulaType() === 'sql' && self._formulaIsDateField()) return true;
+		if (self.formulaType() === 'sql') return false;
 		var allFields = self.formulaFields();
 		if (allFields.length <= 0) return false;
 
@@ -2970,7 +2969,6 @@ var reportViewModel = function (options) {
 	});
 
 	self.clearFormulaField = function () {
-		self._formulaIsDateField(false);
 		self.formulaFields([]);
 		self.formulaFieldLabel('');
 		self.formulaDataFormat('String');
@@ -3075,7 +3073,6 @@ var reportViewModel = function (options) {
 		self.formulaDataFormat(field.fieldFormat());
 		_originalFieldFormat = field.fieldFormat();
 		_formulaDateFormat = ['Days', 'Hours', 'Minutes', 'Seconds'].includes(field.fieldFormat()) ? field.fieldFormat() : "";
-		self._formulaIsDateField(['Days', 'Hours', 'Minutes', 'Seconds'].includes(field.fieldFormat()));
 		self.formulaDecimalPlaces(field.decimalPlaces());
 		self.formulaFields([]);
 		self.CustomChooseFields([]);
