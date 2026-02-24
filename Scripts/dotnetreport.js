@@ -3467,11 +3467,9 @@ var reportViewModel = function (options) {
 			self.RemoveInvalidFilters(self.FilterGroups());
 		}
 		else {
-			self.loadTableFields(fieldTable).done(function () {
-				self.ChooseFields([]);
-				self.SelectedFields.remove(field);
-				self.RemoveInvalidFilters(self.FilterGroups());
-			});
+			self.ChooseFields([]);
+			self.SelectedFields.remove(field);
+			self.RemoveInvalidFilters(self.FilterGroups());
 		}
 	};
 
