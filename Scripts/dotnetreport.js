@@ -1752,6 +1752,48 @@ var reportViewModel = function (options) {
 		self.reportHtml.editor.summernote('pasteHTML', table);
 	};
 
+	self.hasOuterGroupFields = ko.computed(function () {
+		return self.SelectedFields().some(function (f) {
+			return (f.outerGroup && f.outerGroup()) || (f.selectedAggregate && f.selectedAggregate() === 'Outer Group');
+		});
+	});
+
+	self.insertGroupedTable = function () {
+		if (!self.reportHtml.editor) return;
+
+		var outerFields = self.SelectedFields().filter(function (f) {
+			return (f.outerGroup && f.outerGroup()) || (f.selectedAggregate && f.selectedAggregate() === 'Outer Group');
+		});
+		var innerFields = self.SelectedFields().filter(function (f) {
+			return !((f.outerGroup && f.outerGroup()) || (f.selectedAggregate && f.selectedAggregate() === 'Outer Group'));
+		});
+
+		if (outerFields.length === 0 || innerFields.length === 0) return;
+
+		var colSpan = innerFields.length;
+		var groupHeaderRows = outerFields.map(function (f) {
+			return '<tr class="html-report-group-header"><td colspan="' + colSpan + '"><strong>{{'+ f.selectedFieldName() + '}}</strong></td></tr>';
+		}).join('\n            ');
+
+		var headers = innerFields.map(function (f) {
+			return '<th data-field="' + f.selectedFieldName() + '">' + f.selectedFieldName() + '</th>';
+		}).join('');
+		var values = innerFields.map(function (f) {
+			return '<td data-field="' + f.selectedFieldName() + '">{{'+ f.selectedFieldName() + '}}</td>';
+		}).join('');
+
+		var table = '\n' +
+			'<table class="table table-bordered table-sm html-report-table html-report-table-grouped">\n' +
+			'  <thead><tr>' + headers + '</tr></thead>\n' +
+			'  <tbody>\n' +
+			'    ' + groupHeaderRows + '\n' +
+			'    <tr>' + values + '</tr>\n' +
+			'  </tbody>\n' +
+			'</table>';
+
+		self.reportHtml.editor.summernote('pasteHTML', table);
+	};
+
 	self.insertHeaderBreak = function () {
 		if (self.reportHtml.editor) {
 			self.reportHtml.editor.summernote('pasteHTML', `<br/>{{headerbreak}}`);
@@ -4312,7 +4354,7 @@ var reportViewModel = function (options) {
 			return txt.value;
 		}
 
-		function processRow(row, columns, subreportsRan) {			
+		function processRow(row, columns, subreportsRan, outerGroupIndicesToSuppress) {
 			let fullHtml = decodeHtmlEntities(self.reportHtml());
 			let header = "", body = fullHtml, footer = "";
 
@@ -4334,6 +4376,53 @@ var reportViewModel = function (options) {
 
 						if (row.__isFirstRow) body = tableHeader + rowTemplate + tableFooter;
 						else body = rowTemplate;
+					}
+				}
+				// detect grouped table
+				else if (body.indexOf("html-report-table-grouped") >= 0) {
+					// Robust parsing: don't rely on <tbody> tags (Summernote may strip them)
+					var _theadM = body.match(/<thead[\s\S]*?<\/thead>/i);
+					var _tblEnd = body.lastIndexOf('</table>');
+					if (_theadM && _tblEnd > 0) {
+						var _thIdx = body.indexOf(_theadM[0]) + _theadM[0].length;
+						var gTableTop = body.substring(0, _thIdx) + '<tbody>';
+						var gTableBot = '</tbody>' + body.substring(_tblEnd);
+						var gTbody = body.substring(_thIdx, _tblEnd).replace(/<\/?tbody[^>]*>/gi, '').trim();
+
+						// Parse every <tr> and classify as group-header or data.
+						// Primary: does the row contain an outer-group placeholder?
+						// Fallback: does it have the html-report-group-header class?
+						// This lets the user freely edit/delete header rows.
+						var allTrs = gTbody.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi) || [];
+						var groupHeaderTrs = [];
+						var dataTrs = [];
+
+						allTrs.forEach(function (tr) {
+							var isHeader = false;
+							if (outerGroupPlaceholderKeys.length > 0) {
+								isHeader = outerGroupPlaceholderKeys.some(function (ph) {
+									return tr.indexOf('{{'+ ph + '}}') >= 0;
+								});
+							}
+							if (!isHeader) {
+								isHeader = /class="[^"]*html-report-group-header/.test(tr);
+							}
+							if (isHeader) groupHeaderTrs.push(tr);
+							else dataTrs.push(tr);
+						});
+
+						var groupRows = groupHeaderTrs.join('');
+						var dataRow = dataTrs.join('');
+
+						if (row.__isFirstRow) {
+							body = gTableTop + groupRows + dataRow + gTableBot;
+						} else if (!outerGroupIndicesToSuppress) {
+							// First row of a new group
+							body = groupRows + dataRow;
+						} else {
+							// Continuation of same group
+							body = dataRow;
+						}
 					}
 				}
 				// detect transposed table
@@ -4360,6 +4449,21 @@ var reportViewModel = function (options) {
 							body = extraValueTds.join("");
 						}
 					}
+				}
+				// Outer-group template splitting:
+				// For non-first rows of a group, strip everything up to and including
+				// the last outer-group placeholder so only the inner-row portion renders.
+				if (outerGroupIndicesToSuppress && outerGroupPlaceholderKeys.length > 0
+					&& fullHtml.indexOf('html-report-table-standard') < 0
+					&& fullHtml.indexOf('html-report-table-transposed') < 0
+					&& fullHtml.indexOf('html-report-table-grouped') < 0) {
+					var _splitPos = 0;
+					_.forEach(outerGroupPlaceholderKeys, function(ph) {
+						var _s = '{{'+ ph + '}}';
+						var _p = body.lastIndexOf(_s);
+						if (_p >= 0 && _p + _s.length > _splitPos) _splitPos = _p + _s.length;
+					});
+					if (_splitPos > 0) body = body.substring(_splitPos);
 				}
 			}
 
@@ -4657,8 +4761,9 @@ var reportViewModel = function (options) {
 						}
 						return false;
 					});
-					const val = ko.unwrap(r.formattedVal || r.Value || '');
-					const formattedVal = formatValue(val, r);
+					const isSuppressed = outerGroupIndicesToSuppress && outerGroupIndicesToSuppress.has(i);
+					const val = isSuppressed ? '' : ko.unwrap(r.formattedVal || r.Value || '');
+					const formattedVal = isSuppressed ? '' : formatValue(val, r);
 					if (selectedField) {
 						const placeholderKey = selectedField.selectedFieldName();
 						renderedHtml = renderedHtml.replaceAll(`{{${placeholderKey}}}`, formattedVal);
@@ -4742,6 +4847,33 @@ var reportViewModel = function (options) {
 			result.ReportData.CurrencySymbol = ko.observable(self.kpiSettings()?.currencySymbol());
 		} else {
 			result.ReportData.BackColor = ko.observable(self.tableSettings().backColor);
+		}
+		var lastOuterGroupKey = null;
+		var outerGroupPlaceholderKeys = [];
+		if (self.ReportType() == 'Html' && self.OuterGroupColumns().length > 0) {
+			var _ogColIdxSet = new Set(self.OuterGroupColumns().map(function(gc) { return gc.fieldIndex; }));
+			_.forEach(result.ReportData.Columns, function(col, i) {
+				if (!_ogColIdxSet.has(i)) return;
+				var _sf = ko.utils.arrayFirst(self.SelectedFields(), function(f) {
+					if (f.fieldId != null && col.fieldId != null && f.fieldId !== 0 && col.fieldId !== 0)
+						return f.fieldId === col.fieldId;
+					if (f.dbField && col.SqlField)
+						return f.dbField === col.SqlField || col.SqlField.includes('(' + f.dbField + ')');
+					if (f.fieldName && col.ColumnName)
+						return f.fieldName === col.ColumnName;
+					return false;
+				});
+				if (_sf) {
+					outerGroupPlaceholderKeys.push(_sf.selectedFieldName());
+				} else {
+					var _tbl = 'Custom';
+					if (col.SqlField && col.SqlField.startsWith('[')) {
+						var _m = col.SqlField.match(/^\[([^\]]+)\]\.\[([^\]]+)\]/);
+						if (_m) _tbl = _m[1];
+					}
+					outerGroupPlaceholderKeys.push((_tbl + ' > ' + col.fieldName).trim());
+				}
+			});
 		}
 		_.forEach(result.ReportData.Rows, function (e, idx) {
 			e.DrillDownData = ko.observable(null);
@@ -4884,9 +5016,20 @@ var reportViewModel = function (options) {
 					return (a._subReportOrder || 0) - (b._subReportOrder || 0);
 				});
 			});
+			var outerGroupIndicesToSuppress = null;
+			if (self.ReportType() == 'Html' && self.OuterGroupColumns().length > 0) {
+				var outerGroupCols = self.OuterGroupColumns();
+				var groupKey = outerGroupCols.map(function(gc) {
+					return e.Items[gc.fieldIndex] ? e.Items[gc.fieldIndex].FormattedValue : '';
+				}).join('||');
+				if (groupKey === lastOuterGroupKey) {
+					outerGroupIndicesToSuppress = new Set(outerGroupCols.map(function(gc) { return gc.fieldIndex; }));
+				}
+				lastOuterGroupKey = groupKey;
+			}
 			e.Items.__isFirstRow = idx === 0;
 			e.Items.__isLastRow = idx === result.ReportData.Rows.length - 1;
-			e.renderedHtml = processRow(e.Items, result.ReportData.Columns, subReportsRanUnsorted);
+			e.renderedHtml = processRow(e.Items, result.ReportData.Columns, subReportsRanUnsorted, outerGroupIndicesToSuppress);
 		});
 
 		if (result.ReportData.Rows.length > 0 && self.ReportType() == 'Html') {
@@ -4941,6 +5084,39 @@ var reportViewModel = function (options) {
 						return before + stitchedTable + footerHtml + after;
 					}
 				);
+			}
+			else if (first.renderedHtml && first.renderedHtml.indexOf("html-report-table-grouped") >= 0) {
+				// Robust parsing: don't rely on <tbody> tags
+				var _ppThead = first.renderedHtml.match(/<thead[\s\S]*?<\/thead>/i);
+				var _ppTblEnd = first.renderedHtml.lastIndexOf('</table>');
+				if (_ppThead && _ppTblEnd > 0) {
+					var _ppThIdx = first.renderedHtml.indexOf(_ppThead[0]) + _ppThead[0].length;
+					var ppTableTop = first.renderedHtml.substring(0, _ppThIdx) + '<tbody>';
+					var ppTableBot = '</tbody></table>';
+
+					// Collect all rendered HTML, strip the table wrapper from the first row
+					var ppAllHtml = result.ReportData.Rows.map(function(r) { return r.renderedHtml || ''; }).join('');
+					// Remove the original table open (up through </thead> and any <tbody>)
+					var ppOrigTop = first.renderedHtml.substring(0, _ppThIdx);
+					ppAllHtml = ppAllHtml.replace(ppOrigTop, '');
+					// Remove any stray <tbody>/</tbody> and the </table> that came from the first row
+					ppAllHtml = ppAllHtml.replace(/<\/?tbody[^>]*>/gi, '');
+					ppAllHtml = ppAllHtml.replace(/<\/table>/i, '');
+
+					first.renderedHtml = ppTableTop + ppAllHtml + ppTableBot;
+					for (var _ri = 1; _ri < result.ReportData.Rows.length; _ri++) {
+						result.ReportData.Rows[_ri].renderedHtml = '';
+					}
+				}
+			}
+			else if (self.OuterGroupColumns().length > 0) {
+				// Outer-group stitching: combine every row's rendered HTML into a
+				// single block on the first row (same pattern as table-standard).
+				var _allHtml = result.ReportData.Rows.map(function(r) { return r.renderedHtml || ''; }).join('');
+				result.ReportData.Rows[0].renderedHtml = _allHtml;
+				for (var _ri = 1; _ri < result.ReportData.Rows.length; _ri++) {
+					result.ReportData.Rows[_ri].renderedHtml = '';
+				}
 			}
 		}
 		

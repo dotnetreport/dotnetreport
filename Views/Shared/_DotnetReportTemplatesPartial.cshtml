@@ -1862,6 +1862,9 @@
             <ul class="dropdown-menu">
                 <li><a class="dropdown-item" href="#" data-bind="click: insertFieldTableTransposed">Transposed</a></li>
                 <li><a class="dropdown-item" href="#" data-bind="click: insertFieldTableStandard">Standard</a></li>
+                <!-- ko if: hasOuterGroupFields -->
+                <li><a class="dropdown-item" href="#" data-bind="click: insertGroupedTable">Grouped</a></li>
+                <!-- /ko -->
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item" href="#" data-bind="click: insertHeaderBreak">Add Header Break</a></li>
                 <li><a class="dropdown-item" href="#" data-bind="click: insertFooterBreak">Add Footer Break</a></li>
