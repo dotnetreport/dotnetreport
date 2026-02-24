@@ -4418,7 +4418,7 @@ var reportViewModel = function (options) {
 							body = gTableTop + groupRows + dataRow + gTableBot;
 						} else if (!outerGroupIndicesToSuppress) {
 							// First row of a new group
-							body = groupRows + dataRow;
+							body = '<!-- outer-group-break -->' + groupRows + dataRow;
 						} else {
 							// Continuation of same group
 							body = dataRow;
@@ -5094,16 +5094,23 @@ var reportViewModel = function (options) {
 					var ppTableTop = first.renderedHtml.substring(0, _ppThIdx) + '<tbody>';
 					var ppTableBot = '</tbody></table>';
 
-					// Collect all rendered HTML, strip the table wrapper from the first row
+					// Collect all rendered HTML and strip the table wrapper from the first row
 					var ppAllHtml = result.ReportData.Rows.map(function(r) { return r.renderedHtml || ''; }).join('');
-					// Remove the original table open (up through </thead> and any <tbody>)
 					var ppOrigTop = first.renderedHtml.substring(0, _ppThIdx);
 					ppAllHtml = ppAllHtml.replace(ppOrigTop, '');
-					// Remove any stray <tbody>/</tbody> and the </table> that came from the first row
 					ppAllHtml = ppAllHtml.replace(/<\/?tbody[^>]*>/gi, '');
 					ppAllHtml = ppAllHtml.replace(/<\/table>/i, '');
 
-					first.renderedHtml = ppTableTop + ppAllHtml + ppTableBot;
+					// Split by group breaks to create separate tables per group
+					var groupChunks = ppAllHtml.split('<!-- outer-group-break -->');
+					var combinedTables = groupChunks.map(function(chunk, idx) {
+						chunk = chunk.trim();
+						if (!chunk) return '';
+						var top = idx === 0 ? ppTableTop : ppTableTop.replace('<table ', '<table style="margin-top:10px;" ');
+						return top + chunk + ppTableBot;
+					}).join('\n');
+
+					first.renderedHtml = combinedTables;
 					for (var _ri = 1; _ri < result.ReportData.Rows.length; _ri++) {
 						result.ReportData.Rows[_ri].renderedHtml = '';
 					}
