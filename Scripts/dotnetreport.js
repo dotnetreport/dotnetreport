@@ -4783,10 +4783,6 @@ var reportViewModel = function (options) {
 			});
 			renderedHtml = renderedHtml.replace(/\{\{[^}]+>[^}]+\}\}/g, "");
 
-			if (self.ReportType() == 'Html') {				
-				if (row.__isFirstRow) renderedHtml = header + renderedHtml;
-				if (row.__isLastRow) renderedHtml = renderedHtml + footer;
-			}
 
 			return renderedHtml;			
 		}
@@ -4872,6 +4868,15 @@ var reportViewModel = function (options) {
 					outerGroupPlaceholderKeys.push((_tbl + ' > ' + col.fieldName).trim());
 				}
 			});
+		}
+		var htmlHeader = "", htmlFooter = "";
+		if (self.ReportType() == 'Html') {
+			var _fhFull = decodeHtmlEntities(self.reportHtml());
+			var _fhParts = _fhFull.split("{{headerbreak}}");
+			htmlHeader = _fhParts.length > 1 ? _fhParts[0] : "";
+			var _fhRest = _fhParts.length > 1 ? _fhParts[1] : _fhParts[0];
+			_fhParts = _fhRest.split("{{footerbreak}}");
+			htmlFooter = _fhParts.length > 1 ? _fhParts[1] : "";
 		}
 		_.forEach(result.ReportData.Rows, function (e, idx) {
 			e.DrillDownData = ko.observable(null);
@@ -5123,6 +5128,18 @@ var reportViewModel = function (options) {
 					result.ReportData.Rows[_ri].renderedHtml = '';
 				}
 			}
+		}
+
+		if (self.ReportType() == 'Html' && result.ReportData.Rows.length > 0 && (htmlHeader || htmlFooter)) {
+			var _firstNonEmpty = null, _lastNonEmpty = null;
+			for (var _ri = 0; _ri < result.ReportData.Rows.length; _ri++) {
+				if (result.ReportData.Rows[_ri].renderedHtml) {
+					if (!_firstNonEmpty) _firstNonEmpty = result.ReportData.Rows[_ri];
+					_lastNonEmpty = result.ReportData.Rows[_ri];
+				}
+			}
+			if (_firstNonEmpty && htmlHeader) _firstNonEmpty.renderedHtml = htmlHeader + _firstNonEmpty.renderedHtml;
+			if (_lastNonEmpty && htmlFooter) _lastNonEmpty.renderedHtml = _lastNonEmpty.renderedHtml + htmlFooter;
 		}
 		
 		function computeSpan(node) {
