@@ -441,13 +441,13 @@
         var vm = new reportViewModel({
             runReportUrl: "@Url.Action("Report")",
             execReportUrl: "@Url.Action("RunReport", "DotNetReportApi")",
-            runLinkReportUrl: "@Url.Action("RunReportLink", "DotNetReportApi")",
+            runLinkReportUrl: "@Url.Action("RunReportLinkUnAuth", "DotNetReportApi")",
             reportWizard: $("#filter-panel"),
             reportHeader: "report-header",
             lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
             apiUrl: '@Url.Action("CallReportApiUnAuth", "DotNetReportApi")',
             runReportApiUrl: '@Url.Action("RunReportApi", "DotNetReportApi")',
-            reportFilter: htmlDecode('@System.Web.HttpUtility.UrlDecode(Model.ReportFilter)'),
+            reportFilter: htmlDecode('@System.Web.HttpUtility.UrlDecode(Model.ReportFilter)') || '{}',
             reportMode: "print",
             reportSql: "@Model.ReportSql",
             reportConnect: "@Model.ConnectKey",
@@ -455,7 +455,7 @@
             reportHeader: 'report-header',
             userSettings: data,
             dataFilters: JSON.parse(decodeHTMLEntities(data.dataFilters) || '{}'),
-            reportData: JSON.parse(decodeHTMLEntities('@Model.ReportData') || '{}'),
+            reportData: JSON.parse(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ReportData ?? "{}"))),
             getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
             chartSize: { width: 800, height: 450 }
         });

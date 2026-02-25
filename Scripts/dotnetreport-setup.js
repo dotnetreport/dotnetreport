@@ -2287,16 +2287,85 @@ var manageViewModel = function (options) {
 		});
 	};
 }
+var ColumnModel = function (data) {
+	var self = this;
+	data = data || {};
+
+	self.Id = ko.observable(data.Id || 0);
+	self.ColumnName = ko.observable(data.ColumnName || '');
+	self.DisplayName = ko.observable(data.DisplayName || '');
+	self.Selected = ko.observable(
+		data.Selected !== undefined ? data.Selected : true
+	);
+	self.DisplayOrder = ko.observable(data.DisplayOrder || 0);
+	self.FieldType = ko.observable(data.FieldType || 'Varchar');
+	self.PrimaryKey = ko.observable(data.PrimaryKey || false);
+	self.ForeignKey = ko.observable(data.ForeignKey || false);
+	self.AccountIdField = ko.observable(data.AccountIdField || false);
+	self.DoNotDisplay = ko.observable(data.DoNotDisplay || false);
+	self.ForeignTable = ko.observable(data.ForeignTable || null);
+	self.ForeignJoin = ko.observable(data.ForeignJoin || 'Inner');
+	self.ForeignKeyField = ko.observable(data.ForeignKeyField || null);
+	self.ForeignValueField = ko.observable(data.ForeignValueField || null);
+	self.ForeignFilterOnly = ko.observable(data.ForeignFilterOnly || false);
+	self.ForceFilter = ko.observable(data.ForceFilter || false);
+	self.ForceFilterForTable = ko.observable(data.ForceFilterForTable || false);
+	self.RestrictedDateRange = ko.observable(data.RestrictedDateRange || null);
+	self.RestrictedStartDate = ko.observable(data.RestrictedStartDate || null);
+	self.RestrictedEndDate = ko.observable(data.RestrictedEndDate || null);
+	self.AllowedRoles = ko.observableArray(data.AllowedRoles || []);
+	self.ForeignParentKey = ko.observable(data.ForeignParentKey || false);
+	self.ForeignParentTable = ko.observable(data.ForeignParentTable || null);
+	self.ForeignParentApplyTo = ko.observable(data.ForeignParentApplyTo || null);
+	self.ForeignParentKeyField = ko.observable(data.ForeignParentKeyField || null);
+	self.ForeignParentValueField = ko.observable(data.ForeignParentValueField || null);
+	self.ForeignParentRequired = ko.observable(data.ForeignParentRequired || false);
+	self.JsonStructure = ko.observable(data.JsonStructure || null);
+	self.isNew = ko.observable(self.Id() === 0);
+};
 
 var tablesViewModel = function (options, keys, previewData, activeTable) {
 	var self = this;
 	self.model = ko.mapping.fromJS(_.sortBy(options.model.Tables, ['TableName']));
-
+	
 	self.processTable = function (t) {
+		t.editTableColumn = ko.observable();
+		t.addNewColumn = function () {
+			var activetable = activeTable();
+			var newCol = new ColumnModel({
+				ColumnId: 0,
+				ColumnName: '',
+				DisplayName: '',
+				FieldType: 'Varchar'
+			});
+			ko.contextFor(document.getElementById('column-modal')).$data.selectColumn(newCol,false)
+			$('#column-modal').modal('show');
+		};
+		t.saveColumn = function () {
+			var col = t.editTableColumn();
+			var table = activeTable();
+			if (!col.ColumnName()) {
+				alert("Column Name is required");
+				return;
+			}
+			var duplicate = table.Columns().some(c =>
+				c.ColumnName().toLowerCase() === col.ColumnName().toLowerCase()
+			);
+			if (duplicate && col.isNew()) {
+				alert("Column already exists");
+				return;
+			}
+			if (col.isNew()) {
+				table.Columns.push(col);
+				col.isNew(false);
+			}
+			$('#column-modal').modal('hide');
+		};
 		t.availableColumns = ko.computed(function () {
 			const columns = [];
 
 			ko.utils.arrayForEach(t.Columns(), function (col) {
+				col.isNew = false;
 				if (col.Id() > 0 && col.Selected()) {
 					columns.push(col);
 				}
@@ -2419,32 +2488,30 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 			});
 		}
 
-		self.exportTablesJson = function (customOnly) {
-			const inCategory = t => customOnly ? t.CustomTable() : !t.CustomTable();
-			const all = self.model().filter(inCategory);
-			const filtered = self.filteredTables().filter(inCategory);
-			const selected = filtered.filter(t => t.Selected());
+		t.exportTableJson = function () {
 
-			if (!selected.length) return toastr.warning('No tables to export.');
-
-			const msg = (filtered.length < all.length
-				? `Only filtered tables (${filtered.length} of ${all.length}) will be exported.`
-				: `All ${all.length} tables will be exported.`);
+			if (!t) return toastr.warning('No table to export.');
 
 			bootbox.confirm({
-				title: "Confirm Export Tables",
-				message: msg,
+				title: "Confirm Export Table",
+				message: `Export table "${t.TableName ? t.TableName() : ''}"?`,
 				buttons: {
 					cancel: { label: 'Cancel', className: 'btn-secondary' },
 					confirm: { label: 'Export', className: 'btn-primary' }
 				},
-				callback: ok => {
+				callback: function (ok) {
 					if (!ok) return;
-					const exportList = selected.map(t => ko.mapping.toJS(t, {
+
+					const exportObj = ko.mapping.toJS(t, {
 						ignore: ["saveTable", "JoinTable", "ForeignJoinTable"]
-					}));
-					downloadJson(JSON.stringify(exportList, null, 2),
-						customOnly ? 'CustomTables.json' : 'Tables.json', 'application/json');
+					});
+
+					downloadJson(
+						JSON.stringify(exportObj, null, 2),
+						`${t.TableName ? t.TableName() : 'Table'}.json`,
+						'application/json'
+					);
+
 					toastr.success('Table schema exported.');
 				}
 			});

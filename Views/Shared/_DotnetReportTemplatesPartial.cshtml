@@ -314,19 +314,20 @@
                         </select>
                     </div>
                     <div class="d-flex justify-content-end mb-2">
-                        <button class="btn btn-sm btn-outline-primary me-2"
-                                data-bind="click: copyKpiFormat">
-                            Copy Format
+                        <button class="btn btn-sm"
+                                data-bind="click: copyKpiFormat"
+                                title="Copy Format">
+                            <i class="fa fa-copy"></i>
                         </button>
-                        <button class="btn btn-sm btn-outline-success"
-                                data-bind="click: pasteKpiFormat">
-                            Paste Format
+                        <button class="btn btn-sm"
+                                data-bind="click: pasteKpiFormat"
+                                title="Paste Format">
+                            <i class="fa fa-paste"></i>
                         </button>
-                    </div>
-                    <div class="d-flex justify-content-end">
-                        <button class="btn btn-sm btn-outline-secondary"
-                                data-bind="click: clearKpiSettings">
-                            Clear
+                         <button class="btn btn-sm"
+                                data-bind="click: clearKpiSettings"
+                                title="Clear">
+                                <i class="fa fa-close"></i>
                         </button>
                     </div>
                 </div>
@@ -1226,6 +1227,7 @@
                     </div>
                 </div>
                 <br />
+                <div data-bind="visible:$parent.ReportType() !='Html'">
                 <div class="card card-body">
                     <div class="form-row align-items-center">
                         <div class="col-auto">
@@ -1271,6 +1273,7 @@
                     </div>
                 </div>
                 <br />
+                </div>
                 <div class="card card-body">
                     <div class="form-row align-items-center">
                         <div class="col-auto">
@@ -1521,7 +1524,7 @@
     <div class="row">
         <div class="col-md-12" data-bind="disable: isFormulaField, hidden: useStoredProc">
             <div data-bind="with: textQuery.searchFields">
-                <select id="search-field" class="form-control" data-bind="select2: {dropdownParent: $root.activeDesign() ? $('#choose-data-design') : $('#choose-data-card'), placeholder: 'Search for a Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults, headers: headers }, minimumInputLength: 2, allowClear: true }, value: selectedOption"></select>
+                <select class="form-control" data-bind="select2: {dropdownParent: $root.activeDesign() ? $('#choose-data-design') : $('#choose-data-card'), placeholder: 'Search for a Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults, headers: headers }, minimumInputLength: 2, allowClear: true }, value: selectedOption"></select>
             </div>
         </div>
 
@@ -1859,6 +1862,9 @@
             <ul class="dropdown-menu">
                 <li><a class="dropdown-item" href="#" data-bind="click: insertFieldTableTransposed">Transposed</a></li>
                 <li><a class="dropdown-item" href="#" data-bind="click: insertFieldTableStandard">Standard</a></li>
+                <!-- ko if: hasOuterGroupFields -->
+                <li><a class="dropdown-item" href="#" data-bind="click: insertGroupedTable">Grouped</a></li>
+                <!-- /ko -->
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item" href="#" data-bind="click: insertHeaderBreak">Add Header Break</a></li>
                 <li><a class="dropdown-item" href="#" data-bind="click: insertFooterBreak">Add Footer Break</a></li>
@@ -2325,6 +2331,9 @@
           <button type="button" class="btn btn-sm btn-light" data-bind="visible: ReportID(), click: function() {activeDesign(false); if (isExpanded) isExpanded(false);}" title="Close">
             <i class="fa fa-times"></i> Close Designer
           </button>
+          <button type="button" class="btn btn-sm btn-danger" data-bind="visible: !ReportID(), click: function() { if (ReportMode()=='dashboard') $parent.removeNewReport(); else cancelCreateReport(); }" title="Cancel new report">
+            <i class="fa fa-times"></i> Cancel
+          </button>
         </div>
         <div class="card-body p-1">
           <div data-bind="template: 'designer-choose-visual'"></div>
@@ -2477,7 +2486,7 @@
 
         <!-- Schedule -->
         <div class="card flex-fill expandable-panel" id="schedulePanel"
-             data-bind="css:{'collapsed-vertical': panels.isCollapsed('schedulePanel')}">
+             data-bind="css:{'collapsed-vertical': panels.isCollapsed('schedulePanel')}, visible: SaveReport() && !appSettings.showScheduling()">
           <div class="card-header p-1" data-bind="click:function(){panels.togglePanel('schedulePanel')}">
             <i class="fa fa-hourglass"></i> Schedule
           </div>
@@ -2714,7 +2723,7 @@
                             <div data-bind="template: 'designer-sort'"></div>
                         </div>
                         <br />
-                        <div data-bind="visible: SaveReport && !appSettings.showScheduling()" class="card card-body">
+                        <div data-bind="visible: SaveReport() && !appSettings.showScheduling()" class="card card-body">
                             <h5><span class="fa fa-hourglass"></span>&nbsp;Choose Schedule</h5>
 
                             <div style="padding: 10px 10px" data-bind="if: SaveReport">
@@ -2956,21 +2965,22 @@
                                data-bind="attr: { id: 'tbl-color-picker-' + ReportID()},value: tableSettings().backColor, event: { change: updateTable }"/>
                         </div>
                         <div class="mb-2 col-6 d-flex align-items-end">
-                            <button class="btn btn-sm small btn-outline-secondary" data-bind="click: clearTableSettings">
-                                Clear
+                            <button class="btn btn-sm small"
+                                    data-bind="click: copyTableFormat"
+                                    title="Copy Format">
+                                <i class="fa fa-copy"></i>
+                            </button>
+                            <button class="btn btn-sm small"
+                                    data-bind="click: pasteTableFormat"
+                                    title="Paste Format">
+                                <i class="fa fa-paste"></i>
+                            </button>
+                            <button class="btn btn-sm small" data-bind="click: clearTableSettings"
+                                title="Clear">
+                                <i class="fa fa-close"></i>
                             </button>
                         </div>
-                    </div>
-                    <div class="form-group row">
-                        <div class="mb-2 col-12 d-flex align-items-end">
-                            <button class="btn btn-sm small btn-outline-primary ms-2" data-bind="click: copyTableFormat">
-                                Copy Format
-                            </button>
-                            <button class="btn btn-sm small btn-outline-success ms-2" data-bind="click: pasteTableFormat">
-                                Paste Format
-                            </button>
-                        </div>
-                    </div>
+                    </div>                    
                 </div>
             </div>
         </div>
@@ -3337,6 +3347,70 @@
                 <button type="button" class="btn btn-success" data-bs-dismiss="modal" data-bind="click: download">
                     <i class="fa fa-download me-1"></i> Download PDF
                 </button>
+            </div>
+        </div>
+    </div>
+</script>
+<script type="text/html" id="line-separator-template">
+    <div class="grid-stack-item-content position-relative p-2" data-bind="css: { card: $root.arrangeDashboard }">
+        <hr data-bind="style: { borderTop: thickness() + 'px solid ' + color() }" class="m-0">
+        <div data-bind="visible: $root.arrangeDashboard" class="dropdown position-absolute" style="top:-5px; right:0; z-index:2000;">
+            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="dropdown">
+                <i class="fa fa-ellipsis-v"></i>
+            </button>
+               <ul class="dropdown-menu dropdown-menu-end p-2 bg-light small">
+                    <li class="d-flex align-items-center gap-2 mb-2">
+                        <label class="form-label small mb-0">Line Color</label>
+                        <input type="color" class="color-picker" data-bind="value: color,valueUpdate: 'input',event: { change: () => $root.onWidgetChange($data)}">
+                    </li>
+
+                    <li class="d-flex align-items-center gap-2 mb-2">
+                        <label class="mb-0">Thickness</label>
+                        <input type="number"
+                               min="1"
+                               max="10"
+                               data-bind="value: thickness,valueUpdate: 'input',event: { change: () => $root.onWidgetChange($data)}"
+                               class="form-control form-control-sm"
+                               style="width:50px">
+                    </li>
+
+                    <li>
+                        <button class="dropdown-item text-danger" data-bind="click: deleteSeparator">
+                            <i class="fa fa-trash me-2"></i>
+                            Delete
+                        </button>
+                    </li>
+                </ul>
+        </div>
+    </div>
+</script>
+<script type="text/html" id="text-widget-template">
+    <div class="grid-stack-item-content position-relative p-2" data-bind="css: { card: $root.arrangeDashboard }">
+        <div data-bind="html: decodeURIComponent(text())"></div>
+        <div class="position-absolute" style="top:3px; right:4px; z-index:2000;" data-bind="visible: $root.arrangeDashboard">
+            <div class="dropdown">
+                <button class="btn btn-sm btn-light"
+                        type="button"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false">
+                    <i class="fa fa-ellipsis-v"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                        <button class="dropdown-item"
+                                data-bind="click: $root.openTextEditor">
+                            <i class="fa fa-edit me-2"></i>
+                            Edit
+                        </button>
+                    </li>
+                    <li>
+                        <button class="dropdown-item text-danger"
+                                data-bind="click: deleteText">
+                            <i class="fa fa-trash me-2"></i>
+                            Delete
+                        </button>
+                    </li>
+                </ul>
             </div>
         </div>
     </div>

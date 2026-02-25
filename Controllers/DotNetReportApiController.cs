@@ -44,8 +44,8 @@ namespace ReportBuilder.Web.Controllers
             settings.UserName = "";
             settings.CurrentUserRole = new List<string>(); // Populate your current authenticated user's roles
 
-            settings.Users = new List<dynamic>() { "Jane", "John" }; // Populate all your application's user, ex  { "Jane", "John" } or { new { id="1", text="Jane" }, new { id="2", text="John" }}
-            settings.UserRoles = new List<string>() { "Admin", "Normal" }; // Populate all your application's user roles, ex  { "Admin", "Normal" }       
+            settings.Users = new List<dynamic>() { }; // Populate all your application's user, ex  { "Jane", "John" } or { new { id="1", text="Jane" }, new { id="2", text="John" }}
+            settings.UserRoles = new List<string>() { }; // Populate all your application's user roles, ex  { "Admin", "Normal" }       
             settings.CanUseAdminMode = true; // Set to true only if current user can use Admin mode to setup reports, dashboard and schema
             settings.DataFilters = new { }; // add global data filters to apply as needed https://dotnetreport.com/kb/docs/advance-topics/global-filters/
 
@@ -611,6 +611,47 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> RunReportLinkUnAuth(int reportId, int? filterId = null, string filterValue = "", bool adminMode = false, string exportId = "")
+        {
+            var model = new DotNetReportModel();
+            var settings = ExportSessionStore.Get(exportId);
+            if (settings == null)
+                return Unauthorized();
+
+            settings.ApiUrl = _configuration.GetValue<string>("dotNetReport:apiUrl");
+            settings.AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken");
+            settings.DataConnectApiToken = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken");
+            settings.CanUseAdminMode = true;
+
+            using (var client = new HttpClient())
+            {
+                var content = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("account", settings.AccountApiToken),
+                    new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
+                    new KeyValuePair<string, string>("clientId", settings.ClientId),
+                    new KeyValuePair<string, string>("userId", settings.UserId),
+                    new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
+                    new KeyValuePair<string, string>("reportId", reportId.ToString()),
+                    new KeyValuePair<string, string>("filterId", filterId.HasValue ? filterId.ToString() : ""),
+                    new KeyValuePair<string, string>("filterValue", filterValue.ToString()),
+                    new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
+                    new KeyValuePair<string, string>("dataFilters", JsonSerializer.Serialize(settings.DataFilters)),
+                    new KeyValuePair<string, string>("useParameters", DotNetReportHelper.dbtype=="MS SQL" ? "true" : "false")
+                });
+
+                var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/RunLinkedReport"), content);
+                var stringContent = await response.Content.ReadAsStringAsync();
+
+                model = JsonSerializer.Deserialize<DotNetReportModel>(stringContent);
+
+            }
+
+            return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+        }
+
+        [HttpGet]
         public async Task<IActionResult> RunReportLink(int reportId, int? filterId = null, string filterValue = "", bool adminMode = false)
         {
             var model = new DotNetReportModel();
@@ -717,9 +758,9 @@ namespace ReportBuilder.Web.Controllers
             // These report permission settings will be applied by default to any new report user creates, leave black to allow access to all
             var newReportClientId = ""; // comma separated client ids to set report permission when new report is created
             var newReportEditUserId = ""; // comma separated user ids for report edit permission when new report is created
-            var newReportViewUserId = "Jack"; // comma separated user ids for report view permission when new report is created
-            var newReportEditUserRoles = "Admin"; // comma separated user roles for report edit permission when new report is created
-            var newReportViewUserRoles = "Myself"; // comma separated user roles for report view permission when new report is created
+            var newReportViewUserId = ""; // comma separated user ids for report view permission when new report is created
+            var newReportEditUserRoles = ""; // comma separated user roles for report edit permission when new report is created
+            var newReportViewUserRoles = ""; // comma separated user roles for report view permission when new report is created
 
             var settings = GetSettings();
             return Ok(new

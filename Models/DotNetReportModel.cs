@@ -3459,6 +3459,16 @@ namespace ReportBuilder.Web.Models
                             break;
                     }
                     pdfOptions.Format = selectedFormat;
+
+                    // Auto-scale to fit wide tables within the selected page width
+                    bool isLandscape = pdfOptions.Landscape == true;
+                    double pageWidthInches = GetPaperFormatWidthInches(normalizedPageSize, isLandscape);
+                    double usableWidthPx = (pageWidthInches - 0.2) * 96.0 - 100; // subtract margins (0.1in each side at 96 DPI) plus 100px buffer to prevent right-side clipping
+                    if (width > usableWidthPx && usableWidthPx > 0)
+                    {
+                        double scale = usableWidthPx / width;
+                        pdfOptions.Scale = (decimal) Math.Max(0.1, scale); 
+                    }
                 }
                 else
                 {
@@ -3489,6 +3499,24 @@ namespace ReportBuilder.Web.Models
                 if (page != null) await page.DisposeAsync();
                 if (browser != null) await browser.DisposeAsync();
             }
+        }
+
+        private static double GetPaperFormatWidthInches(string format, bool landscape)
+        {
+            double w, h;
+            switch (format)
+            {
+                case "LETTER":  w = 8.5;   h = 11.0;  break;
+                case "LEGAL":   w = 8.5;   h = 14.0;  break;
+                case "TABLOID": w = 11.0;  h = 17.0;  break;
+                case "A1":      w = 23.39; h = 33.11; break;
+                case "A2":      w = 16.54; h = 23.39; break;
+                case "A3":      w = 11.69; h = 16.54; break;
+                case "A4":
+                default:        w = 8.27;  h = 11.69; break;
+            }
+
+            return landscape ? h : w;
         }
 
         public static byte[] GetCombinePdfFile(List<byte[]> pdfFiles)
