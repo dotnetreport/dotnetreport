@@ -493,16 +493,16 @@
         </div>
     </div>
     <!-- /ko -->
-    <div data-bind="if: type === 'separator'">
+    <!-- ko if: type === 'separator' -->
         <div class="grid-stack-item" data-bind="attr: {'gs-x': x, 'gs-y': y, 'gs-w': width, 'gs-h': height, 'gs-id': id,'data-type':'separator'}">
             <div data-bind="template: { name: 'line-separator-template', data: $data }"></div>
         </div>
-    </div>
-    <div data-bind="if: type === 'text'">
+    <!-- /ko -->
+    <!-- ko if: type === 'text' -->
         <div class="grid-stack-item" data-bind="attr: {'gs-x': x, 'gs-y': y, 'gs-w': width, 'gs-h': height,'gs-id': id,'data-type':'text'}">
             <div data-bind="template:{name:'text-widget-template', data:$data}"></div>
         </div>
-    </div>
+    <!-- /ko -->
     <!-- /ko -->
 </div>
 
