@@ -2221,7 +2221,11 @@ var reportViewModel = function (options) {
 									}
 								}).done(function (d) {
 									if (d.d) d = d.d;
-									const newFolder = { Id: d, FolderName: folderName, isSelected: ko.observable(false) };
+									const newFolder = {
+										Id: d, FolderName: folderName, isSelected: ko.observable(false),
+										canEdit: true, canDelete: true, UserId: '', UserRoles: '', ViewOnlyUserId: '', DeleteOnlyUserId: '',
+										ViewOnlyUserRoles: '', DeleteOnlyUserRoles: '', ClientId: ''
+									};
 									self.allFolders.push(newFolder);
 									self.Folders(self.allFolders);
 								});
