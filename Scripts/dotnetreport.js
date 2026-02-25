@@ -2192,6 +2192,11 @@ var reportViewModel = function (options) {
 					}
 
 					askFolderChoice().then(selectedChoice => {
+						self.ManageJsonFile.file(null);
+						self.ManageJsonFile.fileName('');
+						$('#uploadFileModal').modal('hide');
+						$('#uploadFileModal input[type=file]').val('');
+
 						useSelectedFolder = selectedChoice;
 
 						let folderPromises = [];
@@ -2292,10 +2297,6 @@ var reportViewModel = function (options) {
 							});
 						});
 
-						self.ManageJsonFile.file(null);
-						self.ManageJsonFile.fileName('');
-						$('#uploadFileModal').modal('hide');
-						$('#uploadFileModal input[type=file]').val('');
 					});
 
 				} catch (e) {
@@ -7760,6 +7761,11 @@ var reportViewModel = function (options) {
 	}
 
 	self.downloadPdf = function (debug, pageSize, pageOrientation) {
+		if (self.pager.totalRecords() > 100 && self.subReports().length == 0) {
+			self.downloadPdfAlt(pageSize, pageOrientation);
+			return;
+		}
+
 		var reportData = self.BuildReportData();
 		reportData.DrillDownRowUsePlaceholders = true;
 		var pivotData = self.preparePivotData();
