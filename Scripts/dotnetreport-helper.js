@@ -1136,19 +1136,6 @@ var textQuery = function (options) {
         tribute.range.getLastWordInText = function (text) {
             return text.replace(/\u00A0/g, ' ').trim();
         };
-        tribute.range.getTextPrecedingCurrentSelection = function () {
-            var element = this.tribute.current.element;
-            if (!element) return '';
-            if (element.nodeName === 'INPUT' || element.nodeName === 'TEXTAREA') {
-                var start = element.selectionStart;
-                return element.value ? element.value.substring(0, start) : '';
-            }
-            var sel = window.getSelection();
-            if (!sel || sel.rangeCount === 0) return '';
-            var range = sel.getRangeAt(0).cloneRange();
-            range.setStart(element, 0);
-            return range.toString();
-        };
     }
 
     self.setupHints = function () {
