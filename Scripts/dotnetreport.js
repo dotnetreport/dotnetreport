@@ -1590,6 +1590,27 @@ var reportViewModel = function (options) {
 			if (searchReportFlag === true) self.resetSearch();
 			self.textQuery.resetQuery(searchReportFlag);
 		}
+		var _prevReportData = self.ReportResult().ReportData();
+		if (_prevReportData) {
+			if (_prevReportData.CanExpandOption && ko.isComputed(_prevReportData.CanExpandOption)) {
+				_prevReportData.CanExpandOption.dispose();
+			}
+			if (_prevReportData.Rows) {
+				_.forEach(_prevReportData.Rows, function (row) {
+					if (row.subReportsRan && ko.isComputed(row.subReportsRan)) {
+						row.subReportsRan.dispose();
+					}
+					if (row.Items) {
+						_.forEach(row.Items, function (r) {
+							if (r.formattedVal && ko.isComputed(r.formattedVal)) {
+								r.formattedVal.dispose();
+								r.formattedVal = null;
+							}
+						});
+					}
+				});
+			}
+		}
 		self.ReportResult().ReportData(null);
 		self.ReportResult().HasError(false);
 		self.ReportResult().ReportSql(null);
@@ -4785,6 +4806,11 @@ var reportViewModel = function (options) {
 
 				}
 
+				if (self.ReportType() == 'Html' && ko.isComputed(r.formattedVal)) {
+					r.formattedVal.dispose();
+					r.formattedVal = null;
+				}
+
 			});
 			renderedHtml = renderedHtml.replace(/\{\{[^}]+>[^}]+\}\}/g, "");
 
@@ -5439,6 +5465,27 @@ var reportViewModel = function (options) {
 	self.ExecuteReportQuery = function (reportSql, connectKey, reportSeries, isPageSizeClick=false, previewOnly=false) {
 		if (!reportSql || !connectKey) return;
 		self.ChartData('');
+		var _prevReportData = self.ReportResult().ReportData();
+		if (_prevReportData) {
+			if (_prevReportData.CanExpandOption && ko.isComputed(_prevReportData.CanExpandOption)) {
+				_prevReportData.CanExpandOption.dispose();
+			}
+			if (_prevReportData.Rows) {
+				_.forEach(_prevReportData.Rows, function (row) {
+					if (row.subReportsRan && ko.isComputed(row.subReportsRan)) {
+						row.subReportsRan.dispose();
+					}
+					if (row.Items) {
+						_.forEach(row.Items, function (r) {
+							if (r.formattedVal && ko.isComputed(r.formattedVal)) {
+								r.formattedVal.dispose();
+								r.formattedVal = null;
+							}
+						});
+					}
+				});
+			}
+		}
 		self.ReportResult().ReportData(null);
 		self.ReportResult().SubTotals([]);
 		if (self.DontExecuteOnRun() && !self.executingReport) return;
