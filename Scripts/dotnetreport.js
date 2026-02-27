@@ -775,6 +775,7 @@ function filterGroupViewModel(args) {
 					}
 				});
 			}
+			newField.uiId = generateUniqueId();
 		});
 		if (e.FieldId == 0 || e.FieldId == undefined) {
 			var customFieldName = e.fieldName || (e.FilterSettings ? JSON.parse(e.FilterSettings).CustomFieldName : null);
