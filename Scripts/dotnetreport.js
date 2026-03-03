@@ -1010,6 +1010,7 @@ var reportViewModel = function (options) {
 	self.ReportSeries = '';
 
 	self.IncludeSubTotal = ko.observable(false);
+	self.totalRowFormat = ko.observable('row');
 	self.IncludeColumnTotal = ko.observable(false);
 	self.ShowUniqueRecords = ko.observable(false);
 	self.ShowExpandOption = ko.observable(false);
@@ -3734,6 +3735,7 @@ var reportViewModel = function (options) {
 				tableSettings: self.tableSettings(),
 				kpiSettings: ko.toJS(self.kpiSettings()),
 				includeColumnTotal: self.IncludeColumnTotal(),
+				totalRowFormat: self.totalRowFormat(),
 			}),
 			OnlyTop: drilldown.length > 0 ? null : (self.maxRecords() ? self.OnlyTop() : null),
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : self.AggregateReport(),
@@ -3786,7 +3788,8 @@ var reportViewModel = function (options) {
 						formulaType: x.formulaType,
 						functionConfig: x.functionConfig,
 						customSqlField: x.customSqlField,
-						outerGroup: x.outerGroup()
+						outerGroup: x.outerGroup(),
+						totalRowAggregate: x.totalRowAggregate()
 					}),
 					DrillDataFormat: x.drillDataFormat(),
 					FieldAlign: x.fieldAlign(),
@@ -3802,7 +3805,8 @@ var reportViewModel = function (options) {
 					JsonColumnName: x.isJsonColumn && x.jsonColumnName ? x.jsonColumnName : '',
 					DynamicTableId: x.dynamicTableId,
 					FieldName: x.fieldDbName ?? x.fieldName,
-					TableName: x.tableName
+					TableName: x.tableName,
+					TotalRowAggregate: x.totalRowAggregate()
 				};
 			}),
 			Schedule: self.scheduleBuilder.toJs(),
@@ -5405,13 +5409,35 @@ var reportViewModel = function (options) {
 			google.charts.setOnLoadCallback(self.DrawChart);
 		}
 
+		function computeAggregateValue(aggregate, fieldName, rows) {
+			var values = [], strValues = [];
+			_.forEach(rows, function(row) {
+				var item = _.find(row.Items(), function(i) {
+					return (i.Column.ColumnName || i.Column.fieldName) === fieldName;
+				});
+				if (item) {
+					var n = parseFloat(item.Value);
+					if (!isNaN(n)) values.push(n);
+					strValues.push(item.Value);
+				}
+			});
+			switch (aggregate) {
+				case 'Count':          return rows.length;
+				case 'Count Distinct': return _.uniq(strValues).length;
+				case 'Average':        return values.length ? _.mean(values) : 0;
+				case 'Max':            return values.length ? _.max(values) : '';
+				case 'Min':            return values.length ? _.min(values) : '';
+				default:               return _.sum(values);
+			}
+		}
+
 		if (self.IncludeSubTotal() && self.hasPivotColumn()==false) {
 			ajaxcall({
 				url: options.runReportApiUrl,
 				type: "POST",
 				data: JSON.stringify({
 					method: "/ReportApi/RunReport",
-					SaveReport: self.CanSaveReports() ? self.SaveReport() : false,
+					SaveReport: false,
 					ReportJson: JSON.stringify(self.BuildReportData()),
 					adminMode: self.adminMode(),
 					SubTotalMode: true,
@@ -5453,9 +5479,22 @@ var reportViewModel = function (options) {
 					processCols(subtotalResult.ReportData.Columns, true);
 					_.forEach(subtotalResult.ReportData.Rows, function (dr) {
 						processRow(dr.Items, subtotalResult.ReportData.Columns);
+						_.forEach(dr.Items, function (item) {
+							var colName = item.Column.ColumnName;
+							var field = _.find(self.SelectedFields(), function (f) {
+								return (f.fieldDbName || f.fieldName) === colName;
+							});
+							if (field) {
+								item._showInTotalRow = field.dontSubTotal() == false;								
+								item._aggregate = field.totalRowAggregate()
+							} else {
+								item._showInTotalRow = true;
+								item._aggregate = "Sum";
+							}
+						});
 					});
 
-					self.ReportResult().SubTotals(subtotalResult.ReportData.Rows);
+					self.ReportResult().SubTotals(subtotalResult.ReportData.Rows || []);
 				});
 			});
 		}
@@ -6708,6 +6747,7 @@ var reportViewModel = function (options) {
 		e.uiId = generateUniqueId();
 		e._outerGroup = e.fieldSettings.outerGroup
 		e.outerGroup = ko.observable(e.fieldSettings.outerGroup == true);
+		e.totalRowAggregate = ko.observable(e.fieldSettings.totalRowAggregate || 'Sum');
 
 		e.applyAllHeaderFontColor = ko.observable(false);
 		e.applyAllHeaderBackColor = ko.observable(false);
@@ -6811,7 +6851,8 @@ var reportViewModel = function (options) {
 				fieldConditionOp: e.fieldConditionOp(),
 				fieldConditionVal: e.fieldConditionVal,
 				drillDataFormat: e.drillDataFormat(),
-				seriesType: e.seriesType()
+				seriesType: e.seriesType(),
+				totalRowAggregate: e.totalRowAggregate()
 			}
 
 			e.fieldCondtionalFormats([]);
@@ -6868,6 +6909,7 @@ var reportViewModel = function (options) {
 			e.fieldLabel2(self.currentFieldOptions.fieldLabel2);
 			e.drillDataFormat(self.currentFieldOptions.drillDataFormat);
 			e.seriesType(self.currentFieldOptions.seriesType);
+			e.totalRowAggregate(self.currentFieldOptions.totalRowAggregate);
 			e.fontColor(self.currentFieldOptions.fontColor);
 			e.backColor(self.currentFieldOptions.backColor);
 			e.headerFontColor(self.currentFieldOptions.headerFontColor);
@@ -6967,6 +7009,7 @@ var reportViewModel = function (options) {
 			self.kpiSettings().currencySymbol(kpisetting.currencySymbol);
 		}
 		self.IncludeColumnTotal(reportSettings.includeColumnTotal);
+		self.totalRowFormat(reportSettings.totalRowFormat || 'row');
 		self.noHeaderRow(reportSettings.noHeaderRow);
 		self.noDashboardBorders(reportSettings.noDashboardBorders);
 		self.showPriorInKpi(reportSettings.showPriorInKpi);
